@@ -31,8 +31,8 @@ install.bat
 ### From source (any OS)
 
 ```bash
-dotnet pack src/Fuse.Cli/Fuse.Cli.csproj -c Release
-dotnet tool install -g Fuse --add-source src/Fuse.Cli/nupkg
+dotnet pack src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release
+dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
 ```
 
 Verify:
@@ -188,17 +188,20 @@ Disk output filenames include a token estimate, for example `MyProject_2026-06-1
 
 ```
 src/
-  Fuse.Collection/              File discovery, filters, templates
-  Fuse.Analysis/                Dependency graphs, BM25 search, git stats
-  Fuse.Reduction/               Content pipeline, caching, redaction
-  Fuse.Emission/                Output writers, token budget, manifest
-  Fuse.Fusion/                  Orchestration and DI
-  Fuse.Languages.Abstractions/  Capability interfaces
-  Fuse.Languages.CSharp/        C# language plugin
-  Fuse.Formats/                 Format reducers (HTML, JSON, YAML, etc.)
-  Fuse.Cli/                     CLI and MCP server
-tests/                          Unit and integration tests
-docs/                           Full documentation
+  Core/                               Pipeline libraries
+    Fuse.Collection/                  File discovery, filters, templates
+    Fuse.Analysis/                    Dependency graphs, BM25 search, git stats
+    Fuse.Reduction/                   Content pipeline, caching, redaction
+    Fuse.Emission/                    Output writers, token budget, manifest
+    Fuse.Fusion/                      Orchestration and DI
+  Host/
+    Fuse.Cli/                         CLI and MCP server
+  Plugins/                            Extension-keyed capability providers
+    Fuse.Plugins.Abstractions/        Capability interfaces (shared contract)
+    Fuse.Plugins.Languages.CSharp/    C# language plugin
+    Fuse.Plugins.Formats.Web/             Format reducers (HTML, JSON, YAML, etc.)
+tests/                                Unit and integration tests
+docs/                                 Full documentation
 ```
 
 ## Development

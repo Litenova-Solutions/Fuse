@@ -6,7 +6,7 @@ Read this file before editing Fuse source. Full rules live in [docs/contributing
 
 ### Public API: XML (`///`)
 
-Apply to every `public` and `protected` type and member in `src/Fuse.*`.
+Apply to every `public` and `protected` type and member in `src/**/Fuse.*`.
 
 1. Document on the **interface or abstract base** first; implementations use `<inheritdoc />` unless they add behavior worth noting.
 2. Required tags: `<summary>`, `<param>` (every parameter, including `CancellationToken`), `<returns>` (non-void), `<exception cref="...">` (intentionally thrown).
@@ -14,7 +14,7 @@ Apply to every `public` and `protected` type and member in `src/Fuse.*`.
 4. Use `<see cref="..."/>` to link related types instead of repeating docs.
 5. Style: four-space indent after `///`; property summaries as noun phrases (never "Gets or sets"); `<c>` for literals.
 
-Templates: `GitIgnoreParser`, `ISecretRedactor` in `src/Fuse.Collection` and `src/Fuse.Reduction`.
+Templates: `GitIgnoreParser`, `ISecretRedactor` in `src/Core/Fuse.Collection` and `src/Core/Fuse.Reduction`.
 
 Do **not** add XML to `private` members.
 

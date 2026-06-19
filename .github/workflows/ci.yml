@@ -64,10 +64,10 @@ jobs:
           sudo apt-get install -y clang zlib1g-dev
 
       - name: Restore
-        run: dotnet restore src/Fuse.Cli/Fuse.Cli.csproj
+        run: dotnet restore src/Host/Fuse.Cli/Fuse.Cli.csproj
 
       - name: Publish Native AOT
-        run: dotnet publish src/Fuse.Cli/Fuse.Cli.csproj --configuration Release /p:PublishProfile=${{ matrix.profile }}
+        run: dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj --configuration Release /p:PublishProfile=${{ matrix.profile }}
 
       - name: Smoke test init help
         shell: bash

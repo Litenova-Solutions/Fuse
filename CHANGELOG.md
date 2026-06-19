@@ -6,7 +6,7 @@ All notable changes to Fuse are documented here. Fuse 2.0 is a structural rewrit
 
 ### Breaking changes
 
-- **Solution restructure.** Monolithic layers replaced by axis-based projects: Collection, Analysis, Reduction, Emission, Fusion, plus language plugins (`Fuse.Languages.CSharp`, `Fuse.Formats`).
+- **Solution restructure.** Monolithic layers replaced by axis-based projects: Collection, Analysis, Reduction, Emission, Fusion, plus language plugins (`Fuse.Plugins.Languages.CSharp`, `Fuse.Plugins.Formats.Web`).
 - **MCP tools.** Legacy `get_optimized_context` removed. Replaced by `fuse_skeleton`, `fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_dotnet`, and `fuse_generic`.
 - **Default tokenizer.** Token counting now defaults to `o200k_base` (was `cl100k_base`). Counts will differ from 1.x for the same content.
 - **Secret redaction default ON.** API keys, JWTs, connection strings, and high-entropy literals are redacted before token counting. Use `--no-redact` to disable.

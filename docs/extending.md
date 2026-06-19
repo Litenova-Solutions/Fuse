@@ -71,22 +71,24 @@ Optional map generators (`IRouteMapGenerator`, `IProjectGraphGenerator`) registe
 ### 1. Create the project
 
 ```
-src/Fuse.Languages.MyLang/
-  Fuse.Languages.MyLang.csproj   -> references Fuse.Languages.Abstractions
+src/Plugins/Fuse.Plugins.Languages.MyLang/
+  Fuse.Plugins.Languages.MyLang.csproj   -> references Fuse.Plugins.Abstractions
   Reducers/MyLangReducer.cs
   Dependencies/MyLangDependencyExtractor.cs
   Extensions/MyLangLanguageServiceCollectionExtensions.cs
 ```
 
-Reference `Fuse.Languages.Abstractions` only. Do not reference `Fuse.Reduction` or `Fuse.Fusion` from the plugin assembly.
+Language plugins live under `src/Plugins/Fuse.Plugins.Languages.*`; non-language format reducers live in `src/Plugins/Fuse.Plugins.Formats.Web`.
+
+Reference `Fuse.Plugins.Abstractions` only. Do not reference `Fuse.Reduction` or `Fuse.Fusion` from the plugin assembly.
 
 ### 2. Implement IContentReducer
 
 ```csharp
-using Fuse.Languages.Abstractions.Reducers;
-using Fuse.Languages.Abstractions.Options;
+using Fuse.Plugins.Abstractions.Reducers;
+using Fuse.Plugins.Abstractions.Options;
 
-namespace Fuse.Languages.MyLang.Reducers;
+namespace Fuse.Plugins.Languages.MyLang.Reducers;
 
 /// <summary>
 ///     Reduces MyLang source files.
@@ -158,10 +160,10 @@ public static class MyLangLanguageServiceCollectionExtensions
 
 ### 5. Add tests
 
-Create `tests/Fuse.Languages.MyLang.Tests/` with unit tests that pass content strings directly. No filesystem access required for reducer tests.
+Create `tests/Fuse.Plugins.Languages.MyLang.Tests/` with unit tests that pass content strings directly. No filesystem access required for reducer tests.
 
 ```bash
-dotnet test tests/Fuse.Languages.MyLang.Tests
+dotnet test tests/Fuse.Plugins.Languages.MyLang.Tests
 ```
 
 ### 6. Verify end to end
@@ -180,11 +182,11 @@ fuse_generic(path="./samples", template="Generic", onlyExtensions=[".mylang"])
 
 ## Adding format reducers
 
-Non-language-specific format reducers (HTML, JSON, YAML) live in `Fuse.Formats`. They implement `IContentReducer` the same way language reducers do.
+Non-language-specific format reducers (HTML, JSON, YAML) live in `Fuse.Plugins.Formats.Web`. They implement `IContentReducer` the same way language reducers do.
 
 To add a format reducer:
 
-1. Create `Fuse.Formats/Reducers/MyFormatReducer.cs` implementing `IContentReducer`
+1. Create `Fuse.Plugins.Formats.Web/Reducers/MyFormatReducer.cs` implementing `IContentReducer`
 2. Register in `FormatReducersServiceCollectionExtensions.AddFormatReducers()`
 
 Format reducers and language reducers share the same `CapabilityRegistry<IContentReducer>`. Register order determines override behavior for overlapping extensions.

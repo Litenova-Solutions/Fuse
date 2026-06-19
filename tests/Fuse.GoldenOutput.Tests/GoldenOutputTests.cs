@@ -1,7 +1,7 @@
 using Fuse.Emission.Models;
 using Fuse.Emission.Writers;
 using Fuse.Collection.Models;
-using Fuse.Languages.Abstractions.Options;
+using Fuse.Plugins.Abstractions.Options;
 using Fuse.Reduction.Models;
 
 namespace Fuse.GoldenOutput.Tests;

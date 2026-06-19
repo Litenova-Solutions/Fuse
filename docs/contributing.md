@@ -103,7 +103,7 @@ Agents should read [AGENTS.md](../AGENTS.md) for a short checklist. This section
 
 Base standard: [Microsoft XML documentation comments](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/xmldoc/).
 
-**Scope:** Every `public` and `protected` type and member in `src/Fuse.*`.
+**Scope:** Every `public` and `protected` type and member in `src/**/Fuse.*`.
 
 **Source of truth:** Document on the interface or abstract base first. Implementations use `<inheritdoc />` unless they add behavior worth calling out.
 
@@ -223,7 +223,7 @@ Filter registration order equals evaluation order.
 
 ### Native AOT and golden files
 
-- Publish locally: `dotnet publish src/Fuse.Cli/Fuse.Cli.csproj /p:PublishProfile=aot-win-x64` (Windows) or use `./build/pack-aot.ps1`.
+- Publish locally: `dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj /p:PublishProfile=aot-win-x64` (Windows) or use `./build/pack-aot.ps1`.
 - Linux AOT requires `clang` and `zlib1g-dev`.
 - Regenerate golden output: `UPDATE_GOLDEN_FILES=1 dotnet test tests/Fuse.GoldenOutput.Tests`.
 - Tokenizer reference vectors live in `tests/Fuse.Emission.Tests/TokenizerReferenceTests.cs`.

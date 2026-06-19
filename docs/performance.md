@@ -30,12 +30,12 @@ Build all packages locally:
 ./build/pack-aot.ps1 -Version 2.0.0
 ```
 
-Output lands in `src/Fuse.Cli/nupkg/`. AOT publish profiles live under `src/Fuse.Cli/Properties/PublishProfiles/`.
+Output lands in `src/Host/Fuse.Cli/nupkg/`. AOT publish profiles live under `src/Host/Fuse.Cli/Properties/PublishProfiles/`.
 
 Publish a single RID:
 
 ```powershell
-dotnet publish src/Fuse.Cli/Fuse.Cli.csproj -c Release /p:PublishProfile=aot-win-x64
+dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release /p:PublishProfile=aot-win-x64
 ```
 
 Native AOT on Linux requires `clang` and `zlib1g-dev`.

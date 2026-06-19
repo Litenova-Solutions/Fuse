@@ -33,7 +33,7 @@ jobs:
       - name: Publish Native AOT Windows x64
         shell: pwsh
         run: |
-          dotnet publish src/Fuse.Cli/Fuse.Cli.csproj `
+          dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj `
             --configuration Release `
             /p:PublishProfile=aot-win-x64 `
             /p:Version=${{ steps.version.outputs.VERSION }}

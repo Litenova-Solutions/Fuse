@@ -39,8 +39,8 @@ install.bat
 ### From source (any OS)
 
 ```bash
-dotnet pack src/Fuse.Cli/Fuse.Cli.csproj -c Release
-dotnet tool install -g Fuse --add-source src/Fuse.Cli/nupkg
+dotnet pack src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release
+dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
 ```
 
 ### Verify
@@ -61,7 +61,7 @@ To work on Fuse without installing the global tool:
 git clone https://github.com/Litenova-Solutions/Fuse.git
 cd Fuse
 dotnet build Fuse.slnx
-dotnet run --project src/Fuse.Cli/Fuse.Cli.csproj -- --help
+dotnet run --project src/Host/Fuse.Cli/Fuse.Cli.csproj -- --help
 ```
 
 CI-equivalent checks:

@@ -1,10 +1,10 @@
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
-using Fuse.Languages.Abstractions;
-using Fuse.Languages.Abstractions.Markers;
-using Fuse.Languages.Abstractions.Options;
-using Fuse.Languages.Abstractions.Reducers;
-using Fuse.Languages.Abstractions.Skeleton;
+using Fuse.Plugins.Abstractions;
+using Fuse.Plugins.Abstractions.Markers;
+using Fuse.Plugins.Abstractions.Options;
+using Fuse.Plugins.Abstractions.Reducers;
+using Fuse.Plugins.Abstractions.Skeleton;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Reduction.Security;

@@ -6,8 +6,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$cliProject = Join-Path $root "src/Fuse.Cli/Fuse.Cli.csproj"
-$outputDir = Join-Path $root "src/Fuse.Cli/nupkg"
+$cliProject = Join-Path $root "src/Host/Fuse.Cli/Fuse.Cli.csproj"
+$outputDir = Join-Path $root "src/Host/Fuse.Cli/nupkg"
 $aotRoot = Join-Path $root "artifacts/aot"
 
 Write-Host "Packing framework-dependent Fuse tool (R2R)..."

@@ -1,6 +1,6 @@
-using Fuse.Languages.Abstractions;
-using Fuse.Languages.Abstractions.Dependencies;
-using Fuse.Languages.CSharp.Dependencies;
+using Fuse.Plugins.Abstractions;
+using Fuse.Plugins.Abstractions.Dependencies;
+using Fuse.Plugins.Languages.CSharp.Dependencies;
 using Fuse.Analysis.Dependencies;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;

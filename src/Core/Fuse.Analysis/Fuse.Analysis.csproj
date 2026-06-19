@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseFileScopedNamespaces>true</UseFileScopedNamespaces>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
+        <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj"/>
+        <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
+    </ItemGroup>
+</Project>

@@ -12,25 +12,31 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/Fuse.Analysis/Fuse.Analysis.csproj" />
-    <Project Path="src/Fuse.Cli/Fuse.Cli.csproj" />
-    <Project Path="src/Fuse.Collection/Fuse.Collection.csproj" />
-    <Project Path="src/Fuse.Emission/Fuse.Emission.csproj" />
-    <Project Path="src/Fuse.Formats/Fuse.Formats.csproj" />
-    <Project Path="src/Fuse.Fusion/Fuse.Fusion.csproj" />
-    <Project Path="src/Fuse.Languages.Abstractions/Fuse.Languages.Abstractions.csproj" />
-    <Project Path="src/Fuse.Languages.CSharp/Fuse.Languages.CSharp.csproj" />
-    <Project Path="src/Fuse.Reduction/Fuse.Reduction.csproj" />
+    <Folder Name="/src/Core/">
+      <Project Path="src/Core/Fuse.Collection/Fuse.Collection.csproj" />
+      <Project Path="src/Core/Fuse.Analysis/Fuse.Analysis.csproj" />
+      <Project Path="src/Core/Fuse.Reduction/Fuse.Reduction.csproj" />
+      <Project Path="src/Core/Fuse.Emission/Fuse.Emission.csproj" />
+      <Project Path="src/Core/Fuse.Fusion/Fuse.Fusion.csproj" />
+    </Folder>
+    <Folder Name="/src/Host/">
+      <Project Path="src/Host/Fuse.Cli/Fuse.Cli.csproj" />
+    </Folder>
+    <Folder Name="/src/Plugins/">
+      <Project Path="src/Plugins/Fuse.Plugins.Abstractions/Fuse.Plugins.Abstractions.csproj" />
+      <Project Path="src/Plugins/Fuse.Plugins.Languages.CSharp/Fuse.Plugins.Languages.CSharp.csproj" />
+      <Project Path="src/Plugins/Fuse.Plugins.Formats.Web/Fuse.Plugins.Formats.Web.csproj" />
+    </Folder>
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Fuse.Analysis.Tests/Fuse.Analysis.Tests.csproj" />
     <Project Path="tests/Fuse.Cli.Tests/Fuse.Cli.Tests.csproj" />
     <Project Path="tests/Fuse.Collection.Tests/Fuse.Collection.Tests.csproj" />
     <Project Path="tests/Fuse.Emission.Tests/Fuse.Emission.Tests.csproj" />
-    <Project Path="tests/Fuse.Formats.Tests/Fuse.Formats.Tests.csproj" />
+    <Project Path="tests/Fuse.Plugins.Formats.Web.Tests/Fuse.Plugins.Formats.Web.Tests.csproj" />
     <Project Path="tests/Fuse.Fusion.Tests/Fuse.Fusion.Tests.csproj" />
     <Project Path="tests/Fuse.GoldenOutput.Tests/Fuse.GoldenOutput.Tests.csproj" />
-    <Project Path="tests/Fuse.Languages.CSharp.Tests/Fuse.Languages.CSharp.Tests.csproj" />
+    <Project Path="tests/Fuse.Plugins.Languages.CSharp.Tests/Fuse.Plugins.Languages.CSharp.Tests.csproj" />
     <Project Path="tests/Fuse.Reduction.Tests/Fuse.Reduction.Tests.csproj" />
   </Folder>
 </Solution>

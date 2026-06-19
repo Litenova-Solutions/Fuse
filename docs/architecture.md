@@ -92,8 +92,8 @@ Focus, change, and query modes are mutually exclusive. `FusionValidator` rejects
 Language-specific behavior lives in plugin assemblies, not in the core pipeline. Each plugin registers capabilities via DI extension methods:
 
 ```csharp
-services.AddCSharpLanguage();   // Fuse.Languages.CSharp
-services.AddFormatReducers();   // Fuse.Formats (HTML, JSON, YAML, etc.)
+services.AddCSharpLanguage();   // Fuse.Plugins.Languages.CSharp
+services.AddFormatReducers();   // Fuse.Plugins.Formats.Web (HTML, JSON, YAML, etc.)
 ```
 
 ### Capability interfaces
@@ -137,17 +137,25 @@ Four registries are registered in `AddFuseCore()`:
 
 ## Assembly dependency graph
 
+The solution groups projects into three buckets under `src/`: `Core/` (pipeline libraries), `Host/` (the executable), and `Plugins/` (extension-keyed capability providers).
+
 ```mermaid
 graph TD
-    Cli[Fuse.Cli]
-    Fusion[Fuse.Fusion]
-    Collection[Fuse.Collection]
-    Analysis[Fuse.Analysis]
-    Reduction[Fuse.Reduction]
-    Emission[Fuse.Emission]
-    LangAbs[Fuse.Languages.Abstractions]
-    LangCs[Fuse.Languages.CSharp]
-    Formats[Fuse.Formats]
+    subgraph Host
+      Cli[Fuse.Cli]
+    end
+    subgraph Core
+      Fusion[Fuse.Fusion]
+      Collection[Fuse.Collection]
+      Analysis[Fuse.Analysis]
+      Reduction[Fuse.Reduction]
+      Emission[Fuse.Emission]
+    end
+    subgraph Plugins
+      LangAbs[Fuse.Plugins.Abstractions]
+      LangCs[Fuse.Plugins.Languages.CSharp]
+      Formats[Fuse.Plugins.Formats.Web]
+    end
 
     Cli --> Fusion
     Fusion --> Collection
@@ -235,11 +243,11 @@ Fuse.Emission/
 
 Orchestration, validation, DI registration (`AddFuse()`, `AddFuseCore()`).
 
-### Fuse.Languages.CSharp
+### Fuse.Plugins.Languages.CSharp
 
 C# plugin: reducer, skeleton, markers, dependencies, type locator, route map, project graph, six pattern detectors.
 
-### Fuse.Formats
+### Fuse.Plugins.Formats.Web
 
 Format reducers for non-language-specific file types: CSS, HTML, JavaScript, JSON, Markdown, Razor, SCSS, XML, YAML.
 

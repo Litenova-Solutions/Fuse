@@ -81,7 +81,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
             changes: new Fuse.Analysis.Changes.ChangeOptions("main"));
@@ -97,7 +97,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
             query: new Fuse.Analysis.Search.QueryOptions("payment"));
@@ -113,7 +113,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             changes: new Fuse.Analysis.Changes.ChangeOptions("HEAD"),
             query: new Fuse.Analysis.Search.QueryOptions("payment"));
@@ -129,7 +129,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
             changes: new Fuse.Analysis.Changes.ChangeOptions("HEAD"),
@@ -146,7 +146,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             query: new Fuse.Analysis.Search.QueryOptions("payment", TopFiles: 10, Depth: 0));
 
@@ -160,7 +160,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             query: new Fuse.Analysis.Search.QueryOptions("   "));
 
@@ -174,7 +174,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 0));
 
@@ -188,7 +188,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 11));
 
@@ -202,7 +202,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 1));
 
@@ -213,7 +213,7 @@ public sealed class FusionValidatorTests
     private static FusionRequest CreateRequest(string sourceDirectory) =>
         new(
             new CollectionOptions(sourceDirectory),
-            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions());
 
     private sealed class StubFileSystem(bool exists) : IFileSystem

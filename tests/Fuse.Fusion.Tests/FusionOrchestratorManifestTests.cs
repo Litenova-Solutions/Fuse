@@ -1,7 +1,7 @@
 using Fuse.Emission.Models;
 using Fuse.Fusion;
 using Fuse.Fusion.Extensions;
-using Fuse.Languages.Abstractions.Options;
+using Fuse.Plugins.Abstractions.Options;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Fusion.Tests;

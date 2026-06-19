@@ -35,4 +35,25 @@ public sealed class CSharpReducerTests
         Assert.DoesNotContain("// greeting", result);
         Assert.Contains("public class Greeter", result);
     }
+
+    [Fact]
+    public void Reduce_AggressiveMode_RemovesNoiseAttributes()
+    {
+        const string input = """
+            [DebuggerDisplay("x")]
+            [GeneratedCode("tool", "1.0")]
+            public class Widget
+            {
+                public int Id { get; set; }
+            }
+            """;
+
+        var result = _reducer.Reduce(
+            input,
+            new ReductionOptions(removeCSharpComments: true, aggressiveCSharpReduction: true));
+
+        Assert.DoesNotContain("DebuggerDisplay", result);
+        Assert.DoesNotContain("GeneratedCode", result);
+        Assert.Contains("public class Widget", result);
+    }
 }

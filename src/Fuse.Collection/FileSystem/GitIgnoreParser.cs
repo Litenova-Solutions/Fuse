@@ -43,10 +43,13 @@ public sealed class GitIgnoreParser
             if (_fileSystem.GetFileInfo(gitIgnorePath).Exists)
             {
                 var content = await _fileSystem.ReadAllTextAsync(gitIgnorePath, cancellationToken);
-                var lines = content.Split('\n');
-                foreach (var line in lines)
+                var remaining = content.AsSpan();
+                while (!remaining.IsEmpty)
                 {
-                    var trimmedLine = line.Trim();
+                    var newlineIndex = remaining.IndexOf('\n');
+                    var lineSpan = newlineIndex >= 0 ? remaining[..newlineIndex] : remaining;
+                    remaining = newlineIndex >= 0 ? remaining[(newlineIndex + 1)..] : ReadOnlySpan<char>.Empty;
+                    var trimmedLine = lineSpan.TrimEnd('\r').ToString().Trim();
                     if (!string.IsNullOrEmpty(trimmedLine) && !trimmedLine.StartsWith('#'))
                     {
                         var globPattern = Path.Combine(currentDirectory, trimmedLine)

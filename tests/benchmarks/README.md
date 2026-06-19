@@ -1,20 +1,33 @@
 # Fuse performance benchmarks
 
-This folder documents how to capture wall-clock performance for Fuse pipeline changes. Phase 2 introduced parallel collection, reduction, and dependency graph building. Use the same fixture and machine for before/after comparisons.
+This folder documents how to capture wall-clock performance for Fuse pipeline changes. See also [docs/performance.md](../../docs/performance.md) for cold-start methodology and Native AOT packaging.
 
 ## Fixture
 
 Use `tests/fixtures/SampleShop` for automated golden-output tests and manual benchmarks. It is a small multi-project .NET solution with planted secrets, a payment dependency cluster, and ASP.NET routes.
 
 For larger benchmarks, choose a repository with a few thousand source files (a medium .NET monorepo or a generated tree).
-2. Record the exact command, template, and flags used for every run.
-3. Run from a clean shell with no other heavy jobs on the machine.
+
+1. Record the exact command, template, and flags used for every run.
+2. Run from a clean shell with no other heavy jobs on the machine.
 
 Example:
 
 ```bash
-fuse dotnet --directory /path/to/fixture --output /tmp/fuse-bench --overwrite --parallelism 8
+fuse dotnet --directory /path/to/fixture --output /tmp/fuse-bench --overwrite --format xml --tokenizer o200k_base --parallelism 8
 ```
+
+## Cold start (CLI fixed cost)
+
+One-shot CLI runs pay process startup, DI, and tokenizer init before pipeline work. Measure with a **fresh process**, not a warm shell:
+
+```powershell
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+Start-Process -FilePath fuse.exe -ArgumentList "dotnet","--directory","...","--output","...","--overwrite","--format","xml","--tokenizer","o200k_base" -Wait -NoNewWindow
+$sw.ElapsedMilliseconds
+```
+
+Compare before/after Native AOT builds using the same command. CI smoke tests in `.github/workflows/ci.yml` use this pattern on published AOT binaries.
 
 ## Cold run (serial baseline)
 

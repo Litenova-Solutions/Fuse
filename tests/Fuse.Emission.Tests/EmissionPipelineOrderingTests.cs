@@ -30,30 +30,30 @@ public sealed class EmissionPipelineOrderingTests
         Assert.Equal(["large.cs", "medium.cs", "small.cs"], writer.EntryPaths);
     }
 
-  [Fact]
-  public async Task EmitAsync_SplitBudget_RotatesToSecondPart()
-  {
-    var entries = new[]
+    [Fact]
+    public async Task EmitAsync_SplitBudget_RotatesToSecondPart()
     {
+        var entries = new[]
+        {
       CreateEntry("first.cs", new string('a', 80), tokenCount: 80),
       CreateEntry("second.cs", new string('b', 80), tokenCount: 80),
     };
 
-    var pipeline = new EmissionPipeline();
-    var writer = new RecordingOutputWriter();
-    var options = new EmissionOptions
-    {
-      IncludeManifest = false,
-      MaxTokens = 120,
-      SplitTokens = 120,
-    };
+        var pipeline = new EmissionPipeline();
+        var writer = new RecordingOutputWriter();
+        var options = new EmissionOptions
+        {
+            IncludeManifest = false,
+            MaxTokens = 120,
+            SplitTokens = 120,
+        };
 
-    await pipeline.EmitAsync(entries, options, writer);
+        await pipeline.EmitAsync(entries, options, writer);
 
-    Assert.Equal(2, writer.PartCount);
-    Assert.Single(writer.PathsPerPart[0]);
-    Assert.Single(writer.PathsPerPart[1]);
-  }
+        Assert.Equal(2, writer.PartCount);
+        Assert.Single(writer.PathsPerPart[0]);
+        Assert.Single(writer.PathsPerPart[1]);
+    }
 
     private static FusedContent CreateEntry(string path, string body, int tokenCount)
     {

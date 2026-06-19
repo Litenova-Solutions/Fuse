@@ -9,16 +9,27 @@ using ModelContextProtocol.Server;
 
 namespace Fuse.Cli.Commands;
 
+/// <summary>
+///     Starts the Fuse MCP server for AI agent integration over stdio.
+/// </summary>
 [CliCommand(
     Name = "serve",
     Description = "Start the Fuse MCP server for AI agent integration. Communicates via stdio using the Model Context Protocol.",
     Parent = typeof(FuseCliCommand))]
 public sealed class McpServeCommand
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="McpServeCommand" /> class.
+    /// </summary>
     public McpServeCommand()
     {
     }
 
+    /// <summary>
+    ///     Hosts the MCP server with Fuse tools and resources on stdio transport.
+    /// </summary>
+    /// <param name="context">The CLI invocation context.</param>
+    /// <returns>A task that completes when the host shuts down.</returns>
     public async Task RunAsync(CliContext context)
     {
         var builder = Host.CreateApplicationBuilder();

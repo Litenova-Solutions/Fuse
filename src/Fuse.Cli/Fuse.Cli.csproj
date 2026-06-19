@@ -16,6 +16,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>mcp;dotnet-tool;llm;codebase;context;fusion;csharp;token-reduction</PackageTags>
         <PackageOutputPath>./nupkg</PackageOutputPath>
+        <RollForward>LatestMajor</RollForward>
     </PropertyGroup>
 
     <ItemGroup>

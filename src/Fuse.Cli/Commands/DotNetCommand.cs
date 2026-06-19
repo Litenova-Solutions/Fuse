@@ -8,20 +8,40 @@ using Fuse.Languages.Abstractions.Options;
 
 namespace Fuse.Cli.Commands;
 
+/// <summary>
+///     Fuses a .NET project, including C#, F#, and web files.
+/// </summary>
 [CliCommand(Name = "dotnet", Description = "Fuse a .NET project, including C#, F#, and web files.", Parent = typeof(FuseCliCommand))]
 public sealed class DotNetCommand : CommandBase
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="DotNetCommand" /> class for CLI binding.
+    /// </summary>
     public DotNetCommand() : base(null!, null!, null!, null!)
     {
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="DotNetCommand" /> class.
+    /// </summary>
+    /// <param name="orchestrator">The fusion orchestrator.</param>
+    /// <param name="templateRegistry">The project template registry.</param>
+    /// <param name="consoleUI">The console UI for status output.</param>
+    /// <param name="skeletonExtractors">Skeleton extractors resolved by file extension.</param>
     public DotNetCommand(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        Fuse.Cli.Services.IConsoleUI consoleUI, Fuse.Languages.Abstractions.CapabilityRegistry<Fuse.Languages.Abstractions.Skeleton.ISkeletonExtractor> skeletonExtractors) : base(orchestrator, templateRegistry, skeletonExtractors, consoleUI)
+        Fuse.Cli.Services.IConsoleUI consoleUI,
+        Fuse.Languages.Abstractions.CapabilityRegistry<Fuse.Languages.Abstractions.Skeleton.ISkeletonExtractor> skeletonExtractors)
+        : base(orchestrator, templateRegistry, skeletonExtractors, consoleUI)
     {
     }
 
+    /// <summary>
+    ///     Runs the <c>dotnet</c> fusion command.
+    /// </summary>
+    /// <param name="context">The CLI invocation context.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task RunAsync(CliContext context)
     {
         var builder = CreateRequestBuilder(ProjectTemplate.DotNet)
@@ -66,60 +86,117 @@ public sealed class DotNetCommand : CommandBase
         await ExecuteFusionAsync(request, context.CancellationToken);
     }
 
+    /// <summary>
+    ///     Remove namespace declarations from C# files.
+    /// </summary>
     [CliOption(Description = "Remove namespace declarations from C# files.")]
     public bool RemoveCSharpNamespaces { get; set; } = false;
 
+    /// <summary>
+    ///     Remove comments from C# files.
+    /// </summary>
     [CliOption(Description = "Remove comments from C# files.")]
     public bool RemoveCSharpComments { get; set; } = false;
 
+    /// <summary>
+    ///     Remove <c>#region</c> directives from C# files.
+    /// </summary>
     [CliOption(Description = "Remove #region directives from C# files.")]
     public bool RemoveCSharpRegions { get; set; } = false;
 
+    /// <summary>
+    ///     Remove all <c>using</c> statements from C# files.
+    /// </summary>
     [CliOption(Description = "Remove all using statements from C# files.")]
     public bool RemoveCSharpUsings { get; set; } = false;
 
+    /// <summary>
+    ///     Apply aggressive C# reduction (attributes, redundant keywords, compressed properties).
+    /// </summary>
     [CliOption(Description = "Apply aggressive reduction (remove attributes, redundant keywords, compress properties).")]
     public bool Aggressive { get; set; } = false;
 
+    /// <summary>
+    ///     Minify XML files such as <c>.csproj</c> and <c>.xml</c>.
+    /// </summary>
     [CliOption(Description = "Minify XML files (.csproj, .xml, etc.).")]
     public bool MinifyXmlFiles { get; set; } = true;
 
+    /// <summary>
+    ///     Minify HTML and Razor files.
+    /// </summary>
     [CliOption(Description = "Minify HTML and Razor files.")]
     public bool MinifyHtmlAndRazor { get; set; } = true;
 
+    /// <summary>
+    ///     Exclude only unit test project directories.
+    /// </summary>
     [CliOption(Description = "Exclude only unit test project directories (keeps integration tests and benchmarks).")]
     public bool ExcludeUnitTestProjects { get; set; } = false;
 
+    /// <summary>
+    ///     Apply all .NET optimization flags at once.
+    /// </summary>
     [CliOption(Description = "Apply all optimizations (remove namespaces, comments, regions, usings, aggressive reduction).")]
     public bool All { get; set; } = false;
 
+    /// <summary>
+    ///     Emit structural skeleton only (signatures without bodies).
+    /// </summary>
     [CliOption(Description = "Emit structural skeleton only (class/interface/method signatures, no bodies).")]
     public bool Skeleton { get; set; } = false;
 
+    /// <summary>
+    ///     Prepend structural annotation comments to each file entry.
+    /// </summary>
     [CliOption(Description = "Prepend structural annotation comments to each file entry.")]
     public bool SemanticMarkers { get; set; } = false;
 
+    /// <summary>
+    ///     Type name, filename, or relative directory used as a focus seed.
+    /// </summary>
     [CliOption(Required = false, Description = "Type name, filename, or relative directory to scope the fusion around.")]
     public string? Focus { get; set; }
 
+    /// <summary>
+    ///     Dependency traversal depth for focus or query scoping.
+    /// </summary>
     [CliOption(Description = "Dependency traversal depth for focus or query scoping.")]
     public int Depth { get; set; } = 1;
 
+    /// <summary>
+    ///     BM25 query used to scope fusion to the most relevant files.
+    /// </summary>
     [CliOption(Required = false, Description = "BM25 query to scope fusion to the most relevant files.")]
     public string? Query { get; set; }
 
+    /// <summary>
+    ///     Number of top-ranked files to seed query scoping.
+    /// </summary>
     [CliOption(Description = "Number of top-ranked files to seed query scoping.")]
     public int QueryTop { get; set; } = 10;
 
+    /// <summary>
+    ///     Prepend an ASP.NET route map to the output.
+    /// </summary>
     [CliOption(Description = "Prepend an ASP.NET route map to the output.")]
     public bool RouteMap { get; set; } = false;
 
+    /// <summary>
+    ///     Emit only public and protected member skeletons.
+    /// </summary>
     [CliOption(Description = "Emit only public and protected member skeletons.")]
     public bool PublicApi { get; set; } = false;
 
+    /// <summary>
+    ///     Prepend a solution and project reference graph to the output.
+    /// </summary>
     [CliOption(Description = "Prepend a solution and project reference graph to the output.")]
     public bool ProjectGraph { get; set; } = false;
 
+    /// <summary>
+    ///     Detect and append a cross-codebase pattern summary to the output.
+    /// </summary>
     [CliOption(Description = "Detect and append cross-codebase pattern summary to output.")]
     public bool PatternSummary { get; set; } = false;
 }

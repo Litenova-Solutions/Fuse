@@ -1,7 +1,8 @@
 using Fuse.Languages.Abstractions;
 using Fuse.Languages.Abstractions.Dependencies;
 using Fuse.Languages.CSharp.Dependencies;
-using Fuse.Analysis.Dependencies;using Fuse.Collection.FileSystem;
+using Fuse.Analysis.Dependencies;
+using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
 
 namespace Fuse.Analysis.Tests.Dependencies;

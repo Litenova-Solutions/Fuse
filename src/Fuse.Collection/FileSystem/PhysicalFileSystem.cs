@@ -60,19 +60,26 @@ public sealed class PhysicalFileSystem : IFileSystem
     {
         const int bytesToCheck = 8000;
 
-        using var stream = File.OpenRead(filePath);
-        var buffer = new byte[bytesToCheck];
-        var bytesRead = stream.Read(buffer, 0, bytesToCheck);
-
-        if (bytesRead == 0)
-            return false;
-
-        for (var i = 0; i < bytesRead; i++)
+        var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(bytesToCheck);
+        try
         {
-            if (buffer[i] == 0x00)
-                return true;
-        }
+            using var stream = File.OpenRead(filePath);
+            var bytesRead = stream.Read(buffer, 0, bytesToCheck);
 
-        return false;
+            if (bytesRead == 0)
+                return false;
+
+            for (var i = 0; i < bytesRead; i++)
+            {
+                if (buffer[i] == 0x00)
+                    return true;
+            }
+
+            return false;
+        }
+        finally
+        {
+            System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 }

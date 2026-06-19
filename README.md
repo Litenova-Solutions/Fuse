@@ -209,7 +209,7 @@ dotnet test Fuse.sln --configuration Release --no-build
 dotnet format Fuse.sln --verify-no-changes
 ```
 
-Contribution workflow: [contributing.md](docs/contributing.md).
+Contribution workflow: [contributing.md](docs/contributing.md). Agent instructions: [AGENTS.md](AGENTS.md).
 
 ## Documentation
 
@@ -224,6 +224,7 @@ Contribution workflow: [contributing.md](docs/contributing.md).
 | [Templates](docs/templates.md) | Per-template extensions and exclusions |
 | [Extending Fuse](docs/extending.md) | Language plugins and templates |
 | [Architecture](docs/architecture.md) | Pipeline design and capability model |
+| [Performance](docs/performance.md) | Cold start, Native AOT, benchmarking |
 | [CHANGELOG](CHANGELOG.md) | Version history and migration notes |
 
 ## License

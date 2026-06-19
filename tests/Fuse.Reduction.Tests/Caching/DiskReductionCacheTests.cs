@@ -72,7 +72,7 @@ public sealed class DiskReductionCacheTests : IDisposable
         Assert.Equal(1, _cache.Statistics.Misses);
     }
 
-  [Fact]
+    [Fact]
     public void CacheDirectory_IsUnderFuseFolder()
     {
         _cache.Set(1, 2, "x");

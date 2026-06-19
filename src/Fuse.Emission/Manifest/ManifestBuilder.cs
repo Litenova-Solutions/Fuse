@@ -3,6 +3,7 @@ using System.Text.Json;
 using Fuse.Analysis.Git;
 using Fuse.Analysis.Patterns;
 using Fuse.Emission.Models;
+using Fuse.Emission.Serialization;
 
 namespace Fuse.Emission.Manifest;
 
@@ -39,6 +40,7 @@ public static class ManifestBuilder
         string suffix)
     {
         var lines = BuildManifestLines(emittedFiles, gitStats, patternSummary);
+        // Wrap YAML-style lines in an HTML comment block for markdown/xml output formats.
         return prefix + "\n" + string.Join("\n", lines) + "\n" + suffix + "\n";
     }
 
@@ -47,24 +49,23 @@ public static class ManifestBuilder
         GitStatsResult? gitStats,
         PatternSummary? patternSummary)
     {
-        var manifest = new Dictionary<string, object?>
+        var manifest = new JsonManifestDto
         {
-            ["type"] = "manifest",
-            ["files"] = emittedFiles
+            Files = emittedFiles
                 .OrderBy(f => f.Path, StringComparer.OrdinalIgnoreCase)
                 .Select(f =>
                 {
-                    var entry = new Dictionary<string, object?>
+                    var entry = new JsonManifestFileDto
                     {
-                        ["path"] = f.Path,
-                        ["tokens"] = f.Count,
+                        Path = f.Path,
+                        Tokens = f.Count,
                     };
 
                     if (gitStats?.IsAvailable == true &&
                         gitStats.StatsByPath.TryGetValue(f.Path, out var stats))
                     {
-                        entry["commits"] = stats.CommitCount;
-                        entry["lastModified"] = stats.LastModified?.ToString("yyyy-MM-dd");
+                        entry.Commits = stats.CommitCount;
+                        entry.LastModified = stats.LastModified?.ToString("yyyy-MM-dd");
                     }
 
                     return entry;
@@ -74,19 +75,19 @@ public static class ManifestBuilder
 
         if (patternSummary is { Patterns.Count: > 0 })
         {
-            manifest["patterns"] = patternSummary.Patterns
-                .Select(p => new Dictionary<string, string>
+            manifest.Patterns = patternSummary.Patterns
+                .Select(p => new JsonPatternDto
                 {
-                    ["name"] = p.PatternName,
-                    ["summary"] = p.Summary,
+                    Name = p.PatternName,
+                    Summary = p.Summary,
                 })
                 .ToArray();
         }
 
         if (gitStats is { IsAvailable: false })
-            manifest["git"] = "unavailable";
+            manifest.Git = "unavailable";
 
-        return JsonSerializer.Serialize(manifest, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }) + "\n";
+        return JsonSerializer.Serialize(manifest, FuseEmissionJsonContext.Default.JsonManifestDto) + "\n";
     }
 
     private static List<string> BuildManifestLines(

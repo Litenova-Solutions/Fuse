@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Fuse.Cli.Serialization;
 
 namespace Fuse.Cli.Configuration;
 
@@ -7,13 +8,6 @@ namespace Fuse.Cli.Configuration;
 /// </summary>
 public static class FuseConfigLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
     /// <summary>
     ///     Finds and loads the nearest config file starting from <paramref name="startDirectory" /> upward.
     /// </summary>
@@ -41,7 +35,7 @@ public static class FuseConfigLoader
         try
         {
             var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<FuseConfig>(json, JsonOptions);
+            return JsonSerializer.Deserialize(json, FuseCliJsonContext.Default.FuseConfig);
         }
         catch
         {

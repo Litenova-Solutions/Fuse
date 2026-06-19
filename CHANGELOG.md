@@ -28,6 +28,13 @@ All notable changes to Fuse are documented here. Fuse 2.0 is a structural rewrit
 - Per-file reduction cache in `.fuse/cache` (`--no-cache`, `--clear-cache`).
 - Watch mode for iterative fusion (`--watch`; disabled under MCP stdio).
 
+#### Cold start and Native AOT
+
+- Token counting via `Microsoft.ML.Tokenizers` (`o200k_base`, `cl100k_base`).
+- Source-generated JSON for config and JSON output (AOT/trim safe).
+- Native AOT publish profiles and `Fuse.Runtime.{rid}` satellite packages; see [performance.md](performance.md).
+- Windows installer ships AOT-compiled `fuse.exe`.
+
 #### Tier 1 features (Phase 4)
 
 - Secret redaction with `[REDACTED:<kind>]` placeholders (`--no-redact`, `--redact-report`).

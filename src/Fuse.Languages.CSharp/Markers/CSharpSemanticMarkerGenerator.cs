@@ -6,22 +6,8 @@ namespace Fuse.Languages.CSharp.Markers;
 /// <summary>
 ///     Generates semantic marker comments from C# content using regex extraction.
 /// </summary>
-public sealed class CSharpSemanticMarkerGenerator : ISemanticMarkerGenerator
+public sealed partial class CSharpSemanticMarkerGenerator : ISemanticMarkerGenerator
 {
-    private static readonly Regex TypeDeclarationRegex = new(
-        @"(?:public|private|protected|internal|static|sealed|abstract|partial|readonly|unsafe|new|\s)*\b(class|interface|record|enum|struct)\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^\{]+))?",
-        RegexOptions.Compiled);
-
-    private static readonly Regex ConstructorRegex = new(
-        @"\b(\w+)\s*\(([^)]*)\)",
-        RegexOptions.Compiled);
-
-    private static readonly Regex PropertyRegex = new(
-        @"(?:public|private|protected|internal|static|virtual|override|\s)*([\w<>\[\],\?\.\(\)]+)\s+(\w+)\s*\{",
-        RegexOptions.Compiled);
-
-    private static readonly Regex InterfaceTypeRegex = new(@"\bI[A-Z]\w*\b", RegexOptions.Compiled);
-
     /// <inheritdoc />
     public IReadOnlyCollection<string> SupportedExtensions { get; } = [".cs"];
 
@@ -32,7 +18,7 @@ public sealed class CSharpSemanticMarkerGenerator : ISemanticMarkerGenerator
             return [];
 
         var markers = new List<SemanticMarker>();
-        foreach (Match match in TypeDeclarationRegex.Matches(content))
+        foreach (Match match in TypeDeclarationRegex().Matches(content))
         {
             var kind = match.Groups[1].Value;
             var typeName = match.Groups[2].Value;
@@ -78,16 +64,43 @@ public sealed class CSharpSemanticMarkerGenerator : ISemanticMarkerGenerator
         if (typeBlock is null)
             return [];
 
-        var ctorMatch = ConstructorRegex.Match(typeBlock);
+        var ctorMatch = ConstructorRegex().Match(typeBlock);
         if (!ctorMatch.Success || ctorMatch.Groups[1].Value != typeName)
         {
-            var ctorPattern = new Regex($@"\b{typeName}\s*\(([^)]*)\)", RegexOptions.Compiled);
-            ctorMatch = ctorPattern.Match(typeBlock);
+            ctorMatch = FindNamedConstructorMatch(typeBlock, typeName);
             if (!ctorMatch.Success)
                 return [];
         }
 
         return ParseParameterTypes(ctorMatch.Groups[ctorMatch.Groups.Count - 1].Value);
+    }
+
+    private static Match FindNamedConstructorMatch(string typeBlock, string typeName)
+    {
+        var searchStart = 0;
+        while (searchStart < typeBlock.Length)
+        {
+            var index = typeBlock.IndexOf(typeName, searchStart, StringComparison.Ordinal);
+            if (index < 0)
+                return Match.Empty;
+
+            if (IsWordBoundary(typeBlock, index, typeName.Length) &&
+                index + typeName.Length < typeBlock.Length &&
+                typeBlock[index + typeName.Length] == '(')
+            {
+                var parametersStart = index + typeName.Length + 1;
+                var parametersEnd = typeBlock.IndexOf(')', parametersStart);
+                if (parametersEnd < 0)
+                    return Match.Empty;
+
+                var parameters = typeBlock[parametersStart..parametersEnd];
+                return ConstructorRegex().Match($"{typeName}({parameters})");
+            }
+
+            searchStart = index + typeName.Length;
+        }
+
+        return Match.Empty;
     }
 
     private static IReadOnlyList<string> ExtractDependsOn(
@@ -100,12 +113,12 @@ public sealed class CSharpSemanticMarkerGenerator : ISemanticMarkerGenerator
         if (typeBlock is null)
             return depends.ToArray();
 
-        foreach (Match match in PropertyRegex.Matches(typeBlock))
+        foreach (Match match in PropertyRegex().Matches(typeBlock))
         {
             var propType = match.Groups[1].Value.Trim();
-            if (InterfaceTypeRegex.IsMatch(propType))
+            if (InterfaceTypeRegex().IsMatch(propType))
             {
-                foreach (Match iface in InterfaceTypeRegex.Matches(propType))
+                foreach (Match iface in InterfaceTypeRegex().Matches(propType))
                     depends.Add(iface.Value);
             }
         }
@@ -115,28 +128,63 @@ public sealed class CSharpSemanticMarkerGenerator : ISemanticMarkerGenerator
 
     private static string? ExtractTypeBlock(string content, string typeName)
     {
-        var pattern = new Regex(
-            $@"(?:class|interface|record|enum|struct)\s+{typeName}\b[^{{]*\{{",
-            RegexOptions.Singleline);
-        var match = pattern.Match(content);
-        if (!match.Success)
-            return null;
-
-        var start = match.Index;
-        var depth = 0;
-        for (var i = start; i < content.Length; i++)
+        var searchStart = 0;
+        while (searchStart < content.Length)
         {
-            if (content[i] == '{')
-                depth++;
-            else if (content[i] == '}')
+            var index = content.IndexOf(typeName, searchStart, StringComparison.Ordinal);
+            if (index < 0)
+                return null;
+
+            if (!IsTypeDeclarationMatch(content, index, typeName))
             {
-                depth--;
-                if (depth == 0)
-                    return content[start..(i + 1)];
+                searchStart = index + typeName.Length;
+                continue;
             }
+
+            var braceIndex = content.IndexOf('{', index + typeName.Length);
+            if (braceIndex < 0)
+                return null;
+
+            var start = index;
+            var depth = 0;
+            for (var i = braceIndex; i < content.Length; i++)
+            {
+                if (content[i] == '{')
+                    depth++;
+                else if (content[i] == '}')
+                {
+                    depth--;
+                    if (depth == 0)
+                        return content[start..(i + 1)];
+                }
+            }
+
+            return content[start..];
         }
 
-        return content[start..];
+        return null;
+    }
+
+    private static bool IsTypeDeclarationMatch(string content, int typeNameIndex, string typeName)
+    {
+        if (!IsWordBoundary(content, typeNameIndex, typeName.Length))
+            return false;
+
+        var prefix = content[..typeNameIndex];
+        return prefix.Contains("class ", StringComparison.Ordinal) ||
+               prefix.Contains("interface ", StringComparison.Ordinal) ||
+               prefix.Contains("record ", StringComparison.Ordinal) ||
+               prefix.Contains("enum ", StringComparison.Ordinal) ||
+               prefix.Contains("struct ", StringComparison.Ordinal);
+    }
+
+    private static bool IsWordBoundary(string content, int index, int length)
+    {
+        if (index > 0 && char.IsLetterOrDigit(content[index - 1]))
+            return false;
+
+        var end = index + length;
+        return end >= content.Length || !char.IsLetterOrDigit(content[end]);
     }
 
     private static IReadOnlyList<string> ParseParameterTypes(string parameters)
@@ -152,4 +200,20 @@ public sealed class CSharpSemanticMarkerGenerator : ISemanticMarkerGenerator
             .Distinct()
             .ToArray();
     }
+
+    [GeneratedRegex(
+        @"(?:public|private|protected|internal|static|sealed|abstract|partial|readonly|unsafe|new|\s)*\b(class|interface|record|enum|struct)\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^\{]+))?",
+        RegexOptions.Compiled)]
+    private static partial Regex TypeDeclarationRegex();
+
+    [GeneratedRegex(@"\b(\w+)\s*\(([^)]*)\)", RegexOptions.Compiled)]
+    private static partial Regex ConstructorRegex();
+
+    [GeneratedRegex(
+        @"(?:public|private|protected|internal|static|virtual|override|\s)*([\w<>\[\],\?\.\(\)]+)\s+(\w+)\s*\{",
+        RegexOptions.Compiled)]
+    private static partial Regex PropertyRegex();
+
+    [GeneratedRegex(@"\bI[A-Z]\w*\b", RegexOptions.Compiled)]
+    private static partial Regex InterfaceTypeRegex();
 }

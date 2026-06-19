@@ -29,15 +29,18 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Install Native AOT prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev
+
       - name: Restore
         run: dotnet restore src/Fuse.Cli/Fuse.Cli.csproj
 
-      - name: Pack
+      - name: Pack framework-dependent tool and AOT runtime packages
+        shell: pwsh
         run: |
-          dotnet pack src/Fuse.Cli/Fuse.Cli.csproj \
-            --configuration Release \
-            --no-restore \
-            -p:Version=${{ steps.version.outputs.version }}
+          ./build/pack-aot.ps1 -Version ${{ steps.version.outputs.version }} -Rids linux-x64
 
       - name: Push to NuGet.org
         run: |

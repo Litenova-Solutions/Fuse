@@ -158,7 +158,7 @@ fuse dotnet --directory ./src --tokenizer o200k_base
 fuse dotnet --directory ./src --tokenizer cl100k_base
 ```
 
-Default is `o200k_base` (GPT-4o class). Use `--tokenizer` to match your target model for accurate budget planning.
+Default is `o200k_base` (GPT-4o class). Use `--tokenizer` to match your target model for accurate budget planning. Counts use the Microsoft-maintained `Microsoft.ML.Tokenizers` implementation (OpenAI-compatible encodings).
 
 ### Output format adapters
 

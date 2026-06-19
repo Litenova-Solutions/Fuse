@@ -36,10 +36,9 @@ public sealed class FileCollectionPipeline
     }
 
     /// <summary>
-    ///     Collects all files matching the specified options.
+    ///     Collects all files matching the specified options using the processor count for parallelism.
     /// </summary>
     /// <param name="options">The collection options for the current run.</param>
-    /// <param name="parallelism">The maximum degree of parallelism for candidate evaluation.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>
     ///     A <see cref="CollectionResult" /> containing included files sorted by path

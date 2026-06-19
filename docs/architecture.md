@@ -172,7 +172,7 @@ graph TD
     Formats --> LangAbs
 ```
 
-NuGet dependencies: `DotNet.Glob` (Collection), `TiktokenSharp` (Emission tokenization).
+NuGet dependencies: `DotNet.Glob` (Collection), `Microsoft.ML.Tokenizers` with `Data.O200kBase` / `Data.Cl100kBase` satellites (Emission tokenization).
 
 ---
 
@@ -225,7 +225,7 @@ Token counting, output writing, manifest, format adapters.
 ```
 Fuse.Emission/
   Writers/           DiskOutputWriter, InMemoryOutputWriter
-  Tokenization/      TokenizerFactory, TikTokenCounter
+  Tokenization/      TokenizerFactory, TikTokenCounter (Microsoft.ML.Tokenizers backend)
   Manifest/          ManifestBuilder
   Entry formatters:  XmlEntryFormatter, MarkdownEntryFormatter, JsonEntryFormatter
   EmissionPipeline.cs

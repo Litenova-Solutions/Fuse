@@ -7,13 +7,8 @@ namespace Fuse.Languages.CSharp.Skeleton;
 /// <summary>
 ///     Extracts structural skeletons from reduced C# content using regex and brace-depth scanning.
 /// </summary>
-public sealed class CSharpSkeletonExtractor : ISkeletonExtractor
+public sealed partial class CSharpSkeletonExtractor : ISkeletonExtractor
 {
-    private static readonly Regex UsingRegex = new(@"^\s*using\s+", RegexOptions.Compiled);
-    private static readonly Regex TypeDeclarationRegex = new(
-        @"^\s*(?:[\w\s\.]+\s+)?(class|interface|record|enum|struct|namespace)\s+\w+",
-        RegexOptions.Compiled);
-
     /// <inheritdoc />
     public IReadOnlyCollection<string> SupportedExtensions { get; } = [".cs"];
 
@@ -23,14 +18,19 @@ public sealed class CSharpSkeletonExtractor : ISkeletonExtractor
         if (string.IsNullOrEmpty(content))
             return string.Empty;
 
-        var lines = content.Split('\n');
         var result = new StringBuilder();
         var depth = 0;
         var inEnum = false;
+        var remaining = content.AsSpan();
 
-        foreach (var rawLine in lines)
+        // depth 0 = outside types, 1 = inside type body, >= 2 = inside member bodies (skipped).
+        while (!remaining.IsEmpty)
         {
-            var line = rawLine.TrimEnd('\r');
+            var newlineIndex = remaining.IndexOf('\n');
+            var rawLineSpan = newlineIndex >= 0 ? remaining[..newlineIndex] : remaining;
+            remaining = newlineIndex >= 0 ? remaining[(newlineIndex + 1)..] : ReadOnlySpan<char>.Empty;
+
+            var line = rawLineSpan.TrimEnd('\r').ToString();
             var trimmed = line.TrimStart();
 
             if (string.IsNullOrWhiteSpace(trimmed))
@@ -40,13 +40,13 @@ public sealed class CSharpSkeletonExtractor : ISkeletonExtractor
                 continue;
             }
 
-            if (UsingRegex.IsMatch(trimmed) && depth == 0)
+            if (UsingRegex().IsMatch(trimmed) && depth == 0)
             {
                 result.AppendLine(line);
                 continue;
             }
 
-            if (depth == 0 && TypeDeclarationRegex.IsMatch(trimmed))
+            if (depth == 0 && TypeDeclarationRegex().IsMatch(trimmed))
             {
                 inEnum = trimmed.Contains(" enum ", StringComparison.Ordinal);
                 result.AppendLine(line);
@@ -128,7 +128,7 @@ public sealed class CSharpSkeletonExtractor : ISkeletonExtractor
 
         return trimmed.Contains('(') || trimmed.Contains(';') || trimmed.Contains("get;") ||
                trimmed.Contains("set;") || trimmed.Contains("=>") ||
-               Regex.IsMatch(trimmed, @"^\s*(?:public|private|protected|internal|static|async|override|virtual)\b");
+               SignatureKeywordRegex().IsMatch(trimmed);
     }
 
     private static string ExtractSignatureOnly(string trimmed)
@@ -157,4 +157,15 @@ public sealed class CSharpSkeletonExtractor : ISkeletonExtractor
 
         return count;
     }
+
+    [GeneratedRegex(@"^\s*using\s+", RegexOptions.Compiled)]
+    private static partial Regex UsingRegex();
+
+    [GeneratedRegex(
+        @"^\s*(?:[\w\s\.]+\s+)?(class|interface|record|enum|struct|namespace)\s+\w+",
+        RegexOptions.Compiled)]
+    private static partial Regex TypeDeclarationRegex();
+
+    [GeneratedRegex(@"^\s*(?:public|private|protected|internal|static|async|override|virtual)\b", RegexOptions.Compiled)]
+    private static partial Regex SignatureKeywordRegex();
 }

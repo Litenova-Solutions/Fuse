@@ -1,26 +1,26 @@
 using Fuse.Reduction.Tokenization;
-using TiktokenSharp;
+using Microsoft.ML.Tokenizers;
 
 namespace Fuse.Emission.Tokenization;
 
 /// <summary>
-///     Counts tokens using a TikToken encoding.
+///     Counts tokens using OpenAI-compatible Tiktoken encodings via Microsoft.ML.Tokenizers.
 /// </summary>
 public sealed class TikTokenCounter : ITokenCounter
 {
     private static readonly Lazy<TikTokenCounter> DefaultInstance =
         new(() => new TikTokenCounter(TokenizerFactory.DefaultModel));
 
-    private readonly TikToken _tokenizer;
+    private readonly Tokenizer _tokenizer;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="TikTokenCounter" /> class.
     /// </summary>
-    /// <param name="modelOrEncoding">A model name or TikToken encoding identifier.</param>
+    /// <param name="modelOrEncoding">A model name or Tiktoken encoding identifier.</param>
     public TikTokenCounter(string modelOrEncoding)
     {
         var encoding = TokenizerFactory.ResolveEncoding(modelOrEncoding);
-        _tokenizer = TikToken.GetEncoding(encoding);
+        _tokenizer = TiktokenTokenizer.CreateForEncoding(encoding);
     }
 
     /// <summary>
@@ -29,5 +29,5 @@ public sealed class TikTokenCounter : ITokenCounter
     public static TikTokenCounter Instance => DefaultInstance.Value;
 
     /// <inheritdoc />
-    public int Count(string content) => _tokenizer.Encode(content).Count;
+    public int Count(string content) => _tokenizer.CountTokens(content);
 }

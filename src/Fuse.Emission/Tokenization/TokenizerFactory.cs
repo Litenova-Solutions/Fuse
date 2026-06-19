@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using Fuse.Reduction.Tokenization;
-using TiktokenSharp;
 
 namespace Fuse.Emission.Tokenization;
 
@@ -26,7 +25,7 @@ public sealed class TokenizerFactory
     }
 
     /// <summary>
-    ///     Maps a model name or encoding identifier to a TikToken encoding name.
+    ///     Maps a model name or encoding identifier to a Tiktoken encoding name.
     /// </summary>
     public static string ResolveEncoding(string modelOrEncoding) =>
         modelOrEncoding.Trim().ToLowerInvariant() switch

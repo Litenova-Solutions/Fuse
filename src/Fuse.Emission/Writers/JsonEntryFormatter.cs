@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Fuse.Emission.Models;
+using Fuse.Emission.Serialization;
 using Fuse.Reduction.Models;
 
 namespace Fuse.Emission.Writers;
@@ -9,34 +10,26 @@ namespace Fuse.Emission.Writers;
 /// </summary>
 public sealed class JsonEntryFormatter : IEntryFormatter
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     /// <inheritdoc />
     public string FormatEntry(FusedContent content, EmissionOptions options)
     {
-        var entry = new Dictionary<string, object?>
+        var entry = new JsonFileEntryDto
         {
-            ["type"] = "file",
-            ["path"] = content.NormalizedPath,
-            ["content"] = content.Content,
-            ["tokens"] = content.TokenCount,
+            Path = content.NormalizedPath,
+            Content = content.Content,
+            Tokens = content.TokenCount,
         };
 
         if (options.IncludeMetadata)
         {
             var fileInfo = content.SourceFile.FileInfo;
-            entry["size"] = fileInfo.Length;
-            entry["modified"] = fileInfo.LastWriteTimeUtc.ToString("O");
+            entry.Size = fileInfo.Length;
+            entry.Modified = fileInfo.LastWriteTimeUtc.ToString("O");
         }
 
         if (options.IncludeProvenance && content.InclusionChain is { Count: > 1 })
-        {
-            entry["provenance"] = content.InclusionChain;
-        }
+            entry.Provenance = content.InclusionChain.ToArray();
 
-        return JsonSerializer.Serialize(entry, SerializerOptions) + "\n";
+        return JsonSerializer.Serialize(entry, FuseEmissionJsonContext.Default.JsonFileEntryDto) + "\n";
     }
 }

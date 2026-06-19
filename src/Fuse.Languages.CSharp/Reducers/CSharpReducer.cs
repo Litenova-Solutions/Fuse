@@ -9,8 +9,6 @@ namespace Fuse.Languages.CSharp.Reducers;
 /// </summary>
 public sealed partial class CSharpReducer : IContentReducer
 {
-    private static readonly Regex NoiseAttributeRegex = CreateNoiseAttributeRegex();
-
     /// <inheritdoc />
     public IReadOnlyCollection<string> SupportedExtensions { get; } = [".cs"];
 
@@ -80,7 +78,7 @@ public sealed partial class CSharpReducer : IContentReducer
 
     private static string ApplyAggressiveOptimization(string content)
     {
-        content = NoiseAttributeRegex.Replace(content, string.Empty);
+        content = NoiseAttributeRegex().Replace(content, string.Empty);
         content = AssemblySuppressMessageRegex().Replace(content, string.Empty);
         content = ThisKeywordRegex().Replace(content, string.Empty);
         content = AutoPropertyGetSetRegex().Replace(content, "{get;set;}");
@@ -113,22 +111,10 @@ public sealed partial class CSharpReducer : IContentReducer
         return content;
     }
 
-    private static Regex CreateNoiseAttributeRegex()
-    {
-        var noiseAttributes = new[]
-        {
-            "DebuggerDisplay", "DebuggerStepThrough", "DebuggerNonUserCode",
-            "MethodImpl", "EditorBrowsable", "Serializable", "Obsolete",
-            "GeneratedCode", "CompilerGenerated", "ExcludeFromCodeCoverage",
-            "SuppressMessage", "AssemblyVersion", "AssemblyFileVersion",
-            "AssemblyTitle", "AssemblyDescription", "AssemblyConfiguration",
-            "AssemblyCompany", "AssemblyProduct", "AssemblyCopyright",
-            "AssemblyTrademark", "AssemblyCulture"
-        };
-
-        var pattern = $@"\[\s*({string.Join("|", noiseAttributes)})(\(.*\))?\s*\]\s*";
-        return new Regex(pattern, RegexOptions.Compiled);
-    }
+    [GeneratedRegex(
+        @"\[\s*(DebuggerDisplay|DebuggerStepThrough|DebuggerNonUserCode|MethodImpl|EditorBrowsable|Serializable|Obsolete|GeneratedCode|CompilerGenerated|ExcludeFromCodeCoverage|SuppressMessage|AssemblyVersion|AssemblyFileVersion|AssemblyTitle|AssemblyDescription|AssemblyConfiguration|AssemblyCompany|AssemblyProduct|AssemblyCopyright|AssemblyTrademark|AssemblyCulture)(\(.*\))?\s*\]\s*",
+        RegexOptions.Compiled)]
+    private static partial Regex NoiseAttributeRegex();
 
     [GeneratedRegex(
         @"(\$@""[^""]*(?:""""[^""]*)*"")|(@\$""[^""]*(?:""""[^""]*)*"")|(@""[^""]*(?:""""[^""]*)*"")|(\$""[^""\\]*(?:\\.[^""\\]*)*"")|(""[^""\\]*(?:\\.[^""\\]*)*"")|(//[^\r\n]*)|(/\*[\s\S]*?\*/)",

@@ -50,4 +50,45 @@ public sealed class FuseConfigTests
         Assert.NotNull(loaded);
         Assert.Equal(".", loaded!.Directory);
     }
+
+    [Fact]
+    public void Load_DeserializesAllSupportedFields()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-config-test", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        File.WriteAllText(
+            Path.Combine(root, "fuse.json"),
+            """
+            {
+              "directory": "./src",
+              "output": "./out",
+              "name": "custom",
+              "format": "json",
+              "tokenizer": "cl100k_base",
+              "noManifest": true,
+              "provenance": true,
+              "gitStats": true,
+              "maxTokens": 1000,
+              "splitTokens": 500,
+              "recursive": false,
+              "includeMetadata": true
+            }
+            """);
+
+        var loaded = FuseConfigLoader.Load(root);
+
+        Assert.NotNull(loaded);
+        Assert.Equal("./src", loaded!.Directory);
+        Assert.Equal("./out", loaded.Output);
+        Assert.Equal("custom", loaded.Name);
+        Assert.Equal("json", loaded.Format);
+        Assert.Equal("cl100k_base", loaded.Tokenizer);
+        Assert.True(loaded.NoManifest);
+        Assert.True(loaded.Provenance);
+        Assert.True(loaded.GitStats);
+        Assert.Equal(1000, loaded.MaxTokens);
+        Assert.Equal(500, loaded.SplitTokens);
+        Assert.False(loaded.Recursive);
+        Assert.True(loaded.IncludeMetadata);
+    }
 }

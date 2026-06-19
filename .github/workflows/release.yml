@@ -3,14 +3,14 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'   # Triggers on tags like v1.0.0, v2.3.1
+      - 'v*.*.*'
 
 permissions:
-  contents: write   # Required to create GitHub Releases and upload assets
+  contents: write
 
 jobs:
   release:
-    name: Build & Publish
+    name: Build and Publish
     runs-on: windows-latest
 
     steps:
@@ -26,30 +26,23 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"         # e.g. v1.2.3
-          $version = $tag.TrimStart('v')           # e.g. 1.2.3
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Publish self-contained Windows x64
+      - name: Publish Native AOT Windows x64
         shell: pwsh
         run: |
           dotnet publish src/Fuse.Cli/Fuse.Cli.csproj `
             --configuration Release `
-            --runtime win-x64 `
-            --self-contained true `
-            -p:PublishSingleFile=true `
-            -p:IncludeNativeLibrariesForSelfExtract=true `
-            -p:EnableCompressionInSingleFile=true `
-            -p:PublishReadyToRun=false `
-            -p:DebugType=none `
-            -p:Version=${{ steps.version.outputs.VERSION }} `
-            --output publish/win-x64
+            /p:PublishProfile=aot-win-x64 `
+            /p:Version=${{ steps.version.outputs.VERSION }}
 
-      - name: Rename output to fuse.exe
+      - name: Stage installer binary
         shell: pwsh
         run: |
-          $src = Get-ChildItem publish/win-x64/*.exe | Select-Object -First 1
-          Rename-Item $src.FullName "fuse.exe"
+          New-Item -ItemType Directory -Path publish/win-x64 -Force | Out-Null
+          Copy-Item artifacts/aot/win-x64/fuse.exe publish/win-x64/fuse.exe -Force
 
       - name: Build installer with Inno Setup
         shell: pwsh

@@ -323,6 +323,9 @@ public abstract class CommandBase
 
     #region Test Project Options
 
+    /// <summary>
+    ///     Exclude common test project directories.
+    /// </summary>
     [CliOption(Description = "Exclude common test project directories.")]
     public bool ExcludeTestProjects { get; set; } = false;
 
@@ -330,12 +333,21 @@ public abstract class CommandBase
 
     #region Extension Override Options
 
+    /// <summary>
+    ///     Additional file extensions to include alongside template defaults.
+    /// </summary>
     [CliOption(Required = false, Description = "Additional file extensions to include alongside template defaults (e.g., .txt,.log).")]
     public string[]? IncludeExtensions { get; set; }
 
+    /// <summary>
+    ///     File extensions to remove from template defaults.
+    /// </summary>
     [CliOption(Required = false, Description = "File extensions to remove from template defaults (e.g., .xml,.md).")]
     public string[]? ExcludeExtensions { get; set; }
 
+    /// <summary>
+    ///     Comma-separated extensions to fuse exclusively, ignoring template defaults.
+    /// </summary>
     [CliOption(Required = false, Description = "Fuse ONLY the specified comma-separated file extensions, ignoring all template defaults.")]
     public string[]? OnlyExtensions { get; set; }
 
@@ -343,12 +355,21 @@ public abstract class CommandBase
 
     #region Directory Options
 
+    /// <summary>
+    ///     Path to the directory to process.
+    /// </summary>
     [CliOption(Description = "Path to the directory to process.")]
     public string Directory { get; set; } = System.IO.Directory.GetCurrentDirectory();
 
+    /// <summary>
+    ///     Path to the output directory.
+    /// </summary>
     [CliOption(Description = "Path to the output directory.")]
     public string Output { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Fuse");
 
+    /// <summary>
+    ///     Directory names to exclude from scanning.
+    /// </summary>
     [CliOption(Required = false, Description = "Directory names to exclude from scanning (e.g., Migrations, wwwroot).")]
     public string[]? ExcludeDirectories { get; set; }
 
@@ -356,9 +377,15 @@ public abstract class CommandBase
 
     #region Output Options
 
+    /// <summary>
+    ///     Output file name without extension.
+    /// </summary>
     [CliOption(Name = "name", Required = false, Description = "Name of the output file (without extension).")]
     public string? OutputFileName { get; set; }
 
+    /// <summary>
+    ///     Overwrite the output file when it already exists.
+    /// </summary>
     [CliOption(Description = "Overwrite the output file if it exists.")]
     public bool Overwrite { get; set; } = true;
 
@@ -366,15 +393,27 @@ public abstract class CommandBase
 
     #region Search Options
 
+    /// <summary>
+    ///     Search subdirectories recursively.
+    /// </summary>
     [CliOption(Description = "Search recursively through subdirectories.")]
     public bool Recursive { get; set; } = true;
 
+    /// <summary>
+    ///     Maximum file size in KB to process (0 for unlimited).
+    /// </summary>
     [CliOption(Description = "Maximum file size in KB to process (0 for unlimited).")]
     public int MaxFileSize { get; set; } = 0;
 
+    /// <summary>
+    ///     Skip binary files during collection.
+    /// </summary>
     [CliOption(Description = "Ignore binary files.")]
     public bool IgnoreBinary { get; set; } = true;
 
+    /// <summary>
+    ///     Maximum degree of parallelism for pipeline stages.
+    /// </summary>
     [CliOption(Description = "Maximum degree of parallelism for pipeline stages (default: processor count).")]
     public int Parallelism { get; set; } = Environment.ProcessorCount;
 
@@ -382,9 +421,15 @@ public abstract class CommandBase
 
     #region Content Options
 
+    /// <summary>
+    ///     Include file metadata in output entries.
+    /// </summary>
     [CliOption(Description = "Include file metadata (size, dates) in the output.")]
     public bool IncludeMetadata { get; set; } = false;
 
+    /// <summary>
+    ///     Apply <c>.gitignore</c> rules found in the directory tree.
+    /// </summary>
     [CliOption(Description = "Respect rules from .gitignore files found in the directory tree.")]
     public bool RespectGitIgnore { get; set; } = true;
 
@@ -392,30 +437,57 @@ public abstract class CommandBase
 
     #region Token Options
 
+    /// <summary>
+    ///     Stop emission when this token count is reached.
+    /// </summary>
     [CliOption(Description = "Stops processing completely when token count is reached.")]
     public int? MaxTokens { get; set; }
 
+    /// <summary>
+    ///     Split output when this token count per part is exceeded.
+    /// </summary>
     [CliOption(Description = "Split output into multiple files when this token count is exceeded.")]
     public int? SplitTokens { get; set; } = 800000;
 
+    /// <summary>
+    ///     Display the final token count after fusion completes.
+    /// </summary>
     [CliOption(Description = "Displays the final estimated token count upon completion.")]
     public bool ShowTokenCount { get; set; } = true;
 
+    /// <summary>
+    ///     Display the top five token-consuming files after fusion.
+    /// </summary>
     [CliOption(Description = "Tracks and displays the top 5 files consuming the most tokens.")]
     public bool TrackTopTokenFiles { get; set; } = false;
 
+    /// <summary>
+    ///     Omit the manifest header from output.
+    /// </summary>
     [CliOption(Description = "Disable the manifest header prepended to output.")]
     public bool NoManifest { get; set; } = false;
 
+    /// <summary>
+    ///     Include git churn and last-modified stats in the manifest.
+    /// </summary>
     [CliOption(Description = "Include git churn and last-modified stats in the manifest.")]
     public bool GitStats { get; set; } = false;
 
+    /// <summary>
+    ///     Annotate entries with dependency inclusion provenance.
+    /// </summary>
     [CliOption(Description = "Annotate entries with dependency inclusion provenance.")]
     public bool Provenance { get; set; } = false;
 
+    /// <summary>
+    ///     Output format (<c>xml</c>, <c>markdown</c>, or <c>json</c>).
+    /// </summary>
     [CliOption(Description = "Output format: xml, markdown, or json.")]
     public string? Format { get; set; }
 
+    /// <summary>
+    ///     Tokenizer model or encoding name.
+    /// </summary>
     [CliOption(Description = "Tokenizer model or encoding (default: o200k_base).")]
     public string? Tokenizer { get; set; }
 
@@ -423,9 +495,15 @@ public abstract class CommandBase
 
     #region Security Options
 
+    /// <summary>
+    ///     Disable secret redaction before emission.
+    /// </summary>
     [CliOption(Description = "Disable secret redaction (redaction is on by default).")]
     public bool NoRedact { get; set; } = false;
 
+    /// <summary>
+    ///     Append a redaction count summary to the output.
+    /// </summary>
     [CliOption(Description = "Append a redaction count summary to the output.")]
     public bool RedactReport { get; set; } = false;
 
@@ -433,21 +511,39 @@ public abstract class CommandBase
 
     #region Exclusion Options
 
+    /// <summary>
+    ///     Specific file names to exclude from fusion.
+    /// </summary>
     [CliOption(Required = false, Description = "Exclude specific file names (e.g., appsettings.Development.json).")]
     public string[]? ExcludeFiles { get; set; }
 
+    /// <summary>
+    ///     Glob patterns for files to exclude from fusion.
+    /// </summary>
     [CliOption(Required = false, Description = "Exclude files matching glob patterns (e.g., **/Migrations/**, **/*.min.js).")]
     public string[]? ExcludePatterns { get; set; }
 
+    /// <summary>
+    ///     Skip zero-byte files during collection.
+    /// </summary>
     [CliOption(Description = "Skip empty (zero-byte) files.")]
     public bool ExcludeEmptyFiles { get; set; } = true;
 
+    /// <summary>
+    ///     Skip files containing an auto-generated marker in the first few lines.
+    /// </summary>
     [CliOption(Description = "Skip files containing an auto-generated code marker in the first few lines.")]
     public bool ExcludeAutoGenerated { get; set; } = true;
 
+    /// <summary>
+    ///     Git ref used to scope fusion to changed files.
+    /// </summary>
     [CliOption(Required = false, Description = "Git ref (branch, commit, HEAD~N) to scope fusion to changed files.")]
     public string? ChangedSince { get; set; }
 
+    /// <summary>
+    ///     Include first-degree dependents of changed files when scoping by git ref.
+    /// </summary>
     [CliOption(Description = "Include first-degree dependents of changed files.")]
     public bool IncludeDependents { get; set; } = true;
 
@@ -455,12 +551,21 @@ public abstract class CommandBase
 
     #region Cache and Watch Options
 
+    /// <summary>
+    ///     Disable per-file reduction caching.
+    /// </summary>
     [CliOption(Description = "Disable per-file reduction caching.")]
     public bool NoCache { get; set; } = false;
 
+    /// <summary>
+    ///     Clear the <c>.fuse/cache</c> directory before running.
+    /// </summary>
     [CliOption(Description = "Clear the .fuse/cache directory before running.")]
     public bool ClearCache { get; set; } = false;
 
+    /// <summary>
+    ///     Re-run fusion when source files change after edits settle.
+    /// </summary>
     [CliOption(Description = "Watch for file changes and re-run fusion after edits settle.")]
     public bool Watch { get; set; } = false;
 

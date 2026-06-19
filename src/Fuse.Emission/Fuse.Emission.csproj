@@ -6,10 +6,15 @@
         <UseFileScopedNamespaces>true</UseFileScopedNamespaces>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="TiktokenSharp" Version="1.2.0"/>
+        <PackageReference Include="Microsoft.ML.Tokenizers" Version="1.0.2" />
+        <PackageReference Include="Microsoft.ML.Tokenizers.Data.Cl100kBase" Version="1.0.2" />
+        <PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="1.0.2" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\Fuse.Analysis\Fuse.Analysis.csproj"/>
-        <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
+        <ProjectReference Include="..\Fuse.Analysis\Fuse.Analysis.csproj" />
+        <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="Fuse.Emission.Tests" />
     </ItemGroup>
 </Project>

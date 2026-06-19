@@ -1,5 +1,4 @@
-using Fuse.Analysis.Dependencies;
-using Fuse.Analysis.Search;
+using Fuse.Fusion.Scoping;
 using Fuse.Collection.Models;
 using Fuse.Collection.Templates;
 using Fuse.Emission.Models;

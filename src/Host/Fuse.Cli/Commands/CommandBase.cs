@@ -1,5 +1,5 @@
 using DotMake.CommandLine;
-using Fuse.Analysis.Changes;
+using Fuse.Fusion.Scoping;
 using Fuse.Cli.Services;
 using Fuse.Collection.Models;
 using Fuse.Collection.Templates;

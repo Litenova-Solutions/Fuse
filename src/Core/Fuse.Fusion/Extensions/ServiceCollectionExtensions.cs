@@ -1,7 +1,5 @@
-using Fuse.Analysis.Changes;
-using Fuse.Analysis.Git;
-using Fuse.Analysis.Dependencies;
-using Fuse.Analysis.Search;
+using Fuse.Fusion.Scoping;
+using Fuse.Fusion.Enrichment;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Filters;
@@ -60,7 +58,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TokenizerFactory>();
         services.AddSingleton<ITokenCounter>(sp => sp.GetRequiredService<TokenizerFactory>().GetCounter());
         services.AddSingleton<IEntryFormatter, XmlEntryFormatter>();
-        services.AddSingleton<IGitStatsProvider, GitStatsProvider>();
         services.AddSingleton<FusionValidator>();
         services.AddSingleton<FusionOrchestrator>();
         services.AddSingleton<ISecretRedactor, DefaultSecretRedactor>();

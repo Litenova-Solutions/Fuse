@@ -15,7 +15,7 @@
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Core\Fuse.Analysis\Fuse.Analysis.csproj"/>
+        <ProjectReference Include="..\..\src\Core\Fuse.Emission\Fuse.Emission.csproj"/>
         <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Languages.CSharp\Fuse.Plugins.Languages.CSharp.csproj"/>
         <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Formats.Web\Fuse.Plugins.Formats.Web.csproj"/>
         <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj"/>

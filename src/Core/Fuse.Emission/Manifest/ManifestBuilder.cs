@@ -1,7 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Fuse.Analysis.Git;
-using Fuse.Analysis.Patterns;
 using Fuse.Emission.Models;
 using Fuse.Emission.Serialization;
 

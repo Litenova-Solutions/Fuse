@@ -14,7 +14,6 @@
   <Folder Name="/src/">
     <Folder Name="/src/Core/">
       <Project Path="src/Core/Fuse.Collection/Fuse.Collection.csproj" />
-      <Project Path="src/Core/Fuse.Analysis/Fuse.Analysis.csproj" />
       <Project Path="src/Core/Fuse.Reduction/Fuse.Reduction.csproj" />
       <Project Path="src/Core/Fuse.Emission/Fuse.Emission.csproj" />
       <Project Path="src/Core/Fuse.Fusion/Fuse.Fusion.csproj" />
@@ -29,7 +28,6 @@
     </Folder>
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Fuse.Analysis.Tests/Fuse.Analysis.Tests.csproj" />
     <Project Path="tests/Fuse.Cli.Tests/Fuse.Cli.Tests.csproj" />
     <Project Path="tests/Fuse.Collection.Tests/Fuse.Collection.Tests.csproj" />
     <Project Path="tests/Fuse.Emission.Tests/Fuse.Emission.Tests.csproj" />

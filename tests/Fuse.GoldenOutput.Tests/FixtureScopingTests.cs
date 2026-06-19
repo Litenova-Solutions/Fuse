@@ -1,5 +1,4 @@
-using Fuse.Analysis.Dependencies;
-using Fuse.Analysis.Search;
+using Fuse.Fusion.Scoping;
 
 namespace Fuse.GoldenOutput.Tests;
 

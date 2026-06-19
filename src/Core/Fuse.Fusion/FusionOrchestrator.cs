@@ -1,8 +1,5 @@
-using Fuse.Analysis.Changes;
-using Fuse.Analysis.Dependencies;
-using Fuse.Analysis.Git;
-using Fuse.Analysis.Patterns;
-using Fuse.Analysis.Search;
+using Fuse.Fusion.Scoping;
+using Fuse.Fusion.Enrichment;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
 using Fuse.Emission;

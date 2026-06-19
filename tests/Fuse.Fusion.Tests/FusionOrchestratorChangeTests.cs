@@ -1,4 +1,4 @@
-using Fuse.Analysis.Changes;
+using Fuse.Fusion.Scoping;
 using Fuse.Collection.Options;
 using Fuse.Emission.Models;
 using Fuse.Fusion;

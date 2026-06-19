@@ -1,4 +1,3 @@
-using Fuse.Analysis.Patterns;
 
 namespace Fuse.Emission.Models;
 

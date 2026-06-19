@@ -1,4 +1,3 @@
-using Fuse.Analysis.Git;
 using Fuse.Emission.Manifest;
 using Fuse.Emission.Models;
 

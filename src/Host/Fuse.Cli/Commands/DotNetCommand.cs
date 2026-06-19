@@ -1,6 +1,5 @@
 using DotMake.CommandLine;
-using Fuse.Analysis.Dependencies;
-using Fuse.Analysis.Search;
+using Fuse.Fusion.Scoping;
 using Fuse.Cli.Commands;
 using Fuse.Collection.Models;
 using Fuse.Fusion;

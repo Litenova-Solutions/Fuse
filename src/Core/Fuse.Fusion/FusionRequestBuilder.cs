@@ -1,6 +1,4 @@
-using Fuse.Analysis.Changes;
-using Fuse.Analysis.Dependencies;
-using Fuse.Analysis.Search;
+using Fuse.Fusion.Scoping;
 using Fuse.Collection.Models;
 using Fuse.Collection.Options;
 using Fuse.Collection.Templates;

@@ -1,5 +1,3 @@
-using Fuse.Analysis.Git;
-using Fuse.Analysis.Patterns;
 using Fuse.Emission.Manifest;
 using Fuse.Emission.Models;
 using Fuse.Emission.Writers;

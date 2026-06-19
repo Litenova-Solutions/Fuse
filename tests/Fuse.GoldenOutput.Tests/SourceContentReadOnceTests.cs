@@ -1,4 +1,4 @@
-using Fuse.Analysis.Dependencies;
+using Fuse.Fusion.Scoping;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
 using Fuse.Collection.Templates;

@@ -1,4 +1,4 @@
-using Fuse.Analysis.Patterns;
+using Fuse.Emission.Models;
 using Fuse.Plugins.Abstractions.Patterns;
 using Fuse.Plugins.Languages.CSharp.Patterns;
 

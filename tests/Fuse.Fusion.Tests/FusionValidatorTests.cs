@@ -83,8 +83,8 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
-            changes: new Fuse.Analysis.Changes.ChangeOptions("main"));
+            focus: new Fuse.Fusion.Scoping.FocusOptions("Foo"),
+            changes: new Fuse.Fusion.Scoping.ChangeOptions("main"));
 
         var errors = validator.Validate(request);
 
@@ -99,8 +99,8 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
-            query: new Fuse.Analysis.Search.QueryOptions("payment"));
+            focus: new Fuse.Fusion.Scoping.FocusOptions("Foo"),
+            query: new Fuse.Fusion.Scoping.QueryOptions("payment"));
 
         var errors = validator.Validate(request);
 
@@ -115,8 +115,8 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            changes: new Fuse.Analysis.Changes.ChangeOptions("HEAD"),
-            query: new Fuse.Analysis.Search.QueryOptions("payment"));
+            changes: new Fuse.Fusion.Scoping.ChangeOptions("HEAD"),
+            query: new Fuse.Fusion.Scoping.QueryOptions("payment"));
 
         var errors = validator.Validate(request);
 
@@ -131,9 +131,9 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
-            changes: new Fuse.Analysis.Changes.ChangeOptions("HEAD"),
-            query: new Fuse.Analysis.Search.QueryOptions("payment"));
+            focus: new Fuse.Fusion.Scoping.FocusOptions("Foo"),
+            changes: new Fuse.Fusion.Scoping.ChangeOptions("HEAD"),
+            query: new Fuse.Fusion.Scoping.QueryOptions("payment"));
 
         var errors = validator.Validate(request);
 
@@ -148,7 +148,7 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            query: new Fuse.Analysis.Search.QueryOptions("payment", TopFiles: 10, Depth: 0));
+            query: new Fuse.Fusion.Scoping.QueryOptions("payment", TopFiles: 10, Depth: 0));
 
         var errors = validator.Validate(request);
         Assert.Contains("QueryOptions.Depth must be between 1 and 10.", errors);
@@ -162,7 +162,7 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            query: new Fuse.Analysis.Search.QueryOptions("   "));
+            query: new Fuse.Fusion.Scoping.QueryOptions("   "));
 
         var errors = validator.Validate(request);
         Assert.Contains(errors, e => e.Contains("QueryOptions.Query is required when query scoping"));
@@ -176,7 +176,7 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 0));
+            focus: new Fuse.Fusion.Scoping.FocusOptions("Foo", 0));
 
         var errors = validator.Validate(request);
         Assert.Contains("FocusOptions.Depth must be between 1 and 10.", errors);
@@ -190,7 +190,7 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 11));
+            focus: new Fuse.Fusion.Scoping.FocusOptions("Foo", 11));
 
         var errors = validator.Validate(request);
         Assert.Contains("FocusOptions.Depth must be between 1 and 10.", errors);
@@ -204,7 +204,7 @@ public sealed class FusionValidatorTests
             new CollectionOptions(@"C:\src"),
             new Fuse.Plugins.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
-            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 1));
+            focus: new Fuse.Fusion.Scoping.FocusOptions("Foo", 1));
 
         var errors = validator.Validate(request);
         Assert.DoesNotContain(errors, e => e.Contains("Depth"));

@@ -1,12 +1,3 @@
-// -----------------------------------------------------------------------
-// <copyright file="StderrConsoleUI.cs" company="Fuse">
-//     Copyright (c) Fuse. All rights reserved.
-//     Licensed under the MIT License. See LICENSE in the project root for license information.
-// </copyright>
-// -----------------------------------------------------------------------
-
-using Fuse.Core.Abstractions;
-
 namespace Fuse.Cli.Services;
 
 /// <summary>

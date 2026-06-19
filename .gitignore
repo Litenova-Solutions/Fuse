@@ -250,13 +250,10 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
-pub/
-/src/Web/WebMVC/Properties/PublishProfiles/eShopOnContainersWebMVC2016 - Web Deploy-publish.ps1
-/src/Web/WebMVC/Properties/PublishProfiles/publish-module.psm1
-/src/Services/Identity/eShopOnContainers.Identity/Properties/launchSettings.json
 
-#Ignore marker-file used to know which docker files we have.
-.eshopdocker_*
-.devcontainer
+# Local tooling
+.claude/
+.devcontainer/
 
-.azure
+# NuGet tool pack output
+**/nupkg/

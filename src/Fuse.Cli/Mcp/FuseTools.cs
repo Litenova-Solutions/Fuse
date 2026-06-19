@@ -1,13 +1,8 @@
-// -----------------------------------------------------------------------
-// <copyright file="FuseTools.cs" company="Fuse">
-//     Copyright (c) Fuse. All rights reserved.
-//     Licensed under the MIT License. See LICENSE in the project root for license information.
-// </copyright>
-// -----------------------------------------------------------------------
-
 using System.ComponentModel;
-using Fuse.Core;
-using Fuse.Engine;
+using Fuse.Collection.Models;
+using Fuse.Emission.Models;
+using Fuse.Fusion;
+using Fuse.Reduction.Options;
 using ModelContextProtocol.Server;
 
 namespace Fuse.Cli.Mcp;
@@ -15,123 +10,216 @@ namespace Fuse.Cli.Mcp;
 /// <summary>
 ///     MCP tool definitions for Fuse.
 /// </summary>
-/// <remarks>
-///     <para>
-///         These tools are exposed to AI agents via the Model Context Protocol,
-///         allowing them to request optimized, minified context from a codebase
-///         with granular control over filtering and processing options.
-///     </para>
-/// </remarks>
 [McpServerToolType]
 public sealed class FuseTools
 {
     /// <summary>
-    ///     Gets optimized, minified context from a codebase for AI consumption.
+    ///     Fuses a .NET codebase and returns optimized in-memory context.
     /// </summary>
-    /// <param name="engine">The fusion engine (injected via DI).</param>
-    /// <param name="path">Absolute or relative path to the directory to scan.</param>
-    /// <param name="template">
-    ///     Project template to use for default extensions and exclusions.
-    ///     Valid values: DotNet, Python, Node, Generic, AzureDevOpsWiki. Defaults to null (generic).
-    /// </param>
-    /// <param name="maxTokens">
-    ///     Hard limit on the number of tokens in the output.
-    ///     When reached, processing stops. Defaults to no limit.
-    /// </param>
-    /// <param name="includeExtensions">
-    ///     Comma-separated list of file extensions to process exclusively (e.g., ".cs,.razor,.json").
-    ///     When specified, overrides template defaults.
-    /// </param>
-    /// <param name="aggressiveMinification">
-    ///     When true, applies aggressive C# reduction (removes attributes, compresses auto-properties, etc.).
-    ///     Only effective with the DotNet template.
-    /// </param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The fused, minified content as a string.</returns>
-    [McpServerTool(Name = "get_optimized_context", ReadOnly = true)]
-    [Description("Generates optimized, minified context from a codebase directory. " +
-                 "Returns XML-formatted file contents with paths, suitable for AI consumption. " +
-                 "Supports filtering by template, extensions, and token limits.")]
-    public static async Task<string> GetOptimizedContextAsync(
-        FuseEngine engine,
-        [Description("Absolute or relative path to the directory to scan.")] string path,
-        [Description("Project template: DotNet, Python, Node, Generic, or AzureDevOpsWiki. Leave empty for generic.")] string? template = null,
-        [Description("Maximum token count for the output. Omit for no limit.")] int? maxTokens = null,
-        [Description("Comma-separated file extensions to include exclusively (e.g. '.cs,.razor'). Overrides template defaults.")] string? includeExtensions = null,
-        [Description("Apply aggressive C# reduction (remove attributes, compress properties). Only for DotNet template.")] bool aggressiveMinification = false,
+    [McpServerTool(Name = "fuse_dotnet", ReadOnly = true)]
+    [Description("Generates optimized .NET codebase context (equivalent to fuse dotnet). Returns XML-formatted file contents.")]
+    public static async Task<string> FuseDotNetAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        [Description("Absolute or relative path to the source directory.")] string path,
+        [Description("Directory names to skip.")] string[]? excludeDirectories = null,
+        [Description("File names to exclude.")] string[]? excludeFiles = null,
+        [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
+        [Description("Extensions to add on top of DotNet template defaults.")] string[]? includeExtensions = null,
+        [Description("Extensions to remove from DotNet template defaults.")] string[]? excludeExtensions = null,
+        [Description("Extensions to use exclusively, ignoring template defaults.")] string[]? onlyExtensions = null,
+        [Description("Maximum file size in KB. Zero means unlimited.")] int maxFileSizeKb = 0,
+        [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        [Description("Exclude only unit test project directories.")] bool excludeUnitTestProjects = false,
+        [Description("Remove C# comments.")] bool removeCSharpComments = false,
+        [Description("Remove C# using directives.")] bool removeCSharpUsings = false,
+        [Description("Remove C# namespace declarations.")] bool removeCSharpNamespaces = false,
+        [Description("Remove C# region directives.")] bool removeCSharpRegions = false,
+        [Description("Apply aggressive C# reduction.")] bool aggressive = false,
+        [Description("Apply all reduction options at once.")] bool all = false,
+        [Description("Hard token limit.")] int? maxTokens = null,
+        [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
         CancellationToken cancellationToken = default)
     {
-        // Resolve the path to an absolute path
         var resolvedPath = Path.GetFullPath(path);
-
         if (!Directory.Exists(resolvedPath))
         {
             return $"Error: Directory not found: {resolvedPath}";
         }
 
-        // Parse template
-        ProjectTemplate? parsedTemplate = null;
-        if (!string.IsNullOrWhiteSpace(template))
-        {
-            if (Enum.TryParse<ProjectTemplate>(template, ignoreCase: true, out var t))
-            {
-                parsedTemplate = t;
-            }
-            else
-            {
-                return $"Error: Unknown template '{template}'. Valid values: {string.Join(", ", Enum.GetNames<ProjectTemplate>())}";
-            }
-        }
-
-        // Parse extensions
-        string[]? onlyExtensions = null;
-        if (!string.IsNullOrWhiteSpace(includeExtensions))
-        {
-            onlyExtensions = includeExtensions
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(e => e.StartsWith('.') ? e : $".{e}")
-                .ToArray();
-        }
-
-        var options = new FuseOptions
-        {
-            SourceDirectory = resolvedPath,
-            Template = parsedTemplate,
-            OnlyExtensions = onlyExtensions,
-            MaxTokens = maxTokens,
-            AggressiveCSharpReduction = aggressiveMinification,
-
-            // Sensible defaults for MCP
-            Recursive = true,
-            TrimContent = true,
-            UseCondensing = true,
-            MinifyXmlFiles = true,
-            MinifyHtmlAndRazor = true,
-            RespectGitIgnore = true,
-            IgnoreBinaryFiles = true,
-            ShowTokenCount = false,
-            TrackTopTokenFiles = true
-        };
-
         try
         {
-            var result = await engine.FuseInMemoryAsync(options, cancellationToken);
+            var builder = new FusionRequestBuilder(templateRegistry)
+                .WithSourceDirectory(resolvedPath)
+                .WithTemplate(ProjectTemplate.DotNet)
+                .WithInMemory(true)
+                .WithMaxFileSizeKb(maxFileSizeKb)
+                .WithCollectionBehavior(
+                    excludeTestProjects: excludeTestProjects,
+                    excludeUnitTestProjects: excludeUnitTestProjects)
+                .WithEmissionOptions(new EmissionOptions
+                {
+                    MaxTokens = maxTokens,
+                    ShowTokenCount = false,
+                    TrackTopTokenFiles = trackTopTokenFiles
+                })
+                .WithReductionOptions(new ReductionOptions(
+                    removeCSharpComments: all || removeCSharpComments,
+                    removeCSharpUsings: all || removeCSharpUsings,
+                    removeCSharpNamespaces: all || removeCSharpNamespaces,
+                    removeCSharpRegions: all || removeCSharpRegions,
+                    aggressiveCSharpReduction: all || aggressive));
 
-            if (result.GeneratedPaths.Count == 0)
-            {
-                return "No files found matching the criteria.";
-            }
+            ApplyOptionalFilters(builder, onlyExtensions, includeExtensions, excludeExtensions, excludeDirectories, excludeFiles, excludePatterns);
 
-            // The in-memory builder stores content as the first GeneratedPaths entry
-            var content = result.GeneratedPaths[0];
-
-            // Append a brief stats footer
-            var statsLine = $"\n<!-- Fuse: {result.ProcessedFileCount}/{result.TotalFileCount} files | ~{result.TotalTokens} tokens | {result.Duration.TotalSeconds:F1}s -->";
-            return content + statsLine;
+            return await ExecuteInMemoryAsync(orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
         }
         catch (Exception ex)
         {
             return $"Error during fusion: {ex.Message}";
         }
     }
+
+    /// <summary>
+    ///     Fuses a codebase using a named template and returns optimized in-memory context.
+    /// </summary>
+    [McpServerTool(Name = "fuse_generic", ReadOnly = true)]
+    [Description("Generates optimized codebase context for any template (equivalent to fuse). Returns XML-formatted file contents.")]
+    public static async Task<string> FuseGenericAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        [Description("Absolute or relative path to the source directory.")] string path,
+        [Description("Template name: Python, JavaScript, TypeScript, Go, Rust, Java, etc.")] string? template = null,
+        [Description("Directory names to skip.")] string[]? excludeDirectories = null,
+        [Description("File names to exclude.")] string[]? excludeFiles = null,
+        [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
+        [Description("Extensions to add on top of template defaults.")] string[]? includeExtensions = null,
+        [Description("Extensions to remove from template defaults.")] string[]? excludeExtensions = null,
+        [Description("Extensions to use exclusively.")] string[]? onlyExtensions = null,
+        [Description("Maximum file size in KB. Zero means unlimited.")] int maxFileSizeKb = 0,
+        [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        [Description("Hard token limit.")] int? maxTokens = null,
+        [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        CancellationToken cancellationToken = default)
+    {
+        var resolvedPath = Path.GetFullPath(path);
+        if (!Directory.Exists(resolvedPath))
+        {
+            return $"Error: Directory not found: {resolvedPath}";
+        }
+
+        ProjectTemplate? parsedTemplate = null;
+        if (!string.IsNullOrWhiteSpace(template))
+        {
+            if (!Enum.TryParse<ProjectTemplate>(template, ignoreCase: true, out var t))
+            {
+                return $"Error: Unknown template '{template}'. Valid values: {string.Join(", ", Enum.GetNames<ProjectTemplate>())}";
+            }
+
+            parsedTemplate = t;
+        }
+
+        try
+        {
+            var builder = new FusionRequestBuilder(templateRegistry)
+                .WithSourceDirectory(resolvedPath)
+                .WithInMemory(true)
+                .WithMaxFileSizeKb(maxFileSizeKb)
+                .WithCollectionBehavior(excludeTestProjects: excludeTestProjects)
+                .WithEmissionOptions(new EmissionOptions
+                {
+                    MaxTokens = maxTokens,
+                    ShowTokenCount = false,
+                    TrackTopTokenFiles = trackTopTokenFiles
+                });
+
+            if (parsedTemplate.HasValue)
+            {
+                builder.WithTemplate(parsedTemplate.Value);
+            }
+
+            ApplyOptionalFilters(builder, onlyExtensions, includeExtensions, excludeExtensions, excludeDirectories, excludeFiles, excludePatterns);
+
+            return await ExecuteInMemoryAsync(orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            return $"Error during fusion: {ex.Message}";
+        }
+    }
+
+    private static void ApplyOptionalFilters(
+        FusionRequestBuilder builder,
+        string[]? onlyExtensions,
+        string[]? includeExtensions,
+        string[]? excludeExtensions,
+        string[]? excludeDirectories,
+        string[]? excludeFiles,
+        string[]? excludePatterns)
+    {
+        if (onlyExtensions?.Length > 0)
+        {
+            builder.WithOnlyExtensions(NormalizeExtensions(onlyExtensions));
+        }
+
+        if (includeExtensions?.Length > 0)
+        {
+            builder.WithIncludeExtensions(NormalizeExtensions(includeExtensions));
+        }
+
+        if (excludeExtensions?.Length > 0)
+        {
+            builder.WithExcludeExtensions(NormalizeExtensions(excludeExtensions));
+        }
+
+        if (excludeDirectories?.Length > 0)
+        {
+            builder.WithExcludeDirectories(excludeDirectories);
+        }
+
+        if (excludeFiles?.Length > 0)
+        {
+            builder.WithExcludeFiles(excludeFiles);
+        }
+
+        if (excludePatterns?.Length > 0)
+        {
+            builder.WithExcludePatterns(excludePatterns);
+        }
+    }
+
+    private static string[] NormalizeExtensions(IEnumerable<string> extensions) =>
+        extensions.Select(e => e.StartsWith('.') ? e : $".{e}").ToArray();
+
+    private static async Task<string> ExecuteInMemoryAsync(
+        FusionOrchestrator orchestrator,
+        FusionRequest request,
+        bool trackTopTokenFiles,
+        CancellationToken cancellationToken)
+    {
+        var result = await orchestrator.FuseAsync(request, cancellationToken);
+
+        if (string.IsNullOrEmpty(result.InMemoryContent))
+        {
+            return "No files found matching the criteria.";
+        }
+
+        if (!trackTopTokenFiles)
+        {
+            return result.InMemoryContent;
+        }
+
+        var top = result.TopTokenFiles.Count > 0
+            ? string.Join(", ", result.TopTokenFiles.Select(f =>
+                $"{Path.GetFileName(f.Path)} ({FormatTokenCount(f.Count)})"))
+            : "none";
+
+        var statsLine =
+            $"\n<!-- fuse: {result.ProcessedFileCount}/{result.TotalFileCount} files | ~{FormatTokenCount(result.TotalTokens)} tokens | {result.Duration.TotalSeconds:F1}s | top: {top} -->";
+
+        return result.InMemoryContent + statsLine;
+    }
+
+    private static string FormatTokenCount(long count) =>
+        count >= 1000 ? $"{count / 1000.0:F0}k" : count.ToString();
 }

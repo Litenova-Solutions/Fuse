@@ -245,8 +245,8 @@ services.AddSingleton<IProjectTemplate, MyLanguageTemplate>();
 Update [templates.md](templates.md). Run:
 
 ```bash
-dotnet build Fuse.sln
-dotnet test Fuse.sln
+dotnet build Fuse.slnx
+dotnet test Fuse.slnx
 ```
 
 ---

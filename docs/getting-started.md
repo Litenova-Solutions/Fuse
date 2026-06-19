@@ -60,17 +60,17 @@ To work on Fuse without installing the global tool:
 ```bash
 git clone https://github.com/Litenova-Solutions/Fuse.git
 cd Fuse
-dotnet build Fuse.sln
+dotnet build Fuse.slnx
 dotnet run --project src/Fuse.Cli/Fuse.Cli.csproj -- --help
 ```
 
 CI-equivalent checks:
 
 ```bash
-dotnet restore Fuse.sln
-dotnet build Fuse.sln --configuration Release
-dotnet test Fuse.sln --configuration Release --no-build
-dotnet format Fuse.sln --verify-no-changes
+dotnet restore Fuse.slnx
+dotnet build Fuse.slnx --configuration Release
+dotnet test Fuse.slnx --configuration Release --no-build
+dotnet format Fuse.slnx --verify-no-changes
 ```
 
 ---

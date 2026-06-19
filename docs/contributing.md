@@ -11,8 +11,8 @@ Thank you for contributing to Fuse. This guide covers setup, development workflo
 ```bash
 git clone https://github.com/Litenova-Solutions/Fuse.git
 cd Fuse
-dotnet restore Fuse.sln
-dotnet build Fuse.sln
+dotnet restore Fuse.slnx
+dotnet build Fuse.slnx
 ```
 
 On Windows, `install.bat` builds, packs, and installs the global tool locally for manual testing.
@@ -20,7 +20,7 @@ On Windows, `install.bat` builds, packs, and installs the global tool locally fo
 ### Run Tests
 
 ```bash
-dotnet test Fuse.sln --configuration Release
+dotnet test Fuse.slnx --configuration Release
 ```
 
 Test projects for Fuse 2.0:
@@ -36,13 +36,13 @@ Test projects for Fuse 2.0:
 CI enforces formatting. Verify locally before pushing:
 
 ```bash
-dotnet format Fuse.sln --verify-no-changes
+dotnet format Fuse.slnx --verify-no-changes
 ```
 
 Apply fixes automatically:
 
 ```bash
-dotnet format Fuse.sln
+dotnet format Fuse.slnx
 ```
 
 ---

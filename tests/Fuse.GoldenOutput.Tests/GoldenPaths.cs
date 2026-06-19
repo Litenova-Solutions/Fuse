@@ -19,12 +19,12 @@ internal static class GoldenPaths
 
         while (current is not null)
         {
-            if (File.Exists(Path.Combine(current.FullName, "Fuse.sln")))
+            if (File.Exists(Path.Combine(current.FullName, "Fuse.slnx")))
                 return current.FullName;
 
             current = current.Parent;
         }
 
-        throw new InvalidOperationException("Could not locate repository root containing Fuse.sln.");
+        throw new InvalidOperationException("Could not locate repository root containing Fuse.slnx.");
     }
 }

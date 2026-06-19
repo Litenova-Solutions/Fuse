@@ -204,9 +204,9 @@ docs/                           Full documentation
 ## Development
 
 ```bash
-dotnet build Fuse.sln --configuration Release
-dotnet test Fuse.sln --configuration Release --no-build
-dotnet format Fuse.sln --verify-no-changes
+dotnet build Fuse.slnx --configuration Release
+dotnet test Fuse.slnx --configuration Release --no-build
+dotnet format Fuse.slnx --verify-no-changes
 ```
 
 Contribution workflow: [contributing.md](docs/contributing.md). Agent instructions: [AGENTS.md](AGENTS.md).

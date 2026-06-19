@@ -21,16 +21,16 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore Fuse.sln
+        run: dotnet restore Fuse.slnx
 
       - name: Build
-        run: dotnet build Fuse.sln --configuration Release --no-restore
+        run: dotnet build Fuse.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test Fuse.sln --configuration Release --no-build --verbosity normal
+        run: dotnet test Fuse.slnx --configuration Release --no-build --verbosity normal
 
       - name: Format check
-        run: dotnet format Fuse.sln --verify-no-changes
+        run: dotnet format Fuse.slnx --verify-no-changes
 
   aot:
     name: Native AOT Publish (${{ matrix.rid }})

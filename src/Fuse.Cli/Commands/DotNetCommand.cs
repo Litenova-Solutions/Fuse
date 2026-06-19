@@ -1,4 +1,5 @@
 using DotMake.CommandLine;
+using Fuse.Analysis.Dependencies;
 using Fuse.Cli.Commands;
 using Fuse.Collection.Models;
 using Fuse.Fusion;
@@ -22,7 +23,7 @@ public sealed class DotNetCommand : CommandBase
 
     public async Task RunAsync(CliContext context)
     {
-        var request = CreateRequestBuilder(ProjectTemplate.DotNet)
+        var builder = CreateRequestBuilder(ProjectTemplate.DotNet)
             .WithCollectionBehavior(
                 Recursive,
                 IgnoreBinary,
@@ -40,9 +41,17 @@ public sealed class DotNetCommand : CommandBase
                 removeCSharpRegions: All || RemoveCSharpRegions,
                 aggressiveCSharpReduction: All || Aggressive,
                 minifyXmlFiles: MinifyXmlFiles,
-                minifyHtmlAndRazor: MinifyHtmlAndRazor))
-            .Build();
+                minifyHtmlAndRazor: MinifyHtmlAndRazor,
+                skeletonMode: Skeleton,
+                includeSemanticMarkers: SemanticMarkers,
+                includePatternSummary: PatternSummary));
 
+        if (!string.IsNullOrWhiteSpace(Focus))
+        {
+            builder.WithFocusOptions(new FocusOptions(Focus, Depth));
+        }
+
+        var request = builder.Build();
         await ExecuteFusionAsync(request, context.CancellationToken);
     }
 
@@ -72,4 +81,19 @@ public sealed class DotNetCommand : CommandBase
 
     [CliOption(Description = "Apply all optimizations (remove namespaces, comments, regions, usings, aggressive reduction).")]
     public bool All { get; set; } = false;
+
+    [CliOption(Description = "Emit structural skeleton only (class/interface/method signatures, no bodies).")]
+    public bool Skeleton { get; set; } = false;
+
+    [CliOption(Description = "Prepend structural annotation comments to each file entry.")]
+    public bool SemanticMarkers { get; set; } = false;
+
+    [CliOption(Required = false, Description = "Type name, filename, or relative directory to scope the fusion around.")]
+    public string? Focus { get; set; }
+
+    [CliOption(Description = "Dependency traversal depth (1 = direct dependencies only).")]
+    public int Depth { get; set; } = 1;
+
+    [CliOption(Description = "Detect and append cross-codebase pattern summary to output.")]
+    public bool PatternSummary { get; set; } = false;
 }

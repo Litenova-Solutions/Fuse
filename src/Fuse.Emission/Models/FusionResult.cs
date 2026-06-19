@@ -1,3 +1,5 @@
+using Fuse.Analysis.Patterns;
+
 namespace Fuse.Emission.Models;
 
 /// <summary>
@@ -8,13 +10,6 @@ public sealed class FusionResult
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionResult" /> class.
     /// </summary>
-    /// <param name="generatedPaths">The file paths produced by disk emission.</param>
-    /// <param name="inMemoryContent">The fused content produced by in-memory emission, if any.</param>
-    /// <param name="totalTokens">The total number of tokens across all emitted content.</param>
-    /// <param name="processedFileCount">The number of files successfully emitted.</param>
-    /// <param name="totalFileCount">The total number of files considered for emission.</param>
-    /// <param name="duration">The duration of the emission operation.</param>
-    /// <param name="topTokenFiles">The top files consuming the most tokens.</param>
     public FusionResult(
         IReadOnlyList<string> generatedPaths,
         string? inMemoryContent,
@@ -22,7 +17,8 @@ public sealed class FusionResult
         int processedFileCount,
         int totalFileCount,
         TimeSpan duration,
-        IReadOnlyList<FileTokenInfo> topTokenFiles)
+        IReadOnlyList<FileTokenInfo> topTokenFiles,
+        PatternSummary? patternSummary = null)
     {
         GeneratedPaths = generatedPaths;
         InMemoryContent = inMemoryContent;
@@ -31,6 +27,7 @@ public sealed class FusionResult
         TotalFileCount = totalFileCount;
         Duration = duration;
         TopTokenFiles = topTokenFiles;
+        PatternSummary = patternSummary;
     }
 
     /// <summary>
@@ -67,4 +64,9 @@ public sealed class FusionResult
     ///     Gets the top files consuming the most tokens.
     /// </summary>
     public IReadOnlyList<FileTokenInfo> TopTokenFiles { get; }
+
+    /// <summary>
+    ///     Gets the detected pattern summary, or <c>null</c> when pattern detection was not requested.
+    /// </summary>
+    public PatternSummary? PatternSummary { get; }
 }

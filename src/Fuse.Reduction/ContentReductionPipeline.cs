@@ -1,14 +1,18 @@
-using System.Text.RegularExpressions;
+using System.Text;
 
 using Fuse.Collection.FileSystem;
 
 using Fuse.Collection.Models;
+
+using Fuse.Reduction.Markers;
 
 using Fuse.Reduction.Models;
 
 using Fuse.Reduction.Options;
 
 using Fuse.Reduction.Reducers;
+
+using Fuse.Reduction.Skeleton;
 
 using Fuse.Reduction.Tokenization;
 
@@ -34,6 +38,10 @@ public sealed class ContentReductionPipeline
 
     private readonly ReducerRegistry _reducerRegistry;
 
+    private readonly SkeletonExtractorRegistry _skeletonExtractorRegistry;
+
+    private readonly SemanticMarkerGeneratorRegistry _semanticMarkerGeneratorRegistry;
+
     private readonly ITokenCounter _tokenCounter;
 
 
@@ -44,17 +52,15 @@ public sealed class ContentReductionPipeline
 
     /// </summary>
 
-    /// <param name="fileSystem">The file system used to read source file content.</param>
-
-    /// <param name="reducerRegistry">The registry that resolves reducers by extension.</param>
-
-    /// <param name="tokenCounter">The token counter used when constructing fused content.</param>
-
     public ContentReductionPipeline(
 
         IFileSystem fileSystem,
 
         ReducerRegistry reducerRegistry,
+
+        SkeletonExtractorRegistry skeletonExtractorRegistry,
+
+        SemanticMarkerGeneratorRegistry semanticMarkerGeneratorRegistry,
 
         ITokenCounter tokenCounter)
 
@@ -63,6 +69,10 @@ public sealed class ContentReductionPipeline
         _fileSystem = fileSystem;
 
         _reducerRegistry = reducerRegistry;
+
+        _skeletonExtractorRegistry = skeletonExtractorRegistry;
+
+        _semanticMarkerGeneratorRegistry = semanticMarkerGeneratorRegistry;
 
         _tokenCounter = tokenCounter;
 
@@ -75,14 +85,6 @@ public sealed class ContentReductionPipeline
     ///     Reduces the supplied source files and returns non-trivial fused content.
 
     /// </summary>
-
-    /// <param name="sourceFiles">The files to read and reduce.</param>
-
-    /// <param name="options">The reduction options for the current run.</param>
-
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-
-    /// <returns>A list of non-trivial fused content items.</returns>
 
     public async Task<IReadOnlyList<FusedContent>> ReduceAsync(
 
@@ -112,6 +114,10 @@ public sealed class ContentReductionPipeline
 
             content = ApplyReduction(content, sourceFile.Extension, options);
 
+            content = ApplySkeleton(content, sourceFile, options);
+
+            content = ApplySemanticMarkers(content, sourceFile, options);
+
 
 
             var fused = new FusedContent(sourceFile, content, _tokenCounter);
@@ -132,6 +138,64 @@ public sealed class ContentReductionPipeline
 
 
 
+    private string ApplySkeleton(string content, SourceFile sourceFile, ReductionOptions options)
+
+    {
+
+        if (!options.SkeletonMode || !sourceFile.IsCSharp)
+
+            return content;
+
+
+
+        var extractor = _skeletonExtractorRegistry.TryGetExtractor(sourceFile.Extension);
+
+        return extractor?.ExtractSkeleton(content) ?? content;
+
+    }
+
+
+
+    private string ApplySemanticMarkers(string content, SourceFile sourceFile, ReductionOptions options)
+
+    {
+
+        if (!options.IncludeSemanticMarkers || !sourceFile.IsCSharp)
+
+            return content;
+
+
+
+        var generator = _semanticMarkerGeneratorRegistry.TryGetGenerator(sourceFile.Extension);
+
+        if (generator is null)
+
+            return content;
+
+
+
+        var markers = generator.GenerateMarkers(content);
+
+        if (markers.Count == 0)
+
+            return content;
+
+
+
+        var sb = new StringBuilder();
+
+        foreach (var marker in markers)
+
+            sb.AppendLine(marker.ToComment());
+
+        sb.Append(content);
+
+        return sb.ToString();
+
+    }
+
+
+
     private static string NormalizeWhitespace(string content, ReductionOptions options)
 
     {
@@ -140,9 +204,9 @@ public sealed class ContentReductionPipeline
 
         {
 
-            content = Regex.Replace(content, @"^[\s\t]+|[\s\t]+$", string.Empty,
+            content = System.Text.RegularExpressions.Regex.Replace(content, @"^[\s\t]+|[\s\t]+$", string.Empty,
 
-                RegexOptions.Multiline);
+                System.Text.RegularExpressions.RegexOptions.Multiline);
 
         }
 
@@ -152,9 +216,9 @@ public sealed class ContentReductionPipeline
 
         {
 
-            content = Regex.Replace(content, @"^\s*$\r?\n", string.Empty,
+            content = System.Text.RegularExpressions.Regex.Replace(content, @"^\s*$\r?\n", string.Empty,
 
-                RegexOptions.Multiline);
+                System.Text.RegularExpressions.RegexOptions.Multiline);
 
         }
 
@@ -211,4 +275,3 @@ public sealed class ContentReductionPipeline
     }
 
 }
-

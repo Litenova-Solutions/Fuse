@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using Fuse.Analysis.Changes;
+using Fuse.Analysis.Dependencies;
 using Fuse.Collection.Models;
 using Fuse.Emission.Models;
 using Fuse.Fusion;
@@ -37,6 +39,13 @@ public sealed class FuseTools
         [Description("Remove C# region directives.")] bool removeCSharpRegions = false,
         [Description("Apply aggressive C# reduction.")] bool aggressive = false,
         [Description("Apply all reduction options at once.")] bool all = false,
+        [Description("Emit structural skeleton only.")] bool skeleton = false,
+        [Description("Prepend structural annotation comments.")] bool semanticMarkers = false,
+        [Description("Type name, filename, or path to scope around.")] string? focus = null,
+        [Description("Dependency traversal depth.")] int depth = 1,
+        [Description("Git ref to scope to changed files.")] string? changedSince = null,
+        [Description("Include first-degree dependents of changed files.")] bool includeDependents = true,
+        [Description("Detect and append pattern summary.")] bool patternSummary = false,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
         CancellationToken cancellationToken = default)
@@ -68,7 +77,20 @@ public sealed class FuseTools
                     removeCSharpUsings: all || removeCSharpUsings,
                     removeCSharpNamespaces: all || removeCSharpNamespaces,
                     removeCSharpRegions: all || removeCSharpRegions,
-                    aggressiveCSharpReduction: all || aggressive));
+                    aggressiveCSharpReduction: all || aggressive,
+                    skeletonMode: skeleton,
+                    includeSemanticMarkers: semanticMarkers,
+                    includePatternSummary: patternSummary));
+
+            if (!string.IsNullOrWhiteSpace(focus))
+            {
+                builder.WithFocusOptions(new FocusOptions(focus, depth));
+            }
+
+            if (!string.IsNullOrWhiteSpace(changedSince))
+            {
+                builder.WithChangeOptions(new ChangeOptions(changedSince, includeDependents));
+            }
 
             ApplyOptionalFilters(builder, onlyExtensions, includeExtensions, excludeExtensions, excludeDirectories, excludeFiles, excludePatterns);
 
@@ -98,6 +120,8 @@ public sealed class FuseTools
         [Description("Extensions to use exclusively.")] string[]? onlyExtensions = null,
         [Description("Maximum file size in KB. Zero means unlimited.")] int maxFileSizeKb = 0,
         [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        [Description("Git ref to scope to changed files.")] string? changedSince = null,
+        [Description("Include first-degree dependents of changed files.")] bool includeDependents = true,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
         CancellationToken cancellationToken = default)
@@ -136,6 +160,11 @@ public sealed class FuseTools
             if (parsedTemplate.HasValue)
             {
                 builder.WithTemplate(parsedTemplate.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(changedSince))
+            {
+                builder.WithChangeOptions(new ChangeOptions(changedSince, includeDependents));
             }
 
             ApplyOptionalFilters(builder, onlyExtensions, includeExtensions, excludeExtensions, excludeDirectories, excludeFiles, excludePatterns);

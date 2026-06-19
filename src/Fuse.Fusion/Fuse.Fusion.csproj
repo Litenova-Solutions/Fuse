@@ -9,6 +9,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0"/>
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\Fuse.Analysis\Fuse.Analysis.csproj"/>
         <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
         <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
         <ProjectReference Include="..\Fuse.Emission\Fuse.Emission.csproj"/>

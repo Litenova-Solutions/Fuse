@@ -1,13 +1,20 @@
+using Fuse.Analysis.Changes;
+using Fuse.Analysis.Dependencies;
+using Fuse.Analysis.Markers;
+using Fuse.Analysis.Patterns;
+using Fuse.Analysis.Skeleton;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Filters;
 using Fuse.Collection.Templates;
-using Fuse.Reduction;
 using Fuse.Collection.Templates.Definitions;
 using Fuse.Emission;
 using Fuse.Emission.Tokenization;
+using Fuse.Reduction;
+using Fuse.Reduction.Markers;
 using Fuse.Reduction.Reducers;
 using Fuse.Reduction.Reducers.Implementations;
+using Fuse.Reduction.Skeleton;
 using Fuse.Reduction.Tokenization;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,8 +28,6 @@ public static class ServiceCollectionExtensions
     /// <summary>
     ///     Registers all Fuse fusion services required to execute the collection, reduction, and emission pipelines.
     /// </summary>
-    /// <param name="services">The service collection to configure.</param>
-    /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddFuse(this IServiceCollection services)
     {
         services.AddSingleton<ITokenCounter>(_ => TikTokenCounter.Instance);
@@ -37,7 +42,25 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GitIgnoreParser>();
         services.AddSingleton<ProjectTemplateRegistry>();
         services.AddSingleton<ReducerRegistry>();
+        services.AddSingleton<SkeletonExtractorRegistry>();
+        services.AddSingleton<SemanticMarkerGeneratorRegistry>();
         services.AddSingleton<OutputNamingService>();
+
+        services.AddSingleton<ISkeletonExtractor, CSharpSkeletonExtractor>();
+        services.AddSingleton<ISemanticMarkerGenerator, CSharpSemanticMarkerGenerator>();
+
+        services.AddSingleton<IDependencyExtractor, CSharpDependencyExtractor>();
+        services.AddSingleton<DependencyGraphBuilder>();
+        services.AddSingleton<FocusSeedResolver>();
+
+        services.AddSingleton<IChangeDetector, GitChangeDetector>();
+
+        services.AddSingleton<IPatternDetector, DiRegistrationPatternDetector>();
+        services.AddSingleton<IPatternDetector, ExceptionHandlingPatternDetector>();
+        services.AddSingleton<IPatternDetector, LoggingPatternDetector>();
+        services.AddSingleton<IPatternDetector, AsyncPatternDetector>();
+        services.AddSingleton<IPatternDetector, CqrsPatternDetector>();
+        services.AddSingleton<IPatternDetector, RepositoryPatternDetector>();
 
         RegisterFileFilters(services);
         RegisterContentReducers(services);

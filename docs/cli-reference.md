@@ -71,6 +71,13 @@ These options are available on `fuse`, `fuse dotnet`, and `fuse wiki`.
 | `--show-token-count` | `true` | Display estimated token count on completion |
 | `--track-top-token-files` | `false` | Display the top 5 files consuming the most tokens |
 
+### Change Scoping
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--changed-since` | | Git ref (branch, commit, `HEAD~N`) to scope fusion to changed files |
+| `--include-dependents` | `true` | Include first-degree dependents of changed files |
+
 ---
 
 ## fuse (Generic)
@@ -109,6 +116,11 @@ Applies the `DotNet` template automatically. Adds C#-specific reduction options.
 | `--minify-html-and-razor` | `true` | Minify `.html`, `.cshtml`, `.razor` |
 | `--exclude-unit-test-projects` | `false` | Exclude only unit test directories (keeps integration tests) |
 | `--all` | `false` | Enable all C# reduction options at once |
+| `--skeleton` | `false` | Emit structural skeleton only (signatures, no bodies) |
+| `--semantic-markers` | `false` | Prepend structural annotation comments per type |
+| `--focus` | | Type name, filename, or directory path for dependency scoping |
+| `--depth` | `1` | Dependency traversal depth when using `--focus` |
+| `--pattern-summary` | `false` | Detect and append cross-codebase pattern summary |
 
 ### Examples
 
@@ -130,6 +142,12 @@ fuse dotnet --directory ./src --include-extensions .sql
 
 # Split large output at 500k tokens
 fuse dotnet --directory ./src --split-tokens 500000
+
+# Architectural overview (low token cost)
+fuse dotnet --directory ./src --all --skeleton
+
+# PR review scope
+fuse dotnet --directory ./src --changed-since main
 ```
 
 ---

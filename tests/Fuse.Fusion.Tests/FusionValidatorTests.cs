@@ -75,6 +75,64 @@ public sealed class FusionValidatorTests
         Assert.NotEmpty(exception.Errors);
     }
 
+    [Fact]
+    public void Validate_BothFocusAndChanges_ReturnsError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
+            changes: new Fuse.Analysis.Changes.ChangeOptions("main"));
+
+        var errors = validator.Validate(request);
+
+        Assert.Contains(errors, e => e.Contains("FocusOptions and ChangeOptions cannot both be set"));
+    }
+
+    [Fact]
+    public void Validate_FocusDepthZero_ReturnsError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 0));
+
+        var errors = validator.Validate(request);
+        Assert.Contains("FocusOptions.Depth must be between 1 and 10.", errors);
+    }
+
+    [Fact]
+    public void Validate_FocusDepthEleven_ReturnsError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 11));
+
+        var errors = validator.Validate(request);
+        Assert.Contains("FocusOptions.Depth must be between 1 and 10.", errors);
+    }
+
+    [Fact]
+    public void Validate_FocusDepthOne_NoError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 1));
+
+        var errors = validator.Validate(request);
+        Assert.DoesNotContain(errors, e => e.Contains("Depth"));
+    }
+
     private static FusionRequest CreateRequest(string sourceDirectory) =>
         new(
             new CollectionOptions(sourceDirectory),

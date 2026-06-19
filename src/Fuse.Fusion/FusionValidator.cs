@@ -12,7 +12,6 @@ public sealed class FusionValidator
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionValidator" /> class.
     /// </summary>
-    /// <param name="fileSystem">The file system used to verify the source directory exists.</param>
     public FusionValidator(IFileSystem fileSystem)
     {
         _fileSystem = fileSystem;
@@ -21,8 +20,6 @@ public sealed class FusionValidator
     /// <summary>
     ///     Validates the specified fusion request and returns all detected errors.
     /// </summary>
-    /// <param name="request">The fusion request to validate.</param>
-    /// <returns>A read-only list of validation error messages. Empty when the request is valid.</returns>
     public IReadOnlyList<string> Validate(FusionRequest request)
     {
         var errors = new List<string>();
@@ -37,14 +34,23 @@ public sealed class FusionValidator
             errors.Add($"Source directory does not exist: {collection.SourceDirectory}");
         }
 
+        if (request.Focus is not null && request.Changes is not null)
+        {
+            errors.Add(
+                "FocusOptions and ChangeOptions cannot both be set. FocusOptions takes precedence; remove one.");
+        }
+
+        if (request.Focus is not null && (request.Focus.Depth < 1 || request.Focus.Depth > 10))
+        {
+            errors.Add("FocusOptions.Depth must be between 1 and 10.");
+        }
+
         return errors;
     }
 
     /// <summary>
     ///     Validates the specified fusion request and throws when errors are detected.
     /// </summary>
-    /// <param name="request">The fusion request to validate.</param>
-    /// <exception cref="FusionValidationException">Thrown when validation errors are detected.</exception>
     public void ValidateOrThrow(FusionRequest request)
     {
         var errors = Validate(request);
@@ -57,9 +63,6 @@ public sealed class FusionValidator
     /// <summary>
     ///     Validates builder state for contradictory template and only-extensions settings.
     /// </summary>
-    /// <param name="hasTemplate">Whether a project template was specified.</param>
-    /// <param name="hasOnlyExtensions">Whether only-extensions were specified.</param>
-    /// <returns>A read-only list of validation error messages. Empty when the settings are compatible.</returns>
     public static IReadOnlyList<string> ValidateBuilderState(bool hasTemplate, bool hasOnlyExtensions)
     {
         if (hasTemplate && hasOnlyExtensions)

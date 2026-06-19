@@ -14,7 +14,7 @@ This starts a persistent process that communicates via stdio using JSON-RPC. All
 
 The server advertises these instructions to connected agents:
 
-> Fuse is a codebase context optimizer. Use fuse_dotnet for .NET projects or fuse_generic for other templates. You can also read fuse:// resources for optimized views of codebases.
+> Fuse is a codebase context optimizer for AI-assisted workflows. Use fuse_dotnet for .NET/C# projects (skeleton, focus, change scoping, pattern summary) or fuse_generic for other templates.
 
 ---
 
@@ -96,6 +96,13 @@ Equivalent to `fuse dotnet`. Generates optimized .NET codebase context.
 | `removeCSharpRegions` | `bool` | `false` | Remove C# region directives |
 | `aggressive` | `bool` | `false` | Aggressive C# reduction |
 | `all` | `bool` | `false` | Set all reduction options to true |
+| `skeleton` | `bool` | `false` | Emit structural skeleton only (signatures, no bodies) |
+| `semanticMarkers` | `bool` | `false` | Prepend structural annotation comments per type |
+| `focus` | `string?` | `null` | Type name, filename, or path to scope around |
+| `depth` | `int` | `1` | Dependency traversal depth for focus scoping |
+| `changedSince` | `string?` | `null` | Git ref to scope to changed files |
+| `includeDependents` | `bool` | `true` | Include first-degree dependents of changed files |
+| `patternSummary` | `bool` | `false` | Append cross-codebase pattern summary |
 | `maxTokens` | `int?` | `null` | Hard token limit |
 | `trackTopTokenFiles` | `bool` | `false` | Include top files in stats comment |
 
@@ -115,6 +122,8 @@ Equivalent to the root `fuse` command with an optional template. Generates optim
 | `onlyExtensions` | `string[]?` | `null` | Extensions exclusively |
 | `maxFileSizeKb` | `int` | `0` | Max file size in KB; 0 = unlimited |
 | `excludeTestProjects` | `bool` | `false` | Exclude all test project directories |
+| `changedSince` | `string?` | `null` | Git ref to scope to changed files |
+| `includeDependents` | `bool` | `true` | Include first-degree dependents of changed files |
 | `maxTokens` | `int?` | `null` | Hard token limit |
 | `trackTopTokenFiles` | `bool` | `false` | Include top files in stats comment |
 
@@ -167,6 +176,42 @@ Error responses return plain text starting with `Error:`.
 
 ---
 
+## Agentic Workflow Patterns
+
+### 1. Cold-start architecture review (skeleton mode)
+
+```
+fuse_dotnet(path="./src", skeleton=true, all=true, maxTokens=100000)
+```
+
+Use when onboarding to a large .NET codebase. Skeleton mode emits type and method signatures only, typically reducing token count by 80-90% versus full fusion.
+
+### 2. Targeted feature work (focus scoping)
+
+```
+fuse_dotnet(path="./src", focus="OrderService", depth=1, maxTokens=150000)
+```
+
+Scopes output to `OrderService` plus files that define types it references. Dependency scoping is regex-based (best-effort, not Roslyn).
+
+### 3. PR review (change scoping)
+
+```
+fuse_dotnet(path="./src", changedSince="main", includeDependents=true, maxTokens=100000)
+```
+
+Restricts output to files changed since `main` plus first-degree dependents.
+
+### 4. Convention discovery (pattern summary)
+
+```
+fuse_dotnet(path="./src", patternSummary=true, maxTokens=200000)
+```
+
+Appends a `<!-- fuse:patterns ... -->` block detecting DI registration, logging, CQRS, repository patterns, and more.
+
+---
+
 ## Agent Instructions
 
 When configuring an AI agent to use Fuse, include these guidelines:
@@ -207,3 +252,6 @@ remaining context budget. Exclude test projects unless the task involves tests.
 | `No files found` | Empty directory or overly aggressive exclusions | Check exclusions and template extensions |
 | Server not starting | `fuse` not on PATH | Install global tool or use full path in MCP config |
 | Empty response | All files filtered as trivial or binary | Check `maxFileSizeKb` and exclusion settings |
+| `Git is not available on PATH` | Git not installed for change scoping | Install git or avoid `changedSince` |
+| `not a git repository` | Source path is not a git repo | Run from repo root or drop change scoping |
+| Git diff errors | Invalid ref in `changedSince` | Verify branch/commit name |

@@ -1,3 +1,5 @@
+using Fuse.Analysis.Changes;
+using Fuse.Analysis.Dependencies;
 using Fuse.Collection.Models;
 using Fuse.Collection.Options;
 using Fuse.Collection.Templates;
@@ -41,6 +43,8 @@ public sealed class FusionRequestBuilder
     private ReductionOptions _reductionOptions = new();
     private EmissionOptions _emissionOptions = new();
     private bool _inMemory = false;
+    private FocusOptions? _focusOptions;
+    private ChangeOptions? _changeOptions;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionRequestBuilder" /> class.
@@ -251,6 +255,28 @@ public sealed class FusionRequestBuilder
     }
 
     /// <summary>
+    ///     Sets dependency-aware focus scoping options.
+    /// </summary>
+    /// <param name="focusOptions">The focus options, or <c>null</c> to disable.</param>
+    /// <returns>The current builder instance.</returns>
+    public FusionRequestBuilder WithFocusOptions(FocusOptions? focusOptions)
+    {
+        _focusOptions = focusOptions;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets git change-scoped fusion options.
+    /// </summary>
+    /// <param name="changeOptions">The change options, or <c>null</c> to disable.</param>
+    /// <returns>The current builder instance.</returns>
+    public FusionRequestBuilder WithChangeOptions(ChangeOptions? changeOptions)
+    {
+        _changeOptions = changeOptions;
+        return this;
+    }
+
+    /// <summary>
     ///     Builds the fusion request after resolving extensions and exclusions.
     /// </summary>
     /// <returns>A configured <see cref="FusionRequest" />.</returns>
@@ -274,7 +300,7 @@ public sealed class FusionRequestBuilder
 
         var collection = ResolveCollectionOptions();
 
-        return new FusionRequest(collection, _reductionOptions, _emissionOptions, _inMemory);
+        return new FusionRequest(collection, _reductionOptions, _emissionOptions, _inMemory, _focusOptions, _changeOptions);
     }
 
     private CollectionOptions ResolveCollectionOptions()

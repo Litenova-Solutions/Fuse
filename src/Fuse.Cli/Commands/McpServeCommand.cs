@@ -42,8 +42,18 @@ public sealed class McpServeCommand
                     Version = "2.0.0"
                 };
                 options.ServerInstructions =
-                    "Fuse is a codebase context optimizer. Use fuse_dotnet for .NET projects or fuse_generic " +
-                    "for other templates. You can also read fuse:// resources for optimized views of codebases.";
+                    "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +
+                    "TOOLS:\n" +
+                    "- fuse_dotnet: Optimized for .NET/C# projects. Supports skeleton mode (signatures only), " +
+                    "semantic markers (structural annotations), focus scoping (dependency-aware subset), " +
+                    "change scoping (git-diff-driven subset), and pattern summary (convention detection).\n" +
+                    "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n\n" +
+                    "RECOMMENDED WORKFLOW:\n" +
+                    "1. Call fuse_dotnet with skeleton=true to get an architectural overview (low token cost).\n" +
+                    "2. Identify the relevant area from the skeleton.\n" +
+                    "3. Call fuse_dotnet with focus=\"{TypeName}\" to get full content for that area plus dependencies.\n" +
+                    "4. For PR review, call fuse_dotnet with changedSince=\"{baseBranch}\" to scope to changed files.\n" +
+                    "5. Use all=true for maximum token reduction when reviewing logic rather than exact syntax.";
             })
             .WithStdioServerTransport()
             .WithTools<FuseTools>()

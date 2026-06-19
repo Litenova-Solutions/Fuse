@@ -254,6 +254,7 @@ paket-files/
 # Local tooling
 .claude/
 .devcontainer/
+.fuse/
 
 # NuGet tool pack output
 **/nupkg/

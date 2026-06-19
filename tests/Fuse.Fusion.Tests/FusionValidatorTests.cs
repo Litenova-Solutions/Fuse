@@ -81,14 +81,91 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
             changes: new Fuse.Analysis.Changes.ChangeOptions("main"));
 
         var errors = validator.Validate(request);
 
-        Assert.Contains(errors, e => e.Contains("FocusOptions and ChangeOptions cannot both be set"));
+        Assert.Contains(errors, e => e.Contains("mutually exclusive"));
+    }
+
+    [Fact]
+    public void Validate_QueryAndFocus_ReturnsError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
+            query: new Fuse.Analysis.Search.QueryOptions("payment"));
+
+        var errors = validator.Validate(request);
+
+        Assert.Contains(errors, e => e.Contains("mutually exclusive"));
+    }
+
+    [Fact]
+    public void Validate_QueryAndChanges_ReturnsError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            changes: new Fuse.Analysis.Changes.ChangeOptions("HEAD"),
+            query: new Fuse.Analysis.Search.QueryOptions("payment"));
+
+        var errors = validator.Validate(request);
+
+        Assert.Contains(errors, e => e.Contains("mutually exclusive"));
+    }
+
+    [Fact]
+    public void Validate_AllThreeScopingModes_ReturnsError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo"),
+            changes: new Fuse.Analysis.Changes.ChangeOptions("HEAD"),
+            query: new Fuse.Analysis.Search.QueryOptions("payment"));
+
+        var errors = validator.Validate(request);
+
+        Assert.Contains(errors, e => e.Contains("mutually exclusive"));
+    }
+
+    [Fact]
+    public void Validate_QueryDepthZero_ReturnsError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            query: new Fuse.Analysis.Search.QueryOptions("payment", TopFiles: 10, Depth: 0));
+
+        var errors = validator.Validate(request);
+        Assert.Contains("QueryOptions.Depth must be between 1 and 10.", errors);
+    }
+
+    [Fact]
+    public void Validate_EmptyQuery_ReturnsError()
+    {
+        var validator = new FusionValidator(new StubFileSystem(exists: true));
+        var request = new FusionRequest(
+            new CollectionOptions(@"C:\src"),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
+            new Fuse.Emission.Models.EmissionOptions(),
+            query: new Fuse.Analysis.Search.QueryOptions("   "));
+
+        var errors = validator.Validate(request);
+        Assert.Contains(errors, e => e.Contains("QueryOptions.Query is required when query scoping"));
     }
 
     [Fact]
@@ -97,7 +174,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 0));
 
@@ -111,7 +188,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 11));
 
@@ -125,7 +202,7 @@ public sealed class FusionValidatorTests
         var validator = new FusionValidator(new StubFileSystem(exists: true));
         var request = new FusionRequest(
             new CollectionOptions(@"C:\src"),
-            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions(),
             focus: new Fuse.Analysis.Dependencies.FocusOptions("Foo", 1));
 
@@ -136,7 +213,7 @@ public sealed class FusionValidatorTests
     private static FusionRequest CreateRequest(string sourceDirectory) =>
         new(
             new CollectionOptions(sourceDirectory),
-            new Fuse.Reduction.Options.ReductionOptions(),
+            new Fuse.Languages.Abstractions.Options.ReductionOptions(),
             new Fuse.Emission.Models.EmissionOptions());
 
     private sealed class StubFileSystem(bool exists) : IFileSystem
@@ -150,6 +227,9 @@ public sealed class FusionValidatorTests
 
         public Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default) =>
             Task.FromResult(string.Empty);
+
+        public Task WriteAllTextAsync(string path, string contents, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
 
         public FileInfo GetFileInfo(string path) => new(path);
 

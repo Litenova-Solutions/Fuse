@@ -13,9 +13,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-
+        <PackageReference Include="System.IO.Hashing" Version="9.0.0"/>
         <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
-
+        <ProjectReference Include="..\Fuse.Languages.Abstractions\Fuse.Languages.Abstractions.csproj"/>
     </ItemGroup>
 
 </Project>

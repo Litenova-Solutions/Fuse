@@ -1,10 +1,11 @@
 using System.ComponentModel;
 using Fuse.Analysis.Changes;
 using Fuse.Analysis.Dependencies;
+using Fuse.Analysis.Search;
 using Fuse.Collection.Models;
 using Fuse.Emission.Models;
 using Fuse.Fusion;
-using Fuse.Reduction.Options;
+using Fuse.Languages.Abstractions.Options;
 using ModelContextProtocol.Server;
 
 namespace Fuse.Cli.Mcp;
@@ -16,10 +17,215 @@ namespace Fuse.Cli.Mcp;
 public sealed class FuseTools
 {
     /// <summary>
+    ///     Emits a structural skeleton of a .NET codebase for low-token architecture review.
+    /// </summary>
+    [McpServerTool(Name = "fuse_skeleton", ReadOnly = true)]
+    [Description("Emits structural skeleton only (signatures, no bodies) for a .NET codebase. Use for cold-start architecture review.")]
+    public static Task<string> FuseSkeletonAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        [Description("Absolute or relative path to the source directory.")] string path,
+        [Description("Directory names to skip.")] string[]? excludeDirectories = null,
+        [Description("File names to exclude.")] string[]? excludeFiles = null,
+        [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
+        [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        [Description("Prepend structural annotation comments.")] bool semanticMarkers = false,
+        [Description("Apply all C# reduction options.")] bool all = true,
+        [Description("Hard token limit.")] int? maxTokens = null,
+        [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        CancellationToken cancellationToken = default) =>
+        FuseToolHelpers.ExecuteDotNetAsync(
+            orchestrator,
+            templateRegistry,
+            path,
+            builder =>
+            {
+                builder
+                    .WithEmissionOptions(new EmissionOptions
+                    {
+                        MaxTokens = maxTokens,
+                        ShowTokenCount = false,
+                        TrackTopTokenFiles = trackTopTokenFiles,
+                        IncludeManifest = true
+                    })
+                    .WithReductionOptions(new ReductionOptions(
+                        removeCSharpComments: all,
+                        removeCSharpUsings: all,
+                        removeCSharpNamespaces: all,
+                        removeCSharpRegions: all,
+                        aggressiveCSharpReduction: all,
+                        skeletonMode: true,
+                        includeSemanticMarkers: semanticMarkers,
+                        enableRedaction: true));
+
+                FuseToolHelpers.ApplyCommonFilters(
+                    builder,
+                    null, null, null,
+                    excludeDirectories, excludeFiles, excludePatterns,
+                    excludeTestProjects: excludeTestProjects);
+            },
+            trackTopTokenFiles,
+            cancellationToken);
+
+    /// <summary>
+    ///     Scopes fusion to a type, file, or directory and its dependencies.
+    /// </summary>
+    [McpServerTool(Name = "fuse_focus", ReadOnly = true)]
+    [Description("Scopes fusion to a type name, filename, or path plus dependency traversal. Use after skeleton review to drill into an area.")]
+    public static Task<string> FuseFocusAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        [Description("Absolute or relative path to the source directory.")] string path,
+        [Description("Type name, filename, or path to scope around.")] string focus,
+        [Description("Dependency traversal depth.")] int depth = 1,
+        [Description("Directory names to skip.")] string[]? excludeDirectories = null,
+        [Description("File names to exclude.")] string[]? excludeFiles = null,
+        [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
+        [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        [Description("Apply all C# reduction options.")] bool all = false,
+        [Description("Hard token limit.")] int? maxTokens = null,
+        [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        CancellationToken cancellationToken = default) =>
+        FuseToolHelpers.ExecuteDotNetAsync(
+            orchestrator,
+            templateRegistry,
+            path,
+            builder =>
+            {
+                builder
+                    .WithEmissionOptions(new EmissionOptions
+                    {
+                        MaxTokens = maxTokens,
+                        ShowTokenCount = false,
+                        TrackTopTokenFiles = trackTopTokenFiles,
+                        IncludeManifest = true
+                    })
+                    .WithReductionOptions(new ReductionOptions(
+                        removeCSharpComments: all,
+                        removeCSharpUsings: all,
+                        removeCSharpNamespaces: all,
+                        removeCSharpRegions: all,
+                        aggressiveCSharpReduction: all,
+                        enableRedaction: true))
+                    .WithFocusOptions(new FocusOptions(focus, depth));
+
+                FuseToolHelpers.ApplyCommonFilters(
+                    builder,
+                    null, null, null,
+                    excludeDirectories, excludeFiles, excludePatterns,
+                    excludeTestProjects: excludeTestProjects);
+            },
+            trackTopTokenFiles,
+            cancellationToken);
+
+    /// <summary>
+    ///     Scopes fusion to files ranked by BM25 relevance to a query.
+    /// </summary>
+    [McpServerTool(Name = "fuse_search", ReadOnly = true)]
+    [Description("BM25 query-scoped fusion for a .NET codebase. Returns the most relevant files plus dependency expansion.")]
+    public static Task<string> FuseSearchAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        [Description("Absolute or relative path to the source directory.")] string path,
+        [Description("Natural-language or keyword query.")] string query,
+        [Description("Number of top-ranked seed files.")] int queryTop = 10,
+        [Description("Dependency traversal depth after seed selection.")] int depth = 1,
+        [Description("Directory names to skip.")] string[]? excludeDirectories = null,
+        [Description("File names to exclude.")] string[]? excludeFiles = null,
+        [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
+        [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        [Description("Apply all C# reduction options.")] bool all = false,
+        [Description("Hard token limit.")] int? maxTokens = null,
+        [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        CancellationToken cancellationToken = default) =>
+        FuseToolHelpers.ExecuteDotNetAsync(
+            orchestrator,
+            templateRegistry,
+            path,
+            builder =>
+            {
+                builder
+                    .WithEmissionOptions(new EmissionOptions
+                    {
+                        MaxTokens = maxTokens,
+                        ShowTokenCount = false,
+                        TrackTopTokenFiles = trackTopTokenFiles,
+                        IncludeManifest = true
+                    })
+                    .WithReductionOptions(new ReductionOptions(
+                        removeCSharpComments: all,
+                        removeCSharpUsings: all,
+                        removeCSharpNamespaces: all,
+                        removeCSharpRegions: all,
+                        aggressiveCSharpReduction: all,
+                        enableRedaction: true))
+                    .WithQueryOptions(new QueryOptions(query, queryTop, depth));
+
+                FuseToolHelpers.ApplyCommonFilters(
+                    builder,
+                    null, null, null,
+                    excludeDirectories, excludeFiles, excludePatterns,
+                    excludeTestProjects: excludeTestProjects);
+            },
+            trackTopTokenFiles,
+            cancellationToken);
+
+    /// <summary>
+    ///     Scopes fusion to files changed since a git ref.
+    /// </summary>
+    [McpServerTool(Name = "fuse_changes", ReadOnly = true)]
+    [Description("Change-scoped fusion for a .NET codebase. Returns files changed since a git ref plus optional dependents.")]
+    public static Task<string> FuseChangesAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        [Description("Absolute or relative path to the source directory.")] string path,
+        [Description("Git ref (branch, commit, HEAD~N) to diff against.")] string changedSince,
+        [Description("Include first-degree dependents of changed files.")] bool includeDependents = true,
+        [Description("Directory names to skip.")] string[]? excludeDirectories = null,
+        [Description("File names to exclude.")] string[]? excludeFiles = null,
+        [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
+        [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        [Description("Apply all C# reduction options.")] bool all = false,
+        [Description("Hard token limit.")] int? maxTokens = null,
+        [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        CancellationToken cancellationToken = default) =>
+        FuseToolHelpers.ExecuteDotNetAsync(
+            orchestrator,
+            templateRegistry,
+            path,
+            builder =>
+            {
+                builder
+                    .WithEmissionOptions(new EmissionOptions
+                    {
+                        MaxTokens = maxTokens,
+                        ShowTokenCount = false,
+                        TrackTopTokenFiles = trackTopTokenFiles,
+                        IncludeManifest = true
+                    })
+                    .WithReductionOptions(new ReductionOptions(
+                        removeCSharpComments: all,
+                        removeCSharpUsings: all,
+                        removeCSharpNamespaces: all,
+                        removeCSharpRegions: all,
+                        aggressiveCSharpReduction: all,
+                        enableRedaction: true))
+                    .WithChangeOptions(new ChangeOptions(changedSince, includeDependents));
+
+                FuseToolHelpers.ApplyCommonFilters(
+                    builder,
+                    null, null, null,
+                    excludeDirectories, excludeFiles, excludePatterns,
+                    excludeTestProjects: excludeTestProjects);
+            },
+            trackTopTokenFiles,
+            cancellationToken);
+
+    /// <summary>
     ///     Fuses a .NET codebase and returns optimized in-memory context.
     /// </summary>
     [McpServerTool(Name = "fuse_dotnet", ReadOnly = true)]
-    [Description("Generates optimized .NET codebase context (equivalent to fuse dotnet). Returns XML-formatted file contents.")]
+    [Description("Full-control .NET fusion with all options (skeleton, focus, change scoping, pattern summary). Returns XML-formatted file contents.")]
     public static async Task<string> FuseDotNetAsync(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
@@ -45,23 +251,21 @@ public sealed class FuseTools
         [Description("Dependency traversal depth.")] int depth = 1,
         [Description("Git ref to scope to changed files.")] string? changedSince = null,
         [Description("Include first-degree dependents of changed files.")] bool includeDependents = true,
+        [Description("BM25 query to scope fusion.")] string? query = null,
+        [Description("Number of top-ranked seed files for query scoping.")] int queryTop = 10,
         [Description("Detect and append pattern summary.")] bool patternSummary = false,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        [Description("Include git churn stats in the manifest.")] bool gitStats = false,
         CancellationToken cancellationToken = default)
     {
         var resolvedPath = Path.GetFullPath(path);
         if (!Directory.Exists(resolvedPath))
-        {
             return $"Error: Directory not found: {resolvedPath}";
-        }
 
         try
         {
-            var builder = new FusionRequestBuilder(templateRegistry)
-                .WithSourceDirectory(resolvedPath)
-                .WithTemplate(ProjectTemplate.DotNet)
-                .WithInMemory(true)
+            var builder = FuseToolHelpers.CreateDotNetBuilder(templateRegistry, resolvedPath)
                 .WithMaxFileSizeKb(maxFileSizeKb)
                 .WithCollectionBehavior(
                     excludeTestProjects: excludeTestProjects,
@@ -70,7 +274,9 @@ public sealed class FuseTools
                 {
                     MaxTokens = maxTokens,
                     ShowTokenCount = false,
-                    TrackTopTokenFiles = trackTopTokenFiles
+                    TrackTopTokenFiles = trackTopTokenFiles,
+                    IncludeManifest = true,
+                    IncludeGitStats = gitStats
                 })
                 .WithReductionOptions(new ReductionOptions(
                     removeCSharpComments: all || removeCSharpComments,
@@ -80,21 +286,24 @@ public sealed class FuseTools
                     aggressiveCSharpReduction: all || aggressive,
                     skeletonMode: skeleton,
                     includeSemanticMarkers: semanticMarkers,
-                    includePatternSummary: patternSummary));
+                    includePatternSummary: patternSummary,
+                    enableRedaction: true));
 
             if (!string.IsNullOrWhiteSpace(focus))
-            {
                 builder.WithFocusOptions(new FocusOptions(focus, depth));
-            }
 
             if (!string.IsNullOrWhiteSpace(changedSince))
-            {
                 builder.WithChangeOptions(new ChangeOptions(changedSince, includeDependents));
-            }
 
-            ApplyOptionalFilters(builder, onlyExtensions, includeExtensions, excludeExtensions, excludeDirectories, excludeFiles, excludePatterns);
+            if (!string.IsNullOrWhiteSpace(query))
+                builder.WithQueryOptions(new QueryOptions(query, queryTop, depth));
 
-            return await ExecuteInMemoryAsync(orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
+            FuseToolHelpers.ApplyOptionalFilters(
+                builder, onlyExtensions, includeExtensions, excludeExtensions,
+                excludeDirectories, excludeFiles, excludePatterns);
+
+            return await FuseToolHelpers.ExecuteInMemoryAsync(
+                orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -124,13 +333,12 @@ public sealed class FuseTools
         [Description("Include first-degree dependents of changed files.")] bool includeDependents = true,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        [Description("Include git churn stats in the manifest.")] bool gitStats = false,
         CancellationToken cancellationToken = default)
     {
         var resolvedPath = Path.GetFullPath(path);
         if (!Directory.Exists(resolvedPath))
-        {
             return $"Error: Directory not found: {resolvedPath}";
-        }
 
         ProjectTemplate? parsedTemplate = null;
         if (!string.IsNullOrWhiteSpace(template))
@@ -154,101 +362,28 @@ public sealed class FuseTools
                 {
                     MaxTokens = maxTokens,
                     ShowTokenCount = false,
-                    TrackTopTokenFiles = trackTopTokenFiles
-                });
+                    TrackTopTokenFiles = trackTopTokenFiles,
+                    IncludeManifest = true,
+                    IncludeGitStats = gitStats
+                })
+                .WithReductionOptions(new ReductionOptions(enableRedaction: true));
 
             if (parsedTemplate.HasValue)
-            {
                 builder.WithTemplate(parsedTemplate.Value);
-            }
 
             if (!string.IsNullOrWhiteSpace(changedSince))
-            {
                 builder.WithChangeOptions(new ChangeOptions(changedSince, includeDependents));
-            }
 
-            ApplyOptionalFilters(builder, onlyExtensions, includeExtensions, excludeExtensions, excludeDirectories, excludeFiles, excludePatterns);
+            FuseToolHelpers.ApplyOptionalFilters(
+                builder, onlyExtensions, includeExtensions, excludeExtensions,
+                excludeDirectories, excludeFiles, excludePatterns);
 
-            return await ExecuteInMemoryAsync(orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
+            return await FuseToolHelpers.ExecuteInMemoryAsync(
+                orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
         }
         catch (Exception ex)
         {
             return $"Error during fusion: {ex.Message}";
         }
     }
-
-    private static void ApplyOptionalFilters(
-        FusionRequestBuilder builder,
-        string[]? onlyExtensions,
-        string[]? includeExtensions,
-        string[]? excludeExtensions,
-        string[]? excludeDirectories,
-        string[]? excludeFiles,
-        string[]? excludePatterns)
-    {
-        if (onlyExtensions?.Length > 0)
-        {
-            builder.WithOnlyExtensions(NormalizeExtensions(onlyExtensions));
-        }
-
-        if (includeExtensions?.Length > 0)
-        {
-            builder.WithIncludeExtensions(NormalizeExtensions(includeExtensions));
-        }
-
-        if (excludeExtensions?.Length > 0)
-        {
-            builder.WithExcludeExtensions(NormalizeExtensions(excludeExtensions));
-        }
-
-        if (excludeDirectories?.Length > 0)
-        {
-            builder.WithExcludeDirectories(excludeDirectories);
-        }
-
-        if (excludeFiles?.Length > 0)
-        {
-            builder.WithExcludeFiles(excludeFiles);
-        }
-
-        if (excludePatterns?.Length > 0)
-        {
-            builder.WithExcludePatterns(excludePatterns);
-        }
-    }
-
-    private static string[] NormalizeExtensions(IEnumerable<string> extensions) =>
-        extensions.Select(e => e.StartsWith('.') ? e : $".{e}").ToArray();
-
-    private static async Task<string> ExecuteInMemoryAsync(
-        FusionOrchestrator orchestrator,
-        FusionRequest request,
-        bool trackTopTokenFiles,
-        CancellationToken cancellationToken)
-    {
-        var result = await orchestrator.FuseAsync(request, cancellationToken);
-
-        if (string.IsNullOrEmpty(result.InMemoryContent))
-        {
-            return "No files found matching the criteria.";
-        }
-
-        if (!trackTopTokenFiles)
-        {
-            return result.InMemoryContent;
-        }
-
-        var top = result.TopTokenFiles.Count > 0
-            ? string.Join(", ", result.TopTokenFiles.Select(f =>
-                $"{Path.GetFileName(f.Path)} ({FormatTokenCount(f.Count)})"))
-            : "none";
-
-        var statsLine =
-            $"\n<!-- fuse: {result.ProcessedFileCount}/{result.TotalFileCount} files | ~{FormatTokenCount(result.TotalTokens)} tokens | {result.Duration.TotalSeconds:F1}s | top: {top} -->";
-
-        return result.InMemoryContent + statsLine;
-    }
-
-    private static string FormatTokenCount(long count) =>
-        count >= 1000 ? $"{count / 1000.0:F0}k" : count.ToString();
 }

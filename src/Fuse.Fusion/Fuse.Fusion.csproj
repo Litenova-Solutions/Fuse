@@ -11,6 +11,9 @@
     <ItemGroup>
         <ProjectReference Include="..\Fuse.Analysis\Fuse.Analysis.csproj"/>
         <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
+        <ProjectReference Include="..\Fuse.Formats\Fuse.Formats.csproj"/>
+        <ProjectReference Include="..\Fuse.Languages.Abstractions\Fuse.Languages.Abstractions.csproj"/>
+        <ProjectReference Include="..\Fuse.Languages.CSharp\Fuse.Languages.CSharp.csproj"/>
         <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
         <ProjectReference Include="..\Fuse.Emission\Fuse.Emission.csproj"/>
     </ItemGroup>

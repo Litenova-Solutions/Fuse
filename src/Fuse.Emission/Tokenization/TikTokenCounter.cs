@@ -4,30 +4,30 @@ using TiktokenSharp;
 namespace Fuse.Emission.Tokenization;
 
 /// <summary>
-///     Counts tokens using the TikToken <c>cl100k_base</c> encoding used by GPT-4 and GPT-3.5-turbo.
+///     Counts tokens using a TikToken encoding.
 /// </summary>
 public sealed class TikTokenCounter : ITokenCounter
 {
-    private static readonly Lazy<TikTokenCounter> LazyInstance = new(() => new TikTokenCounter());
+    private static readonly Lazy<TikTokenCounter> DefaultInstance =
+        new(() => new TikTokenCounter(TokenizerFactory.DefaultModel));
 
     private readonly TikToken _tokenizer;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="TikTokenCounter" /> class.
     /// </summary>
-    private TikTokenCounter()
+    /// <param name="modelOrEncoding">A model name or TikToken encoding identifier.</param>
+    public TikTokenCounter(string modelOrEncoding)
     {
-        _tokenizer = TikToken.GetEncoding("cl100k_base");
+        var encoding = TokenizerFactory.ResolveEncoding(modelOrEncoding);
+        _tokenizer = TikToken.GetEncoding(encoding);
     }
 
     /// <summary>
-    ///     Gets the shared singleton instance.
+    ///     Gets the shared singleton using the default <c>o200k_base</c> encoding.
     /// </summary>
-    public static TikTokenCounter Instance => LazyInstance.Value;
+    public static TikTokenCounter Instance => DefaultInstance.Value;
 
     /// <inheritdoc />
-    public int Count(string content)
-    {
-        return _tokenizer.Encode(content).Count;
-    }
+    public int Count(string content) => _tokenizer.Encode(content).Count;
 }

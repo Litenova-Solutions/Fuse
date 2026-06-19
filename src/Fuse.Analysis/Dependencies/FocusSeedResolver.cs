@@ -1,4 +1,5 @@
-using System.Text.RegularExpressions;
+using Fuse.Languages.Abstractions;
+using Fuse.Languages.Abstractions.Dependencies;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
 
@@ -9,13 +10,23 @@ namespace Fuse.Analysis.Dependencies;
 /// </summary>
 public sealed class FocusSeedResolver
 {
+    private readonly CapabilityRegistry<ITypeNameLocator> _typeLocators;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="FocusSeedResolver" /> class.
+    /// </summary>
+    public FocusSeedResolver(CapabilityRegistry<ITypeNameLocator> typeLocators)
+    {
+        _typeLocators = typeLocators;
+    }
+
     /// <summary>
     ///     Resolves a seed string to matching file paths using path, filename, type name, and directory prefix strategies.
     /// </summary>
     public async Task<HashSet<string>> ResolveSeedPathsAsync(
         string seed,
         IReadOnlyList<SourceFile> files,
-        IFileSystem fileSystem,
+        ISourceContentProvider contentProvider,
         CancellationToken cancellationToken = default)
     {
         var normalizedSeed = seed.Replace('\\', '/').Trim('/');
@@ -39,11 +50,15 @@ public sealed class FocusSeedResolver
         if (result.Count > 0)
             return result;
 
-        foreach (var file in files.Where(f => f.IsCSharp))
+        foreach (var file in files)
         {
+            var locator = _typeLocators.TryResolve(file.Extension);
+            if (locator is null)
+                continue;
+
             cancellationToken.ThrowIfCancellationRequested();
-            var content = await fileSystem.ReadAllTextAsync(file.FullPath, cancellationToken);
-            if (Regex.IsMatch(content, $@"\b(class|interface|record|struct)\s+{Regex.Escape(normalizedSeed)}\b"))
+            var content = await contentProvider.GetContentAsync(file, cancellationToken);
+            if (locator.ContainsTypeDefinition(content, normalizedSeed))
                 result.Add(file.NormalizedRelativePath);
         }
 
@@ -63,10 +78,14 @@ public sealed class FocusSeedResolver
     /// <summary>
     ///     Expands seed paths by BFS up to the specified depth using the dependency graph.
     /// </summary>
-    public HashSet<string> ExpandPaths(DependencyGraph graph, HashSet<string> seedPaths, int depth)
+    public PathExpansionResult ExpandPaths(DependencyGraph graph, HashSet<string> seedPaths, int depth)
     {
         var included = new HashSet<string>(seedPaths, StringComparer.OrdinalIgnoreCase);
         var frontier = new HashSet<string>(seedPaths, StringComparer.OrdinalIgnoreCase);
+        var provenance = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var seed in seedPaths)
+            provenance[seed] = [seed];
 
         for (var hop = 0; hop < depth; hop++)
         {
@@ -77,6 +96,9 @@ public sealed class FocusSeedResolver
                 if (!graph.FileReferences.TryGetValue(path, out var referencedTypes))
                     continue;
 
+                if (!provenance.TryGetValue(path, out var parentChain))
+                    parentChain = [path];
+
                 foreach (var typeName in referencedTypes)
                 {
                     if (!graph.TypeIndex.TryGetValue(typeName, out var definingPaths))
@@ -84,8 +106,12 @@ public sealed class FocusSeedResolver
 
                     foreach (var definingPath in definingPaths)
                     {
-                        if (included.Add(definingPath))
-                            nextFrontier.Add(definingPath);
+                        if (!included.Add(definingPath))
+                            continue;
+
+                        var chain = new List<string>(parentChain) { definingPath };
+                        provenance[definingPath] = chain;
+                        nextFrontier.Add(definingPath);
                     }
                 }
             }
@@ -95,6 +121,6 @@ public sealed class FocusSeedResolver
                 break;
         }
 
-        return included;
+        return new PathExpansionResult(included, provenance);
     }
 }

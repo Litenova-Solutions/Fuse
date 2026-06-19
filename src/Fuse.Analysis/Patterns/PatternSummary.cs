@@ -1,3 +1,5 @@
+using Fuse.Languages.Abstractions.Patterns;
+
 namespace Fuse.Analysis.Patterns;
 
 /// <summary>

@@ -22,6 +22,11 @@ public interface IOutputWriter
     Task WriteEntryAsync(FusedContent content, CancellationToken cancellationToken = default);
 
     /// <summary>
+    ///     Writes content prepended before the first file entry (for example a manifest header).
+    /// </summary>
+    Task WritePrefixAsync(string content, CancellationToken cancellationToken = default);
+
+    /// <summary>
     ///     Finalizes the current output part and begins a new part for split emission.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>

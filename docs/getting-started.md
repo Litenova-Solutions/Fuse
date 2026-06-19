@@ -1,6 +1,6 @@
 # Getting Started with Fuse
 
-Fuse merges source code files into a single, token-optimized output file. It is designed for preparing codebases for LLM context windows, documentation, and code analysis.
+Fuse merges source files into a single, token-optimized output for LLM context windows, documentation, and code analysis. Version 2.0 adds dependency-aware scoping, secret redaction, and a split MCP tool surface for AI agents.
 
 ---
 
@@ -8,63 +8,63 @@ Fuse merges source code files into a single, token-optimized output file. It is 
 
 - [.NET SDK 10.0](https://dotnet.microsoft.com/download) or later
 - Windows, macOS, or Linux
+- Git (optional, required for change scoping and git stats)
 
 ---
 
-## Install as a Global Tool
+## Install
 
-Fuse ships as a .NET global tool. After installing, the `fuse` command is available from any terminal.
+Fuse ships as a .NET global tool published as `Fuse`.
 
-### From a Published Package
-
-When a package is published to NuGet:
+### From NuGet
 
 ```bash
 dotnet tool install -g Fuse
 ```
 
-### From Source (Windows)
+Run without a global install:
 
-Clone the repository, then run the install script from the repo root:
+```bash
+dnx Fuse -- --help
+```
+
+### From source (Windows)
+
+Clone the repository and run from the repo root:
 
 ```cmd
 install.bat
 ```
 
-The script packs `Fuse.Cli`, uninstalls any previous global install, and installs from the local nupkg output.
-
-### From Source (Any OS)
+### From source (any OS)
 
 ```bash
-# Pack the tool
 dotnet pack src/Fuse.Cli/Fuse.Cli.csproj -c Release
-
-# Install globally from local source
 dotnet tool install -g Fuse --add-source src/Fuse.Cli/nupkg
 ```
 
-### Verify Installation
+### Verify
 
 ```bash
 fuse --help
 ```
 
-You should see the command list: default `fuse`, `fuse dotnet`, `fuse wiki`, and `fuse serve`.
+You should see: `fuse`, `fuse dotnet`, `fuse wiki`, `fuse init`, and `fuse serve`.
 
 ---
 
-## Build from Source
+## Build from source
 
 To work on Fuse without installing the global tool:
 
 ```bash
-git clone https://github.com/your-org/Fuse.git
+git clone https://github.com/Litenova-Solutions/Fuse.git
 cd Fuse
 dotnet build Fuse.sln
 dotnet run --project src/Fuse.Cli/Fuse.Cli.csproj -- --help
 ```
 
-To build, test, and check formatting the way CI does:
+CI-equivalent checks:
 
 ```bash
 dotnet restore Fuse.sln
@@ -75,11 +75,9 @@ dotnet format Fuse.sln --verify-no-changes
 
 ---
 
-## Your First Fusion
+## Your first fusion
 
-The fastest path is `fuse dotnet`, which applies the DotNet template with sensible defaults for C# projects.
-
-From your project root:
+The fastest path for .NET projects:
 
 ```bash
 fuse dotnet --directory ./src
@@ -87,74 +85,150 @@ fuse dotnet --directory ./src
 
 This command:
 
-1. Scans `./src` recursively
-2. Includes `.cs`, `.razor`, `.cshtml`, `.csproj`, and other DotNet template extensions
+1. Scans `./src` recursively with the DotNet template
+2. Includes `.cs`, `.razor`, `.cshtml`, `.csproj`, and related extensions
 3. Skips `bin`, `obj`, `.vs`, and other build artifacts
-4. Respects `.gitignore` rules
-5. Writes a fused output file to your Documents/Fuse folder
+4. Respects `.gitignore`
+5. Redacts secrets (default ON)
+6. Prepends a manifest header (default ON)
+7. Writes output to `Documents/Fuse`
 
-### Add Token Savings
-
-For maximum token reduction on a .NET codebase:
+### Maximum token savings
 
 ```bash
 fuse dotnet --directory ./src --all
 ```
 
-The `--all` flag removes C# comments, usings, namespaces, regions, and applies aggressive reduction.
+Removes C# comments, usings, namespaces, regions, and applies aggressive reduction.
 
-### Specify Output Location
+### Architecture overview
+
+```bash
+fuse dotnet --directory ./src --all --skeleton
+```
+
+Emits signatures only. Typically 80-90% fewer tokens than full fusion.
+
+### Custom output location
 
 ```bash
 fuse dotnet --directory ./src --output ./output --name my-context
 ```
 
-### Fuse a Non-.NET Project
+### Project config
 
-Use the generic command with explicit extensions:
+Scaffold a config file:
+
+```bash
+fuse init
+```
+
+Edit `fuse.json` to set defaults, then run commands without repeating flags:
+
+```bash
+fuse dotnet
+```
+
+Precedence: CLI flag > config file > built-in default.
+
+---
+
+## Non-.NET projects
+
+Use the generic command with a template or explicit extensions:
 
 ```bash
 fuse --directory ./my-app --only-extensions .py,.md,.yaml
 ```
 
-Or use the MCP `fuse_generic` tool with a template name. See [mcp-integration.md](mcp-integration.md).
+Or via MCP:
 
-### Fuse an Azure DevOps Wiki
+```
+fuse_generic(path="./my-app", template="Python")
+```
+
+Template list: [templates.md](templates.md).
+
+### Azure DevOps wiki
 
 ```bash
 fuse wiki --directory ./wiki-repo
 ```
 
-This includes only `.md` files and excludes `.attachments`.
+Includes only `.md` files.
 
 ---
 
-## Output Format
+## MCP for AI agents
 
-Fuse writes plain `.txt` files. Each source file is wrapped in XML tags:
+Start the server:
+
+```bash
+fuse serve
+```
+
+Add to Cursor (`.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "fuse": {
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Recommended agent workflow:
+
+1. `fuse_skeleton` for architecture
+2. `fuse_focus` or `fuse_search` to drill down
+3. `fuse_changes` for PR review
+
+Details: [mcp.md](mcp.md) and [agentic-workflows.md](agentic-workflows.md).
+
+---
+
+## Output format
+
+Default output is XML with a manifest header:
 
 ```xml
+<!-- fuse:manifest files=52 tokens=84000 ... -->
 <file path="src/Program.cs">
-public class Program
-{
-    public static void Main() { }
-}
+public class Program { }
 </file>
 ```
+
+Other formats: `--format markdown` or `--format json`.
 
 Output filenames encode metadata:
 
 | Scenario | Example |
 |----------|---------|
-| Default | `MyProject_2026-02-12_1430_554k.txt` |
-| With `--all` | `MyProject_all_2026-02-12_1430_320k.txt` |
+| Default | `MyProject_2026-06-19_1430_554k.txt` |
+| With `--all` | `MyProject_all_2026-06-19_1430_320k.txt` |
 | Multi-part | `MyProject_part1_800k.txt`, `MyProject_part2_554k.txt` |
 
 ---
 
-## Next Steps
+## Migrating from Fuse 1.x
 
-- [CLI Reference](cli-reference.md) for all commands and options
+Key changes in 2.0:
+
+- Default tokenizer is `o200k_base` (token counts will differ)
+- Secret redaction and manifest header are ON by default
+- MCP tools split into six focused tools
+
+Full migration table: [CHANGELOG.md](../CHANGELOG.md).
+
+---
+
+## Next steps
+
+- [CLI reference](cli-reference.md) for all commands and flags
+- [Features](features.md) for tier feature overview
 - [Templates](templates.md) for per-language defaults
-- [MCP Integration](mcp-integration.md) for AI agent setup
-- [Architecture](architecture.md) for how the pipeline works
+- [MCP tool catalog](mcp.md) for agent integration
+- [Architecture](architecture.md) for pipeline design

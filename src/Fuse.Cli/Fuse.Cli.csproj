@@ -6,14 +6,21 @@
         <Nullable>enable</Nullable>
         <AssemblyName>fuse</AssemblyName>
         <Version>2.0.0</Version>
-        <Authors>A. Shafie</Authors>
         <Product>Fuse</Product>
         <Description>A flexible file combining tool for developers</Description>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>fuse</ToolCommandName>
         <PackageId>Fuse</PackageId>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/Litenova-Solutions/Fuse</PackageProjectUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>mcp;dotnet-tool;llm;codebase;context;fusion;csharp;token-reduction</PackageTags>
         <PackageOutputPath>./nupkg</PackageOutputPath>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />

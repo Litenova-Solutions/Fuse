@@ -44,16 +44,21 @@ public sealed class McpServeCommand
                 options.ServerInstructions =
                     "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +
                     "TOOLS:\n" +
-                    "- fuse_dotnet: Optimized for .NET/C# projects. Supports skeleton mode (signatures only), " +
-                    "semantic markers (structural annotations), focus scoping (dependency-aware subset), " +
-                    "change scoping (git-diff-driven subset), and pattern summary (convention detection).\n" +
+                    "- fuse_skeleton: Structural skeleton only (signatures, no bodies). Start here for architecture review.\n" +
+                    "- fuse_focus: Dependency-aware scoping around a type, file, or path.\n" +
+                    "- fuse_search: BM25 query-scoped fusion with dependency expansion.\n" +
+                    "- fuse_changes: Git diff-scoped fusion for PR review.\n" +
+                    "- fuse_dotnet: Full-control .NET fusion with all options combined.\n" +
                     "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n\n" +
                     "RECOMMENDED WORKFLOW:\n" +
-                    "1. Call fuse_dotnet with skeleton=true to get an architectural overview (low token cost).\n" +
-                    "2. Identify the relevant area from the skeleton.\n" +
-                    "3. Call fuse_dotnet with focus=\"{TypeName}\" to get full content for that area plus dependencies.\n" +
-                    "4. For PR review, call fuse_dotnet with changedSince=\"{baseBranch}\" to scope to changed files.\n" +
-                    "5. Use all=true for maximum token reduction when reviewing logic rather than exact syntax.";
+                    "1. Call fuse_skeleton to get an architectural overview (low token cost).\n" +
+                    "2. Identify the relevant area from the skeleton manifest.\n" +
+                    "3. Call fuse_focus with focus=\"{TypeName}\" or fuse_search with query=\"{topic}\".\n" +
+                    "4. For PR review, call fuse_changes with changedSince=\"{baseBranch}\".\n" +
+                    "5. Use fuse_dotnet with all=true when you need maximum token reduction with full control.\n\n" +
+                    "RESOURCES:\n" +
+                    "- fuse://skeleton/{path}, fuse://focus/{path}/{seed}, fuse://search/{path}/{query}, fuse://changes/{path}/{since}\n" +
+                    "- fuse://{template}/{path} for template-based fusion with default options.";
             })
             .WithStdioServerTransport()
             .WithTools<FuseTools>()

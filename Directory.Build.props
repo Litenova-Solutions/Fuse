@@ -4,5 +4,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <Authors>Litenova Solutions</Authors>
+    <Company>Litenova Solutions</Company>
+    <Copyright>Copyright © Litenova Solutions 2026</Copyright>
+    <RepositoryUrl>https://github.com/Litenova-Solutions/Fuse.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 </Project>

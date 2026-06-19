@@ -1,23 +1,24 @@
 using DotMake.CommandLine;
 using Fuse.Analysis.Dependencies;
+using Fuse.Analysis.Search;
 using Fuse.Cli.Commands;
 using Fuse.Collection.Models;
 using Fuse.Fusion;
-using Fuse.Reduction.Options;
+using Fuse.Languages.Abstractions.Options;
 
 namespace Fuse.Cli.Commands;
 
 [CliCommand(Name = "dotnet", Description = "Fuse a .NET project, including C#, F#, and web files.", Parent = typeof(FuseCliCommand))]
 public sealed class DotNetCommand : CommandBase
 {
-    public DotNetCommand() : base(null!, null!, null!)
+    public DotNetCommand() : base(null!, null!, null!, null!)
     {
     }
 
     public DotNetCommand(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        Fuse.Cli.Services.IConsoleUI consoleUI) : base(orchestrator, templateRegistry, consoleUI)
+        Fuse.Cli.Services.IConsoleUI consoleUI, Fuse.Languages.Abstractions.CapabilityRegistry<Fuse.Languages.Abstractions.Skeleton.ISkeletonExtractor> skeletonExtractors) : base(orchestrator, templateRegistry, skeletonExtractors, consoleUI)
     {
     }
 
@@ -42,13 +43,23 @@ public sealed class DotNetCommand : CommandBase
                 aggressiveCSharpReduction: All || Aggressive,
                 minifyXmlFiles: MinifyXmlFiles,
                 minifyHtmlAndRazor: MinifyHtmlAndRazor,
-                skeletonMode: Skeleton,
+                skeletonMode: Skeleton || PublicApi,
                 includeSemanticMarkers: SemanticMarkers,
-                includePatternSummary: PatternSummary));
+                includePatternSummary: PatternSummary,
+                enableRedaction: !NoRedact,
+                includeRedactReport: RedactReport,
+                includeRouteMap: RouteMap,
+                publicApiMode: PublicApi,
+                includeProjectGraph: ProjectGraph));
 
         if (!string.IsNullOrWhiteSpace(Focus))
         {
             builder.WithFocusOptions(new FocusOptions(Focus, Depth));
+        }
+
+        if (!string.IsNullOrWhiteSpace(Query))
+        {
+            builder.WithQueryOptions(new QueryOptions(Query, QueryTop, Depth));
         }
 
         var request = builder.Build();
@@ -91,8 +102,23 @@ public sealed class DotNetCommand : CommandBase
     [CliOption(Required = false, Description = "Type name, filename, or relative directory to scope the fusion around.")]
     public string? Focus { get; set; }
 
-    [CliOption(Description = "Dependency traversal depth (1 = direct dependencies only).")]
+    [CliOption(Description = "Dependency traversal depth for focus or query scoping.")]
     public int Depth { get; set; } = 1;
+
+    [CliOption(Required = false, Description = "BM25 query to scope fusion to the most relevant files.")]
+    public string? Query { get; set; }
+
+    [CliOption(Description = "Number of top-ranked files to seed query scoping.")]
+    public int QueryTop { get; set; } = 10;
+
+    [CliOption(Description = "Prepend an ASP.NET route map to the output.")]
+    public bool RouteMap { get; set; } = false;
+
+    [CliOption(Description = "Emit only public and protected member skeletons.")]
+    public bool PublicApi { get; set; } = false;
+
+    [CliOption(Description = "Prepend a solution and project reference graph to the output.")]
+    public bool ProjectGraph { get; set; } = false;
 
     [CliOption(Description = "Detect and append cross-codebase pattern summary to output.")]
     public bool PatternSummary { get; set; } = false;

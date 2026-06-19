@@ -14,6 +14,7 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
 
     private readonly EmissionOptions _options;
     private readonly OutputNamingService _namingService;
+    private readonly IEntryFormatter _entryFormatter;
     private readonly string _baseFileName;
     private readonly List<string> _createdFilePaths = new();
     private readonly List<FileTokenInfo>? _fileTokenStats;
@@ -33,13 +34,17 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
     /// </summary>
     /// <param name="options">The emission options controlling output generation.</param>
     /// <param name="tokenCounter">The token counter for validation and tracking.</param>
-    public DiskOutputWriter(EmissionOptions options, ITokenCounter tokenCounter)
+    /// <param name="entryFormatter">The entry formatter for output blocks.</param>
+    public DiskOutputWriter(EmissionOptions options, ITokenCounter tokenCounter, IEntryFormatter entryFormatter)
     {
         _options = options;
         _ = tokenCounter;
+        _entryFormatter = entryFormatter;
         _namingService = new OutputNamingService();
         _baseFileName = _namingService.GetBaseFileName(options);
-        _fileTokenStats = options.TrackTopTokenFiles ? new List<FileTokenInfo>() : null;
+        _fileTokenStats = options.TrackTopTokenFiles || options.IncludeManifest
+            ? new List<FileTokenInfo>()
+            : null;
         _startTime = DateTime.Now;
         _tempFilePath = CreateTempFilePath(options.OutputDirectory);
 
@@ -49,6 +54,18 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
 
     /// <inheritdoc />
     public bool SupportsMultiPart => true;
+
+    /// <inheritdoc />
+    public async Task WritePrefixAsync(string content, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (_completed || string.IsNullOrEmpty(content))
+            return;
+
+        await _currentWriter!.WriteAsync(content);
+        await _currentWriter.FlushAsync(cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task WriteEntryAsync(FusedContent content, CancellationToken cancellationToken = default)
@@ -67,7 +84,7 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
 
         _fileTokenStats?.Add(new FileTokenInfo(content.NormalizedPath, content.TokenCount));
 
-        var entryText = FormatEntry(content);
+        var entryText = _entryFormatter.FormatEntry(content, _options);
         await _currentWriter!.WriteAsync(entryText);
         await _currentWriter.FlushAsync(cancellationToken);
 
@@ -144,7 +161,7 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
         }
 
         var duration = DateTime.Now - _startTime;
-        var topTokenFiles = BuildTopTokenFiles();
+        var topTokenFiles = OutputWriterHelpers.BuildTopTokenFiles(_fileTokenStats);
 
         return new FusionResult(
             _createdFilePaths,
@@ -153,7 +170,8 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
             _processedFileCount,
             0,
             duration,
-            topTokenFiles);
+            topTokenFiles,
+            emittedFileTokens: _options.IncludeManifest ? _fileTokenStats : null);
     }
 
     /// <inheritdoc />
@@ -195,45 +213,5 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
     {
         var tempFileName = Path.GetRandomFileName();
         return Path.Combine(outputDirectory, tempFileName);
-    }
-
-    private string FormatEntry(FusedContent content)
-    {
-        var sb = new StringBuilder();
-
-        if (_options.IncludeMetadata)
-        {
-            var fileInfo = content.SourceFile.FileInfo;
-            sb.AppendLine(
-                $"<file path=\"{content.NormalizedPath}\" size=\"{fileInfo.Length}\" modified=\"{fileInfo.LastWriteTimeUtc:O}\">");
-        }
-        else
-        {
-            sb.AppendLine($"<file path=\"{content.NormalizedPath}\">");
-        }
-
-        sb.Append(content.Content);
-
-        if (!content.Content.EndsWith('\n'))
-        {
-            sb.AppendLine();
-        }
-
-        sb.AppendLine("</file>");
-
-        return sb.ToString();
-    }
-
-    private IReadOnlyList<FileTokenInfo> BuildTopTokenFiles()
-    {
-        if (_fileTokenStats is null)
-        {
-            return Array.Empty<FileTokenInfo>();
-        }
-
-        return _fileTokenStats
-            .OrderByDescending(f => f.Count)
-            .Take(5)
-            .ToList();
     }
 }

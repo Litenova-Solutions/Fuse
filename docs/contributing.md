@@ -9,7 +9,7 @@ Thank you for contributing to Fuse. This guide covers setup, development workflo
 ### Clone and Build
 
 ```bash
-git clone https://github.com/your-org/Fuse.git
+git clone https://github.com/Litenova-Solutions/Fuse.git
 cd Fuse
 dotnet restore Fuse.sln
 dotnet build Fuse.sln

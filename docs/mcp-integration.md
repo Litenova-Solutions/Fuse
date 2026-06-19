@@ -1,28 +1,77 @@
 # MCP Integration
 
-Fuse can run as a Model Context Protocol (MCP) server, allowing AI agents to generate optimized codebase context on demand. The MCP surface in Fuse 2.0 replaces the legacy `get_optimized_context` tool with two full-parity tools: `fuse_dotnet` and `fuse_generic`.
+Fuse runs as a Model Context Protocol (MCP) server, allowing AI agents to generate optimized codebase context on demand. Version 2.0 replaces the legacy single tool with six focused tools and five resource URI patterns.
+
+**Tool catalog and parameters:** [mcp.md](mcp.md)
+
+**Agent workflows:** [agentic-workflows.md](agentic-workflows.md)
 
 ---
 
-## Starting the Server
+## Starting the server
 
 ```bash
 fuse serve
 ```
 
-This starts a persistent process that communicates via stdio using JSON-RPC. All logging is redirected to stderr. stdout carries only MCP protocol messages.
+Communicates via stdio using JSON-RPC. All logging goes to stderr; stdout carries only MCP protocol messages.
 
-The server advertises these instructions to connected agents:
+Install the global tool first:
 
-> Fuse is a codebase context optimizer for AI-assisted workflows. Use fuse_dotnet for .NET/C# projects (skeleton, focus, change scoping, pattern summary) or fuse_generic for other templates.
+```bash
+dotnet tool install -g Fuse
+```
+
+Or run without a global install:
+
+```bash
+dnx Fuse -- serve
+```
+
+The server advertises workflow instructions to connected agents (skeleton, focus, search, changes, full control).
 
 ---
 
-## Client Configuration
+## Client configuration
 
-### VS Code / GitHub Copilot
+The `fuse` command must be on your PATH, or use the full path in MCP config.
 
-Add to your MCP settings (`.vscode/mcp.json` or user-level settings):
+### Claude Code
+
+Add to `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "fuse": {
+      "type": "stdio",
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Or: `claude mcp add fuse --scope project -- fuse serve`
+
+### Cursor
+
+Add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "fuse": {
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+### GitHub Copilot (VS Code)
+
+Add to `.vscode/mcp.json`:
 
 ```json
 {
@@ -35,8 +84,6 @@ Add to your MCP settings (`.vscode/mcp.json` or user-level settings):
   }
 }
 ```
-
-The `fuse` command must be on your PATH. Install via `dotnet tool install -g Fuse` or from source per [getting-started.md](getting-started.md).
 
 ### Claude Desktop
 
@@ -53,205 +100,76 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
-### Cursor
+---
 
-Add to your MCP configuration:
+## Tools at a glance
 
-```json
-{
-  "mcpServers": {
-    "fuse": {
-      "command": "fuse",
-      "args": ["serve"]
-    }
-  }
-}
-```
+| Tool | Purpose |
+|------|---------|
+| `fuse_skeleton` | Architecture review (skeleton only) |
+| `fuse_focus` | Dependency scoping around a seed |
+| `fuse_search` | BM25 query scoping |
+| `fuse_changes` | Git diff scoping |
+| `fuse_dotnet` | Full-control .NET fusion |
+| `fuse_generic` | Template-based fusion |
+
+Full parameter tables, example transcripts, and response format: [mcp.md](mcp.md).
 
 ---
 
-## MCP Tools
+## Resources
 
-Both tools always use in-memory emission (`FusionRequest.InMemory = true`). They return XML-formatted file content directly in the tool response, not as disk files.
+Passive reads via `fuse://` URIs:
 
-### fuse_dotnet
+| URI | Purpose |
+|-----|---------|
+| `fuse://skeleton/{path}` | Skeleton overview |
+| `fuse://focus/{path}/{seed}` | Focus-scoped content |
+| `fuse://search/{path}/{query}` | Query-scoped content |
+| `fuse://changes/{path}/{since}` | Change-scoped content |
+| `fuse://{template}/{path}` | Template fusion with defaults |
 
-Equivalent to `fuse dotnet`. Generates optimized .NET codebase context.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `path` | `string` | required | Absolute or relative path to the source directory |
-| `excludeDirectories` | `string[]?` | `null` | Directory names to skip |
-| `excludeFiles` | `string[]?` | `null` | File names to exclude |
-| `excludePatterns` | `string[]?` | `null` | Glob patterns to exclude |
-| `includeExtensions` | `string[]?` | `null` | Extensions added to DotNet template defaults |
-| `excludeExtensions` | `string[]?` | `null` | Extensions removed from DotNet template defaults |
-| `onlyExtensions` | `string[]?` | `null` | Extensions exclusively; ignores template defaults |
-| `maxFileSizeKb` | `int` | `0` | Max file size in KB; 0 = unlimited |
-| `excludeTestProjects` | `bool` | `false` | Exclude all test project directories |
-| `excludeUnitTestProjects` | `bool` | `false` | Exclude only unit test directories |
-| `removeCSharpComments` | `bool` | `false` | Remove C# comments |
-| `removeCSharpUsings` | `bool` | `false` | Remove C# using directives |
-| `removeCSharpNamespaces` | `bool` | `false` | Remove C# namespace declarations |
-| `removeCSharpRegions` | `bool` | `false` | Remove C# region directives |
-| `aggressive` | `bool` | `false` | Aggressive C# reduction |
-| `all` | `bool` | `false` | Set all reduction options to true |
-| `skeleton` | `bool` | `false` | Emit structural skeleton only (signatures, no bodies) |
-| `semanticMarkers` | `bool` | `false` | Prepend structural annotation comments per type |
-| `focus` | `string?` | `null` | Type name, filename, or path to scope around |
-| `depth` | `int` | `1` | Dependency traversal depth for focus scoping |
-| `changedSince` | `string?` | `null` | Git ref to scope to changed files |
-| `includeDependents` | `bool` | `true` | Include first-degree dependents of changed files |
-| `patternSummary` | `bool` | `false` | Append cross-codebase pattern summary |
-| `maxTokens` | `int?` | `null` | Hard token limit |
-| `trackTopTokenFiles` | `bool` | `false` | Include top files in stats comment |
-
-### fuse_generic
-
-Equivalent to the root `fuse` command with an optional template. Generates optimized context for any supported template.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `path` | `string` | required | Absolute or relative path to the source directory |
-| `template` | `string?` | `null` | Template name: Python, JavaScript, TypeScript, Go, Rust, Java, etc. |
-| `excludeDirectories` | `string[]?` | `null` | Directory names to skip |
-| `excludeFiles` | `string[]?` | `null` | File names to exclude |
-| `excludePatterns` | `string[]?` | `null` | Glob patterns to exclude |
-| `includeExtensions` | `string[]?` | `null` | Extensions added to template defaults |
-| `excludeExtensions` | `string[]?` | `null` | Extensions removed from template defaults |
-| `onlyExtensions` | `string[]?` | `null` | Extensions exclusively |
-| `maxFileSizeKb` | `int` | `0` | Max file size in KB; 0 = unlimited |
-| `excludeTestProjects` | `bool` | `false` | Exclude all test project directories |
-| `changedSince` | `string?` | `null` | Git ref to scope to changed files |
-| `includeDependents` | `bool` | `true` | Include first-degree dependents of changed files |
-| `maxTokens` | `int?` | `null` | Hard token limit |
-| `trackTopTokenFiles` | `bool` | `false` | Include top files in stats comment |
-
-Template names match the `ProjectTemplate` enum values (case-insensitive): `DotNet`, `Python`, `JavaScript`, `TypeScript`, `Go`, `Rust`, `Java`, `Infrastructure`, `AzureDevOpsWiki`, and others. See [templates.md](templates.md) for the full list.
+Prefer tools when you need token limits, reduction flags, or exclusions.
 
 ---
 
-## MCP Resources
+## Agent guidelines
 
-Fuse exposes passive resources via the `fuse://` URI scheme.
+1. Start with `fuse_skeleton` on unfamiliar .NET codebases.
+2. Use `fuse_focus` when you know the type or file; use `fuse_search` for topic discovery.
+3. Use `fuse_changes` for PR review.
+4. Set `maxTokens` to fit your context budget (100000-200000 is a reasonable range).
+5. Pass `excludeTestProjects: true` unless tests are relevant.
+6. Use absolute paths when possible.
+7. Concurrent tool calls are safe.
 
-| URI Pattern | Description |
-|-------------|-------------|
-| `fuse://{template}/{path}` | Read fused content for a given template and directory path |
-
-Examples:
-
-- `fuse://dotnet/C:/Projects/MyApp/src`
-- `fuse://python/C:/Projects/my-api`
-- `fuse://generic/C:/Projects/mixed-repo`
-
-Resources use default reduction options. No token limits or C# reduction flags apply unless you use the tools instead.
-
-The `template` segment accepts any `ProjectTemplate` enum name or `generic` for no template preset.
-
----
-
-## Response Format
-
-Tool responses return XML-formatted content:
-
-```xml
-<file path="src/Services/OrderService.cs">
-// reduced content
-</file>
-<file path="src/Models/Order.cs">
-// reduced content
-</file>
-```
-
-When `trackTopTokenFiles` is `true`, a stats comment is appended:
-
-```xml
-<!-- fuse: 47/52 files | ~84k tokens | 2.3s | top: OrderService.cs (12k), Order.cs (8k) -->
-```
-
-The stats comment appears only when `trackTopTokenFiles` is enabled.
-
-Error responses return plain text starting with `Error:`.
-
----
-
-## Agentic Workflow Patterns
-
-### 1. Cold-start architecture review (skeleton mode)
+Example prompt snippet:
 
 ```
-fuse_dotnet(path="./src", skeleton=true, all=true, maxTokens=100000)
-```
-
-Use when onboarding to a large .NET codebase. Skeleton mode emits type and method signatures only, typically reducing token count by 80-90% versus full fusion.
-
-### 2. Targeted feature work (focus scoping)
-
-```
-fuse_dotnet(path="./src", focus="OrderService", depth=1, maxTokens=150000)
-```
-
-Scopes output to `OrderService` plus files that define types it references. Dependency scoping is regex-based (best-effort, not Roslyn).
-
-### 3. PR review (change scoping)
-
-```
-fuse_dotnet(path="./src", changedSince="main", includeDependents=true, maxTokens=100000)
-```
-
-Restricts output to files changed since `main` plus first-degree dependents.
-
-### 4. Convention discovery (pattern summary)
-
-```
-fuse_dotnet(path="./src", patternSummary=true, maxTokens=200000)
-```
-
-Appends a `<!-- fuse:patterns ... -->` block detecting DI registration, logging, CQRS, repository patterns, and more.
-
----
-
-## Agent Instructions
-
-When configuring an AI agent to use Fuse, include these guidelines:
-
-1. **Choose the right tool.** Use `fuse_dotnet` for .NET/C# projects. Use `fuse_generic` with a `template` parameter for other languages.
-
-2. **Prefer tools over resources for control.** Tools expose all filtering and reduction options. Resources use defaults only.
-
-3. **Set token limits for large codebases.** Pass `maxTokens` to avoid exceeding the agent's context window. A value of 100000 to 200000 is a reasonable starting point for analysis tasks.
-
-4. **Use `all` for review tasks.** When the agent needs to understand code structure rather than exact syntax, `fuse_dotnet` with `all: true` maximizes token savings.
-
-5. **Exclude noise.** Pass `excludeTestProjects: true` when test code is not relevant. Use `excludePatterns` for generated or vendor code not covered by template defaults.
-
-6. **Check the stats comment.** When `trackTopTokenFiles` is enabled, the stats line shows which files dominate token usage. Consider excluding or further reducing those files.
-
-7. **Path must exist.** Both tools resolve paths with `Path.GetFullPath`. Relative paths are resolved from the MCP server's working directory, not the agent's.
-
-8. **Concurrent calls are safe.** Fuse 2.0 uses a stateless orchestrator and unique temp files. Multiple simultaneous tool invocations do not corrupt output.
-
-### Example Agent Prompt Snippet
-
-```
-When you need to read a codebase, call the fuse_dotnet or fuse_generic MCP tool
-instead of reading files individually. For .NET projects use fuse_dotnet with
-all=true for maximum context efficiency. Set maxTokens to fit within your
-remaining context budget. Exclude test projects unless the task involves tests.
+When you need to read a codebase, use Fuse MCP tools instead of reading
+files individually. For .NET: fuse_skeleton first, then fuse_focus or
+fuse_search, then fuse_changes for PR review. Set maxTokens to fit your
+context budget.
 ```
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Likely Cause | Fix |
+| Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `Directory not found` | Invalid or relative path from wrong working directory | Pass an absolute path |
-| `Unknown template` | Typo in template name | Use enum names from [templates.md](templates.md) |
-| `No files found` | Empty directory or overly aggressive exclusions | Check exclusions and template extensions |
-| Server not starting | `fuse` not on PATH | Install global tool or use full path in MCP config |
-| Empty response | All files filtered as trivial or binary | Check `maxFileSizeKb` and exclusion settings |
-| `Git is not available on PATH` | Git not installed for change scoping | Install git or avoid `changedSince` |
-| `not a git repository` | Source path is not a git repo | Run from repo root or drop change scoping |
-| Git diff errors | Invalid ref in `changedSince` | Verify branch/commit name |
+| Directory not found | Invalid or relative path | Pass an absolute path |
+| Unknown template | Typo in template name | See [templates.md](templates.md) |
+| No files found | Empty directory or aggressive exclusions | Check exclusions |
+| Server not starting | `fuse` not on PATH | Install `Fuse` |
+| Empty response | All files filtered | Check `maxFileSizeKb` and exclusions |
+| Git errors | Git missing or not a repo | Install git or avoid change scoping |
+| Validation error | Combined focus + query or focus + changes | Use one scoping mode |
+
+---
+
+## MCP Registry
+
+Fuse publishes a server manifest for MCP Registry discovery: [mcp-registry/server.json](mcp-registry/server.json).
+
+Package: `Fuse` on NuGet. Runtime hint: `dnx Fuse -- serve`.

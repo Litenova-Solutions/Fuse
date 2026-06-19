@@ -45,4 +45,29 @@ public sealed class EmissionOptions
     ///     Gets or sets a value indicating whether the top token-consuming files are tracked.
     /// </summary>
     public bool TrackTopTokenFiles { get; set; } = false;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether a manifest header is prepended to output.
+    /// </summary>
+    public bool IncludeManifest { get; set; } = true;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether git churn stats are included in the manifest.
+    /// </summary>
+    public bool IncludeGitStats { get; set; } = false;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether inclusion provenance is annotated on each entry.
+    /// </summary>
+    public bool IncludeProvenance { get; set; } = false;
+
+    /// <summary>
+    ///     Gets or sets the output serialization format.
+    /// </summary>
+    public OutputFormat Format { get; set; } = OutputFormat.Xml;
+
+    /// <summary>
+    ///     Gets or sets the tokenizer model or encoding used for token counting.
+    /// </summary>
+    public string TokenizerModel { get; set; } = Tokenization.TokenizerFactory.DefaultModel;
 }

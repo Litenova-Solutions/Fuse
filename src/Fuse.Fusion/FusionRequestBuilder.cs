@@ -1,10 +1,11 @@
 using Fuse.Analysis.Changes;
 using Fuse.Analysis.Dependencies;
+using Fuse.Analysis.Search;
 using Fuse.Collection.Models;
 using Fuse.Collection.Options;
 using Fuse.Collection.Templates;
 using Fuse.Emission.Models;
-using Fuse.Reduction.Options;
+using Fuse.Languages.Abstractions.Options;
 
 namespace Fuse.Fusion;
 
@@ -45,6 +46,10 @@ public sealed class FusionRequestBuilder
     private bool _inMemory = false;
     private FocusOptions? _focusOptions;
     private ChangeOptions? _changeOptions;
+    private QueryOptions? _queryOptions;
+    private int _parallelism = Environment.ProcessorCount;
+    private bool _useReductionCache = true;
+    private bool _clearReductionCache = false;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionRequestBuilder" /> class.
@@ -277,6 +282,41 @@ public sealed class FusionRequestBuilder
     }
 
     /// <summary>
+    ///     Sets BM25 query-scoped fusion options.
+    /// </summary>
+    /// <param name="queryOptions">The query options, or <c>null</c> to disable.</param>
+    /// <returns>The current builder instance.</returns>
+    public FusionRequestBuilder WithQueryOptions(QueryOptions? queryOptions)
+    {
+        _queryOptions = queryOptions;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the maximum degree of parallelism for pipeline stages.
+    /// </summary>
+    /// <param name="parallelism">The parallelism degree; must be at least 1.</param>
+    /// <returns>The current builder instance.</returns>
+    public FusionRequestBuilder WithParallelism(int parallelism)
+    {
+        _parallelism = parallelism;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets reduction cache behavior for the fusion run.
+    /// </summary>
+    /// <param name="useCache">Whether to read and write <c>.fuse/cache/</c> entries.</param>
+    /// <param name="clearCache">Whether to clear cached entries before fusion runs.</param>
+    /// <returns>The current builder instance.</returns>
+    public FusionRequestBuilder WithReductionCacheOptions(bool useCache, bool clearCache = false)
+    {
+        _useReductionCache = useCache;
+        _clearReductionCache = clearCache;
+        return this;
+    }
+
+    /// <summary>
     ///     Builds the fusion request after resolving extensions and exclusions.
     /// </summary>
     /// <returns>A configured <see cref="FusionRequest" />.</returns>
@@ -300,7 +340,17 @@ public sealed class FusionRequestBuilder
 
         var collection = ResolveCollectionOptions();
 
-        return new FusionRequest(collection, _reductionOptions, _emissionOptions, _inMemory, _focusOptions, _changeOptions);
+        return new FusionRequest(
+            collection,
+            _reductionOptions,
+            _emissionOptions,
+            _inMemory,
+            _focusOptions,
+            _changeOptions,
+            _queryOptions,
+            _parallelism,
+            _useReductionCache,
+            _clearReductionCache);
     }
 
     private CollectionOptions ResolveCollectionOptions()

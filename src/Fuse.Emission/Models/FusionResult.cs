@@ -18,7 +18,10 @@ public sealed class FusionResult
         int totalFileCount,
         TimeSpan duration,
         IReadOnlyList<FileTokenInfo> topTokenFiles,
-        PatternSummary? patternSummary = null)
+        PatternSummary? patternSummary = null,
+        int reductionCacheHits = 0,
+        int reductionCacheMisses = 0,
+        IReadOnlyList<FileTokenInfo>? emittedFileTokens = null)
     {
         GeneratedPaths = generatedPaths;
         InMemoryContent = inMemoryContent;
@@ -28,6 +31,9 @@ public sealed class FusionResult
         Duration = duration;
         TopTokenFiles = topTokenFiles;
         PatternSummary = patternSummary;
+        ReductionCacheHits = reductionCacheHits;
+        ReductionCacheMisses = reductionCacheMisses;
+        EmittedFileTokens = emittedFileTokens ?? Array.Empty<FileTokenInfo>();
     }
 
     /// <summary>
@@ -69,4 +75,19 @@ public sealed class FusionResult
     ///     Gets the detected pattern summary, or <c>null</c> when pattern detection was not requested.
     /// </summary>
     public PatternSummary? PatternSummary { get; }
+
+    /// <summary>
+    ///     Gets the number of reduction cache hits for the fusion run.
+    /// </summary>
+    public int ReductionCacheHits { get; }
+
+    /// <summary>
+    ///     Gets the number of reduction cache misses for the fusion run.
+    /// </summary>
+    public int ReductionCacheMisses { get; }
+
+    /// <summary>
+    ///     Gets per-file token counts for all emitted entries.
+    /// </summary>
+    public IReadOnlyList<FileTokenInfo> EmittedFileTokens { get; }
 }

@@ -3,9 +3,14 @@ using Fuse.Analysis.Changes;
 using Fuse.Cli.Services;
 using Fuse.Collection.Models;
 using Fuse.Collection.Templates;
+using Fuse.Cli.Configuration;
 using Fuse.Emission.Models;
+using Fuse.Emission.Tokenization;
+using Fuse.Emission.Writers;
 using Fuse.Fusion;
-using Fuse.Reduction.Options;
+using Fuse.Languages.Abstractions;
+using Fuse.Languages.Abstractions.Options;
+using Fuse.Languages.Abstractions.Skeleton;
 
 namespace Fuse.Cli.Commands;
 
@@ -25,6 +30,11 @@ public abstract class CommandBase
     protected readonly ProjectTemplateRegistry _templateRegistry;
 
     /// <summary>
+    ///     Resolves skeleton extractors by file extension.
+    /// </summary>
+    protected readonly CapabilityRegistry<ISkeletonExtractor> _skeletonExtractors;
+
+    /// <summary>
     ///     The console UI for displaying status and output.
     /// </summary>
     protected readonly IConsoleUI _consoleUI;
@@ -32,16 +42,15 @@ public abstract class CommandBase
     /// <summary>
     ///     Initializes a new instance of the <see cref="CommandBase" /> class.
     /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator instance.</param>
-    /// <param name="templateRegistry">The project template registry.</param>
-    /// <param name="consoleUI">The console UI instance.</param>
     protected CommandBase(
         FusionOrchestrator orchestrator,
         ProjectTemplateRegistry templateRegistry,
+        CapabilityRegistry<ISkeletonExtractor> skeletonExtractors,
         IConsoleUI consoleUI)
     {
         _orchestrator = orchestrator;
         _templateRegistry = templateRegistry;
+        _skeletonExtractors = skeletonExtractors;
         _consoleUI = consoleUI;
     }
 
@@ -53,16 +62,33 @@ public abstract class CommandBase
     /// <returns>A task representing the asynchronous operation.</returns>
     protected async Task ExecuteFusionAsync(FusionRequest request, CancellationToken cancellationToken)
     {
+        if (Watch && StdioGuard.IsStdioRedirected())
+        {
+            _consoleUI.WriteStep("Warning: Watch mode is disabled when stdin/stdout are redirected (MCP stdio).");
+            Watch = false;
+        }
+
         try
         {
             EmitAgenticWarnings(request);
+            await RunFusionOnceAsync(request, cancellationToken);
 
-            var result = await _orchestrator.FuseAsync(request, cancellationToken);
-
-            if (TryHandleEmptyResult(request, result))
+            if (!Watch || cancellationToken.IsCancellationRequested)
                 return;
 
-            DisplayResults(result, request.Emission);
+            _consoleUI.WriteStep("Watching for file changes...");
+
+            using var watcher = new DebouncedFileWatcher(
+                request.Collection.SourceDirectory,
+                request.Collection.Recursive);
+
+            watcher.Changed += async _ =>
+            {
+                _consoleUI.WriteStep("Change detected, re-running fusion...");
+                await RunFusionOnceAsync(request, cancellationToken);
+            };
+
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         }
         catch (FusionValidationException ex)
         {
@@ -75,6 +101,9 @@ public abstract class CommandBase
         {
             _consoleUI.WriteError($"Error: {ex.Message}");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception ex)
         {
             _consoleUI.WriteError($"Error: {ex.Message}");
@@ -85,6 +114,16 @@ public abstract class CommandBase
         }
     }
 
+    private async Task RunFusionOnceAsync(FusionRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _orchestrator.FuseAsync(request, cancellationToken);
+
+        if (TryHandleEmptyResult(request, result))
+            return;
+
+        DisplayResults(result, request.Emission);
+    }
+
     /// <summary>
     ///     Creates a new fusion request builder preconfigured with common CLI options.
     /// </summary>
@@ -92,8 +131,11 @@ public abstract class CommandBase
     /// <returns>A configured fusion request builder.</returns>
     protected FusionRequestBuilder CreateRequestBuilder(ProjectTemplate? template = null)
     {
+        var config = FuseConfigLoader.Load(Directory);
+        var emission = BuildEmissionOptions(config);
+
         var builder = new FusionRequestBuilder(_templateRegistry)
-            .WithSourceDirectory(Directory)
+            .WithSourceDirectory(ResolveDirectory(config))
             .WithMaxFileSizeKb(MaxFileSize)
             .WithCollectionBehavior(
                 Recursive,
@@ -103,18 +145,11 @@ public abstract class CommandBase
                 ExcludeTestProjects,
                 excludeUnitTestProjects: false,
                 RespectGitIgnore)
-            .WithEmissionOptions(new EmissionOptions
-            {
-                OutputDirectory = Output,
-                OutputFileName = OutputFileName,
-                Overwrite = Overwrite,
-                IncludeMetadata = IncludeMetadata,
-                MaxTokens = MaxTokens,
-                SplitTokens = SplitTokens,
-                ShowTokenCount = ShowTokenCount,
-                TrackTopTokenFiles = TrackTopTokenFiles
-            })
-            .WithReductionOptions(new ReductionOptions());
+            .WithEmissionOptions(emission)
+            .WithReductionOptions(new ReductionOptions(
+                enableRedaction: !NoRedact,
+                includeRedactReport: RedactReport))
+            .WithReductionCacheOptions(useCache: !NoCache, clearCache: ClearCache);
 
         if (template.HasValue)
         {
@@ -124,6 +159,11 @@ public abstract class CommandBase
         if (OnlyExtensions?.Length > 0)
         {
             builder.WithOnlyExtensions(OnlyExtensions);
+        }
+
+        if (Parallelism > 0)
+        {
+            builder.WithParallelism(Parallelism);
         }
 
         if (IncludeExtensions?.Length > 0)
@@ -159,17 +199,58 @@ public abstract class CommandBase
         return builder;
     }
 
+    private EmissionOptions BuildEmissionOptions(FuseConfig? config)
+    {
+        var defaultOutput = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Fuse");
+        var outputDirectory = Output;
+        if (config?.Output is not null && Output == defaultOutput)
+            outputDirectory = config.Output;
+
+        return new EmissionOptions
+        {
+            OutputDirectory = outputDirectory,
+            OutputFileName = OutputFileName ?? config?.Name,
+            Overwrite = Overwrite,
+            IncludeMetadata = IncludeMetadata,
+            MaxTokens = MaxTokens ?? config?.MaxTokens,
+            SplitTokens = SplitTokens ?? config?.SplitTokens ?? 800000,
+            ShowTokenCount = ShowTokenCount,
+            TrackTopTokenFiles = TrackTopTokenFiles,
+            IncludeManifest = !(NoManifest || (config?.NoManifest ?? false)),
+            IncludeGitStats = GitStats || (config?.GitStats ?? false),
+            IncludeProvenance = Provenance || (config?.Provenance ?? false),
+            TokenizerModel = Tokenizer ?? config?.Tokenizer ?? TokenizerFactory.DefaultModel,
+            Format = EntryFormatterFactory.ParseFormat(Format ?? config?.Format),
+        };
+    }
+
+    private string ResolveDirectory(FuseConfig? config)
+    {
+        if (config?.Directory is not null &&
+            Directory == System.IO.Directory.GetCurrentDirectory())
+        {
+            return config.Directory;
+        }
+
+        return Directory;
+    }
+
     private void EmitAgenticWarnings(FusionRequest request)
     {
         if (!request.Reduction.SkeletonMode)
             return;
 
         var template = request.Collection.Template;
-        if (template is null or ProjectTemplate.DotNet or ProjectTemplate.CppCSharp)
+        if (template is null)
+            return;
+
+        var extensions = _templateRegistry.GetTemplate(template.Value).Extensions;
+        var hasSkeletonSupport = extensions.Any(ext => _skeletonExtractors.TryResolve(ext) is not null);
+        if (hasSkeletonSupport)
             return;
 
         _consoleUI.WriteStep(
-            "Warning: Skeleton mode is optimized for C#; output may be incomplete with the selected template.");
+            "Warning: Skeleton mode is requested but no skeleton extractor is registered for this template's file types.");
     }
 
     private bool TryHandleEmptyResult(FusionRequest request, FusionResult result)
@@ -215,8 +296,15 @@ public abstract class CommandBase
                 ? $"{result.TotalTokens / 1000.0:F0}k"
                 : $"{result.TotalTokens}";
 
-            _consoleUI.WriteResult(
-                $"Stats:  {totalSizeKB:F0} KB | {tokensFormatted} tokens | {result.ProcessedFileCount}/{result.TotalFileCount} files | {result.Duration.TotalSeconds:F1}s");
+            var statsLine =
+                $"Stats:  {totalSizeKB:F0} KB | {tokensFormatted} tokens | {result.ProcessedFileCount}/{result.TotalFileCount} files | {result.Duration.TotalSeconds:F1}s";
+
+            if (result.ReductionCacheHits > 0 || result.ReductionCacheMisses > 0)
+            {
+                statsLine += $" | cache: {result.ReductionCacheHits} hit / {result.ReductionCacheMisses} miss";
+            }
+
+            _consoleUI.WriteResult(statsLine);
 
             if (emissionOptions.TrackTopTokenFiles && result.TopTokenFiles.Count > 0)
             {
@@ -287,6 +375,9 @@ public abstract class CommandBase
     [CliOption(Description = "Ignore binary files.")]
     public bool IgnoreBinary { get; set; } = true;
 
+    [CliOption(Description = "Maximum degree of parallelism for pipeline stages (default: processor count).")]
+    public int Parallelism { get; set; } = Environment.ProcessorCount;
+
     #endregion
 
     #region Content Options
@@ -313,6 +404,31 @@ public abstract class CommandBase
     [CliOption(Description = "Tracks and displays the top 5 files consuming the most tokens.")]
     public bool TrackTopTokenFiles { get; set; } = false;
 
+    [CliOption(Description = "Disable the manifest header prepended to output.")]
+    public bool NoManifest { get; set; } = false;
+
+    [CliOption(Description = "Include git churn and last-modified stats in the manifest.")]
+    public bool GitStats { get; set; } = false;
+
+    [CliOption(Description = "Annotate entries with dependency inclusion provenance.")]
+    public bool Provenance { get; set; } = false;
+
+    [CliOption(Description = "Output format: xml, markdown, or json.")]
+    public string? Format { get; set; }
+
+    [CliOption(Description = "Tokenizer model or encoding (default: o200k_base).")]
+    public string? Tokenizer { get; set; }
+
+    #endregion
+
+    #region Security Options
+
+    [CliOption(Description = "Disable secret redaction (redaction is on by default).")]
+    public bool NoRedact { get; set; } = false;
+
+    [CliOption(Description = "Append a redaction count summary to the output.")]
+    public bool RedactReport { get; set; } = false;
+
     #endregion
 
     #region Exclusion Options
@@ -334,6 +450,19 @@ public abstract class CommandBase
 
     [CliOption(Description = "Include first-degree dependents of changed files.")]
     public bool IncludeDependents { get; set; } = true;
+
+    #endregion
+
+    #region Cache and Watch Options
+
+    [CliOption(Description = "Disable per-file reduction caching.")]
+    public bool NoCache { get; set; } = false;
+
+    [CliOption(Description = "Clear the .fuse/cache directory before running.")]
+    public bool ClearCache { get; set; } = false;
+
+    [CliOption(Description = "Watch for file changes and re-run fusion after edits settle.")]
+    public bool Watch { get; set; } = false;
 
     #endregion
 }

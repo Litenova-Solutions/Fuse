@@ -1,3 +1,6 @@
+using Fuse.Analysis.Changes;
+using Fuse.Analysis.Dependencies;
+using Fuse.Analysis.Search;
 using Fuse.Collection.FileSystem;
 
 namespace Fuse.Fusion;
@@ -34,16 +37,9 @@ public sealed class FusionValidator
             errors.Add($"Source directory does not exist: {collection.SourceDirectory}");
         }
 
-        if (request.Focus is not null && request.Changes is not null)
-        {
-            errors.Add(
-                "FocusOptions and ChangeOptions cannot both be set. FocusOptions takes precedence; remove one.");
-        }
-
-        if (request.Focus is not null && (request.Focus.Depth < 1 || request.Focus.Depth > 10))
-        {
-            errors.Add("FocusOptions.Depth must be between 1 and 10.");
-        }
+        ValidateScopingMutualExclusivity(request, errors);
+        ValidateDepthConstraints(request, errors);
+        ValidateQueryConstraints(request, errors);
 
         return errors;
     }
@@ -71,5 +67,48 @@ public sealed class FusionValidator
         }
 
         return Array.Empty<string>();
+    }
+
+    private static void ValidateScopingMutualExclusivity(FusionRequest request, List<string> errors)
+    {
+        var activeModes = 0;
+        if (request.Focus is not null) activeModes++;
+        if (request.Changes is not null) activeModes++;
+        if (request.Query is not null) activeModes++;
+
+        if (activeModes <= 1)
+            return;
+
+        errors.Add(
+            "FocusOptions, ChangeOptions, and QueryOptions are mutually exclusive. Remove all but one scoping mode.");
+    }
+
+    private static void ValidateDepthConstraints(FusionRequest request, List<string> errors)
+    {
+        if (request.Focus is not null && (request.Focus.Depth < 1 || request.Focus.Depth > 10))
+        {
+            errors.Add("FocusOptions.Depth must be between 1 and 10.");
+        }
+
+        if (request.Query is not null && (request.Query.Depth < 1 || request.Query.Depth > 10))
+        {
+            errors.Add("QueryOptions.Depth must be between 1 and 10.");
+        }
+    }
+
+    private static void ValidateQueryConstraints(FusionRequest request, List<string> errors)
+    {
+        if (request.Query is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(request.Query.Query))
+        {
+            errors.Add("QueryOptions.Query is required when query scoping is enabled.");
+        }
+
+        if (request.Query.TopFiles < 1)
+        {
+            errors.Add("QueryOptions.TopFiles must be at least 1.");
+        }
     }
 }

@@ -40,6 +40,11 @@ public interface IFileSystem
     Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default);
 
     /// <summary>
+    ///     Asynchronously writes all text to a file.
+    /// </summary>
+    Task WriteAllTextAsync(string path, string contents, CancellationToken cancellationToken = default);
+
+    /// <summary>
     ///     Gets information about a file.
     /// </summary>
     /// <param name="path">The path to the file.</param>

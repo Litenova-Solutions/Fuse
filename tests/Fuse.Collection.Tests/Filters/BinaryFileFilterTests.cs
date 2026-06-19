@@ -58,6 +58,9 @@ public sealed class BinaryFileFilterTests
         public Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default) =>
             Task.FromResult(string.Empty);
 
+        public Task WriteAllTextAsync(string path, string contents, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
         public FileInfo GetFileInfo(string path) => new(path);
 
         public bool IsBinaryFile(string filePath) =>

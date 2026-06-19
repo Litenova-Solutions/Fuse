@@ -2,7 +2,7 @@ using Fuse.Collection.Options;
 using Fuse.Emission.Models;
 using Fuse.Fusion;
 using Fuse.Fusion.Extensions;
-using Fuse.Reduction.Options;
+using Fuse.Languages.Abstractions.Options;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Fusion.Tests;

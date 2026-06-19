@@ -15,6 +15,7 @@ namespace Fuse.Emission.Writers;
 public sealed class InMemoryOutputWriter : IOutputWriter
 {
     private readonly EmissionOptions _options;
+    private readonly IEntryFormatter _entryFormatter;
     private readonly StringBuilder _contentBuilder = new();
     private readonly List<FileTokenInfo> _fileTokenStats = new();
     private readonly DateTime _startTime;
@@ -27,15 +28,29 @@ public sealed class InMemoryOutputWriter : IOutputWriter
     /// </summary>
     /// <param name="options">The emission options controlling output generation.</param>
     /// <param name="tokenCounter">The token counter for validation and tracking.</param>
-    public InMemoryOutputWriter(EmissionOptions options, ITokenCounter tokenCounter)
+    /// <param name="entryFormatter">The entry formatter for output blocks.</param>
+    public InMemoryOutputWriter(EmissionOptions options, ITokenCounter tokenCounter, IEntryFormatter entryFormatter)
     {
         _options = options;
         _ = tokenCounter;
+        _entryFormatter = entryFormatter;
         _startTime = DateTime.Now;
     }
 
     /// <inheritdoc />
     public bool SupportsMultiPart => false;
+
+    /// <inheritdoc />
+    public Task WritePrefixAsync(string content, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (_completed || string.IsNullOrEmpty(content))
+            return Task.CompletedTask;
+
+        _contentBuilder.Append(content);
+        return Task.CompletedTask;
+    }
 
     /// <inheritdoc />
     public Task WriteEntryAsync(FusedContent content, CancellationToken cancellationToken = default)
@@ -52,30 +67,12 @@ public sealed class InMemoryOutputWriter : IOutputWriter
             return Task.CompletedTask;
         }
 
-        if (_options.TrackTopTokenFiles)
+        if (_options.TrackTopTokenFiles || _options.IncludeManifest)
         {
             _fileTokenStats.Add(new FileTokenInfo(content.NormalizedPath, content.TokenCount));
         }
 
-        if (_options.IncludeMetadata)
-        {
-            var fileInfo = content.SourceFile.FileInfo;
-            _contentBuilder.AppendLine(
-                $"<file path=\"{content.NormalizedPath}\" size=\"{fileInfo.Length}\" modified=\"{fileInfo.LastWriteTimeUtc:O}\">");
-        }
-        else
-        {
-            _contentBuilder.AppendLine($"<file path=\"{content.NormalizedPath}\">");
-        }
-
-        _contentBuilder.Append(content.Content);
-
-        if (!content.Content.EndsWith('\n'))
-        {
-            _contentBuilder.AppendLine();
-        }
-
-        _contentBuilder.AppendLine("</file>");
+        _contentBuilder.Append(_entryFormatter.FormatEntry(content, _options));
 
         _processedFileCount++;
 
@@ -102,9 +99,8 @@ public sealed class InMemoryOutputWriter : IOutputWriter
         _completed = true;
 
         var duration = DateTime.Now - _startTime;
-        var topTokenFiles = _options.TrackTopTokenFiles
-            ? (IReadOnlyList<FileTokenInfo>)_fileTokenStats.OrderByDescending(f => f.Count).Take(5).ToList()
-            : Array.Empty<FileTokenInfo>();
+        var topTokenFiles = OutputWriterHelpers.BuildTopTokenFiles(
+            _options.TrackTopTokenFiles ? _fileTokenStats : null);
 
         return Task.FromResult(new FusionResult(
             Array.Empty<string>(),
@@ -113,6 +109,7 @@ public sealed class InMemoryOutputWriter : IOutputWriter
             _processedFileCount,
             0,
             duration,
-            topTokenFiles));
+            topTokenFiles,
+            emittedFileTokens: _options.IncludeManifest ? _fileTokenStats : null));
     }
 }

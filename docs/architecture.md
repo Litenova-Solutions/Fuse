@@ -2,440 +2,60 @@
 
 **Version:** 2.0
 
-This document describes the target architecture for Fuse 2.0. It covers structural rationale, project layout, object model, and implementation corrections. Where older code conflicts with this document, this document is authoritative.
+Fuse 2.0 is a four-stage fusion pipeline with a language-plugin boundary. Each stage has its own project, object model, and reason to change. This document is authoritative when it conflicts with older code or docs.
 
 ---
 
-## Why a Rewrite
+## Four-stage pipeline
 
-The pre-2.0 codebase had the right ideas in the wrong structure. These concrete issues drove a clean rewrite:
+Fusion is not a single "process files" loop. It is four distinct stages orchestrated by `FusionOrchestrator.FuseAsync`:
 
-1. **Architectural dishonesty:** `Fuse.Core`, `Fuse.Engine`, and `Fuse.Minifiers` named layers, not domain concepts.
-2. **God object:** `FuseOptions` carried 30+ properties through every layer.
-3. **Duplicated emission logic:** `OutputBuilder` and `InMemoryOutputBuilder` shared token-counting, trivial-content filtering, and ordering loops verbatim.
-4. **Sync-over-async:** `GitIgnoreParser` blocked on async I/O with `.GetAwaiter().GetResult()`.
-5. **Incorrect binary detection:** A `char > 255` heuristic misclassified some text files.
-6. **Broken parallelism:** `.AsParallel()` combined with synchronous file reads in filters caused thread-pool contention.
-7. **Static minifier dispatch:** `ContentProcessor` switched on extension with no `IContentReducer` abstraction.
-8. **Temp file race:** `{baseFileName}.tmp` collided under concurrent MCP invocations.
-9. **Dead abstractions:** `IProjectTemplate` existed but the registry used tuples.
-10. **Duplicate tokenizer:** Both output builders instantiated `TikToken.GetEncoding("cl100k_base")` independently.
-11. **Coarse MCP surface:** `get_optimized_context` exposed only a subset of CLI options.
+| Stage | Project | Responsibility |
+|-------|---------|----------------|
+| 1. Collection | `Fuse.Collection` | Enumerate candidates, apply file filters, resolve template extensions |
+| 2. Filtering | `Fuse.Analysis` + orchestrator | Optional scoping: focus, git changes, or BM25 query with dependency expansion |
+| 3. Reduction | `Fuse.Reduction` + language plugins | Read content, normalize, reduce, skeleton, markers, redact, filter trivial |
+| 4. Emission | `Fuse.Emission` | Token budget, manifest, format adapters, disk or in-memory output |
 
----
+Stages 1 and 2 produce a file set. Stage 3 produces `FusedContent` entries. Stage 4 writes them within a token budget.
 
-## Architectural Philosophy
+### Sequence diagram
 
-### Axis-Based Structure
+```mermaid
+sequenceDiagram
+    participant CLI as CLI / MCP
+    participant Orch as FusionOrchestrator
+    participant Coll as FileCollectionPipeline
+    participant Analysis as Fuse.Analysis
+    participant Red as ContentReductionPipeline
+    participant Emit as EmissionPipeline
+    participant Out as IOutputWriter
 
-Fuse is a processing pipeline with three axes of change:
+    CLI->>Orch: FuseAsync(FusionRequest)
+    Orch->>Orch: FusionValidator.ValidateOrThrow
+    Orch->>Coll: CollectAsync(CollectionOptions)
+    Coll-->>Orch: CollectionResult (SourceFiles)
 
-- **Collection:** filtering rules, templates, gitignore
-- **Reduction:** file types, minification strategies
-- **Emission:** output format, token counting, file splitting
+    alt Focus / Changes / Query scoping
+        Orch->>Analysis: BuildGraph / Rank / DetectChanges
+        Analysis-->>Orch: FilteredFileSet (+ provenance)
+    end
 
-Each axis has its own vocabulary, object model, and reason to change.
+    Orch->>Red: ReduceAsync(files, ReductionOptions)
+    Red-->>Orch: IReadOnlyList FusedContent
 
-### Screaming Architecture
+    opt Pattern summary / Git stats
+        Orch->>Analysis: DetectPatterns / GetStats
+    end
 
-Project and folder names reflect what Fuse does (collect, reduce, emit, fuse), not the patterns used to build it.
-
-### Rich Domain Objects
-
-Objects carry intrinsic behavior when it requires only their own data:
-
-- `SourceFile` knows extension, file-type booleans, and normalized path
-- `FusedContent` knows token count and triviality
-
-External collaborators belong in services and pipelines.
-
-### Ubiquitous Language
-
-Use glossary terms consistently in folders, classes, methods, XML docs, CLI help, and MCP descriptions.
-
-### Open Source Library Standards
-
-- All public types and members have XML documentation
-- `./docs/` contains human-readable documentation
-- Public API surface is minimal and stable
-
----
-
-## Ubiquitous Language Glossary
-
-| Term | Definition |
-|------|------------|
-| **Fusion** | Complete end-to-end operation: collect, reduce, emit |
-| **Source Directory** | Root directory scanned during fusion |
-| **Source File** | File that passed all collection filters |
-| **Candidate** | File discovered during enumeration, not yet filtered |
-| **Filter** | Named predicate accepting or rejecting a candidate |
-| **Collection** | Phase enumerating candidates and applying filters |
-| **Reducer** | Component transforming raw file content into reduced content |
-| **Reduction** | Phase applying reducers to produce fused content entries |
-| **Fused Content** | Reduced content of one source file, ready for emission |
-| **Emission** | Phase writing fused content within a token budget |
-| **Token Budget** | Constraint on tokens before splitting or halting |
-| **Template** | Named config for default extensions and exclusions |
-| **Fusion Result** | Output: paths or content, token count, file counts, duration |
-
----
-
-## Project Structure
-
-### Solution Layout
-
-```
-Fuse.sln
-
-src/
-  Fuse.Collection/
-  Fuse.Reduction/
-  Fuse.Emission/
-  Fuse.Fusion/
-  Fuse.Cli/
-
-tests/
-  Fuse.Collection.Tests/
-  Fuse.Reduction.Tests/
-  Fuse.Fusion.Tests/
-
-docs/
-  architecture.md
-  getting-started.md
-  cli-reference.md
-  mcp-integration.md
-  templates.md
-  extending.md
-  contributing.md
-
-.github/workflows/
-  release.yml
-  ci.yml
+    Orch->>Emit: EmitAsync(FusedContent, EmissionOptions)
+    Emit->>Out: WriteEntryAsync (per file, token budget)
+    Out-->>Emit: FusionResult
+    Emit-->>Orch: FusionResult
+    Orch-->>CLI: FusionResult
 ```
 
-### Project Responsibilities
-
-**Fuse.Collection** (no internal Fuse dependencies)
-
-Handles file discovery, filtering, templates, and gitignore parsing.
-
-```
-Fuse.Collection/
-  Filters/           IFileFilter implementations (11 filters)
-  Templates/         IProjectTemplate, registry, 26 definition classes
-  FileSystem/        IFileSystem, PhysicalFileSystem, GitIgnoreParser
-  Models/            FileCandidate, SourceFile, CollectionResult
-  Options/           CollectionOptions
-  FileCollectionPipeline.cs
-```
-
-**Fuse.Reduction** (depends on Fuse.Collection for `SourceFile` only)
-
-Handles content normalization and extension-specific reduction.
-
-```
-Fuse.Reduction/
-  Reducers/          IContentReducer, ReducerRegistry, 10 implementations
-  Models/            FusedContent
-  Options/           ReductionOptions
-  ContentReductionPipeline.cs
-```
-
-**Fuse.Emission** (depends on Fuse.Reduction for `FusedContent` only)
-
-Handles token counting, output writing, and file splitting.
-
-```
-Fuse.Emission/
-  Writers/           IOutputWriter, DiskOutputWriter, InMemoryOutputWriter
-  Tokenization/      ITokenCounter, TikTokenCounter
-  Models/            TokenBudget, FusionResult, FileTokenInfo, EmissionOptions
-  OutputNamingService.cs
-  EmissionPipeline.cs
-```
-
-**Fuse.Fusion** (depends on all three axis projects)
-
-Orchestrates the pipeline and exposes DI registration.
-
-```
-Fuse.Fusion/
-  FusionOrchestrator.cs
-  FusionRequest.cs
-  FusionRequestBuilder.cs
-  FusionValidator.cs
-  ServiceCollectionExtensions.cs
-```
-
-**Fuse.Cli** (depends on Fuse.Fusion only)
-
-CLI commands, MCP server, and console UI.
-
-```
-Fuse.Cli/
-  Commands/          FuseCliCommand, DotNetCommand, AzureDevOpsWikiCommand, McpServeCommand
-  Mcp/               FuseTools, FuseResources
-  Services/          ConsoleUI, StderrConsoleUI, IConsoleUI
-  Program.cs
-```
-
-### Dependency Graph
-
-```
-Fuse.Collection     (none)
-Fuse.Reduction      -> Fuse.Collection
-Fuse.Analysis       -> Fuse.Collection, Fuse.Reduction
-Fuse.Emission       -> Fuse.Reduction, Fuse.Analysis
-Fuse.Fusion         -> Fuse.Collection, Fuse.Reduction, Fuse.Analysis, Fuse.Emission
-Fuse.Cli            -> Fuse.Fusion
-```
-
-NuGet packages: `DotNet.Glob` in Collection; `TiktokenSharp` in Emission; CLI packages unchanged.
-
----
-
-## Options Decomposition
-
-The monolithic `FuseOptions` is replaced by three scoped records composed in `FusionRequest`.
-
-### CollectionOptions (14 properties)
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SourceDirectory` | `string` | Current directory | Root directory to scan |
-| `Template` | `ProjectTemplate?` | `null` | Template for default extensions and exclusions |
-| `Extensions` | `IReadOnlyCollection<string>` | `[]` | Resolved extension list after template merging |
-| `ExcludeDirectories` | `IReadOnlyCollection<string>` | `[]` | Directory names to skip |
-| `ExcludeFiles` | `IReadOnlyCollection<string>` | `[]` | Specific file names to exclude |
-| `ExcludePatterns` | `IReadOnlyCollection<string>` | `[]` | Glob patterns to exclude |
-| `MaxFileSizeKb` | `int` | `0` | Max file size in KB; 0 = unlimited |
-| `Recursive` | `bool` | `true` | Scan subdirectories |
-| `IgnoreBinaryFiles` | `bool` | `true` | Skip binary files |
-| `ExcludeEmptyFiles` | `bool` | `true` | Skip zero-byte files |
-| `ExcludeAutoGenerated` | `bool` | `true` | Skip auto-generated files |
-| `ExcludeTestProjects` | `bool` | `false` | Exclude all test project directories |
-| `ExcludeUnitTestProjects` | `bool` | `false` | Exclude only unit test directories |
-| `RespectGitIgnore` | `bool` | `true` | Honor `.gitignore` rules |
-
-`IncludeExtensions`, `ExcludeExtensions`, and `OnlyExtensions` are CLI inputs resolved into `Extensions` by `FusionRequestBuilder`. They are not properties on `CollectionOptions`.
-
-### ReductionOptions (13 properties)
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `TrimContent` | `bool` | `true` | Trim leading and trailing whitespace per line |
-| `UseCondensing` | `bool` | `true` | Collapse consecutive blank lines |
-| `RemoveCSharpComments` | `bool` | `false` | Remove C# comments |
-| `RemoveCSharpUsings` | `bool` | `false` | Remove C# using directives |
-| `RemoveCSharpNamespaces` | `bool` | `false` | Remove C# namespace declarations |
-| `RemoveCSharpRegions` | `bool` | `false` | Remove C# region directives |
-| `AggressiveCSharpReduction` | `bool` | `false` | Apply aggressive C# reduction |
-| `MinifyXmlFiles` | `bool` | `true` | Minify XML-based files |
-| `MinifyHtmlAndRazor` | `bool` | `true` | Minify HTML and Razor files |
-| `SkeletonMode` | `bool` | `false` | Emit C# structural skeleton only |
-| `IncludeSemanticMarkers` | `bool` | `false` | Prepend semantic marker comments |
-| `IncludePatternSummary` | `bool` | `false` | Run pattern detectors after emission |
-
-The `--all` flag sets each individual C# reduction property to `true` at the CLI boundary. Agentic flags (`SkeletonMode`, etc.) are independent of `--all`.
-
-### FusionRequest focus and change scoping
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Focus` | `FocusOptions?` | `null` | Dependency-aware file scoping |
-| `Changes` | `ChangeOptions?` | `null` | Git change-scoped file selection |
-
----
-
-## Fuse.Analysis Axis
-
-`Fuse.Analysis` hosts regex-based code analysis used by agentic features:
-
-| Concern | Types | Integration |
-|---------|-------|-------------|
-| Skeleton | `CSharpSkeletonExtractor` | `ContentReductionPipeline` after reduction |
-| Semantic markers | `CSharpSemanticMarkerGenerator` | `ContentReductionPipeline` after skeleton |
-| Dependencies | `DependencyGraphBuilder`, `FocusSeedResolver` | `FusionOrchestrator` between collection and reduction |
-| Change detection | `GitChangeDetector` | `FusionOrchestrator` between collection and reduction |
-| Patterns | Six `IPatternDetector` implementations | `FusionOrchestrator` after emission |
-
-Interfaces `ISkeletonExtractor` and `ISemanticMarkerGenerator` live in `Fuse.Reduction` to avoid circular project references. Implementations register from `Fuse.Fusion` DI.
-
-Dependency graphs are best-effort approximations (no Roslyn). They may miss dynamic dispatch or produce false positives from type names in comments.
-
-### EmissionOptions (8 properties)
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `OutputDirectory` | `string` | My Documents/Fuse | Directory for output files |
-| `OutputFileName` | `string?` | `null` | Custom filename without extension |
-| `Overwrite` | `bool` | `true` | Overwrite existing output files |
-| `IncludeMetadata` | `bool` | `false` | Include file size and modification date |
-| `MaxTokens` | `int?` | `null` | Hard token limit |
-| `SplitTokens` | `int?` | `800000` | Token threshold for splitting output |
-| `ShowTokenCount` | `bool` | `true` | Display token count on completion |
-| `TrackTopTokenFiles` | `bool` | `false` | Track and display top 5 token-consuming files |
-
-### FusionRequest
-
-```
-FusionRequest
-  CollectionOptions   Collection
-  ReductionOptions    Reduction
-  EmissionOptions     Emission
-  bool                InMemory      // true for MCP tool invocations
-```
-
-CLI commands construct `FusionRequest` via `FusionRequestBuilder`. The builder owns extension and template resolution logic from the former `ConfigurationResolver`.
-
----
-
-## Key Type Definitions
-
-### Collection Axis
-
-**FileCandidate** is an immutable record with `FullPath`, `RelativePath`, and `FileInfo`. No behavior.
-
-**SourceFile** wraps a `FileCandidate` with behavioral properties:
-
-- `Extension` (lowercase with leading dot)
-- `IsCSharp`, `IsRazor`, `IsHtml`, `IsCss`, `IsJson`, `IsXml`, `IsMarkdown`, `IsYaml`, `IsJavaScript`
-- `NormalizedRelativePath` (backslashes replaced with forward slashes)
-
-**CollectionResult** contains `IReadOnlyList<SourceFile>` plus the candidate count evaluated for reporting.
-
-**IFileFilter**
-
-```csharp
-bool Include(FileCandidate candidate, CollectionOptions options);
-```
-
-All filters register in DI as `IFileFilter`. `FileCollectionPipeline` receives `IEnumerable<IFileFilter>`. Registration order equals evaluation order.
-
-**IProjectTemplate**
-
-```csharp
-string Name { get; }
-IReadOnlyCollection<string> Extensions { get; }
-IReadOnlyCollection<string> ExcludeDirectories { get; }
-IReadOnlyCollection<string> ExcludePatterns { get; }
-```
-
-26 concrete classes live in `Templates/Definitions/`. `ProjectTemplateRegistry` discovers templates from DI, keyed by the `ProjectTemplate` enum.
-
-### Reduction Axis
-
-**FusedContent** is an immutable record with:
-
-- `SourceFile` (originating file)
-- `Content` (reduced content string)
-- `TokenCount` (computed once at construction via `ITokenCounter`)
-- `IsTrivial` (true if whitespace-only, `{}`, `[]`, or short self-closing XML tag)
-- `NormalizedPath` (delegates to `SourceFile.NormalizedRelativePath`)
-
-Trivial entries are filtered in `ContentReductionPipeline`. Emission never sees them.
-
-**IContentReducer**
-
-```csharp
-string Extension { get; }
-string Reduce(string content, ReductionOptions options);
-```
-
-Registered in DI as `IContentReducer`. `ReducerRegistry` builds a dictionary keyed by extension. When no reducer matches, content passes through unchanged after whitespace normalization.
-
-**ContentReductionPipeline** for each `SourceFile`:
-
-1. Read content
-2. Apply whitespace normalization once (trim per line, collapse blank lines) when `TrimContent`/`UseCondensing` apply
-3. Resolve and invoke reducer
-4. Construct `FusedContent` with token count
-5. Filter trivial entries
-6. Return `IReadOnlyList<FusedContent>`
-
-Normalization does not occur inside individual reducers.
-
-### Emission Axis
-
-**ITokenCounter**
-
-```csharp
-int Count(string content);
-```
-
-Single implementation: `TikTokenCounter` wrapping `TikToken.GetEncoding("cl100k_base")`. Registered as a singleton in DI.
-
-**TokenBudget** tracks consumption against `MaxTokens` and `SplitTokens`:
-
-- `Consume(int tokens)` returns `BudgetConsumeResult` (continue, split, or halt)
-- `IsExhausted` is true when `MaxTokens` is reached
-- `CurrentPartTokens` counts tokens in the current output part
-- `TotalTokens` counts tokens across all parts
-
-**IOutputWriter**
-
-```csharp
-Task WriteEntryAsync(FusedContent content, CancellationToken cancellationToken);
-Task<FusionResult> CompleteAsync(CancellationToken cancellationToken);
-```
-
-Implementations: `DiskOutputWriter` and `InMemoryOutputWriter`. Both receive `EmissionOptions` and `ITokenCounter` via constructor injection.
-
-**EmissionPipeline** accepts `IReadOnlyList<FusedContent>`, `EmissionOptions`, and `IOutputWriter`:
-
-- Iterates entries in descending size order
-- Calls `TokenBudget.Consume` per entry
-- Handles splits by creating a new writer part
-- Delegates to `IOutputWriter.WriteEntryAsync`
-- Returns `FusionResult`
-
-**FusionResult** contains:
-
-- `IReadOnlyList<string> GeneratedPaths` (disk emission only)
-- `string? InMemoryContent` (in-memory emission only)
-- `long TotalTokens`
-- `int ProcessedFileCount`
-- `int TotalFileCount`
-- `TimeSpan Duration`
-- `IReadOnlyList<FileTokenInfo> TopTokenFiles`
-
-### Fusion Axis
-
-**FusionOrchestrator** is the single public programmatic entry point:
-
-```csharp
-Task<FusionResult> FuseAsync(FusionRequest request, CancellationToken cancellationToken);
-```
-
-It sequences `FileCollectionPipeline`, `ContentReductionPipeline`, and `EmissionPipeline`. The orchestrator is stateless; all per-run state is local to `FuseAsync`.
-
-**FusionValidator** validates `FusionRequest` before execution. Examples:
-
-- Contradictory combinations (`OnlyExtensions` + `Template`)
-- Missing or invalid `SourceDirectory`
-
-Throws `FusionValidationException` with errors. No silent resolution.
-
----
-
-## Implementation Corrections
-
-| Issue | Fix |
-|-------|-----|
-| Binary detection | Read first 8000 bytes as raw bytes; if any byte is `0x00`, classify as binary |
-| GitIgnore async | `ParseAsync` uses `File.ReadAllTextAsync` with `CancellationToken`; no blocking |
-| Temp file naming | `Path.GetTempFileName()` or GUID suffix; never derive from output filename alone |
-| Parallelism | No `.AsParallel()` in collection; sequential enumeration |
-| Whitespace | Normalization once in `ContentReductionPipeline` before reducer; not in reducers |
-| ApplyAllOptions | Removed from all option types; `--all` sets individual flags at CLI |
-| MCP concurrency | Stateless `FusionOrchestrator` plus unique temp files enables safe concurrent invocations |
-
-Catch-and-swallow is permitted only in `AutoGeneratedFileFilter` and `BinaryFileFilter` when file read fails. Each case requires an inline comment explaining why.
-
----
-
-## Pipeline Flow
+### Pipeline flow (ASCII)
 
 ```
 FusionRequest
@@ -444,34 +64,260 @@ FusionRequest
 FusionValidator
     |
     v
-FileCollectionPipeline  (enumerate candidates, apply filters)
+[1] FileCollectionPipeline     enumerate, filter, template extensions
     |
     v
-[Optional] Focus or Change filter  (FusionOrchestrator + Fuse.Analysis)
+[2] FilterFilesAsync           focus | changes | query (mutually exclusive)
+    |                          DependencyGraphBuilder + FocusSeedResolver
+    v
+[3] ContentReductionPipeline   read, normalize, reduce, skeleton, redact
     |
     v
-ContentReductionPipeline  (read, normalize, reduce, skeleton, markers, filter trivial)
+[4] EmissionPipeline             manifest, token budget, format, write
     |
     v
-EmissionPipeline  (order by size, token budget, write)
-    |
-    v
-[Optional] Pattern summary  (FusionOrchestrator + IPatternDetector)
+[Optional] Structural maps       route map, project graph (prepend)
+[Optional] Redact / pattern report (append)
     |
     v
 FusionResult
 ```
 
+Focus, change, and query modes are mutually exclusive. `FusionValidator` rejects any combination of two or more.
+
 ---
 
-## Dependency Injection
+## Language plugin model
 
-All services register in `ServiceCollectionExtensions.AddFuse()` in `Fuse.Fusion`:
+Language-specific behavior lives in plugin assemblies, not in the core pipeline. Each plugin registers capabilities via DI extension methods:
+
+```csharp
+services.AddCSharpLanguage();   // Fuse.Languages.CSharp
+services.AddFormatReducers();   // Fuse.Formats (HTML, JSON, YAML, etc.)
+```
+
+### Capability interfaces
+
+All capabilities extend `ILanguageCapability`, which declares `SupportedExtensions`:
+
+| Interface | Purpose | Example implementation |
+|-----------|---------|------------------------|
+| `IContentReducer` | Extension-specific content reduction | `CSharpReducer`, `HtmlReducer` |
+| `ISkeletonExtractor` | Structural skeleton (signatures only) | `CSharpSkeletonExtractor` |
+| `ISemanticMarkerGenerator` | Type-level annotation comments | `CSharpSemanticMarkerGenerator` |
+| `IDependencyExtractor` | Type references for dependency graph | `CSharpDependencyExtractor` |
+| `ITypeNameLocator` | Resolve type names to defining files | `CSharpTypeNameLocator` |
+| `IRouteMapGenerator` | ASP.NET endpoint table | `CSharpRouteMapGenerator` |
+| `IProjectGraphGenerator` | Solution/project reference graph | `CSharpProjectGraphGenerator` |
+| `IPatternDetector` | Cross-codebase convention detection | `CqrsPatternDetector`, etc. |
+
+Pattern detectors register separately as `PatternDetectorBase` for batch execution after reduction.
+
+### CapabilityRegistry
+
+`CapabilityRegistry<TCapability>` builds an extension-to-capability map at startup. Resolution is by file extension; last registration wins for a given extension (allowing specialized plugins to override defaults):
+
+```csharp
+var reducer = _reducers.TryResolve(sourceFile.Extension);
+if (reducer is not null)
+    content = reducer.Reduce(content, options);
+```
+
+The orchestrator and pipelines never switch on extension strings directly. They resolve capabilities from registries injected via DI.
+
+Four registries are registered in `AddFuseCore()`:
+
+- `CapabilityRegistry<IContentReducer>`
+- `CapabilityRegistry<ISkeletonExtractor>`
+- `CapabilityRegistry<ISemanticMarkerGenerator>`
+- `CapabilityRegistry<IDependencyExtractor>`
+- `CapabilityRegistry<ITypeNameLocator>`
+
+---
+
+## Assembly dependency graph
+
+```mermaid
+graph TD
+    Cli[Fuse.Cli]
+    Fusion[Fuse.Fusion]
+    Collection[Fuse.Collection]
+    Analysis[Fuse.Analysis]
+    Reduction[Fuse.Reduction]
+    Emission[Fuse.Emission]
+    LangAbs[Fuse.Languages.Abstractions]
+    LangCs[Fuse.Languages.CSharp]
+    Formats[Fuse.Formats]
+
+    Cli --> Fusion
+    Fusion --> Collection
+    Fusion --> Analysis
+    Fusion --> Reduction
+    Fusion --> Emission
+    Fusion --> LangAbs
+    Fusion --> LangCs
+    Fusion --> Formats
+
+    Analysis --> Collection
+    Analysis --> Reduction
+    Analysis --> LangAbs
+
+    Reduction --> Collection
+    Reduction --> LangAbs
+
+    Emission --> Reduction
+    Emission --> Analysis
+
+    LangCs --> LangAbs
+    Formats --> LangAbs
+```
+
+NuGet dependencies: `DotNet.Glob` (Collection), `TiktokenSharp` (Emission tokenization).
+
+---
+
+## Project responsibilities
+
+### Fuse.Collection
+
+File discovery, filtering, templates, gitignore parsing. No internal Fuse dependencies.
+
+```
+Fuse.Collection/
+  Filters/           IFileFilter implementations
+  Templates/         IProjectTemplate, 26 definition classes
+  FileSystem/        IFileSystem, GitIgnoreParser
+  Models/            FileCandidate, SourceFile, CollectionResult
+  FileCollectionPipeline.cs
+```
+
+### Fuse.Analysis
+
+Regex-based code analysis for agentic features. Depends on Collection and Reduction models.
+
+```
+Fuse.Analysis/
+  Dependencies/      DependencyGraphBuilder, FocusSeedResolver
+  Changes/           GitChangeDetector
+  Search/            Bm25RelevanceIndex
+  Git/               GitStatsProvider
+  Patterns/          Pattern detection batch runner
+```
+
+Dependency graphs are best-effort (no Roslyn). They may miss dynamic dispatch or produce false positives from type names in comments.
+
+### Fuse.Reduction
+
+Content normalization, capability-driven reduction, caching, secret redaction.
+
+```
+Fuse.Reduction/
+  ContentReductionPipeline.cs
+  Caching/           IReductionCache (XXHash64 keys in .fuse/cache)
+  Security/          ISecretRedactor
+  Models/            FusedContent
+```
+
+### Fuse.Emission
+
+Token counting, output writing, manifest, format adapters.
+
+```
+Fuse.Emission/
+  Writers/           DiskOutputWriter, InMemoryOutputWriter
+  Tokenization/      TokenizerFactory, TikTokenCounter
+  Manifest/          ManifestBuilder
+  Entry formatters:  XmlEntryFormatter, MarkdownEntryFormatter, JsonEntryFormatter
+  EmissionPipeline.cs
+```
+
+### Fuse.Fusion
+
+Orchestration, validation, DI registration (`AddFuse()`, `AddFuseCore()`).
+
+### Fuse.Languages.CSharp
+
+C# plugin: reducer, skeleton, markers, dependencies, type locator, route map, project graph, six pattern detectors.
+
+### Fuse.Formats
+
+Format reducers for non-language-specific file types: CSS, HTML, JavaScript, JSON, Markdown, Razor, SCSS, XML, YAML.
+
+### Fuse.Cli
+
+CLI commands, MCP server (`fuse serve`), config discovery (`fuse.json`, `.fuserc`), `fuse init`.
+
+---
+
+## Options model
+
+The monolithic `FuseOptions` from 1.x is replaced by scoped records composed in `FusionRequest`:
+
+```
+FusionRequest
+  CollectionOptions     Collection
+  ReductionOptions      Reduction
+  EmissionOptions       Emission
+  FocusOptions?         Focus scoping
+  ChangeOptions?        Git change scoping
+  QueryOptions?         BM25 query scoping
+  bool InMemory           true for MCP tools
+  int Parallelism         0 = processor count
+  bool UseReductionCache
+  bool ClearReductionCache
+```
+
+CLI commands construct requests via `FusionRequestBuilder`. Config file values merge with precedence: explicit CLI flag > `fuse.json`/`.fuserc` > built-in default.
+
+Key defaults (2.0):
+
+| Option | Default | Notes |
+|--------|---------|-------|
+| `EnableRedaction` | `true` | `--no-redact` to disable |
+| `IncludeManifest` | `true` | `--no-manifest` to disable |
+| `TokenizerModel` | `o200k_base` | `--tokenizer` to override |
+| `SplitTokens` | `800000` | Multi-part output threshold |
+| `UseReductionCache` | `true` | `--no-cache` to disable |
+
+---
+
+## Key types
+
+**SourceFile** wraps a discovered file with extension booleans (`IsCSharp`, `IsRazor`, etc.) and `NormalizedRelativePath`.
+
+**FusedContent** holds reduced content, token count, triviality flag, optional redaction counts, and optional inclusion provenance chain.
+
+**TokenBudget** tracks consumption against `MaxTokens` and `SplitTokens`, returning continue, split, or halt per entry.
+
+**FusionResult** contains generated paths or in-memory content, token totals, file counts, duration, top token files, pattern summary, and cache hit/miss stats.
+
+**IOutputWriter** implementations receive an `IEntryFormatter` and write entries in descending token-count order.
+
+---
+
+## Dependency injection
+
+All services register in `ServiceCollectionExtensions.AddFuse()`:
 
 | Lifetime | Types |
 |----------|-------|
-| Singleton | `ITokenCounter`, `FusionOrchestrator`, `FusionValidator`, `ProjectTemplateRegistry`, `ReducerRegistry` |
-| Transient | `FileCollectionPipeline`, `ContentReductionPipeline`, `EmissionPipeline` |
-| All as interface | Every `IFileFilter`, `IContentReducer`, `IProjectTemplate` |
+| Singleton | `FusionOrchestrator`, `FusionValidator`, `TokenizerFactory`, all `CapabilityRegistry<T>`, `ProjectTemplateRegistry` |
+| Transient | `FileCollectionPipeline`, `ContentReductionPipeline`, `EmissionPipeline`, all `IFileFilter` |
+| Plugin registration | `AddCSharpLanguage()`, `AddFormatReducers()` |
 
-Filter registration order equals evaluation order.
+Filter registration order equals evaluation order in `RegisterFileFilters()`.
+
+---
+
+## Implementation notes
+
+| Concern | Approach |
+|---------|----------|
+| Binary detection | First 8000 bytes; any `0x00` byte classifies as binary |
+| File reads | `ISourceContentProvider` caches per run; no duplicate reads across graph/reduction |
+| Temp files | GUID-based names; safe for concurrent MCP invocations |
+| Parallelism | Configurable via `--parallelism`; no `.AsParallel()` in filters |
+| Whitespace | Normalized once in `ContentReductionPipeline` before reducers |
+| MCP stdio | All logging to stderr; watch mode disabled when stdout is redirected |
+
+Catch-and-swallow is permitted only in `AutoGeneratedFileFilter` and `BinaryFileFilter` when file read fails, with an inline comment explaining why.

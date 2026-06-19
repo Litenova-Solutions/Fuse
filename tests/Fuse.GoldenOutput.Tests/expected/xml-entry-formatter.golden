@@ -1,0 +1,4 @@
+<!-- included via: OrderService.cs -> src/SampleShop.Core/Models/CatalogItem.cs -->
+<file path="src/SampleShop.Core/Models/CatalogItem.cs">
+public class CatalogItem { }
+</file>

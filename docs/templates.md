@@ -8,6 +8,16 @@ Extension overrides work relative to template defaults:
 - `--exclude-extensions` removes extensions
 - `--only-extensions` replaces all template defaults entirely
 
+## Templates and capability registries
+
+Templates control which files enter the pipeline. Capability registries (`CapabilityRegistry<IContentReducer>`, etc.) control how those files are processed.
+
+A template can include extensions for which no language capability is registered. Those files pass through with whitespace normalization only. For example, the DotNet template includes `.scss` and `.css`; format reducers in `Fuse.Formats` handle those extensions, while `.cs` files route to `CSharpReducer` in `Fuse.Languages.CSharp`.
+
+When `--skeleton` is requested, the CLI checks whether any registered `ISkeletonExtractor` covers the template's extensions. If none match, a warning is emitted and non-C# files pass through normal reduction. Only the DotNet template has skeleton support today (via `CSharpSkeletonExtractor`).
+
+To add processing for a new language, register both a template (for discovery defaults) and a language plugin (for reducers and analysis). See [extending.md](extending.md).
+
 ---
 
 ## AzureDevOpsWiki

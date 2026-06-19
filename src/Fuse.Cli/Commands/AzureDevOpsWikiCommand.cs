@@ -7,14 +7,14 @@ namespace Fuse.Cli.Commands;
 [CliCommand(Name = "wiki", Description = "Fuse an Azure DevOps wiki repository (includes only .md files).", Parent = typeof(FuseCliCommand))]
 public sealed class AzureDevOpsWikiCommand : CommandBase
 {
-    public AzureDevOpsWikiCommand() : base(null!, null!, null!)
+    public AzureDevOpsWikiCommand() : base(null!, null!, null!, null!)
     {
     }
 
     public AzureDevOpsWikiCommand(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        Fuse.Cli.Services.IConsoleUI consoleUI) : base(orchestrator, templateRegistry, consoleUI)
+        Fuse.Cli.Services.IConsoleUI consoleUI, Fuse.Languages.Abstractions.CapabilityRegistry<Fuse.Languages.Abstractions.Skeleton.ISkeletonExtractor> skeletonExtractors) : base(orchestrator, templateRegistry, skeletonExtractors, consoleUI)
     {
     }
 

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Filters;
 using Fuse.Collection.Models;
@@ -9,8 +10,8 @@ namespace Fuse.Collection;
 ///     Enumerates and filters files from the file system based on collection options.
 /// </summary>
 /// <remarks>
-///     Applies all registered <see cref="IFileFilter" /> implementations in registration order
-///     using sequential enumeration. Results are sorted by descending file size.
+///     Applies all registered <see cref="IFileFilter" /> implementations in registration order.
+///     Results are sorted by normalized relative path for deterministic ordering.
 /// </remarks>
 public sealed class FileCollectionPipeline
 {
@@ -38,13 +39,30 @@ public sealed class FileCollectionPipeline
     ///     Collects all files matching the specified options.
     /// </summary>
     /// <param name="options">The collection options for the current run.</param>
+    /// <param name="parallelism">The maximum degree of parallelism for candidate evaluation.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>
-    ///     A <see cref="CollectionResult" /> containing included files sorted by descending size
+    ///     A <see cref="CollectionResult" /> containing included files sorted by path
+    ///     and the number of candidates evaluated.
+    /// </returns>
+    public Task<CollectionResult> CollectAsync(
+        CollectionOptions options,
+        CancellationToken cancellationToken = default) =>
+        CollectAsync(options, Environment.ProcessorCount, cancellationToken);
+
+    /// <summary>
+    ///     Collects all files matching the specified options.
+    /// </summary>
+    /// <param name="options">The collection options for the current run.</param>
+    /// <param name="parallelism">The maximum degree of parallelism for candidate evaluation.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>
+    ///     A <see cref="CollectionResult" /> containing included files sorted by path
     ///     and the number of candidates evaluated.
     /// </returns>
     public async Task<CollectionResult> CollectAsync(
         CollectionOptions options,
+        int parallelism,
         CancellationToken cancellationToken = default)
     {
         var searchOption = options.Recursive
@@ -61,28 +79,37 @@ public sealed class FileCollectionPipeline
                 gitIgnoreFilter.SetPatterns(gitIgnorePatterns);
         }
 
-        var candidatesEvaluated = 0;
-        var includedFiles = new List<SourceFile>();
+        var filePaths = _fileSystem
+            .EnumerateFiles(options.SourceDirectory, "*.*", searchOption)
+            .Select((path, index) => (path, index))
+            .ToArray();
 
-        foreach (var filePath in _fileSystem.EnumerateFiles(options.SourceDirectory, "*.*", searchOption))
+        var includedFiles = new ConcurrentBag<(int Index, SourceFile File)>();
+        var parallelOptions = new ParallelOptions
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            MaxDegreeOfParallelism = parallelism,
+            CancellationToken = cancellationToken
+        };
 
+        await Parallel.ForEachAsync(filePaths, parallelOptions, (item, _) =>
+        {
             var candidate = new FileCandidate(
-                filePath,
-                _fileSystem.GetRelativePath(options.SourceDirectory, filePath),
-                _fileSystem.GetFileInfo(filePath));
-
-            candidatesEvaluated++;
+                item.path,
+                _fileSystem.GetRelativePath(options.SourceDirectory, item.path),
+                _fileSystem.GetFileInfo(item.path));
 
             if (_filters.All(filter => filter.Include(candidate, options)))
-                includedFiles.Add(new SourceFile(candidate));
-        }
+                includedFiles.Add((item.index, new SourceFile(candidate)));
+
+            return ValueTask.CompletedTask;
+        });
 
         var sortedFiles = includedFiles
-            .OrderByDescending(file => file.FileInfo.Length)
+            .OrderBy(entry => entry.Index)
+            .Select(entry => entry.File)
+            .OrderBy(file => file.NormalizedRelativePath, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new CollectionResult(sortedFiles, candidatesEvaluated);
+        return new CollectionResult(sortedFiles, filePaths.Length);
     }
 }

@@ -7,6 +7,7 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
+        <ProjectReference Include="..\Fuse.Languages.Abstractions\Fuse.Languages.Abstractions.csproj"/>
         <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
     </ItemGroup>
 </Project>

@@ -34,6 +34,12 @@ public sealed class PhysicalFileSystem : IFileSystem
     }
 
     /// <inheritdoc />
+    public Task WriteAllTextAsync(string path, string contents, CancellationToken cancellationToken = default)
+    {
+        return File.WriteAllTextAsync(path, contents, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public FileInfo GetFileInfo(string path)
     {
         return new FileInfo(path);

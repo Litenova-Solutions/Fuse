@@ -1,8 +1,9 @@
 using Fuse.Analysis.Changes;
 using Fuse.Analysis.Dependencies;
+using Fuse.Analysis.Search;
 using Fuse.Collection.Options;
 using Fuse.Emission.Models;
-using Fuse.Reduction.Options;
+using Fuse.Languages.Abstractions.Options;
 
 namespace Fuse.Fusion;
 
@@ -20,7 +21,11 @@ public sealed class FusionRequest
         EmissionOptions emission,
         bool inMemory = false,
         FocusOptions? focus = null,
-        ChangeOptions? changes = null)
+        ChangeOptions? changes = null,
+        QueryOptions? query = null,
+        int parallelism = 0,
+        bool useReductionCache = true,
+        bool clearReductionCache = false)
     {
         Collection = collection;
         Reduction = reduction;
@@ -28,6 +33,10 @@ public sealed class FusionRequest
         InMemory = inMemory;
         Focus = focus;
         Changes = changes;
+        Query = query;
+        Parallelism = parallelism;
+        UseReductionCache = useReductionCache;
+        ClearReductionCache = clearReductionCache;
     }
 
     /// <summary>
@@ -59,4 +68,24 @@ public sealed class FusionRequest
     ///     Gets change scoping options, or <c>null</c> when not scoped by git changes.
     /// </summary>
     public ChangeOptions? Changes { get; }
+
+    /// <summary>
+    ///     Gets BM25 query scoping options, or <c>null</c> when not query-scoped.
+    /// </summary>
+    public QueryOptions? Query { get; }
+
+    /// <summary>
+    ///     Gets the maximum degree of parallelism for pipeline stages.
+    /// </summary>
+    public int Parallelism { get; }
+
+    /// <summary>
+    ///     Gets a value indicating whether per-file reduction results are cached on disk.
+    /// </summary>
+    public bool UseReductionCache { get; }
+
+    /// <summary>
+    ///     Gets a value indicating whether the reduction cache is cleared before fusion runs.
+    /// </summary>
+    public bool ClearReductionCache { get; }
 }

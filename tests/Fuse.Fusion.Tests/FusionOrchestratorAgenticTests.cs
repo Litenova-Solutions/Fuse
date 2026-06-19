@@ -1,11 +1,12 @@
 using Fuse.Analysis.Changes;
 using Fuse.Analysis.Dependencies;
+using Fuse.Analysis.Search;
 using Fuse.Collection.Options;
 using Fuse.Emission.Models;
 using Fuse.Fusion;
 using Fuse.Fusion.Extensions;
 using Fuse.Reduction;
-using Fuse.Reduction.Options;
+using Fuse.Languages.Abstractions.Options;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Fusion.Tests;
@@ -121,7 +122,7 @@ public sealed class FusionOrchestratorAgenticTests : IDisposable
 
         var exception = await Assert.ThrowsAsync<FusionValidationException>(() => orchestrator.FuseAsync(request));
 
-        Assert.Contains(exception.Errors, e => e.Contains("FocusOptions and ChangeOptions cannot both be set"));
+        Assert.Contains(exception.Errors, e => e.Contains("mutually exclusive"));
     }
 
     [Fact]
@@ -196,6 +197,122 @@ public sealed class FusionOrchestratorAgenticTests : IDisposable
         Assert.DoesNotContain("secret-payload-abc", content);
         Assert.True(content.IndexOf("<!-- fuse:type", StringComparison.Ordinal) <
                     content.IndexOf("class OrderSample", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task FuseAsync_WithQuery_ScopesToRelevantCluster()
+    {
+        WriteFile("PaymentService.cs", """
+            public class PaymentService
+            {
+                public void ProcessPayment() {}
+            }
+            """);
+        WriteFile("CatalogService.cs", """
+            public class CatalogService
+            {
+                public void ListProducts() {}
+            }
+            """);
+
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+        var request = new FusionRequest(
+            new CollectionOptions(_sourceDirectory, extensions: [".cs"]),
+            new ReductionOptions(),
+            new EmissionOptions(),
+            inMemory: true,
+            query: new QueryOptions("payment process", TopFiles: 1, Depth: 1));
+
+        var result = await orchestrator.FuseAsync(request);
+
+        Assert.NotNull(result.InMemoryContent);
+        Assert.Contains("PaymentService.cs", result.InMemoryContent);
+        Assert.DoesNotContain("CatalogService.cs", result.InMemoryContent);
+    }
+
+    [Fact]
+    public async Task FuseAsync_WithSecret_RedactsBeforeEmission()
+    {
+        WriteFile("Secrets.cs", """
+            public class Secrets
+            {
+                public string Key = "AKIAIOSFODNN7EXAMPLE";
+                public int Count = 1;
+            }
+            """);
+
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+        var request = new FusionRequest(
+            new CollectionOptions(_sourceDirectory, extensions: [".cs"]),
+            new ReductionOptions(enableRedaction: true),
+            new EmissionOptions(),
+            inMemory: true);
+
+        var result = await orchestrator.FuseAsync(request);
+
+        Assert.NotNull(result.InMemoryContent);
+        Assert.Contains("[REDACTED:aws-access-key]", result.InMemoryContent);
+        Assert.DoesNotContain("AKIAIOSFODNN7EXAMPLE", result.InMemoryContent);
+        Assert.Contains("Count = 1", result.InMemoryContent);
+    }
+
+    [Fact]
+    public async Task FuseAsync_WithRouteMap_PrependsRouteTable()
+    {
+        WriteFile("ApiController.cs", """
+            [Route("api/items")]
+            public class ItemsController
+            {
+                [HttpGet]
+                public IActionResult List() => Ok();
+            }
+            """);
+
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+        var request = new FusionRequest(
+            new CollectionOptions(_sourceDirectory, extensions: [".cs"]),
+            new ReductionOptions(includeRouteMap: true),
+            new EmissionOptions(),
+            inMemory: true);
+
+        var result = await orchestrator.FuseAsync(request);
+
+        Assert.NotNull(result.InMemoryContent);
+        Assert.StartsWith("<!-- fuse:route-map", result.InMemoryContent);
+        Assert.Contains("GET", result.InMemoryContent);
+    }
+
+    [Fact]
+    public async Task FuseAsync_WithManifest_PrependsManifestHeader()
+    {
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+        var request = new FusionRequest(
+            new CollectionOptions(_sourceDirectory, extensions: [".cs"]),
+            new ReductionOptions(),
+            new EmissionOptions { IncludeManifest = true },
+            inMemory: true);
+
+        var result = await orchestrator.FuseAsync(request);
+
+        Assert.NotNull(result.InMemoryContent);
+        Assert.StartsWith("<!-- fuse:manifest", result.InMemoryContent);
+        Assert.Contains("Seed.cs", result.InMemoryContent);
+    }
+
+    [Fact]
+    public async Task FuseAsync_WithGitStatsOutsideRepo_IncludesUnavailableNote()
+    {
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+        var request = new FusionRequest(
+            new CollectionOptions(_sourceDirectory, extensions: [".cs"]),
+            new ReductionOptions(),
+            new EmissionOptions { IncludeManifest = true, IncludeGitStats = true },
+            inMemory: true);
+
+        var result = await orchestrator.FuseAsync(request);
+
+        Assert.NotNull(result.InMemoryContent);
+        Assert.Contains("git: unavailable", result.InMemoryContent);
     }
 
     private void WriteFile(string name, string content) =>

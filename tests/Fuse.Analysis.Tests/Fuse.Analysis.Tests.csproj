@@ -16,5 +16,6 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\src\Fuse.Analysis\Fuse.Analysis.csproj"/>
+        <ProjectReference Include="..\..\src\Fuse.Languages.CSharp\Fuse.Languages.CSharp.csproj"/>
     </ItemGroup>
 </Project>

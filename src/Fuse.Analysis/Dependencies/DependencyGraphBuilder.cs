@@ -1,4 +1,6 @@
-using System.Text.RegularExpressions;
+using System.Collections.Concurrent;
+using Fuse.Languages.Abstractions;
+using Fuse.Languages.Abstractions.Dependencies;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
 
@@ -10,53 +12,82 @@ namespace Fuse.Analysis.Dependencies;
 /// </summary>
 public sealed class DependencyGraphBuilder
 {
-    private static readonly Regex TypeDefinitionRegex = new(
-        @"\b(class|interface|record|struct|enum)\s+(\w+)\b",
-        RegexOptions.Compiled);
+    /// <summary>
+    ///     Builds a dependency graph by reading each file and extracting referenced types.
+    /// </summary>
+    public Task<DependencyGraph> BuildAsync(
+        IReadOnlyList<SourceFile> files,
+        ISourceContentProvider contentProvider,
+        CapabilityRegistry<IDependencyExtractor> extractors,
+        CapabilityRegistry<ITypeNameLocator> typeLocators,
+        CancellationToken cancellationToken = default) =>
+        BuildAsync(
+            files,
+            contentProvider,
+            extractors,
+            typeLocators,
+            Environment.ProcessorCount,
+            cancellationToken);
 
     /// <summary>
     ///     Builds a dependency graph by reading each file and extracting referenced types.
     /// </summary>
     public async Task<DependencyGraph> BuildAsync(
         IReadOnlyList<SourceFile> files,
-        IFileSystem fileSystem,
-        IDependencyExtractor extractor,
+        ISourceContentProvider contentProvider,
+        CapabilityRegistry<IDependencyExtractor> extractors,
+        CapabilityRegistry<ITypeNameLocator> typeLocators,
+        int parallelism,
         CancellationToken cancellationToken = default)
     {
-        var fileReferences = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
-        var typeIndex = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var fileReferences = new ConcurrentDictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        var typeIndex = new ConcurrentDictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
-        foreach (var file in files)
+        var parallelOptions = new ParallelOptions
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            MaxDegreeOfParallelism = parallelism,
+            CancellationToken = cancellationToken
+        };
 
-            if (!string.Equals(file.Extension, extractor.Extension, StringComparison.OrdinalIgnoreCase))
+        await Parallel.ForEachAsync(files, parallelOptions, async (file, ct) =>
+        {
+            var extractor = extractors.TryResolve(file.Extension);
+            if (extractor is null)
             {
                 fileReferences[file.NormalizedRelativePath] = [];
-                continue;
+                return;
             }
 
-            var content = await fileSystem.ReadAllTextAsync(file.FullPath, cancellationToken);
+            var content = await contentProvider.GetContentAsync(file, ct);
             fileReferences[file.NormalizedRelativePath] = extractor.ExtractReferencedTypes(content);
 
-            foreach (Match match in TypeDefinitionRegex.Matches(content))
-            {
-                var typeName = match.Groups[2].Value;
-                if (!typeIndex.TryGetValue(typeName, out var paths))
-                {
-                    paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    typeIndex[typeName] = paths;
-                }
+            var locator = typeLocators.TryResolve(file.Extension);
+            if (locator is null)
+                return;
 
-                paths.Add(file.NormalizedRelativePath);
+            foreach (var typeName in locator.ExtractDefinedTypes(content))
+            {
+                var paths = typeIndex.GetOrAdd(typeName, _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+                lock (paths)
+                {
+                    paths.Add(file.NormalizedRelativePath);
+                }
             }
-        }
+        });
+
+        var orderedReferences = files
+            .Select(f => f.NormalizedRelativePath)
+            .Where(fileReferences.ContainsKey)
+            .ToDictionary(
+                path => path,
+                path => fileReferences[path],
+                StringComparer.OrdinalIgnoreCase);
 
         var readOnlyTypeIndex = typeIndex.ToDictionary(
             kvp => kvp.Key,
-            kvp => (IReadOnlyList<string>)kvp.Value.ToArray(),
+            kvp => (IReadOnlyList<string>)kvp.Value.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray(),
             StringComparer.Ordinal);
 
-        return new DependencyGraph(fileReferences, readOnlyTypeIndex);
+        return new DependencyGraph(orderedReferences, readOnlyTypeIndex);
     }
 }

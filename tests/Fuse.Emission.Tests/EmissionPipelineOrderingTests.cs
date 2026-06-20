@@ -55,6 +55,48 @@ public sealed class EmissionPipelineOrderingTests
         Assert.Single(writer.PathsPerPart[1]);
     }
 
+    [Fact]
+    public async Task EmitAsync_WhenScored_EmitsMostRelevantFirstUnderBudget()
+    {
+        // A small, highly relevant seed and two large, less relevant files. Under a tight budget the seed
+        // must be emitted first (so it survives), and the least relevant file must be dropped.
+        var seed = CreateEntry("seed.cs", "x", tokenCount: 20).WithRelevanceScore(1.0);
+        var bulky = CreateEntry("bulky.cs", new string('a', 500), tokenCount: 500).WithRelevanceScore(0.25);
+        var huge = CreateEntry("huge.cs", new string('b', 800), tokenCount: 800).WithRelevanceScore(0.10);
+
+        var pipeline = new EmissionPipeline();
+        var writer = new RecordingOutputWriter();
+        var options = new EmissionOptions
+        {
+            IncludeManifest = false,
+            MaxTokens = 100,
+        };
+
+        // Supplied in the opposite order to prove ordering is by relevance, not input order.
+        await pipeline.EmitAsync([huge, bulky, seed], options, writer);
+
+        Assert.Equal("seed.cs", writer.EntryPaths[0]);
+        Assert.DoesNotContain("huge.cs", writer.EntryPaths);
+    }
+
+    [Fact]
+    public async Task EmitAsync_Unscored_RetainsDescendingTokenOrder()
+    {
+        var entries = new[]
+        {
+            CreateEntry("small.cs", "x", tokenCount: 5),
+            CreateEntry("large.cs", new string('a', 200), tokenCount: 200),
+        };
+
+        var pipeline = new EmissionPipeline();
+        var writer = new RecordingOutputWriter();
+        var options = new EmissionOptions { IncludeManifest = false, MaxTokens = 10000 };
+
+        await pipeline.EmitAsync(entries, options, writer);
+
+        Assert.Equal(["large.cs", "small.cs"], writer.EntryPaths);
+    }
+
     private static FusedContent CreateEntry(string path, string body, int tokenCount)
     {
         var candidate = new FileCandidate(path, path, new FileInfo(path));

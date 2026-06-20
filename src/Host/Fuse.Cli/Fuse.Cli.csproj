@@ -30,4 +30,16 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
         <ProjectReference Include="..\..\Core\Fuse.Fusion\Fuse.Fusion.csproj" />
     </ItemGroup>
+
+    <!--
+      fuse verify uses Roslyn syntax parsing in the framework-dependent tool. Roslyn is not trim or AOT
+      compatible, so it is excluded from the Native AOT build, which falls back to an AOT-clean regex
+      analyzer (see VerifyCommand and the FUSE_ROSLYN guard).
+    -->
+    <ItemGroup Condition="'$(PublishAot)' != 'true'">
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    </ItemGroup>
+    <PropertyGroup Condition="'$(PublishAot)' != 'true'">
+        <DefineConstants>$(DefineConstants);FUSE_ROSLYN</DefineConstants>
+    </PropertyGroup>
 </Project>

@@ -15,4 +15,6 @@ namespace Fuse.Emission.Serialization;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(JsonManifestDto))]
 [JsonSerializable(typeof(JsonFileEntryDto))]
+[JsonSerializable(typeof(JsonRunReportDto))]
+[JsonSerializable(typeof(JsonVerifyReportDto))]
 internal partial class FuseEmissionJsonContext : JsonSerializerContext;

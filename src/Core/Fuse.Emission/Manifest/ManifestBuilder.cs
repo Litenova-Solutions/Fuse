@@ -45,9 +45,20 @@ public static class ManifestBuilder
         return format switch
         {
             OutputFormat.Json => BuildJsonManifest(emittedFiles, gitStats, patternSummary),
+            OutputFormat.Compact => BuildCompactManifest(emittedFiles, gitStats, patternSummary),
             OutputFormat.Markdown => BuildCommentManifest(emittedFiles, gitStats, patternSummary, prefix: "<!-- fuse:manifest", suffix: "-->"),
             _ => BuildCommentManifest(emittedFiles, gitStats, patternSummary, prefix: "<!-- fuse:manifest", suffix: "-->"),
         };
+    }
+
+    private static string BuildCompactManifest(
+        IReadOnlyList<FileTokenInfo> emittedFiles,
+        GitStatsResult? gitStats,
+        PatternSummary? patternSummary)
+    {
+        // A comment-free manifest for the compact format: a header marker followed by hash-prefixed lines.
+        var lines = BuildManifestLines(emittedFiles, gitStats, patternSummary);
+        return "# fuse:manifest\n" + string.Join("\n", lines.Select(l => "#" + l)) + "\n";
     }
 
     private static string BuildCommentManifest(

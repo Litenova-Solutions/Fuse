@@ -15,6 +15,8 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<AzureDevOpsWikiCommand>();
     services.AddTransient<InitCommand>();
     services.AddTransient<McpServeCommand>();
+    services.AddTransient<ExplainCommand>();
+    services.AddTransient<VerifyCommand>();
 });
 
 await Cli.RunAsync<FuseCliCommand>(args);

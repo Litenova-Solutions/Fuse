@@ -109,6 +109,16 @@ public sealed class FusedContent
     public FusedContent WithRelevanceScore(double relevanceScore) =>
         new(SourceFile, Content, new StaticTokenCounter(TokenCount), RedactionCounts, InclusionChain, relevanceScore);
 
+    /// <summary>
+    ///     Returns a copy of this content with replaced body text and a recomputed token count, preserving
+    ///     redaction counts, inclusion chain, and relevance score.
+    /// </summary>
+    /// <param name="content">The new reduced content.</param>
+    /// <param name="tokenCounter">The token counter used to recompute <see cref="TokenCount" />.</param>
+    /// <returns>A new <see cref="FusedContent" /> with the supplied content.</returns>
+    public FusedContent WithReducedContent(string content, ITokenCounter tokenCounter) =>
+        new(SourceFile, content, tokenCounter, RedactionCounts, InclusionChain, RelevanceScore);
+
     private static bool ComputeIsTrivial(string content)
     {
         if (string.IsNullOrWhiteSpace(content))

@@ -13,4 +13,7 @@ public enum OutputFormat
 
     /// <summary>JSON lines with manifest and file entries.</summary>
     Json,
+
+    /// <summary>Minimal envelope with a single header line per file and no closing marker.</summary>
+    Compact,
 }

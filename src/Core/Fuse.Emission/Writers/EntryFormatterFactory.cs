@@ -21,6 +21,7 @@ public static class EntryFormatterFactory
         {
             OutputFormat.Markdown => new MarkdownEntryFormatter(),
             OutputFormat.Json => new JsonEntryFormatter(),
+            OutputFormat.Compact => new CompactEntryFormatter(),
             _ => new XmlEntryFormatter(),
         };
 
@@ -38,7 +39,8 @@ public static class EntryFormatterFactory
         {
             "markdown" or "md" => OutputFormat.Markdown,
             "json" => OutputFormat.Json,
+            "compact" => OutputFormat.Compact,
             "xml" or "" or null => OutputFormat.Xml,
-            _ => throw new ArgumentException($"Unknown output format '{value}'. Use xml, markdown, or json."),
+            _ => throw new ArgumentException($"Unknown output format '{value}'. Use xml, markdown, json, or compact."),
         };
 }

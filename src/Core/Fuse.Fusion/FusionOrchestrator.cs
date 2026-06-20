@@ -45,6 +45,7 @@ public sealed class FusionOrchestrator
     private readonly IProjectGraphGenerator? _projectGraphGenerator;
     private readonly IReductionCacheFactory _reductionCacheFactory;
     private readonly IGitStatsProvider _gitStatsProvider;
+    private readonly Enrichment.BoilerplateDeduplicator _boilerplateDeduplicator;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionOrchestrator" /> class.
@@ -66,6 +67,7 @@ public sealed class FusionOrchestrator
         IRelevanceIndex relevanceIndex,
         IReductionCacheFactory reductionCacheFactory,
         IGitStatsProvider gitStatsProvider,
+        Enrichment.BoilerplateDeduplicator boilerplateDeduplicator,
         IRouteMapGenerator? routeMapGenerator = null,
         IProjectGraphGenerator? projectGraphGenerator = null)
     {
@@ -85,6 +87,7 @@ public sealed class FusionOrchestrator
         _relevanceIndex = relevanceIndex;
         _reductionCacheFactory = reductionCacheFactory;
         _gitStatsProvider = gitStatsProvider;
+        _boilerplateDeduplicator = boilerplateDeduplicator;
         _routeMapGenerator = routeMapGenerator;
         _projectGraphGenerator = projectGraphGenerator;
     }
@@ -150,6 +153,14 @@ public sealed class FusionOrchestrator
             tokenCounter,
             cancellationToken);
 
+        string? headerPreamble = null;
+        if (request.Emission.DeduplicateHeaders)
+        {
+            var dedup = _boilerplateDeduplicator.Deduplicate(reducedContent, tokenCounter);
+            reducedContent = dedup.Content;
+            headerPreamble = dedup.Preamble;
+        }
+
         if (request.Emission.IncludeProvenance && filterResult.Provenance is not null)
             reducedContent = AttachProvenance(reducedContent, filterResult.Provenance);
 
@@ -201,6 +212,9 @@ public sealed class FusionOrchestrator
 
         if (request.Reduction.IncludePatternSummary && !request.Emission.IncludeManifest)
             emissionResult = await ApplyPatternSummaryAsync(emissionResult, patternSummary);
+
+        if (headerPreamble is not null)
+            emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, headerPreamble);
 
         return WithReductionCacheStats(emissionResult, reductionCache);
     }
@@ -554,6 +568,31 @@ public sealed class FusionOrchestrator
             var lastPath = generatedPaths[^1];
             var existing = await _fileSystem.ReadAllTextAsync(lastPath);
             await _fileSystem.WriteAllTextAsync(lastPath, existing + "\n" + comment);
+        }
+
+        return new FusionResult(
+            generatedPaths,
+            inMemoryContent,
+            emissionResult.TotalTokens,
+            emissionResult.ProcessedFileCount,
+            emissionResult.TotalFileCount,
+            emissionResult.Duration,
+            emissionResult.TopTokenFiles,
+            emissionResult.PatternSummary);
+    }
+
+    private async Task<FusionResult> PrependToDiskOrMemoryAsync(FusionResult emissionResult, string preamble)
+    {
+        var inMemoryContent = emissionResult.InMemoryContent;
+        if (!string.IsNullOrEmpty(inMemoryContent))
+            inMemoryContent = preamble + "\n" + inMemoryContent;
+
+        var generatedPaths = emissionResult.GeneratedPaths.ToList();
+        if (generatedPaths.Count > 0)
+        {
+            var firstPath = generatedPaths[0];
+            var existing = await _fileSystem.ReadAllTextAsync(firstPath);
+            await _fileSystem.WriteAllTextAsync(firstPath, preamble + "\n" + existing);
         }
 
         return new FusionResult(

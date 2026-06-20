@@ -5,6 +5,7 @@ using Fuse.Collection.Models;
 using Fuse.Collection.Templates;
 using Fuse.Cli.Configuration;
 using Fuse.Emission.Models;
+using Fuse.Emission.Serialization;
 using Fuse.Emission.Tokenization;
 using Fuse.Emission.Writers;
 using Fuse.Fusion;
@@ -142,6 +143,24 @@ public abstract class CommandBase
             return;
 
         DisplayResults(result, request.Emission);
+        WriteRunReport(result, request.Emission);
+    }
+
+    private void WriteRunReport(FusionResult result, EmissionOptions emissionOptions)
+    {
+        if (string.IsNullOrWhiteSpace(Report))
+            return;
+
+        var json = RunReportBuilder.Build(result, emissionOptions);
+
+        if (Report == "-")
+        {
+            Console.Out.WriteLine(json);
+            return;
+        }
+
+        File.WriteAllText(Report, json);
+        _consoleUI.WriteResult($"Report: {ConsoleUI.GetFriendlyPath(Path.GetFullPath(Report))}");
     }
 
     /// <summary>
@@ -248,6 +267,7 @@ public abstract class CommandBase
             IncludeProvenance = Provenance || (config?.Provenance ?? false),
             TokenizerModel = Tokenizer ?? config?.Tokenizer ?? TokenizerFactory.DefaultModel,
             Format = EntryFormatterFactory.ParseFormat(Format ?? config?.Format),
+            DeduplicateHeaders = DedupHeaders,
         };
     }
 
@@ -507,9 +527,15 @@ public abstract class CommandBase
     public bool Provenance { get; set; } = false;
 
     /// <summary>
-    ///     Output format (<c>xml</c>, <c>markdown</c>, or <c>json</c>).
+    ///     Replace identical leading comment headers shared across files with a marker, emitted once.
     /// </summary>
-    [CliOption(Description = "Output format: xml, markdown, or json.")]
+    [CliOption(Description = "Replace identical leading comment headers shared across files with a marker, emitted once.")]
+    public bool DedupHeaders { get; set; } = false;
+
+    /// <summary>
+    ///     Output format (<c>xml</c>, <c>markdown</c>, <c>json</c>, or <c>compact</c>).
+    /// </summary>
+    [CliOption(Description = "Output format: xml, markdown, json, or compact.")]
     public string? Format { get; set; }
 
     /// <summary>
@@ -517,6 +543,12 @@ public abstract class CommandBase
     /// </summary>
     [CliOption(Description = "Tokenizer model or encoding (default: o200k_base).")]
     public string? Tokenizer { get; set; }
+
+    /// <summary>
+    ///     Write a machine-readable JSON run report to the given path, or to stdout when set to <c>-</c>.
+    /// </summary>
+    [CliOption(Description = "Write a machine-readable JSON run report to a file path, or to stdout with '-'.")]
+    public string? Report { get; set; }
 
     #endregion
 

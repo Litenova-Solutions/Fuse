@@ -65,6 +65,12 @@ public sealed class EmissionOptions
     public bool IncludeProvenance { get; set; } = false;
 
     /// <summary>
+    ///     A value indicating whether identical leading comment headers shared by two or more files are
+    ///     replaced with a marker and emitted once in a preamble. Off by default.
+    /// </summary>
+    public bool DeduplicateHeaders { get; set; } = false;
+
+    /// <summary>
     ///     The output serialization format. Defaults to <see cref="OutputFormat.Xml" />.
     /// </summary>
     public OutputFormat Format { get; set; } = OutputFormat.Xml;

@@ -81,6 +81,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<DependencyGraphBuilder>();
         services.AddSingleton<FocusSeedResolver>();
+        services.AddSingleton<Enrichment.BoilerplateDeduplicator>();
 
         services.AddSingleton<IChangeDetector, GitChangeDetector>();
         services.AddSingleton<IGitStatsProvider, GitStatsProvider>();

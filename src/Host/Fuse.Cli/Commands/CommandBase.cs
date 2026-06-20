@@ -531,6 +531,14 @@ public abstract class CommandBase
     public string? Session { get; set; }
 
     /// <summary>
+    ///     Engage the opt-in Roslyn precision tier for C# analysis (more accurate skeletons, dependency edges,
+    ///     and outlines). Available in the framework-dependent tool only; the Native AOT build always uses the
+    ///     regex tier. The tier is selected at startup, so this option is also detected before parsing.
+    /// </summary>
+    [CliOption(Description = "Use the Roslyn precision tier for C# (framework-dependent build only).")]
+    public bool Semantic { get; set; } = false;
+
+    /// <summary>
     ///     Include git churn and last-modified stats in the manifest.
     /// </summary>
     [CliOption(Description = "Include git churn and last-modified stats in the manifest.")]

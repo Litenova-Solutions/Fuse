@@ -42,6 +42,7 @@
     -->
     <ItemGroup Condition="'$(PublishAot)' != 'true'">
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+        <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj" />
     </ItemGroup>
 
     <!--

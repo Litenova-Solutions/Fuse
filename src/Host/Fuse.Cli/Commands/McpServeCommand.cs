@@ -50,6 +50,13 @@ public sealed class McpServeCommand
         builder.Services.AddSingleton<IConsoleUI, StderrConsoleUI>();
         builder.Services.AddFuse();
 
+#if FUSE_ROSLYN
+        // Opt-in Roslyn precision tier for the serve process, enabled by FUSE_SEMANTIC. Registered after AddFuse
+        // so it wins .cs capability resolution. Compiled out of the Native AOT build.
+        if (SemanticModeDetector.EnvironmentRequested())
+            Fuse.Plugins.Languages.CSharp.Roslyn.Extensions.RoslynServiceCollectionExtensions.AddCSharpRoslyn(builder.Services);
+#endif
+
         builder.Services
             .AddMcpServer(options =>
             {

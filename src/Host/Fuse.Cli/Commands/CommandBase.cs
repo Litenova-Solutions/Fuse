@@ -91,7 +91,7 @@ public abstract class CommandBase
 
         try
         {
-            EmitAgenticWarnings(request);
+            EmitSkeletonModeWarnings(request);
             await RunFusionOnceAsync(request, cancellationToken);
 
             if (!Watch || cancellationToken.IsCancellationRequested)
@@ -286,7 +286,7 @@ public abstract class CommandBase
         return Directory;
     }
 
-    private void EmitAgenticWarnings(FusionRequest request)
+    private void EmitSkeletonModeWarnings(FusionRequest request)
     {
         if (!request.Reduction.SkeletonMode)
             return;

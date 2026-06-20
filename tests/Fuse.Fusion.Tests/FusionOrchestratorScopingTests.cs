@@ -9,14 +9,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Fusion.Tests;
 
-public sealed class FusionOrchestratorAgenticTests : IDisposable
+public sealed class FusionOrchestratorScopingTests : IDisposable
 {
     private readonly string _sourceDirectory;
     private readonly ServiceProvider _serviceProvider;
 
-    public FusionOrchestratorAgenticTests()
+    public FusionOrchestratorScopingTests()
     {
-        _sourceDirectory = Path.Combine(Path.GetTempPath(), "fuse-agentic-tests", Guid.NewGuid().ToString("N"));
+        _sourceDirectory = Path.Combine(Path.GetTempPath(), "fuse-scoping-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_sourceDirectory);
 
         WriteFile("Seed.cs", """

@@ -37,6 +37,15 @@ public sealed class GoldenOutputTests
     }
 
     [Fact]
+    public async Task SampleShop_TableOfContents_MatchesGolden()
+    {
+        using var host = new GoldenFusionTestHost();
+        var output = await host.FuseSampleShopAsync(
+            emission: new EmissionOptions { TableOfContents = true, IncludeManifest = false, IncludeGitStats = false });
+        GoldenOutputAssert.AssertMatches("table-of-contents", output);
+    }
+
+    [Fact]
     public void XmlEntryFormatter_SampleEntry_MatchesGolden()
     {
         var formatter = new XmlEntryFormatter();

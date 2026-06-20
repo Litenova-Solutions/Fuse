@@ -3,7 +3,7 @@ title: Tokenizers
 description: How Fuse counts tokens, the encodings it supports, and how the tokenizer flag resolves a model or encoding name.
 ---
 
-Fuse reports the token count of every fusion so you can judge how much of a model's context window it will consume. It produces that figure with the Microsoft.ML.Tokenizers library using OpenAI-compatible encodings, counting the same tokens the target model counts rather than estimating from character length. The count Fuse reports therefore matches what the model sees when you paste the output into it.
+Fuse reports the token count of every fusion so you can judge how much of a model's context window it will consume. For OpenAI-compatible encodings it produces that figure with the Microsoft.ML.Tokenizers library, counting the same tokens the target model counts rather than estimating from character length. For the Anthropic (Claude) and Google (Gemini) families, which do not publish a local tokenizer for their current models, Fuse uses a deterministic estimator instead; those counts are approximate.
 
 This page is for engineers who want the reported count to match a specific model and maintainers who need the exact resolution rules.
 
@@ -28,10 +28,16 @@ The `--tokenizer` value resolves to an encoding by the following rules, applied 
 | `gpt-4` | `cl100k_base` |
 | `gpt-3.5-turbo` | `cl100k_base` |
 | `gpt-3.5` | `cl100k_base` |
+| Any value starting with `claude` or `anthropic` | Anthropic estimator |
+| Any value starting with `gemini` or `google` | Gemini estimator |
 | Any value containing an underscore | Used as-is, treated as an encoding name |
 | Anything else | `o200k_base` (the default) |
 
-Two consequences follow from these rules. A value containing an underscore is passed through unchanged on the assumption that it names an encoding, so a misspelled encoding name is used verbatim rather than corrected. Any value that matches no known alias and contains no underscore falls back to the default `o200k_base` rather than raising an error.
+The Anthropic and Gemini families are matched first, by name prefix, so `claude-opus-4` and `gemini-1.5-pro` resolve to their estimators. Two consequences follow from the remaining rules. A value containing an underscore is passed through unchanged on the assumption that it names an encoding, so a misspelled encoding name is used verbatim rather than corrected. Any value that matches no known alias and contains no underscore falls back to the default `o200k_base` rather than raising an error.
+
+## Estimated Encodings
+
+Anthropic and Google do not publish a local tokenizer vocabulary for their current models, so an exact offline count is not possible; both expose a token-counting API for exact figures. For these families Fuse uses a deterministic estimator: each run of letters and digits costs `ceil(length / charsPerToken)` tokens and each other non-whitespace character costs one token. The Anthropic estimator uses 3.5 characters per token and the Gemini estimator uses 4, both published rules of thumb for English and code. The result is a stable estimate suitable for budgeting, not an exact count. For an exact offline count, use an OpenAI encoding; for an exact provider-specific count, use that provider's counting API. The estimators are AOT-safe and allocation-light, with no reflection.
 
 ## Choosing An Encoding
 

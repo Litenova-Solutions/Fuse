@@ -1,15 +1,15 @@
 ---
 title: Choosing an Output Format
-description: How to pick between XML, Markdown, and JSON output, and what each format is suited for.
+description: How to pick between XML, Markdown, JSON, and compact output, and what each format is suited for.
 ---
 
-Fuse writes a fusion in one of three formats: XML, Markdown, or JSON. The format controls how files are wrapped and how the manifest renders, but not which files are included or how aggressively they are reduced. This guide explains what each format looks like and which to reach for in a given situation.
+Fuse writes a fusion in one of four formats: XML, Markdown, JSON, or compact. The format controls how files are wrapped and how the manifest renders, but not which files are included or how aggressively they are reduced. This guide explains what each format looks like and which to reach for in a given situation.
 
 This page is for engineers deciding how to consume a fusion, whether that is feeding an agent, reading the output by eye, or parsing it in a script.
 
 ## Configuration Context
 
-The format is set with `--format`, which accepts `xml` (the default), `markdown`, or `json`. It can also be set in a configuration file under the `format` key, which the [Configuration Files](configuration.md) guide covers. Every format carries the same manifest and the same reduced file content; only the wrapping differs.
+The format is set with `--format`, which accepts `xml` (the default), `markdown`, `json`, or `compact`. It can also be set in a configuration file under the `format` key, which the [Configuration Files](configuration.md) guide covers. Every format carries the same manifest and the same reduced file content; only the wrapping differs.
 
 ```bash
 fuse dotnet --directory ./src --format markdown
@@ -65,6 +65,28 @@ JSON is the format for programmatic consumption. The output is a single object c
 
 Use JSON when another program consumes the fusion: a custom indexing step, a report generator, or any tool that needs structured fields rather than free text.
 
+## Compact
+
+Compact trades the self-describing XML wrapper for fewer envelope tokens. Each file is introduced by a single `=== path ===` line and has no closing marker; the next header or the end of output bounds the body.
+
+```
+=== src/Services/OrderService.cs ===
+public class OrderService
+{
+    public Receipt Charge(Order order) => _gateway.Process(order);
+}
+```
+
+Reach for compact when you want every token to go to code and the consumer can split on the header line. The saving over XML is the per-file closing tag and attribute syntax, so it grows with the number of files; on the benchmark corpus it removed roughly 0.1 to 0.8 percent of total tokens depending on file count and size. The boundary is less explicit than an XML close tag, so prefer XML when feeding a model that must never confuse a file boundary.
+
+## Cutting Repeated Headers
+
+Independent of the format, `--dedup-headers` removes identical leading comment headers shared across files. When many files begin with the same license banner or comment block, the banner is emitted once in a preamble and each file keeps only a short marker in its place. Only leading comment blocks are moved; preprocessor directives and code are untouched, so the API surface is unchanged. The saving is proportional to how much identical header text the codebase repeats: negligible on projects without per-file headers, but large on header-heavy ones (a 40-file project with a three-line banner each shrank from 3131 to 1989 tokens in testing).
+
+```bash
+fuse dotnet --directory ./src --dedup-headers
+```
+
 ## Adding Metadata And Dropping The Manifest
 
 Two options adjust what each format carries, and they apply regardless of which format is selected.
@@ -83,6 +105,7 @@ fuse dotnet --directory ./src --no-manifest
 | XML | `xml` (default) | Feeding an agent or pasting into a chat |
 | Markdown | `markdown` | A person reads the output or it goes into a Markdown document |
 | JSON | `json` | A program parses the output |
+| Compact | `compact` | Every token should go to code and the consumer can split on the header line |
 
 ## What This Does Not Cover
 

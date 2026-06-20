@@ -5,7 +5,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 20225
+    "tokens": 13640
   },
   {
     "repo": "MediatR",
@@ -13,7 +13,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 3243
+    "tokens": 11640
   },
   {
     "repo": "MediatR",
@@ -28,8 +28,8 @@
     "question": "Where is notification publishing handled by awaiting each handler one after another?",
     "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 21091
+    "hit": 1,
+    "tokens": 13540
   },
   {
     "repo": "MediatR",
@@ -53,7 +53,7 @@
     "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 20268
+    "tokens": 14245
   },
   {
     "repo": "MediatR",
@@ -76,8 +76,8 @@
     "question": "Where are the built-in rule extension methods such as NotNull and NotEmpty defined?",
     "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 13933
+    "hit": 1,
+    "tokens": 23599
   },
   {
     "repo": "FluentValidation",
@@ -101,7 +101,7 @@
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 20382
+    "tokens": 16219
   },
   {
     "repo": "FluentValidation",
@@ -109,7 +109,7 @@
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 12286
+    "tokens": 16515
   },
   {
     "repo": "FluentValidation",
@@ -124,8 +124,8 @@
     "question": "Where is the rule that checks a string is a valid email address implemented?",
     "answer": "src/FluentValidation/Validators/EmailValidator.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 22016
+    "hit": 1,
+    "tokens": 21187
   },
   {
     "repo": "FluentValidation",
@@ -149,7 +149,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 9104
+    "tokens": 15232
   },
   {
     "repo": "AutoMapper",
@@ -157,7 +157,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 11241
+    "tokens": 14236
   },
   {
     "repo": "AutoMapper",
@@ -173,7 +173,7 @@
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 22602
+    "tokens": 20573
   },
   {
     "repo": "AutoMapper",
@@ -196,8 +196,8 @@
     "question": "Which file provides the queryable ProjectTo extension methods for IQueryable?",
     "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 27159
+    "hit": 1,
+    "tokens": 15521
   },
   {
     "repo": "AutoMapper",
@@ -220,16 +220,16 @@
     "question": "Which file contains the serializer that reads and writes JSON through converters?",
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 34918
+    "hit": 1,
+    "tokens": 21293
   },
   {
     "repo": "NewtonsoftJson",
     "question": "Which file contains the serializer that reads and writes JSON through converters?",
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "focus",
-    "hit": 0,
-    "tokens": 25064
+    "hit": 1,
+    "tokens": 13481
   },
   {
     "repo": "NewtonsoftJson",
@@ -245,7 +245,7 @@
     "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 37473
+    "tokens": 21530
   },
   {
     "repo": "NewtonsoftJson",
@@ -269,15 +269,15 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 34918
+    "tokens": 42356
   },
   {
     "repo": "NewtonsoftJson",
     "question": "Which file defines the LINQ-to-JSON object node type?",
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "focus",
-    "hit": 0,
-    "tokens": 34918
+    "hit": 1,
+    "tokens": 13633
   },
   {
     "repo": "NewtonsoftJson",

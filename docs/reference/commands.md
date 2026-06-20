@@ -3,13 +3,13 @@ title: Commands
 description: The five Fuse commands, what each one fuses, and the options they accept.
 ---
 
-Fuse exposes its work through five commands. Three of them (`fuse`, `fuse dotnet`, and `fuse wiki`) produce a fusion from a source directory and differ only in which file types they collect and how they reduce them. The remaining two (`fuse init` and `fuse serve`) manage configuration and the agent server and run no fusion of their own. This page states what each command does, when to reach for it, and which option set applies.
+Fuse exposes its work through seven commands. Three of them (`fuse`, `fuse dotnet`, and `fuse wiki`) produce a fusion from a source directory and differ only in which file types they collect and how they reduce them. Two more (`fuse explain` and `fuse verify`) run a fusion in memory to report on it without writing output. The remaining two (`fuse init` and `fuse serve`) manage configuration and the agent server and run no fusion of their own. This page states what each command does, when to reach for it, and which option set applies.
 
 This page is for engineers choosing a command and for maintainers who need the exact dispatch behavior. Stakeholders can read the summary table alone.
 
 ## Purpose And Scope
 
-This page covers the command surface: names, descriptions, and one example invocation each. It does not document the flags themselves. Every fusion command (`fuse`, `fuse dotnet`, `fuse wiki`) shares the option set in the [Options reference](options.md), and `fuse dotnet` adds .NET-specific flags described there. The commands `fuse init` and `fuse serve` take no fusion options.
+This page covers the command surface: names, descriptions, and one example invocation each. It does not document the flags themselves. Every fusion command (`fuse`, `fuse dotnet`, `fuse wiki`) shares the option set in the [Options reference](options.md), and `fuse dotnet` adds .NET-specific flags described there. The `fuse explain` and `fuse verify` commands share the same options plus a subset of the .NET scoping and reduction flags. The commands `fuse init` and `fuse serve` take no fusion options.
 
 ## Summary
 
@@ -18,6 +18,8 @@ This page covers the command surface: names, descriptions, and one example invoc
 | `fuse` | Any files, using template defaults and shared options | None beyond shared content trimming | None | Shared |
 | `fuse dotnet` | A .NET project, including C#, F#, and web files | C# reduction | Focus, changes, query | Shared plus .NET |
 | `fuse wiki` | An Azure DevOps wiki repository (Markdown only) | None beyond shared content trimming | Changes | Shared |
+| `fuse explain` | Nothing; previews a .NET fusion in memory | Same as `fuse dotnet` | Focus, changes, query | Shared plus a scoping subset |
+| `fuse verify` | Nothing; checks a .NET fusion in memory | Same as `fuse dotnet` | Focus, changes, query | Shared plus a scoping subset |
 | `fuse init` | Nothing; writes a config file | Not applicable | Not applicable | None |
 | `fuse serve` | Nothing; starts the MCP server | Not applicable | Not applicable | None |
 
@@ -50,6 +52,27 @@ fuse wiki --directory ./my-wiki
 ```
 
 This command accepts the shared options in the [Options reference](options.md). It applies no language reduction beyond the shared content handling.
+
+## fuse explain
+
+This command previews a .NET fusion without writing anything. It runs collection, scoping, and in-memory reduction exactly as `fuse dotnet` would, then prints which files would be included with a per-file token estimate, which collected files would be excluded, and the estimated token total. Use it to check the effect of a focus seed, a query, a change range, or a reduction mode before committing to a full run.
+
+```bash
+fuse explain --directory ./src --focus OrderService --depth 2
+```
+
+It accepts the shared options plus a subset of the `fuse dotnet` scoping and reduction flags (`--focus`, `--query`, `--query-top`, `--depth`, `--all`, `--skeleton`), documented in the [Options reference](options.md).
+
+## fuse verify
+
+This command reports how much of a project's public API surface survives a .NET fusion. It runs a fusion in memory, then compares the public and protected types and methods, and ASP.NET route templates, declared in the included source against the fused output, printing the preserved percentage for each category. Pass `--json` for a machine-readable result. Use it to confirm that a reduction mode keeps the API you expect: a drop under the default or `--all` reduction signals lost API, while skeleton is signatures only by design.
+
+```bash
+fuse verify --directory ./src --all
+fuse verify --directory ./src --skeleton --json
+```
+
+The source side is parsed by Roslyn in the framework-dependent tool and by an AOT-clean regex analyzer in the Native AOT build; both report the same categories. It accepts the same scoping and reduction subset as `fuse explain`, plus `--json`, documented in the [Options reference](options.md).
 
 ## fuse init
 

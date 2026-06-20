@@ -2,6 +2,36 @@
 
 All notable changes to Fuse are documented here. Fuse 2.0 is a structural rewrite; backward compatibility with 1.x output is not a goal.
 
+## [Unreleased]
+
+Phase 1 (AOT-safe retrieval) and Phase 2 (token, trust, and developer experience). Every figure below comes from the benchmark harness over the pinned corpus, counted with `o200k_base`; see [benchmarks.md](benchmarks.md). Layer 1 reduction and fidelity are unchanged, so the retrieval gains were not bought by dropping API.
+
+### Added
+
+#### Retrieval (Phase 1)
+
+- Reverse edges in scoping: focus and `--changed-since` now pull a seed's dependents (files that reference the types it declares), not only its dependencies.
+- Fielded ranking (BM25F): the relevance index weights declared type and member names and path tokens above the body, so the file that declares a concept ranks above files that mention it.
+- Comment and string stripping before dependency extraction, removing false graph edges from type names that appear only in prose or text.
+- Budget-aware, rank-decayed expansion: best-first traversal scores neighbours by parent score times a per-hop decay and stops at an optional token budget; seeds are always admitted.
+- Query normalization: shared tokenizer splits camelCase and snake_case, drops stopwords, and applies a light suffix stemmer to both documents and queries.
+- Relevance-ordered truncation: emission writes most-relevant first under `--max-tokens` for scoped runs, so the seed survives the cut.
+- Measured effect: Layer 2A recall rose for changes (71 to 88 percent), focus (26 to 43), and query (37 to 54), with changes precision 21 to 61; Layer 2B accuracy rose for query (25 to 67) and focus (25 to 42). All three scoping modes now clear the grep baseline.
+
+#### Output, trust, and developer experience (Phase 2)
+
+- Compact output envelope (`--format compact`): a single header line per file and no closing marker, for fewer envelope tokens. XML stays the default.
+- Header dedup (`--dedup-headers`): identical leading comment headers shared by two or more files are emitted once in a preamble and replaced with a marker; preprocessor directives and code are untouched.
+- Anthropic and Gemini tokenizers: deterministic estimators selected by model name (`claude*`/`anthropic*`, `gemini*`/`google*`); OpenAI encodings remain exact.
+- `fuse verify`: reports the preserved percent of public types, methods, and routes after a fusion (Roslyn syntax-only in the framework-dependent tool, AOT-clean regex fallback in the Native AOT build).
+- `fuse explain`: dry run listing included and excluded files with a token estimate; writes nothing.
+- Machine-readable JSON run report (`--report <path>` or `--report -`): source-generated and AOT-safe; always names the tokenizer used.
+
+### Fixed
+
+- `FusionResult` reconstructions dropped per-file token data and cache statistics, leaving the JSON run report, `fuse explain`, and `fuse verify` with no file list; these now propagate through the pipeline.
+- `--format` and `--tokenizer` were inferred as required by the command framework; documented invocations such as `fuse dotnet --directory ./src` now work without them.
+
 ## [2.0.0] - 2026-06-19
 
 ### Breaking changes

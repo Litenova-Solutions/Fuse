@@ -13,6 +13,8 @@ Every tool here is read-only and runs its fusion in memory, returning the result
 
 The three scoping parameters (`focus`, `changedSince`, and `query`) are mutually exclusive. A single fusion uses at most one of them.
 
+The scoping tools share one retrieval engine, documented in [Scoping Internals](../architecture/scoping-internals.md). Three behaviors are worth knowing when calling them. Focus pulls in both the files a seed depends on and the files that depend on it (its dependents), so a seed reaches its callers as well as its callees. Search ranks with BM25F, weighting a file's declared type and member names and its path above its body, so the file that declares a concept ranks above files that merely mention it. When `maxTokens` is set, the result is emitted most-relevant first, so the files closest to the seed survive the limit.
+
 ## fuse_skeleton
 
 Structural skeleton only (signatures, no bodies). Cold-start architecture review.
@@ -50,12 +52,12 @@ Scope to a type, file, or path plus dependency traversal.
 
 ## fuse_search
 
-BM25 query-scoped fusion plus dependency expansion.
+BM25F query-scoped fusion plus dependency expansion.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
 | `path` | string | required | Source directory to fuse |
-| `query` | string | required | Natural-language or keyword query, ranked with BM25 |
+| `query` | string | required | Natural-language or keyword query, ranked with BM25F |
 | `queryTop` | int | 10 | Number of top-ranked files used to seed dependency expansion |
 | `depth` | int | 1 | Dependency hops to traverse out from the seed files |
 | `excludeDirectories` | string[] | null | Directory names to skip |

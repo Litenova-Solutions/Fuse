@@ -55,10 +55,12 @@ Types in the tables use these conventions: `bool` is a switch, `int` is a whole 
 | `--no-manifest` | bool | `false` | Omit the manifest header from output. |
 | `--git-stats` | bool | `false` | Include git churn and last-modified statistics in the manifest. |
 | `--provenance` | bool | `false` | Annotate entries with dependency inclusion provenance. |
-| `--format` | xml \| markdown \| json | `xml` | Output format. |
+| `--dedup-headers` | bool | `false` | Replace identical leading comment headers shared by two or more files with a marker, emitted once in a preamble. |
+| `--format` | xml \| markdown \| json \| compact | `xml` | Output format. |
 | `--tokenizer` | string | `o200k_base` | Tokenizer model or encoding name. |
+| `--report` | string | None | Write a machine-readable JSON run report to a file path, or to stdout with `-`. |
 
-The supported tokenizer names are listed in the [Tokenizers reference](tokenizers.md). The format details are in the [Output Specification](output-specification.md).
+The supported tokenizer names are listed in the [Tokenizers reference](tokenizers.md). The format details, including the compact envelope, the header-dedup preamble, and the JSON run report, are in the [Output Specification](output-specification.md).
 
 ## Security Options
 

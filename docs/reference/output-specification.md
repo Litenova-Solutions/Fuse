@@ -3,7 +3,7 @@ title: Output Specification
 description: The exact structure of the three Fuse output formats and the manifest, including how metadata, provenance, and git statistics appear.
 ---
 
-A fusion produces one of three output formats, each carrying the same content with a different structure: XML, Markdown, or JSON. Every format begins with a manifest, followed by one entry per included file. This page documents the precise shape of each format and the manifest so that a tool, an agent, or a person can parse the output without inspecting the source.
+A fusion produces one of four output formats, each carrying the same content with a different structure: XML, Markdown, JSON, or compact. Every format begins with a manifest, followed by one entry per included file. This page documents the precise shape of each format and the manifest so that a tool, an agent, or a person can parse the output without inspecting the source.
 
 This page is for engineers writing parsers against Fuse output, agents consuming a fusion, and anyone who needs to know exactly what a flag adds to the result.
 
@@ -13,7 +13,7 @@ This page specifies the on-disk and in-memory structure of a fusion: the per-fil
 
 ## File Entries
 
-The body of a fusion is a sequence of file entries. Files are emitted largest first by token count, so the most expensive content appears at the top of the body.
+The body of a fusion is a sequence of file entries. In an unscoped fusion, files are emitted largest first by token count, so the most expensive content appears at the top of the body. In a scoped fusion (focus, query, or changes), files are emitted most-relevant first using the score that scoping assigned, so the files closest to the seed appear first and survive a `--max-tokens` cut; ties fall back to token count.
 
 ### XML (Default)
 
@@ -76,6 +76,21 @@ With `--format json`, each file is a JSON object on its own line with these fiel
 {"type":"file","path":"src/Services/OrderService.cs","content":"public class OrderService { }","tokens":7}
 ```
 
+### Compact
+
+With `--format compact`, each file is introduced by a single header line and has no closing marker; the next header line or the end of output bounds the body. This drops the per-file closing tag and attribute syntax that XML carries, so the envelope costs fewer tokens, a saving that grows with the number of files. XML remains the default.
+
+```
+=== src/Services/OrderService.cs ===
+public class OrderService { }
+```
+
+With `--include-metadata`, the header gains a trailing `| <size>b <modified>` segment. With `--provenance`, an `@via` line precedes the header under the same more-than-one-entry rule as the other formats.
+
+## Deduplicated Headers
+
+With `--dedup-headers`, an identical leading comment header (for example a license banner) shared by two or more files is emitted once in a preamble at the top of the output and replaced in each file by a marker line `// fuse:header[N]`. Only leading comment blocks are moved; preprocessor directives and code are never touched, so the API surface is unchanged. The preamble opens with `=== fuse:deduplicated-headers ===` and lists each shared header once with its marker and the number of files that referenced it. Files with no shared header are left as is.
+
 ## The Manifest
 
 The manifest is on by default and prepended before the file entries. It lists every included file with its token cost so that a reader can judge the shape and size of a fusion before reading any file body. Disable it with `--no-manifest`.
@@ -115,6 +130,37 @@ In JSON the manifest is an object with type `"manifest"`. Its `files` array hold
   ],
   "patterns": [],
   "git": "unavailable"
+}
+```
+
+### Compact Manifest
+
+The compact format cannot use an HTML comment, so its manifest opens with the marker `# fuse:manifest` followed by the same file lines, each prefixed with `#`:
+
+```
+# fuse:manifest
+#files: 3
+#  src/Program.cs (~420 tokens)
+```
+
+## Run Report
+
+The `--report` flag writes a separate machine-readable JSON object summarizing the run, independent of the fusion body. With `--report <path>` it is written to that file; with `--report -` it is written to stdout. The report has type `"report"` and always names the tokenizer used for its counts:
+
+```json
+{
+  "type": "report",
+  "tokenizer": "o200k_base",
+  "format": "xml",
+  "totalTokens": 18432,
+  "processedFiles": 42,
+  "totalFiles": 57,
+  "durationSeconds": 0.83,
+  "cacheHits": 40,
+  "cacheMisses": 2,
+  "outputPaths": ["project_2026-06-20_1430_18k.txt"],
+  "files": [{"path": "src/Program.cs", "tokens": 420}],
+  "patterns": null
 }
 ```
 

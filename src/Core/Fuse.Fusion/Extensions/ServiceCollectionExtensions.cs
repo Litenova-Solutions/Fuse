@@ -63,6 +63,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<FusionOrchestrator>();
         services.AddSingleton<ISecretRedactor, DefaultSecretRedactor>();
         services.AddSingleton<IRelevanceIndex, Bm25RelevanceIndex>();
+        services.AddSingleton<Retrieval.IEmbeddingModel>(_ => new Retrieval.HashingEmbeddingModel());
 
         services.AddTransient<FileCollectionPipeline>();
         services.AddTransient<ContentReductionPipeline>();

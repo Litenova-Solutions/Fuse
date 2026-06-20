@@ -324,6 +324,7 @@ public sealed class FuseTools
     /// <param name="query">Natural-language or keyword query ranked with BM25.</param>
     /// <param name="queryTop">Number of top-ranked files used to seed dependency expansion.</param>
     /// <param name="depth">Number of dependency hops to traverse out from the seed files.</param>
+    /// <param name="rerank">When <see langword="true" />, rerank the BM25 candidates with embedding-vector similarity.</param>
     /// <param name="excludeDirectories">Directory names to skip, or <see langword="null" /> for none.</param>
     /// <param name="excludeFiles">File names to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" /> for none.</param>
@@ -346,6 +347,7 @@ public sealed class FuseTools
         [Description("Natural-language or keyword query.")] string query,
         [Description("Number of top-ranked seed files.")] int queryTop = 10,
         [Description("Dependency traversal depth after seed selection.")] int depth = 1,
+        [Description("Rerank candidates with embedding-vector similarity (hybrid retrieval).")] bool rerank = false,
         [Description("Directory names to skip.")] string[]? excludeDirectories = null,
         [Description("File names to exclude.")] string[]? excludeFiles = null,
         [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
@@ -377,7 +379,7 @@ public sealed class FuseTools
                         removeCSharpRegions: all,
                         aggressiveCSharpReduction: all,
                         enableRedaction: true))
-                    .WithQueryOptions(new QueryOptions(query, queryTop, depth));
+                    .WithQueryOptions(new QueryOptions(query, queryTop, depth, rerank));
 
                 FuseToolHelpers.ApplyCommonFilters(
                     builder,

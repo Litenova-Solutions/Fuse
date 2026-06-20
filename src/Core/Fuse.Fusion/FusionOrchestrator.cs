@@ -47,6 +47,7 @@ public sealed class FusionOrchestrator
     private readonly CapabilityRegistry<ISymbolOutlineExtractor> _outlineExtractors;
     private readonly CapabilityRegistry<ISymbolSliceExtractor> _sliceExtractors;
     private readonly IRelevanceIndex _relevanceIndex;
+    private readonly Retrieval.IEmbeddingModel _embeddingModel;
     private readonly IRouteMapGenerator? _routeMapGenerator;
     private readonly IProjectGraphGenerator? _projectGraphGenerator;
     private readonly IReductionCacheFactory _reductionCacheFactory;
@@ -74,6 +75,7 @@ public sealed class FusionOrchestrator
         CapabilityRegistry<ISymbolOutlineExtractor> outlineExtractors,
         CapabilityRegistry<ISymbolSliceExtractor> sliceExtractors,
         IRelevanceIndex relevanceIndex,
+        Retrieval.IEmbeddingModel embeddingModel,
         IReductionCacheFactory reductionCacheFactory,
         IGitStatsProvider gitStatsProvider,
         Enrichment.BoilerplateDeduplicator boilerplateDeduplicator,
@@ -97,6 +99,7 @@ public sealed class FusionOrchestrator
         _outlineExtractors = outlineExtractors;
         _sliceExtractors = sliceExtractors;
         _relevanceIndex = relevanceIndex;
+        _embeddingModel = embeddingModel;
         _reductionCacheFactory = reductionCacheFactory;
         _gitStatsProvider = gitStatsProvider;
         _boilerplateDeduplicator = boilerplateDeduplicator;
@@ -476,6 +479,11 @@ public sealed class FusionOrchestrator
                 $"Query '{request.Query.Query}' matched no collected files.");
         }
 
+        // Hybrid retrieval: rerank the BM25 candidates by embedding-vector similarity. BM25 stays the recall
+        // stage, so a candidate it did not select cannot appear here; vectors only reorder.
+        if (request.Query.Rerank)
+            ranked = RerankCandidates(request, documents, ranked);
+
         var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
         var graph = await BuildGraphAsync(files, parallelism, index, cancellationToken);
 
@@ -491,6 +499,38 @@ public sealed class FusionOrchestrator
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
         return new FilteredFileSet(filtered, expansion.ProvenanceChains, expansion.Scores);
+    }
+
+    // Reranks the BM25 candidates with embedding-vector cosine similarity. Each candidate is embedded from its
+    // high-signal fields (symbols and path) plus a body prefix; vectors are cached on disk when the persistent
+    // index is enabled.
+    private IReadOnlyList<RankedFile> RerankCandidates(
+        FusionRequest request,
+        IReadOnlyDictionary<string, IndexedDocument> documents,
+        IReadOnlyList<RankedFile> ranked)
+    {
+        Retrieval.IVectorStore? store = request.UsePersistentIndex
+            ? new Retrieval.DiskVectorStore(request.Collection.SourceDirectory, _embeddingModel.Dimensions)
+            : null;
+
+        var candidates = new List<Retrieval.RerankCandidate>(ranked.Count);
+        foreach (var rankedFile in ranked)
+        {
+            if (!documents.TryGetValue(rankedFile.Path, out var document))
+                continue;
+
+            var symbols = document.Symbols is null ? string.Empty : string.Join(' ', document.Symbols);
+            // Body prefix only: the symbol and path fields carry the signal and keep embedding cheap.
+            var bodyPrefix = document.Content.Length > 2000 ? document.Content[..2000] : document.Content;
+            var text = $"{symbols}\n{document.Path}\n{bodyPrefix}";
+
+            var cacheKey = store is null
+                ? null
+                : Indexing.AnalysisHasher.Key(text, "vec:" + _embeddingModel.Dimensions);
+            candidates.Add(new Retrieval.RerankCandidate(rankedFile, text, cacheKey));
+        }
+
+        return Retrieval.VectorReranker.Rerank(request.Query!.Query, candidates, _embeddingModel, store);
     }
 
     private async Task<FilteredFileSet?> FilterByChangesAsync(

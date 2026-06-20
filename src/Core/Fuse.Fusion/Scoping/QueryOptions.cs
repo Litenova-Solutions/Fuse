@@ -6,4 +6,8 @@ namespace Fuse.Fusion.Scoping;
 /// <param name="Query">The natural-language or keyword query.</param>
 /// <param name="TopFiles">Maximum seed files to select before dependency expansion.</param>
 /// <param name="Depth">Dependency traversal depth after seed selection.</param>
-public sealed record QueryOptions(string Query, int TopFiles = 10, int Depth = 1);
+/// <param name="Rerank">
+///     Whether to rerank the BM25 candidates with embedding-vector similarity (hybrid retrieval) before
+///     dependency expansion. Off by default.
+/// </param>
+public sealed record QueryOptions(string Query, int TopFiles = 10, int Depth = 1, bool Rerank = false);

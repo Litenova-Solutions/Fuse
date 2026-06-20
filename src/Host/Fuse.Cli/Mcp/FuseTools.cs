@@ -298,8 +298,8 @@ public sealed class FuseTools
     /// </summary>
     /// <remarks>
     ///     The full-control tool that exposes every .NET fusion option. <paramref name="focus" />,
-    ///     <paramref name="changedSince" />, and <paramref name="query" /> are applied only when non-empty, and
-    ///     may be combined.
+    ///     <paramref name="changedSince" />, and <paramref name="query" /> are mutually exclusive scoping modes:
+    ///     each is applied only when non-empty, and supplying more than one fails validation.
     /// </remarks>
     /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
     /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>

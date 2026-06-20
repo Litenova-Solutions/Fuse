@@ -1,0 +1,160 @@
+---
+title: Options
+description: The canonical reference for every Fuse command-line flag, grouped by function, with types and defaults.
+---
+
+Fuse is configured through command-line flags. This page is the canonical list: every flag, its type, its default, and what it does. The shared flags apply to `fuse`, `fuse dotnet`, and `fuse wiki`; the .NET-specific flags apply only to `fuse dotnet`. The commands `fuse init` and `fuse serve` take no flags from this set.
+
+This page is for engineers and maintainers who need exact flag behavior and defaults. For task-oriented usage, follow the guide links at the end of each relevant section.
+
+## Purpose And Scope
+
+This page documents flags only. It does not explain the pipeline (see [Core Concepts](../getting-started/core-concepts.md)), the configuration file (see [Configuration Keys](configuration-keys.md)), or the output format (see [Output Specification](output-specification.md)). Where a flag has a config-file equivalent, the config file is the lower-precedence source: an explicit flag always wins. Precedence and the supported keys are in the [Configuration Keys reference](configuration-keys.md).
+
+Types in the tables use these conventions: `bool` is a switch, `int` is a whole number, `string` is a single value, `string[]` is a comma-separated list, and `glob[]` is a comma-separated list of glob patterns.
+
+## Directory Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--directory` | string | Current directory | Path to the directory to process. |
+| `--output` | string | `Documents/Fuse` | Path to the output directory. |
+| `--exclude-directories` | string[] | None | Directory names to exclude from scanning (for example, `Migrations`, `wwwroot`). |
+
+## Output Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--name` | string | None (auto-generated) | Output file name without extension. When unset, the name is generated from the project, a timestamp, and a token estimate. |
+| `--overwrite` | bool | `true` | Overwrite the output file when it already exists. |
+
+## Search Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--recursive` | bool | `true` | Search subdirectories recursively. |
+| `--max-file-size` | int (KB) | `0` | Maximum file size in KB to process. `0` means unlimited. |
+| `--ignore-binary` | bool | `true` | Skip binary files during collection. |
+| `--parallelism` | int | Processor count | Maximum degree of parallelism for pipeline stages. |
+
+## Content Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--include-metadata` | bool | `false` | Include file metadata (size, dates) in output entries. |
+| `--respect-gitignore` | bool | `true` | Apply `.gitignore` rules found in the directory tree. |
+
+## Token And Output Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--max-tokens` | int | None | Stop emission when this token count is reached. |
+| `--split-tokens` | int | `800000` | Split output into multiple parts when this per-part token count is exceeded. |
+| `--show-token-count` | bool | `true` | Display the final token count after fusion completes. |
+| `--track-top-token-files` | bool | `false` | Display the top token-consuming files after fusion. |
+| `--no-manifest` | bool | `false` | Omit the manifest header from output. |
+| `--git-stats` | bool | `false` | Include git churn and last-modified statistics in the manifest. |
+| `--provenance` | bool | `false` | Annotate entries with dependency inclusion provenance. |
+| `--format` | xml \| markdown \| json | `xml` | Output format. |
+| `--tokenizer` | string | `o200k_base` | Tokenizer model or encoding name. |
+
+The supported tokenizer names are listed in the [Tokenizers reference](tokenizers.md). The format details are in the [Output Specification](output-specification.md).
+
+## Security Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--no-redact` | bool | `false` | Disable secret redaction. Redaction is on by default. |
+| `--redact-report` | bool | `false` | Append a redaction count summary to the output. |
+
+The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds reference](secret-redaction-kinds.md).
+
+## Exclusion Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--exclude-files` | string[] | None | Specific file names to exclude (for example, `appsettings.Development.json`). |
+| `--exclude-patterns` | glob[] | None | Glob patterns for files to exclude (for example, `**/Migrations/**`, `**/*.min.js`). |
+| `--exclude-empty-files` | bool | `true` | Skip zero-byte files during collection. |
+| `--exclude-auto-generated` | bool | `true` | Skip files containing an auto-generated marker in the first few lines. |
+| `--changed-since` | string (git ref) | None | Scope fusion to files changed since this git ref (branch, commit, or `HEAD~N`). |
+| `--include-dependents` | bool | `true` | Include first-degree dependents of changed files when scoping by git ref. |
+
+## Extension Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--include-extensions` | string[] | None | Additional extensions to include alongside template defaults (for example, `.txt,.log`). |
+| `--exclude-extensions` | string[] | None | Extensions to remove from template defaults (for example, `.xml,.md`). |
+| `--only-extensions` | string[] | None | Fuse only these extensions, ignoring all template defaults. |
+
+`--only-extensions` overrides template defaults entirely. It cannot combine with a template: when it is set, the template's extension list is not applied.
+
+## Test Project Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--exclude-test-projects` | bool | `false` | Exclude common test project directories. |
+
+## Cache And Watch Options
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--no-cache` | bool | `false` | Disable per-file reduction caching. |
+| `--clear-cache` | bool | `false` | Clear the cache directory before running. |
+| `--watch` | bool | `false` | Watch for file changes and re-run fusion after edits settle. Disabled automatically when stdio is redirected (MCP). |
+
+## DotNet-Only Options
+
+These flags apply only to `fuse dotnet`.
+
+### C# Reduction
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--remove-csharp-namespaces` | bool | `false` | Remove namespace declarations from C# files. |
+| `--remove-csharp-comments` | bool | `false` | Remove comments from C# files. |
+| `--remove-csharp-regions` | bool | `false` | Remove `#region` directives from C# files. |
+| `--remove-csharp-usings` | bool | `false` | Remove all `using` statements from C# files. |
+| `--aggressive` | bool | `false` | Apply aggressive reduction (remove attributes and redundant keywords, compress properties). |
+| `--minify-xml-files` | bool | `true` | Minify XML files such as `.csproj` and `.xml`. |
+| `--minify-html-and-razor` | bool | `true` | Minify HTML and Razor files. |
+| `--all` | bool | `false` | Apply all C# reductions at once (namespaces, comments, regions, usings, aggressive). |
+
+### Structure And Annotation
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--skeleton` | bool | `false` | Emit structural skeleton only (class, interface, and method signatures, no bodies). |
+| `--semantic-markers` | bool | `false` | Prepend structural annotation comments to each file entry. |
+| `--public-api` | bool | `false` | Emit only public and protected member skeletons. |
+| `--route-map` | bool | `false` | Prepend an ASP.NET route map to the output. |
+| `--project-graph` | bool | `false` | Prepend a solution and project reference graph to the output. |
+| `--pattern-summary` | bool | `false` | Detect and append a cross-codebase pattern summary to the output. |
+
+The detected patterns are listed in the [Pattern Detectors reference](pattern-detectors.md).
+
+### Test Projects
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--exclude-unit-test-projects` | bool | `false` | Exclude only unit test project directories, keeping integration tests and benchmarks. |
+
+### Scoping
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--focus` | string | None | Type name, filename, or relative directory to scope the fusion around. |
+| `--query` | string | None | Search query to scope fusion to the most relevant files. |
+| `--query-top` | int | `10` | Number of top-ranked files to seed query scoping. |
+| `--depth` | int | `1` | Dependency traversal depth for focus or query scoping. Valid range 1 to 10. |
+
+The three scoping modes (`--focus`, `--changed-since`, and `--query`) are mutually exclusive: a single fusion uses at most one. The [Scoping to What Matters](../guides/scoping.md) guide explains each mode, and [Reducing Tokens](../guides/reducing-tokens.md) covers the reduction flags in practice.
+
+## What This Does Not Cover
+
+This page does not cover the commands themselves (see [Commands](commands.md)), the configuration file format (see [Configuration Keys](configuration-keys.md)), or the templates that supply the default extension lists (see [Templates](templates.md)).
+
+## Next
+
+Continue to the [Configuration Keys reference](configuration-keys.md) to set defaults in a file, or to the [Scoping to What Matters](../guides/scoping.md) guide for scoped fusions.

@@ -1,0 +1,149 @@
+---
+title: Tools Reference
+description: Parameters and defaults for the six MCP tools the Fuse server exposes to AI clients.
+---
+
+The Fuse MCP server exposes six tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
+
+This page is for engineers writing agent instructions and for experts who need the exact default of each parameter.
+
+## Purpose and Scope
+
+Every tool here is read-only and runs its fusion in memory, returning the result in the tool response rather than writing a file. Each tool maps to an equivalent CLI invocation; the flag forms are documented in [Options Reference](../reference/options.md). For the recommended order in which to call these tools, see [Recommended Workflows](workflows.md). For passive reads through URIs, see [Resources Reference](resources.md).
+
+The three scoping parameters (`focus`, `changedSince`, and `query`) are mutually exclusive. A single fusion uses at most one of them.
+
+## fuse_skeleton
+
+Structural skeleton only (signatures, no bodies). Cold-start architecture review.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to fuse |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+| `semanticMarkers` | bool | false | Prepend structural annotation comments |
+| `all` | bool | true | Apply all C# reduction options |
+| `maxTokens` | int | null | Hard token limit, or unlimited |
+| `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
+
+The `all` parameter defaults to true here, which produces the smallest skeleton. This differs from the CLI `--all` flag, which defaults to false.
+
+## fuse_focus
+
+Scope to a type, file, or path plus dependency traversal.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to fuse |
+| `focus` | string | required | Type name, filename, or path used as the seed |
+| `depth` | int | 1 | Dependency hops to traverse out from the seed |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+| `all` | bool | false | Apply all C# reduction options |
+| `maxTokens` | int | null | Hard token limit, or unlimited |
+| `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
+
+## fuse_search
+
+BM25 query-scoped fusion plus dependency expansion.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to fuse |
+| `query` | string | required | Natural-language or keyword query, ranked with BM25 |
+| `queryTop` | int | 10 | Number of top-ranked files used to seed dependency expansion |
+| `depth` | int | 1 | Dependency hops to traverse out from the seed files |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+| `all` | bool | false | Apply all C# reduction options |
+| `maxTokens` | int | null | Hard token limit, or unlimited |
+| `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
+
+## fuse_changes
+
+Files changed since a git ref plus optional dependents.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to fuse |
+| `changedSince` | string | required | Git ref (branch, commit, or HEAD~N) to diff against |
+| `includeDependents` | bool | true | Also include first-degree dependents of the changed files |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+| `all` | bool | false | Apply all C# reduction options |
+| `maxTokens` | int | null | Hard token limit, or unlimited |
+| `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
+
+## fuse_dotnet
+
+Full-control .NET fusion with all options.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to fuse |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `includeExtensions` | string[] | null | Extensions to add on top of the DotNet template defaults |
+| `excludeExtensions` | string[] | null | Extensions to remove from the DotNet template defaults |
+| `onlyExtensions` | string[] | null | Extensions to use exclusively, ignoring template defaults |
+| `maxFileSizeKb` | int | 0 | Maximum file size in KB; 0 means unlimited |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+| `excludeUnitTestProjects` | bool | false | Skip only unit test project directories |
+| `removeCSharpComments` | bool | false | Strip C# comments |
+| `removeCSharpUsings` | bool | false | Strip C# using directives |
+| `removeCSharpNamespaces` | bool | false | Strip C# namespace declarations |
+| `removeCSharpRegions` | bool | false | Strip C# region directives |
+| `aggressive` | bool | false | Apply aggressive C# reduction |
+| `all` | bool | false | Enable every C# reduction option at once |
+| `skeleton` | bool | false | Emit a structural skeleton only |
+| `semanticMarkers` | bool | false | Prepend structural annotation comments |
+| `focus` | string | null | Type name, filename, or path to scope around |
+| `depth` | int | 1 | Dependency traversal depth for focus and query scoping |
+| `changedSince` | string | null | Git ref to scope to changed files |
+| `includeDependents` | bool | true | Include first-degree dependents of changed files |
+| `query` | string | null | BM25 query to scope fusion |
+| `queryTop` | int | 10 | Number of top-ranked seed files for query scoping |
+| `patternSummary` | bool | false | Detect and append a cross-codebase pattern summary |
+| `maxTokens` | int | null | Hard token limit, or unlimited |
+| `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
+| `gitStats` | bool | false | Include git churn stats in the manifest |
+
+## fuse_generic
+
+Generic fusion for any template (Python, Go, Rust, and others).
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to fuse |
+| `template` | string | null | Template name; null infers the template from the directory |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `includeExtensions` | string[] | null | Extensions to add on top of the template defaults |
+| `excludeExtensions` | string[] | null | Extensions to remove from the template defaults |
+| `onlyExtensions` | string[] | null | Extensions to use exclusively, ignoring template defaults |
+| `maxFileSizeKb` | int | 0 | Maximum file size in KB; 0 means unlimited |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+| `changedSince` | string | null | Git ref to scope to changed files |
+| `includeDependents` | bool | true | Include first-degree dependents of changed files |
+| `maxTokens` | int | null | Hard token limit, or unlimited |
+| `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
+| `gitStats` | bool | false | Include git churn stats in the manifest |
+
+## What This Does Not Cover
+
+This page documents tool parameters and defaults. It does not cover the resource URIs, the call sequence, or the output structure. See [Resources Reference](resources.md) for URI reads, [Recommended Workflows](workflows.md) for the call order, and [Output Specification](../reference/output-specification.md) for the response format. The CLI flag equivalent of each parameter is in [Options Reference](../reference/options.md).
+
+## Next
+
+Continue to [Resources Reference](resources.md) for the passive URI reads, or to [Options Reference](../reference/options.md) for the matching command-line flags.

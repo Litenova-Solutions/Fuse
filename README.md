@@ -91,7 +91,7 @@ Output defaults to `Documents/Fuse`. Use `--output` and `--name` to control the 
 | `fuse init` | Create `fuse.json` in the current directory. |
 | `fuse serve` | Start the MCP server on stdio. |
 
-Full option lists: [CLI reference](docs/cli-reference.md).
+Full option lists: [Commands](docs/reference/commands.md) and [Options](docs/reference/options.md).
 
 ## Recommended agent workflow
 
@@ -102,7 +102,7 @@ Use MCP tools in this order for large .NET codebases:
 3. **PR review** with `fuse_changes` (git diff scoping).
 4. **Full control** with `fuse_dotnet` when you need every option combined.
 
-See [agentic workflows](docs/agentic-workflows.md) for token budgets and composition rules.
+See [agentic workflows](docs/agent-integration/workflows.md) for token budgets and composition rules.
 
 ## MCP setup
 
@@ -157,18 +157,18 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-Tool catalog and parameters: [docs/mcp.md](docs/mcp.md). Client setup details: [docs/mcp-integration.md](docs/mcp-integration.md). MCP Registry manifest: [docs/mcp-registry/server.json](docs/mcp-registry/server.json).
+Tool catalog and parameters: [Tools Reference](docs/agent-integration/tools.md) and [Resources Reference](docs/agent-integration/resources.md). Client setup details: [MCP Overview and Setup](docs/agent-integration/overview.md). MCP Registry manifest: [docs/mcp-registry/server.json](docs/mcp-registry/server.json).
 
 ## What Fuse does
 
 Fusion is a four-stage pipeline:
 
 1. **Collection** - Scan the source directory, apply filters (extensions, `.gitignore`, binary detection, test projects, globs).
-2. **Filtering** - Optional analysis-stage scoping: focus, git changes, or BM25 query with dependency expansion.
+2. **Filtering** - Optional scoping: focus, git changes, or BM25 query with dependency expansion.
 3. **Reduction** - Normalize whitespace, run language and format reducers, apply skeleton/markers/redaction.
 4. **Emission** - Write fused output with token counting, manifest header, optional splitting, and size-based ordering.
 
-Architecture details: [docs/architecture.md](docs/architecture.md). Feature reference: [docs/features.md](docs/features.md).
+Architecture details: [Architecture](docs/architecture/pipeline.md). Feature reference: [Guides](docs/guides/index.md) and [Reference](docs/reference/index.md).
 
 ## Output format
 
@@ -190,16 +190,15 @@ Disk output filenames include a token estimate, for example `MyProject_2026-06-1
 src/
   Core/                               Pipeline libraries
     Fuse.Collection/                  File discovery, filters, templates
-    Fuse.Analysis/                    Dependency graphs, BM25 search, git stats
     Fuse.Reduction/                   Content pipeline, caching, redaction
     Fuse.Emission/                    Output writers, token budget, manifest
-    Fuse.Fusion/                      Orchestration and DI
+    Fuse.Fusion/                      Orchestration, scoping, analysis, enrichment, DI
   Host/
     Fuse.Cli/                         CLI and MCP server
   Plugins/                            Extension-keyed capability providers
     Fuse.Plugins.Abstractions/        Capability interfaces (shared contract)
     Fuse.Plugins.Languages.CSharp/    C# language plugin
-    Fuse.Plugins.Formats.Web/             Format reducers (HTML, JSON, YAML, etc.)
+    Fuse.Plugins.Formats.Web/         Format reducers (HTML, JSON, YAML, etc.)
 tests/                                Unit and integration tests
 docs/                                 Full documentation
 ```
@@ -212,22 +211,20 @@ dotnet test Fuse.slnx --configuration Release --no-build
 dotnet format Fuse.slnx --verify-no-changes
 ```
 
-Contribution workflow: [contributing.md](docs/contributing.md). Agent instructions: [AGENTS.md](AGENTS.md).
+Contribution workflow: [Contributing](docs/project/contributing.md). Agent instructions: [AGENTS.md](AGENTS.md).
 
 ## Documentation
 
-| Guide | Contents |
-|-------|----------|
-| [Getting started](docs/getting-started.md) | Install, first run, config file |
-| [CLI reference](docs/cli-reference.md) | Every command and flag |
-| [MCP tool catalog](docs/mcp.md) | Tools, resources, parameters |
-| [MCP integration](docs/mcp-integration.md) | Client setup and troubleshooting |
-| [Agentic workflows](docs/agentic-workflows.md) | Skeleton, focus, query, change scoping |
-| [Features](docs/features.md) | All tier features by category |
-| [Templates](docs/templates.md) | Per-template extensions and exclusions |
-| [Extending Fuse](docs/extending.md) | Language plugins and templates |
-| [Architecture](docs/architecture.md) | Pipeline design and capability model |
-| [Performance](docs/performance.md) | Cold start, Native AOT, benchmarking |
+| Section | Contents |
+|---------|----------|
+| [Documentation home](docs/index.md) | Map of the full documentation |
+| [Getting started](docs/getting-started/introduction.md) | Install, first run, core concepts |
+| [Guides](docs/guides/index.md) | Reduction, scoping, formats, configuration |
+| [Agent integration](docs/agent-integration/overview.md) | MCP server, tools, resources, workflows |
+| [Reference](docs/reference/index.md) | Commands, options, templates, reducers, output |
+| [Architecture](docs/architecture/pipeline.md) | Pipeline, capability model, internals |
+| [Extending Fuse](docs/extending/language-plugin.md) | Language plugins, templates, reducers |
+| [Project](docs/project/performance.md) | Performance, roadmap, contributing |
 | [CHANGELOG](CHANGELOG.md) | Version history and migration notes |
 
 ## License

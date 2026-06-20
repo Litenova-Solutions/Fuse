@@ -2,9 +2,22 @@
 
 Fuse is a deep .NET-native context optimizer for AI-assisted development. It collects source files, reduces them for token efficiency, and emits a single structured output that agents can consume in one call instead of reading thousands of files individually.
 
-Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. It ships as a .NET global tool (`fuse`) and as an MCP server for Cursor, Claude Code, and GitHub Copilot.
+Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. An opt-in Roslyn precision tier and a hybrid-retrieval reranker raise accuracy further, and a table-of-contents survey, the `fuse_ask` auto-scope tool, and session-delta emission cut the number of round-trips an agent needs. It ships as a .NET global tool (`fuse`) and as an MCP server with eight tools for Cursor, Claude Code, and GitHub Copilot.
 
 Maintained by [Litenova Solutions](https://github.com/Litenova-Solutions).
+
+## Why Fuse
+
+Measured over a pinned corpus of four real .NET libraries (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json), counted with the `o200k_base` tokenizer. Reduction ratios transfer across models even though absolute token counts do not. Every figure is reproducible with one command and reported in full, including the arms where Fuse ties or loses, on the [benchmarks page](docs/project/benchmarks.md).
+
+- **Cuts tokens without dropping API.** Default reduction removes 7 to 10 percent and `--all` removes 21 to 40 percent of tokens while keeping 99 to 100 percent of public types and methods. `--skeleton` removes 66 to 93 percent for an architecture map.
+- **Smaller than the generic packers.** Repomix output runs 1.3 to 3.9 percent larger than raw concatenation on these repositories; Fuse is smaller than raw in every mode.
+- **Finds the files a change touches.** Change scoping recalls 88 percent of the files in 24 real merged pull requests at 61 percent precision, and all three scoping modes beat an agent-style grep baseline.
+- **Trustworthy skeletons on hard code.** The opt-in Roslyn tier keeps 100 percent of method signatures on all four libraries, including Newtonsoft.Json, where the regex skeleton kept 4 percent.
+- **Cheap repeated calls.** The on-disk analysis index roughly halves warm-call wall-clock across a session, so a multi-call task pays the analysis cost once.
+- **Native AOT and no runtime reflection on the default path.** The fast path ships as an ahead-of-time-compiled binary; Roslyn and the vector reranker are opt-in tiers isolated from it.
+
+Reproduce every number with `pwsh -File tests/benchmarks/harness/run-all.ps1`.
 
 ## Install
 
@@ -61,10 +74,22 @@ Architectural overview (signatures only):
 fuse dotnet --directory ./src --all --skeleton
 ```
 
-PR-scoped fusion:
+Cheap survey before fetching files (tree, symbol outline, per-file token costs):
 
 ```bash
-fuse dotnet --directory ./src --changed-since main
+fuse dotnet --directory ./src --toc
+```
+
+Accurate skeletons and dependency edges with the opt-in Roslyn precision tier:
+
+```bash
+fuse dotnet --directory ./src --skeleton --semantic
+```
+
+PR-scoped fusion, with diff hunks and the callers of each changed file:
+
+```bash
+fuse dotnet --directory ./src --changed-since main --review
 ```
 
 Query-scoped fusion:
@@ -97,10 +122,12 @@ Full option lists: [Commands](docs/reference/commands.md) and [Options](docs/ref
 
 Use MCP tools in this order for large .NET codebases:
 
-1. **Skeleton pass** (`fuse_skeleton` or `fuse dotnet --skeleton --all`) for a low-token architecture map.
-2. **Drill down** with `fuse_focus` (type/file seed) or `fuse_search` (natural-language query).
-3. **PR review** with `fuse_changes` (git diff scoping).
+1. **Survey** with `fuse_toc` (directory tree, symbol outline, per-file token costs) or `fuse_skeleton` for a low-token architecture map.
+2. **Drill down** with `fuse_focus` (type/file seed) or `fuse_search` (natural-language query, with `rerank` for hybrid retrieval).
+3. **PR review** with `fuse_changes` (git diff scoping, `review=true` for diff hunks plus direct callers).
 4. **Full control** with `fuse_dotnet` when you need every option combined.
+
+Or skip the orchestration: call `fuse_ask` with a task and a token budget and Fuse picks the strategy and packs the context to budget. Across calls in one task, pass a `session` id so files already returned are not sent again.
 
 See [agentic workflows](docs/agent-integration/workflows.md) for token budgets and composition rules.
 
@@ -197,8 +224,9 @@ src/
     Fuse.Cli/                         CLI and MCP server
   Plugins/                            Extension-keyed capability providers
     Fuse.Plugins.Abstractions/        Capability interfaces (shared contract)
-    Fuse.Plugins.Languages.CSharp/    C# language plugin
-    Fuse.Plugins.Formats.Web/         Format reducers (HTML, JSON, YAML, etc.)
+    Fuse.Plugins.Languages.CSharp/    C# language plugin (regex, AOT-clean default)
+    Fuse.Plugins.Languages.CSharp.Roslyn/  Opt-in Roslyn precision tier (excluded from the AOT build)
+    Fuse.Plugins.Formats.Web/         Format reducers (HTML, JSON, YAML, SQL, TS/JS, etc.)
 tests/                                Unit and integration tests
 docs/                                 Full documentation
 ```

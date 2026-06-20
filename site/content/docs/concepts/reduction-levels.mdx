@@ -1,0 +1,81 @@
+---
+title: Reduction levels
+description: How Fuse shrinks C# from light cleanup to aggressive compression and signature-only skeletons, and how to pick the smallest level that answers the task.
+---
+
+**Reduction** is how Fuse shrinks content without changing what it means. It runs as a
+ladder: each level builds on the one before, trading more of the source for fewer
+tokens. Pick the smallest level that still answers your task.
+
+## The ladder
+
+| Level | Command | Removes | Use it when |
+|-------|---------|---------|-------------|
+| Default | `fuse dotnet --directory ./src` | Whitespace and blank lines; minifies XML and Razor | Every fusion, a safe baseline |
+| Individual removals | `--remove-csharp-comments --remove-csharp-usings` | Selected categories: comments, usings, namespaces, regions | Trim noise but keep structure |
+| Aggressive | `--aggressive` | The removals plus attributes, `this.`, property whitespace | Maximum reduction with bodies intact |
+| All | `--all` | Every C# reduction at once | One switch for full compression |
+| Skeleton | `--skeleton` | Method bodies; signatures only | An architecture pass on an unfamiliar solution |
+
+### Default
+
+The baseline does lossless cleanup: it normalizes whitespace, condenses blank lines,
+and minifies XML-family and Razor files. It runs on every fusion.
+
+### Individual removals
+
+Each category has its own flag, so you can keep what you need:
+
+- `--remove-csharp-comments` removes line and block comments, preserving string
+  contents.
+- `--remove-csharp-usings` removes using directives and aliases.
+- `--remove-csharp-namespaces` removes namespace declarations and their indentation.
+- `--remove-csharp-regions` removes `#region` markers and preprocessor directives.
+
+### Aggressive
+
+`--aggressive` runs the standard removals and then a second tier: it strips noise
+attributes such as `DebuggerDisplay` and `MethodImpl`, removes the `this.` prefix,
+rewrites auto-properties to a compact form, and collapses whitespace around
+delimiters. It preserves string-literal contents, but the output is no longer
+guaranteed to compile. Use it when the reader is a model that needs the logic, not a
+compiler.
+
+### All
+
+`--all` enables the full standard removal set together with aggressive mode and
+generated-code collapse in one switch. On the benchmark corpus it removes 21 to 40
+percent of tokens at 99 to 100 percent type and method fidelity, which makes it the
+dependable cut.
+
+### Skeleton
+
+`--skeleton` drops method bodies entirely and emits class, interface, and method
+signatures only. It is the deepest cut, 66 to 93 percent on the corpus, and it is an
+architecture map, not a substitute for the source. On a codebase with heavy
+conditional compilation the regex skeleton can lose signatures; the
+[precision tier](/docs/concepts/precision-tier) fixes that.
+
+## Reduction is not deletion
+
+The default and `--all` levels are designed to keep the public API. An independent
+Roslyn oracle confirms 99 to 100 percent of public types and methods survive, and
+`fuse verify` reports the preserved surface for any run. Skeleton makes no claim of
+body fidelity, by design: it keeps signatures and drops bodies.
+
+## Survey before you reduce
+
+When you only need a map, the table-of-contents survey is cheaper still:
+
+```bash
+fuse dotnet --directory ./src --toc
+```
+
+`--toc` emits a directory tree with a per-file symbol outline and token cost instead
+of file bodies. See [Survey a codebase cheaply](/docs/scenarios/survey-cheaply).
+
+## Next
+
+The exact transforms each reducer performs are in the
+[Reducers reference](/docs/reference/reducers). To narrow which files get reduced at
+all, see [Scoping](/docs/concepts/scoping).

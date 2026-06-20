@@ -1,0 +1,17 @@
+{
+  "title": "Reference",
+  "icon": "BookText",
+  "pages": [
+    "commands",
+    "options",
+    "mcp-tools",
+    "mcp-resources",
+    "reducers",
+    "templates",
+    "tokenizers",
+    "configuration-keys",
+    "output-specification",
+    "pattern-detectors",
+    "secret-redaction-kinds"
+  ]
+}

@@ -1,0 +1,69 @@
+---
+title: Precision tier (regex vs Roslyn)
+description: When the default regex analysis is enough, when to switch on the opt-in Roslyn tier, and the trade-off it makes.
+---
+
+Fuse analyzes C# two ways. By default it uses fast, regex-based extraction for
+skeletons, dependency edges, type location, and outlines. An opt-in **precision tier**
+swaps in Roslyn syntax analysis for those same jobs when accuracy matters more than
+the default's speed and Native AOT cleanliness.
+
+## The default: regex
+
+The default path reads C# with regular expressions. It is fast, deterministic, uses no
+runtime reflection, and is Native AOT clean, which is why it ships in the AOT binary.
+For most codebases its skeletons and dependency graph are good enough.
+
+Its limit shows on hard C#. Conditional compilation, partial classes, and braces inside
+strings can desynchronize the regex skeleton, so it drops signatures. On the benchmark
+corpus this is stark on Newtonsoft.Json: the regex skeleton kept only 4 percent of
+method signatures.
+
+## The precision tier: Roslyn
+
+Enable it with the `--semantic` flag, or the `FUSE_SEMANTIC` environment variable for
+the MCP server:
+
+```bash
+fuse dotnet --directory ./src --skeleton --semantic
+```
+
+The tier replaces the regex extractors with Roslyn ones behind the same interfaces. It
+parses each file, so it does not lose signatures to conditional compilation or partial
+classes, and it captures references the regex misses, such as return types, generics,
+and object creations. It is syntax-level analysis, not full semantic binding, so it is
+more accurate than regex but not guaranteed complete.
+
+On the same Newtonsoft.Json case, the Roslyn skeleton keeps 100 percent of method
+signatures where regex kept 4 percent:
+
+| Repo | Regex skeleton | Roslyn skeleton |
+|------|----------------|-----------------|
+| MediatR | types 100%, methods 84% | types 100%, methods 100% |
+| FluentValidation | types 98%, methods 99% | types 100%, methods 100% |
+| AutoMapper | types 91%, methods 86% | types 99%, methods 100% |
+| Newtonsoft.Json | types 71%, methods 4% | types 100%, methods 100% |
+
+## The trade-off
+
+Higher fidelity means larger output, because the regex skeleton's deep cut was partly a
+fidelity failure, not real saving. Newtonsoft.Json moves from 96,953 tokens (regex, 93.4
+percent reduction but 4 percent method fidelity) to 694,862 tokens (Roslyn, 52.7 percent
+reduction at 100 percent fidelity). The precision tier does not weaken fidelity to inflate
+reduction; it gives you a faithful signatures-only cut.
+
+The tier also unlocks **symbol-level scoping**: a `Type.Member` focus seed scopes the
+seed file to that one member, keeping its body in full and reducing the rest of the file
+to signatures.
+
+## Availability
+
+The Roslyn tier is not Native AOT compatible, so it is isolated in a separate assembly
+that the AOT package does not reference. The AOT binary always uses the regex tier; the
+framework-dependent tool can use either. The mechanism is described in
+[Scoping internals](/docs/internals/scoping-internals).
+
+## Next
+
+See [Scoping](/docs/concepts/scoping) for the modes the tier sharpens, or the measured
+fidelity in [Benchmarks](/docs/project/benchmarks).

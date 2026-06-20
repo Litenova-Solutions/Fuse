@@ -1,0 +1,71 @@
+---
+title: Performance and Benchmarking
+description: How Fuse keeps fusion fast, what each performance feature does, and how to measure cold-start and pipeline timing.
+---
+
+Fuse runs in two shapes with different performance profiles. One-shot commands such as `fuse dotnet` and `fuse init` pay a fixed cost on every invocation: process startup, dependency injection graph construction, and tokenizer initialization. On small repositories that fixed cost can dominate wall time. The long-running `fuse serve` (MCP) server stays resident, so startup is paid once per session and pipeline work dominates from then on. This page describes the features that govern fusion speed and the method for measuring it.
+
+This page is for engineers tuning a fusion run and maintainers comparing builds. A reader who only needs the timing numbers can skip to How To Run The Benchmarks.
+
+## Parallel Pipelines
+
+Collection, reduction, and graph building run in parallel. The `--parallelism` flag sets the degree of parallelism; the default is the processor count. Set `--parallelism 1` for serial execution, which is useful when comparing runs or isolating a fault to a single file.
+
+## The Single-Read Content Provider
+
+A fusion reads each file once per run. The content provider holds that single read and shares it across the stages that need file content: graph building, query indexing, and reduction. No stage re-reads the source directory, so file I/O scales with the number of candidate files rather than the number of stages that consume them.
+
+## The Reduction Cache
+
+Reduction results are cached per file under `.fuse/cache`, so an unchanged file is not reduced again on a later run. The cache is on by default; disable it with `--no-cache` and clear it with `--clear-cache`. The cache key and eviction behavior are documented in [Caching Internals](/docs/internals/caching-internals).
+
+## Watch Mode
+
+Watch mode re-runs a fusion when source files change, which keeps in-process state warm across iterations. Enable it with `--watch`. Watch mode is disabled under MCP stdio, because the server already holds resident state for the session.
+
+## Cold Start And Native AOT
+
+One-shot commands are sensitive to cold start, so Fuse reduces the fixed cost in several ways. Token counting uses `Microsoft.ML.Tokenizers`, which initializes faster than the previous tokenizer and produces accurate `o200k_base` and `cl100k_base` counts. Configuration and JSON output use source-generated `System.Text.Json` contexts, which are trim and AOT safe. Remaining dynamic patterns use `[GeneratedRegex]`, so there is no runtime regex compiler. The binary probe uses `ArrayPool` and span-based line scans to lower allocation volume on large repositories.
+
+Native AOT removes most JIT and startup time on .NET 10 and later. Fuse distributes binaries in layers:
+
+| Package | Role |
+|---------|------|
+| `Fuse` | Framework-dependent dotnet tool with `RollForward=LatestMajor` and ReadyToRun, used as the portable fallback |
+| `Fuse.Runtime.win-x64` (and the other RIDs) | Native AOT binary for that runtime identifier, selected by .NET 10+ tool resolution when available |
+| Windows installer | Ships the AOT-compiled `fuse.exe` from the release workflow |
+
+Native AOT on Linux requires `clang` and `zlib1g-dev`.
+
+## How To Run The Benchmarks
+
+Measure fresh-process wall time, not warm in-shell repeats. JIT tiering makes second invocations faster than a true cold start, so repeated runs in one shell report misleading figures.
+
+On Windows, time a fresh process with a stopwatch around `Start-Process`:
+
+```powershell
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$p = Start-Process -FilePath "path/to/fuse.exe" `
+    -ArgumentList "dotnet","--directory","tests/fixtures/SampleShop","--output","C:\temp\fuse-bench","--overwrite","--format","xml","--tokenizer","o200k_base" `
+    -PassThru -NoNewWindow -Wait
+$sw.Stop()
+"$($sw.ElapsedMilliseconds) ms (exit $($p.ExitCode))"
+```
+
+For repeatable measurement with BenchmarkDotNet, use `RunStrategy=ColdStart` and `WarmupCount=0` when comparing CLI frameworks or pre and post AOT builds.
+
+Use `tests/fixtures/SampleShop` for small-repo comparisons. For throughput work, use a medium monorepo of several thousand source files. Record the fixture size, the command line, the hardware, the operating system, the cold wall time, and the pipeline duration reported on the `Stats:` line. The benchmark fixtures and harness are described in `tests/benchmarks/README.md`.
+
+The `aot` job in `.github/workflows/ci.yml` validates the AOT path on every change. It publishes Native AOT for `win-x64` and `linux-x64`, then smoke-runs `fuse init --help` and `fuse dotnet` on SampleShop with the required `--format` and `--tokenizer`. Trim and AOT builds treat IL2026 and IL3050 as errors in project code.
+
+## What This Does Not Cover
+
+This page covers fusion speed and measurement. It does not explain the cache key derivation or invalidation, which live in [Caching Internals](/docs/internals/caching-internals), nor the stage responsibilities of the pipeline, which the [Pipeline](/docs/internals/pipeline) page describes. Installing the `fuse` command is covered in [Install](/docs/start/install).
+
+## Published Benchmark Results
+
+This page covers the method for timing a single run. For published, reproducible measurements of token reduction, public-API fidelity, and scoping recall over a pinned corpus of real .NET repositories, with a competitor comparison and an account of where Fuse loses, see [Benchmarks](/docs/project/benchmarks).
+
+## Next
+
+Read [Benchmarks](/docs/project/benchmarks) for the full results, [Caching Internals](/docs/internals/caching-internals) for how the reduction cache decides what to reuse, or [Pipeline](/docs/internals/pipeline) for the stages that the parallelism and content-provider features apply to.

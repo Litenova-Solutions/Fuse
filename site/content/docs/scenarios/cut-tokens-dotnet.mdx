@@ -1,0 +1,53 @@
+---
+title: Cut tokens for a .NET project
+description: Reduce a .NET solution to a single token-efficient payload while keeping the public API intact.
+---
+
+**Goal:** take a .NET solution and produce one payload that costs far fewer tokens than
+the raw source, without losing the public API.
+
+## Do it
+
+```bash
+fuse dotnet --directory ./src --all
+```
+
+`--all` applies every C# reduction at once: it removes comments, usings, namespaces, and
+regions, compresses aggressively, and collapses generated bodies.
+
+## What you get
+
+```text
+Fused 218 files
+Estimated tokens: 166,740 (-36.0%)
+cache: 0 hit / 218 miss
+Output: FluentValidation_2026-06-20_166k.txt
+```
+
+That is a 36 percent cut on this project, at 100 percent of public types and methods.
+The output opens with a manifest listing each file and its token cost, then the reduced
+files largest first.
+
+## Keep only production code
+
+Exclude test projects to fuse just the shipping surface:
+
+```bash
+fuse dotnet --directory ./src --exclude-test-projects --all
+```
+
+Use `--exclude-unit-test-projects` instead to drop unit tests but keep integration tests
+and benchmarks.
+
+## When to use it
+
+Reach for `--all` whenever you want the most reliable cut with the API intact: feeding a
+model the implementation, archiving context for a task, or pasting a project into a chat.
+If you only need the shape of the codebase, a [skeleton survey](/docs/scenarios/survey-cheaply)
+cuts far more. If the result is still too large, [scope it](/docs/concepts/scoping) to the
+files the task touches.
+
+## Related concept
+
+The full ladder from light cleanup to skeletons is in
+[Reduction levels](/docs/concepts/reduction-levels).

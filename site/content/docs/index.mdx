@@ -1,0 +1,35 @@
+---
+title: Fuse documentation
+description: Fuse is a .NET-native codebase context optimizer for AI-assisted development. Start here to install it, connect it to your agent, and learn how it cuts tokens while keeping the public API.
+---
+
+Fuse collects the source files of a .NET codebase, reduces them for token
+efficiency, and emits one structured payload an AI agent or a developer can read
+in a single call instead of opening thousands of files. It ships as a .NET global
+tool (`fuse`) and as a Model Context Protocol server (`fuse serve`) with eight
+tools.
+
+These docs are organized so you can read top to bottom to learn, or jump to a
+reference page for exact detail.
+
+## Get going
+
+<Cards>
+  <Card title="What is Fuse" href="/docs/start/what-is-fuse" description="The outcome, with a worked example and the benchmark figure." />
+  <Card title="Quickstart" href="/docs/start/quickstart" description="Install, run one command, and read the output." />
+  <Card title="Connect to your AI" href="/docs/start/connect-your-ai" description="Set up the MCP server for Claude Code, Cursor, or Copilot." />
+  <Card title="Why Fuse" href="/docs/start/why-fuse" description="The problem, the landscape, and how Fuse compares." />
+</Cards>
+
+## The map
+
+- **[Start](/docs/start/what-is-fuse)**: what Fuse is, why it exists, install, the first run, and the MCP setup.
+- **[Scenarios](/docs/scenarios/cut-tokens-dotnet)**: task-shaped how-tos. Each is a job with one command and real output.
+- **[Concepts](/docs/concepts/how-fuse-works)**: how Fuse works, reduction levels, scoping, the precision tier, and a glossary.
+- **[Reference](/docs/reference/commands)**: every command, flag, MCP tool, reducer, template, tokenizer, and output field.
+- **[Internals and Extending](/docs/internals/pipeline)**: the pipeline, capability model, scoping and caching internals, and the extension guides.
+- **[Project](/docs/project/benchmarks)**: benchmarks, performance, roadmap, changelog, and contributing.
+
+## Next
+
+New to Fuse? Start with [What is Fuse](/docs/start/what-is-fuse).

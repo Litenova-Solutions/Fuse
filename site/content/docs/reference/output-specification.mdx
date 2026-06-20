@@ -1,0 +1,173 @@
+---
+title: Output Specification
+description: The exact structure of the three Fuse output formats and the manifest, including how metadata, provenance, and git statistics appear.
+---
+
+A fusion produces one of four output formats, each carrying the same content with a different structure: XML, Markdown, JSON, or compact. Every format begins with a manifest, followed by one entry per included file. This page documents the precise shape of each format and the manifest so that a tool, an agent, or a person can parse the output without inspecting the source.
+
+This page is for engineers writing parsers against Fuse output, agents consuming a fusion, and anyone who needs to know exactly what a flag adds to the result.
+
+## Purpose and Scope
+
+This page specifies the on-disk and in-memory structure of a fusion: the per-file entry for each format, the manifest block, and the additions that the metadata, provenance, git statistics, and pattern summary options introduce. It states the exact text and field names Fuse emits. It does not cover which flag to choose for a given task; [Options](/docs/reference/options) lists every flag and its values.
+
+## File Entries
+
+The body of a fusion is a sequence of file entries. In an unscoped fusion, files are emitted largest first by token count, so the most expensive content appears at the top of the body. In a scoped fusion (focus, query, or changes), files are emitted most-relevant first using the score that scoping assigned, so the files closest to the seed appear first and survive a `--max-tokens` cut; ties fall back to token count.
+
+### XML (Default)
+
+Each file is wrapped in a `file` element whose `path` attribute holds the normalized path. The reduced content sits between the tags:
+
+```xml
+<file path="src/Services/OrderService.cs">
+public class OrderService { }
+</file>
+```
+
+With `--include-metadata`, the opening tag gains two attributes: `size` in bytes and `modified` as an ISO 8601 UTC timestamp:
+
+```xml
+<file path="src/Services/OrderService.cs" size="1843" modified="2026-06-19T01:30:00.0000000Z">
+```
+
+With `--provenance`, a comment precedes the entry, listing the inclusion chain from seed to the file:
+
+```xml
+<!-- included via: OrderService -> IPaymentGateway -> StripeGateway -->
+```
+
+The provenance comment is emitted only when the inclusion chain has more than one entry. A file that is itself a seed has no chain to show and receives no comment.
+
+### Markdown
+
+With `--format markdown`, each file is a level-three heading holding the path, followed by a fenced code block with the content:
+
+````markdown
+### src/Services/OrderService.cs
+```
+public class OrderService { }
+```
+````
+
+With `--include-metadata`, an italic line follows the heading:
+
+```markdown
+*size: 1843, modified: 2026-06-19T01:30:00.0000000Z*
+```
+
+Provenance is the same HTML comment as in XML, emitted before the heading under the same more-than-one-entry rule.
+
+### JSON
+
+With `--format json`, each file is a JSON object on its own line with these fields:
+
+| Field | Type | Present when |
+|-------|------|--------------|
+| type | string, always `"file"` | Always |
+| path | string | Always |
+| content | string | Always |
+| tokens | number | Always |
+| size | number | `--include-metadata` |
+| modified | string, ISO 8601 UTC | `--include-metadata` |
+| provenance | array of strings | `--provenance` and chain length greater than one |
+
+```json
+{"type":"file","path":"src/Services/OrderService.cs","content":"public class OrderService { }","tokens":7}
+```
+
+### Compact
+
+With `--format compact`, each file is introduced by a single header line and has no closing marker; the next header line or the end of output bounds the body. This drops the per-file closing tag and attribute syntax that XML carries, so the envelope costs fewer tokens, a saving that grows with the number of files. XML remains the default.
+
+```
+=== src/Services/OrderService.cs ===
+public class OrderService { }
+```
+
+With `--include-metadata`, the header gains a trailing `| <size>b <modified>` segment. With `--provenance`, an `@via` line precedes the header under the same more-than-one-entry rule as the other formats.
+
+## Deduplicated Headers
+
+With `--dedup-headers`, an identical leading comment header (for example a license banner) shared by two or more files is emitted once in a preamble at the top of the output and replaced in each file by a marker line `// fuse:header[N]`. Only leading comment blocks are moved; preprocessor directives and code are never touched, so the API surface is unchanged. The preamble opens with `=== fuse:deduplicated-headers ===` and lists each shared header once with its marker and the number of files that referenced it. Files with no shared header are left as is.
+
+## The Manifest
+
+The manifest is on by default and prepended before the file entries. It lists every included file with its token cost so that a reader can judge the shape and size of a fusion before reading any file body. Disable it with `--no-manifest`.
+
+Token counts in the manifest are abbreviated: a count of 1000 or more is shown as `Nk` (for example `1.5k`), and smaller counts are shown in full.
+
+### XML and Markdown Manifest
+
+In both formats the manifest is an HTML comment block. It opens with `<!-- fuse:manifest`, lists the file count, then one line per file, and closes with `-->`:
+
+```
+<!-- fuse:manifest
+files: 3
+  src/Program.cs (~420 tokens)
+  src/Services/OrderService.cs (~1.2k tokens)
+  src/Services/PaymentService.cs (~890 tokens)
+-->
+```
+
+With `--git-stats`, each file line gains a trailing churn summary in the form `[commits:N last:YYYY-MM-DD]`:
+
+```
+  src/Services/OrderService.cs (~1.2k tokens) [commits:14 last:2026-05-30]
+```
+
+With `--pattern-summary`, one summary line per detected pattern is appended after the file list. The [Pattern Detectors](/docs/reference/pattern-detectors) reference documents what each line reports.
+
+### JSON Manifest
+
+In JSON the manifest is an object with type `"manifest"`. Its `files` array holds one object per file with `path` and `tokens`, plus `commits` and `lastModified` when git statistics are available. A `patterns` array carries detected patterns, and a git availability field reports whether git statistics could be produced:
+
+```json
+{
+  "type": "manifest",
+  "files": [
+    {"path": "src/Services/OrderService.cs", "tokens": 1200, "commits": 14, "lastModified": "2026-05-30"}
+  ],
+  "patterns": [],
+  "git": "unavailable"
+}
+```
+
+### Compact Manifest
+
+The compact format cannot use an HTML comment, so its manifest opens with the marker `# fuse:manifest` followed by the same file lines, each prefixed with `#`:
+
+```
+# fuse:manifest
+#files: 3
+#  src/Program.cs (~420 tokens)
+```
+
+## Run Report
+
+The `--report` flag writes a separate machine-readable JSON object summarizing the run, independent of the fusion body. With `--report <path>` it is written to that file; with `--report -` it is written to stdout. The report has type `"report"` and always names the tokenizer used for its counts:
+
+```json
+{
+  "type": "report",
+  "tokenizer": "o200k_base",
+  "format": "xml",
+  "totalTokens": 18432,
+  "processedFiles": 42,
+  "totalFiles": 57,
+  "durationSeconds": 0.83,
+  "cacheHits": 40,
+  "cacheMisses": 2,
+  "outputPaths": ["project_2026-06-20_1430_18k.txt"],
+  "files": [{"path": "src/Program.cs", "tokens": 420}],
+  "patterns": null
+}
+```
+
+## What This Does Not Cover
+
+This page does not explain the reduction that produces the content inside each entry, nor the token budget and part-splitting that govern how much is written. It documents structure only. For staying inside a budget, see [Stay under a token budget](/docs/scenarios/stay-under-a-budget). For the flags named here, see [Options](/docs/reference/options).
+
+## Next
+
+Read [Pattern Detectors](/docs/reference/pattern-detectors) for the content of pattern summary lines, or [Options](/docs/reference/options) for the `--format` flag and its values.

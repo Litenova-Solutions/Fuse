@@ -1,0 +1,69 @@
+---
+title: How Fuse works
+description: The four stages of a fusion, what each one does, and why the pipeline is shaped this way.
+---
+
+A **fusion** is one run of Fuse: a source directory in, one reduced payload out. That
+run moves through four stages. You do not need to know them to use Fuse, but they
+explain every flag and every result.
+
+## The four stages
+
+| Stage | What it does |
+|-------|--------------|
+| 1. Collection | Scans the directory and applies filters to produce the candidate file set. |
+| 2. Filtering | Optionally narrows that set to the files relevant to a task (scoping). |
+| 3. Reduction | Rewrites each file's content to use fewer tokens without changing meaning. |
+| 4. Emission | Counts tokens, builds the manifest, applies the output format, and writes. |
+
+### 1. Collection
+
+Collection walks the source directory and applies an ordered chain of filters: the
+file extensions a **template** allows, `.gitignore` rules, excluded directories,
+test-project exclusion, file-size limits, binary detection, and glob patterns. What
+survives is the candidate set. A template is just a named set of defaults for a
+project type; `fuse dotnet` uses the DotNet template.
+
+### 2. Filtering
+
+Without scoping, every collected file passes through. With scoping, Fuse narrows the
+set to the files a task needs and expands through a dependency graph. There are three
+mutually exclusive modes, covered in [Scoping](/docs/concepts/scoping). This is the
+stage that turns "the whole repo" into "the part that matters".
+
+### 3. Reduction
+
+Reduction reads each file once, normalizes whitespace, and applies the reducer for
+the file's type. For C# this ranges from removing comments and usings up to dropping
+method bodies to a signature-only **skeleton**. This stage also redacts detected
+secrets, before token counting, so the reported count reflects the safe output. The
+levels are covered in [Reduction levels](/docs/concepts/reduction-levels).
+
+### 4. Emission
+
+Emission counts tokens with a real tokenizer, builds the **manifest** (the header
+that lists each file and its token cost), applies the chosen output format, and writes
+the result, splitting into parts if a fusion exceeds the split threshold.
+
+## Why it is shaped this way
+
+The stages are separated because they change for different reasons. Collection cares
+about the filesystem, filtering about relevance, reduction about language structure,
+and emission about output shape. Keeping them apart means a new language is a
+reduction plugin, not a pipeline change, and scoping is one optional stage rather than
+logic threaded through everything. The deeper design is in
+[the pipeline internals](/docs/internals/pipeline).
+
+## Tokens, the unit that matters
+
+A **token** is the unit a language model reads. Models have a fixed context window
+measured in tokens, so the token count of a fusion decides how much of that window it
+consumes and what it costs. Fuse counts with a real tokenizer rather than estimating
+from character length, so the manifest's numbers match what the target model sees.
+See [Tokenizers](/docs/reference/tokenizers).
+
+## Next
+
+See the [Reduction levels](/docs/concepts/reduction-levels) and
+[Scoping](/docs/concepts/scoping) concepts, or the
+[Glossary](/docs/concepts/glossary) for the vocabulary in one place.

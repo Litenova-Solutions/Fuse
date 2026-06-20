@@ -1,0 +1,63 @@
+---
+title: Install
+description: Install the Fuse global tool from NuGet, run it without installing via dnx, or build it from source.
+---
+
+Fuse is a .NET global tool. Install it once and the `fuse` command is available in
+any terminal.
+
+```bash
+dotnet tool install -g Fuse
+```
+
+Verify the install:
+
+```bash
+fuse --help
+```
+
+## Requirements
+
+- The .NET SDK 10.0 or later. No other dependencies are required for the
+  command-line tool.
+- Git change scoping additionally needs the `git` executable on your PATH.
+
+## Update
+
+```bash
+dotnet tool update -g Fuse
+```
+
+## Run without installing
+
+The .NET 10 SDK can run a tool on demand without a global install using `dnx`:
+
+```bash
+dnx Fuse -- serve
+```
+
+This is handy for trying the MCP server or pinning a one-off run to a specific
+version.
+
+## Build from source
+
+On Windows, the bundled script builds, packs, and installs the tool locally:
+
+```bash
+install.bat
+```
+
+On any OS, pack the CLI project and install from the local package:
+
+```bash
+dotnet pack src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release
+dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
+```
+
+The `pack` step produces a NuGet package under the project's `nupkg` directory, and
+the install command adds it as a source.
+
+## Next
+
+Run your first fusion in the [Quickstart](/docs/start/quickstart), or wire Fuse into
+an agent on the [Connect to your AI](/docs/start/connect-your-ai) page.

@@ -1,0 +1,54 @@
+---
+title: Glossary
+description: The coined terms used across the Fuse documentation, each defined in one plain sentence.
+---
+
+The vocabulary you meet across these docs, defined once.
+
+**Fusion.** One run of Fuse: it takes a source directory and produces a single output,
+either a file on disk or an in-memory payload returned to an MCP client. To "fuse" is to
+perform that run.
+
+**Token.** The unit a language model reads; a model's context window is measured in
+tokens, so a fusion's token count decides how much of the window it consumes and what it
+costs.
+
+**Reduction.** How Fuse shrinks content without changing what it means, ranging from
+removing comments and whitespace up to dropping method bodies. See
+[Reduction levels](/docs/concepts/reduction-levels).
+
+**Skeleton.** A reduction that keeps class, interface, and method signatures and removes
+method bodies, producing an architecture map that is typically 66 to 93 percent smaller
+than a full fusion.
+
+**Scoping.** Narrowing a fusion to the files relevant to a task (a type, a git change set,
+or a search query) and expanding through the dependency graph. See
+[Scoping](/docs/concepts/scoping).
+
+**Seed.** The starting file or files a scoping mode expands from before following
+dependency edges.
+
+**Manifest.** The header prepended to every fusion that lists each included file with its
+token cost, so a reader or agent can judge the shape and cost before reading any body.
+
+**Template.** A named set of defaults that tells Fuse which file extensions to collect and
+which directories to skip for a project type; `fuse dotnet` uses the DotNet template. See
+[Templates](/docs/reference/templates).
+
+**Capability.** One unit of language-specific behavior, such as reducing C#, extracting a
+skeleton, or detecting routes, resolved by file extension.
+
+**Round-trip.** One read-decide cycle an agent makes while exploring; Fuse cuts round-trips
+by answering a survey, a drill-in, or a review in a single response.
+
+**Precision tier.** The opt-in Roslyn analysis path that replaces the default regex
+extraction for higher-fidelity skeletons and dependency edges. See
+[Precision tier](/docs/concepts/precision-tier).
+
+**Provenance.** An annotation that records the inclusion chain that pulled a file into a
+scoped fusion, answering why a file is present.
+
+## Next
+
+Return to [How Fuse works](/docs/concepts/how-fuse-works), or look up exact detail in the
+[Reference](/docs/reference/commands).

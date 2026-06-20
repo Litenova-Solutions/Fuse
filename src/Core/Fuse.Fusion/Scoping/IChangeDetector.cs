@@ -26,4 +26,27 @@ public interface IChangeDetector
         string sourceDirectory,
         string since,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Returns the unified diff hunks for files changed since the given ref.
+    /// </summary>
+    /// <param name="sourceDirectory">The repository root or working directory to diff against.</param>
+    /// <param name="since">Git ref to compare against: a branch name, commit hash, or <c>HEAD~N</c> expression.</param>
+    /// <param name="cancellationToken">Token used to cancel the diff.</param>
+    /// <returns>
+    ///     The awaited result is one <see cref="FileDiff" /> per changed file, with paths normalized to forward
+    ///     slashes. The default implementation returns an empty list for detectors that do not produce diffs.
+    /// </returns>
+    /// <remarks>
+    ///     Used by review-shaped change emission. Implementations that cannot produce hunks may return an empty
+    ///     list rather than throwing.
+    /// </remarks>
+    /// <exception cref="ChangeDetectionException">
+    ///     Thrown when git is unavailable, the directory is not a git repository, or the diff fails.
+    /// </exception>
+    Task<IReadOnlyList<FileDiff>> GetDiffsAsync(
+        string sourceDirectory,
+        string since,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<FileDiff>>([]);
 }

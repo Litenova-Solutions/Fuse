@@ -390,6 +390,7 @@ public sealed class FuseTools
     /// <param name="path">Absolute or relative path to the source directory.</param>
     /// <param name="changedSince">Git ref (branch, commit, or <c>HEAD~N</c>) to diff the working tree against.</param>
     /// <param name="includeDependents">When <see langword="true" />, also include first-degree dependents of the changed files.</param>
+    /// <param name="review">When <see langword="true" />, prepend a review map of diff hunks and direct callers per changed file.</param>
     /// <param name="excludeDirectories">Directory names to skip, or <see langword="null" /> for none.</param>
     /// <param name="excludeFiles">File names to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" /> for none.</param>
@@ -403,13 +404,14 @@ public sealed class FuseTools
     ///     is missing or fusion fails.
     /// </returns>
     [McpServerTool(Name = "fuse_changes", ReadOnly = true)]
-    [Description("Change-scoped fusion for a .NET codebase. Returns files changed since a git ref plus optional dependents.")]
+    [Description("Change-scoped fusion for a .NET codebase. Returns files changed since a git ref plus optional dependents. Set review=true to prepend diff hunks and direct callers per changed file.")]
     public static Task<string> FuseChangesAsync(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
         [Description("Absolute or relative path to the source directory.")] string path,
         [Description("Git ref (branch, commit, HEAD~N) to diff against.")] string changedSince,
         [Description("Include first-degree dependents of changed files.")] bool includeDependents = true,
+        [Description("Prepend a review map: diff hunks and direct callers for each changed file.")] bool review = false,
         [Description("Directory names to skip.")] string[]? excludeDirectories = null,
         [Description("File names to exclude.")] string[]? excludeFiles = null,
         [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
@@ -439,7 +441,7 @@ public sealed class FuseTools
                         removeCSharpRegions: all,
                         aggressiveCSharpReduction: all,
                         enableRedaction: true))
-                    .WithChangeOptions(new ChangeOptions(changedSince, includeDependents));
+                    .WithChangeOptions(new ChangeOptions(changedSince, includeDependents || review, review));
 
                 FuseToolHelpers.ApplyCommonFilters(
                     builder,

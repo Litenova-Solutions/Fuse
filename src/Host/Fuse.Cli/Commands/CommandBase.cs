@@ -239,7 +239,7 @@ public abstract class CommandBase
 
         if (!string.IsNullOrWhiteSpace(ChangedSince))
         {
-            builder.WithChangeOptions(new ChangeOptions(ChangedSince, IncludeDependents));
+            builder.WithChangeOptions(new ChangeOptions(ChangedSince, IncludeDependents, Review));
         }
 
         return builder;
@@ -613,6 +613,12 @@ public abstract class CommandBase
     /// </summary>
     [CliOption(Description = "Include first-degree dependents of changed files.")]
     public bool IncludeDependents { get; set; } = true;
+
+    /// <summary>
+    ///     Prepend a review map (per-changed-file diff hunks and direct callers) when scoping by git ref.
+    /// </summary>
+    [CliOption(Description = "Review shape: prepend diff hunks and direct callers for each changed file (use with --changed-since).")]
+    public bool Review { get; set; } = false;
 
     #endregion
 

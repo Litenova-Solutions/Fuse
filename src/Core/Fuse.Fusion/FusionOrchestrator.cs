@@ -229,6 +229,11 @@ public sealed class FusionOrchestrator
         if (headerPreamble is not null)
             emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, headerPreamble);
 
+        // The review map goes to the very top so a reviewer sees what changed and who calls it before the
+        // file bodies that follow.
+        if (!string.IsNullOrEmpty(filterResult.Preamble))
+            emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, filterResult.Preamble);
+
         return WithReductionCacheStats(emissionResult, reductionCache);
     }
 
@@ -400,11 +405,26 @@ public sealed class FusionOrchestrator
             .Where(filePathSet.Contains)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // The genuinely changed files, before dependents are pulled in. Review hunks and caller pairing key off
+        // this set, not the expanded one.
+        var changedOnly = matchedPaths.ToArray();
+
         IReadOnlyDictionary<string, IReadOnlyList<string>>? provenance = null;
         IReadOnlyDictionary<string, double>? scores = null;
-        if (request.Changes.IncludeDependents && matchedPaths.Count > 0)
+        string? reviewPreamble = null;
+        var review = request.Changes.Review;
+
+        if ((request.Changes.IncludeDependents || review) && matchedPaths.Count > 0)
         {
             var graph = await BuildGraphAsync(files, parallelism, cancellationToken);
+
+            if (review)
+            {
+                var diffs = await GetReviewDiffsAsync(request, filePathSet, cancellationToken);
+                var callers = ChangeReviewBuilder.ComputeCallers(changedOnly, graph);
+                reviewPreamble = ChangeReviewBuilder.Build(diffs, callers);
+            }
+
             var seedScores = matchedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase);
 
             // Dependents are files that reference the changed files (reverse edges), one hop out.
@@ -423,7 +443,28 @@ public sealed class FusionOrchestrator
             return null;
 
         var filtered = files.Where(f => matchedPaths.Contains(f.NormalizedRelativePath)).ToArray();
-        return new FilteredFileSet(filtered, provenance, scores);
+        return new FilteredFileSet(filtered, provenance, scores, reviewPreamble);
+    }
+
+    // Diffs for the genuinely changed files that are also in the collected set. Failures to read diffs are
+    // tolerated here: a missing diff degrades the review map rather than failing the whole run.
+    private async Task<IReadOnlyList<FileDiff>> GetReviewDiffsAsync(
+        FusionRequest request,
+        HashSet<string> collectedPaths,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var diffs = await _changeDetector.GetDiffsAsync(
+                request.Collection.SourceDirectory,
+                request.Changes!.Since,
+                cancellationToken);
+            return diffs.Where(d => collectedPaths.Contains(d.Path)).ToArray();
+        }
+        catch (ChangeDetectionException)
+        {
+            return [];
+        }
     }
 
     private static IReadOnlyDictionary<string, int>? BuildTokenCosts(
@@ -693,5 +734,6 @@ public sealed class FusionOrchestrator
     private sealed record FilteredFileSet(
         IReadOnlyList<Fuse.Collection.Models.SourceFile> Files,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? Provenance,
-        IReadOnlyDictionary<string, double>? Scores);
+        IReadOnlyDictionary<string, double>? Scores,
+        string? Preamble = null);
 }

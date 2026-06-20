@@ -132,6 +132,44 @@ public class RoslynTypeNameLocatorTests
     }
 }
 
+public class RoslynSymbolSliceExtractorTests
+{
+    private readonly RoslynSymbolSliceExtractor _extractor = new();
+
+    [Fact]
+    public void ExtractSlice_KeepsTargetMemberBodyAndStripsOthers()
+    {
+        const string input = """
+            public class OrderService
+            {
+                public void Charge()
+                {
+                    var receipt = Compute();
+                }
+
+                public void Refund()
+                {
+                    var x = 99;
+                }
+            }
+            """;
+
+        var slice = _extractor.ExtractSlice(input, "Charge");
+
+        Assert.NotNull(slice);
+        Assert.Contains("var receipt = Compute()", slice); // target body kept
+        Assert.Contains("Refund", slice);                  // sibling signature kept
+        Assert.DoesNotContain("var x = 99", slice);        // sibling body stripped
+    }
+
+    [Fact]
+    public void ExtractSlice_UnknownMember_ReturnsNull()
+    {
+        const string input = "public class A { public void M() { } }";
+        Assert.Null(_extractor.ExtractSlice(input, "Missing"));
+    }
+}
+
 public class RoslynOutlineExtractorTests
 {
     private readonly RoslynOutlineExtractor _extractor = new();

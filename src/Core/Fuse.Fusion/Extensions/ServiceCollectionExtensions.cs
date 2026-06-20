@@ -77,6 +77,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(sp => new CapabilityRegistry<IContentReducer>(sp.GetServices<IContentReducer>()));
         services.AddSingleton(sp => new CapabilityRegistry<ISkeletonExtractor>(sp.GetServices<ISkeletonExtractor>()));
         services.AddSingleton(sp => new CapabilityRegistry<ISymbolOutlineExtractor>(sp.GetServices<ISymbolOutlineExtractor>()));
+        services.AddSingleton(sp => new CapabilityRegistry<ISymbolSliceExtractor>(sp.GetServices<ISymbolSliceExtractor>()));
         services.AddSingleton(sp => new CapabilityRegistry<ISemanticMarkerGenerator>(sp.GetServices<ISemanticMarkerGenerator>()));
         services.AddSingleton(sp => new CapabilityRegistry<IDependencyExtractor>(sp.GetServices<IDependencyExtractor>()));
         services.AddSingleton(sp => new CapabilityRegistry<ITypeNameLocator>(sp.GetServices<ITypeNameLocator>()));

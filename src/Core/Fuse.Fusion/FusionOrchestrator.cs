@@ -45,6 +45,7 @@ public sealed class FusionOrchestrator
     private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
     private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
     private readonly CapabilityRegistry<ISymbolOutlineExtractor> _outlineExtractors;
+    private readonly CapabilityRegistry<ISymbolSliceExtractor> _sliceExtractors;
     private readonly IRelevanceIndex _relevanceIndex;
     private readonly IRouteMapGenerator? _routeMapGenerator;
     private readonly IProjectGraphGenerator? _projectGraphGenerator;
@@ -71,6 +72,7 @@ public sealed class FusionOrchestrator
         CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
         CapabilityRegistry<ITypeNameLocator> typeNameLocators,
         CapabilityRegistry<ISymbolOutlineExtractor> outlineExtractors,
+        CapabilityRegistry<ISymbolSliceExtractor> sliceExtractors,
         IRelevanceIndex relevanceIndex,
         IReductionCacheFactory reductionCacheFactory,
         IGitStatsProvider gitStatsProvider,
@@ -93,6 +95,7 @@ public sealed class FusionOrchestrator
         _dependencyExtractors = dependencyExtractors;
         _typeNameLocators = typeNameLocators;
         _outlineExtractors = outlineExtractors;
+        _sliceExtractors = sliceExtractors;
         _relevanceIndex = relevanceIndex;
         _reductionCacheFactory = reductionCacheFactory;
         _gitStatsProvider = gitStatsProvider;
@@ -162,6 +165,11 @@ public sealed class FusionOrchestrator
             reductionCache,
             tokenCounter,
             cancellationToken);
+
+        // Symbol-level scoping: slice the focus seed file(s) to the requested member before any other emission
+        // step, so token costs and downstream notes reflect the slice.
+        if (filterResult.Slice is not null)
+            reducedContent = await ApplySymbolSliceAsync(reducedContent, filterResult.Slice, tokenCounter, cancellationToken);
 
         // Table-of-contents mode replaces body emission with a structural map. It runs after scoping and
         // reduction so the listed files and per-file token costs match what a full fetch would cost.
@@ -271,6 +279,39 @@ public sealed class FusionOrchestrator
                     : item)
             .ToArray();
 
+    // Replaces each seed file's content with a slice that keeps only the requested member in full and reduces
+    // the rest of the file to signatures. Falls back to the original entry when no slice extractor handles the
+    // extension or the member is not found.
+    private async Task<IReadOnlyList<FusedContent>> ApplySymbolSliceAsync(
+        IReadOnlyList<FusedContent> reducedContent,
+        SymbolSliceRequest slice,
+        Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<FusedContent>(reducedContent.Count);
+        foreach (var entry in reducedContent)
+        {
+            if (!slice.Paths.Contains(entry.NormalizedPath))
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var extractor = _sliceExtractors.TryResolve(entry.SourceFile.Extension);
+            if (extractor is null)
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var source = await _contentProvider.GetContentAsync(entry.SourceFile, cancellationToken);
+            var sliced = extractor.ExtractSlice(source, slice.Member);
+            result.Add(sliced is null ? entry : entry.WithReducedContent(sliced, tokenCounter));
+        }
+
+        return result;
+    }
+
     // Splits reduced content into the entries to emit (new or changed for the session) and a note listing the
     // entries omitted because they were already sent. Trivial entries pass through untouched.
     private (IReadOnlyList<FusedContent> Kept, string? Note) ApplySessionDelta(
@@ -353,17 +394,37 @@ public sealed class FusionOrchestrator
     {
         var graph = await BuildGraphAsync(files, parallelism, cancellationToken);
 
+        var seed = request.Focus!.Seed;
         var seedPaths = await _focusSeedResolver.ResolveSeedPathsAsync(
-            request.Focus!.Seed,
-            files,
-            _contentProvider,
-            cancellationToken);
+            seed, files, _contentProvider, cancellationToken);
+
+        // Symbol-level scoping: when the seed is "Type.Member" and the type alone resolves, scope to that
+        // member. Only attempted when a slice extractor is registered (the opt-in precision tier), so the regex
+        // default keeps the whole-file behavior.
+        string? sliceMember = null;
+        if (seedPaths.Count == 0 && _sliceExtractors.TryResolve(".cs") is not null)
+        {
+            var dot = seed.LastIndexOf('.');
+            if (dot > 0 && dot < seed.Length - 1)
+            {
+                var typeSeed = seed[..dot];
+                var member = seed[(dot + 1)..];
+                seedPaths = await _focusSeedResolver.ResolveSeedPathsAsync(
+                    typeSeed, files, _contentProvider, cancellationToken);
+                if (seedPaths.Count > 0)
+                    sliceMember = member;
+            }
+        }
 
         if (seedPaths.Count == 0)
         {
             throw new FusionValidationException(
                 $"Focus seed '{request.Focus.Seed}' matched no collected files.");
         }
+
+        var sliceRequest = sliceMember is null
+            ? null
+            : new SymbolSliceRequest(seedPaths.ToHashSet(StringComparer.OrdinalIgnoreCase), sliceMember);
 
         var seedScores = seedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase);
         var options = new ExpansionOptions(
@@ -375,7 +436,7 @@ public sealed class FusionOrchestrator
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
-        return new FilteredFileSet(filtered, expansion.ProvenanceChains, expansion.Scores);
+        return new FilteredFileSet(filtered, expansion.ProvenanceChains, expansion.Scores, Slice: sliceRequest);
     }
 
     private async Task<FilteredFileSet> FilterByQueryAsync(
@@ -778,5 +839,8 @@ public sealed class FusionOrchestrator
         IReadOnlyList<Fuse.Collection.Models.SourceFile> Files,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? Provenance,
         IReadOnlyDictionary<string, double>? Scores,
-        string? Preamble = null);
+        string? Preamble = null,
+        SymbolSliceRequest? Slice = null);
+
+    private sealed record SymbolSliceRequest(IReadOnlySet<string> Paths, string Member);
 }

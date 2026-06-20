@@ -50,11 +50,17 @@ Optional, AOT-friendly on-disk vectors reranking BM25 candidates so intent-based
 
 **Lever:** accuracy on intent-based queries that do not match lexically.
 
-## 8. Eval harness: task success vs token cost
+## 8. Benchmark and measurement suite
 
-Extend [tests/benchmarks](tests/benchmarks) into a real eval: run the same coding tasks with and without Fuse and measure tokens-to-correct-answer.
+Extend [tests/benchmarks](tests/benchmarks) into a published, reproducible benchmark that solidifies Fuse's claims. Built in layers by cost and persuasiveness:
 
-**Lever:** proof and regression guard. Produces claims like "Fuse cut tokens by N times with no loss in task success."
+- **Layer 1, intrinsic (build first):** deterministic, CI-able metrics over a fixed corpus of real OSS .NET repos pinned by commit (small, mid, large). Per reduction mode (default, `--all`, `--skeleton`): token count and reduction ratio vs raw concatenation and vs a competitor packer, cold wall-clock, peak memory, and per-mode fidelity (fraction of public types, methods, and routes preserved). Fidelity is the integrity guard: it proves reduction is not deletion. Report skeleton fidelity as signatures preserved with bodies intentionally omitted, never as body fidelity.
+- **Layer 2, scoping recall (build next):** from real merged PRs, take changed-file sets as ground truth and measure recall at a token budget and precision for focus, query, and changes against an agent-native grep baseline. Recall (necessary files included) is the headline. This isolates Fuse's retrieval claim and tests the regex-graph limit without a full agent loop. An optional single-turn localization task ("which file handles X", exact-match oracle) gives a cheap outcome-flavored signal.
+- **Layer 3, agentic resolution (aspirational):** a SWE-bench-style .NET harness (issue, agent patch, `dotnet test` oracle) driving a pinned programmatic agent across arms (agent-native, Fuse-full, Fuse-scoped). The only end-to-end efficacy proof, but confounded, expensive, noisy, and scaffold-specific, so it is directional evidence rather than universal proof. Build and pilot-validate the harness; run at scale only with provisioned model credentials and compute.
+
+Honesty rules across all layers: never fabricate numbers, open-source the harness and corpus manifest, make every layer reproducible with one command, report arms where Fuse ties or loses, and state that reduction ratios transfer across models even though absolute token counts do not.
+
+**Lever:** proof and regression guard. Layers 1 and 2 are sufficient for a credible launch ("Fuse cut tokens N percent while preserving 100 percent of the public API surface, and its scoping recalls the files a task needs"); layer 3 adds the cost-per-resolved-task story when resourced.
 
 ---
 

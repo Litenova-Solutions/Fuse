@@ -21,12 +21,14 @@ public sealed class FusedContent
     /// <param name="tokenCounter">The token counter used to compute <see cref="TokenCount" />.</param>
     /// <param name="redactionCounts">Per-kind redaction counts when secret redaction was applied.</param>
     /// <param name="inclusionChain">Optional dependency inclusion chain for provenance annotations.</param>
+    /// <param name="relevanceScore">Optional relevance score assigned by scoping, used to order emission.</param>
     public FusedContent(
         SourceFile sourceFile,
         string content,
         ITokenCounter tokenCounter,
         IReadOnlyDictionary<string, int>? redactionCounts = null,
-        IReadOnlyList<string>? inclusionChain = null)
+        IReadOnlyList<string>? inclusionChain = null,
+        double? relevanceScore = null)
     {
         SourceFile = sourceFile;
         Content = content;
@@ -35,6 +37,7 @@ public sealed class FusedContent
         IsTrivial = ComputeIsTrivial(content);
         RedactionCounts = redactionCounts;
         InclusionChain = inclusionChain;
+        RelevanceScore = relevanceScore;
     }
 
     /// <summary>
@@ -77,6 +80,12 @@ public sealed class FusedContent
     public IReadOnlyList<string>? InclusionChain { get; }
 
     /// <summary>
+    ///     Gets the relevance score assigned by scoping, or <c>null</c> when the run was not scoped. Higher is
+    ///     more relevant. Emission uses this to order entries so the most relevant survive a token budget.
+    /// </summary>
+    public double? RelevanceScore { get; }
+
+    /// <summary>
     ///     Returns a copy of this content with the specified inclusion chain.
     /// </summary>
     /// <param name="inclusionChain">The dependency inclusion chain to attach for provenance annotations.</param>
@@ -86,7 +95,19 @@ public sealed class FusedContent
     ///     recomputed.
     /// </returns>
     public FusedContent WithInclusionChain(IReadOnlyList<string> inclusionChain) =>
-        new(SourceFile, Content, new StaticTokenCounter(TokenCount), RedactionCounts, inclusionChain);
+        new(SourceFile, Content, new StaticTokenCounter(TokenCount), RedactionCounts, inclusionChain, RelevanceScore);
+
+    /// <summary>
+    ///     Returns a copy of this content with the specified relevance score.
+    /// </summary>
+    /// <param name="relevanceScore">The relevance score to attach.</param>
+    /// <returns>
+    ///     A new <see cref="FusedContent" /> with identical content and the supplied
+    ///     <see cref="RelevanceScore" />; the existing <see cref="TokenCount" /> is preserved rather than
+    ///     recomputed.
+    /// </returns>
+    public FusedContent WithRelevanceScore(double relevanceScore) =>
+        new(SourceFile, Content, new StaticTokenCounter(TokenCount), RedactionCounts, InclusionChain, relevanceScore);
 
     private static bool ComputeIsTrivial(string content)
     {

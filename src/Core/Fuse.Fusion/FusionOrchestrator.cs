@@ -153,6 +153,9 @@ public sealed class FusionOrchestrator
         if (request.Emission.IncludeProvenance && filterResult.Provenance is not null)
             reducedContent = AttachProvenance(reducedContent, filterResult.Provenance);
 
+        if (filterResult.Scores is not null)
+            reducedContent = AttachRelevance(reducedContent, filterResult.Scores);
+
         PatternSummary? patternSummary = null;
         if (request.Reduction.IncludePatternSummary)
             patternSummary = DetectPatterns(reducedContent);
@@ -212,6 +215,16 @@ public sealed class FusionOrchestrator
                     : item)
             .ToArray();
 
+    private static IReadOnlyList<FusedContent> AttachRelevance(
+        IReadOnlyList<FusedContent> content,
+        IReadOnlyDictionary<string, double> scores) =>
+        content
+            .Select(item =>
+                scores.TryGetValue(item.NormalizedPath, out var score)
+                    ? item.WithRelevanceScore(score)
+                    : item)
+            .ToArray();
+
     private PatternSummary? DetectPatterns(IReadOnlyList<FusedContent> reducedContent)
     {
         var snapshots = reducedContent
@@ -255,7 +268,7 @@ public sealed class FusionOrchestrator
         if (request.Query is not null)
             return await FilterByQueryAsync(request, files, parallelism, cancellationToken);
 
-        return new FilteredFileSet(files, null);
+        return new FilteredFileSet(files, null, null);
     }
 
     private async Task<FilteredFileSet> FilterByFocusAsync(
@@ -278,9 +291,17 @@ public sealed class FusionOrchestrator
                 $"Focus seed '{request.Focus.Seed}' matched no collected files.");
         }
 
-        var expansion = _focusSeedResolver.ExpandPaths(graph, seedPaths, request.Focus.Depth);
+        var seedScores = seedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase);
+        var options = new ExpansionOptions(
+            request.Focus.Depth,
+            FollowReferences: true,
+            FollowDependents: true,
+            TokenBudget: request.Emission.MaxTokens,
+            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens));
+
+        var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
-        return new FilteredFileSet(filtered, expansion.ProvenanceChains);
+        return new FilteredFileSet(filtered, expansion.ProvenanceChains, expansion.Scores);
     }
 
     private async Task<FilteredFileSet> FilterByQueryAsync(
@@ -289,27 +310,39 @@ public sealed class FusionOrchestrator
         int parallelism,
         CancellationToken cancellationToken)
     {
-        var fileContents = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var documents = new Dictionary<string, IndexedDocument>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in files)
         {
             var content = await _contentProvider.GetContentAsync(file, cancellationToken);
-            fileContents[file.NormalizedRelativePath] = content;
+            var locator = _typeNameLocators.TryResolve(file.Extension);
+            var symbols = locator?.ExtractDefinedSymbols(content);
+            documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols);
         }
 
-        _relevanceIndex.Index(fileContents);
-        var seedPaths = _relevanceIndex.Rank(request.Query!.Query, request.Query.TopFiles)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _relevanceIndex.Index(documents);
+        var ranked = _relevanceIndex.RankScored(request.Query!.Query, request.Query.TopFiles);
 
-        if (seedPaths.Count == 0)
+        if (ranked.Count == 0)
         {
             throw new FusionValidationException(
                 $"Query '{request.Query.Query}' matched no collected files.");
         }
 
+        var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
         var graph = await BuildGraphAsync(files, parallelism, cancellationToken);
-        var expansion = _focusSeedResolver.ExpandPaths(graph, seedPaths, request.Query.Depth);
+
+        // Query seeds are already content-matched; expand forward to their dependencies for context, but do
+        // not follow dependents, which would broaden the set with files that merely use a matched type.
+        var options = new ExpansionOptions(
+            request.Query.Depth,
+            FollowReferences: true,
+            FollowDependents: false,
+            TokenBudget: request.Emission.MaxTokens,
+            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens));
+
+        var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
-        return new FilteredFileSet(filtered, expansion.ProvenanceChains);
+        return new FilteredFileSet(filtered, expansion.ProvenanceChains, expansion.Scores);
     }
 
     private async Task<FilteredFileSet?> FilterByChangesAsync(
@@ -340,19 +373,45 @@ public sealed class FusionOrchestrator
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         IReadOnlyDictionary<string, IReadOnlyList<string>>? provenance = null;
+        IReadOnlyDictionary<string, double>? scores = null;
         if (request.Changes.IncludeDependents && matchedPaths.Count > 0)
         {
             var graph = await BuildGraphAsync(files, parallelism, cancellationToken);
-            var expansion = _focusSeedResolver.ExpandPaths(graph, matchedPaths, depth: 1);
+            var seedScores = matchedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase);
+
+            // Dependents are files that reference the changed files (reverse edges), one hop out.
+            var options = new ExpansionOptions(
+                Depth: 1,
+                FollowReferences: false,
+                FollowDependents: true);
+
+            var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
             matchedPaths = expansion.IncludedPaths;
             provenance = expansion.ProvenanceChains;
+            scores = expansion.Scores;
         }
 
         if (matchedPaths.Count == 0)
             return null;
 
         var filtered = files.Where(f => matchedPaths.Contains(f.NormalizedRelativePath)).ToArray();
-        return new FilteredFileSet(filtered, provenance);
+        return new FilteredFileSet(filtered, provenance, scores);
+    }
+
+    private static IReadOnlyDictionary<string, int>? BuildTokenCosts(
+        IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
+        int? maxTokens)
+    {
+        if (maxTokens is null)
+            return null;
+
+        // Pre-reduction estimate: roughly four characters per token. Used only to bound expansion spread;
+        // emission applies the exact, relevance-ordered budget cut.
+        var costs = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in files)
+            costs[file.NormalizedRelativePath] = (int)Math.Max(1, file.FileInfo.Length / 4);
+
+        return costs;
     }
 
     private Task<DependencyGraph> BuildGraphAsync(
@@ -510,5 +569,6 @@ public sealed class FusionOrchestrator
 
     private sealed record FilteredFileSet(
         IReadOnlyList<Fuse.Collection.Models.SourceFile> Files,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? Provenance);
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? Provenance,
+        IReadOnlyDictionary<string, double>? Scores);
 }

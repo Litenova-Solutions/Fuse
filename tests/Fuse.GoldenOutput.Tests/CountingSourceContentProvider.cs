@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
 
@@ -7,9 +7,10 @@ namespace Fuse.GoldenOutput.Tests;
 internal sealed class CountingSourceContentProvider : ISourceContentProvider
 {
     private readonly IFileSystem _fileSystem;
-    private readonly Dictionary<string, string> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private int _readCount;
 
-    public int ReadCount { get; private set; }
+    public int ReadCount => _readCount;
 
     public CountingSourceContentProvider(IFileSystem fileSystem) => _fileSystem = fileSystem;
 
@@ -18,7 +19,7 @@ internal sealed class CountingSourceContentProvider : ISourceContentProvider
         if (_cache.TryGetValue(file.FullPath, out var cached))
             return cached;
 
-        ReadCount++;
+        Interlocked.Increment(ref _readCount);
         var content = await _fileSystem.ReadAllTextAsync(file.FullPath, cancellationToken);
         _cache[file.FullPath] = content;
         return content;
@@ -27,6 +28,6 @@ internal sealed class CountingSourceContentProvider : ISourceContentProvider
     public void Clear()
     {
         _cache.Clear();
-        ReadCount = 0;
+        Interlocked.Exchange(ref _readCount, 0);
     }
 }

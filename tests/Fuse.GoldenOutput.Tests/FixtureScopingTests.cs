@@ -20,18 +20,21 @@ public sealed class FixtureDeterminismTests
 public sealed class FixtureScopingTests
 {
     [Fact]
-    public async Task SampleShop_FocusOrderService_IncludesPaymentCluster()
+    public async Task SampleShop_FocusOrderService_IncludesPaymentClusterAndDependents()
     {
         using var host = new GoldenFusionTestHost();
         var output = await host.FuseSampleShopAsync(
             focus: new FocusOptions("OrderService", Depth: 2),
             emission: new Fuse.Emission.Models.EmissionOptions { IncludeManifest = false, IncludeGitStats = false });
 
+        // Forward edges reach the payment cluster the seed depends on.
         Assert.Contains("OrderService.cs", output);
         Assert.Contains("PaymentService.cs", output);
         Assert.Contains("PaymentGateway.cs", output);
+        // Reverse edges (dependents) reach the controller that references OrderService.
+        Assert.Contains("OrdersController.cs", output);
+        // An unrelated model is reached by neither direction.
         Assert.DoesNotContain("CatalogItem.cs", output);
-        Assert.DoesNotContain("OrdersController.cs", output);
     }
 
     [Fact]

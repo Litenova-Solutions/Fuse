@@ -92,63 +92,152 @@ public sealed class FocusSeedResolver
     }
 
     /// <summary>
-    ///     Expands seed paths by breadth-first traversal up to the specified depth using the dependency graph.
+    ///     Expands seed paths by breadth-first traversal up to the specified depth using forward edges only,
+    ///     scoring every seed equally. Retained for callers that do not need reverse edges or budget gating.
     /// </summary>
     /// <param name="graph">The dependency graph used to follow references from each file.</param>
     /// <param name="seedPaths">The starting set of normalized relative paths.</param>
     /// <param name="depth">The maximum number of hops to traverse from any seed; <c>0</c> returns only the seeds.</param>
+    /// <returns>The expansion result. See <see cref="PathExpansionResult" />.</returns>
+    public PathExpansionResult ExpandPaths(DependencyGraph graph, HashSet<string> seedPaths, int depth) =>
+        Expand(
+            graph,
+            seedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase),
+            new ExpansionOptions(depth));
+
+    /// <summary>
+    ///     Expands scored seeds across the dependency graph using a best-first, rank-decayed traversal that
+    ///     can follow forward edges (dependencies), reverse edges (dependents), or both, and that can stop
+    ///     once an optional token budget is reached.
+    /// </summary>
+    /// <param name="graph">The dependency graph used to follow edges from each file.</param>
+    /// <param name="seedScores">
+    ///     The starting paths mapped to their seed scores. Stronger seeds expand first, so under a budget
+    ///     more of their neighbourhood is admitted before weaker seeds are reached.
+    /// </param>
+    /// <param name="options">The traversal controls. See <see cref="ExpansionOptions" />.</param>
     /// <returns>
-    ///     The included paths plus a provenance chain for each path recording the hop sequence from a seed
-    ///     to its inclusion (inclusive). See <see cref="PathExpansionResult" />.
+    ///     The included paths, a provenance chain for each (the hop sequence from a seed to its inclusion),
+    ///     and a relevance score for each. See <see cref="PathExpansionResult" />.
     /// </returns>
     /// <remarks>
-    ///     Traversal follows the best-effort references in <see cref="DependencyGraph.FileReferences" />, so
-    ///     the expansion inherits the graph's false-positive and missed-edge characteristics. Each path is
-    ///     included once, on the shortest hop on which it is first reached.
+    ///     Seeds are always admitted, even past the budget, because they are the explicit request. Neighbours
+    ///     are admitted highest-score first; a neighbour's score is its parent's score multiplied by
+    ///     <see cref="ExpansionOptions.HopDecay" />. Each path is admitted once, with the highest score and
+    ///     shortest chain by which it is reached. Traversal follows the best-effort edges in the graph, so the
+    ///     expansion inherits the graph's false-positive and missed-edge characteristics.
     /// </remarks>
-    public PathExpansionResult ExpandPaths(DependencyGraph graph, HashSet<string> seedPaths, int depth)
+    public PathExpansionResult Expand(
+        DependencyGraph graph,
+        IReadOnlyDictionary<string, double> seedScores,
+        ExpansionOptions options)
     {
-        var included = new HashSet<string>(seedPaths, StringComparer.OrdinalIgnoreCase);
-        var frontier = new HashSet<string>(seedPaths, StringComparer.OrdinalIgnoreCase);
+        var included = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var provenance = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        var scores = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var seed in seedPaths)
-            provenance[seed] = [seed];
+        var queue = new PriorityQueue<FrontierNode, (double NegScore, string Path)>(FrontierComparer);
+        var budgetUsed = 0;
 
-        for (var hop = 0; hop < depth; hop++)
+        // Admit all seeds first, in deterministic strongest-first order, regardless of budget.
+        foreach (var seed in seedScores.OrderByDescending(s => s.Value).ThenBy(s => s.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var nextFrontier = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!included.Add(seed.Key))
+                continue;
 
-            foreach (var path in frontier)
-            {
-                if (!graph.FileReferences.TryGetValue(path, out var referencedTypes))
-                    continue;
+            provenance[seed.Key] = [seed.Key];
+            scores[seed.Key] = seed.Value;
+            budgetUsed += Cost(options, seed.Key);
 
-                if (!provenance.TryGetValue(path, out var parentChain))
-                    parentChain = [path];
-
-                foreach (var typeName in referencedTypes)
-                {
-                    if (!graph.TypeIndex.TryGetValue(typeName, out var definingPaths))
-                        continue;
-
-                    foreach (var definingPath in definingPaths)
-                    {
-                        if (!included.Add(definingPath))
-                            continue;
-
-                        var chain = new List<string>(parentChain) { definingPath };
-                        provenance[definingPath] = chain;
-                        nextFrontier.Add(definingPath);
-                    }
-                }
-            }
-
-            frontier = nextFrontier;
-            if (frontier.Count == 0)
-                break;
+            if (options.Depth > 0)
+                EnqueueNeighbours(graph, queue, options, seed.Key, [seed.Key], seed.Value, hop: 1);
         }
 
-        return new PathExpansionResult(included, provenance);
+        while (queue.Count > 0)
+        {
+            var node = queue.Dequeue();
+            if (!included.Contains(node.Path))
+            {
+                var cost = Cost(options, node.Path);
+                if (options.TokenBudget is { } budget && budgetUsed + cost > budget)
+                    continue;
+
+                included.Add(node.Path);
+                provenance[node.Path] = node.Chain;
+                scores[node.Path] = node.Score;
+                budgetUsed += cost;
+
+                if (node.Hop < options.Depth)
+                    EnqueueNeighbours(graph, queue, options, node.Path, node.Chain, node.Score, node.Hop + 1);
+            }
+        }
+
+        return new PathExpansionResult(included, provenance, scores);
+    }
+
+    private static void EnqueueNeighbours(
+        DependencyGraph graph,
+        PriorityQueue<FrontierNode, (double NegScore, string Path)> queue,
+        ExpansionOptions options,
+        string path,
+        IReadOnlyList<string> parentChain,
+        double parentScore,
+        int hop)
+    {
+        var nextScore = parentScore * options.HopDecay;
+
+        if (options.FollowReferences && graph.FileReferences.TryGetValue(path, out var referencedTypes))
+        {
+            foreach (var typeName in referencedTypes)
+            {
+                if (graph.TypeIndex.TryGetValue(typeName, out var definingPaths))
+                    EnqueueEach(queue, definingPaths, path, parentChain, nextScore, hop);
+            }
+        }
+
+        if (options.FollowDependents && graph.DeclaredTypes.TryGetValue(path, out var declaredTypes))
+        {
+            foreach (var typeName in declaredTypes)
+            {
+                if (graph.TypeReferences.TryGetValue(typeName, out var referencingPaths))
+                    EnqueueEach(queue, referencingPaths, path, parentChain, nextScore, hop);
+            }
+        }
+    }
+
+    private static void EnqueueEach(
+        PriorityQueue<FrontierNode, (double NegScore, string Path)> queue,
+        IReadOnlyList<string> neighbours,
+        string parentPath,
+        IReadOnlyList<string> parentChain,
+        double score,
+        int hop)
+    {
+        foreach (var neighbour in neighbours)
+        {
+            if (string.Equals(neighbour, parentPath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var chain = new List<string>(parentChain) { neighbour };
+            queue.Enqueue(new FrontierNode(neighbour, chain, score, hop), (-score, neighbour));
+        }
+    }
+
+    private static int Cost(ExpansionOptions options, string path) =>
+        options.TokenBudget is null || options.TokenCosts is null
+            ? 0
+            : options.TokenCosts.GetValueOrDefault(path);
+
+    private static readonly IComparer<(double NegScore, string Path)> FrontierComparer = new FrontierPriorityComparer();
+
+    private sealed record FrontierNode(string Path, IReadOnlyList<string> Chain, double Score, int Hop);
+
+    private sealed class FrontierPriorityComparer : IComparer<(double NegScore, string Path)>
+    {
+        public int Compare((double NegScore, string Path) x, (double NegScore, string Path) y)
+        {
+            var byScore = x.NegScore.CompareTo(y.NegScore);
+            return byScore != 0 ? byScore : string.CompareOrdinal(x.Path, y.Path);
+        }
     }
 }

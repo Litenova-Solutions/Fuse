@@ -10,8 +10,10 @@ namespace Fuse.Emission;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         Write ordering: when enabled, the manifest prefix is written first, then file entries in
-///         descending token-count order so that the largest files appear earliest in the output.
+///         Write ordering: when enabled, the manifest prefix is written first. File entries follow in
+///         descending relevance order when scoping assigned relevance scores, so the files closest to the
+///         seed survive a token budget; otherwise entries are written in descending token-count order so the
+///         largest files appear earliest.
 ///     </para>
 ///     <para>
 ///         Token-budget behavior is driven by <see cref="TokenBudget" />: each entry either continues in
@@ -71,9 +73,7 @@ public sealed class EmissionPipeline
         CancellationToken cancellationToken = default)
     {
         var budget = new TokenBudget(options);
-        var orderedEntries = entries
-            .OrderByDescending(e => e.TokenCount)
-            .ToList();
+        var orderedEntries = OrderEntries(entries);
 
         if (options.IncludeManifest)
         {
@@ -139,5 +139,33 @@ public sealed class EmissionPipeline
             writerResult.Duration,
             writerResult.TopTokenFiles,
             manifestPatternSummary);
+    }
+
+    /// <summary>
+    ///     Orders entries for emission. When any entry carries a relevance score (a scoped run), entries are
+    ///     emitted most-relevant first so that the files closest to the seed survive a token budget; ties and
+    ///     unscored entries fall back to descending token count. When no entry is scored, the historical
+    ///     descending-token-count order is preserved.
+    /// </summary>
+    private static List<FusedContent> OrderEntries(IReadOnlyList<FusedContent> entries)
+    {
+        var anyScored = false;
+        for (var i = 0; i < entries.Count; i++)
+        {
+            if (entries[i].RelevanceScore is not null)
+            {
+                anyScored = true;
+                break;
+            }
+        }
+
+        if (!anyScored)
+            return entries.OrderByDescending(e => e.TokenCount).ToList();
+
+        return entries
+            .OrderByDescending(e => e.RelevanceScore ?? double.NegativeInfinity)
+            .ThenByDescending(e => e.TokenCount)
+            .ThenBy(e => e.NormalizedPath, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

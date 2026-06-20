@@ -48,4 +48,20 @@ public class CSharpDependencyExtractorTests
     {
         Assert.Empty(_extractor.ExtractReferencedTypes(string.Empty));
     }
+
+    [Fact]
+    public void ExtractReferencedTypes_TypeNameInComment_IsIgnored()
+    {
+        var result = _extractor.ExtractReferencedTypes("public class Foo { /* uses PaymentGateway */ public Foo(IRepo repo) { } }");
+        Assert.Contains("IRepo", result);
+        Assert.DoesNotContain("PaymentGateway", result);
+    }
+
+    [Fact]
+    public void ExtractReferencedTypes_TypeNameInString_IsIgnored()
+    {
+        var result = _extractor.ExtractReferencedTypes("public class Foo { public Foo(IRepo repo) { var s = \"CatalogItem\"; } }");
+        Assert.Contains("IRepo", result);
+        Assert.DoesNotContain("CatalogItem", result);
+    }
 }

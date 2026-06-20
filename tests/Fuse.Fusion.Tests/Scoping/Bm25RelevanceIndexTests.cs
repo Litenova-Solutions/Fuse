@@ -47,4 +47,52 @@ public sealed class Bm25RelevanceIndexTests
 
         Assert.Empty(index.Rank("   ", topN: 5));
     }
+
+    [Fact]
+    public void Rank_SymbolField_OutranksIncidentalBodyMention()
+    {
+        var index = new Bm25RelevanceIndex();
+        index.Index(new Dictionary<string, IndexedDocument>
+        {
+            // Declares the concept as a symbol.
+            ["Domain/LedgerEntry.cs"] = new IndexedDocument(
+                "public class LedgerEntry { }",
+                "Domain/LedgerEntry.cs",
+                ["LedgerEntry"]),
+            // Only mentions the concept incidentally in the body, many times.
+            ["Util/Logging.cs"] = new IndexedDocument(
+                "// ledger ledger ledger ledger ledger ledger ledger\npublic class Logging { }",
+                "Util/Logging.cs",
+                ["Logging"]),
+        });
+
+        var ranked = index.Rank("ledger", topN: 1);
+
+        Assert.Single(ranked);
+        Assert.Equal("Domain/LedgerEntry.cs", ranked[0]);
+    }
+
+    [Fact]
+    public void RankScored_ReturnsDescendingScores()
+    {
+        var index = new Bm25RelevanceIndex();
+        index.Index(new Dictionary<string, IndexedDocument>
+        {
+            ["Payments/PaymentService.cs"] = new IndexedDocument(
+                "public class PaymentService { public void ProcessPayment() {} }",
+                "Payments/PaymentService.cs",
+                ["PaymentService", "ProcessPayment"]),
+            ["Catalog/ProductService.cs"] = new IndexedDocument(
+                "public class ProductService { }",
+                "Catalog/ProductService.cs",
+                ["ProductService"]),
+        });
+
+        var ranked = index.RankScored("payment", topN: 5);
+
+        Assert.NotEmpty(ranked);
+        Assert.Equal("Payments/PaymentService.cs", ranked[0].Path);
+        for (var i = 1; i < ranked.Count; i++)
+            Assert.True(ranked[i - 1].Score >= ranked[i].Score);
+    }
 }

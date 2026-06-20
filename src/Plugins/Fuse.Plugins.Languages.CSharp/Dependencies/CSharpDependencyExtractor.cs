@@ -5,7 +5,9 @@ namespace Fuse.Plugins.Languages.CSharp.Dependencies;
 
 /// <summary>
 ///     Regex-based C# dependency extractor. Produces a best-effort approximation of referenced types;
-///     may miss dynamically dispatched dependencies or produce false positives from type names in comments.
+///     may miss dynamically dispatched dependencies. Comments and string literals are blanked before
+///     matching (see <see cref="CSharpSourceSanitizer" />), so type names appearing only in prose or text
+///     do not produce edges.
 /// </summary>
 public sealed partial class CSharpDependencyExtractor : IDependencyExtractor
 {
@@ -23,6 +25,10 @@ public sealed partial class CSharpDependencyExtractor : IDependencyExtractor
     {
         if (string.IsNullOrWhiteSpace(content))
             return [];
+
+        // Blank comments and string literals first so type names mentioned in prose or text do not
+        // create false-positive dependency edges.
+        content = CSharpSourceSanitizer.Sanitize(content);
 
         var types = new HashSet<string>(StringComparer.Ordinal);
 

@@ -63,6 +63,7 @@ public sealed class DependencyGraphBuilder
         CancellationToken cancellationToken = default)
     {
         var fileReferences = new ConcurrentDictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        var declaredTypes = new ConcurrentDictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
         var typeIndex = new ConcurrentDictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
         var parallelOptions = new ParallelOptions
@@ -87,7 +88,10 @@ public sealed class DependencyGraphBuilder
             if (locator is null)
                 return;
 
-            foreach (var typeName in locator.ExtractDefinedTypes(content))
+            var defined = locator.ExtractDefinedTypes(content);
+            declaredTypes[file.NormalizedRelativePath] = defined;
+
+            foreach (var typeName in defined)
             {
                 var paths = typeIndex.GetOrAdd(typeName, _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
                 lock (paths)
@@ -105,11 +109,49 @@ public sealed class DependencyGraphBuilder
                 path => fileReferences[path],
                 StringComparer.OrdinalIgnoreCase);
 
+        var orderedDeclaredTypes = files
+            .Select(f => f.NormalizedRelativePath)
+            .Where(declaredTypes.ContainsKey)
+            .ToDictionary(
+                path => path,
+                path => declaredTypes[path],
+                StringComparer.OrdinalIgnoreCase);
+
         var readOnlyTypeIndex = typeIndex.ToDictionary(
             kvp => kvp.Key,
             kvp => (IReadOnlyList<string>)kvp.Value.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray(),
             StringComparer.Ordinal);
 
-        return new DependencyGraph(orderedReferences, readOnlyTypeIndex);
+        var typeReferences = BuildTypeReferences(orderedReferences);
+
+        return new DependencyGraph(orderedReferences, readOnlyTypeIndex, orderedDeclaredTypes, typeReferences);
+    }
+
+    private static Dictionary<string, IReadOnlyList<string>> BuildTypeReferences(
+        Dictionary<string, IReadOnlyList<string>> fileReferences)
+    {
+        // Invert file -> referenced types into type -> referencing files (the reverse edges).
+        var accumulator = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var (path, referencedTypes) in fileReferences)
+        {
+            foreach (var typeName in referencedTypes)
+            {
+                if (!accumulator.TryGetValue(typeName, out var paths))
+                {
+                    paths = [];
+                    accumulator[typeName] = paths;
+                }
+
+                paths.Add(path);
+            }
+        }
+
+        return accumulator.ToDictionary(
+            kvp => kvp.Key,
+            kvp => (IReadOnlyList<string>)kvp.Value
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            StringComparer.Ordinal);
     }
 }

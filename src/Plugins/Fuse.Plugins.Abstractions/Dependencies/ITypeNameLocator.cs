@@ -31,4 +31,16 @@ public interface ITypeNameLocator : ILanguageCapability
     /// </param>
     /// <returns>The simple names of every type declared in the content. Empty when none are found.</returns>
     IReadOnlyList<string> ExtractDefinedTypes(string content);
+
+    /// <summary>
+    ///     Extracts declared symbol names (types and, where the language allows, members such as methods and
+    ///     properties) for relevance ranking. The default returns only the declared types.
+    /// </summary>
+    /// <param name="content">
+    ///     Source content to scan. Must not be <see langword="null" />; an empty string yields an empty list.
+    /// </param>
+    /// <returns>
+    ///     The declared symbol names used to populate the high-weight symbol field of the relevance index.
+    /// </returns>
+    IReadOnlyList<string> ExtractDefinedSymbols(string content) => ExtractDefinedTypes(content);
 }

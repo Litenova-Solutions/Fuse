@@ -4,9 +4,25 @@ All notable changes to Fuse are documented here. Fuse 2.0 is a structural rewrit
 
 ## [Unreleased]
 
-Phase 1 (AOT-safe retrieval) and Phase 2 (token, trust, and developer experience). Every figure below comes from the benchmark harness over the pinned corpus, counted with `o200k_base`; see [benchmarks.md](benchmarks.md). Layer 1 reduction and fidelity are unchanged, so the retrieval gains were not bought by dropping API.
+Phase 1 (AOT-safe retrieval), Phase 2 (token, trust, and developer experience), Phase 3 (round-trips), and Phase 4 (precision tier). Every figure below comes from the benchmark harness over the pinned corpus, counted with `o200k_base`; see [benchmarks.md](benchmarks.md). The Phase 3 and Phase 4 features are opt-in and do not change the default reduction or scoping path, so Layer 1 reduction and fidelity and Layer 2 recall and precision are unchanged on a rerun.
 
 ### Added
+
+#### Round-trips (Phase 3)
+
+- Table-of-contents mode (`--toc`, `fuse_toc`): a directory tree with per-file token costs and a symbol outline instead of file bodies. A cheap first call for surveying a codebase before fetching files. Backed by a new `ISymbolOutlineExtractor` capability.
+- `fuse_ask` MCP tool: takes a task and a token budget, deterministically picks skeleton, focus, or search from the task text, and packs the result to budget. Focus falls back to search when the named type does not resolve.
+- Review-shaped change emission (`--review`, `fuse_changes` `review`): prepends a review map pairing each changed file's unified diff hunks with its direct callers.
+- Session-delta emission (`--session`, the `session` parameter on `fuse_focus` and `fuse_search`): omits files whose identical content was already emitted under a session id, with a note listing them; a changed file is resent. Backed by a process-scoped session tracker.
+
+#### Precision tier (Phase 4, opt-in and AOT-isolated)
+
+- Roslyn semantic plugin (`--semantic`, `FUSE_SEMANTIC`): Roslyn syntax-tree implementations of the C# skeleton, dependency, type-name, and outline capabilities, registered after the regex defaults so they win for `.cs`. Fixes the regex skeleton collapse on conditional compilation and partial classes and captures references the regex misses. Shipped in a separate assembly the Native AOT package does not reference; the AOT build stays regex-only and IL2026/IL3050 clean.
+- Symbol-level scoping: with the precision tier, a `Type.Member` focus seed scopes the seed file to that member (full body) with the rest of the file reduced to signatures. Backed by a new `ISymbolSliceExtractor` capability.
+- Persistent analysis index (`--index`, on by default in watch and serve): caches per-file dependency and symbol analysis under `.fuse/index`, keyed by content hash and analyzer tier, shared across a run. Amortizes the Roslyn parse cost; measured roughly halving warm-call wall-clock on MediatR.
+- Hybrid retrieval (`--rerank`, `fuse_search` `rerank`): reranks BM25 candidates by blending the normalized BM25 score with embedding-vector cosine similarity. The bundled embedding is a deterministic, AOT-clean lexical hashing model; the `IEmbeddingModel` interface is the plug point for a learned model. Vectors cached under `.fuse/index/vectors`.
+- Cross-language reduction: the JavaScript reducer now covers TypeScript and the JSX, TSX, and ESM variants; a new SQL reducer handles `.sql`.
+- Generated-code collapse (`--collapse-generated`, included in `--all`, `fuse_dotnet` `collapseGenerated`): collapses EF Core migration and model-snapshot generated bodies to their signatures, which the default generated-file exclusion patterns miss.
 
 #### Retrieval (Phase 1)
 

@@ -21,6 +21,16 @@ fuse dotnet --directory ./src --focus OrderService --depth 2
 
 This seeds on the type `OrderService`, then expands two hops through its dependencies.
 
+### Scope To A Member
+
+With `--semantic`, a focus seed of the form `Type.Member` scopes the seed file to that one member: the member body is kept in full, and the rest of the file is reduced to signatures. Use it when a task concerns a single method and the surrounding type is noise. If the member is not found, the seed falls back to the whole file.
+
+```bash
+fuse dotnet --directory ./src --focus OrderService.Charge --semantic
+```
+
+This keeps the body of `Charge` and reduces the rest of `OrderService` to signatures.
+
 ## Changes: Scope By Git Diff
 
 Use `--changed-since` when reviewing a branch or pull request. The seed is the set of files changed since a git ref, which can be a branch, a commit, or a relative reference such as `HEAD~5`. By default `--include-dependents` is true, so the fusion also pulls in the first-degree dependents of each changed file, the code most likely to break from the change. This mode requires git on the PATH and a git repository.
@@ -40,6 +50,22 @@ fuse dotnet --directory ./src --query "discount calculation at checkout" --query
 ```
 
 This ranks files against the query, seeds on the five most relevant, and expands two hops.
+
+### Rerank The Candidates
+
+Add `--rerank` to reorder the ranked candidates before seeding. It blends the normalized BM25 score with the cosine similarity of an embedding vector, which sharpens matching on identifiers and sub-word fragments. The bundled embedding is a deterministic lexical hashing model over tokens and character trigrams, so it tightens lexical matches but does not bridge a true semantic gap between different words for the same idea. Vectors are cached under `.fuse/index/vectors`.
+
+```bash
+fuse dotnet --directory ./src --query "discount calculation at checkout" --rerank --depth 2
+```
+
+## The Precision Tier
+
+By default Fuse analyzes C# with regex extractors, which are fast and AOT-safe. The `--semantic` flag (or the `FUSE_SEMANTIC` environment variable) swaps in a Roslyn syntax tier for the skeleton, dependency, type-name, and outline extractors. It fixes the regex skeleton collapse on conditional compilation and partial classes, and it captures references the regex misses, such as return types, generics, and object creations. The analysis is syntax-level, not full semantic binding. Roslyn is not AOT-compatible, so the tier ships as a separate assembly the Native AOT package does not reference; the AOT build always uses the regex tier, which stays the default.
+
+```bash
+fuse dotnet --directory ./src --focus OrderService --depth 2 --semantic
+```
 
 ## Trace Inclusions With Provenance
 

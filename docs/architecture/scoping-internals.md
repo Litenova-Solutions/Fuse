@@ -11,6 +11,8 @@ This page is for maintainers working on scoping behavior and for engineers who n
 
 Scoping is best-effort by design. The dependency graph is built from regular expressions over file text, not from a compiled semantic model, so it approximates the real reference structure rather than reproducing it. Every mode that expands through the graph inherits that approximation. The honest ceiling on scoping accuracy is the regex graph: it is the largest source of both missed edges and false edges, and no amount of seed-resolution precision compensates for an edge the graph never recorded.
 
+The regex graph is the AOT-clean default. An opt-in precision tier (see [Precision Tier](#precision-tier-roslyn)) replaces the regex extractors with Roslyn syntax analysis, which lifts the parts of that ceiling caused by lexical extraction, at the cost of pulling in a non-AOT dependency. The two tiers produce the same graph shape and feed the same expansion; only the per-file extraction differs.
+
 ## BM25F Relevance Index
 
 Query scoping ranks files by lexical relevance to a query using BM25F, the fielded form of BM25, with K1 = 1.2. Each document carries three fields with independent length-normalization (B) and boost weights: the body (B 0.75, boost 1.0), the declared symbol names (B 0.5, boost 5.0), and the path tokens (B 0.5, boost 3.0). Field contributions are combined before the term-frequency saturation, per the BM25F model. The effect is that a query term matched in a file's declared types or members, or in its name, counts for more than the same term buried in its body, so the file that declares or is named after a concept ranks above files that merely mention it. The declared symbol field is populated from the type-name locator capability, which for C# contributes declared type and member names.
@@ -53,6 +55,24 @@ flowchart LR
     C --> D[Included files with scores<br/>and provenance chains]
     G[(Regex dependency graph<br/>forward and reverse edges)] -.edges.-> C
 ```
+
+## Precision Tier (Roslyn)
+
+The default dependency, type-name, skeleton, and outline capabilities for C# are regex-based and Native AOT clean. An opt-in precision tier registers Roslyn implementations of the same capability interfaces, selected at process start by the `--semantic` flag or the `FUSE_SEMANTIC` environment variable. Because each capability registry resolves an extension to its last registration, registering the Roslyn implementations after the defaults makes them win for `.cs` while the regex implementations stay the fallback for any capability the tier does not provide.
+
+The Roslyn extractors work from the parsed syntax tree rather than line-based regex, so conditional compilation, partial classes, and braces inside strings no longer desynchronize the skeleton extractor (the cause of the skeleton collapse on heavily conditional code), and the dependency extractor captures references the regex misses, such as return types, generic arguments, and object creations. The tier is syntax-level, not full semantic binding: it identifies type-position identifiers without resolving them across a compilation, so it is a more accurate approximation than regex, not a guaranteed-complete call graph. Roslyn is not trim or AOT compatible, so the tier lives in a separate assembly that the Native AOT package does not reference; the AOT build always uses the regex tier.
+
+## Symbol-Level Scoping
+
+With the precision tier active, a focus seed of the form `Type.Member` scopes the seed file to a single member. The resolver first tries the seed as a whole; when that does not resolve and a symbol-slice capability is registered, it splits the seed at the last dot, resolves the type, and records the member. After reduction, the seed file's content is replaced by a slice that keeps the named member's body in full and reduces every other member of the file to its signature, so a large file costs only the member plus its type shell. When no slice capability handles the extension or the member is not found, the whole file is emitted unchanged, so the regex default is never altered.
+
+## Persistent Analysis Index
+
+The per-file analysis the graph build and the relevance index need (referenced types, declared types, declared symbols) can be cached on disk under `.fuse/index`, keyed by a hash of the file content and the analyzer tier. An unchanged file is a hit; a changed file is a miss that overwrites its entry; switching between the regex and Roslyn tier uses a different key. One index instance is shared across a run, so the query relevance pass warms entries that the graph build then reuses. The index is off by default for one-shot CLI runs and enabled automatically in watch mode and the MCP server, where a session makes several calls and the analysis cost is paid once. It mainly amortizes the cost of the Roslyn parse; the regex extraction is already cheap.
+
+## Hybrid Retrieval (Vector Rerank)
+
+Query scoping can rerank its BM25 candidates with embedding-vector similarity before expansion. BM25 stays the recall stage and selects the candidates; the reranker only reorders them, blending the normalized BM25 score with the cosine similarity between the query embedding and each candidate embedding, so a weak embedding cannot drop a lexically strong match below the cut. The default embedding is a deterministic, AOT-clean lexical model that hashes tokens and their character trigrams into a fixed number of buckets; the character trigrams add sub-word overlap so a query term matches an identifier that shares stems. It is a lexical signal and does not bridge a true semantic gap (a query that shares no words or stems with the target file); the `IEmbeddingModel` interface is the extension point for a learned model that would. Candidate vectors are cached on disk under `.fuse/index/vectors` when the persistent index is enabled. The reranker is off by default and enabled with the rerank flag.
 
 ## What This Does Not Cover
 

@@ -21,11 +21,12 @@ The format reducers handle web and configuration file types. Each strips comment
 |---------|------------|------------|
 | CssReducer | `.css` | Removes block comments; collapses newlines; removes spaces around `{ } : ; ,`; collapses multiple spaces. |
 | HtmlReducer | `.html` `.htm` | Removes HTML comments; collapses whitespace between tags; removes quotes from safe attribute values; collapses spaces. |
-| JavaScriptReducer | `.js` | Removes line and block comments; collapses double newlines; trims line whitespace; collapses spaces around delimiters. |
+| JavaScriptReducer | `.js` `.ts` `.tsx` `.jsx` `.mjs` `.cjs` `.mts` `.cts` | Removes line and block comments; collapses double newlines; trims line whitespace; collapses spaces around delimiters. Covers TypeScript and JSX/TSX and ESM variants alongside plain JavaScript. |
 | JsonReducer | `.json` | Removes newlines; collapses whitespace around `:` and `,`; removes spaces after `[` and `{` and before `]` and `}`. |
 | MarkdownReducer | `.md` | Removes HTML comments; converts underline headings to ATX form; removes horizontal rules; normalizes pipe spacing and link titles; collapses excess newlines. |
 | RazorReducer | `.razor` `.cshtml` | Removes HTML, block, line, and Razor comments; collapses tag whitespace; normalizes `@()` syntax; collapses spaces. |
 | ScssReducer | `.scss` | Removes line and block comments; collapses newlines; removes spaces around `{ } : ; ,`; collapses spaces. |
+| SqlReducer | `.sql` | Removes line and block comments; collapses blank lines. |
 | XmlReducer | `.xml` `.csproj` `.targets` `.props` | Removes XML comments; collapses tag whitespace; normalizes the declaration; removes interior newlines; collapses spaces. |
 | YamlReducer | `.yaml` `.yml` | Removes comment lines; removes trailing whitespace; collapses three or more newlines to two. |
 

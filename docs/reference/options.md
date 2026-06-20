@@ -53,9 +53,11 @@ Types in the tables use these conventions: `bool` is a switch, `int` is a whole 
 | `--show-token-count` | bool | `true` | Display the final token count after fusion completes. |
 | `--track-top-token-files` | bool | `false` | Display the top token-consuming files after fusion. |
 | `--no-manifest` | bool | `false` | Omit the manifest header from output. |
+| `--toc` | bool | `false` | Emit a table of contents (directory tree, symbol outline, per-file token costs) instead of file bodies. A cheap first call for surveying a codebase before fetching files. |
 | `--git-stats` | bool | `false` | Include git churn and last-modified statistics in the manifest. |
 | `--provenance` | bool | `false` | Annotate entries with dependency inclusion provenance. |
 | `--dedup-headers` | bool | `false` | Replace identical leading comment headers shared by two or more files with a marker, emitted once in a preamble. |
+| `--session` | string | None | Session id for session-delta emission: files whose identical content was already emitted under this id are omitted on later runs, with a note listing them. Primarily for the MCP server. |
 | `--format` | xml \| markdown \| json \| compact | `xml` | Output format. |
 | `--tokenizer` | string | `o200k_base` | Tokenizer model or encoding name. |
 | `--report` | string | None | Write a machine-readable JSON run report to a file path, or to stdout with `-`. |
@@ -81,6 +83,7 @@ The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds refer
 | `--exclude-auto-generated` | bool | `true` | Skip files containing an auto-generated marker in the first few lines. |
 | `--changed-since` | string (git ref) | None | Scope fusion to files changed since this git ref (branch, commit, or `HEAD~N`). |
 | `--include-dependents` | bool | `true` | Include first-degree dependents of changed files when scoping by git ref. |
+| `--review` | bool | `false` | With `--changed-since`, prepend a review map: each changed file's diff hunks paired with its direct callers. |
 
 ## Extension Options
 
@@ -104,7 +107,18 @@ The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds refer
 |------|------|---------|-------------|
 | `--no-cache` | bool | `false` | Disable per-file reduction caching. |
 | `--clear-cache` | bool | `false` | Clear the cache directory before running. |
+| `--index` | bool | `false` | Cache per-file dependency and symbol analysis on disk (`.fuse/index`) so repeated scoped runs reuse it. Enabled automatically in watch mode and the MCP server. |
 | `--watch` | bool | `false` | Watch for file changes and re-run fusion after edits settle. Disabled automatically when stdio is redirected (MCP). |
+
+## Precision Tier (Opt-In)
+
+The precision tier replaces the default regex C# analysis with Roslyn for more accurate skeletons, dependency edges, and outlines. It is available only in the framework-dependent tool; the Native AOT build always uses the regex tier. The tier is selected at process start, so the flag is also recognized before command parsing, and the `FUSE_SEMANTIC` environment variable enables it for the MCP server.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--semantic` | bool | `false` | Use the Roslyn precision tier for C# analysis (framework-dependent build only). |
+
+The tier and its trade-offs are described in [Scoping Internals](../architecture/scoping-internals.md).
 
 ## DotNet-Only Options
 
@@ -121,7 +135,8 @@ These flags apply only to `fuse dotnet`.
 | `--aggressive` | bool | `false` | Apply aggressive reduction (remove attributes and redundant keywords, compress properties). |
 | `--minify-xml-files` | bool | `true` | Minify XML files such as `.csproj` and `.xml`. |
 | `--minify-html-and-razor` | bool | `true` | Minify HTML and Razor files. |
-| `--all` | bool | `false` | Apply all C# reductions at once (namespaces, comments, regions, usings, aggressive). |
+| `--collapse-generated` | bool | `false` | Collapse EF Core migration and model-snapshot bodies to their signatures, dropping the large generated method bodies. |
+| `--all` | bool | `false` | Apply all C# reductions at once (namespaces, comments, regions, usings, aggressive, collapse-generated). |
 
 ### Structure And Annotation
 
@@ -146,10 +161,11 @@ The detected patterns are listed in the [Pattern Detectors reference](pattern-de
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--focus` | string | None | Type name, filename, or relative directory to scope the fusion around. |
+| `--focus` | string | None | Type name, filename, or relative directory to scope the fusion around. With the precision tier (`--semantic`), a `Type.Member` seed scopes the seed file to that member (symbol-level scoping). |
 | `--query` | string | None | Search query to scope fusion to the most relevant files. |
 | `--query-top` | int | `10` | Number of top-ranked files to seed query scoping. |
 | `--depth` | int | `1` | Dependency traversal depth for focus or query scoping. Valid range 1 to 10. |
+| `--rerank` | bool | `false` | Rerank query candidates with embedding-vector similarity (hybrid retrieval) before dependency expansion. |
 
 The three scoping modes (`--focus`, `--changed-since`, and `--query`) are mutually exclusive: a single fusion uses at most one. The [Scoping to What Matters](../guides/scoping.md) guide explains each mode, and [Reducing Tokens](../guides/reducing-tokens.md) covers the reduction flags in practice.
 

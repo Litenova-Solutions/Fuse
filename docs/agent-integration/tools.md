@@ -1,9 +1,9 @@
 ---
 title: Tools Reference
-description: Parameters and defaults for the six MCP tools the Fuse server exposes to AI clients.
+description: Parameters and defaults for the eight MCP tools the Fuse server exposes to AI clients.
 ---
 
-The Fuse MCP server exposes six tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
+The Fuse MCP server exposes eight tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
 
 This page is for engineers writing agent instructions and for experts who need the exact default of each parameter.
 
@@ -14,6 +14,34 @@ Every tool here is read-only and runs its fusion in memory, returning the result
 The three scoping parameters (`focus`, `changedSince`, and `query`) are mutually exclusive. A single fusion uses at most one of them.
 
 The scoping tools share one retrieval engine, documented in [Scoping Internals](../architecture/scoping-internals.md). Three behaviors are worth knowing when calling them. Focus pulls in both the files a seed depends on and the files that depend on it (its dependents), so a seed reaches its callers as well as its callees. Search ranks with BM25F, weighting a file's declared type and member names and its path above its body, so the file that declares a concept ranks above files that merely mention it. When `maxTokens` is set, the result is emitted most-relevant first, so the files closest to the seed survive the limit.
+
+## fuse_toc
+
+Table of contents (directory tree, symbol outline, per-file token costs) instead of file bodies. The cheapest first call: survey the codebase, then fetch specific files.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to fuse |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+
+## fuse_ask
+
+Give a task and a token budget; Fuse picks the scoping strategy and packs the context to the budget. One call instead of survey-then-scope. The strategy is chosen from the task text: a broad question maps to a skeleton, a task naming one type maps to focus on that type, and anything else maps to search. Focus falls back to search when the named type does not resolve.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to fuse |
+| `task` | string | required | What you need to do or find, in natural language |
+| `tokenBudget` | int | 20000 | Maximum tokens the returned context may use |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+
+The result is prefixed with a one-line note naming the chosen strategy.
 
 ## fuse_skeleton
 
@@ -49,6 +77,9 @@ Scope to a type, file, or path plus dependency traversal.
 | `all` | bool | false | Apply all C# reduction options |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
+| `session` | string | null | Session id: omit files already returned under this id earlier in the session |
+
+A `focus` of the form `Type.Member` scopes the seed file to that member when the precision tier is active (the server is started with `FUSE_SEMANTIC`).
 
 ## fuse_search
 
@@ -60,6 +91,7 @@ BM25F query-scoped fusion plus dependency expansion.
 | `query` | string | required | Natural-language or keyword query, ranked with BM25F |
 | `queryTop` | int | 10 | Number of top-ranked files used to seed dependency expansion |
 | `depth` | int | 1 | Dependency hops to traverse out from the seed files |
+| `rerank` | bool | false | Rerank the BM25 candidates with embedding-vector similarity (hybrid retrieval) |
 | `excludeDirectories` | string[] | null | Directory names to skip |
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
@@ -67,6 +99,7 @@ BM25F query-scoped fusion plus dependency expansion.
 | `all` | bool | false | Apply all C# reduction options |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
+| `session` | string | null | Session id: omit files already returned under this id earlier in the session |
 
 ## fuse_changes
 
@@ -77,6 +110,7 @@ Files changed since a git ref plus optional dependents.
 | `path` | string | required | Source directory to fuse |
 | `changedSince` | string | required | Git ref (branch, commit, or HEAD~N) to diff against |
 | `includeDependents` | bool | true | Also include first-degree dependents of the changed files |
+| `review` | bool | false | Prepend a review map: diff hunks and direct callers for each changed file |
 | `excludeDirectories` | string[] | null | Directory names to skip |
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
@@ -116,6 +150,7 @@ Full-control .NET fusion with all options.
 | `query` | string | null | BM25 query to scope fusion |
 | `queryTop` | int | 10 | Number of top-ranked seed files for query scoping |
 | `patternSummary` | bool | false | Detect and append a cross-codebase pattern summary |
+| `collapseGenerated` | bool | false | Collapse EF Core migration and model-snapshot bodies to signatures |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 | `gitStats` | bool | false | Include git churn stats in the manifest |

@@ -41,7 +41,7 @@ This command fuses a .NET project, including C#, F#, and web files. It applies C
 fuse dotnet --directory ./src --all --skeleton
 ```
 
-The .NET-specific flags and the three mutually exclusive scoping modes are documented in the [Options reference](options.md). For task-oriented usage, see the [Scoping to What Matters](../guides/scoping.md) and [Reducing Tokens](../guides/reducing-tokens.md) guides.
+The .NET-specific flags and the three mutually exclusive scoping modes are documented in the [Options reference](options.md). The same command also exposes the table-of-contents survey (`--toc`), generated-code collapse (`--collapse-generated`), the on-disk analysis index (`--index`), the opt-in Roslyn precision tier (`--semantic`), and the query reranker (`--rerank`). For task-oriented usage, see the [Scoping to What Matters](../guides/scoping.md) and [Reducing Tokens](../guides/reducing-tokens.md) guides.
 
 ## fuse wiki
 
@@ -91,6 +91,8 @@ This command starts the Fuse MCP server for AI agent integration. The server com
 ```bash
 fuse serve
 ```
+
+The server keeps the on-disk analysis index warm across calls, so a multi-call task pays the analysis cost once. Set the `FUSE_SEMANTIC` environment variable before starting the server to enable the Roslyn precision tier for that session.
 
 For client setup and the exposed tools, see the [Agent Integration overview](../agent-integration/overview.md).
 

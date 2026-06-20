@@ -33,9 +33,13 @@ Every capability extends the base contract, which declares the file extensions i
 | ISemanticMarkerGenerator | Generate type-level annotation comments |
 | IDependencyExtractor | Extract referenced type names for the dependency graph |
 | ITypeNameLocator | Resolve a type name to the file or files that define it |
+| ISymbolOutlineExtractor | Produce a per-file symbol outline for the table of contents |
+| ISymbolSliceExtractor | Reduce a file to one member, keeping its body and signatures only for the rest |
 | IRouteMapGenerator | Produce an endpoint table for the fusion |
 | IProjectGraphGenerator | Produce a solution and project reference graph |
 | IPatternDetector | Detect a cross-codebase convention across all fused files |
+
+`ISymbolOutlineExtractor` and `ISymbolSliceExtractor` live in `Fuse.Plugins.Abstractions` alongside the other contracts. The outline extractor backs the table-of-contents survey; the slice extractor backs `Type.Member` focus scoping.
 
 Pattern detectors are the exception to per-extension resolution. They derive from a batch base class that runs a reset, one accumulate call per file, and a finalize call, so a detector folds signals across the whole fused set in a single pass rather than being resolved for one file. Detectors are stateful and run one batch at a time.
 
@@ -44,6 +48,8 @@ Pattern detectors are the exception to per-extension resolution. They derive fro
 A capability registry builds an extension-to-capability map at startup. It iterates every registered implementation, and for each extension that implementation declares, it records the implementation under that extension. The pipeline then resolves a capability by passing a file's extension; the registry returns the registered implementation or nothing when no capability handles that extension.
 
 Last registration wins. When two implementations declare the same extension, the one registered later replaces the earlier one in the map. A specialized plugin can therefore override a default by registering after it. Resolution returning nothing is a normal outcome: a file whose extension has no registered reducer passes through reduction unchanged, and a file with no registered dependency extractor contributes an empty reference list to the graph.
+
+The opt-in Roslyn precision tier is built on this rule. When enabled, it registers Roslyn implementations of the existing C# capabilities, the skeleton, dependency, type-name, and outline extractors, after the default regex ones, so the Roslyn implementations win for `.cs`. The tier is a separate assembly the Native AOT package does not reference, so the AOT build keeps the regex defaults.
 
 ```mermaid
 flowchart LR

@@ -181,6 +181,31 @@ These features are opt-in and do not change the default output, so they do not m
 - Verify. On MediatR excluding tests, `fuse verify` reports 86 of 86 public types and 36 of 36 public methods preserved under default and `--all`. It is a trust check, not a reduction metric.
 - Explain and the JSON run report. Both surface the run without changing it: explain lists included and excluded files with a token estimate, and `--report` emits a machine-readable summary that names the tokenizer. They have no token-reduction figure to report.
 
+### Phase 3 and Phase 4: Round-Trips and the Precision Tier
+
+The Phase 3 round-trip features (table-of-contents survey, the `fuse_ask` auto-scope tool, review-shaped change emission, session-delta emission) and the Phase 4 precision tier (Roslyn analysis, symbol-level scoping, the persistent index, hybrid retrieval, cross-language reduction, and generated-code collapse) are all opt-in. None of them change the default reduction or scoping path. The harness was rerun over the same pinned corpus to confirm that, and the Layer 1 token counts and fidelity and the Layer 2 recall and precision above are byte-identical to the previous release. The gains are not bought by changing the default, because the default did not change.
+
+Each item is measured directly where the harness exercises it:
+
+- Table-of-contents (`--toc`, `fuse_toc`). On the SampleShop fixture the table of contents is 221 tokens against a 624-token cost to read every listed file in full under the default reduction, so the survey costs about a third of fetching the files it maps. The saving grows with file count, since the table of contents lists one line plus a symbol outline per file regardless of file size.
+- Generated-code collapse (`--collapse-generated`). The corpus libraries contain no EF Core migrations, so this item does not move the Layer 1 numbers; it is unit-tested on a migration fixture, where the generated `Up`, `Down`, and `BuildModel` bodies are dropped while the class and method signatures are kept. It is reported here as not exercised by the corpus rather than as an improvement.
+- Cross-language reduction (TS, JS, SQL). The corpus is a C#-only mirror, so this item does not move the Layer 1 numbers either; the TypeScript-family and SQL reducers are unit-tested for comment and whitespace removal. Extending the corpus with a TypeScript or SQL repository is the way to confirm a ratio, and is noted as future work rather than claimed here.
+- Hybrid retrieval (`--rerank`). The bundled embedding is a deterministic lexical hashing model with no learned semantics, so on the Layer 2B localization questions, which are the lexical-ceiling cases, it does not change accuracy: BM25 already selects the candidates and the lexical vector reorders within the same lexical space. This is the honest result the roadmap predicts; closing the lexical gap needs a learned embedding model, for which the reranker provides the plug point. Layer 2B remains the regression guard for it.
+- Roslyn precision tier (`--semantic`) and symbol-level scoping. These are opt-in and not part of the default harness arms. The Roslyn skeleton extractor is unit-tested on the conditional-compilation case that collapses the regex extractor; a corpus arm that runs the precision tier against Newtonsoft.Json, where the regex skeleton keeps only 4 percent of method signatures, is the planned measurement and is not run here.
+
+### The Persistent Index: Cold Versus Warm
+
+The persistent index (`--index`, on by default in watch and serve) caches per-file analysis on disk so repeated scoped calls reuse it. Measured on MediatR (152 C# files) with a query-scoped run, wall-clock cold (a cleared index) versus warm (the index populated by a prior run), counted on one Windows machine and including the fixed process startup cost:
+
+| Tier | Cold | Warm |
+|------|-----:|-----:|
+| Regex (default) | 1,032 ms | 626 ms |
+| Roslyn (`--semantic`) | 1,127 to 1,217 ms | 611 to 644 ms |
+
+The warm run is about half the cold run. The Roslyn tier is more expensive cold because it parses each file, and the index is what amortizes that parse: warm, the two tiers converge because neither re-analyzes an unchanged file. These figures are directional and machine-specific, like the other wall-clock numbers on this page; the index's correctness (a hit returns the stored analysis, a changed file misses) is covered by unit tests.
+
+A note on the competitor arm: the Repomix comparison in the Layer 1 table was not re-run in this environment because the `npx` fetch it needs had no network access. Repomix and the corpus are unchanged, so the previously recorded Repomix figures still stand; only the Fuse arms were re-measured, and they are unchanged.
+
 ## How To Read These Results Together
 
 Layer 1 is the strong, clean claim: Fuse cuts 7 to 40 percent of tokens at full public-API fidelity with default and `--all`, cuts far more with skeleton at signature level, and beats Repomix on token cost in every mode. That claim is deterministic and holds across all four repositories.

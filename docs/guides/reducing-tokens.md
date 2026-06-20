@@ -62,6 +62,22 @@ fuse dotnet --directory ./src --skeleton --all --semantic-markers
 
 The [Generating an Architecture Overview](architecture-overview.md) guide covers skeletons and semantic markers as part of a structural first pass.
 
+## Table-Of-Contents Survey
+
+The `--toc` flag emits a directory tree with a per-file token cost and a symbol outline, instead of file bodies. It is a cheap first call: survey a codebase to decide which files are worth fetching, then fetch them. On the SampleShop fixture the table of contents is 221 tokens against a 624-token full read.
+
+```bash
+fuse dotnet --directory ./src --toc
+```
+
+## Collapse Generated Code
+
+Fuse already excludes `*.g.cs`, `*.Designer.cs`, and auto-generated files by default, but EF Core migrations escape that exclusion because they are hand-checked-in source. The `--collapse-generated` flag collapses the generated method bodies in EF migrations and model snapshots, `Up`, `Down`, `BuildModel`, and `BuildTargetModel`, to a placeholder while keeping their signatures. Files without EF markers are left untouched. This flag is included in `--all`.
+
+```bash
+fuse dotnet --directory ./src --collapse-generated
+```
+
 ## Reduction Levels
 
 | Level | Command | Removes | Typical Use |

@@ -85,6 +85,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<FocusSeedResolver>();
         services.AddSingleton<Enrichment.BoilerplateDeduplicator>();
 
+        services.AddSingleton<Session.ISessionTracker, Session.InMemorySessionTracker>();
         services.AddSingleton<IChangeDetector, GitChangeDetector>();
         services.AddSingleton<IGitStatsProvider, GitStatsProvider>();
         services.AddSingleton<IReductionCacheFactory, ReductionCacheFactory>();

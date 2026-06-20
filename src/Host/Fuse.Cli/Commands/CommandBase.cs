@@ -269,6 +269,7 @@ public abstract class CommandBase
             Format = EntryFormatterFactory.ParseFormat(Format ?? config?.Format),
             DeduplicateHeaders = DedupHeaders,
             TableOfContents = TableOfContents,
+            SessionId = Session,
         };
     }
 
@@ -521,6 +522,13 @@ public abstract class CommandBase
     /// </summary>
     [CliOption(Name = "toc", Description = "Emit a table of contents (tree, symbol outline, per-file token costs) instead of file bodies.")]
     public bool TableOfContents { get; set; } = false;
+
+    /// <summary>
+    ///     A session identifier enabling session-delta emission: files whose identical content was already
+    ///     emitted under this session id are omitted on later runs. Primarily for the MCP server.
+    /// </summary>
+    [CliOption(Required = false, Description = "Session id for session-delta emission: omit files already sent under this id.")]
+    public string? Session { get; set; }
 
     /// <summary>
     ///     Include git churn and last-modified stats in the manifest.

@@ -259,6 +259,7 @@ public sealed class FuseTools
     /// <param name="all">When <see langword="true" />, apply all C# reduction options.</param>
     /// <param name="maxTokens">Hard token limit at which emission stops, or <see langword="null" /> for unlimited.</param>
     /// <param name="trackTopTokenFiles">When <see langword="true" />, append the top token-consuming files to the trailing stats comment.</param>
+    /// <param name="session">Session id for session-delta emission, or <see langword="null" /> to disable it.</param>
     /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
     /// <returns>
     ///     The focus-scoped fusion output as a single string, or a descriptive error message when the directory
@@ -279,6 +280,7 @@ public sealed class FuseTools
         [Description("Apply all C# reduction options.")] bool all = false,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        [Description("Session id: omit files already returned under this id earlier in the session.")] string? session = null,
         CancellationToken cancellationToken = default) =>
         FuseToolHelpers.ExecuteDotNetAsync(
             orchestrator,
@@ -292,7 +294,8 @@ public sealed class FuseTools
                         MaxTokens = maxTokens,
                         ShowTokenCount = false,
                         TrackTopTokenFiles = trackTopTokenFiles,
-                        IncludeManifest = true
+                        IncludeManifest = true,
+                        SessionId = session
                     })
                     .WithReductionOptions(new ReductionOptions(
                         removeCSharpComments: all,
@@ -328,6 +331,7 @@ public sealed class FuseTools
     /// <param name="all">When <see langword="true" />, apply all C# reduction options.</param>
     /// <param name="maxTokens">Hard token limit at which emission stops, or <see langword="null" /> for unlimited.</param>
     /// <param name="trackTopTokenFiles">When <see langword="true" />, append the top token-consuming files to the trailing stats comment.</param>
+    /// <param name="session">Session id for session-delta emission, or <see langword="null" /> to disable it.</param>
     /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
     /// <returns>
     ///     The query-scoped fusion output as a single string, or a descriptive error message when the directory
@@ -349,6 +353,7 @@ public sealed class FuseTools
         [Description("Apply all C# reduction options.")] bool all = false,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
+        [Description("Session id: omit files already returned under this id earlier in the session.")] string? session = null,
         CancellationToken cancellationToken = default) =>
         FuseToolHelpers.ExecuteDotNetAsync(
             orchestrator,
@@ -362,7 +367,8 @@ public sealed class FuseTools
                         MaxTokens = maxTokens,
                         ShowTokenCount = false,
                         TrackTopTokenFiles = trackTopTokenFiles,
-                        IncludeManifest = true
+                        IncludeManifest = true,
+                        SessionId = session
                     })
                     .WithReductionOptions(new ReductionOptions(
                         removeCSharpComments: all,

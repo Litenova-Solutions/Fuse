@@ -1,3 +1,5 @@
+using System.IO.Hashing;
+using System.Text;
 using Fuse.Fusion.Scoping;
 using Fuse.Fusion.Enrichment;
 using Fuse.Collection;
@@ -49,6 +51,7 @@ public sealed class FusionOrchestrator
     private readonly IReductionCacheFactory _reductionCacheFactory;
     private readonly IGitStatsProvider _gitStatsProvider;
     private readonly Enrichment.BoilerplateDeduplicator _boilerplateDeduplicator;
+    private readonly Session.ISessionTracker _sessionTracker;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionOrchestrator" /> class.
@@ -72,6 +75,7 @@ public sealed class FusionOrchestrator
         IReductionCacheFactory reductionCacheFactory,
         IGitStatsProvider gitStatsProvider,
         Enrichment.BoilerplateDeduplicator boilerplateDeduplicator,
+        Session.ISessionTracker sessionTracker,
         IRouteMapGenerator? routeMapGenerator = null,
         IProjectGraphGenerator? projectGraphGenerator = null)
     {
@@ -93,6 +97,7 @@ public sealed class FusionOrchestrator
         _reductionCacheFactory = reductionCacheFactory;
         _gitStatsProvider = gitStatsProvider;
         _boilerplateDeduplicator = boilerplateDeduplicator;
+        _sessionTracker = sessionTracker;
         _routeMapGenerator = routeMapGenerator;
         _projectGraphGenerator = projectGraphGenerator;
     }
@@ -166,6 +171,12 @@ public sealed class FusionOrchestrator
             return WithReductionCacheStats(tocResult, reductionCache);
         }
 
+        // Session-delta mode drops files whose identical content was already emitted earlier in the session, so
+        // a multi-call task does not pay to resend material the agent already holds.
+        string? sessionNote = null;
+        if (!string.IsNullOrEmpty(request.Emission.SessionId))
+            (reducedContent, sessionNote) = ApplySessionDelta(reducedContent, request.Emission.SessionId);
+
         string? headerPreamble = null;
         if (request.Emission.DeduplicateHeaders)
         {
@@ -234,6 +245,9 @@ public sealed class FusionOrchestrator
         if (!string.IsNullOrEmpty(filterResult.Preamble))
             emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, filterResult.Preamble);
 
+        if (!string.IsNullOrEmpty(sessionNote))
+            emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, sessionNote);
+
         return WithReductionCacheStats(emissionResult, reductionCache);
     }
 
@@ -256,6 +270,33 @@ public sealed class FusionOrchestrator
                     ? item.WithRelevanceScore(score)
                     : item)
             .ToArray();
+
+    // Splits reduced content into the entries to emit (new or changed for the session) and a note listing the
+    // entries omitted because they were already sent. Trivial entries pass through untouched.
+    private (IReadOnlyList<FusedContent> Kept, string? Note) ApplySessionDelta(
+        IReadOnlyList<FusedContent> reducedContent,
+        string sessionId)
+    {
+        var kept = new List<FusedContent>(reducedContent.Count);
+        var omitted = new List<string>();
+
+        foreach (var entry in reducedContent)
+        {
+            if (entry.IsTrivial)
+            {
+                kept.Add(entry);
+                continue;
+            }
+
+            var hash = XxHash64.HashToUInt64(Encoding.UTF8.GetBytes(entry.Content));
+            if (_sessionTracker.TryClaim(sessionId, entry.NormalizedPath, hash))
+                kept.Add(entry);
+            else
+                omitted.Add(entry.NormalizedPath);
+        }
+
+        return (kept, Session.SessionDeltaBuilder.BuildNote(sessionId, omitted));
+    }
 
     private PatternSummary? DetectPatterns(IReadOnlyList<FusedContent> reducedContent)
     {
@@ -706,8 +747,10 @@ public sealed class FusionOrchestrator
     private async Task<FusionResult> PrependToDiskOrMemoryAsync(FusionResult emissionResult, string preamble)
     {
         var inMemoryContent = emissionResult.InMemoryContent;
-        if (!string.IsNullOrEmpty(inMemoryContent))
-            inMemoryContent = preamble + "\n" + inMemoryContent;
+        // Prepend even to empty in-memory content so a note survives when every entry was omitted (for example
+        // a session-delta call where the agent already holds every file).
+        if (inMemoryContent is not null)
+            inMemoryContent = string.IsNullOrEmpty(inMemoryContent) ? preamble : preamble + "\n" + inMemoryContent;
 
         var generatedPaths = emissionResult.GeneratedPaths.ToList();
         if (generatedPaths.Count > 0)

@@ -71,6 +71,12 @@ public sealed class EmissionOptions
     public bool DeduplicateHeaders { get; set; } = false;
 
     /// <summary>
+    ///     An opaque session identifier enabling session-delta emission, or <c>null</c> to disable it. When set,
+    ///     files whose identical content was already emitted in this session are omitted on later fusions.
+    /// </summary>
+    public string? SessionId { get; set; }
+
+    /// <summary>
     ///     A value indicating whether to emit a table of contents (a directory tree with per-file token costs
     ///     and a symbol outline) instead of file bodies. A cheap first call for surveying a codebase before
     ///     fetching files in full. Off by default.

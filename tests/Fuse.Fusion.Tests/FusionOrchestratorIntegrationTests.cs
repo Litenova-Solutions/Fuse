@@ -57,6 +57,32 @@ public sealed class FusionOrchestratorIntegrationTests : IDisposable
         Assert.True(result.TotalTokens > 0);
     }
 
+    [Fact]
+    public async Task FuseAsync_ConcurrentCalls_AllSucceedWithIdenticalOutput()
+    {
+        // The orchestrator is a singleton that mutates shared per-run state on its injected singletons
+        // (the content cache and the BM25 index). Concurrent calls must be serialized by the run gate; before
+        // that guard this loop intermittently threw or returned corrupted output.
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+
+        FusionRequest NewRequest() => new(
+            new CollectionOptions(_sourceDirectory, extensions: [".cs", ".json"]),
+            new ReductionOptions(),
+            new EmissionOptions(),
+            inMemory: true);
+
+        var tasks = Enumerable.Range(0, 32).Select(_ => orchestrator.FuseAsync(NewRequest())).ToArray();
+        var results = await Task.WhenAll(tasks);
+
+        foreach (var result in results)
+        {
+            Assert.NotNull(result.InMemoryContent);
+            Assert.Equal(2, result.ProcessedFileCount);
+        }
+
+        Assert.Single(results.Select(r => r.InMemoryContent).Distinct());
+    }
+
     public void Dispose()
     {
         _serviceProvider.Dispose();

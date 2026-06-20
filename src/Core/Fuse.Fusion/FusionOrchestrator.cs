@@ -55,6 +55,13 @@ public sealed class FusionOrchestrator
     private readonly Enrichment.BoilerplateDeduplicator _boilerplateDeduplicator;
     private readonly Session.ISessionTracker _sessionTracker;
 
+    // Serializes fusion runs. The orchestrator is a singleton (and the SDK entry point), and a run mutates
+    // shared per-run state on the injected singletons (the content cache is cleared at the start of every run,
+    // and the BM25 index rebuilds all of its state on each query). Concurrent runs - for example two MCP tool
+    // calls handled at once - would otherwise corrupt that state. Fusion is coarse-grained, so serializing whole
+    // runs is the correct, low-overhead guard rather than locking each shared field.
+    private readonly SemaphoreSlim _runGate = new(1, 1);
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionOrchestrator" /> class.
     /// </summary>
@@ -134,8 +141,23 @@ public sealed class FusionOrchestrator
     ///         <item><description>Emission: format and write output, then append optional route maps, project graphs, redaction reports, and pattern summaries.</description></item>
     ///     </list>
     ///     The request is validated through <see cref="FusionValidator.ValidateOrThrow" /> before any stage runs.
+    ///     Calls are serialized: the orchestrator is a shared singleton whose runs mutate per-run state, so
+    ///     concurrent callers are queued and run one at a time.
     /// </remarks>
     public async Task<FusionResult> FuseAsync(FusionRequest request, CancellationToken cancellationToken = default)
+    {
+        await _runGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await FuseCoreAsync(request, cancellationToken);
+        }
+        finally
+        {
+            _runGate.Release();
+        }
+    }
+
+    private async Task<FusionResult> FuseCoreAsync(FusionRequest request, CancellationToken cancellationToken)
     {
         _validator.ValidateOrThrow(request);
 

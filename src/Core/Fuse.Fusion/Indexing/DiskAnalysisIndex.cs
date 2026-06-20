@@ -81,7 +81,12 @@ public sealed class DiskAnalysisIndex : IAnalysisIndex
             var content = string.Join('\t', analysis.ReferencedTypes) + "\n"
                 + string.Join('\t', analysis.DeclaredTypes) + "\n"
                 + string.Join('\t', analysis.DeclaredSymbols);
-            File.WriteAllText(Path.Combine(_directory, key + ".idx"), content);
+            var path = Path.Combine(_directory, key + ".idx");
+            // Write to a unique temp file then atomically replace, so a concurrent reader (another process over
+            // the same .fuse/index) never observes a half-written entry.
+            var temp = path + ".tmp-" + Guid.NewGuid().ToString("N");
+            File.WriteAllText(temp, content);
+            File.Move(temp, path, overwrite: true);
         }
         catch (IOException)
         {

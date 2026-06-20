@@ -79,7 +79,12 @@ public sealed class DiskVectorStore : IVectorStore
             Directory.CreateDirectory(_directory);
             var bytes = new byte[vector.Length * sizeof(float)];
             Buffer.BlockCopy(vector, 0, bytes, 0, bytes.Length);
-            File.WriteAllBytes(Path.Combine(_directory, key + ".vec"), bytes);
+            var path = Path.Combine(_directory, key + ".vec");
+            // Write to a unique temp file then atomically replace, so a concurrent reader never observes a
+            // partially written vector (and never accepts a torn but correct-length file).
+            var temp = path + ".tmp-" + Guid.NewGuid().ToString("N");
+            File.WriteAllBytes(temp, bytes);
+            File.Move(temp, path, overwrite: true);
         }
         catch (IOException)
         {

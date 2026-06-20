@@ -76,7 +76,7 @@ fuse dotnet --directory /path/to/fixture --output /tmp/fuse-bench-parallel --ove
 
 On Linux or macOS, replace `%NUMBER_OF_PROCESSORS%` with the output of `nproc` or an explicit core count.
 
-## Warm run (post Phase 3 cache)
+## Warm run (cached)
 
 After persistent reduction cache is enabled (default unless `--no-cache`):
 

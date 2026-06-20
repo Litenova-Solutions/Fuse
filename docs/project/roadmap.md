@@ -3,7 +3,7 @@ title: Roadmap
 description: The planned direction for Fuse, framed as intent rather than commitment, with shipped work recorded in the changelog.
 ---
 
-The roadmap states where Fuse intends to go, ranked by impact on agentic efficiency. Each planned item names its primary lever: accuracy, token cost, or round-trips. This page summarizes the themes; the full list lives in the ROADMAP.md file at the repository root. Nothing here is a commitment or a delivery date. Work that has shipped is recorded in the [Changelog](changelog.md), not on the roadmap.
+The roadmap states where Fuse intends to go, ranked by impact on agent efficiency. Each planned item names its primary lever: accuracy, token cost, or round-trips. This page summarizes the themes; the full list lives in the ROADMAP.md file at the repository root. Nothing here is a commitment or a delivery date. Work that has shipped is recorded in the [Changelog](changelog.md), not on the roadmap.
 
 This page is for stakeholders gauging direction and engineers deciding where new work fits.
 

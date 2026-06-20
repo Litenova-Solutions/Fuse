@@ -7,7 +7,7 @@ This page reports what Fuse does to a real .NET codebase in numbers: how far it 
 
 Three readers are served below. A stakeholder can read the headline findings and the fidelity table. A new engineer can follow the reproduction steps and run the suite. A maintainer can read the method, the corpus manifest, and the per-mode results, including the arms where Fuse ties or loses.
 
-The benchmark is built in layers by cost and persuasiveness. Layer 1 is intrinsic and deterministic: token reduction, speed, memory, and fidelity. Layer 2 tests retrieval: scoping recall against real merged-PR change sets, and a single-turn localization task. Layer 3 (an agentic resolution harness) is not built here and is listed under Blocked And Out Of Scope.
+The benchmark is built in layers by cost and persuasiveness. Layer 1 is intrinsic and deterministic: token reduction, speed, memory, and fidelity. Layer 2 tests retrieval: scoping recall against real merged-PR change sets, and a single-turn localization task. Layer 3 (an end-to-end task resolution harness) is not built here and is listed under Blocked And Out Of Scope.
 
 ## Reproduce First
 
@@ -146,11 +146,11 @@ Findings, including losses:
 
 ## Retrieval And Output Changes: Before And After
 
-This section records the effect of the Phase 1 retrieval work and the Phase 2 output and trust work against the same pinned corpus. All token counts use `o200k_base`. Layer 1 reduction and fidelity did not change: default and `--all` still keep 99 to 100 percent of public types and methods, and skeleton still collapses on Newtonsoft.Json, so the cut was not bought by dropping API.
+This section records the effect of the retrieval work and the output and trust work against the same pinned corpus. All token counts use `o200k_base`. Layer 1 reduction and fidelity did not change: default and `--all` still keep 99 to 100 percent of public types and methods, and skeleton still collapses on Newtonsoft.Json, so the cut was not bought by dropping API.
 
-### Phase 1: Retrieval
+### Retrieval And Scoping
 
-The six Phase 1 items change one scoring and expansion pipeline, so the harness measures their combined effect rather than isolating each. The before column is the previous release; the after column is this release at the same budgets and depths.
+The six retrieval items change one scoring and expansion pipeline, so the harness measures their combined effect rather than isolating each. The before column is the previous release; the after column is this release at the same budgets and depths.
 
 | Metric | Before | After |
 |--------|-------:|------:|
@@ -171,7 +171,7 @@ What each item contributes to that combined movement:
 5. Query normalization. CamelCase splitting, stopword removal, and light stemming align a natural-language question with code identifiers, contributing to the query gains in both layers.
 6. Relevance-ordered truncation. Under a token budget, emission now writes most-relevant first instead of largest first, so the seed file survives the cut. This protects recall and accuracy at the 50,000 and 20,000 token budgets used here.
 
-### Phase 2: Output And Trust
+### Output And Trust
 
 These features are opt-in and do not change the default output, so they do not move the Layer 1 or Layer 2 arms above. Their effect is measured directly.
 
@@ -181,9 +181,9 @@ These features are opt-in and do not change the default output, so they do not m
 - Verify. On MediatR excluding tests, `fuse verify` reports 86 of 86 public types and 36 of 36 public methods preserved under default and `--all`. It is a trust check, not a reduction metric.
 - Explain and the JSON run report. Both surface the run without changing it: explain lists included and excluded files with a token estimate, and `--report` emits a machine-readable summary that names the tokenizer. They have no token-reduction figure to report.
 
-### Phase 3 and Phase 4: Round-Trips and the Precision Tier
+### Round-Trips And The Precision Tier
 
-The Phase 3 round-trip features (table-of-contents survey, the `fuse_ask` auto-scope tool, review-shaped change emission, session-delta emission) and the Phase 4 precision tier (Roslyn analysis, symbol-level scoping, the persistent index, hybrid retrieval, cross-language reduction, and generated-code collapse) are all opt-in. None of them change the default reduction or scoping path. The harness was rerun over the same pinned corpus to confirm that, and the Layer 1 token counts and fidelity and the Layer 2 recall and precision above are byte-identical to the previous release. The gains are not bought by changing the default, because the default did not change.
+The round-trip features (table-of-contents survey, the `fuse_ask` auto-scope tool, review-shaped change emission, session-delta emission) and the precision tier (Roslyn analysis, symbol-level scoping, the persistent index, hybrid retrieval, cross-language reduction, and generated-code collapse) are all opt-in. None of them change the default reduction or scoping path. The harness was rerun over the same pinned corpus to confirm that, and the Layer 1 token counts and fidelity and the Layer 2 recall and precision above are byte-identical to the previous release. The gains are not bought by changing the default, because the default did not change.
 
 Each item is measured directly where the harness exercises it:
 
@@ -223,7 +223,7 @@ Layer 2 is the honest boundary, and it moved this release. Change scoping is rel
 
 ## Blocked And Out Of Scope
 
-- Layer 3, agentic resolution. A SWE-bench-style harness that drives a programmatic agent across arms and scores patches with a test oracle is not built here. It needs provisioned model credentials and compute, and it is confounded and scaffold-specific. It remains aspirational, as the roadmap states.
+- Layer 3, task resolution. A SWE-bench-style harness that drives a programmatic agent across arms and scores patches with a test oracle is not built here. It needs provisioned model credentials and compute, and it is confounded and scaffold-specific. It remains aspirational, as the roadmap states.
 - Cross-machine timing. Wall-clock and memory were captured on one Windows machine. They are directional. Token counts and fidelity are machine-independent.
 - Tokenizer scope. All counts use `o200k_base`. Absolute counts differ under other encodings; the ratios are what transfer.
 

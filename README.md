@@ -111,7 +111,7 @@ Output defaults to `Documents/Fuse`. Use `--output` and `--name` to control the 
 | Command | Purpose |
 |---------|---------|
 | `fuse` | Generic fusion. All extensions unless you set `--only-extensions`. |
-| `fuse dotnet` | .NET projects: C# reduction, structural maps, agentic scoping. |
+| `fuse dotnet` | .NET projects: C# reduction, structural maps, dependency-aware scoping. |
 | `fuse wiki` | Azure DevOps wikis: Markdown only. |
 | `fuse init` | Create `fuse.json` in the current directory. |
 | `fuse serve` | Start the MCP server on stdio. |
@@ -129,7 +129,7 @@ Use MCP tools in this order for large .NET codebases:
 
 Or skip the orchestration: call `fuse_ask` with a task and a token budget and Fuse picks the strategy and packs the context to budget. Across calls in one task, pass a `session` id so files already returned are not sent again.
 
-See [agentic workflows](docs/agent-integration/workflows.md) for token budgets and composition rules.
+See [agent workflows](docs/agent-integration/workflows.md) for token budgets and composition rules.
 
 ## MCP setup
 
@@ -258,4 +258,4 @@ Contribution workflow: [Contributing](docs/project/contributing.md). Agent instr
 
 ## License
 
-MIT. Copyright © Litenova Solutions 2026.
+MIT. Copyright (c) 2026 Litenova Solutions. See [LICENSE](LICENSE).

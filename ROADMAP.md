@@ -1,12 +1,12 @@
 # Fuse Roadmap
 
-Planned and desired features, ranked by impact on agentic efficiency. Each item names its primary lever: accuracy, token cost, or round-trips. This document states intent, not commitment. Shipped work moves to the [CHANGELOG](CHANGELOG.md).
+Planned and desired features, ranked by impact on agent efficiency. Each item names its primary lever: accuracy, token cost, or round-trips. This document states intent, not commitment. Shipped work moves to the [CHANGELOG](CHANGELOG.md).
 
-Architecture context for these items: [docs/architecture.md](docs/architecture.md).
+Architecture context for these items: [docs/architecture/index.md](docs/architecture/index.md).
 
 ## Recently shipped
 
-Phase 3 (round-trips) and Phase 4 (precision tier) are in the [CHANGELOG](CHANGELOG.md): the Roslyn semantic plugin, symbol-level scoping, the persistent on-disk index, the `fuse_ask` auto-scope tool, session-delta emission, the table-of-contents survey, review-shaped change emission, cross-language reduction, generated-code collapse, and the hybrid-retrieval reranker. The items below are what remains.
+The most recent additions are recorded in the [CHANGELOG](CHANGELOG.md): the Roslyn semantic plugin, symbol-level scoping, the persistent on-disk index, the `fuse_ask` auto-scope tool, session-delta emission, the table-of-contents survey, review-shaped change emission, cross-language reduction, generated-code collapse, and the hybrid-retrieval reranker. The items below are what remains.
 
 ---
 
@@ -28,7 +28,7 @@ Extend [tests/benchmarks](tests/benchmarks) into a published, reproducible bench
 
 - **Layer 1, intrinsic (built):** deterministic, CI-able metrics over a fixed corpus of real OSS .NET repos pinned by commit. Per reduction mode: token count and reduction ratio vs raw concatenation and vs a competitor packer, cold wall-clock, peak memory, and per-mode fidelity. Fidelity is the integrity guard: it proves reduction is not deletion.
 - **Layer 2, scoping recall (built):** from real merged PRs, take changed-file sets as ground truth and measure recall at a token budget and precision for focus, query, and changes against a grep baseline, plus a single-turn localization task.
-- **Layer 3, agentic resolution (aspirational):** a SWE-bench-style .NET harness (issue, agent patch, `dotnet test` oracle) driving a pinned programmatic agent across arms. The only end-to-end efficacy proof, but confounded, expensive, and scaffold-specific, so it is directional evidence rather than universal proof.
+- **Layer 3, task resolution (aspirational):** a SWE-bench-style .NET harness (issue, agent patch, `dotnet test` oracle) driving a pinned programmatic agent across arms. The only end-to-end efficacy proof, but confounded, expensive, and scaffold-specific, so it is directional evidence rather than universal proof.
 
 Remaining work on the built layers: fold the precision-tier skeleton fidelity into the harness as a permanent arm (the figures are recorded in [benchmarks.md](docs/project/benchmarks.md) from a manual run over the same mirrors, where the Roslyn skeleton lifts Newtonsoft.Json method fidelity from 4 to 100 percent), and add a TypeScript or SQL repository to the corpus to confirm a cross-language reduction ratio.
 

@@ -1,6 +1,6 @@
 # Agent Instructions
 
-Read this file before editing Fuse source. Full rules live in [docs/contributing.md](docs/contributing.md). Pipeline context is in [docs/architecture.md](docs/architecture.md).
+Read this file before editing Fuse source. Full rules live in [docs/project/contributing.md](docs/project/contributing.md). Pipeline context is in [docs/architecture/index.md](docs/architecture/index.md).
 
 ## Documentation (two layers)
 
@@ -32,13 +32,13 @@ Comment when a reader must hold mental state (depth counters, accumulation, thre
 
 | Area | Public XML | Private `//` |
 |------|------------|--------------|
-| Orchestration (`FusionOrchestrator`, `*Pipeline`) | `<remarks>` on stage ordering and delegation | Phase logic inside private helpers |
+| Orchestration (`FusionOrchestrator`, `*Pipeline`) | `<remarks>` on stage ordering and delegation | Stage logic inside private helpers |
 | Language plugins | Full docs on capability interfaces; thin impls use `<inheritdoc />` | Regex/scan heuristics |
 | Detectors and reducers | Summary + remarks on false-positive tradeoffs | Non-obvious matching rules |
 | Options/DTO records | Summary when the name alone is ambiguous | Rarely needed |
 
 ## Code changes
 
-- Match existing C# conventions in [docs/contributing.md](docs/contributing.md#c-conventions).
+- Match existing C# conventions in [docs/project/contributing.md](docs/project/contributing.md).
 - New public API without XML docs is incomplete.
-- Do not add XML to private members or restate `architecture.md` in file comments.
+- Do not add XML to private members or restate the architecture docs in file comments.

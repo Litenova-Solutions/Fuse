@@ -10,8 +10,8 @@ namespace Fuse.Fusion.Scoping;
 ///     Normalization lowercases, splits on non-word characters, splits camelCase and snake_case identifiers
 ///     into their sub-words, drops a small set of English and code stopwords, and applies a conservative
 ///     suffix stemmer. Stemming is intentionally light: it folds common plural and verb endings so that, for
-///     example, <c>validators</c> and <c>validating</c> both reduce toward <c>validat</c>, without the
-///     aggressive rewrites of a full Porter stemmer.
+///     example, <c>caching</c> and <c>cached</c> both reduce to <c>cach</c> and <c>handlers</c> reduces to
+///     <c>handler</c>, without the aggressive rewrites of a full Porter stemmer.
 /// </remarks>
 public static partial class RelevanceTokenizer
 {

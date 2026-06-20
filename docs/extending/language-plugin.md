@@ -1,0 +1,127 @@
+---
+title: Adding a Language Plugin
+description: How to build an assembly that registers reduction and analysis capabilities for a set of file extensions.
+---
+
+Fuse keeps language-specific behavior outside the core pipeline. Support for a language lives in a plugin: a separate assembly that registers one or more capabilities keyed to the file extensions that language uses. When Fuse reduces a file or expands a dependency graph, the core pipeline resolves the right capability by extension and calls it. Adding a language is therefore a matter of implementing the capabilities you need and registering them, without touching the pipeline itself.
+
+This page is written for an engineer who wants to teach Fuse about a language it does not yet handle.
+
+## Implementation Context
+
+Every capability a language plugin provides extends the same base contract, `ILanguageCapability`, which declares a single member, `SupportedExtensions`. That property returns the extensions the capability handles, each with its leading dot, for example `.cs`. The core pipeline holds a registry per capability type and builds an extension-to-implementation map from everything registered. At resolution time it looks up the extension and calls the matching implementation. Matching is case-insensitive, and one class may declare several extensions when a language uses more than one.
+
+A language can supply as many or as few capabilities as it needs. The only one required for a language to take part in reduction is the content reducer. The others add analysis and presentation features and are optional.
+
+| Interface | What it provides | Required |
+|-----------|------------------|----------|
+| `IContentReducer` | Extension-specific content reduction | Yes |
+| `ISkeletonExtractor` | Signatures-only structural skeleton | No |
+| `ISemanticMarkerGenerator` | Type-level annotation comments | No |
+| `IDependencyExtractor` | Referenced type or module names for the dependency graph | No |
+| `ITypeNameLocator` | Resolution of a type name to its defining file | No |
+| `IRouteMapGenerator` | Endpoint table prepended to output | No |
+| `IProjectGraphGenerator` | Project reference graph prepended to output | No |
+| `IPatternDetector` | Cross-codebase convention detection | No |
+
+The capability model is described in full on the [Capability and Plugin Model](../architecture/capability-model.md) page. The C# plugin, in the `Fuse.Plugins.Languages.CSharp` project, implements every capability in the table and is the complete reference example to read alongside this guide.
+
+## Implement The Content Reducer
+
+A content reducer applies extension-specific transformations to a file's text and returns the reduced result. The pipeline normalizes whitespace before calling a reducer, so a reducer should not trim lines or collapse blank lines itself; it removes only what is specific to the language, such as comments. A reducer must be stateless and pure, because reduction runs concurrently across files on several threads.
+
+The following is a minimal reducer for a hypothetical language whose files end in `.mylang`.
+
+```csharp
+using Fuse.Plugins.Abstractions.Options;
+using Fuse.Plugins.Abstractions.Reducers;
+
+namespace Fuse.Plugins.Languages.MyLang.Reducers;
+
+/// <summary>
+///     Reduces MyLang source files.
+/// </summary>
+public sealed class MyLangReducer : IContentReducer
+{
+    /// <inheritdoc />
+    public IReadOnlyCollection<string> SupportedExtensions { get; } = [".mylang"];
+
+    /// <inheritdoc />
+    public string Reduce(string content, ReductionOptions options)
+    {
+        // Apply only language-specific transformations here.
+        // Whitespace normalization already ran in the pipeline.
+        return content;
+    }
+}
+```
+
+The `options` parameter carries the reduction settings for the current run, such as whether comments are removed. Read the flags that apply to your language and return the input unchanged when none of them is set.
+
+## Add Optional Capabilities
+
+Implement the further capabilities your language warrants. Each follows the same shape: implement the interface, declare `SupportedExtensions`, and keep the type stateless unless its contract says otherwise. A dependency extractor, for example, reports the type or module names a file references so that focus, query, and change scoping can expand through the graph.
+
+```csharp
+using Fuse.Plugins.Abstractions.Dependencies;
+
+namespace Fuse.Plugins.Languages.MyLang.Dependencies;
+
+/// <summary>
+///     Extracts referenced module names from MyLang source.
+/// </summary>
+public sealed class MyLangDependencyExtractor : IDependencyExtractor
+{
+    /// <inheritdoc />
+    public IReadOnlyCollection<string> SupportedExtensions { get; } = [".mylang"];
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> ExtractDependencies(string content, string filePath)
+    {
+        // Return referenced type or module names. Best-effort.
+        return [];
+    }
+}
+```
+
+Dependency extraction is text-based and best-effort, so return what you can identify with confidence and accept that the graph will be approximate.
+
+## Registration
+
+A plugin exposes its capabilities through a dependency injection extension method that registers each one as a singleton. The C# plugin uses `AddCSharpLanguage`; follow the same naming for your language.
+
+```csharp
+using Fuse.Plugins.Abstractions.Dependencies;
+using Fuse.Plugins.Abstractions.Reducers;
+using Fuse.Plugins.Languages.MyLang.Dependencies;
+using Fuse.Plugins.Languages.MyLang.Reducers;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Fuse.Plugins.Languages.MyLang.Extensions;
+
+/// <summary>
+///     Registers MyLang language capabilities with dependency injection.
+/// </summary>
+public static class MyLangLanguageServiceCollectionExtensions
+{
+    /// <summary>
+    ///     Registers every MyLang capability as a singleton.
+    /// </summary>
+    public static IServiceCollection AddMyLangLanguage(this IServiceCollection services)
+    {
+        services.AddSingleton<IContentReducer, MyLangReducer>();
+        services.AddSingleton<IDependencyExtractor, MyLangDependencyExtractor>();
+        return services;
+    }
+}
+```
+
+Call the extension method where the host composes its services, alongside `AddCSharpLanguage` and `AddFormatReducers`. The registry resolves each extension with last-registration-wins semantics: when two capabilities of the same type declare the same extension, the one registered later takes effect. A plugin can therefore override a default reducer by registering its own after the default.
+
+## What This Does Not Cover
+
+This page covers the capability contracts and registration. It does not cover the internals of any single capability, such as how the C# reducer compresses syntax or how the dependency graph expands a seed set; those belong to the reference pages. It also does not cover non-language format reducers, which are addressed in [Adding a Format Reducer](format-reducer.md), or project templates, in [Adding a Template](template.md).
+
+## Next
+
+Read the [Capability and Plugin Model](../architecture/capability-model.md) for the design behind the registries, then the [Templates reference](../reference/templates.md) if your language also needs its own discovery defaults. The [contributing guide](../project/contributing.md) covers coding standards and the pull request checklist.

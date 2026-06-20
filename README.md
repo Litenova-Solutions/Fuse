@@ -1,362 +1,176 @@
 # Fuse
 
-**Fuse** is a powerful, developer-centric CLI tool that merges source code files into a single, token-optimized output file. Built for preparing codebases for **Large Language Models (LLMs)**, documentation, and code analysis, Fuse intelligently collects, minifies, and combines your project files so they fit within LLM context windows.
+Fuse is a deep .NET-native context optimizer for AI-assisted development. It collects source files, reduces them for token efficiency, and emits a single structured output that agents can consume in one call instead of reading thousands of files individually.
 
----
+Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. An opt-in Roslyn precision tier and a hybrid-retrieval reranker raise accuracy further, and a table-of-contents survey, the `fuse_ask` auto-scope tool, and session-delta emission cut the number of round-trips an agent needs. It ships as a .NET global tool (`fuse`) and as an MCP server with eight tools for Cursor, Claude Code, and GitHub Copilot.
 
-## Features
+Maintained by [Litenova Solutions](https://github.com/Litenova-Solutions).
 
-### Smart Project Templates
-Pre-configured settings for **25+ languages and frameworks**. Each template knows which file extensions to include and which directories to skip — no manual configuration needed.
+## Why Fuse
 
-### Intelligent Minification
-Built-in minifiers for **10 file types** dramatically reduce token count while preserving semantic meaning:
-- **C#** — Remove comments, `using` statements, namespace declarations, `#region` directives, attributes, and redundant keywords. Includes an aggressive mode that compresses syntax onto fewer lines.
-- **HTML / Razor** — Strip whitespace, collapse attributes, remove comments.
-- **CSS / SCSS** — Remove comments, collapse whitespace, strip unnecessary semicolons.
-- **JavaScript** — Remove comments and condense whitespace.
-- **JSON** — Compact formatting (remove indentation and whitespace).
-- **XML / .csproj / .props / .targets** — Minify XML structure.
-- **Markdown** — Remove excessive blank lines and trailing whitespace.
-- **YAML** — Remove comments and condense whitespace.
+Measured over a pinned corpus of four real .NET libraries (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json), counted with the `o200k_base` tokenizer. Reduction ratios transfer across models even though absolute token counts do not. Every figure is reproducible with one command and reported in full, including the arms where Fuse ties or loses, on the [benchmarks page](docs/project/benchmarks.md).
 
-### Token Counting & Splitting
-- Uses the **cl100k_base** tokenizer (GPT-4 / GPT-3.5-turbo) for accurate token estimation.
-- **`--max-tokens`** — Hard stop: halt processing when a global token limit is reached.
-- **`--split-tokens`** — Automatically split the output into multiple files when a threshold is exceeded (default: 800,000 tokens), so each file fits within standard LLM context windows.
-- Token count is embedded in the output filename (e.g., `MyProject_2026-02-12_1430_554k.txt`).
-- **Top Token Consumers** — After fusion, displays the 5 files consuming the most tokens.
+- **Cuts tokens without dropping API.** Default reduction removes 7 to 10 percent and `--all` removes 21 to 40 percent of tokens while keeping 99 to 100 percent of public types and methods. `--skeleton` removes 66 to 93 percent for an architecture map.
+- **Smaller than the generic packers.** Repomix output runs 1.3 to 3.9 percent larger than raw concatenation on these repositories; Fuse is smaller than raw in every mode.
+- **Finds the files a change touches.** Change scoping recalls 88 percent of the files in 24 real merged pull requests at 61 percent precision, and all three scoping modes beat an agent-style grep baseline.
+- **Trustworthy skeletons on hard code.** The opt-in Roslyn tier keeps 100 percent of method signatures on all four libraries, including Newtonsoft.Json, where the regex skeleton kept 4 percent.
+- **Cheap repeated calls.** The on-disk analysis index roughly halves warm-call wall-clock across a session, so a multi-call task pays the analysis cost once.
+- **Native AOT and no runtime reflection on the default path.** The fast path ships as an ahead-of-time-compiled binary; Roslyn and the vector reranker are opt-in tiers isolated from it.
 
-### Git Aware
-Automatically parses `.gitignore` files up the directory tree and excludes matching files — no extra flags needed.
+Reproduce every number with `pwsh -File tests/benchmarks/harness/run-all.ps1`.
 
-### Safety & Filtering
-- Detects and **skips binary files** automatically.
-- **Max file size** filter to skip oversized files.
-- Skips trivial content (empty JSON `{}`, empty arrays `[]`, whitespace-only files).
-- **Skips empty files** (zero-byte) by default (`--exclude-empty-files`, on by default).
-- **Skips auto-generated files** by detecting `<auto-generated>` markers in the first few lines (`--exclude-auto-generated`, on by default).
-- Excludes generated/noise files via per-template glob patterns (e.g., `*.Designer.cs`, `*.min.js`, `package-lock.json`).
-- **User-defined exclusions** — exclude specific file names (`--exclude-files`), directory names (`--exclude-directories`), or glob patterns (`--exclude-patterns`).
-- Fully respects `.gitignore` rules found anywhere in the directory tree.
+## Install
 
-### Clean, LLM-Optimized Output
-Output uses simplified XML tags for optimal LLM parsing:
-```xml
-<file path="src/Program.cs">
-// file content here
-</file>
+**Prerequisites:** [.NET SDK 10.0](https://dotnet.microsoft.com/download) or later.
+
+### From NuGet
+
+```bash
+dotnet tool install -g Fuse
 ```
-- Files are written **largest-first** (by raw file size), keeping the most content-dense files at the top of the output.
-- Optional **file metadata** (size, modification date) via `--include-metadata`.
-- Filenames include token count and timestamp for easy identification.
-- Multi-part outputs are numbered (`_part1_800k.txt`, `_part2_554k.txt`).
 
----
+Run without a global install via the .NET 10 SDK:
 
-## Installation
+```bash
+dnx Fuse -- serve
+```
 
-Fuse is a cross-platform **.NET Global Tool** that runs on Windows, macOS, and Linux.
+### From source (Windows)
 
-### Prerequisites
-
-- [.NET SDK 10.0](https://dotnet.microsoft.com/download) or later.
-
-### Local Installation (from source)
-
-**Windows:**
 ```cmd
 install.bat
 ```
 
-**Manual (any OS):**
-```bash
-# 1. Pack the tool
-dotnet pack src/Fuse.Cli/Fuse.Cli.csproj -c Release
+### From source (any OS)
 
-# 2. Install globally from local source
-dotnet tool install -g Fuse --add-source src/Fuse.Cli/nupkg
+```bash
+dotnet pack src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release
+dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
 ```
 
-Verify the installation:
+Verify:
+
 ```bash
 fuse --help
 ```
 
----
+## CLI quick start
 
-## Usage
+Fuse a .NET project with the DotNet template:
 
 ```bash
-fuse [command] [options]
+fuse dotnet --directory ./src
 ```
 
-### Commands
+Maximum C# token reduction:
 
-| Command       | Description                                                                          |
-|---------------|--------------------------------------------------------------------------------------|
-| `fuse`        | **Default.** Generic fusion. Specify a template with `--template` or use `--only-extensions`. |
-| `fuse dotnet` | Optimized for .NET — includes C#-specific minification and reduction options.        |
-| `fuse wiki`   | Optimized for Azure DevOps Wikis — processes Markdown files only.                    |
-
----
-
-### Global Options (available on all commands)
-
-#### Directory & Output
-
-| Option          | Description                                                     | Default             |
-|-----------------|-----------------------------------------------------------------|---------------------|
-| `--directory`   | The root directory to scan for files.                           | Current directory   |
-| `--output`      | Directory where the output file(s) will be written.             | My Documents folder |
-| `--name`        | Custom output filename (without extension).                     | Auto-generated      |
-| `--overwrite`   | Overwrite existing output files.                                | `true`              |
-
-#### Extensions
-
-| Option                  | Description                                                                          | Default |
-|-------------------------|--------------------------------------------------------------------------------------|---------|
-| `--include-extensions`  | Add extensions on top of template defaults (e.g., `.txt,.log`).                     | —       |
-| `--exclude-extensions`  | Remove extensions from template defaults (e.g., `.xml,.md`).                        | —       |
-| `--only-extensions`     | Process **only** these extensions, ignoring all template defaults.                   | —       |
-
-#### Exclusions
-
-| Option                      | Description                                                                               | Default  |
-|-----------------------------|-------------------------------------------------------------------------------------------|----------|
-| `--exclude-directories`     | Directory names to skip entirely (e.g., `Migrations`, `wwwroot`).                        | —        |
-| `--exclude-files`           | Specific file names to exclude (e.g., `appsettings.Development.json`).                   | —        |
-| `--exclude-patterns`        | Glob patterns to exclude (e.g., `**/Migrations/**`, `**/*.min.js`).                      | —        |
-| `--exclude-empty-files`     | Skip zero-byte files.                                                                     | `true`   |
-| `--exclude-auto-generated`  | Skip files whose first few lines contain an `<auto-generated>` marker.                   | `true`   |
-| `--exclude-test-projects`   | Exclude all test project directories (unit, integration, e2e, benchmarks).               | `false`  |
-| `--respect-git-ignore`      | Honor `.gitignore` rules found in the directory tree.                                     | `true`   |
-
-#### Search
-
-| Option            | Description                                                  | Default |
-|-------------------|--------------------------------------------------------------|---------|
-| `--recursive`     | Search subdirectories recursively.                           | `true`  |
-| `--max-file-size` | Max file size in KB to process (`0` = unlimited).            | `0`     |
-| `--ignore-binary` | Skip binary files.                                           | `true`  |
-
-#### Content & Metadata
-
-| Option               | Description                                           | Default  |
-|----------------------|-------------------------------------------------------|----------|
-| `--include-metadata` | Include file size and modification date in the output. | `false`  |
-
-#### Token Management
-
-| Option                    | Description                                                              | Default   |
-|---------------------------|--------------------------------------------------------------------------|-----------|
-| `--max-tokens`            | Hard stop — halt processing when global token count is reached.          | —         |
-| `--split-tokens`          | Split output into new files when this token count is exceeded.           | `800000`  |
-| `--show-token-count`      | Display estimated token count in the completion summary.                 | `true`    |
-| `--track-top-token-files` | Display the top 5 files consuming the most tokens after fusion.          | `false`   |
-
----
-
-### `fuse dotnet` Options
-
-All global options above, plus:
-
-| Option                       | Description                                                                  | Default  |
-|------------------------------|------------------------------------------------------------------------------|----------|
-| `--remove-csharp-namespaces` | Remove `namespace` declarations from C# files.                              | `false`  |
-| `--remove-csharp-comments`   | Remove single-line, multi-line, and XML doc comments from C# files.          | `false`  |
-| `--remove-csharp-regions`    | Remove `#region` / `#endregion` directives from C# files.                   | `false`  |
-| `--remove-csharp-usings`     | Remove `using` directives from C# files.                                    | `false`  |
-| `--aggressive`               | Aggressive reduction — remove attributes, redundant keywords, compress auto-properties. | `false`  |
-| `--minify-xml-files`         | Minify XML-based files (`.csproj`, `.xml`, `.props`, `.targets`).           | `true`   |
-| `--minify-html-and-razor`    | Minify HTML and Razor files (`.html`, `.cshtml`, `.razor`).                 | `true`   |
-| `--exclude-unit-test-projects` | Exclude only unit test directories (keeps integration tests & benchmarks). | `false`  |
-| `--all`                      | Enable **all** optimizations at once (namespaces, comments, regions, usings, aggressive). | `false`  |
-
----
-
-## Examples
-
-**1. Fuse a .NET project with all optimizations for maximum token savings:**
 ```bash
-fuse dotnet -d ./src --all
+fuse dotnet --directory ./src --all
 ```
 
-**2. Fuse a .NET project, stripping comments and usings:**
+Architectural overview (signatures only):
+
 ```bash
-fuse dotnet -d ./src --remove-csharp-comments --remove-csharp-usings
+fuse dotnet --directory ./src --all --skeleton
 ```
 
-**3. Fuse a .NET project, excluding test projects but keeping integration tests:**
+Cheap survey before fetching files (tree, symbol outline, per-file token costs):
+
 ```bash
-fuse dotnet -d ./src --exclude-unit-test-projects
+fuse dotnet --directory ./src --toc
 ```
 
-**4. Fuse a Python project using a template:**
+Accurate skeletons and dependency edges with the opt-in Roslyn precision tier:
+
 ```bash
-fuse -d ./my-app --template Python --exclude-test-projects
+fuse dotnet --directory ./src --skeleton --semantic
 ```
 
-**5. Fuse only specific file types (override all template defaults):**
+PR-scoped fusion, with diff hunks and the callers of each changed file:
+
 ```bash
-fuse -d ./frontend --only-extensions .ts,.tsx,.css
+fuse dotnet --directory ./src --changed-since main --review
 ```
 
-**6. Fuse an Azure DevOps wiki repository:**
+Query-scoped fusion:
+
 ```bash
-fuse wiki -d ./wiki-repo --include-metadata
+fuse dotnet --directory ./src --query "payment gateway" --query-top 10
 ```
 
-**7. Fuse with a hard token limit of 100k:**
+Initialize a project config file:
+
 ```bash
-fuse dotnet -d ./src --max-tokens 100000
+fuse init
 ```
 
-**8. Fuse a large project with automatic file splitting:**
-```bash
-fuse dotnet -d ./src --split-tokens 500000
-```
+Output defaults to `Documents/Fuse`. Use `--output` and `--name` to control the destination.
 
-**9. Fuse to a specific output location with a custom name:**
-```bash
-fuse dotnet -d ./src -o ./output --name my-context
-```
+## Commands
 
-**10. Exclude specific directories and files:**
-```bash
-fuse dotnet -d ./src --exclude-directories Migrations --exclude-files appsettings.Development.json
-```
+| Command | Purpose |
+|---------|---------|
+| `fuse` | Generic fusion. All extensions unless you set `--only-extensions`. |
+| `fuse dotnet` | .NET projects: C# reduction, structural maps, dependency-aware scoping. |
+| `fuse wiki` | Azure DevOps wikis: Markdown only. |
+| `fuse init` | Create `fuse.json` in the current directory. |
+| `fuse serve` | Start the MCP server on stdio. |
 
-**11. Exclude files using glob patterns:**
-```bash
-fuse dotnet -d ./src --exclude-patterns "**/Migrations/**" "**/*.generated.cs"
-```
+Full option lists: [Commands](docs/reference/commands.md) and [Options](docs/reference/options.md).
 
-**12. Add or remove extensions relative to template defaults:**
-```bash
-# Add .sql on top of the DotNet template
-fuse dotnet -d ./src --include-extensions .sql
+## Recommended agent workflow
 
-# Remove .xml and .md from the DotNet template
-fuse dotnet -d ./src --exclude-extensions .xml,.md
-```
+Use MCP tools in this order for large .NET codebases:
 
-**13. Show which files consume the most tokens:**
-```bash
-fuse dotnet -d ./src --track-top-token-files
-```
+1. **Survey** with `fuse_toc` (directory tree, symbol outline, per-file token costs) or `fuse_skeleton` for a low-token architecture map.
+2. **Drill down** with `fuse_focus` (type/file seed) or `fuse_search` (natural-language query, with `rerank` for hybrid retrieval).
+3. **PR review** with `fuse_changes` (git diff scoping, `review=true` for diff hunks plus direct callers).
+4. **Full control** with `fuse_dotnet` when you need every option combined.
 
----
+Or skip the orchestration: call `fuse_ask` with a task and a token budget and Fuse picks the strategy and packs the context to budget. Across calls in one task, pass a `session` id so files already returned are not sent again.
 
-## Supported Templates
+See [agent workflows](docs/agent-integration/workflows.md) for token budgets and composition rules.
 
-Each template defines sensible file extensions and excluded directories for its ecosystem.
+## MCP setup
 
-| Category           | Templates                                                        |
-|--------------------|------------------------------------------------------------------|
-| **Web**            | JavaScript, TypeScript, PHP                                      |
-| **Backend**        | .NET (C#), Java, Python, Go, Rust, Ruby                         |
-| **Mobile**         | Swift, Kotlin, Dart (Flutter)                                    |
-| **Functional**     | F#, Haskell, Clojure, Elixir, Erlang, Scala                     |
-| **Systems**        | C++/C# (mixed)                                                   |
-| **Scripting**      | Lua, Perl, R, VB.NET                                             |
-| **Infrastructure** | Terraform, Kubernetes, Ansible, Helm (`.tf`, `.yaml`, `.hcl`, etc.) |
-| **Documentation**  | Azure DevOps Wiki (Markdown only), Generic (text/json/yaml/xml)  |
+Run `fuse serve` and connect from your AI client.
 
-### Template Highlights
+### Claude Code
 
-- **DotNet** — Core extensions: `.cs`, `.razor`, `.cshtml`, `.xaml`, `.csproj`, `.props`, `.targets`, `.config`, `.json`, `.xml`, `.yml`, `.yaml`, `.md`, `.scss`, `.css`, `.html`, `.htm`, `.editorconfig`. Excludes `bin`, `obj`, `.vs`, `packages`, `artifacts`, `TestResults`. Filters out generated files (`*.Designer.cs`, `*.g.cs`), lock files, minified assets, and resource files. Opt-in extras via `--include-extensions`: `.sql`, `.bat`, `.sh`, `.ps1`, `.cmd`, `.scriban`, `.feature`, `.nuspec`, `.txt`.
-- **Infrastructure** — Includes `.tf`, `.tfvars`, `.yaml`, `.yml`, `.json`, `.sh`, `.ps1`, `.hcl`. Excludes Terraform state files, plan files, lock files, and crash logs.
-- **AzureDevOpsWiki** — Includes only `.md` files, excludes `.git` and `.attachments`.
+Add to `.mcp.json` in your project root:
 
----
-
-## Output Format
-
-Fuse generates plain `.txt` files with each source file wrapped in XML tags:
-
-```xml
-<file path="src/Models/User.cs">
-public class User
+```json
 {
-    public int Id { get; set; }
-    public string Name { get; set; }
+  "mcpServers": {
+    "fuse": {
+      "type": "stdio",
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
 }
-</file>
+```
 
-<file path="src/Services/UserService.cs">
-public class UserService
+Or: `claude mcp add fuse --scope project -- fuse serve`
+
+### Cursor
+
+Add to `.cursor/mcp.json`:
+
+```json
 {
-    public User GetById(int id) => _repo.Find(id);
+  "mcpServers": {
+    "fuse": {
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
 }
-</file>
 ```
 
-### Filename Convention
+### GitHub Copilot (VS Code)
 
-Output filenames encode useful metadata:
-
-| Scenario        | Example Filename                                |
-|-----------------|-------------------------------------------------|
-| Default         | `MyProject_2026-02-12_1430_554k.txt`            |
-| With `--all`    | `MyProject_all_2026-02-12_1430_320k.txt`        |
-| Multi-part      | `MyProject_part1_800k.txt`, `MyProject_part2_554k.txt` |
-| Custom name     | `my-context_50k.txt`                            |
-
----
-
-## Architecture
-
-Fuse follows a clean, layered architecture:
-
-```
-Fuse.Cli          → Presentation — CLI commands, argument parsing (DotMake.CommandLine)
-Fuse.Engine       → Application  — Orchestration, file collection, output building
-Fuse.Core         → Domain       — Entities, options, abstractions, templates
-Fuse.Minifiers    → Infrastructure — File-type-specific minification
-```
-
-Key components:
-- **FuseEngine** — Central orchestrator: resolves config → collects files → builds output. Also supports `FuseInMemoryAsync` for zero-disk-IO fusion.
-- **ProjectTemplateRegistry** — Static registry of all 25+ template configurations.
-- **FileCollector** — Enumerates files through a multi-stage filter pipeline: extensions, directory exclusions, `.gitignore` patterns, test project detection, file size, binary detection, empty file skipping, auto-generated file detection, exact filename exclusions, and user-defined glob patterns. Files are sorted largest-first before output.
-- **ContentProcessor** — Reads files, applies trimming/condensation, dispatches to the appropriate minifier.
-- **OutputBuilder** — Writes the fused output with token tracking (TikToken), file splitting, and filename generation.
-- **InMemoryOutputBuilder** — In-memory variant of OutputBuilder for MCP server mode (no disk I/O).
-- **GitIgnoreParser** — Walks the directory tree collecting `.gitignore` patterns.
-- **McpServeCommand** — CLI command (`fuse serve`) that starts the MCP server on stdio.
-- **FuseTools** — MCP tool definitions (`get_optimized_context`) for AI agent integration.
-- **FuseResources** — MCP resource definitions (`fuse://` URI scheme) for passive context reading.
-
----
-
-## MCP Server (AI Agent Integration)
-
-Fuse can run as a **Model Context Protocol (MCP) server**, allowing AI agents (GitHub Copilot, Claude Desktop, etc.) to invoke Fuse programmatically to generate optimized context on demand.
-
-### Starting the MCP Server
-
-```bash
-fuse serve
-```
-
-This starts a persistent process that communicates via **stdio** using JSON-RPC (the MCP standard). All logging is redirected to stderr so stdout remains clean for protocol messages.
-
-### Exposed MCP Tools
-
-| Tool | Description |
-|------|-------------|
-| `get_optimized_context` | Generates minified, token-efficient context from a directory. Supports template selection, token limits, extension filtering, and aggressive minification. |
-
-### Exposed MCP Resources
-
-| URI Pattern | Description |
-|---|---|
-| `fuse://{template}/{path}` | Read fused content for a given template and path. Use `dotnet`, `python`, `node`, `generic`, etc. |
-
-### VS Code / Copilot Configuration
-
-Add the following to your VS Code **MCP settings** (`.vscode/mcp.json` or user-level `settings.json`):
+Add to `.vscode/mcp.json`:
 
 ```json
 {
@@ -370,34 +184,78 @@ Add the following to your VS Code **MCP settings** (`.vscode/mcp.json` or user-l
 }
 ```
 
-> **Note:** The `fuse` command must be available on your PATH (install via `dotnet tool install -g Fuse`).
+Tool catalog and parameters: [Tools Reference](docs/agent-integration/tools.md) and [Resources Reference](docs/agent-integration/resources.md). Client setup details: [MCP Overview and Setup](docs/agent-integration/overview.md). MCP Registry manifest: [docs/mcp-registry/server.json](docs/mcp-registry/server.json).
 
-### Claude Desktop Configuration
+## What Fuse does
 
-Add to your `claude_desktop_config.json`:
+Fusion is a four-stage pipeline:
 
-```json
-{
-  "mcpServers": {
-    "fuse": {
-      "command": "fuse",
-      "args": ["serve"]
-    }
-  }
-}
+1. **Collection** - Scan the source directory, apply filters (extensions, `.gitignore`, binary detection, test projects, globs).
+2. **Filtering** - Optional scoping: focus, git changes, or BM25 query with dependency expansion.
+3. **Reduction** - Normalize whitespace, run language and format reducers, apply skeleton/markers/redaction.
+4. **Emission** - Write fused output with token counting, manifest header, optional splitting, and size-based ordering.
+
+Architecture details: [Architecture](docs/architecture/pipeline.md). Feature reference: [Guides](docs/guides/index.md) and [Reference](docs/reference/index.md).
+
+## Output format
+
+Each file is wrapped in a path-tagged block (default XML):
+
+```xml
+<file path="src/Services/OrderService.cs">
+public class OrderService { }
+</file>
 ```
 
----
+Also supported: `--format markdown` and `--format json`. A manifest header (file tree and token costs) is prepended by default; use `--no-manifest` to disable.
 
-## Contributing
+Disk output filenames include a token estimate, for example `MyProject_2026-06-19_0130_22k.txt`.
 
-1. Clone the repository.
-2. Open `Fuse.sln` in your IDE.
-3. Make changes and run `install.bat` to build, pack, and install locally.
-4. Test with `fuse --help` or `fuse dotnet -d ./src`.
+## Repository layout
 
----
+```
+src/
+  Core/                               Pipeline libraries
+    Fuse.Collection/                  File discovery, filters, templates
+    Fuse.Reduction/                   Content pipeline, caching, redaction
+    Fuse.Emission/                    Output writers, token budget, manifest
+    Fuse.Fusion/                      Orchestration, scoping, analysis, enrichment, DI
+  Host/
+    Fuse.Cli/                         CLI and MCP server
+  Plugins/                            Extension-keyed capability providers
+    Fuse.Plugins.Abstractions/        Capability interfaces (shared contract)
+    Fuse.Plugins.Languages.CSharp/    C# language plugin (regex, AOT-clean default)
+    Fuse.Plugins.Languages.CSharp.Roslyn/  Opt-in Roslyn precision tier (excluded from the AOT build)
+    Fuse.Plugins.Formats.Web/         Format reducers (HTML, JSON, YAML, SQL, TS/JS, etc.)
+tests/                                Unit and integration tests
+docs/                                 Full documentation
+```
+
+## Development
+
+```bash
+dotnet build Fuse.slnx --configuration Release
+dotnet test Fuse.slnx --configuration Release --no-build
+dotnet format Fuse.slnx --verify-no-changes
+```
+
+Contribution workflow: [Contributing](docs/project/contributing.md). Agent instructions: [AGENTS.md](AGENTS.md).
+
+## Documentation
+
+| Section | Contents |
+|---------|----------|
+| [Documentation home](docs/index.md) | Map of the full documentation |
+| [Getting started](docs/getting-started/introduction.md) | Install, first run, core concepts |
+| [Guides](docs/guides/index.md) | Reduction, scoping, formats, configuration |
+| [Agent integration](docs/agent-integration/overview.md) | MCP server, tools, resources, workflows |
+| [Reference](docs/reference/index.md) | Commands, options, templates, reducers, output |
+| [Architecture](docs/architecture/pipeline.md) | Pipeline, capability model, internals |
+| [Extending Fuse](docs/extending/language-plugin.md) | Language plugins, templates, reducers |
+| [Project](docs/project/performance.md) | Performance, roadmap, contributing |
+| [Benchmarks](docs/project/benchmarks.md) | Reproducible token reduction, fidelity, and scoping recall vs raw and Repomix |
+| [CHANGELOG](CHANGELOG.md) | Version history and migration notes |
 
 ## License
 
-Licensed under the MIT License.
+MIT. Copyright (c) 2026 Litenova Solutions. See [LICENSE](LICENSE).

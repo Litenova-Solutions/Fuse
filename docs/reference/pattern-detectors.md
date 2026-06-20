@@ -1,0 +1,39 @@
+---
+title: Pattern Detectors
+description: The six C# convention detectors that produce a pattern summary, what each one matches, and the false positives to expect.
+---
+
+Pattern detection scans the reduced C# in a fusion for common conventions and appends a summary to the manifest. The summary tells an agent which patterns the codebase already uses, so generated code can match the existing style rather than introduce a competing one. Detection runs when `--pattern-summary` is passed on `fuse dotnet`. All detection is name-based or text-based and best-effort, so false positives are possible and the counts are approximate rather than exact.
+
+This page is for engineers reading a pattern summary, agents deciding how to match a codebase, and maintainers who need the matching rule and limits of each detector.
+
+## Purpose and Scope
+
+This page documents the six detectors: what each matches, what it reports, and the false positives or omissions to expect. It applies to C# only; no other language is scanned for patterns. It does not document the manifest structure that carries the summary, which the [Output Specification](output-specification.md) covers, nor the flag itself, which [Options](options.md) lists.
+
+## How Detection Works
+
+Each detector reads the reduced content of every C# file in the fusion and matches against a regular expression. Because the input is reduced source rather than a parsed syntax tree, a detector cannot distinguish code from a comment or a string literal, and it cannot follow type relationships. The results therefore indicate that a convention is likely present, not that it is definitely in use. Treat every count as a signal, not a measurement.
+
+## The Detectors
+
+| Detector | What it matches | Notes |
+|----------|-----------------|-------|
+| CQRS | The names `IRequest`, `ICommand`, `IQuery`, and `IMediator` | Name-based. Identically named interfaces from unrelated libraries, or the names mentioned in comments, are counted. A match does not confirm a MediatR dependency. |
+| DI Registration | `AddSingleton`, `AddScoped`, and `AddTransient` followed by `<` or `(`; each kind is tallied separately | Identically named extension methods from other APIs can be counted as false positives. |
+| Exception Handling | Custom exception types declared with a literal `: Exception` base clause, plus a count of `catch` blocks | Exceptions deriving from an intermediate base type are missed, because only the literal `: Exception` clause matches. Catch counts can include occurrences inside comments or string literals. |
+| Logging | The generic `ILogger<T>` injection shape | Non-generic `ILogger` is not counted. Occurrences inside comments or strings are counted as false positives. |
+| Async Pattern | The textual occurrences of `async Task`, `async ValueTask`, and `ConfigureAwait` | Counts are textual, so occurrences in comments or string literals are included. The ConfigureAwait verdict reflects only whether the token appears anywhere, not a per-call-site count. |
+| Repository | Repository type references such as `IRepository<`, `IRepository`, and `Repository<` | Name-based. Any matching reference, including unrelated classes or mentions in comments, is counted. |
+
+## Reading a Summary Line
+
+In XML and Markdown output, each detected pattern adds one line to the manifest in the form `pattern: <name>: <summary>`. The summary text varies by detector: the DI registration detector lists each kind with its occurrence count, the async detector reports task counts and a ConfigureAwait verdict, and the logging and repository detectors report the number of files in which the shape appeared. A detector that finds nothing contributes no line. In JSON output the same information appears as entries in the manifest `patterns` array.
+
+## What This Does Not Cover
+
+This page does not document the manifest block that carries pattern lines or the JSON `patterns` array shape; the [Output Specification](output-specification.md) covers both. It does not explain the reduction pipeline that produces the C# the detectors read. For the design that keeps language behavior in plugins, see the [Architecture Overview](../guides/architecture-overview.md). For the `--pattern-summary` flag and related options, see [Options](options.md).
+
+## Next
+
+Read the [Output Specification](output-specification.md) to see where pattern lines sit within the manifest, or the [Architecture Overview](../guides/architecture-overview.md) for the plugin model behind C# detection.

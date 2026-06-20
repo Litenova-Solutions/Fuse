@@ -1,0 +1,103 @@
+---
+title: Adding a Pattern Detector
+description: How to detect a convention across the fused codebase and contribute a line to the pattern summary.
+---
+
+A pattern detector reports that a convention runs through a codebase. When a fusion includes the pattern summary, each detector that finds its convention contributes one line, so a reader or an agent learns at a glance that the code uses, for example, a repository abstraction or a particular logging approach before reading any file body. A detector does not change the fused content; it observes it and adds a summary entry.
+
+This page is written for an engineer adding a new convention to the pattern summary.
+
+## Implementation Context
+
+Detectors derive from `PatternDetectorBase` and run as a batch after reduction, once the full set of files for a fusion is known. The base class drives a three-phase lifecycle for each run: it resets accumulation state, calls an analyze method once per file, and then builds the result. A derived detector supplies the three phase methods and a display name; it accumulates signals as files arrive and returns either a detected pattern or nothing when the convention is absent. Because the base class holds state across the per-file calls, a detector is stateful and is not safe to call concurrently.
+
+A detected result carries the pattern name, a short summary line, an occurrence count, and a few representative example paths. The summary line is what appears in the fusion's pattern summary. The C# plugin's detectors, in the `Fuse.Plugins.Languages.CSharp` project under its patterns directory, are the reference examples.
+
+Detection is name and text based. A detector scans reduced content with string or regular expression matching rather than a parsed model of the code, so it cannot tell a real usage from a coincidental name match, a reference inside a comment, or an unrelated type that happens to share a word. Results favor recall over precision. A detector should therefore be conservative, and its summary should describe what was found in plain terms without claiming a certainty the method cannot support.
+
+## Implement The Detector
+
+The following detector counts references whose names suggest a validator convention. It resets its counters, folds each file into them, and reports a result only when it found at least one match.
+
+```csharp
+using System.Text.RegularExpressions;
+using Fuse.Plugins.Abstractions.Patterns;
+
+namespace Fuse.Plugins.Languages.CSharp.Patterns;
+
+/// <summary>
+///     Detects validator type references such as <c>IValidator</c>.
+/// </summary>
+/// <remarks>
+///     Detection is name-based and may produce false positives: any type whose name
+///     contains <c>Validator</c>, including references in comments, is counted.
+/// </remarks>
+public sealed partial class ValidatorPatternDetector : PatternDetectorBase
+{
+    private int _count;
+    private int _fileCount;
+    private readonly List<string> _examples = [];
+
+    /// <inheritdoc />
+    public override string PatternName => "Validator";
+
+    /// <inheritdoc />
+    protected override void ResetInternal()
+    {
+        _count = 0;
+        _fileCount = 0;
+        _examples.Clear();
+    }
+
+    /// <inheritdoc />
+    protected override void AnalyzeFile(FusedFileSnapshot file)
+    {
+        var matches = ValidatorRegex().Matches(file.Content).Count;
+        if (matches > 0)
+        {
+            _count += matches;
+            _fileCount++;
+            if (_examples.Count < 3)
+                _examples.Add(file.NormalizedPath);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override DetectedPattern? BuildResult()
+    {
+        if (_count == 0)
+            return null;
+
+        return new DetectedPattern(
+            PatternName,
+            $"Validator types detected in {_fileCount} files",
+            _count,
+            _examples);
+    }
+
+    [GeneratedRegex(@"\bIValidator\b", RegexOptions.Compiled)]
+    private static partial Regex ValidatorRegex();
+}
+```
+
+The summary states where the convention was found and counts the files, without asserting that every match is a genuine validator. That restraint matches what name-based detection can actually support. Returning `null` from the result phase keeps a detector that found nothing out of the summary entirely.
+
+## Registration
+
+The C# plugin registers each detector once as its concrete type and then exposes that single instance through both the `IPatternDetector` and `PatternDetectorBase` contracts, so the same shared instance backs every resolution. Follow the same shape for a new detector within the plugin's registration method.
+
+```csharp
+services.AddSingleton<ValidatorPatternDetector>();
+services.AddSingleton<IPatternDetector>(sp => sp.GetRequiredService<ValidatorPatternDetector>());
+services.AddSingleton<PatternDetectorBase>(sp => sp.GetRequiredService<ValidatorPatternDetector>());
+```
+
+Registering through both contracts from one concrete registration means a detector keeps a single state object across the run, which matters because detectors are stateful.
+
+## What This Does Not Cover
+
+This page covers writing and registering a detector. It does not cover where the pattern summary is placed in the output or how the summary is toggled for a given fusion; those belong to the reduction options and emission detail. It also does not turn name-based detection into semantic analysis: a detector remains best-effort and should be written with that limit in mind.
+
+## Next
+
+The [Pattern Detectors reference](../reference/pattern-detectors.md) lists the built-in detectors and what each one looks for. The [contributing guide](../project/contributing.md) covers coding standards and the pull request checklist.

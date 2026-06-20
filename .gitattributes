@@ -1,0 +1,4 @@
+# Golden-output fixtures are byte-compared against emitter output, which uses LF.
+# Pin them to LF so a CRLF-rewriting checkout (autocrlf on Windows) cannot break the
+# golden tests. The normalization in GoldenOutputAssert is a second safety net.
+*.golden text eol=lf

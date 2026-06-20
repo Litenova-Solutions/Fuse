@@ -1,0 +1,42 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/solution-items/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="global.json" />
+    <File Path="install.bat" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Folder Name="/src/Core/">
+      <Project Path="src/Core/Fuse.Collection/Fuse.Collection.csproj" />
+      <Project Path="src/Core/Fuse.Reduction/Fuse.Reduction.csproj" />
+      <Project Path="src/Core/Fuse.Emission/Fuse.Emission.csproj" />
+      <Project Path="src/Core/Fuse.Fusion/Fuse.Fusion.csproj" />
+    </Folder>
+    <Folder Name="/src/Host/">
+      <Project Path="src/Host/Fuse.Cli/Fuse.Cli.csproj" />
+    </Folder>
+    <Folder Name="/src/Plugins/">
+      <Project Path="src/Plugins/Fuse.Plugins.Abstractions/Fuse.Plugins.Abstractions.csproj" />
+      <Project Path="src/Plugins/Fuse.Plugins.Languages.CSharp/Fuse.Plugins.Languages.CSharp.csproj" />
+      <Project Path="src/Plugins/Fuse.Plugins.Languages.CSharp.Roslyn/Fuse.Plugins.Languages.CSharp.Roslyn.csproj" />
+      <Project Path="src/Plugins/Fuse.Plugins.Formats.Web/Fuse.Plugins.Formats.Web.csproj" />
+    </Folder>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fuse.Cli.Tests/Fuse.Cli.Tests.csproj" />
+    <Project Path="tests/Fuse.Collection.Tests/Fuse.Collection.Tests.csproj" />
+    <Project Path="tests/Fuse.Emission.Tests/Fuse.Emission.Tests.csproj" />
+    <Project Path="tests/Fuse.Plugins.Formats.Web.Tests/Fuse.Plugins.Formats.Web.Tests.csproj" />
+    <Project Path="tests/Fuse.Fusion.Tests/Fuse.Fusion.Tests.csproj" />
+    <Project Path="tests/Fuse.GoldenOutput.Tests/Fuse.GoldenOutput.Tests.csproj" />
+    <Project Path="tests/Fuse.Plugins.Languages.CSharp.Tests/Fuse.Plugins.Languages.CSharp.Tests.csproj" />
+    <Project Path="tests/Fuse.Plugins.Languages.CSharp.Roslyn.Tests/Fuse.Plugins.Languages.CSharp.Roslyn.Tests.csproj" />
+    <Project Path="tests/Fuse.Reduction.Tests/Fuse.Reduction.Tests.csproj" />
+  </Folder>
+</Solution>

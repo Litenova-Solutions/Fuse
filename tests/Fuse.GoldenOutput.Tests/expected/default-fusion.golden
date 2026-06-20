@@ -1,0 +1,101 @@
+<!-- fuse:manifest
+files: 11
+  README.md (~177 tokens)
+  src/SampleShop.Core/Config/SecretsHolder.cs (~40 tokens)
+  src/SampleShop.Core/Models/CatalogItem.cs (~27 tokens)
+  src/SampleShop.Core/Payment/PaymentGateway.cs (~29 tokens)
+  src/SampleShop.Core/SampleShop.Core.csproj (~44 tokens)
+  src/SampleShop.Core/Services/OrderService.cs (~42 tokens)
+  src/SampleShop.Core/Services/PaymentService.cs (~45 tokens)
+  src/SampleShop.Web/appsettings.json (~34 tokens)
+  src/SampleShop.Web/Controllers/OrdersController.cs (~75 tokens)
+  src/SampleShop.Web/Program.cs (~44 tokens)
+  src/SampleShop.Web/SampleShop.Web.csproj (~67 tokens)
+-->
+<file path="README.md">
+# SampleShop fixture
+Small multi-project .NET sample used by golden-output and integration tests.
+## Layout
+- `SampleShop.Core`: shared library with an order/payment dependency cluster and planted secrets.
+- `SampleShop.Web`: ASP.NET web app with MVC controllers and minimal API routes.
+## Test scenarios|Scenario|Seed / query|Expected behavior||----------|--------------|-------------------||Focus|`OrderService`|Includes `OrderService`, `PaymentService`, `PaymentGateway` (depth 2).||Query|`payment process`|BM25 ranks payment cluster over `CatalogItem`.||Secrets|default fusion|AWS key, JWT, and connection string are redacted.||Route map|`--route-map`|Lists controller actions and minimal API routes.||Project graph|`--project-graph`|Lists solution projects and Web -> Core reference.|
+</file>
+<file path="src/SampleShop.Web/Controllers/OrdersController.cs">
+using Microsoft.AspNetCore.Mvc;
+using SampleShop.Core.Services;
+namespace SampleShop.Web.Controllers;
+[Route("api/[controller]")]
+public class OrdersController : ControllerBase
+{
+private readonly OrderService _orders = new();
+[HttpGet("{id}")]
+public IActionResult Get(int id) => Ok(_orders);
+[HttpPost]
+public IActionResult Create() => Ok();
+}
+</file>
+<file path="src/SampleShop.Web/SampleShop.Web.csproj">
+<Project Sdk="Microsoft.NET.Sdk.Web"><PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup><ItemGroup><ProjectReference Include="..\SampleShop.Core\SampleShop.Core.csproj" /></ItemGroup></Project>
+</file>
+<file path="src/SampleShop.Core/Services/PaymentService.cs">
+using SampleShop.Core.Payment;
+namespace SampleShop.Core.Services;
+public class PaymentService
+{
+private readonly PaymentGateway _gateway = new();
+public void ProcessPayment(decimal amount)
+{
+_gateway.Charge("default", amount);
+}
+}
+</file>
+<file path="src/SampleShop.Core/SampleShop.Core.csproj">
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup></Project>
+</file>
+<file path="src/SampleShop.Web/Program.cs">
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+app.MapGet("/health", () => Results.Ok("ok"));
+app.MapPost("/hooks/stripe", () => Results.Ok());
+app.Run();
+</file>
+<file path="src/SampleShop.Core/Services/OrderService.cs">
+namespace SampleShop.Core.Services;
+public class OrderService
+{
+private readonly PaymentService _payments = new();
+public void PlaceOrder(int orderId)
+{
+_payments.ProcessPayment(99.99m);
+}
+}
+</file>
+<file path="src/SampleShop.Core/Config/SecretsHolder.cs">
+namespace SampleShop.Core.Config;
+public class SecretsHolder
+{
+public string ApiKey = "[REDACTED:aws-access-key]";
+public string Token =
+"[REDACTED:jwt]";
+}
+</file>
+<file path="src/SampleShop.Web/appsettings.json">
+{"ConnectionStrings":{"Default":"[REDACTED:connection-string];[REDACTED:connection-string];[REDACTED:connection-string]"}}
+</file>
+<file path="src/SampleShop.Core/Payment/PaymentGateway.cs">
+namespace SampleShop.Core.Payment;
+public class PaymentGateway
+{
+public bool Charge(string cardId, decimal amount) => amount > 0;
+}
+</file>
+<file path="src/SampleShop.Core/Models/CatalogItem.cs">
+namespace SampleShop.Core.Models;
+public class CatalogItem
+{
+public string Name => "widget";
+public void ListProducts()
+{
+}
+}
+</file>

@@ -1,0 +1,380 @@
+[
+  {
+    "repo": "MediatR",
+    "pr": 1171,
+    "merge": "09683644f78336798bd78cc60a071887d6e17712",
+    "base": "c3e24190017c6c8402efa9c9f285d956b7eef66d",
+    "head": "775ebdf74a37a3d2768b34cb92da0cc726897414",
+    "title": "Treat blank license key as unconfigured (#1170)",
+    "changed_cs": [
+      "src/MediatR/Licensing/LicenseAccessor.cs",
+      "test/MediatR.Tests/Licensing/LicenseAccessorTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1162,
+    "merge": "82852933fc6f62c513c43bde41fe70400584881f",
+    "base": "1325768a486babb2aa33cf55020b529dd0411f1e",
+    "head": "770f577fb064052e844a5f5e6422d52abd9367e0",
+    "title": "Merge pull request #1163 from LuckyPennySoftware/copilot/sub-pr-1162",
+    "changed_cs": [
+      "src/MediatR/Licensing/BuildInfo.cs",
+      "src/MediatR/Licensing/License.cs",
+      "src/MediatR/Licensing/LicenseValidator.cs",
+      "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1163,
+    "merge": "770f577fb064052e844a5f5e6422d52abd9367e0",
+    "base": "724f1a1d06e230e2a8de71a70dc2dea3098ecb38",
+    "head": "734fd89086f52720e92e3749ddd976e028b98f73",
+    "title": "Merge branch 'perpetual' into copilot/sub-pr-1162",
+    "changed_cs": [
+      "src/MediatR/Licensing/LicenseValidator.cs",
+      "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1159,
+    "merge": "1325768a486babb2aa33cf55020b529dd0411f1e",
+    "base": "aaefe9fba34a7b0763079bf505fb96995389f4a7",
+    "head": "3c6d99b1c06f07c15e5d82c8851cc2e5e8383b10",
+    "title": "De-duping notification handlers before dispatching",
+    "changed_cs": [
+      "src/MediatR/Registration/ServiceRegistrar.cs",
+      "src/MediatR/Wrappers/NotificationHandlerWrapper.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/Issue1118Tests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1157,
+    "merge": "aaefe9fba34a7b0763079bf505fb96995389f4a7",
+    "base": "a63f9382c847d3ee4255c191fc73d6b51aa3702d",
+    "head": "883d940cfb20572aee467b0cb0c6e29e00d9d65a",
+    "title": "Explicitly registering with types",
+    "changed_cs": [
+      "src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs",
+      "src/MediatR/Registration/ServiceRegistrar.cs",
+      "test/MediatR.Tests/ServiceFactoryTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1158,
+    "merge": "25ffe817bb703f4dd3844e2a7e01068f04155f2b",
+    "base": "e1f6caaa2cfbe28eeebe896e79a01f061712df49",
+    "head": "e0ae1acadcda8c1114483a2960a74bee84e61c45",
+    "title": "Simplify CheckLicense to use GetRequiredService instead of fallback logic",
+    "changed_cs": [
+      "src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs",
+      "test/MediatR.Tests/ServiceFactoryTests.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 2158,
+    "merge": "701bc75edef70286cf609c478cd34e6e2033338a",
+    "base": "0480d4a3afa4378ae1491297e70be05b6c266f87",
+    "head": "44cca0f68171d83a693dafa7ec9f0a0260dea1ae",
+    "title": "Revert changes to PropertyChain as they cause baseline compatibility validation failure",
+    "changed_cs": [
+      "src/FluentValidation/AbstractValidator.cs",
+      "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+      "src/FluentValidation/Internal/PropertyChain.cs",
+      "src/FluentValidation/Internal/PropertyRule.cs",
+      "src/FluentValidation/Internal/RuleBase.cs",
+      "src/FluentValidation/Internal/RulesetValidatorSelector.cs",
+      "src/FluentValidation/Internal/TrackingCollection.cs",
+      "src/FluentValidation/Validators/EmptyValidator.cs",
+      "src/FluentValidation/Validators/NotEmptyValidator.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 1823,
+    "merge": "155cffc0d60113639865baafde757019b827415e",
+    "base": "4fea06174a5b43b34af399b1af996c9ea2703057",
+    "head": "c02491f25982fe70b4aca6dbf640c98f0cbb5ee4",
+    "title": "remove Enumerable Boxing",
+    "changed_cs": [
+      "src/FluentValidation/Validators/EmptyValidator.cs",
+      "src/FluentValidation/Validators/NotEmptyValidator.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 761,
+    "merge": "cdeeef124db6537a640456c38f380cd90eb4d205",
+    "base": "4d3e4e7123ce5ca65c80b54fde1030e7d2635a38",
+    "head": "976b198207b9e6b53b07af46bc21af203b0712a0",
+    "title": "Validate and WhenAsync do not work properly together #759",
+    "changed_cs": [
+      "src/FluentValidation.Tests/ForEachRuleTests.cs",
+      "src/FluentValidation.Tests/ValidatorTesterTester.cs",
+      "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+      "src/FluentValidation/Internal/PropertyRule.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 745,
+    "merge": "4d3e4e7123ce5ca65c80b54fde1030e7d2635a38",
+    "base": "4b1edc858672fbc7c07fe599af64c03c3a90a778",
+    "head": "688939218182c4fdf7fddf7b69a4e6b61649c3b3",
+    "title": "Added errors to the validation exception",
+    "changed_cs": [
+      "src/FluentValidation/TestHelper/ValidationResultTester.cs",
+      "src/FluentValidation/TestHelper/ValidationTestException.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 741,
+    "merge": "4b1edc858672fbc7c07fe599af64c03c3a90a778",
+    "base": "51a85f0256c0da6a659df568c06dfede62b09173",
+    "head": "ec713c1ff8758d295baa1b864d9688cf8ddb3a82",
+    "title": "Updated incorrect Simplified Chinese translation",
+    "changed_cs": [
+      "src/FluentValidation.Tests/LanguageManagerTests.cs",
+      "src/FluentValidation/Resources/Languages/ChineseSimplifiedLanguage.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 734,
+    "merge": "51a85f0256c0da6a659df568c06dfede62b09173",
+    "base": "cff53c4e812a6698af4f7cd48b84391146ab80d0",
+    "head": "6228ac660af2f749a0a49a998b961651da6b2078",
+    "title": "fix: add missing using",
+    "changed_cs": [
+      "src/FluentValidation.Tests/ValidatorTesterTester.cs",
+      "src/FluentValidation/TestHelper/ValidatorTestExtensions.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4634,
+    "merge": "b206d0a78a76b17e3250807b1f2d939da121a9b7",
+    "base": "b57c206dc7291821e42bdf816a5637a5c1d8cb54",
+    "head": "53c8ff9d55352f5df693e9754bf3d919e5a5d33d",
+    "title": "ci: skip Azure login and signing on PRs (publish-only, secrets absent)",
+    "changed_cs": [
+      "src/AutoMapper/Licensing/LicenseAccessor.cs",
+      "src/UnitTests/Licensing/LicenseKeyEnvironmentVariableTests.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4616,
+    "merge": "7aea8082ca7d5dd317c2a2a455d07e7b36557a9f",
+    "base": "34eb913f2a512d54c49608dc493845ae85e9b9a2",
+    "head": "a64a623b41c65c60554f92f79d00aaa48681b46b",
+    "title": "Update Microsoft.Sbom.DotNetTool from 1.2.0 to 4.1.5",
+    "changed_cs": [
+      "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+      "src/UnitTests/Bug/DeepNestingStackOverflow.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4608,
+    "merge": "6e084d3d95b9e59de1689044ca06ed9da5bb6865",
+    "base": "ef2bba6f4508203fdb4bc5d85e5ad45d85cdc620",
+    "head": "0f8f8fabf3674d2b1d93f2f516e75a29b0675aae",
+    "title": "Handling lower case",
+    "changed_cs": [
+      "src/AutoMapper/Licensing/BuildInfo.cs",
+      "src/AutoMapper/Licensing/License.cs",
+      "src/AutoMapper/Licensing/LicenseValidator.cs",
+      "src/UnitTests/Licensing/LicenseValidatorTests.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4607,
+    "merge": "ef2bba6f4508203fdb4bc5d85e5ad45d85cdc620",
+    "base": "0c96327bd333adb864a4a0a40113aa04f0480ccb",
+    "head": "1af2c25f9a41c1d6a35621614f748d0563259f40",
+    "title": "Fixing bug around order of open generic registration",
+    "changed_cs": [
+      "src/AutoMapper/ProfileMap.cs",
+      "src/UnitTests/Bug/OpenGenericInheritanceOrder.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4605,
+    "merge": "eb80840fcaccf17dfe73b83e106649da14a831c8",
+    "base": "d9c1fbb26af062520f06d5072b692e0497db6e06",
+    "head": "4f6a57afcf6c3eebd9c3aa389c05e4fce676dd29",
+    "title": "Correctly handling consecutive uppercase characters; fixes #4593",
+    "changed_cs": [
+      "src/AutoMapper/Configuration/INamingConvention.cs",
+      "src/UnitTests/Bug/NamingConventions.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4604,
+    "merge": "d9c1fbb26af062520f06d5072b692e0497db6e06",
+    "base": "fd06570bc94de5eb4492a430d13e2834c4a286a1",
+    "head": "29a59fb10553bfe4a4ab35a3eb912bfe2cac8a53",
+    "title": "Correctly converting nullables for MapAtRuntime; fixes #4597",
+    "changed_cs": [
+      "src/AutoMapper/Execution/ExpressionBuilder.cs",
+      "src/UnitTests/Bug/MapAtRuntime/MapAtRuntimeWithExtensionMethodAndNullable.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1159,
+    "merge": "eb96cb9f622e37ac4c41394a6e79e4fe67ea6551",
+    "base": "21f4d95263f58533f5e2a9259e14d7addc3cad4a",
+    "head": "82bfde49e0e09728ee24ef85142c7ba80ff89f79",
+    "title": "Don't eat exceptions from faulted Tasks.",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/JsonTextWriterAsyncTests.cs",
+      "Src/Newtonsoft.Json/JsonTextWriter.Async.cs",
+      "Src/Newtonsoft.Json/Linq/JProperty.Async.cs",
+      "Src/Newtonsoft.Json/Utilities/JavaScriptUtils.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1158,
+    "merge": "21f4d95263f58533f5e2a9259e14d7addc3cad4a",
+    "base": "0654fa58333cbc4a6b951fc8261a5e75a29f7760",
+    "head": "dd8d6217a12e958b4de97253c43236f86098ba0e",
+    "title": "Pass CancellationToken in JObject and JConstructor.WriteToAsync",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Linq/JConstructor.Async.cs",
+      "Src/Newtonsoft.Json/Linq/JObject.Async.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1153,
+    "merge": "6c7e41537b304c9900dfb4142572c354051e33b8",
+    "base": "ba79136e4edafacfe9f6e8222f65496d82664bee",
+    "head": "f1aa441b62cadb731de3d6477399c1072a205ceb",
+    "title": "Short-circuit on reference equality in ValueEquals and JValue.Compare",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Bson/BsonBinaryWriter.cs",
+      "Src/Newtonsoft.Json/Bson/BsonToken.cs",
+      "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+      "Src/Newtonsoft.Json/Converters/EntityKeyMemberConverter.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs",
+      "Src/Newtonsoft.Json/JsonSerializer.cs",
+      "Src/Newtonsoft.Json/JsonTextReader.cs",
+      "Src/Newtonsoft.Json/JsonWriter.cs",
+      "Src/Newtonsoft.Json/Linq/JObject.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+      "Src/Newtonsoft.Json/Linq/JValue.cs",
+      "Src/Newtonsoft.Json/Linq/JsonPath/QueryExpression.cs",
+      "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs",
+      "Src/Newtonsoft.Json/Utilities/CollectionUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/ConvertUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/DynamicProxy.cs",
+      "Src/Newtonsoft.Json/Utilities/DynamicProxyMetaObject.cs",
+      "Src/Newtonsoft.Json/Utilities/DynamicUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/ExpressionReflectionDelegateFactory.cs",
+      "Src/Newtonsoft.Json/Utilities/MiscellaneousUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1151,
+    "merge": "ba79136e4edafacfe9f6e8222f65496d82664bee",
+    "base": "ea6a21c4f37d6e08b78ed4db5a415688378b240c",
+    "head": "ff3bfaf51b14db121e2a404eef0af9024033ece6",
+    "title": "Use singleton for zero-element arrays.",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Bson/BsonBinaryWriter.cs",
+      "Src/Newtonsoft.Json/Bson/BsonToken.cs",
+      "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+      "Src/Newtonsoft.Json/Converters/EntityKeyMemberConverter.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs",
+      "Src/Newtonsoft.Json/JsonSerializer.cs",
+      "Src/Newtonsoft.Json/JsonTextReader.cs",
+      "Src/Newtonsoft.Json/JsonWriter.cs",
+      "Src/Newtonsoft.Json/Linq/JObject.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+      "Src/Newtonsoft.Json/Linq/JValue.cs",
+      "Src/Newtonsoft.Json/Linq/JsonPath/QueryExpression.cs",
+      "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs",
+      "Src/Newtonsoft.Json/Utilities/CollectionUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/ConvertUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/DynamicProxy.cs",
+      "Src/Newtonsoft.Json/Utilities/DynamicProxyMetaObject.cs",
+      "Src/Newtonsoft.Json/Utilities/DynamicUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/ExpressionReflectionDelegateFactory.cs",
+      "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1132,
+    "merge": "211b3b0db26fc4beb0c057fd00361a6c1e784c35",
+    "base": "5bd69fe8be120b01a057fbfffaaf3bb1d0ae22f2",
+    "head": "a95665b4818b1160dcdddf9769f080616548d56c",
+    "title": "Replace is-and-cast with as-and-nullcheck",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+      "Src/Newtonsoft.Json/Converters/DataTableConverter.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs",
+      "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+      "Src/Newtonsoft.Json/JsonWriter.cs",
+      "Src/Newtonsoft.Json/Linq/Extensions.cs",
+      "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+      "Src/Newtonsoft.Json/Linq/JValue.cs",
+      "Src/Newtonsoft.Json/Linq/JsonPath/FieldMultipleFilter.cs",
+      "Src/Newtonsoft.Json/Schema/JsonSchemaNode.cs",
+      "Src/Newtonsoft.Json/Schema/JsonSchemaWriter.cs",
+      "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+      "Src/Newtonsoft.Json/Serialization/DefaultReferenceResolver.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs",
+      "Src/Newtonsoft.Json/Utilities/CollectionUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/CollectionWrapper.cs",
+      "Src/Newtonsoft.Json/Utilities/ConvertUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/ExpressionReflectionDelegateFactory.cs",
+      "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1131,
+    "merge": "5bd69fe8be120b01a057fbfffaaf3bb1d0ae22f2",
+    "base": "008a3c7655f9c8acff65fd0cfeed93bc5f53821f",
+    "head": "4db6579593b50487d70421b0b2d092b6b8f778e3",
+    "title": "Optimise Extensions.Values",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Converters/DataTableConverter.cs",
+      "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+      "Src/Newtonsoft.Json/Linq/Extensions.cs",
+      "Src/Newtonsoft.Json/Linq/JsonPath/FieldMultipleFilter.cs",
+      "Src/Newtonsoft.Json/Schema/JsonSchemaNode.cs",
+      "Src/Newtonsoft.Json/Schema/JsonSchemaWriter.cs",
+      "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+      "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+    ]
+  }
+]

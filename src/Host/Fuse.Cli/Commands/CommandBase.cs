@@ -535,19 +535,19 @@ public abstract class CommandBase
     /// <summary>
     ///     Output format (<c>xml</c>, <c>markdown</c>, <c>json</c>, or <c>compact</c>).
     /// </summary>
-    [CliOption(Description = "Output format: xml, markdown, json, or compact.")]
+    [CliOption(Required = false, Description = "Output format: xml, markdown, json, or compact.")]
     public string? Format { get; set; }
 
     /// <summary>
     ///     Tokenizer model or encoding name.
     /// </summary>
-    [CliOption(Description = "Tokenizer model or encoding (default: o200k_base).")]
+    [CliOption(Required = false, Description = "Tokenizer model or encoding (default: o200k_base).")]
     public string? Tokenizer { get; set; }
 
     /// <summary>
     ///     Write a machine-readable JSON run report to the given path, or to stdout when set to <c>-</c>.
     /// </summary>
-    [CliOption(Description = "Write a machine-readable JSON run report to a file path, or to stdout with '-'.")]
+    [CliOption(Required = false, Description = "Write a machine-readable JSON run report to a file path, or to stdout with '-'.")]
     public string? Report { get; set; }
 
     #endregion

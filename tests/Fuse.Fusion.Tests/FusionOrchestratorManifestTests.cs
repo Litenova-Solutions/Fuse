@@ -40,6 +40,22 @@ public sealed class FusionOrchestratorManifestTests : IDisposable
     }
 
     [Fact]
+    public async Task FuseAsync_PropagatesEmittedFileTokensThroughResult()
+    {
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+        var request = new FusionRequest(
+            new Fuse.Collection.Options.CollectionOptions(_sourceDirectory, extensions: [".cs"]),
+            new ReductionOptions(),
+            new EmissionOptions { IncludeManifest = true },
+            inMemory: true);
+
+        var result = await orchestrator.FuseAsync(request);
+
+        Assert.NotEmpty(result.EmittedFileTokens);
+        Assert.Contains(result.EmittedFileTokens, f => f.Path.EndsWith("Sample.cs", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task FuseAsync_WithNoManifest_OmitsManifestHeader()
     {
         var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();

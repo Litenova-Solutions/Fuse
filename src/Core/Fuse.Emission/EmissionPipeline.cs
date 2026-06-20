@@ -138,7 +138,8 @@ public sealed class EmissionPipeline
             entries.Count,
             writerResult.Duration,
             writerResult.TopTokenFiles,
-            manifestPatternSummary);
+            manifestPatternSummary,
+            emittedFileTokens: writerResult.EmittedFileTokens);
     }
 
     /// <summary>

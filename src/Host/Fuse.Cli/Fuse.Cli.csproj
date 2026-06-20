@@ -39,7 +39,15 @@
     <ItemGroup Condition="'$(PublishAot)' != 'true'">
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     </ItemGroup>
-    <PropertyGroup Condition="'$(PublishAot)' != 'true'">
-        <DefineConstants>$(DefineConstants);FUSE_ROSLYN</DefineConstants>
-    </PropertyGroup>
+
+    <!--
+      Define FUSE_ROSLYN in a target so it is evaluated after publish profiles set PublishAot. A plain
+      PropertyGroup here would run before the .pubxml import (which sets PublishAot=true) and would wrongly
+      keep FUSE_ROSLYN defined while the package above is excluded, breaking the Native AOT build.
+    -->
+    <Target Name="ConfigureFuseRoslyn" BeforeTargets="BeforeCompile;CoreCompile" Condition="'$(PublishAot)' != 'true'">
+        <PropertyGroup>
+            <DefineConstants>$(DefineConstants);FUSE_ROSLYN</DefineConstants>
+        </PropertyGroup>
+    </Target>
 </Project>

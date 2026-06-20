@@ -264,7 +264,8 @@ public sealed class FusionOrchestrator
             result.TopTokenFiles,
             result.PatternSummary,
             cache.Statistics.Hits,
-            cache.Statistics.Misses);
+            cache.Statistics.Misses,
+            result.EmittedFileTokens);
     }
 
     private async Task<FilteredFileSet?> FilterFilesAsync(
@@ -514,7 +515,10 @@ public sealed class FusionOrchestrator
             emissionResult.TotalFileCount,
             emissionResult.Duration,
             emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary);
+            emissionResult.PatternSummary,
+            emissionResult.ReductionCacheHits,
+            emissionResult.ReductionCacheMisses,
+            emissionResult.EmittedFileTokens);
     }
 
     private async Task<FusionResult> ApplyRedactReportAsync(
@@ -578,7 +582,10 @@ public sealed class FusionOrchestrator
             emissionResult.TotalFileCount,
             emissionResult.Duration,
             emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary);
+            emissionResult.PatternSummary,
+            emissionResult.ReductionCacheHits,
+            emissionResult.ReductionCacheMisses,
+            emissionResult.EmittedFileTokens);
     }
 
     private async Task<FusionResult> PrependToDiskOrMemoryAsync(FusionResult emissionResult, string preamble)
@@ -603,7 +610,10 @@ public sealed class FusionOrchestrator
             emissionResult.TotalFileCount,
             emissionResult.Duration,
             emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary);
+            emissionResult.PatternSummary,
+            emissionResult.ReductionCacheHits,
+            emissionResult.ReductionCacheMisses,
+            emissionResult.EmittedFileTokens);
     }
 
     private sealed record FilteredFileSet(

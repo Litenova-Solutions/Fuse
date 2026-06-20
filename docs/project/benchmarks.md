@@ -191,7 +191,16 @@ Each item is measured directly where the harness exercises it:
 - Generated-code collapse (`--collapse-generated`). The corpus libraries contain no EF Core migrations, so this item does not move the Layer 1 numbers; it is unit-tested on a migration fixture, where the generated `Up`, `Down`, and `BuildModel` bodies are dropped while the class and method signatures are kept. It is reported here as not exercised by the corpus rather than as an improvement.
 - Cross-language reduction (TS, JS, SQL). The corpus is a C#-only mirror, so this item does not move the Layer 1 numbers either; the TypeScript-family and SQL reducers are unit-tested for comment and whitespace removal. Extending the corpus with a TypeScript or SQL repository is the way to confirm a ratio, and is noted as future work rather than claimed here.
 - Hybrid retrieval (`--rerank`). The bundled embedding is a deterministic lexical hashing model with no learned semantics, so on the Layer 2B localization questions, which are the lexical-ceiling cases, it does not change accuracy: BM25 already selects the candidates and the lexical vector reorders within the same lexical space. This is the honest result the roadmap predicts; closing the lexical gap needs a learned embedding model, for which the reranker provides the plug point. Layer 2B remains the regression guard for it.
-- Roslyn precision tier (`--semantic`) and symbol-level scoping. These are opt-in and not part of the default harness arms. The Roslyn skeleton extractor is unit-tested on the conditional-compilation case that collapses the regex extractor; a corpus arm that runs the precision tier against Newtonsoft.Json, where the regex skeleton keeps only 4 percent of method signatures, is the planned measurement and is not run here.
+- Roslyn precision tier (`--semantic`). This is the accuracy result of the whole effort. Running `--skeleton --semantic` over the same C#-only mirrors the harness uses, with the same independent Roslyn fidelity oracle, the precision tier keeps the signatures the regex skeleton drops:
+
+  | Repo | Regex skeleton | Roslyn skeleton |
+  |------|----------------|-----------------|
+  | MediatR | types 100%, methods 84% | types 100%, methods 100% |
+  | FluentValidation | types 98%, methods 99% | types 100%, methods 100% |
+  | AutoMapper | types 91%, methods 86% | types 99%, methods 100% |
+  | Newtonsoft.Json | types 71%, methods 4% | types 100%, methods 100% |
+
+  The Newtonsoft.Json row is the headline: regex skeleton kept 4 percent of method signatures, Roslyn keeps 100 percent. The cost is honest output size. Because the regex skeleton dropped most signatures, its deep cut was partly a fidelity failure, not real saving. The Roslyn skeleton is a faithful signatures-only cut and is therefore larger: Newtonsoft.Json moves from 96,953 tokens (regex, 93.4 percent reduction but 4 percent method fidelity) to 694,862 tokens (Roslyn, 52.7 percent reduction at 100 percent fidelity). MediatR moves from 26,405 to 39,865 tokens, FluentValidation from 51,890 to 115,635, AutoMapper from 159,542 to 258,427. This is the intended trade: the precision tier does not weaken fidelity to inflate reduction. Symbol-level scoping rides on the same tier and is unit-tested rather than measured over the corpus, since the corpus carries no god-class for a representative member slice.
 
 ### The Persistent Index: Cold Versus Warm
 

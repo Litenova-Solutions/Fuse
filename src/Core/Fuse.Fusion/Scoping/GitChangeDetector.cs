@@ -18,52 +18,7 @@ public sealed class GitChangeDetector : IChangeDetector
         string since,
         CancellationToken cancellationToken = default)
     {
-        var gitPath = FindGitExecutable();
-        if (gitPath is null)
-            throw new ChangeDetectionException("Git is not available on PATH. Change-scoped fusion requires git.");
-
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = gitPath,
-            Arguments = $"diff --name-only {since}",
-            WorkingDirectory = sourceDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        using var process = new Process { StartInfo = startInfo };
-
-        try
-        {
-            if (!process.Start())
-                throw new ChangeDetectionException("Failed to start git process.");
-        }
-        catch (Exception ex) when (ex is not ChangeDetectionException)
-        {
-            throw new ChangeDetectionException("Git is not available on PATH. Change-scoped fusion requires git.");
-        }
-
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
-
-        var stdout = await stdoutTask;
-        var stderr = await stderrTask;
-
-        if (process.ExitCode != 0)
-        {
-            if (stderr.Contains("not a git repository", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ChangeDetectionException(
-                    "Source directory is not a git repository. Change-scoped fusion requires a git repository.");
-            }
-
-            throw new ChangeDetectionException(string.IsNullOrWhiteSpace(stderr)
-                ? $"git diff failed with exit code {process.ExitCode}."
-                : stderr.Trim());
-        }
+        var stdout = await RunGitAsync(sourceDirectory, cancellationToken, "diff", "--name-only", since);
 
         return stdout
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -78,13 +33,14 @@ public sealed class GitChangeDetector : IChangeDetector
         string since,
         CancellationToken cancellationToken = default)
     {
-        var stdout = await RunGitAsync(sourceDirectory, $"diff --unified=3 {since}", cancellationToken);
+        var stdout = await RunGitAsync(sourceDirectory, cancellationToken, "diff", "--unified=3", since);
         return GitDiffParser.Parse(stdout);
     }
 
     // Runs git in the source directory and returns stdout, translating git failures into ChangeDetectionException
-    // so callers see a single failure type regardless of which git command was run.
-    private static async Task<string> RunGitAsync(string sourceDirectory, string arguments, CancellationToken cancellationToken)
+    // so callers see a single failure type regardless of which git command was run. Arguments are passed as
+    // discrete tokens via ArgumentList so a ref containing spaces is never word-split and nothing is shell-quoted.
+    private static async Task<string> RunGitAsync(string sourceDirectory, CancellationToken cancellationToken, params string[] arguments)
     {
         var gitPath = FindGitExecutable();
         if (gitPath is null)
@@ -93,13 +49,15 @@ public sealed class GitChangeDetector : IChangeDetector
         var startInfo = new ProcessStartInfo
         {
             FileName = gitPath,
-            Arguments = arguments,
             WorkingDirectory = sourceDirectory,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+
+        foreach (var argument in arguments)
+            startInfo.ArgumentList.Add(argument);
 
         using var process = new Process { StartInfo = startInfo };
 

@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: Build, Test, Format
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Fuse.slnx
+
+      - name: Build
+        run: dotnet build Fuse.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Fuse.slnx --configuration Release --no-build --verbosity normal
+
+      - name: Format check
+        run: dotnet format Fuse.slnx --verify-no-changes
+
+  aot:
+    name: Native AOT Publish (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            profile: aot-win-x64
+            binary: fuse.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            profile: aot-linux-x64
+            binary: fuse
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Native AOT prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev
+
+      - name: Restore
+        run: dotnet restore src/Host/Fuse.Cli/Fuse.Cli.csproj
+
+      - name: Publish Native AOT
+        run: dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj --configuration Release /p:PublishProfile=${{ matrix.profile }}
+
+      - name: Smoke test init help
+        shell: bash
+        run: |
+          BIN="artifacts/aot/${{ matrix.rid }}/${{ matrix.binary }}"
+          "$BIN" init --help
+
+      - name: Smoke test SampleShop fusion
+        shell: bash
+        run: |
+          BIN="artifacts/aot/${{ matrix.rid }}/${{ matrix.binary }}"
+          OUT="/tmp/fuse-aot-smoke"
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+          "$BIN" dotnet \
+            --directory tests/fixtures/SampleShop \
+            --output "$OUT" \
+            --overwrite \
+            --format xml \
+            --tokenizer o200k_base

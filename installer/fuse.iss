@@ -1,6 +1,6 @@
 #define MyAppName      "Fuse"
-#define MyAppPublisher "A. Shafie"
-#define MyAppURL       "https://github.com/litenova/Fuse"
+#define MyAppPublisher "Litenova Solutions"
+#define MyAppURL       "https://github.com/Litenova-Solutions/Fuse"
 #define MyAppExeName   "fuse.exe"
 
 ; Version is injected at build time via /DMyAppVersion=x.y.z

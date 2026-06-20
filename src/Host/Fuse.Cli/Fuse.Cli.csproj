@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>fuse</AssemblyName>
+        <Version>2.0.0</Version>
+        <Product>Fuse</Product>
+        <Description>A .NET-native codebase context optimizer for AI-assisted development. Fuse collects source files, reduces them for token efficiency, and emits a single structured payload that an agent or developer can consume in one call. Available as a global tool and an MCP server.</Description>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>fuse</ToolCommandName>
+        <PackageId>Fuse</PackageId>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/Litenova-Solutions/Fuse</PackageProjectUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>mcp;dotnet-tool;llm;codebase;context;fusion;csharp;token-reduction</PackageTags>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <RollForward>LatestMajor</RollForward>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\..\..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Fuse.Cli.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Hosting" />
+        <PackageReference Include="ModelContextProtocol" />
+        <PackageReference Include="DotMake.CommandLine" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <ProjectReference Include="..\..\Core\Fuse.Fusion\Fuse.Fusion.csproj" />
+    </ItemGroup>
+
+    <!--
+      fuse verify uses Roslyn syntax parsing in the framework-dependent tool. Roslyn is not trim or AOT
+      compatible, so it is excluded from the Native AOT build, which falls back to an AOT-clean regex
+      analyzer (see VerifyCommand and the FUSE_ROSLYN guard).
+    -->
+    <ItemGroup Condition="'$(PublishAot)' != 'true'">
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+        <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj" />
+    </ItemGroup>
+
+    <!--
+      Define FUSE_ROSLYN in a target so it is evaluated after publish profiles set PublishAot. A plain
+      PropertyGroup here would run before the .pubxml import (which sets PublishAot=true) and would wrongly
+      keep FUSE_ROSLYN defined while the package above is excluded, breaking the Native AOT build.
+    -->
+    <Target Name="ConfigureFuseRoslyn" BeforeTargets="BeforeCompile;CoreCompile" Condition="'$(PublishAot)' != 'true'">
+        <PropertyGroup>
+            <DefineConstants>$(DefineConstants);FUSE_ROSLYN</DefineConstants>
+        </PropertyGroup>
+    </Target>
+</Project>

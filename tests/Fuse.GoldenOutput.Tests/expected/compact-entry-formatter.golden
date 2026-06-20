@@ -1,0 +1,4 @@
+@via OrderService.cs -> src/SampleShop.Core/Models/CatalogItem.cs
+=== src/SampleShop.Core/Models/CatalogItem.cs ===
+public class CatalogItem { }
+

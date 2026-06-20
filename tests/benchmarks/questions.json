@@ -1,0 +1,78 @@
+{
+  "$comment": "Layer 2B localization question set. Each item has a natural-language question, the known-correct answer file (path relative to the repo root, as emitted by Fuse), and a focus_seed: a single salient concept an agent might guess. Accuracy is exact-match: did the surfaced context include the answer file within the token budget. Reproducible at the pinned commits in corpus.json.",
+  "budget": 20000,
+  "questions": [
+    {
+      "repo": "MediatR",
+      "question": "Which file contains the mediator implementation that sends a request to its handler?",
+      "answer": "src/MediatR/Mediator.cs",
+      "focus_seed": "Mediator"
+    },
+    {
+      "repo": "MediatR",
+      "question": "Where is notification publishing handled by awaiting each handler one after another?",
+      "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
+      "focus_seed": "notification publisher"
+    },
+    {
+      "repo": "MediatR",
+      "question": "Which file registers MediatR handler services into the dependency injection container?",
+      "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
+      "focus_seed": "service registration"
+    },
+    {
+      "repo": "FluentValidation",
+      "question": "Where are the built-in rule extension methods such as NotNull and NotEmpty defined?",
+      "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
+      "focus_seed": "validator extensions"
+    },
+    {
+      "repo": "FluentValidation",
+      "question": "Which file defines the abstract base class that user validators inherit from?",
+      "answer": "src/FluentValidation/AbstractValidator.cs",
+      "focus_seed": "AbstractValidator"
+    },
+    {
+      "repo": "FluentValidation",
+      "question": "Where is the rule that checks a string is a valid email address implemented?",
+      "answer": "src/FluentValidation/Validators/EmailValidator.cs",
+      "focus_seed": "email validation"
+    },
+    {
+      "repo": "AutoMapper",
+      "question": "Which file holds the main entry-point class that maps one object to another?",
+      "answer": "src/AutoMapper/Mapper.cs",
+      "focus_seed": "Mapper"
+    },
+    {
+      "repo": "AutoMapper",
+      "question": "Where is the execution plan for a type map compiled into a mapping function?",
+      "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+      "focus_seed": "execution plan builder"
+    },
+    {
+      "repo": "AutoMapper",
+      "question": "Which file provides the queryable ProjectTo extension methods for IQueryable?",
+      "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
+      "focus_seed": "queryable projection"
+    },
+    {
+      "repo": "NewtonsoftJson",
+      "question": "Which file contains the serializer that reads and writes JSON through converters?",
+      "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
+      "focus_seed": "JsonSerializer"
+    },
+    {
+      "repo": "NewtonsoftJson",
+      "question": "Where is the forward-only reader that parses JSON from text implemented?",
+      "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
+      "focus_seed": "json text reader"
+    },
+    {
+      "repo": "NewtonsoftJson",
+      "question": "Which file defines the LINQ-to-JSON object node type?",
+      "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
+      "focus_seed": "JObject"
+    }
+  ]
+}

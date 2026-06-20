@@ -1,0 +1,290 @@
+[
+  {
+    "repo": "MediatR",
+    "question": "Which file contains the mediator implementation that sends a request to its handler?",
+    "answer": "src/MediatR/Mediator.cs",
+    "mode": "query",
+    "hit": 1,
+    "tokens": 13640
+  },
+  {
+    "repo": "MediatR",
+    "question": "Which file contains the mediator implementation that sends a request to its handler?",
+    "answer": "src/MediatR/Mediator.cs",
+    "mode": "focus",
+    "hit": 1,
+    "tokens": 11640
+  },
+  {
+    "repo": "MediatR",
+    "question": "Which file contains the mediator implementation that sends a request to its handler?",
+    "answer": "src/MediatR/Mediator.cs",
+    "mode": "grep",
+    "hit": 1,
+    "tokens": 19980
+  },
+  {
+    "repo": "MediatR",
+    "question": "Where is notification publishing handled by awaiting each handler one after another?",
+    "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
+    "mode": "query",
+    "hit": 1,
+    "tokens": 13540
+  },
+  {
+    "repo": "MediatR",
+    "question": "Where is notification publishing handled by awaiting each handler one after another?",
+    "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
+    "mode": "focus",
+    "hit": 0,
+    "tokens": 0
+  },
+  {
+    "repo": "MediatR",
+    "question": "Where is notification publishing handled by awaiting each handler one after another?",
+    "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
+    "mode": "grep",
+    "hit": 1,
+    "tokens": 19997
+  },
+  {
+    "repo": "MediatR",
+    "question": "Which file registers MediatR handler services into the dependency injection container?",
+    "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
+    "mode": "query",
+    "hit": 0,
+    "tokens": 14245
+  },
+  {
+    "repo": "MediatR",
+    "question": "Which file registers MediatR handler services into the dependency injection container?",
+    "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
+    "mode": "focus",
+    "hit": 0,
+    "tokens": 0
+  },
+  {
+    "repo": "MediatR",
+    "question": "Which file registers MediatR handler services into the dependency injection container?",
+    "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
+    "mode": "grep",
+    "hit": 1,
+    "tokens": 19988
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Where are the built-in rule extension methods such as NotNull and NotEmpty defined?",
+    "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
+    "mode": "query",
+    "hit": 1,
+    "tokens": 23599
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Where are the built-in rule extension methods such as NotNull and NotEmpty defined?",
+    "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
+    "mode": "focus",
+    "hit": 0,
+    "tokens": 0
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Where are the built-in rule extension methods such as NotNull and NotEmpty defined?",
+    "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
+    "mode": "grep",
+    "hit": 1,
+    "tokens": 19926
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Which file defines the abstract base class that user validators inherit from?",
+    "answer": "src/FluentValidation/AbstractValidator.cs",
+    "mode": "query",
+    "hit": 1,
+    "tokens": 16219
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Which file defines the abstract base class that user validators inherit from?",
+    "answer": "src/FluentValidation/AbstractValidator.cs",
+    "mode": "focus",
+    "hit": 1,
+    "tokens": 16515
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Which file defines the abstract base class that user validators inherit from?",
+    "answer": "src/FluentValidation/AbstractValidator.cs",
+    "mode": "grep",
+    "hit": 1,
+    "tokens": 19991
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Where is the rule that checks a string is a valid email address implemented?",
+    "answer": "src/FluentValidation/Validators/EmailValidator.cs",
+    "mode": "query",
+    "hit": 1,
+    "tokens": 21187
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Where is the rule that checks a string is a valid email address implemented?",
+    "answer": "src/FluentValidation/Validators/EmailValidator.cs",
+    "mode": "focus",
+    "hit": 0,
+    "tokens": 0
+  },
+  {
+    "repo": "FluentValidation",
+    "question": "Where is the rule that checks a string is a valid email address implemented?",
+    "answer": "src/FluentValidation/Validators/EmailValidator.cs",
+    "mode": "grep",
+    "hit": 0,
+    "tokens": 19987
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Which file holds the main entry-point class that maps one object to another?",
+    "answer": "src/AutoMapper/Mapper.cs",
+    "mode": "query",
+    "hit": 0,
+    "tokens": 15232
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Which file holds the main entry-point class that maps one object to another?",
+    "answer": "src/AutoMapper/Mapper.cs",
+    "mode": "focus",
+    "hit": 1,
+    "tokens": 14236
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Which file holds the main entry-point class that maps one object to another?",
+    "answer": "src/AutoMapper/Mapper.cs",
+    "mode": "grep",
+    "hit": 0,
+    "tokens": 19973
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Where is the execution plan for a type map compiled into a mapping function?",
+    "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+    "mode": "query",
+    "hit": 1,
+    "tokens": 20573
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Where is the execution plan for a type map compiled into a mapping function?",
+    "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+    "mode": "focus",
+    "hit": 0,
+    "tokens": 0
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Where is the execution plan for a type map compiled into a mapping function?",
+    "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+    "mode": "grep",
+    "hit": 1,
+    "tokens": 19965
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Which file provides the queryable ProjectTo extension methods for IQueryable?",
+    "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
+    "mode": "query",
+    "hit": 1,
+    "tokens": 15521
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Which file provides the queryable ProjectTo extension methods for IQueryable?",
+    "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
+    "mode": "focus",
+    "hit": 0,
+    "tokens": 0
+  },
+  {
+    "repo": "AutoMapper",
+    "question": "Which file provides the queryable ProjectTo extension methods for IQueryable?",
+    "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
+    "mode": "grep",
+    "hit": 1,
+    "tokens": 19997
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Which file contains the serializer that reads and writes JSON through converters?",
+    "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
+    "mode": "query",
+    "hit": 1,
+    "tokens": 21293
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Which file contains the serializer that reads and writes JSON through converters?",
+    "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
+    "mode": "focus",
+    "hit": 1,
+    "tokens": 13481
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Which file contains the serializer that reads and writes JSON through converters?",
+    "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
+    "mode": "grep",
+    "hit": 0,
+    "tokens": 19502
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Where is the forward-only reader that parses JSON from text implemented?",
+    "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
+    "mode": "query",
+    "hit": 0,
+    "tokens": 21530
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Where is the forward-only reader that parses JSON from text implemented?",
+    "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
+    "mode": "focus",
+    "hit": 0,
+    "tokens": 0
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Where is the forward-only reader that parses JSON from text implemented?",
+    "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
+    "mode": "grep",
+    "hit": 0,
+    "tokens": 19882
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Which file defines the LINQ-to-JSON object node type?",
+    "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
+    "mode": "query",
+    "hit": 0,
+    "tokens": 42356
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Which file defines the LINQ-to-JSON object node type?",
+    "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
+    "mode": "focus",
+    "hit": 1,
+    "tokens": 13633
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "question": "Which file defines the LINQ-to-JSON object node type?",
+    "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
+    "mode": "grep",
+    "hit": 0,
+    "tokens": 19899
+  }
+]

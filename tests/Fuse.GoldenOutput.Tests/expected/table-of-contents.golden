@@ -1,0 +1,28 @@
+<!-- fuse:table-of-contents files=11 read-cost=~624 tokens
+     A map of the codebase. Each file shows its token cost to read and the types it declares.
+     Fetch a file's full content with fuse_focus, fuse_search, or by path. -->
+README.md (~177 tokens)
+src/
+  SampleShop.Core/
+    Config/
+      SecretsHolder.cs (~40 tokens)
+        class SecretsHolder
+    Models/
+      CatalogItem.cs (~27 tokens)
+        class CatalogItem: Name, ListProducts
+    Payment/
+      PaymentGateway.cs (~29 tokens)
+        class PaymentGateway: Charge
+    SampleShop.Core.csproj (~44 tokens)
+    Services/
+      OrderService.cs (~42 tokens)
+        class OrderService: PlaceOrder
+      PaymentService.cs (~45 tokens)
+        class PaymentService: ProcessPayment
+  SampleShop.Web/
+    appsettings.json (~34 tokens)
+    Controllers/
+      OrdersController.cs (~75 tokens)
+        class OrdersController: Get, Create
+    Program.cs (~44 tokens)
+    SampleShop.Web.csproj (~67 tokens)

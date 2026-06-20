@@ -1,0 +1,12 @@
+# Cloned corpus (reconstructed from corpus.json by setup-corpus.ps1)
+.corpus/
+
+# Per-run working artifacts and large intermediates
+results/.out/
+results/.mirror/
+results/.scope/
+results/.loc/
+results/.wt/
+results/*.raw.cs.txt
+
+# Keep the committed summaries: results/*.json, results/*.csv, results/*.md

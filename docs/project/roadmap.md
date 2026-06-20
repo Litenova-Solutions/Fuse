@@ -1,0 +1,30 @@
+---
+title: Roadmap
+description: The planned direction for Fuse, framed as intent rather than commitment, with shipped work recorded in the changelog.
+---
+
+The roadmap states where Fuse intends to go, ranked by impact on agent efficiency. Each planned item names its primary lever: accuracy, token cost, or round-trips. This page summarizes the themes; the full list lives in the ROADMAP.md file at the repository root. Nothing here is a commitment or a delivery date. Work that has shipped is recorded in the [Changelog](changelog.md), not on the roadmap.
+
+This page is for stakeholders gauging direction and engineers deciding where new work fits.
+
+## Planned Themes
+
+- Accuracy through semantic analysis. An opt-in Roslyn-backed plugin would provide accurate dependency extraction, skeleton extraction, and type location behind the existing capability registry, replacing the best-effort regex graph in a precision mode. The regex plugin stays the AOT-fast default.
+- Symbol-level scoping. Emit only the relevant members of a large file rather than the whole file, which depends on precise member resolution from semantic analysis.
+- A persistent incremental index. Keep the dependency graph and search index on disk under `.fuse/index`, keyed by content hash and updated incrementally, so an agent making several calls in one task pays the index cost once.
+- An auto-scope tool. A single MCP tool that takes a natural-language task and a token budget, decides internally between skeleton, focus, and search, then packs the result to the budget.
+- Session-delta emission. A session-aware mode that tracks what was already sent and emits only new material across turns.
+- Hybrid retrieval. Optional on-disk vectors that rerank search candidates so intent-based queries resolve even when they do not match lexically.
+- An eval harness. Extend the benchmark fixtures into a task-success measurement that compares tokens-to-correct-answer with and without Fuse.
+
+## How This Relates To Shipped Work
+
+The roadmap describes intent. Once an item ships, it is removed from the roadmap and documented in the [Changelog](changelog.md) with the version that introduced it. To learn what Fuse does today rather than what is planned, read the changelog and the reference pages.
+
+## What This Does Not Cover
+
+This page does not specify designs, sequencing, or release dates for planned items. The repository ROADMAP.md file holds the ranked list and the reasoning for each lever. Shipped behavior is documented in the [Changelog](changelog.md).
+
+## Next
+
+Read the [Changelog](changelog.md) for the history of shipped work, or [Contributing](contributing.md) to propose or build a planned item.

@@ -61,18 +61,20 @@ public sealed class McpServeCommand
                 options.ServerInstructions =
                     "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +
                     "TOOLS:\n" +
-                    "- fuse_skeleton: Structural skeleton only (signatures, no bodies). Start here for architecture review.\n" +
+                    "- fuse_toc: Table of contents (directory tree, symbol outline, per-file token costs). The cheapest first call.\n" +
+                    "- fuse_skeleton: Structural skeleton only (signatures, no bodies). Use for architecture review.\n" +
                     "- fuse_focus: Dependency-aware scoping around a type, file, or path.\n" +
                     "- fuse_search: BM25 query-scoped fusion with dependency expansion.\n" +
                     "- fuse_changes: Git diff-scoped fusion for PR review.\n" +
+                    "- fuse_ask: Give a task and token budget; Fuse picks skeleton, focus, or search and packs to budget.\n" +
                     "- fuse_dotnet: Full-control .NET fusion with all options combined.\n" +
                     "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n\n" +
                     "RECOMMENDED WORKFLOW:\n" +
-                    "1. Call fuse_skeleton to get an architectural overview (low token cost).\n" +
-                    "2. Identify the relevant area from the skeleton manifest.\n" +
+                    "1. Call fuse_toc (or fuse_skeleton) to survey the codebase at low token cost.\n" +
+                    "2. Identify the relevant area from the tree and per-file token costs.\n" +
                     "3. Call fuse_focus with focus=\"{TypeName}\" or fuse_search with query=\"{topic}\".\n" +
                     "4. For PR review, call fuse_changes with changedSince=\"{baseBranch}\".\n" +
-                    "5. Use fuse_dotnet with all=true when you need maximum token reduction with full control.\n\n" +
+                    "5. Or call fuse_ask with a task and tokenBudget to let Fuse choose and pack the context.\n\n" +
                     "RESOURCES:\n" +
                     "- fuse://skeleton/{path}, fuse://focus/{path}/{seed}, fuse://search/{path}/{query}, fuse://changes/{path}/{since}\n" +
                     "- fuse://{template}/{path} for template-based fusion with default options.";

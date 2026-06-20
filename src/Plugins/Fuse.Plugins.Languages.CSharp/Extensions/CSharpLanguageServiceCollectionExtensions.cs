@@ -2,11 +2,13 @@ using Fuse.Plugins.Abstractions.Dependencies;
 using Fuse.Plugins.Abstractions.Markers;
 using Fuse.Plugins.Abstractions.Maps;
 using Fuse.Plugins.Abstractions.Patterns;
+using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Plugins.Abstractions.Reducers;
 using Fuse.Plugins.Abstractions.Skeleton;
 using Fuse.Plugins.Languages.CSharp.Dependencies;
 using Fuse.Plugins.Languages.CSharp.Maps;
 using Fuse.Plugins.Languages.CSharp.Markers;
+using Fuse.Plugins.Languages.CSharp.Outline;
 using Fuse.Plugins.Languages.CSharp.Patterns;
 using Fuse.Plugins.Languages.CSharp.Reducers;
 using Fuse.Plugins.Languages.CSharp.Skeleton;
@@ -34,6 +36,7 @@ public static class CSharpLanguageServiceCollectionExtensions
     public static IServiceCollection AddCSharpLanguage(this IServiceCollection services)
     {
         services.AddSingleton<ISkeletonExtractor, CSharpSkeletonExtractor>();
+        services.AddSingleton<ISymbolOutlineExtractor, CSharpOutlineExtractor>();
         services.AddSingleton<ISemanticMarkerGenerator, CSharpSemanticMarkerGenerator>();
         services.AddSingleton<IDependencyExtractor, CSharpDependencyExtractor>();
         services.AddSingleton<ITypeNameLocator, CSharpTypeNameLocator>();

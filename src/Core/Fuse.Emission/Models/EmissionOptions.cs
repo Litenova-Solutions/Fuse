@@ -71,6 +71,13 @@ public sealed class EmissionOptions
     public bool DeduplicateHeaders { get; set; } = false;
 
     /// <summary>
+    ///     A value indicating whether to emit a table of contents (a directory tree with per-file token costs
+    ///     and a symbol outline) instead of file bodies. A cheap first call for surveying a codebase before
+    ///     fetching files in full. Off by default.
+    /// </summary>
+    public bool TableOfContents { get; set; } = false;
+
+    /// <summary>
     ///     The output serialization format. Defaults to <see cref="OutputFormat.Xml" />.
     /// </summary>
     public OutputFormat Format { get; set; } = OutputFormat.Xml;

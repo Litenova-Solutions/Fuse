@@ -3,12 +3,14 @@ using Fuse.Fusion.Enrichment;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
 using Fuse.Emission;
+using Fuse.Emission.Manifest;
 using Fuse.Emission.Models;
 using Fuse.Emission.Tokenization;
 using Fuse.Emission.Writers;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
 using Fuse.Plugins.Abstractions.Maps;
+using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Plugins.Abstractions.Patterns;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
@@ -40,6 +42,7 @@ public sealed class FusionOrchestrator
     private readonly IEnumerable<PatternDetectorBase> _patternDetectors;
     private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
     private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
+    private readonly CapabilityRegistry<ISymbolOutlineExtractor> _outlineExtractors;
     private readonly IRelevanceIndex _relevanceIndex;
     private readonly IRouteMapGenerator? _routeMapGenerator;
     private readonly IProjectGraphGenerator? _projectGraphGenerator;
@@ -64,6 +67,7 @@ public sealed class FusionOrchestrator
         IEnumerable<PatternDetectorBase> patternDetectors,
         CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
         CapabilityRegistry<ITypeNameLocator> typeNameLocators,
+        CapabilityRegistry<ISymbolOutlineExtractor> outlineExtractors,
         IRelevanceIndex relevanceIndex,
         IReductionCacheFactory reductionCacheFactory,
         IGitStatsProvider gitStatsProvider,
@@ -84,6 +88,7 @@ public sealed class FusionOrchestrator
         _patternDetectors = patternDetectors;
         _dependencyExtractors = dependencyExtractors;
         _typeNameLocators = typeNameLocators;
+        _outlineExtractors = outlineExtractors;
         _relevanceIndex = relevanceIndex;
         _reductionCacheFactory = reductionCacheFactory;
         _gitStatsProvider = gitStatsProvider;
@@ -152,6 +157,14 @@ public sealed class FusionOrchestrator
             reductionCache,
             tokenCounter,
             cancellationToken);
+
+        // Table-of-contents mode replaces body emission with a structural map. It runs after scoping and
+        // reduction so the listed files and per-file token costs match what a full fetch would cost.
+        if (request.Emission.TableOfContents)
+        {
+            var tocResult = await EmitTableOfContentsAsync(reducedContent, request, tokenCounter, cancellationToken);
+            return WithReductionCacheStats(tocResult, reductionCache);
+        }
 
         string? headerPreamble = null;
         if (request.Emission.DeduplicateHeaders)
@@ -440,6 +453,67 @@ public sealed class FusionOrchestrator
             _typeNameLocators,
             parallelism,
             cancellationToken);
+
+    // Builds the table-of-contents document and writes it as the sole output. Per-file token costs come from
+    // the reduced content; the symbol outline is extracted from the original source so it is independent of
+    // the reduction mode.
+    private async Task<FusionResult> EmitTableOfContentsAsync(
+        IReadOnlyList<FusedContent> reducedContent,
+        FusionRequest request,
+        Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
+        CancellationToken cancellationToken)
+    {
+        var started = DateTime.Now;
+        var entries = new List<TocFileEntry>(reducedContent.Count);
+        foreach (var item in reducedContent)
+        {
+            if (item.IsTrivial)
+                continue;
+
+            IReadOnlyList<OutlineSymbol> symbols = [];
+            var extractor = _outlineExtractors.TryResolve(item.SourceFile.Extension);
+            if (extractor is not null)
+            {
+                var source = await _contentProvider.GetContentAsync(item.SourceFile, cancellationToken);
+                symbols = extractor.ExtractOutline(source);
+            }
+
+            entries.Add(new TocFileEntry(item.NormalizedPath, item.TokenCount, symbols));
+        }
+
+        var document = TableOfContentsBuilder.Build(entries, request.Emission.Format);
+        var totalTokens = tokenCounter.Count(document);
+        var emittedFileTokens = entries
+            .Select(e => new FileTokenInfo(e.Path, e.Tokens))
+            .ToArray();
+
+        IReadOnlyList<string> generatedPaths = [];
+        string? inMemoryContent = null;
+        if (request.InMemory)
+        {
+            inMemoryContent = document;
+        }
+        else
+        {
+            var naming = new OutputNamingService();
+            var baseName = naming.GetBaseFileName(request.Emission);
+            var fileName = OutputNamingService.BuildPartFileName(baseName, 1, totalTokens, isMultiPart: false);
+            Directory.CreateDirectory(request.Emission.OutputDirectory);
+            var path = Path.Combine(request.Emission.OutputDirectory, fileName);
+            await _fileSystem.WriteAllTextAsync(path, document);
+            generatedPaths = [path];
+        }
+
+        return new FusionResult(
+            generatedPaths,
+            inMemoryContent,
+            totalTokens,
+            entries.Count,
+            reducedContent.Count,
+            DateTime.Now - started,
+            [],
+            emittedFileTokens: emittedFileTokens);
+    }
 
     private FusionResult CreateEmptyChangeResult(FusionRequest request)
     {

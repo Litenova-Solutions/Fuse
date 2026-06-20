@@ -12,6 +12,7 @@ using Fuse.Plugins.Formats.Web.Extensions;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
 using Fuse.Plugins.Abstractions.Markers;
+using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Plugins.Abstractions.Reducers;
 using Fuse.Plugins.Abstractions.Skeleton;
 using Fuse.Plugins.Languages.CSharp.Extensions;
@@ -75,6 +76,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton(sp => new CapabilityRegistry<IContentReducer>(sp.GetServices<IContentReducer>()));
         services.AddSingleton(sp => new CapabilityRegistry<ISkeletonExtractor>(sp.GetServices<ISkeletonExtractor>()));
+        services.AddSingleton(sp => new CapabilityRegistry<ISymbolOutlineExtractor>(sp.GetServices<ISymbolOutlineExtractor>()));
         services.AddSingleton(sp => new CapabilityRegistry<ISemanticMarkerGenerator>(sp.GetServices<ISemanticMarkerGenerator>()));
         services.AddSingleton(sp => new CapabilityRegistry<IDependencyExtractor>(sp.GetServices<IDependencyExtractor>()));
         services.AddSingleton(sp => new CapabilityRegistry<ITypeNameLocator>(sp.GetServices<ITypeNameLocator>()));

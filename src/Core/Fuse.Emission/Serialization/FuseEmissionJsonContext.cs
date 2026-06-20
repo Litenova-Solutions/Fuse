@@ -17,4 +17,5 @@ namespace Fuse.Emission.Serialization;
 [JsonSerializable(typeof(JsonFileEntryDto))]
 [JsonSerializable(typeof(JsonRunReportDto))]
 [JsonSerializable(typeof(JsonVerifyReportDto))]
+[JsonSerializable(typeof(JsonTocDto))]
 internal partial class FuseEmissionJsonContext : JsonSerializerContext;

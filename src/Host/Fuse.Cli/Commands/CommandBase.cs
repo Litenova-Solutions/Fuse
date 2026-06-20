@@ -268,6 +268,7 @@ public abstract class CommandBase
             TokenizerModel = Tokenizer ?? config?.Tokenizer ?? TokenizerFactory.DefaultModel,
             Format = EntryFormatterFactory.ParseFormat(Format ?? config?.Format),
             DeduplicateHeaders = DedupHeaders,
+            TableOfContents = TableOfContents,
         };
     }
 
@@ -513,6 +514,13 @@ public abstract class CommandBase
     /// </summary>
     [CliOption(Description = "Disable the manifest header prepended to output.")]
     public bool NoManifest { get; set; } = false;
+
+    /// <summary>
+    ///     Emit a table of contents (directory tree, symbol outline, per-file token costs) instead of file
+    ///     bodies. A cheap first call for surveying a codebase before fetching files in full.
+    /// </summary>
+    [CliOption(Name = "toc", Description = "Emit a table of contents (tree, symbol outline, per-file token costs) instead of file bodies.")]
+    public bool TableOfContents { get; set; } = false;
 
     /// <summary>
     ///     Include git churn and last-modified stats in the manifest.

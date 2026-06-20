@@ -41,7 +41,8 @@ internal static class ReductionHasher
             options.IncludeRedactReport,
             options.IncludeRouteMap,
             options.PublicApiMode,
-            options.IncludeProjectGraph);
+            options.IncludeProjectGraph,
+            options.CollapseGeneratedCode);
 
         var bytes = Encoding.UTF8.GetBytes(payload);
         return XxHash64.HashToUInt64(bytes);

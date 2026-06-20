@@ -99,6 +99,12 @@ public sealed record ReductionOptions
     public bool IncludeProjectGraph { get; init; }
 
     /// <summary>
+    ///     Gets a value indicating whether EF Core migrations, model snapshots, and other machine-generated C#
+    ///     are collapsed to their signatures, dropping the large auto-generated method bodies.
+    /// </summary>
+    public bool CollapseGeneratedCode { get; init; }
+
+    /// <summary>
     ///     Initializes a new instance of the <see cref="ReductionOptions" /> record.
     /// </summary>
     public ReductionOptions(
@@ -118,7 +124,8 @@ public sealed record ReductionOptions
         bool includeRedactReport = false,
         bool includeRouteMap = false,
         bool publicApiMode = false,
-        bool includeProjectGraph = false)
+        bool includeProjectGraph = false,
+        bool collapseGeneratedCode = false)
     {
         TrimContent = trimContent;
         UseCondensing = useCondensing;
@@ -137,5 +144,6 @@ public sealed record ReductionOptions
         IncludeRouteMap = includeRouteMap;
         PublicApiMode = publicApiMode;
         IncludeProjectGraph = includeProjectGraph;
+        CollapseGeneratedCode = collapseGeneratedCode;
     }
 }

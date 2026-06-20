@@ -493,6 +493,7 @@ public sealed class FuseTools
     /// <param name="query">BM25 query to scope fusion, or <see langword="null" /> to skip query scoping.</param>
     /// <param name="queryTop">Number of top-ranked seed files for query scoping.</param>
     /// <param name="patternSummary">When <see langword="true" />, detect and append a cross-codebase pattern summary.</param>
+    /// <param name="collapseGenerated">When <see langword="true" />, collapse EF Core migration and model-snapshot bodies to signatures.</param>
     /// <param name="maxTokens">Hard token limit at which emission stops, or <see langword="null" /> for unlimited.</param>
     /// <param name="trackTopTokenFiles">When <see langword="true" />, append the top token-consuming files to the trailing stats comment.</param>
     /// <param name="gitStats">When <see langword="true" />, include git churn stats in the manifest.</param>
@@ -531,6 +532,7 @@ public sealed class FuseTools
         [Description("BM25 query to scope fusion.")] string? query = null,
         [Description("Number of top-ranked seed files for query scoping.")] int queryTop = 10,
         [Description("Detect and append pattern summary.")] bool patternSummary = false,
+        [Description("Collapse EF Core migration and model-snapshot bodies to signatures.")] bool collapseGenerated = false,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
         [Description("Include git churn stats in the manifest.")] bool gitStats = false,
@@ -564,6 +566,7 @@ public sealed class FuseTools
                     skeletonMode: skeleton,
                     includeSemanticMarkers: semanticMarkers,
                     includePatternSummary: patternSummary,
+                    collapseGeneratedCode: collapseGenerated,
                     enableRedaction: true));
 
             if (!string.IsNullOrWhiteSpace(focus))

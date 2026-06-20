@@ -73,7 +73,8 @@ public sealed class DotNetCommand : CommandBase
                 includeRedactReport: RedactReport,
                 includeRouteMap: RouteMap,
                 publicApiMode: PublicApi,
-                includeProjectGraph: ProjectGraph));
+                includeProjectGraph: ProjectGraph,
+                collapseGeneratedCode: All || CollapseGenerated));
 
         if (!string.IsNullOrWhiteSpace(Focus))
         {
@@ -202,4 +203,10 @@ public sealed class DotNetCommand : CommandBase
     /// </summary>
     [CliOption(Description = "Detect and append cross-codebase pattern summary to output.")]
     public bool PatternSummary { get; set; } = false;
+
+    /// <summary>
+    ///     Collapse EF Core migration and model-snapshot bodies to their signatures.
+    /// </summary>
+    [CliOption(Description = "Collapse EF Core migration and model-snapshot bodies to signatures (kept structure, dropped generated bodies).")]
+    public bool CollapseGenerated { get; set; } = false;
 }

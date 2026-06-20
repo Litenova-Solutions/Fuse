@@ -24,6 +24,11 @@ public sealed partial class CSharpReducer : IContentReducer
     /// <inheritdoc />
     public string Reduce(string content, ReductionOptions options)
     {
+        // Collapse EF migration and model-snapshot bodies first, so the remaining signatures are then reduced
+        // like any other code.
+        if (options.CollapseGeneratedCode)
+            content = GeneratedCodeCollapser.Collapse(content);
+
         content = RemoveComments(content, options);
         content = RemovePreprocessorDirectives(content, options);
         content = RemoveUsings(content, options);

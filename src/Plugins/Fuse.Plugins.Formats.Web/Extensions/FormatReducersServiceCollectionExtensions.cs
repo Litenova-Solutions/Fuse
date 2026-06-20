@@ -10,8 +10,8 @@ namespace Fuse.Plugins.Formats.Web.Extensions;
 public static class FormatReducersServiceCollectionExtensions
 {
     /// <summary>
-    ///     Registers every markup and configuration format <see cref="IContentReducer" /> (CSS, HTML, JavaScript,
-    ///     JSON, Markdown, Razor, SCSS, XML, and YAML) as singletons.
+    ///     Registers every markup and configuration format <see cref="IContentReducer" /> (CSS, HTML,
+    ///     JavaScript and TypeScript, JSON, Markdown, Razor, SQL, SCSS, XML, and YAML) as singletons.
     /// </summary>
     /// <param name="services">The service collection to add the reducers to.</param>
     /// <returns>The same <paramref name="services" /> instance, to allow call chaining.</returns>
@@ -23,6 +23,7 @@ public static class FormatReducersServiceCollectionExtensions
         services.AddSingleton<IContentReducer, JsonReducer>();
         services.AddSingleton<IContentReducer, MarkdownReducer>();
         services.AddSingleton<IContentReducer, RazorReducer>();
+        services.AddSingleton<IContentReducer, SqlReducer>();
         services.AddSingleton<IContentReducer, ScssReducer>();
         services.AddSingleton<IContentReducer, XmlReducer>();
         services.AddSingleton<IContentReducer, YamlReducer>();

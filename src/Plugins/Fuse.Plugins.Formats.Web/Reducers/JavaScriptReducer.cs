@@ -5,12 +5,15 @@ using System.Text.RegularExpressions;
 namespace Fuse.Plugins.Formats.Web.Reducers;
 
 /// <summary>
-///     Reduces JavaScript files by removing comments and unnecessary whitespace.
+///     Reduces JavaScript and TypeScript files by removing comments and unnecessary whitespace. The same
+///     lexical rules apply across the family (including JSX and TSX) because they share comment and whitespace
+///     syntax; type annotations are treated as ordinary tokens and preserved.
 /// </summary>
 public sealed partial class JavaScriptReducer : IContentReducer
 {
     /// <inheritdoc />
-    public IReadOnlyCollection<string> SupportedExtensions { get; } = [".js"];
+    public IReadOnlyCollection<string> SupportedExtensions { get; } =
+        [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"];
 
     /// <inheritdoc />
     public string Reduce(string content, ReductionOptions options)

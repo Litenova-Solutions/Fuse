@@ -1,0 +1,46 @@
+{
+  "$comment": "Pinned corpus for Fuse benchmark layers 1 and 2. Reproduction: harness clones each repo and checks out the exact commit below. Token counts use the o200k_base encoding (the encoding Fuse uses by default). Ratios transfer across models; absolute token counts do not.",
+  "tokenizer": "o200k_base",
+  "generated": "2026-06-20",
+  "repos": [
+    {
+      "name": "MediatR",
+      "size": "small",
+      "url": "https://github.com/jbogard/MediatR.git",
+      "commit": "1fd25f5beb40aafd6859d9225a37d0c4f5062cfa",
+      "committed": "2026-06-12",
+      "cs_files": 152
+    },
+    {
+      "name": "FluentValidation",
+      "size": "small-mid",
+      "url": "https://github.com/FluentValidation/FluentValidation.git",
+      "commit": "943979089b55664ceb8390547ea1eb84ee99252a",
+      "committed": "2026-06-04",
+      "cs_files": 218
+    },
+    {
+      "name": "AutoMapper",
+      "size": "mid",
+      "url": "https://github.com/AutoMapper/AutoMapper.git",
+      "commit": "fed6e64393a68837896c90128a6a2b9a76eededc",
+      "committed": "2026-06-12",
+      "cs_files": 511
+    },
+    {
+      "name": "NewtonsoftJson",
+      "size": "large",
+      "url": "https://github.com/JamesNK/Newtonsoft.Json.git",
+      "commit": "4f73e74372445108d2c1bda37b36e6f5e43402e0",
+      "committed": "2026-03-18",
+      "cs_files": 945
+    },
+    {
+      "name": "SampleShop",
+      "size": "micro (in-repo)",
+      "local": "tests/fixtures/SampleShop",
+      "note": "In-repo fixture included for ASP.NET route fidelity, which the library repos above do not exercise.",
+      "cs_files": 7
+    }
+  ]
+}

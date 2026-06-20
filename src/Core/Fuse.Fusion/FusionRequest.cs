@@ -23,7 +23,8 @@ public sealed class FusionRequest
         QueryOptions? query = null,
         int parallelism = 0,
         bool useReductionCache = true,
-        bool clearReductionCache = false)
+        bool clearReductionCache = false,
+        bool usePersistentIndex = false)
     {
         Collection = collection;
         Reduction = reduction;
@@ -35,6 +36,7 @@ public sealed class FusionRequest
         Parallelism = parallelism;
         UseReductionCache = useReductionCache;
         ClearReductionCache = clearReductionCache;
+        UsePersistentIndex = usePersistentIndex;
     }
 
     /// <summary>
@@ -86,4 +88,10 @@ public sealed class FusionRequest
     ///     Gets a value indicating whether the reduction cache is cleared before fusion runs.
     /// </summary>
     public bool ClearReductionCache { get; }
+
+    /// <summary>
+    ///     Gets a value indicating whether per-file dependency and symbol analysis is cached in the on-disk
+    ///     index (<c>.fuse/index</c>), so repeated scoping calls reuse it. Off by default.
+    /// </summary>
+    public bool UsePersistentIndex { get; }
 }

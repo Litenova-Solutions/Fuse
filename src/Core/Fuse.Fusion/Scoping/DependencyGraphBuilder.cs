@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Fuse.Fusion.Indexing;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
 using Fuse.Collection.FileSystem;
@@ -53,6 +54,10 @@ public sealed class DependencyGraphBuilder
     /// <param name="typeLocators">Registry of per-extension locators that find defined type names.</param>
     /// <param name="parallelism">Maximum number of files analyzed concurrently.</param>
     /// <param name="cancellationToken">Token used to cancel reads and analysis.</param>
+    /// <param name="index">
+    ///     Optional persistent analysis index. When supplied, each file's referenced and declared types are read
+    ///     from the index on a content-and-tier hit and recomputed and stored on a miss.
+    /// </param>
     /// <returns>The awaited result is the populated dependency graph.</returns>
     public async Task<DependencyGraph> BuildAsync(
         IReadOnlyList<SourceFile> files,
@@ -60,7 +65,8 @@ public sealed class DependencyGraphBuilder
         CapabilityRegistry<IDependencyExtractor> extractors,
         CapabilityRegistry<ITypeNameLocator> typeLocators,
         int parallelism,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IAnalysisIndex? index = null)
     {
         var fileReferences = new ConcurrentDictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
         var declaredTypes = new ConcurrentDictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
@@ -82,13 +88,15 @@ public sealed class DependencyGraphBuilder
             }
 
             var content = await contentProvider.GetContentAsync(file, ct);
-            fileReferences[file.NormalizedRelativePath] = extractor.ExtractReferencedTypes(content);
-
             var locator = typeLocators.TryResolve(file.Extension);
+
+            var analysis = Analyze(content, extractor, locator, index);
+            fileReferences[file.NormalizedRelativePath] = analysis.ReferencedTypes;
+
             if (locator is null)
                 return;
 
-            var defined = locator.ExtractDefinedTypes(content);
+            var defined = analysis.DeclaredTypes;
             declaredTypes[file.NormalizedRelativePath] = defined;
 
             foreach (var typeName in defined)
@@ -126,6 +134,34 @@ public sealed class DependencyGraphBuilder
 
         return new DependencyGraph(orderedReferences, readOnlyTypeIndex, orderedDeclaredTypes, typeReferences);
     }
+
+    // Returns the file's analysis from the index on a hit, or computes and stores it on a miss. The tier tag
+    // distinguishes regex from Roslyn entries for the same content. Declared symbols are computed alongside so a
+    // later relevance-indexing pass over the same index hits as well.
+    internal static FileAnalysis Analyze(
+        string content,
+        IDependencyExtractor extractor,
+        ITypeNameLocator? locator,
+        IAnalysisIndex? index)
+    {
+        if (index is null)
+            return Compute(content, extractor, locator);
+
+        var tier = extractor.GetType().FullName + "|" + (locator?.GetType().FullName ?? "none");
+        var key = AnalysisHasher.Key(content, tier);
+        if (index.TryGet(key, out var cached) && cached is not null)
+            return cached;
+
+        var analysis = Compute(content, extractor, locator);
+        index.Set(key, analysis);
+        return analysis;
+    }
+
+    private static FileAnalysis Compute(string content, IDependencyExtractor extractor, ITypeNameLocator? locator) =>
+        new(
+            extractor.ExtractReferencedTypes(content),
+            locator?.ExtractDefinedTypes(content) ?? [],
+            locator?.ExtractDefinedSymbols(content) ?? []);
 
     private static Dictionary<string, IReadOnlyList<string>> BuildTypeReferences(
         Dictionary<string, IReadOnlyList<string>> fileReferences)

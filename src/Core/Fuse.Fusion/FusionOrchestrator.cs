@@ -147,7 +147,11 @@ public sealed class FusionOrchestrator
             parallelism,
             cancellationToken);
 
-        var filterResult = await FilterFilesAsync(request, collectionResult.Files, parallelism, cancellationToken);
+        var analysisIndex = request.UsePersistentIndex
+            ? new Indexing.DiskAnalysisIndex(request.Collection.SourceDirectory)
+            : null;
+
+        var filterResult = await FilterFilesAsync(request, collectionResult.Files, parallelism, analysisIndex, cancellationToken);
         if (filterResult is null)
             return CreateEmptyChangeResult(request);
 
@@ -372,16 +376,17 @@ public sealed class FusionOrchestrator
         FusionRequest request,
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
+        Indexing.IAnalysisIndex? index,
         CancellationToken cancellationToken)
     {
         if (request.Focus is not null)
-            return await FilterByFocusAsync(request, files, parallelism, cancellationToken);
+            return await FilterByFocusAsync(request, files, parallelism, index, cancellationToken);
 
         if (request.Changes is not null)
-            return await FilterByChangesAsync(request, files, parallelism, cancellationToken);
+            return await FilterByChangesAsync(request, files, parallelism, index, cancellationToken);
 
         if (request.Query is not null)
-            return await FilterByQueryAsync(request, files, parallelism, cancellationToken);
+            return await FilterByQueryAsync(request, files, parallelism, index, cancellationToken);
 
         return new FilteredFileSet(files, null, null);
     }
@@ -390,9 +395,10 @@ public sealed class FusionOrchestrator
         FusionRequest request,
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
+        Indexing.IAnalysisIndex? index,
         CancellationToken cancellationToken)
     {
-        var graph = await BuildGraphAsync(files, parallelism, cancellationToken);
+        var graph = await BuildGraphAsync(files, parallelism, index, cancellationToken);
 
         var seed = request.Focus!.Seed;
         var seedPaths = await _focusSeedResolver.ResolveSeedPathsAsync(
@@ -443,6 +449,7 @@ public sealed class FusionOrchestrator
         FusionRequest request,
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
+        Indexing.IAnalysisIndex? index,
         CancellationToken cancellationToken)
     {
         var documents = new Dictionary<string, IndexedDocument>(StringComparer.OrdinalIgnoreCase);
@@ -450,7 +457,13 @@ public sealed class FusionOrchestrator
         {
             var content = await _contentProvider.GetContentAsync(file, cancellationToken);
             var locator = _typeNameLocators.TryResolve(file.Extension);
-            var symbols = locator?.ExtractDefinedSymbols(content);
+            var extractor = _dependencyExtractors.TryResolve(file.Extension);
+
+            // Reuse the persistent index for the symbol field so the graph build later in this run also hits.
+            var symbols = extractor is not null
+                ? DependencyGraphBuilder.Analyze(content, extractor, locator, index).DeclaredSymbols
+                : locator?.ExtractDefinedSymbols(content);
+
             documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols);
         }
 
@@ -464,7 +477,7 @@ public sealed class FusionOrchestrator
         }
 
         var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
-        var graph = await BuildGraphAsync(files, parallelism, cancellationToken);
+        var graph = await BuildGraphAsync(files, parallelism, index, cancellationToken);
 
         // Query seeds are already content-matched; expand forward to their dependencies for context, but do
         // not follow dependents, which would broaden the set with files that merely use a matched type.
@@ -484,6 +497,7 @@ public sealed class FusionOrchestrator
         FusionRequest request,
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
+        Indexing.IAnalysisIndex? index,
         CancellationToken cancellationToken)
     {
         IReadOnlyList<string> changedPaths;
@@ -518,7 +532,7 @@ public sealed class FusionOrchestrator
 
         if ((request.Changes.IncludeDependents || review) && matchedPaths.Count > 0)
         {
-            var graph = await BuildGraphAsync(files, parallelism, cancellationToken);
+            var graph = await BuildGraphAsync(files, parallelism, index, cancellationToken);
 
             if (review)
             {
@@ -588,6 +602,7 @@ public sealed class FusionOrchestrator
     private Task<DependencyGraph> BuildGraphAsync(
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
+        Indexing.IAnalysisIndex? index,
         CancellationToken cancellationToken) =>
         _dependencyGraphBuilder.BuildAsync(
             files,
@@ -595,7 +610,8 @@ public sealed class FusionOrchestrator
             _dependencyExtractors,
             _typeNameLocators,
             parallelism,
-            cancellationToken);
+            cancellationToken,
+            index);
 
     // Builds the table-of-contents document and writes it as the sole output. Per-file token costs come from
     // the reduced content; the symbol outline is extracted from the original source so it is independent of

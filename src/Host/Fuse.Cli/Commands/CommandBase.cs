@@ -195,7 +195,9 @@ public abstract class CommandBase
             .WithReductionOptions(new ReductionOptions(
                 enableRedaction: !NoRedact,
                 includeRedactReport: RedactReport))
-            .WithReductionCacheOptions(useCache: !NoCache, clearCache: ClearCache);
+            .WithReductionCacheOptions(useCache: !NoCache, clearCache: ClearCache)
+            // Watch mode is a session, so keep the index warm there even without an explicit --index.
+            .WithPersistentIndex(Index || Watch);
 
         if (template.HasValue)
         {
@@ -651,6 +653,13 @@ public abstract class CommandBase
     /// </summary>
     [CliOption(Description = "Clear the .fuse/cache directory before running.")]
     public bool ClearCache { get; set; } = false;
+
+    /// <summary>
+    ///     Cache per-file dependency and symbol analysis in the on-disk index (<c>.fuse/index</c>) so repeated
+    ///     scoped runs reuse it. Pays off across a session and amortizes the cost of the Roslyn precision tier.
+    /// </summary>
+    [CliOption(Description = "Cache dependency/symbol analysis on disk (.fuse/index) to speed up repeated scoped runs.")]
+    public bool Index { get; set; } = false;
 
     /// <summary>
     ///     Re-run fusion when source files change after edits settle.

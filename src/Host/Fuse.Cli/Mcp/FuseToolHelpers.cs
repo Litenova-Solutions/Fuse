@@ -42,6 +42,8 @@ internal static class FuseToolHelpers
             .WithSourceDirectory(resolvedPath)
             .WithTemplate(ProjectTemplate.DotNet)
             .WithInMemory(true)
+            // The MCP server is a session: keep the analysis index warm so repeated calls reuse it.
+            .WithPersistentIndex(true)
             .WithEmissionOptions(new EmissionOptions
             {
                 MaxTokens = null,

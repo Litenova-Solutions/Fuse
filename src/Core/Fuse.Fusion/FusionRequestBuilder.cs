@@ -48,6 +48,7 @@ public sealed class FusionRequestBuilder
     private int _parallelism = Environment.ProcessorCount;
     private bool _useReductionCache = true;
     private bool _clearReductionCache = false;
+    private bool _usePersistentIndex = false;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionRequestBuilder" /> class.
@@ -315,6 +316,17 @@ public sealed class FusionRequestBuilder
     }
 
     /// <summary>
+    ///     Enables or disables the persistent on-disk analysis index (<c>.fuse/index</c>).
+    /// </summary>
+    /// <param name="usePersistentIndex">Whether to cache per-file dependency and symbol analysis on disk.</param>
+    /// <returns>The current builder instance.</returns>
+    public FusionRequestBuilder WithPersistentIndex(bool usePersistentIndex)
+    {
+        _usePersistentIndex = usePersistentIndex;
+        return this;
+    }
+
+    /// <summary>
     ///     Builds the fusion request after resolving extensions and exclusions.
     /// </summary>
     /// <returns>A configured <see cref="FusionRequest" />.</returns>
@@ -348,7 +360,8 @@ public sealed class FusionRequestBuilder
             _queryOptions,
             _parallelism,
             _useReductionCache,
-            _clearReductionCache);
+            _clearReductionCache,
+            _usePersistentIndex);
     }
 
     private CollectionOptions ResolveCollectionOptions()

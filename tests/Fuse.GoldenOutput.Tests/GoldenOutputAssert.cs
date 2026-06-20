@@ -23,6 +23,13 @@ internal static class GoldenOutputAssert
 
         Assert.True(File.Exists(expectedPath), $"Golden file missing: {expectedPath}. Set UPDATE_GOLDEN_FILES=1 to generate.");
         var expected = File.ReadAllText(expectedPath);
-        Assert.Equal(expected, actual);
+
+        // Compare on normalized line endings. The emitter writes LF, but git can rewrite the
+        // committed golden files to CRLF on checkout (autocrlf on Windows runners), which is a
+        // checkout artifact rather than an output difference the golden tests mean to catch.
+        Assert.Equal(NormalizeLineEndings(expected), NormalizeLineEndings(actual));
     }
+
+    private static string NormalizeLineEndings(string text) =>
+        text.Replace("\r\n", "\n").Replace("\r", "\n");
 }

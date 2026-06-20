@@ -62,6 +62,10 @@ The `aot` job in `.github/workflows/ci.yml` validates the AOT path on every chan
 
 This page covers fusion speed and measurement. It does not explain the cache key derivation or invalidation, which live in [Caching Internals](../architecture/caching-internals.md), nor the stage responsibilities of the pipeline, which the [Pipeline](../architecture/pipeline.md) page describes. Installing the `fuse` command is covered in [Installation](../getting-started/installation.md).
 
+## Published Benchmark Results
+
+This page covers the method for timing a single run. For published, reproducible measurements of token reduction, public-API fidelity, and scoping recall over a pinned corpus of real .NET repositories, with a competitor comparison and an account of where Fuse loses, see [Benchmarks](benchmarks.md).
+
 ## Next
 
-Read [Caching Internals](../architecture/caching-internals.md) for how the reduction cache decides what to reuse, or [Pipeline](../architecture/pipeline.md) for the stages that the parallelism and content-provider features apply to.
+Read [Benchmarks](benchmarks.md) for the full results, [Caching Internals](../architecture/caching-internals.md) for how the reduction cache decides what to reuse, or [Pipeline](../architecture/pipeline.md) for the stages that the parallelism and content-provider features apply to.

@@ -225,6 +225,7 @@ Contribution workflow: [Contributing](docs/project/contributing.md). Agent instr
 | [Architecture](docs/architecture/pipeline.md) | Pipeline, capability model, internals |
 | [Extending Fuse](docs/extending/language-plugin.md) | Language plugins, templates, reducers |
 | [Project](docs/project/performance.md) | Performance, roadmap, contributing |
+| [Benchmarks](docs/project/benchmarks.md) | Reproducible token reduction, fidelity, and scoping recall vs raw and Repomix |
 | [CHANGELOG](CHANGELOG.md) | Version history and migration notes |
 
 ## License

@@ -1,0 +1,60 @@
+---
+title: Survey a codebase cheaply
+description: Build a first-pass map of an unfamiliar .NET solution with a table of contents or a signature-only skeleton, for a fraction of the token cost.
+---
+
+**Goal:** understand the shape of an unfamiliar solution, its types, endpoints, and
+layering, without reading the source.
+
+## The cheapest map: a table of contents
+
+```bash
+fuse dotnet --directory ./src --toc
+```
+
+`--toc` emits a directory tree with a per-file symbol outline and token cost, instead of
+file bodies. It is the cheapest first call: on the sample fixture the table of contents
+is 221 tokens against 624 to read every listed file, and the saving grows with file
+count because each file contributes one line plus an outline regardless of its size.
+
+## The architecture map: a skeleton
+
+```bash
+fuse dotnet --directory ./src --skeleton --all --semantic-markers
+```
+
+A **skeleton** keeps class, interface, and method signatures and drops bodies, so the
+type and member surface of the whole solution fits in a fraction of the tokens.
+`--semantic-markers` annotates each type with its kind, the interfaces it implements, and
+the types it depends on.
+
+## Add structural maps
+
+These prepend to the output, so combine them for a layered overview:
+
+```bash
+fuse dotnet --directory ./src --route-map --project-graph --skeleton
+```
+
+- `--route-map` prepends a table of HTTP verb, path, and handler from controllers and
+  minimal API endpoints.
+- `--project-graph` prepends the solution and project reference structure.
+- `--public-api` keeps only public and protected member skeletons, the contract a
+  project presents to consumers.
+
+## What you get
+
+A small, structural payload that opens with the project graph and route map, then the
+skeleton of every type: enough to orient a reader or an agent before any scoped drill-in.
+
+## When to use it
+
+Use a survey at the start of work on a codebase you do not know, or to produce a
+high-level map for review. Follow it with a [scoped fusion](/docs/concepts/scoping) to
+bring detail to the area that matters.
+
+## Related concept
+
+Skeletons sit at the deep end of [Reduction levels](/docs/concepts/reduction-levels); the
+detected conventions in a pattern summary are in
+[Pattern detectors](/docs/reference/pattern-detectors).

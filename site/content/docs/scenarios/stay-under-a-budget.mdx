@@ -1,0 +1,68 @@
+---
+title: Stay under a token budget
+description: Cap a fusion with a hard token limit, split it into parts, or find the files to trim, so the output fits a model's context window.
+---
+
+**Goal:** keep a fusion within a fixed token budget so it fits the context window of the
+model you are feeding.
+
+## Cap with a hard limit
+
+```bash
+fuse dotnet --directory ./src --skeleton --max-tokens 100000
+```
+
+`--max-tokens` stops emission when the running total reaches the limit. In a scoped
+fusion the most relevant files are emitted first, so the files closest to the seed survive
+the cut and the least relevant drop. Use it when the fusion must fit the window and partial
+content is acceptable.
+
+## Split instead of dropping
+
+```bash
+fuse dotnet --directory ./src --all --split-tokens 200000
+```
+
+`--split-tokens` (default 800,000) divides the output into multiple parts when a part would
+exceed the threshold, rather than dropping anything. Use it when you want the whole fusion,
+delivered in pieces a model reads in sequence.
+
+## Find what to trim
+
+```bash
+fuse dotnet --directory ./src --all --track-top-token-files
+```
+
+`--track-top-token-files` reports the largest files after the run, so you know which to
+scope out or reduce further when you are over budget.
+
+## Match the tokenizer to the model
+
+```bash
+fuse dotnet --directory ./src --all --tokenizer o200k_base --max-tokens 150000
+```
+
+A token count is only accurate against the tokenizer that produced it, so set `--tokenizer`
+to match the model the fusion is destined for. Supported names are in
+[Tokenizers](/docs/reference/tokenizers).
+
+## Suggested budgets
+
+| Workflow | Command shape | Budget |
+|----------|---------------|--------|
+| Architecture skeleton | `--skeleton` | 50k to 100k |
+| Focus or query scope | `--focus` or `--query` | 100k to 200k |
+| Change review | `--changed-since` | 50k to 150k |
+| Full reduction | `--all` | 200k to 800k |
+
+## When to use it
+
+Set a budget whenever the fusion is destined for a model with a fixed window or when you
+are capping the cost of a run. `--max-tokens` enforces a ceiling by dropping content;
+`--split-tokens` keeps everything by dividing it.
+
+## Related concept
+
+How parts and budgets are written is in the
+[Output specification](/docs/reference/output-specification); choosing the smallest
+reduction that fits is in [Reduction levels](/docs/concepts/reduction-levels).

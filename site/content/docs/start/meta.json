@@ -1,0 +1,11 @@
+{
+  "title": "Start",
+  "icon": "Rocket",
+  "pages": [
+    "what-is-fuse",
+    "why-fuse",
+    "install",
+    "quickstart",
+    "connect-your-ai"
+  ]
+}

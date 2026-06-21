@@ -1,0 +1,100 @@
+---
+title: Connect to your AI
+description: Start the Fuse MCP server and connect it to Claude Code, Cursor, or GitHub Copilot so your agent fetches scoped context directly.
+---
+
+Fuse runs as a Model Context Protocol (MCP) server. Once connected, your agent gets
+eight tools for surveying a codebase, drilling into a type, scoping to a query or a
+branch, and asking one question, all returning scoped, reduced context in a single
+call.
+
+## Start the server
+
+```bash
+fuse serve
+```
+
+The server communicates over stdio: stdout carries the protocol byte stream, so all
+logging is routed to stderr. Every fusion runs in memory and is returned in the tool
+response; unlike the CLI, the server writes no files. It also keeps an on-disk
+analysis index warm across calls, so a multi-call task pays the analysis cost once.
+
+## Claude Code
+
+Add a `.mcp.json` to your project root:
+
+```json
+{
+  "mcpServers": {
+    "fuse": {
+      "type": "stdio",
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Or register it in one line:
+
+```bash
+claude mcp add fuse --scope project -- fuse serve
+```
+
+## Cursor
+
+Add `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "fuse": {
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+## GitHub Copilot in VS Code
+
+Add `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "fuse": {
+      "type": "stdio",
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+## The eight tools
+
+| Tool | Use it to |
+|------|-----------|
+| `fuse_toc` | Survey a codebase cheaply: a directory tree, symbol outline, and per-file token costs, no bodies. |
+| `fuse_skeleton` | Get a signatures-only architecture map. |
+| `fuse_focus` | Scope to a type, file, or path plus its dependencies and dependents. |
+| `fuse_search` | Scope to the files a query ranks highest, plus dependencies. |
+| `fuse_changes` | Scope to files changed since a git ref, plus dependents, with an optional review map. |
+| `fuse_ask` | Give a task and a token budget; Fuse picks the strategy and packs to budget. |
+| `fuse_dotnet` | Full-control .NET fusion with every option. |
+| `fuse_generic` | Fusion for any template (Python, Go, Rust, and others). |
+
+The full parameter list for each is in the [MCP tools reference](/docs/reference/mcp-tools),
+and the read-only [MCP resources](/docs/reference/mcp-resources) cover the
+`fuse://` URI forms.
+
+## Enable the precision tier
+
+To use the opt-in Roslyn [precision tier](/docs/concepts/precision-tier) for a server
+session, set the `FUSE_SEMANTIC` environment variable before starting `fuse serve`.
+
+## Next
+
+Learn the recommended tool sequence for a real task in
+[Context for an agent on a large codebase](/docs/scenarios/context-for-an-agent).

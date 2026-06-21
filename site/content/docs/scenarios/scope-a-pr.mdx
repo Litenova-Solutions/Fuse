@@ -1,0 +1,46 @@
+---
+title: Scope a pull request
+description: Fuse only the files a branch changed, plus the code most likely to break, with a review map of diffs and callers.
+---
+
+**Goal:** review a branch by fusing just what it changed and the code that depends on it,
+not the whole repository.
+
+## Do it
+
+```bash
+fuse dotnet --directory ./src --changed-since main --include-dependents
+```
+
+The seed is every file changed since `main`. `--include-dependents` (on by default) adds
+the first-degree dependents of each changed file, the code most likely to break from the
+change. The ref can be a branch, a commit, or a relative reference like `HEAD~5`. This
+needs `git` on your PATH.
+
+## Add a review map
+
+```bash
+fuse dotnet --directory ./src --changed-since main --review
+```
+
+`--review` prepends a review map: each changed file's diff hunks paired with its direct
+callers, so a reviewer or an agent sees what changed and who calls it before reading the
+files.
+
+## What you get
+
+A fusion scoped to the change set and its dependents, emitted most-relevant first so the
+changed files survive any token cut. Change scoping is the strongest mode by measurement:
+88 percent recall of the files real merged pull requests touched, at 61 percent precision.
+
+## When to use it
+
+Use this for branch and pull-request review, for understanding the blast radius of a
+change, and for handing an agent exactly the context a code review needs. For the MCP
+equivalent, call `fuse_changes` with `review` set to true.
+
+## Related concept
+
+The git seed and dependent expansion are covered in
+[Scoping](/docs/concepts/scoping); the recall and precision numbers are in
+[Benchmarks](/docs/project/benchmarks).

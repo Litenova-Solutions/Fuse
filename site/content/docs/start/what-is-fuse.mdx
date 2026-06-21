@@ -1,0 +1,80 @@
+---
+title: What is Fuse
+description: Fuse turns a .NET codebase into one token-efficient payload an AI agent reads in a single call, cutting tokens while keeping the public API intact.
+---
+
+You point Fuse at a .NET solution and get back one file: a structured payload that
+holds the whole codebase, reduced for token efficiency, with a manifest at the top
+listing every file and its token cost. An agent reads that one payload instead of
+opening hundreds of files to find its way around.
+
+```bash
+# install once
+dotnet tool install -g Fuse
+
+# fuse a project, keeping the full public API
+fuse dotnet --directory ./src --all
+```
+
+```text
+Fused 511 files
+Estimated tokens: 366,121 (-21.5%)
+cache: 0 hit / 511 miss
+Output: AutoMapper_2026-06-20_366k.txt
+```
+
+That run took 511 C# files down by 21.5 percent and kept 99 percent of public types
+and 100 percent of public methods. The cut is not deletion: the surface an agent
+reads the code for is still there.
+
+## What it does, in one line
+
+Fuse is a .NET-native codebase context optimizer. It collects source files, reduces
+them, and emits one payload an agent or a developer can consume in a single call
+instead of reading thousands of files individually.
+
+A single run is a **fusion**: it takes a source directory and produces one output,
+either a file on disk or an in-memory payload returned to an AI client.
+
+## Why that matters
+
+An AI coding agent spends the start of every task exploring: listing directories,
+searching, and opening file after file to learn which ones are relevant. On a large
+solution that discovery burns most of the context window and many slow round-trips
+before any real work begins. Fuse front-loads that work into one deterministic step
+and hands the agent scoped, reduced context that fits the window.
+
+## Reduction without losing the surface
+
+Across a commit-pinned corpus of real .NET libraries, the default and `--all`
+reductions cut 7 to 40 percent of tokens while keeping 99 to 100 percent of public
+types and methods. Skeleton mode, which keeps signatures and drops bodies, cuts 66
+to 93 percent for an architecture-level survey.
+
+![Fuse benchmark results: token reduction and public API fidelity by mode across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json.](/fuse-benchmarks.png)
+
+Every number comes from a harness anyone can rerun against the same pinned commits.
+See [Benchmarks](/docs/project/benchmarks) for the method and the full results,
+including where Fuse loses.
+
+## Two ways to run it
+
+Fuse ships from one package in two forms:
+
+- The **`fuse` global tool** writes a fusion to a file from your terminal. Start at
+  the [Quickstart](/docs/start/quickstart).
+- The **`fuse serve` MCP server** exposes eight tools to an AI client such as Claude
+  Code, Cursor, or GitHub Copilot, so the agent requests scoped context directly.
+  See [Connect to your AI](/docs/start/connect-your-ai).
+
+## What it is not
+
+Fuse is not a generic file packer that concatenates text, and it is not an embedding
+index that returns fuzzy chunks. It understands C# structure, preserves the public
+API, and produces the same output for the same input. The
+[Why Fuse](/docs/start/why-fuse) page covers the landscape and the trade-offs in full.
+
+## Next
+
+Install the tool on the [Install](/docs/start/install) page, then run your first
+fusion in the [Quickstart](/docs/start/quickstart).

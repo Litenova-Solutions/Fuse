@@ -1,0 +1,24 @@
+---
+title: Changelog
+description: Where to find the full version history and migration notes for Fuse.
+---
+
+The complete version history and migration notes live in the CHANGELOG.md file at the repository root. This page points to that file and names the most recent notable change. The changelog records what has shipped; planned work is described separately on the [Roadmap](/docs/project/roadmap).
+
+This page is for anyone checking what changed between versions or migrating an existing setup.
+
+## Where The History Lives
+
+The repository CHANGELOG.md file documents every notable change by version, including breaking changes, additions, and a migration table for moving between major versions. Read it there rather than here so the history stays in one place alongside the source.
+
+## Most Recent Notable Change
+
+Fuse 2.0 is a structural rewrite. It replaces the monolithic layers with an axis-based layout split into Core pipeline libraries, a Host for the CLI and MCP server, and language plugins. Backward compatibility with 1.x output is not a goal; the changelog includes a migration table covering the MCP tool changes, the default tokenizer change to `o200k_base`, the manifest header, and secret redaction now defaulting on.
+
+## What This Does Not Cover
+
+This page does not reproduce the version history or the migration steps. The repository CHANGELOG.md file holds both. Planned and unshipped work is on the [Roadmap](/docs/project/roadmap), not in the changelog.
+
+## Next
+
+Read the [Roadmap](/docs/project/roadmap) for the planned direction, or [Contributing](/docs/project/contributing) to build a change that would appear in a future entry.

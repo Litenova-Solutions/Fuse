@@ -1,0 +1,46 @@
+---
+title: Contributing
+description: How to build, test, and format Fuse, the project layout, and where to add new behavior.
+---
+
+Fuse is a .NET 10 solution organized into pipeline libraries, a host, and language plugins. Contributing means working within those boundaries: a change belongs to one part of the pipeline, and the build verifies formatting and tests on every pull request. This page covers the commands you run, the layout you work in, and where to add a new language.
+
+This page is for engineers making their first change to Fuse and maintainers reviewing one. A reader who only needs the command list can read Build, Test, And Format and stop.
+
+## Build, Test, And Format
+
+The solution is defined in `Fuse.slnx`. Three commands cover the local loop, and the build verifies all three on every pull request:
+
+```bash
+dotnet build Fuse.slnx -c Release
+dotnet test Fuse.slnx -c Release --no-build
+dotnet format Fuse.slnx --verify-no-changes
+```
+
+The build compiles in Release configuration. The test run uses `--no-build` so it reuses the build output rather than recompiling; run the build first. The format check verifies that no file needs reformatting and fails if any does. To apply formatting fixes rather than verify, run `dotnet format Fuse.slnx` without the flag. On Windows, `install.bat` builds, packs, and installs the global tool locally for manual testing.
+
+The build enforces public XML documentation. Non-test projects generate a documentation file, so a missing `public` or `protected` XML comment produces compiler warning CS1591. Do not add new CS1591 warnings in a pull request.
+
+## Project Layout
+
+Fuse separates concerns along the pipeline. A change should touch one part and respect the boundaries between them.
+
+| Part | Holds | Examples |
+|------|-------|----------|
+| Core | The pipeline libraries: collection, reduction, emission, and the fusion orchestration that drives them | `Fuse.Collection`, `Fuse.Reduction`, `Fuse.Emission`, `Fuse.Fusion` |
+| Host | The user-facing surfaces: the CLI commands and the MCP server | `Fuse.Cli` commands, `Fuse.Cli` MCP tools |
+| Plugins | Language and format behavior registered into the core pipeline | `Fuse.Plugins.Languages.CSharp`, `Fuse.Plugins.Formats.Web` |
+
+The core libraries do not depend on the host, and language-specific behavior lives in plugins rather than in the core pipeline. Services are registered through `AddFuse()`; filter registration order equals filter evaluation order. Read the [Pipeline](/docs/internals/pipeline) page before making structural changes.
+
+## How To Extend
+
+Support for a language is a matter of registering its plugin, so adding one does not require changes to the core pipeline. The [Language Plugin guide](/docs/internals/extending/language-plugin) gives the step-by-step process for adding a reducer, skeleton extractor, and the other capabilities a language plugin provides.
+
+## What This Does Not Cover
+
+This page covers the contribution workflow and layout. It does not restate the C# conventions, the XML documentation standard, or the dependency injection lifetimes in full; those live in the repository contributing guide and AGENTS.md. The performance and AOT build steps are covered in [Performance and Benchmarking](/docs/project/performance).
+
+## Next
+
+Read the [Language Plugin guide](/docs/internals/extending/language-plugin) to add a language, or [Performance and Benchmarking](/docs/project/performance) for the AOT publish and benchmark steps.

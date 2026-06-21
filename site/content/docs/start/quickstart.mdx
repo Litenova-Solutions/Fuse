@@ -1,0 +1,95 @@
+---
+title: Quickstart
+description: Run Fuse against a .NET project, read the output it produces, and find the generated file, in about 30 seconds.
+---
+
+This walks you from an installed tool to a fused payload you can read. If you have
+not installed Fuse yet, see [Install](/docs/start/install).
+
+## Run one command
+
+Point Fuse at a .NET source directory:
+
+```bash
+fuse dotnet --directory ./src
+```
+
+The `dotnet` command selects the file extensions and exclusions appropriate for a
+.NET solution (C#, project files, Razor, configuration) and applies C# reduction.
+
+## Read what it prints
+
+When the run finishes, Fuse reports the shape of the result:
+
+```text
+Fused 511 files
+Estimated tokens: 420,320 (-9.8%)
+cache: 0 hit / 511 miss
+Output: AutoMapper_2026-06-20_0130_420k.txt
+```
+
+It tells you the number of files included, the estimated token count and how much
+that cut from raw concatenation, the reduction cache split as `cache: N hit / M miss`,
+and where the file was written. By default the output goes to a `Fuse` folder inside
+your Documents directory, and the file name ends with a token estimate such as `420k`.
+
+## Look inside the output
+
+The file opens with a **manifest**: a header that lists every included file with its
+token cost, so a reader or an agent can judge the shape and cost of the fusion before
+reading any file body. After the manifest, each file appears as an entry. In the
+default XML format an entry looks like this:
+
+```xml
+<file path="src/Services/OrderService.cs">
+public class OrderService { }
+</file>
+```
+
+Files are ordered largest first by token count, so the most expensive content is at
+the top.
+
+## Choose how much to reduce
+
+The default run does light, lossless cleanup. To cut more while keeping the public
+API, add `--all`:
+
+```bash
+fuse dotnet --directory ./src --all
+```
+
+For an architecture-level survey, drop method bodies to signatures with a
+**skeleton**, which typically runs 66 to 93 percent smaller than a full fusion:
+
+```bash
+fuse dotnet --directory ./src --all --skeleton
+```
+
+The [Reduction levels](/docs/concepts/reduction-levels) concept page explains each
+step, and [Cut tokens for .NET](/docs/scenarios/cut-tokens-dotnet) is the task-shaped
+version of this.
+
+## Control the output
+
+Name the file and choose where it lands:
+
+```bash
+fuse dotnet --directory ./src --output ./context --name myproject
+```
+
+## Set project defaults
+
+To avoid repeating flags, write a configuration file once:
+
+```bash
+fuse init
+```
+
+This scaffolds a `fuse.json` you can edit. See
+[Configuration keys](/docs/reference/configuration-keys) for every supported key.
+
+## Next
+
+Hand the output to an agent automatically with the
+[MCP server](/docs/start/connect-your-ai), or learn the model behind a run in
+[How Fuse works](/docs/concepts/how-fuse-works).

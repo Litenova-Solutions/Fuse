@@ -1,0 +1,120 @@
+---
+title: Why Fuse, and how it compares
+description: The problem agentic coding tools hit on large codebases, what generic packers and RAG indexers do and where they fall short, and what Fuse does differently.
+---
+
+Most tools that feed code to a language model fall into two camps: packers that dump
+the repository as text, and retrieval indexes that return fuzzy chunks. Fuse is
+neither. It is a structural, .NET-aware optimizer that cuts tokens while keeping the
+public API intact. This page explains the problem, the landscape, and the trade-offs.
+
+## The problem: the explore phase
+
+An agentic coding tool such as Claude Code, Cursor, or GitHub Copilot does not start
+by editing. It starts by exploring. To make a safe change it first has to learn the
+codebase: which files exist, which types matter, what calls what. So it lists
+directories, runs searches, and opens files one at a time, reading each result into
+its context window before deciding what to open next.
+
+On a small project that is cheap. On a solution with hundreds or thousands of C#
+files it is the expensive part of the task:
+
+- **Token cost.** Every file the agent opens to orient itself consumes context window
+  it could have spent on the actual change. Much of that content is comments, using
+  directives, and boilerplate the agent does not need to reason about structure.
+- **Round-trips.** Discovery is sequential. The agent reads, decides, reads again.
+  Each hop is a model call with latency, and the agent often re-reads files it
+  already saw because nothing kept a compact map of the codebase.
+- **Lost structure.** Reading files in isolation, the agent has to reconstruct the
+  dependency relationships, the public surface, and the endpoints by hand.
+
+Illustrative: an explore loop that takes ten minutes and tens of thousands of tokens
+of file reads can collapse to about a minute when the agent is handed one scoped,
+reduced payload up front. That figure is a theory-grounded illustration of the
+mechanism, not a benchmark; the measured numbers on this site are labeled as such and
+sourced to the harness.
+
+## The landscape
+
+### Generic repository packers
+
+Tools such as Repomix, Code2Prompt, and Gitingest concatenate a repository into one
+text blob with a header and per-file separators. They are language-agnostic and easy
+to run, which is their strength.
+
+Their limit for code structure is that they treat source as plain text. They do not
+know what a C# type or a method signature is, so they cannot reduce by structure,
+cannot preserve the public API while dropping noise, and cannot scope to the files a
+task touches. The envelope they add often makes the output larger than raw
+concatenation: on the benchmark corpus, Repomix output measured 1.3 to 3.9 percent
+larger than the raw files, while Fuse default was smaller than both.
+
+### RAG and embedding indexers
+
+Retrieval-augmented generation indexes a codebase into vector embeddings and returns
+the chunks most similar to a query. This is useful for open-ended search across a
+very large corpus and for natural-language questions.
+
+Its limits for code are structural. Embeddings return ranked chunks, not whole types
+or a faithful public surface, so recall is partial and the result is non-deterministic:
+the same query can return different chunks as the index or model changes. A chunk
+boundary can split a method from its signature. And the index has to be built and
+kept fresh, which adds infrastructure. RAG answers "what looks similar to this
+text"; it does not answer "give me this type and everything it depends on, intact".
+
+## What Fuse does differently
+
+Fuse is built specifically for the explore phase on a .NET codebase, and it makes a
+different set of choices:
+
+- **Structural.** It parses C# enough to reduce by structure: remove comments,
+  usings, namespaces, and whitespace, or drop method bodies to leave a signature-only
+  **skeleton**. The output represents the same source in fewer tokens.
+- **.NET-aware.** It knows project files, Razor, and configuration, excludes test
+  and generated files by default, and can map ASP.NET routes and project references.
+- **Fidelity-preserving.** Reduction is not deletion. An independent Roslyn oracle
+  confirms the default and `--all` modes keep 99 to 100 percent of public types and
+  methods, and `fuse verify` reports the preserved surface for any run.
+- **Deterministic.** Same input, same output. No similarity ranking in the default
+  path, no index drift. The default path uses no runtime reflection and ships as a
+  Native AOT binary.
+- **Scoped, not fuzzy.** Scope a fusion to a type and its dependencies, the files a
+  git diff touched, or the files a query ranks highest, expanded through a dependency
+  graph, so the agent gets the relevant neighborhood whole rather than ranked chunks.
+- **MCP-native.** `fuse serve` is a Model Context Protocol server with eight tools,
+  so the agent fetches scoped context in one call instead of reading files
+  one by one.
+- **Round-trip-cutting.** A survey, a scoped drill-in, and a change review each
+  replace a sequence of read-decide-read hops with a single structured response.
+
+## How it compares
+
+| Capability | Generic packers | RAG / embeddings | Fuse |
+|------------|-----------------|------------------|------|
+| Understands C# structure | No, plain text | No, opaque chunks | Yes, types and signatures |
+| Cuts tokens vs raw | Often larger than raw | Per chunk only | 7 to 40 percent at full API fidelity |
+| Keeps the whole public API | Only by including everything | No, partial recall | 99 to 100 percent, verified |
+| Deterministic output | Yes | No, similarity-ranked | Yes |
+| Scope to a task | No | By query only | Type, git change, or query, with graph expansion |
+| Built for agents (MCP) | Rarely | Varies | Eight tools, built in |
+| Setup and freshness | None | Build and refresh an index | None, runs on demand |
+
+Fuse is complementary to the other two where their strengths lie. For a polyglot
+repository a generic packer is simpler, and for open-ended semantic search across a
+huge corpus an embedding index has its place. For giving a .NET agent the right code
+with the API intact and the tokens cut, Fuse is purpose-built.
+
+## Honest boundaries
+
+The default dependency graph is regex-based and best-effort: it can miss edges that
+come from dynamic dispatch or reflection, and it collapses on codebases with heavy
+conditional compilation, where the opt-in [precision tier](/docs/concepts/precision-tier)
+swaps in Roslyn. Query and focus scoping rest on a lexical index, so a query that
+shares no vocabulary with the target file can miss. The
+[Benchmarks](/docs/project/benchmarks) page reports exactly where Fuse ties or loses,
+not only where it wins.
+
+## Next
+
+See the measured results on the [Benchmarks](/docs/project/benchmarks) page, or
+[install Fuse](/docs/start/install) and try it on your own solution.

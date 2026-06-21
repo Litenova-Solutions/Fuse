@@ -1,0 +1,11 @@
+{
+  "title": "Project",
+  "icon": "FolderGit2",
+  "pages": [
+    "benchmarks",
+    "performance",
+    "roadmap",
+    "changelog",
+    "contributing"
+  ]
+}

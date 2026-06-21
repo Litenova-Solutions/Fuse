@@ -1,0 +1,12 @@
+{
+  "title": "Internals & Extending",
+  "icon": "Cog",
+  "pages": [
+    "pipeline",
+    "capability-model",
+    "scoping-internals",
+    "caching-internals",
+    "options-model",
+    "extending"
+  ]
+}

@@ -1,0 +1,45 @@
+---
+title: Ask one question
+description: Give Fuse a task and a token budget and let it choose the scoping strategy and pack context to fit, in one MCP call.
+---
+
+**Goal:** get the right context for a task without first deciding whether to survey,
+focus, or search. Hand Fuse the task and a budget; it picks the strategy.
+
+This is the `fuse_ask` MCP tool. It collapses the survey-then-scope sequence into a
+single call.
+
+## Do it
+
+```text
+fuse_ask(
+  path="C:/Projects/MyApp/src",
+  task="where is the discount applied at checkout?",
+  tokenBudget=20000
+)
+```
+
+## How it chooses
+
+Fuse reads the task text and picks a strategy:
+
+- A broad question (architecture, overview) becomes a **skeleton**.
+- A task naming one type becomes a **focus** on that type.
+- Anything else becomes a **search**.
+
+Focus falls back to search when the named type does not resolve. The result is prefixed
+with a one-line note saying which strategy it chose, so the agent knows how the context
+was assembled, and it is packed to the `tokenBudget` (default 20,000).
+
+## When to use it
+
+Use `fuse_ask` as the default first call for an agent that has a task in natural language
+but does not yet know the codebase. Use the specific tools (`fuse_skeleton`,
+`fuse_focus`, `fuse_search`, `fuse_changes`) when you already know which strategy you
+want and want to control its parameters. The progressive flow is in
+[Context for an agent](/docs/scenarios/context-for-an-agent).
+
+## Related concept
+
+The strategies it chooses among are the modes in [Scoping](/docs/concepts/scoping); the
+full parameter list is in the [MCP tools reference](/docs/reference/mcp-tools).

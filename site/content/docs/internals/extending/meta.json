@@ -1,0 +1,10 @@
+{
+  "title": "Extending",
+  "pages": [
+    "index",
+    "language-plugin",
+    "format-reducer",
+    "pattern-detector",
+    "template"
+  ]
+}

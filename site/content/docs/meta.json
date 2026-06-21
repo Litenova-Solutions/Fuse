@@ -1,0 +1,11 @@
+{
+  "pages": [
+    "index",
+    "start",
+    "scenarios",
+    "concepts",
+    "reference",
+    "internals",
+    "project"
+  ]
+}

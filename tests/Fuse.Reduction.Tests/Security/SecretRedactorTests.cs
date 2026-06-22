@@ -106,6 +106,48 @@ public sealed class SecretRedactorTests
     }
 
     [Fact]
+    public void Redact_SecretInsideCodeLiteral_IncrementsCodeLiteralCount()
+    {
+        const string input = "var key = \"AKIAIOSFODNN7EXAMPLE\";";
+        var result = _redactor.Redact(input, classifyCodeLiterals: true);
+
+        Assert.True(result.TotalCount >= 1);
+        Assert.True(result.CodeLiteralRedactions >= 1);
+    }
+
+    [Fact]
+    public void Redact_WithoutClassification_ReportsZeroCodeLiteralModifications()
+    {
+        // A config-file redaction (classification off) does not count as a code-literal modification.
+        const string input = "var key = \"AKIAIOSFODNN7EXAMPLE\";";
+        var result = _redactor.Redact(input, classifyCodeLiterals: false);
+
+        Assert.True(result.TotalCount >= 1);
+        Assert.Equal(0, result.CodeLiteralRedactions);
+    }
+
+    [Fact]
+    public void Redact_ConnectionStringLiteralInCode_IsClassifiedAsCodeLiteral()
+    {
+        const string input = "var cs = \"Server=db;Database=app;User ID=sa;Password=secret\";";
+        var result = _redactor.Redact(input, classifyCodeLiterals: true);
+
+        Assert.Equal(1, result.CountsByKind["connection-string"]);
+        Assert.Equal(1, result.CodeLiteralRedactions);
+    }
+
+    [Fact]
+    public void Redact_CodeLiteralCount_ExcludedFromTotalCount()
+    {
+        const string input = "var key = \"AKIAIOSFODNN7EXAMPLE\";";
+        var classified = _redactor.Redact(input, classifyCodeLiterals: true);
+        var plain = _redactor.Redact(input, classifyCodeLiterals: false);
+
+        // The classification must not inflate the secret total.
+        Assert.Equal(plain.TotalCount, classified.TotalCount);
+    }
+
+    [Fact]
     public void Redact_SampleShopCSharpFiles_ProduceNoConnectionStringFalsePositives()
     {
         // Fidelity guard: real connection strings in SampleShop live in appsettings.json, never in .cs code.

@@ -146,9 +146,10 @@ public sealed class ContentReductionPipeline
                 IReadOnlyDictionary<string, int>? redactionCounts = null;
                 if (options.EnableRedaction)
                 {
-                    var redaction = _secretRedactor.Redact(content);
+                    var isCSharp = string.Equals(item.file.Extension, ".cs", StringComparison.OrdinalIgnoreCase);
+                    var redaction = _secretRedactor.Redact(content, classifyCodeLiterals: isCSharp);
                     content = redaction.Content;
-                    if (redaction.TotalCount > 0)
+                    if (redaction.CountsByKind.Count > 0)
                         redactionCounts = redaction.CountsByKind;
                 }
 

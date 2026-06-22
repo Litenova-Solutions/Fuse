@@ -55,6 +55,22 @@ public sealed class FusionOrchestrator
     private readonly Enrichment.BoilerplateDeduplicator _boilerplateDeduplicator;
     private readonly Session.ISessionTracker _sessionTracker;
 
+    // Weight blended into seed/expansion scores from the query-independent graph-centrality prior, so at equal
+    // relevance the more depended-upon file ranks earlier. Conservative default; FUSE_CENTRALITY_WEIGHT=0
+    // disables it and reproduces the pre-centrality ordering exactly.
+    private static readonly double CentralityWeight = ResolveCentralityWeight();
+
+    private static double ResolveCentralityWeight()
+    {
+        var raw = Environment.GetEnvironmentVariable("FUSE_CENTRALITY_WEIGHT");
+        if (!string.IsNullOrWhiteSpace(raw) &&
+            double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var w) &&
+            w >= 0)
+            return w;
+
+        return 0.15;
+    }
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionOrchestrator" /> class.
     /// </summary>
@@ -449,7 +465,9 @@ public sealed class FusionOrchestrator
             FollowReferences: true,
             FollowDependents: true,
             TokenBudget: request.Emission.MaxTokens,
-            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens));
+            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens),
+            Centrality: GraphCentrality.Compute(graph),
+            CentralityWeight: CentralityWeight);
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
@@ -505,7 +523,9 @@ public sealed class FusionOrchestrator
             FollowReferences: true,
             FollowDependents: false,
             TokenBudget: request.Emission.MaxTokens,
-            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens));
+            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens),
+            Centrality: GraphCentrality.Compute(graph),
+            CentralityWeight: CentralityWeight);
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();

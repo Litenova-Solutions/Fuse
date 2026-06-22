@@ -45,6 +45,31 @@ public sealed class RegexApiSurfaceAnalyzerTests
     }
 }
 
+public sealed class ApiSurfaceAnalyzerFactoryTests
+{
+    [Fact]
+    public void Create_ReturnsNonNullAnalyzer()
+    {
+        Assert.NotNull(ApiSurfaceAnalyzerFactory.Create());
+    }
+
+    [Fact]
+    public void BackendName_IsRegexOrRoslyn()
+    {
+        // The backend is selected at compile time by the FUSE_ROSLYN constant: "roslyn" for the
+        // framework-dependent build, "regex" for the AOT build. Both are valid; assert it is one of them.
+        Assert.True(ApiSurfaceAnalyzerFactory.BackendName is "regex" or "roslyn");
+    }
+
+    [Fact]
+    public void BackendName_MatchesAnalyzerImplementation()
+    {
+        var analyzer = ApiSurfaceAnalyzerFactory.Create();
+        var expectedRegex = ApiSurfaceAnalyzerFactory.BackendName == "regex";
+        Assert.Equal(expectedRegex, analyzer is RegexApiSurfaceAnalyzer);
+    }
+}
+
 public sealed class ApiSurfaceVerifierTests
 {
     [Fact]

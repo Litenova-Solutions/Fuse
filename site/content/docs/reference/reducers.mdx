@@ -51,6 +51,8 @@ Aggressive mode, enabled with `--aggressive`, runs the standard removals and the
 - Rewrites auto-properties to compact form, for example `{ get; set; }` becomes `{get;set;}`.
 - Collapses whitespace around delimiters such as `{ } ; , : ( ) = [ ]`, while preserving the contents of string literals through placeholder substitution so literal text is never altered.
 
+Every string and character literal, including raw string literals (`"""..."""`, the four-quote form, and interpolated raw strings `$"""..."""`), is masked behind a placeholder before any removal or whitespace pass runs, then restored verbatim. Embedded JSON, SQL, and templates inside a literal survive reduction byte-identical at all levels, and a `//` or `/* */` sequence inside a raw string is never mistaken for a comment.
+
 Aggressive mode maximizes token savings but produces output that is no longer guaranteed to compile. The `--all` flag enables the full standard removal set together with aggressive mode in one switch.
 
 ## What This Does Not Cover

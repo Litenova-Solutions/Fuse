@@ -63,12 +63,30 @@ foreach ($rid in $Rids) {
     <tags>fuse;nativeaot;dotnet-tool</tags>
   </metadata>
   <files>
-    <file src="tools/**" target="tools" />
+    <file src="tools/**" target="" />
   </files>
 </package>
 "@ | Set-Content -Path $nuspecPath -Encoding UTF8
 
-    dotnet nuget pack $nuspecPath -OutputDirectory $outputDir -NoDefaultExcludes
+    # `dotnet nuget` has no `pack` verb. Pack the nuspec through a stub SDK
+    # project that points at it, which works with only the .NET SDK present
+    # (no nuget.exe) on Windows and Linux alike.
+    $stubProject = Join-Path $stageDir "$runtimePackageId.pack.csproj"
+    @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NuspecFile>$runtimePackageId.nuspec</NuspecFile>
+    <NuspecBasePath>$stageDir</NuspecBasePath>
+  </PropertyGroup>
+</Project>
+"@ | Set-Content -Path $stubProject -Encoding UTF8
+
+    dotnet pack $stubProject --configuration Release --output $outputDir
+    if ($LASTEXITCODE -ne 0) { throw "Packing $runtimePackageId failed." }
     Write-Host "Packed $runtimePackageId to $outputDir"
 }
 

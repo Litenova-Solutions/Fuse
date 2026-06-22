@@ -28,10 +28,10 @@ The core libraries do not depend on the host, and language-specific behavior liv
 
 ## Where to read more
 
-- [docs/project/contributing.md](docs/project/contributing.md): the full contribution workflow and project layout.
+- [fuse.codes/docs/project/contributing](https://fuse.codes/docs/project/contributing): the full contribution workflow and project layout.
 - [AGENTS.md](AGENTS.md): the documentation and code-comment standard.
-- [docs/architecture/index.md](docs/architecture/index.md): how the pipeline fits together.
-- [docs/extending/language-plugin.md](docs/extending/language-plugin.md): adding a new language.
+- [fuse.codes/docs/internals/pipeline](https://fuse.codes/docs/internals/pipeline): how the pipeline fits together.
+- [fuse.codes/docs/internals/extending/language-plugin](https://fuse.codes/docs/internals/extending/language-plugin): adding a new language.
 - [ROADMAP.md](ROADMAP.md): planned direction, if you want to pick up a larger item.
 
 ## Pull requests

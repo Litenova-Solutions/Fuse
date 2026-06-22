@@ -2,7 +2,7 @@
 
 Planned and desired features, ranked by impact on agent efficiency. Each item names its primary lever: accuracy, token cost, or round-trips. This document states intent, not commitment. Shipped work moves to the [CHANGELOG](CHANGELOG.md).
 
-Architecture context for these items: [docs/architecture/index.md](docs/architecture/index.md).
+Architecture context for these items: [fuse.codes/docs/internals/pipeline](https://fuse.codes/docs/internals/pipeline).
 
 ## Recently shipped
 
@@ -30,7 +30,7 @@ Extend [tests/benchmarks](tests/benchmarks) into a published, reproducible bench
 - **Layer 2, scoping recall (built):** from real merged PRs, take changed-file sets as ground truth and measure recall at a token budget and precision for focus, query, and changes against a grep baseline, plus a single-turn localization task.
 - **Layer 3, task resolution (aspirational):** a SWE-bench-style .NET harness (issue, agent patch, `dotnet test` oracle) driving a pinned programmatic agent across arms. The only end-to-end efficacy proof, but confounded, expensive, and scaffold-specific, so it is directional evidence rather than universal proof.
 
-Remaining work on the built layers: fold the precision-tier skeleton fidelity into the harness as a permanent arm (the figures are recorded in [benchmarks.md](docs/project/benchmarks.md) from a manual run over the same mirrors, where the Roslyn skeleton lifts Newtonsoft.Json method fidelity from 4 to 100 percent), and add a TypeScript or SQL repository to the corpus to confirm a cross-language reduction ratio.
+Remaining work on the built layers: fold the precision-tier skeleton fidelity into the harness as a permanent arm (the figures are recorded on [the benchmarks page](https://fuse.codes/docs/project/benchmarks) from a manual run over the same mirrors, where the Roslyn skeleton lifts Newtonsoft.Json method fidelity from 4 to 100 percent), and add a TypeScript or SQL repository to the corpus to confirm a cross-language reduction ratio.
 
 Honesty rules across all layers: never fabricate numbers, open-source the harness and corpus manifest, make every layer reproducible with one command, report arms where Fuse ties or loses, and state that reduction ratios transfer across models even though absolute token counts do not.
 

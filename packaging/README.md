@@ -26,7 +26,7 @@ SDK or runtime. The install scripts download those same release assets.
 2. Push a tag, for example `git tag v2.0.0 && git push origin v2.0.0`.
 3. The three tag workflows run: NuGet push, the GitHub Release with assets, and
    the MCP Registry publish. The MCP publish validates the NuGet package and the
-   `mcp-name: io.github.litenova-solutions/fuse` marker in the packed README, so
+   `mcp-name: io.github.Litenova-Solutions/fuse` marker in the packed README, so
    it depends on the NuGet push having succeeded.
 4. The install scripts need no per-release change: they resolve the latest release
    (or `FUSE_VERSION`) and verify against `SHA256SUMS.txt` at install time.

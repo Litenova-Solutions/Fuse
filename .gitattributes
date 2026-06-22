@@ -2,3 +2,7 @@
 # Pin them to LF so a CRLF-rewriting checkout (autocrlf on Windows) cannot break the
 # golden tests. The normalization in GoldenOutputAssert is a second safety net.
 *.golden text eol=lf
+
+# The shell installer is piped straight into sh; it must stay LF even when
+# checked out on Windows, or the shebang and script break.
+*.sh text eol=lf

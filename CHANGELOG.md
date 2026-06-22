@@ -4,7 +4,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [2.0.0]
 
-Fuse 2.0 replaces the monolithic 1.x engine with axis-based projects and adds a Roslyn precision tier, hybrid retrieval, survey and round-trip tools, and a reproducible benchmark suite. Every measured figure below comes from the benchmark harness over the pinned corpus, counted with `o200k_base`; see [benchmarks.md](docs/project/benchmarks.md). The precision tier and the survey, round-trip, and retrieval-rerank features are opt-in and do not change the default reduction or scoping path, so the default Layer 1 reduction and fidelity and the Layer 2 recall and precision are stable across runs.
+Fuse 2.0 replaces the monolithic 1.x engine with axis-based projects and adds a Roslyn precision tier, hybrid retrieval, survey and round-trip tools, and a reproducible benchmark suite. Every measured figure below comes from the benchmark harness over the pinned corpus, counted with `o200k_base`; see [the benchmarks page](https://fuse.codes/docs/project/benchmarks). The precision tier and the survey, round-trip, and retrieval-rerank features are opt-in and do not change the default reduction or scoping path, so the default Layer 1 reduction and fidelity and the Layer 2 recall and precision are stable across runs.
 
 ### Breaking changes
 
@@ -82,7 +82,7 @@ Fuse 2.0 replaces the monolithic 1.x engine with axis-based projects and adds a 
 - Watch mode for iterative fusion (`--watch`; disabled under MCP stdio).
 - Token counting via `Microsoft.ML.Tokenizers` (`o200k_base`, `cl100k_base`).
 - Source-generated JSON for config and JSON output (AOT and trim safe).
-- Native AOT publish profiles and `Fuse.Runtime.{rid}` satellite packages; see [performance.md](docs/project/performance.md).
+- Native AOT publish profiles and `Fuse.Runtime.{rid}` satellite packages; see [the performance page](https://fuse.codes/docs/project/performance).
 - Windows installer ships an AOT-compiled `fuse.exe`.
 
 ### Fixed
@@ -94,7 +94,7 @@ Fuse 2.0 replaces the monolithic 1.x engine with axis-based projects and adds a 
 
 | Area | 1.x behavior | 2.0 behavior | Action |
 |------|--------------|--------------|--------|
-| MCP tool | `get_optimized_context` | Eight focused tools (see [tools reference](docs/agent-integration/tools.md)) | Update agent prompts and MCP config |
+| MCP tool | `get_optimized_context` | Eight focused tools (see [MCP tools reference](https://fuse.codes/docs/reference/mcp-tools)) | Update agent prompts and MCP config |
 | Token counts | `cl100k_base` | `o200k_base` default | Re-baseline `--max-tokens` budgets, or pass `--tokenizer cl100k_base` |
 | Output prefix | None | Manifest header | Use `--no-manifest` if agents expect raw file blocks only |
 | Secrets | Passed through | Redacted by default | Use `--no-redact` only when secrets are intentional test fixtures |
@@ -108,4 +108,4 @@ If your workflow depended on exact 1.x byte output, pin the 1.x tool version or 
 fuse dotnet --directory ./src --no-manifest --no-redact --tokenizer cl100k_base
 ```
 
-For MCP agents, replace single-tool calls with the recommended workflow: survey with `fuse_toc` or `fuse_skeleton`, then `fuse_focus` or `fuse_search`, then `fuse_changes` for PR review. See [agent workflows](docs/agent-integration/workflows.md).
+For MCP agents, replace single-tool calls with the recommended workflow: survey with `fuse_toc` or `fuse_skeleton`, then `fuse_focus` or `fuse_search`, then `fuse_changes` for PR review. See [Context for an agent](https://fuse.codes/docs/scenarios/context-for-an-agent).

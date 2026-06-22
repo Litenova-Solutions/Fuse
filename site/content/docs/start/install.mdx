@@ -1,43 +1,73 @@
 ---
 title: Install
-description: Install the Fuse global tool from NuGet, run it without installing via dnx, or build it from source.
+description: Install the Fuse global tool from NuGet, or grab a self-contained binary if you do not have the .NET SDK.
 ---
 
-Fuse is a .NET global tool. Install it once and the `fuse` command is available in
-any terminal.
+Fuse is a developer tool for .NET developers, so the recommended install is the
+.NET global tool. If you do not have the .NET SDK, there is a self-contained
+binary that needs nothing else.
+
+## Recommended: the .NET global tool
 
 ```bash
 dotnet tool install -g Fuse
 ```
 
-Verify the install:
+Verify it:
 
 ```bash
 fuse --help
 ```
 
-## Requirements
-
-- The .NET SDK 10.0 or later. No other dependencies are required for the
-  command-line tool.
-- Git change scoping additionally needs the `git` executable on your PATH.
-
-## Update
+Update later with:
 
 ```bash
 dotnet tool update -g Fuse
 ```
 
-## Run without installing
+**Requirements:** the .NET SDK 10.0 or later. Git change scoping also needs the
+`git` executable on your PATH.
 
-The .NET 10 SDK can run a tool on demand without a global install using `dnx`:
+### Run without installing
+
+The .NET 10 SDK can run Fuse on demand without a global install:
 
 ```bash
 dnx Fuse -- serve
 ```
 
-This is handy for trying the MCP server or pinning a one-off run to a specific
-version.
+## Without the .NET SDK
+
+These give you a single self-contained binary (Native AOT, no runtime required).
+Linux x64 and Windows x64 are published; on macOS use the .NET global tool above.
+
+### Install script
+
+```bash
+# Linux
+curl -fsSL https://fuse.codes/install.sh | sh
+```
+
+```powershell
+# Windows
+irm https://fuse.codes/install.ps1 | iex
+```
+
+Each script downloads the latest release binary, verifies its checksum, and puts
+`fuse` on your PATH. Set `FUSE_VERSION` to pin a version or `FUSE_INSTALL_DIR` to
+choose the location.
+
+### WinGet (Windows)
+
+```powershell
+winget install Litenova.Fuse
+```
+
+### Download a binary
+
+Grab `fuse-<version>-win-x64.zip` or `fuse-<version>-linux-x64.tar.gz` from the
+[GitHub Releases](https://github.com/Litenova-Solutions/Fuse/releases) page,
+verify it against `SHA256SUMS.txt`, extract, and put `fuse` on your PATH.
 
 ## Build from source
 
@@ -47,17 +77,14 @@ On Windows, the bundled script builds, packs, and installs the tool locally:
 install.bat
 ```
 
-On any OS, pack the CLI project and install from the local package:
+On any OS:
 
 ```bash
 dotnet pack src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release
 dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
 ```
 
-The `pack` step produces a NuGet package under the project's `nupkg` directory, and
-the install command adds it as a source.
-
 ## Next
 
-Run your first fusion in the [Quickstart](/docs/start/quickstart), or wire Fuse into
-an agent on the [Connect to your AI](/docs/start/connect-your-ai) page.
+Run your first fusion in the [Quickstart](/docs/start/quickstart), or wire Fuse
+into an agent on the [Connect to your AI](/docs/start/connect-your-ai) page.

@@ -1,0 +1,11 @@
+PackageIdentifier: Litenova.Fuse
+PackageVersion: 2.0.0
+InstallerLocale: en-US
+InstallerType: inno
+Scope: user
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Litenova-Solutions/Fuse/releases/download/v2.0.0/fuse-2.0.0-setup.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+ManifestType: installer
+ManifestVersion: 1.6.0

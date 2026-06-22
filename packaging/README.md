@@ -8,7 +8,7 @@ who do not have the .NET SDK and want a single self-contained binary.
 
 | Channel | Trigger | Workflow / source | Credentials |
 |---------|---------|-------------------|-------------|
-| NuGet (`dotnet tool install -g Fuse`) | `v*.*.*` tag | `.github/workflows/publish.yml` (`build/pack-aot.ps1`) | `NUGET_API_KEY` repo secret |
+| NuGet (`dotnet tool install -g Fuse`) | `v*.*.*` tag | `.github/workflows/publish.yml` (`build/pack-aot.ps1`) | Trusted Publishing (OIDC) + `NUGET_USER` |
 | GitHub Release (installer, self-contained win-x64 zip, linux-x64 tarball, `SHA256SUMS.txt`) | `v*.*.*` tag | `.github/workflows/release.yml` | built-in `GITHUB_TOKEN` |
 | MCP Registry (`fuse serve` discovery) | `v*.*.*` tag | `.github/workflows/mcp-registry.yml` (`mcp-registry/server.json`) | GitHub OIDC, no secret |
 | Install scripts (`curl ... \| sh`, `irm ... \| iex`) | served from the site | `site/public/install.sh`, `site/public/install.ps1` (at fuse.codes) | none |
@@ -19,7 +19,10 @@ SDK or runtime. The install scripts download those same release assets.
 
 ## Order of operations for a release
 
-1. Set `NUGET_API_KEY` once in repo secrets (Settings, Secrets and variables, Actions).
+1. On nuget.org, create a Trusted Publishing policy (owner: the `Litenova-Solutions`
+   org; repository owner `Litenova-Solutions`, repository `Fuse`, workflow file
+   `publish.yml`). Add a `NUGET_USER` repo secret holding the nuget.org account
+   name that owns the policy. No long-lived `NUGET_API_KEY` is needed.
 2. Push a tag, for example `git tag v2.0.0 && git push origin v2.0.0`.
 3. The three tag workflows run: NuGet push, the GitHub Release with assets, and
    the MCP Registry publish. The MCP publish validates the NuGet package and the

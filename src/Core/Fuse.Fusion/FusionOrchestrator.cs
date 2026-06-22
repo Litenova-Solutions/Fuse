@@ -569,10 +569,12 @@ public sealed class FusionOrchestrator
         ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
-        // Build relevance documents at member (chunk) granularity for any file with a registered chunk
-        // extractor, and whole-file documents for the rest. Chunk ids are exact (case-sensitive) keys.
-        var documents = new Dictionary<string, IndexedDocument>(StringComparer.Ordinal);
-        var chunkRefs = new Dictionary<string, ChunkRef>(StringComparer.Ordinal);
+        // File selection ranks at FILE granularity (whole-file BM25F), which preserves recall: a query term
+        // anywhere in a file contributes with proper length normalization, so files whose match is spread
+        // across members are not penalized. Member-level granularity is applied only to emission (the thin
+        // skeleton below), where it improves precision without changing which files are included.
+        var documents = new Dictionary<string, IndexedDocument>(StringComparer.OrdinalIgnoreCase);
+        var fileContents = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in files)
         {
             var content = await contentProvider.GetContentAsync(file, cancellationToken);
@@ -584,25 +586,19 @@ public sealed class FusionOrchestrator
                 ? DependencyGraphBuilder.Analyze(content, extractor, locator, index).DeclaredSymbols
                 : locator?.ExtractDefinedSymbols(content);
 
-            SymbolChunkDocuments.AddFile(
-                documents, chunkRefs, file, content, symbols, _chunkExtractors.TryResolve(file.Extension));
+            documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols);
+            fileContents[file.NormalizedRelativePath] = content;
         }
 
         // Per-run index: holds no cross-run state, so a fresh instance keeps concurrent queries isolated. When
         // the persistent index is enabled, body tokenization is cached on disk by content hash so a warm query
-        // against an unchanged tree skips re-tokenizing chunks it has already indexed.
+        // against an unchanged tree skips re-tokenizing files it has already indexed.
         var relevanceIndex = _relevanceIndexFactory();
         var postingsStore = request.UsePersistentIndex
             ? new Indexing.DiskRelevancePostingsStore(request.Collection.SourceDirectory)
             : null;
         relevanceIndex.Index(documents, postingsStore);
-
-        // Over-fetch chunks so the top files still survive aggregation when one file contributes several
-        // members; with no chunked files this collapses to the file-granular top-N.
-        var chunkTopN = chunkRefs.Count > 0
-            ? Math.Max(request.Query!.TopFiles * ChunkOverFetchFactor, MinChunkFetch)
-            : request.Query!.TopFiles;
-        var ranked = relevanceIndex.RankScored(request.Query.Query, chunkTopN);
+        var ranked = relevanceIndex.RankScored(request.Query!.Query, request.Query.TopFiles);
 
         if (ranked.Count == 0)
         {
@@ -615,9 +611,12 @@ public sealed class FusionOrchestrator
         if (request.Query.Rerank)
             ranked = RerankCandidates(request, documents, ranked);
 
-        // Aggregate ranked chunks to files: a file's seed score is its best-ranked member, and the members that
-        // ranked become the set kept verbatim by thin-skeleton emission.
-        var (seedScores, selectedMembers) = AggregateChunksToFiles(ranked, chunkRefs, request.Query.TopFiles);
+        var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
+
+        // Symbol-level packing (precision only): pick, per matched file, the members the query is about so
+        // emission can keep them in full and collapse the rest to signatures. This never changes file
+        // selection, so recall is identical to the file-granular path.
+        var selectedMembers = SelectQueryMembers(ranked, fileContents, request.Query.Query);
         var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
 
         // Query seeds are already content-matched; expand forward to their dependencies for context, but do
@@ -635,81 +634,87 @@ public sealed class FusionOrchestrator
             filtered, expansion.ProvenanceChains, expansion.Scores, SelectedMembers: selectedMembers);
     }
 
-    // Over-fetch this many chunks per requested file, and at least this many overall, so the top files still
-    // survive aggregation when a single file contributes many members.
-    private const int ChunkOverFetchFactor = 12;
-    private const int MinChunkFetch = 60;
-
-    // A member is kept verbatim only when its score is at least this fraction of its file's best member. The
-    // path field gives every member of a matched file a nonzero score, so without this floor a single relevant
-    // method would drag in every sibling; the floor keeps the members that matched on their own name or body
-    // and collapses the path-only matches to signatures.
+    // A member is kept verbatim only when its query-overlap score is at least this fraction of the file's best
+    // member. The floor separates the members the query is genuinely about from siblings that merely share the
+    // type, which collapse to signatures.
     private const double MemberSelectionRatio = 0.4;
 
-    // Collapses ranked member chunks back to files. The seed score for a file is its single best-ranked
-    // member; the members scoring near that best (see MemberSelectionRatio) become the verbatim set for
-    // thin-skeleton emission. Whole-file documents (languages without a chunker) pass through unchanged, with
-    // no selected members, so the file-granular path is preserved.
-    private static (Dictionary<string, double> Seeds, Dictionary<string, IReadOnlySet<string>> Selected)
-        AggregateChunksToFiles(
-            IReadOnlyList<RankedFile> ranked,
-            IReadOnlyDictionary<string, ChunkRef> chunkRefs,
-            int topFiles)
+    // A query-term hit in a member's name counts for more than one in its body, mirroring the symbol-field
+    // boost the file index uses.
+    private const double MemberSymbolWeight = 4.0;
+
+    // For each query-matched file, scores its members by query-term overlap and returns the qualified names of
+    // the members the query is about (those scoring near the file's best). Files with no chunk extractor, no
+    // chunks, or no matching member are omitted, so they keep their full reduced content; only files with a
+    // clear member match are trimmed to a thin skeleton. This is emission-only and never affects file
+    // selection, so query recall is identical to the file-granular path.
+    private Dictionary<string, IReadOnlySet<string>> SelectQueryMembers(
+        IReadOnlyList<RankedFile> ranked,
+        IReadOnlyDictionary<string, string> fileContents,
+        string query)
     {
-        var bestScore = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        var fileOrder = new List<string>();
-        var memberScores = new Dictionary<string, List<(string Qualified, double Score)>>(StringComparer.OrdinalIgnoreCase);
+        var queryTerms = RelevanceTokenizer.Tokenize(query)
+            .ToHashSet(StringComparer.Ordinal);
+        var selected = new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase);
+        if (queryTerms.Count == 0)
+            return selected;
 
         foreach (var candidate in ranked)
         {
-            string filePath;
-            string? qualified = null;
-            if (chunkRefs.TryGetValue(candidate.Path, out var reference))
-            {
-                filePath = reference.FilePath;
-                qualified = reference.QualifiedName;
-            }
-            else
-            {
-                filePath = candidate.Path;
-            }
-
-            // ranked is sorted by descending score, so a file's first appearance is its best member.
-            if (bestScore.TryAdd(filePath, candidate.Score))
-                fileOrder.Add(filePath);
-
-            if (qualified is null)
+            if (!fileContents.TryGetValue(candidate.Path, out var content))
                 continue;
 
-            if (!memberScores.TryGetValue(filePath, out var list))
-            {
-                list = [];
-                memberScores[filePath] = list;
-            }
-
-            list.Add((qualified, candidate.Score));
-        }
-
-        var topPaths = fileOrder.Take(topFiles).ToList();
-        var seeds = topPaths.ToDictionary(p => p, p => bestScore[p], StringComparer.OrdinalIgnoreCase);
-
-        var selected = new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var path in topPaths)
-        {
-            if (!memberScores.TryGetValue(path, out var list) || list.Count == 0)
+            var extractor = _chunkExtractors.TryResolve(Path.GetExtension(candidate.Path));
+            var chunks = extractor?.ExtractChunks(content);
+            if (chunks is null || chunks.Count == 0)
                 continue;
 
-            var floor = bestScore[path] * MemberSelectionRatio;
-            var kept = list
-                .Where(m => m.Score >= floor)
-                .Select(m => m.Qualified)
+            var best = 0.0;
+            var scores = new List<(string Qualified, double Score)>(chunks.Count);
+            foreach (var chunk in chunks)
+            {
+                var score = MemberQueryScore(chunk, queryTerms);
+                if (score > 0)
+                {
+                    scores.Add((chunk.QualifiedName, score));
+                    if (score > best)
+                        best = score;
+                }
+            }
+
+            if (best <= 0)
+                continue; // No member matched the query: keep the whole (reduced) file.
+
+            var floor = best * MemberSelectionRatio;
+            var kept = scores
+                .Where(s => s.Score >= floor)
+                .Select(s => s.Qualified)
                 .ToHashSet(StringComparer.Ordinal);
-
             if (kept.Count > 0)
-                selected[path] = kept;
+                selected[candidate.Path] = kept;
         }
 
-        return (seeds, selected);
+        return selected;
+    }
+
+    private static double MemberQueryScore(
+        SymbolChunk chunk,
+        IReadOnlySet<string> queryTerms)
+    {
+        var score = 0.0;
+        foreach (var term in RelevanceTokenizer.Tokenize(chunk.SymbolName))
+        {
+            if (queryTerms.Contains(term))
+                score += MemberSymbolWeight;
+        }
+
+        foreach (var term in RelevanceTokenizer.Tokenize(chunk.Content))
+        {
+            if (queryTerms.Contains(term))
+                score += 1.0;
+        }
+
+        return score;
     }
 
     // Reranks the BM25 candidates with embedding-vector cosine similarity. Each candidate is embedded from its

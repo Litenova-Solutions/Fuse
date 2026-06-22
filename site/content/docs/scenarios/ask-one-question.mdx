@@ -7,7 +7,10 @@ description: Give Fuse a task and a token budget and let it choose the scoping s
 focus, or search. Hand Fuse the task and a budget; it picks the strategy.
 
 This is the `fuse_ask` MCP tool. It collapses the survey-then-scope sequence into a
-single call.
+single call. One call is the measured shape: in the
+[Layer 4 scenario](/docs/project/benchmarks) one scoped query call acquired a task's
+context in about 40,000 tokens (51 percent recall of the changed files) against roughly
+512,000 tokens for a generic-packer dump at the same single call.
 
 ## Do it
 

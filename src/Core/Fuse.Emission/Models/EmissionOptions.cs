@@ -71,6 +71,13 @@ public sealed class EmissionOptions
     public bool DeduplicateHeaders { get; set; } = false;
 
     /// <summary>
+    ///     A value indicating whether member bodies that are byte-identical after normalization across two or
+    ///     more files are emitted once and replaced elsewhere by a marker referencing the canonical instance.
+    ///     The member signature is always preserved. Off by default.
+    /// </summary>
+    public bool DeduplicateBodies { get; set; } = false;
+
+    /// <summary>
     ///     An opaque session identifier enabling session-delta emission, or <c>null</c> to disable it. When set,
     ///     files whose identical content was already emitted in this session are omitted on later fusions.
     /// </summary>

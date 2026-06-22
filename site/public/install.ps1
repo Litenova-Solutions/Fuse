@@ -5,7 +5,9 @@
 # Downloads the latest self-contained Fuse binary from GitHub Releases, verifies
 # its checksum, installs it to %LOCALAPPDATA%\Programs\Fuse (override with
 # FUSE_INSTALL_DIR), and adds that folder to your user PATH. No .NET SDK is
-# required. To pin a version, set FUSE_VERSION=v2.0.0.
+# required. To pin a version, set FUSE_VERSION=v2.0.0. To also register Fuse as
+# an MCP server with your agent after install, set FUSE_MCP (currently:
+# FUSE_MCP=claude registers it with Claude Code).
 #
 # .NET developers can instead use: dotnet tool install -g Fuse
 
@@ -46,3 +48,19 @@ if ($userPath -notlike "*$dir*") {
   Write-Host "Added $dir to your user PATH. Open a new terminal to use 'fuse'."
 }
 Write-Host "Installed fuse $version to $dir\fuse.exe"
+
+# Optional: register Fuse as an MCP server with your agent.
+if ($env:FUSE_MCP) {
+  switch ($env:FUSE_MCP) {
+    'claude' {
+      if (Get-Command claude -ErrorAction SilentlyContinue) {
+        Write-Host "Registering Fuse with Claude Code ..."
+        & claude mcp add fuse --scope user -- "$dir\fuse.exe" serve
+      } else {
+        Write-Host "FUSE_MCP=claude set, but the 'claude' CLI was not found."
+        Write-Host "Install Claude Code, then run: claude mcp add fuse -- fuse serve"
+      }
+    }
+    default { Write-Host "Unknown FUSE_MCP value '$($env:FUSE_MCP)' (supported: claude). Skipping MCP registration." }
+  }
+}

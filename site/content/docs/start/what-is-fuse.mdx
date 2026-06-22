@@ -51,7 +51,7 @@ reductions cut 7 to 40 percent of tokens while keeping 99 to 100 percent of publ
 types and methods. Skeleton mode, which keeps signatures and drops bodies, cuts 66
 to 93 percent for an architecture-level survey.
 
-![Fuse benchmark results across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with the opt-in Roslyn tier, and one scoped call delivering a task's context in about 13 times fewer tokens than a generic packer.](/fuse-benchmarks.png)
+![Fuse benchmark results across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with the opt-in Roslyn tier, one scoped call replacing at least six grep-and-open round-trips, and that call delivering a task's context in about 13 times fewer tokens than a generic packer.](/fuse-benchmarks.png)
 
 Every number comes from a harness anyone can rerun against the same pinned commits.
 See [Benchmarks](/docs/project/benchmarks) for the method and the full results,

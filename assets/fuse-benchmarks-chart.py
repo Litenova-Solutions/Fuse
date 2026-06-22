@@ -3,8 +3,8 @@
 
 Pure Python stdlib, no dependencies. Light theme, one card per section, each pairing the
 "without Fuse" baseline with the Fuse result and stating the improvement. All four sections
-are measured and reproducible (tests/benchmarks/results, docs/project/benchmarks.md): section 4
-is the layer-4 context-acquisition scenario. Edit the data in compose() or the theme, re-run:
+are measured and reproducible (tests/benchmarks/results, docs/project/benchmarks.md): sections 4
+and 5 are the layer-4 context-acquisition scenario. Edit the data in compose() or the theme, re-run:
 
     python generate_charts.py                      # writes fuse-benchmarks.svg
     python generate_charts.py docs/assets/x.svg    # custom path
@@ -157,15 +157,24 @@ def compose():
         "25x more public method signatures kept with the opt-in Roslyn tier (100% vs 4%).",
         fuse=TEAL, fuse2=TEAL2)
     y = card(
-        y, "04", "Context for One Task, in One Call",
-        "Input tokens to acquire the context a change needs, over 24 real merged pull requests at a 50,000-token budget.",
-        ["A blind agent reads files one by one (a lower bound of about 6 round-trips here); a packer and Fuse each take one call.",
-         "Fuse query reaches 51% of the changed files; the packer and the blind read include everything (recall 1.00 by construction)."],
-        [("Read files blind", 493661, "494K  >= 6 calls", "base"),
-         ("Repomix, one dump", 511574, "512K  1 call", "base"),
-         ("Fuse --query", 40041, "40K  1 call", "fuse")],
+        y, "04", "Round-Trips to Gather a Change's Files",
+        "Read round-trips to assemble the files a change needs, over 24 real merged pull requests.",
+        ["An agent that greps and opens files reads them one at a time, and each open is a separate round-trip.",
+         "Fuse returns the scoped neighborhood in one call. The baseline is a lower bound: at least one read per file the change touches, and more while searching."],
+        [("grep, open, re-open", 5.8, ">= 6 calls (lower bound)", "base"),
+         ("Fuse, one scoped call", 1, "1 call", "fuse")],
+        7,
+        "One scoped call instead of at least ~6 read round-trips, one per file the change touches (measured over 24 PRs). A generic packer also takes one call; against it the Fuse win is tokens, below.")
+    y = card(
+        y, "05", "Tokens for That Same Context",
+        "Input tokens to acquire those files in one call, 24 pull requests at a 50,000-token budget.",
+        ["A generic packer dumps the whole repository; Fuse sends the scoped, reduced set the task needs.",
+         "Read Fuse's tokens with its recall: one scoped query call reaches 51% of the changed files, and 88% with a git base."],
+        [("Read repo blind", 493661, "494K tokens", "base"),
+         ("Repomix, one dump", 511574, "512K tokens", "base"),
+         ("Fuse --query", 40041, "40K tokens", "fuse")],
         520000,
-        "One call at about 13x fewer tokens than the generic packer (40K vs 512K), recall 51% (measured, query mode).")
+        "About 13x fewer tokens than the generic packer at the same one call (40K vs 512K), recall 51% (measured, query mode).")
     return y
 
 total = compose()
@@ -176,7 +185,7 @@ head = [
 ]
 foot = [
     f'<text x="{PAD}" y="{H-20}" font-family="{MONO}" font-size="11" fill="{FAINT}">'
-    f'github.com/Litenova-Solutions/Fuse  .  MIT  .  o200k_base tokens  .  all four sections reproducible via tests/benchmarks</text>',
+    f'github.com/Litenova-Solutions/Fuse  .  MIT  .  o200k_base tokens  .  all five sections reproducible via tests/benchmarks</text>',
     "</svg>",
 ]
 path = sys.argv[1] if len(sys.argv) > 1 else "fuse-benchmarks.svg"

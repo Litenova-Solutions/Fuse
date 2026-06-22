@@ -7,7 +7,7 @@ This page reports what Fuse does to a real .NET codebase in numbers: how far it 
 
 Three readers are served below. A stakeholder can read the headline findings and the fidelity table. A new engineer can follow the reproduction steps and run the suite. A maintainer can read the method, the corpus manifest, and the per-mode results, including the arms where Fuse ties or loses.
 
-The benchmark is built in layers by cost and persuasiveness. Layer 1 is intrinsic and deterministic: token reduction, speed, memory, and fidelity. Layer 2 tests retrieval: scoping recall against real merged-PR change sets, and a single-turn localization task. Layer 3 (an end-to-end task resolution harness) is not built here and is listed under Blocked And Out Of Scope.
+The benchmark is built in layers by cost and persuasiveness. Layer 1 is intrinsic and deterministic: token reduction, speed, memory, and fidelity. Layer 2 tests retrieval: scoping recall against real merged-PR change sets, and a single-turn localization task. Layer 4 is the context-acquisition scenario: Fuse, no Fuse, and Repomix on the two axes of round-trips and input tokens for the same task. A full end-to-end task-resolution harness (driving a programmatic agent across arms and scoring patches) is not built here and is listed under Blocked And Out Of Scope.
 
 ## Reproduce First
 
@@ -57,19 +57,19 @@ Layer 1 runs each reduction mode against the raw concatenation baseline and agai
 | MediatR | none | 77,135 | 7.1% | 439 | 109 |
 | MediatR | aggressive | 61,282 | 26.2% | 451 | 109 |
 | MediatR | skeleton | 26,405 | 68.2% | 446 | 108 |
-| MediatR | repomix | 86,328 | -3.9% | 1,893 | n/a |
+| MediatR | repomix | 86,308 | -3.9% | 1,893 | n/a |
 | FluentValidation | none | 242,458 | 7.0% | 511 | 114 |
 | FluentValidation | aggressive | 166,740 | 36.0% | 574 | 111 |
 | FluentValidation | skeleton | 51,890 | 80.1% | 450 | 109 |
-| FluentValidation | repomix | 264,895 | -1.6% | 1,468 | n/a |
+| FluentValidation | repomix | 264,875 | -1.6% | 1,468 | n/a |
 | AutoMapper | none | 420,320 | 9.8% | 608 | 117 |
 | AutoMapper | aggressive | 366,121 | 21.5% | 601 | 127 |
 | AutoMapper | skeleton | 159,542 | 65.8% | 516 | 116 |
-| AutoMapper | repomix | 475,896 | -2.1% | 1,645 | n/a |
+| AutoMapper | repomix | 475,876 | -2.1% | 1,645 | n/a |
 | Newtonsoft.Json | none | 1,337,554 | 8.9% | 1,051 | 148 |
 | Newtonsoft.Json | aggressive | 879,747 | 40.1% | 863 | 161 |
 | Newtonsoft.Json | skeleton | 96,953 | 93.4% | 534 | 128 |
-| Newtonsoft.Json | repomix | 1,486,596 | -1.3% | 1,662 | n/a |
+| Newtonsoft.Json | repomix | 1,486,576 | -1.3% | 1,662 | n/a |
 
 Repomix memory is not recorded because it runs through a Node launcher whose working set does not reflect the packer process. Its wall-clock and token count are comparable.
 
@@ -149,6 +149,59 @@ Findings, including losses:
 - Focus improved but still trails. Focus accuracy rose from 25 to 42 percent now that it follows dependents as well as dependencies, and it remains the cheapest mode by far at about 5,800 tokens. When the seed is a concept rather than a type name it still misses, which is why query is the better localization tool.
 - A lexical ceiling remains. Ranking rewards shared vocabulary, so a question that shares no words or stems with the target file still misses. This is the case the planned embeddings rerank is meant to address; Layer 2B is the regression guard for it.
 
+## Layer 4: Context Acquisition (Fuse vs no Fuse vs Repomix)
+
+Layers 1 and 2 measure Fuse in isolation. Layer 4 puts three approaches side by side on the two axes that decide the real cost of a task: the round-trips it takes to acquire the context, and the input tokens that context costs. The task is the same one Layer 2A uses, "assemble the context this change needs," and the needed files are the C# files each of the 24 real merged pull requests touched. For every pull request the harness reconstructs the head state in a Git worktree and measures three arms at the same 50,000 token budget (with 10,000 and 25,000 token points for the curve). All counts use `o200k_base`.
+
+The three arms answer one question in three ways:
+
+- **no-fuse** is what an agent pays with no tool: it reads the files the task needs, one at a time. Its round-trip count is the number of files the change touches, which is a structural lower bound, because a blind agent must read each needed file at least once and in practice reads more while exploring to find them. Its recall is 1.00 by construction (it is exactly the needed set). The harness also records the whole-repo token total as the "explore blind" ceiling, what an agent pays if it cannot find the right files and reads broadly.
+- **Repomix** is the generic-packer answer: one dump of the whole repository. One call, recall 1.00 by construction (it contains everything), and the token cost of the entire repository.
+- **Fuse** is one scoped call, `fuse --query "<PR title>" --depth 2 --level standard --max-tokens 50000`. One call, and its recall is the fraction of the changed files the scoped output actually contains. Query is the honest default here because it needs no prior knowledge of the change; the change-scoping mode in Layer 2A, which seeds on a Git base, reaches higher recall when one is available.
+
+Means across the 24 pull requests at the headline budget:
+
+| Arm | Round-trips | Input tokens | Recall of needed files |
+|-----|------------:|-------------:|-----------------------:|
+| no-fuse (blind, whole repo) | >= 5.8 | 493,661 | 1.00 |
+| no-fuse (relevant set) | >= 5.8 | 27,473 | 1.00 |
+| Repomix (one dump) | 1 | 511,574 | 1.00 |
+| Fuse (`--query`) | 1 | 40,041 | 51% |
+
+The round-trip number for no-fuse is a lower bound, not a measured agent: it is the mean count of files the change touched (5.8), and a real agent reads more while discovering them. Recall for no-fuse and Repomix is 1.00 by construction, so this is not a recall contest; the contest is tokens at one call (against Repomix) and round-trips against blind exploration. Always read Fuse's token number together with its recall: 40,041 tokens at 51 percent recall is the honest pairing.
+
+Recall varies widely by repository, and the mean hides that. The per-repository view at the headline budget:
+
+| Repo | no-fuse round-trips (>=) | no-fuse relevant set | whole repo | Repomix | Fuse | Fuse recall |
+|------|-------------------------:|---------------------:|-----------:|--------:|-----:|------------:|
+| MediatR | 2.7 | 3,326 | 79,282 | 84,894 | 36,351 | 89% |
+| FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 27,713 | 49% |
+| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 47,989 | 29% |
+| Newtonsoft.Json | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 48,110 | 38% |
+
+Recall rises with the budget, as expected, since a larger budget admits more of the neighborhood:
+
+| Budget | Fuse mean recall | Fuse mean tokens |
+|-------:|-----------------:|-----------------:|
+| 10,000 | 37% | 9,354 |
+| 25,000 | 46% | 23,168 |
+| 50,000 | 51% | 40,041 |
+
+Findings, including the honest boundary:
+
+- One Fuse call replaces many blind round-trips. A blind agent must read at least the files a change touches, a mean of 5.8 and as many as 14.5 on Newtonsoft.Json, before it has the context; Fuse and Repomix each acquire it in one call. Fuse does not beat Repomix on round-trips, it ties it at one call.
+- At that one call, Fuse costs far fewer tokens than the generic packer. Fuse delivers the scoped context in 40,041 tokens on average against Repomix's 511,574, about 12.8 times fewer, and against the 493,661 tokens of reading the whole repository blind. The Fuse number is the reduced, scoped set the task needs, not the whole repository.
+- The token win is paired with partial recall, and that is the trade. Fuse query reaches 51 percent of the changed files at the headline budget, against 1.00 for Repomix and the relevant set, which include everything by construction. Where the query carries real domain words and the repository is not dominated by conditional compilation, recall is high (MediatR 89 percent); on Newtonsoft.Json and on broad changes it is lower. For pull-request review, where a Git base is available, the change-scoping mode in Layer 2A reaches 88 percent recall. The defensible claim is coupled: Fuse reaches recall R of a task's files in one call at far fewer tokens than a generic packer needs for the same one call, while blind exploration needs at least K round-trips.
+
+Reproduce this layer with the full suite or on its own:
+
+```bash
+pwsh -File tests/benchmarks/harness/run-all.ps1
+pwsh -File tests/benchmarks/harness/layer4-scenario.ps1
+```
+
+Results land in `results/layer4-scenario.{json,csv,md}`, one row per pull request, arm, and budget, so the curve and the per-repository view are reconstructable. The Repomix arm needs `npx`; when it is unavailable that arm is omitted (never stubbed), and every Fuse-versus-no-fuse number still stands.
+
 ## Retrieval And Output Changes: Before And After
 
 This section records the effect of the retrieval work and the output and trust work against the same pinned corpus. All token counts use `o200k_base`. Layer 1 reduction and fidelity did not change: the default and `--level aggressive` still keep 99 to 100 percent of public types and methods, and skeleton still collapses on Newtonsoft.Json, so the cut was not bought by dropping API.
@@ -193,7 +246,7 @@ The round-trip features (table-of-contents survey, the `fuse_ask` auto-scope too
 Each item is measured directly where the harness exercises it:
 
 - Table-of-contents (`--toc`, `fuse_toc`). On the SampleShop fixture the table of contents is 221 tokens against a 624-token cost to read every listed file in full under the default reduction, so the survey costs about a third of fetching the files it maps. The saving grows with file count, since the table of contents lists one line plus a symbol outline per file regardless of file size.
-- Round-trip model (layer 3, illustrative). A simulated stateless agent records round-trips (K) and cumulative prefill tokens for three strategies: naive file-by-file exploration (which re-sends its whole context each turn, so cost grows with the square of the turns), a `fuse_toc` survey followed by one budgeted `fuse_search` (K=2), and a single budgeted `fuse_ask`-style retrieval (K=1). The token counts come from real Fuse runs, but the agent is a model, not a measured agent, so K and cumulative prefill are labeled illustrative of the round-trip structure rather than presented as benchmarks. A downstream task-success layer (feeding fused context to a fixed model and scoring answers) is gated behind an API key and is out of scope for the keyless harness run.
+- Round-trips: the measured bound and an illustrative model. The measured round-trip result is the Layer 4 bound above: a blind agent must read each file a task needs at least once (a structural lower bound from real change sets, a mean of 5.8 files), while Fuse and Repomix each acquire the context in one call. Subordinate to that bound, layer 3 of the harness keeps an illustrative prefill-growth model: a simulated stateless agent re-sends its whole context every turn, so naive file-by-file exploration pays a cost that grows with the square of the turns, against a `fuse_toc` survey plus one budgeted `fuse_search` (K=2) and a single budgeted `fuse_ask`-style retrieval (K=1). Those token counts come from real Fuse runs, but the agent is a model, not a measured agent, so its K and cumulative prefill are labeled illustrative of the round-trip structure, not benchmarks. A downstream task-success layer (feeding fused context to a fixed model and scoring answers) is gated behind an API key and is out of scope for the keyless harness run.
 - Generated-code collapse (`--collapse-generated`). The corpus libraries contain no EF Core migrations, so this item does not move the Layer 1 numbers; it is unit-tested on a migration fixture, where the generated `Up`, `Down`, and `BuildModel` bodies are dropped while the class and method signatures are kept. It is reported here as not exercised by the corpus rather than as an improvement.
 - Cross-language reduction (TS, JS, SQL). The corpus is a C#-only mirror, so this item does not move the Layer 1 numbers either; the TypeScript-family and SQL reducers are unit-tested for comment and whitespace removal. Extending the corpus with a TypeScript or SQL repository is the way to confirm a ratio, and is noted as future work rather than claimed here.
 - Hybrid retrieval (`--rerank`). The bundled embedding is a deterministic lexical hashing model with no learned semantics, so on the Layer 2B localization questions, which are the lexical-ceiling cases, it does not change accuracy: BM25 already selects the candidates and the lexical vector reorders within the same lexical space. This is the honest result the roadmap predicts; closing the lexical gap needs a learned embedding model, for which the reranker provides the plug point. Layer 2B remains the regression guard for it.
@@ -219,7 +272,7 @@ The persistent index (`--index`, on by default in watch and serve) caches per-fi
 
 The warm run is about half the cold run. The Roslyn tier is more expensive cold because it parses each file, and the index is what amortizes that parse: warm, the two tiers converge because neither re-analyzes an unchanged file. These figures are directional and machine-specific, like the other wall-clock numbers on this page; the index's correctness (a hit returns the stored analysis, a changed file misses) is covered by unit tests.
 
-A note on the competitor arm: the Repomix comparison in the Layer 1 table was not re-run in this environment because the `npx` fetch it needs had no network access. Repomix and the corpus are unchanged, so the previously recorded Repomix figures still stand; only the Fuse arms were re-measured, and they are unchanged.
+A note on the competitor arm: the Repomix comparison in the Layer 1 table and the Layer 4 scenario was measured live in this environment through `npx`. When `npx` is unavailable, the harness does not publish a broken stub: Layer 1 carries the prior committed Repomix row with a clear notice, and Layer 4 omits the Repomix arm for that run. The Fuse-versus-raw and Fuse-versus-no-fuse numbers do not need `npx` and stand regardless.
 
 ## How To Read These Results Together
 

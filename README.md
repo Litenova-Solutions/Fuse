@@ -1,25 +1,25 @@
 <!-- mcp-name: io.github.litenova-solutions/fuse -->
 
 <p align="center">
-  <img src="assets/fuse-logo.svg" alt="Fuse" width="300">
+  <img src="assets/fuse-logo.svg" alt="Fuse" width="150">
 </p>
 
 <p align="center">
-  <b>A .NET-native codebase context optimizer for AI-assisted development.</b>
+  <b>The MCP server that gives AI coding agents the right .NET code, for up to 40% fewer input tokens.</b>
 </p>
 
 <p align="center">
   <a href="https://fuse.codes">Website</a> .
   <a href="https://fuse.codes/docs">Documentation</a> .
-  <a href="https://fuse.codes/docs/start/quickstart">Quickstart</a> .
+  <a href="https://fuse.codes/docs/start/connect-your-ai">Connect your agent</a> .
   <a href="https://fuse.codes/docs/project/benchmarks">Benchmarks</a>
 </p>
 
 ---
 
-Fuse collects the source files of a .NET codebase, reduces them for token efficiency, and emits one structured payload an AI agent or a developer can read in a single call instead of opening thousands of files. It cuts tokens while keeping the public API intact, scopes to the files a task needs, and trims the round-trips an agent makes while it explores a large codebase.
+Fuse is a Model Context Protocol server for AI-assisted development on .NET. It hands your coding agent (Claude Code, Cursor, GitHub Copilot) the right code, scoped and reduced, in a single call, instead of letting it burn its context window opening thousands of files during the explore phase. It cuts input tokens while keeping the public API intact, scopes to the files a task needs, and trims the round-trips an agent makes. The same engine is also a `fuse` CLI.
 
-Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. An opt-in Roslyn precision tier and a hybrid-retrieval reranker raise accuracy further. It ships as a .NET global tool (`fuse`) and as an MCP server with eight tools for Cursor, Claude Code, and GitHub Copilot.
+Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. An opt-in Roslyn precision tier and a hybrid-retrieval reranker raise accuracy further. The MCP server exposes eight tools; see [Connect your agent](https://fuse.codes/docs/start/connect-your-ai).
 
 Full documentation lives at **[fuse.codes](https://fuse.codes/docs)**. Maintained by [Litenova Solutions](https://github.com/Litenova-Solutions).
 
@@ -68,7 +68,31 @@ On Windows you can also use `winget install Litenova.Fuse`, or download a binary
 from [Releases](https://github.com/Litenova-Solutions/Fuse/releases). Verify with
 `fuse --help`. Full notes: [fuse.codes/docs/start/install](https://fuse.codes/docs/start/install).
 
-## Quickstart
+## Connect your agent
+
+Run `fuse serve` and connect from your client. For Claude Code, add `.mcp.json` to your project root:
+
+```json
+{
+  "mcpServers": {
+    "fuse": {
+      "type": "stdio",
+      "command": "fuse",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Or register it in one line: `claude mcp add fuse --scope project -- fuse serve`. Cursor uses `.cursor/mcp.json` and GitHub Copilot uses `.vscode/mcp.json`; see [Connect to your AI](https://fuse.codes/docs/start/connect-your-ai) for both.
+
+A recommended agent flow on a large codebase: survey with `fuse_toc` or `fuse_skeleton`, drill in with `fuse_focus` or `fuse_search`, then review a branch with `fuse_changes`. Or call `fuse_ask` with a task and a token budget and let Fuse pick the strategy. See [Context for an agent](https://fuse.codes/docs/scenarios/context-for-an-agent).
+
+Tool catalog and parameters: [MCP Tools](https://fuse.codes/docs/reference/mcp-tools) and [MCP Resources](https://fuse.codes/docs/reference/mcp-resources). MCP Registry manifest: [mcp-registry/server.json](mcp-registry/server.json).
+
+## Command-line quickstart
+
+The same engine runs as a CLI:
 
 ```bash
 # fuse a .NET project with the DotNet template
@@ -106,28 +130,6 @@ Output defaults to `Documents/Fuse`; use `--output` and `--name` to control the 
 | `fuse serve` | Start the MCP server on stdio. |
 
 Full option lists: [Commands](https://fuse.codes/docs/reference/commands) and [Options](https://fuse.codes/docs/reference/options).
-
-## Connect to your AI
-
-Run `fuse serve` and connect from your client. For Claude Code, add `.mcp.json` to your project root:
-
-```json
-{
-  "mcpServers": {
-    "fuse": {
-      "type": "stdio",
-      "command": "fuse",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-Or register it in one line: `claude mcp add fuse --scope project -- fuse serve`. Cursor uses `.cursor/mcp.json` and GitHub Copilot uses `.vscode/mcp.json`; see [Connect to your AI](https://fuse.codes/docs/start/connect-your-ai) for both.
-
-A recommended agent flow on a large codebase: survey with `fuse_toc` or `fuse_skeleton`, drill in with `fuse_focus` or `fuse_search`, then review a branch with `fuse_changes`. Or call `fuse_ask` with a task and a token budget and let Fuse pick the strategy. See [Context for an agent](https://fuse.codes/docs/scenarios/context-for-an-agent).
-
-Tool catalog and parameters: [MCP Tools](https://fuse.codes/docs/reference/mcp-tools) and [MCP Resources](https://fuse.codes/docs/reference/mcp-resources). MCP Registry manifest: [mcp-registry/server.json](mcp-registry/server.json).
 
 ## How it works
 

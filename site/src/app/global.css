@@ -8,17 +8,17 @@
   buttons, and links on one palette.
 */
 :root {
-  --color-fd-primary: oklch(0.52 0.23 285);
-  --color-fd-ring: oklch(0.52 0.23 285);
-  --brand: oklch(0.52 0.23 285);
-  --brand-soft: oklch(0.62 0.19 288);
+  --color-fd-primary: #6d4aff;
+  --color-fd-ring: #6d4aff;
+  --brand: #6d4aff;
+  --brand-soft: #8f7bff;
 }
 
 .dark {
-  --color-fd-primary: oklch(0.76 0.16 288);
-  --color-fd-ring: oklch(0.76 0.16 288);
-  --brand: oklch(0.76 0.16 288);
-  --brand-soft: oklch(0.7 0.17 288);
+  --color-fd-primary: #8b74ff;
+  --color-fd-ring: #8b74ff;
+  --brand: #8b74ff;
+  --brand-soft: #a594ff;
 }
 
 html {

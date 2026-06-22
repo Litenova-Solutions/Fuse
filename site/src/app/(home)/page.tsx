@@ -15,9 +15,9 @@ import { HeroVisual } from '@/components/hero-visual';
 import { githubUrl } from '@/lib/shared';
 
 export const metadata: Metadata = {
-  title: 'Fuse - give your AI agent the right code, not the whole repo',
+  title: 'Fuse - up to 40% fewer input tokens for AI agents on .NET',
   description:
-    'Fuse is a .NET-native codebase context optimizer. It cuts tokens while keeping the public API intact, scopes to the files a task needs, and trims the round-trips an agent makes exploring a large codebase.',
+    'Fuse is a Model Context Protocol server and CLI that hands AI coding agents the right .NET code, scoped and reduced, in one call. Up to 40% fewer input tokens at full public-API fidelity.',
 };
 
 function CodeBlock({ children }: { children: React.ReactNode }) {
@@ -37,33 +37,34 @@ export default function HomePage() {
         <div className="relative mx-auto grid w-full max-w-6xl gap-12 px-6 py-20 md:py-28 lg:grid-cols-2 lg:items-center">
           <div className="flex flex-col items-start text-left">
             <span className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-fd-card px-3 py-1 text-xs font-medium text-fd-muted-foreground">
-              .NET-native context optimizer
+              MCP server for AI coding agents on .NET
             </span>
             <h1 className="mt-5 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-              Give your agent the{' '}
-              <span className="text-gradient">right code</span>, not the whole
-              repo.
+              Up to <span className="text-gradient">40% fewer input tokens</span>{' '}
+              on your .NET codebase.
             </h1>
             <p className="mt-6 max-w-xl text-lg text-fd-muted-foreground">
-              Fuse collects a .NET codebase, reduces it for token efficiency, and
-              emits one structured payload an agent reads in a single call. Fewer
-              tokens, the files a task actually needs, and the public API kept
-              intact.
+              Fuse is a Model Context Protocol server that hands your AI coding
+              agent the right .NET code, scoped and reduced, in one call, with 99
+              to 100% of the public API intact. Less of the context window spent
+              exploring, more spent on the task. A CLI is included.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
-                <Link href="/docs/start/quickstart">
-                  Get started <ArrowRight className="size-4" />
+                <Link href="/docs/start/what-is-fuse">
+                  See how it works <ArrowRight className="size-4" />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
-                <a href={githubUrl} target="_blank" rel="noreferrer">
-                  View on GitHub
-                </a>
+                <Link href="/docs/start/connect-your-ai">Connect your agent</Link>
               </Button>
             </div>
-            <p className="mt-4 font-mono text-sm text-fd-muted-foreground">
-              dotnet tool install -g Fuse
+            <p className="mt-4 text-sm text-fd-muted-foreground">
+              <a href={githubUrl} target="_blank" rel="noreferrer" className="underline hover:text-fd-foreground">
+                View on GitHub
+              </a>{' '}
+              or install with{' '}
+              <code className="font-mono">dotnet tool install -g Fuse</code>
             </p>
           </div>
           <div className="flex justify-center lg:justify-end">
@@ -115,14 +116,19 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="grid gap-6 md:grid-cols-3">
             <Feature
-              icon={<Coins className="size-5" />}
-              title="Fewer tokens"
-              body="Structural C# reduction removes comments, usings, namespaces, and whitespace, and can drop bodies to signatures. The default and --all keep the public API while cutting 7-40% of tokens."
+              icon={<Plug className="size-5" />}
+              title="MCP-native"
+              body="fuse serve is a Model Context Protocol server with eight tools for Claude Code, Cursor, and Copilot, so your agent fetches scoped, reduced context directly instead of reading files one by one."
             />
             <Feature
               icon={<Crosshair className="size-5" />}
               title="Finds the right files"
-              body="Scope a fusion to a type and its dependencies, the files a git diff touched, or the files a query ranks highest. Fuse expands through a dependency graph instead of dumping everything."
+              body="Your agent scopes a fusion to a type and its dependencies, the files a git diff touched, or the files a query ranks highest. Fuse expands through a dependency graph instead of dumping everything."
+            />
+            <Feature
+              icon={<Coins className="size-5" />}
+              title="Fewer input tokens"
+              body="Structural C# reduction removes comments, usings, namespaces, and whitespace, and can drop bodies to signatures. The default and --all keep the public API while cutting 7-40% of tokens."
             />
             <Feature
               icon={<ShieldCheck className="size-5" />}
@@ -130,14 +136,9 @@ export default function HomePage() {
               body="Reduction is not deletion. An independent Roslyn oracle confirms default and --all keep 99-100% of public types and methods. fuse verify reports the preserved surface."
             />
             <Feature
-              icon={<Plug className="size-5" />}
-              title="MCP-native"
-              body="fuse serve is a Model Context Protocol server with eight tools for Claude Code, Cursor, and Copilot, so an agent fetches scoped context directly instead of reading files one by one."
-            />
-            <Feature
               icon={<GitPullRequest className="size-5" />}
               title="Built for review"
-              body="Scope to a branch with change recall of 88% on real merged PRs, prepend a review map of diff hunks and callers, and emit only what changed since the last turn."
+              body="Your agent scopes to a branch with change recall of 88% on real merged PRs, prepends a review map of diff hunks and callers, and emits only what changed since the last turn."
             />
             <Feature
               icon={<Boxes className="size-5" />}
@@ -172,42 +173,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Quickstart */}
+      {/* Connect your agent (primary) */}
       <section className="border-y border-fd-border bg-fd-card/40">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-20 lg:grid-cols-2">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-20 lg:grid-cols-2 lg:items-center">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              From install to output in 30 seconds
+              Connect it to your agent in one line
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
-              Install the global tool, point it at a .NET source tree, and read one
-              file instead of thousands. The output opens with a manifest that
-              lists every included file and its token cost.
+              Run <code className="font-mono">fuse serve</code> and your agent gets
+              eight tools: survey a codebase, drill into a type, scope to a query
+              or a branch, or ask one question and let Fuse pick the strategy. It
+              works with Claude Code, Cursor, and GitHub Copilot.
             </p>
             <Button asChild className="mt-6">
-              <Link href="/docs/start/quickstart">
-                Full quickstart <ArrowRight className="size-4" />
+              <Link href="/docs/start/connect-your-ai">
+                Connect your agent <ArrowRight className="size-4" />
               </Link>
             </Button>
           </div>
           <div className="space-y-4">
-            <CodeBlock>{`# install the .NET global tool
-dotnet tool install -g Fuse
-
-# fuse a project at full API fidelity
-fuse dotnet --directory ./src --all`}</CodeBlock>
-            <CodeBlock>{`Fused 511 files
-Estimated tokens: 366,121 (-21.5%)
-cache: 0 hit / 511 miss
-Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
-          </div>
-        </div>
-      </section>
-
-      {/* MCP */}
-      <section className="mx-auto w-full max-w-6xl px-6 py-20">
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-          <div className="space-y-4 lg:order-2">
             <CodeBlock>{`// .mcp.json
 {
   "mcpServers": {
@@ -221,19 +206,35 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
             <CodeBlock>{`# or register it with Claude Code in one line
 claude mcp add fuse --scope project -- fuse serve`}</CodeBlock>
           </div>
+        </div>
+      </section>
+
+      {/* CLI (secondary) */}
+      <section className="mx-auto w-full max-w-6xl px-6 py-20">
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+          <div className="space-y-4 lg:order-2">
+            <CodeBlock>{`# the same engine, as a plain CLI
+dotnet tool install -g Fuse
+
+# fuse a project at full API fidelity
+fuse dotnet --directory ./src --all`}</CodeBlock>
+            <CodeBlock>{`Fused 511 files
+Estimated tokens: 366,121 (-21.5%)
+cache: 0 hit / 511 miss
+Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
+          </div>
           <div className="lg:order-1">
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              Connect it to your AI in one line
+              Prefer the command line?
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
-              Run <code className="font-mono">fuse serve</code> and your agent gets
-              eight tools: survey a codebase, drill into a type, scope to a query
-              or a branch, or ask one question and let Fuse pick the strategy. It
-              works with Claude Code, Cursor, and GitHub Copilot.
+              The same engine runs as a global tool. Point it at a .NET source
+              tree and read one file instead of thousands, with a manifest that
+              lists every included file and its token cost.
             </p>
             <Button asChild variant="ghost" className="mt-6">
-              <Link href="/docs/start/connect-your-ai">
-                Connect to your AI <ArrowRight className="size-4" />
+              <Link href="/docs/start/quickstart">
+                CLI quickstart <ArrowRight className="size-4" />
               </Link>
             </Button>
           </div>
@@ -317,14 +318,12 @@ claude mcp add fuse --scope project -- fuse serve`}</CodeBlock>
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
-            <Link href="/docs/start/quickstart">
-              Get started <ArrowRight className="size-4" />
+            <Link href="/docs/start/what-is-fuse">
+              See how it works <ArrowRight className="size-4" />
             </Link>
           </Button>
           <Button asChild size="lg" variant="secondary">
-            <a href={githubUrl} target="_blank" rel="noreferrer">
-              Star on GitHub
-            </a>
+            <Link href="/docs/start/connect-your-ai">Connect your agent</Link>
           </Button>
         </div>
       </section>

@@ -15,6 +15,16 @@
   <a href="https://fuse.codes/docs/project/benchmarks">Benchmarks</a>
 </p>
 
+<p align="center">
+  <a href="https://www.nuget.org/packages/Fuse"><img src="https://img.shields.io/nuget/v/Fuse?logo=nuget&label=NuGet" alt="NuGet version"></a>
+  <a href="https://www.nuget.org/packages/Fuse"><img src="https://img.shields.io/nuget/dt/Fuse?logo=nuget&label=downloads&color=6d4aff" alt="NuGet downloads"></a>
+  <a href="https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml"><img src="https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://codecov.io/gh/Litenova-Solutions/Fuse"><img src="https://codecov.io/gh/Litenova-Solutions/Fuse/branch/main/graph/badge.svg" alt="Code coverage"></a>
+  <a href="https://registry.modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-registry-6d4aff" alt="MCP Registry"></a>
+  <a href="https://dotnet.microsoft.com/download"><img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white" alt=".NET 10"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Litenova-Solutions/Fuse?color=6d4aff" alt="License: MIT"></a>
+</p>
+
 ---
 
 Fuse is a Model Context Protocol server for AI-assisted development on .NET. It hands your coding agent (Claude Code, Cursor, GitHub Copilot) the right code, scoped and reduced, in a single call, instead of letting it burn its context window opening thousands of files during the explore phase. It cuts input tokens while keeping the public API intact, scopes to the files a task needs, and trims the round-trips an agent makes. The same engine is also a `fuse` CLI.

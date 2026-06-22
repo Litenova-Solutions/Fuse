@@ -4,11 +4,19 @@ namespace Fuse.Plugins.Abstractions.Options;
 ///     Configuration options for the content reduction pipeline.
 /// </summary>
 /// <remarks>
-///     Controls whitespace normalization, C# structural reduction, and optional minification
-///     for HTML, Razor, and XML file types.
+///     The single <see cref="Level" /> dial controls C# structural reduction intensity; the per-transform
+///     decisions (comment, using, namespace, and region removal, aggressive compression, skeleton and
+///     public-API extraction) are derived from it. The remaining flags are orthogonal to that scale and
+///     control whitespace normalization, minification for HTML, Razor, and XML, redaction, and the optional
+///     prepended sections (route map, project graph, pattern summary, semantic markers).
 /// </remarks>
 public sealed record ReductionOptions
 {
+    /// <summary>
+    ///     The C# structural reduction level. Drives the derived C# transform flags.
+    /// </summary>
+    public ReductionLevel Level { get; init; }
+
     /// <summary>
     ///     Gets a value indicating whether leading and trailing whitespace is trimmed from each line.
     /// </summary>
@@ -18,31 +26,6 @@ public sealed record ReductionOptions
     ///     Gets a value indicating whether blank lines are collapsed.
     /// </summary>
     public bool UseCondensing { get; init; }
-
-    /// <summary>
-    ///     Gets a value indicating whether C# comments are removed.
-    /// </summary>
-    public bool RemoveCSharpComments { get; init; }
-
-    /// <summary>
-    ///     Gets a value indicating whether C# using directives are removed.
-    /// </summary>
-    public bool RemoveCSharpUsings { get; init; }
-
-    /// <summary>
-    ///     Gets a value indicating whether C# namespace declarations are removed.
-    /// </summary>
-    public bool RemoveCSharpNamespaces { get; init; }
-
-    /// <summary>
-    ///     Gets a value indicating whether C# region directives are removed.
-    /// </summary>
-    public bool RemoveCSharpRegions { get; init; }
-
-    /// <summary>
-    ///     Gets a value indicating whether aggressive C# syntax compression is applied.
-    /// </summary>
-    public bool AggressiveCSharpReduction { get; init; }
 
     /// <summary>
     ///     Gets a value indicating whether XML-based files are minified.
@@ -57,11 +40,6 @@ public sealed record ReductionOptions
     ///     <c>.cshtml</c>, <c>.html</c>, and <c>.htm</c> files respect this flag.
     /// </remarks>
     public bool MinifyHtmlAndRazor { get; init; }
-
-    /// <summary>
-    ///     Gets a value indicating whether C# files emit structural skeleton only.
-    /// </summary>
-    public bool SkeletonMode { get; init; }
 
     /// <summary>
     ///     Gets a value indicating whether structural annotation comments are prepended to file entries.
@@ -89,11 +67,6 @@ public sealed record ReductionOptions
     public bool IncludeRouteMap { get; init; }
 
     /// <summary>
-    ///     Gets a value indicating whether skeleton extraction emits only public and protected members.
-    /// </summary>
-    public bool PublicApiMode { get; init; }
-
-    /// <summary>
     ///     Gets a value indicating whether a solution/project graph is prepended to output.
     /// </summary>
     public bool IncludeProjectGraph { get; init; }
@@ -104,45 +77,66 @@ public sealed record ReductionOptions
     /// </summary>
     public bool CollapseGeneratedCode { get; init; }
 
+    /// <summary>C# comments are removed at <see cref="ReductionLevel.Standard" /> and <see cref="ReductionLevel.Aggressive" />.</summary>
+    public bool RemoveCSharpComments => Level is ReductionLevel.Standard or ReductionLevel.Aggressive;
+
+    /// <summary>C# <c>using</c> directives are removed at <see cref="ReductionLevel.Standard" /> and <see cref="ReductionLevel.Aggressive" />.</summary>
+    public bool RemoveCSharpUsings => Level is ReductionLevel.Standard or ReductionLevel.Aggressive;
+
+    /// <summary>C# namespace declarations are removed at <see cref="ReductionLevel.Standard" /> and <see cref="ReductionLevel.Aggressive" />.</summary>
+    public bool RemoveCSharpNamespaces => Level is ReductionLevel.Standard or ReductionLevel.Aggressive;
+
+    /// <summary>C# <c>#region</c> directives are removed at <see cref="ReductionLevel.Standard" /> and <see cref="ReductionLevel.Aggressive" />.</summary>
+    public bool RemoveCSharpRegions => Level is ReductionLevel.Standard or ReductionLevel.Aggressive;
+
+    /// <summary>Aggressive whitespace and syntax compression runs only at <see cref="ReductionLevel.Aggressive" />.</summary>
+    public bool AggressiveCSharpReduction => Level is ReductionLevel.Aggressive;
+
+    /// <summary>Skeleton extraction runs at <see cref="ReductionLevel.Skeleton" /> and <see cref="ReductionLevel.PublicApi" />.</summary>
+    public bool SkeletonMode => Level is ReductionLevel.Skeleton or ReductionLevel.PublicApi;
+
+    /// <summary>Skeleton extraction is restricted to public and protected members only at <see cref="ReductionLevel.PublicApi" />.</summary>
+    public bool PublicApiMode => Level is ReductionLevel.PublicApi;
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="ReductionOptions" /> record.
     /// </summary>
+    /// <param name="level">The C# structural reduction level. Defaults to <see cref="ReductionLevel.None" />.</param>
+    /// <param name="trimContent">Whether per-line leading and trailing whitespace is trimmed.</param>
+    /// <param name="useCondensing">Whether blank lines are collapsed.</param>
+    /// <param name="minifyXmlFiles">Whether XML-based files are minified.</param>
+    /// <param name="minifyHtmlAndRazor">Whether HTML and Razor view files are minified.</param>
+    /// <param name="includeSemanticMarkers">Whether structural annotation comments are prepended.</param>
+    /// <param name="includePatternSummary">Whether a cross-codebase pattern summary is appended.</param>
+    /// <param name="enableRedaction">Whether secrets are redacted before token counting.</param>
+    /// <param name="includeRedactReport">Whether a redaction count summary is appended.</param>
+    /// <param name="includeRouteMap">Whether an ASP.NET route map is prepended.</param>
+    /// <param name="includeProjectGraph">Whether a solution/project graph is prepended.</param>
+    /// <param name="collapseGeneratedCode">Whether machine-generated C# bodies are collapsed to signatures.</param>
     public ReductionOptions(
+        ReductionLevel level = ReductionLevel.None,
         bool trimContent = true,
         bool useCondensing = true,
-        bool removeCSharpComments = false,
-        bool removeCSharpUsings = false,
-        bool removeCSharpNamespaces = false,
-        bool removeCSharpRegions = false,
-        bool aggressiveCSharpReduction = false,
         bool minifyXmlFiles = true,
         bool minifyHtmlAndRazor = true,
-        bool skeletonMode = false,
         bool includeSemanticMarkers = false,
         bool includePatternSummary = false,
         bool enableRedaction = true,
         bool includeRedactReport = false,
         bool includeRouteMap = false,
-        bool publicApiMode = false,
         bool includeProjectGraph = false,
         bool collapseGeneratedCode = false)
     {
+        Level = level;
         TrimContent = trimContent;
         UseCondensing = useCondensing;
-        RemoveCSharpComments = removeCSharpComments;
-        RemoveCSharpUsings = removeCSharpUsings;
-        RemoveCSharpNamespaces = removeCSharpNamespaces;
-        RemoveCSharpRegions = removeCSharpRegions;
-        AggressiveCSharpReduction = aggressiveCSharpReduction;
         MinifyXmlFiles = minifyXmlFiles;
         MinifyHtmlAndRazor = minifyHtmlAndRazor;
-        SkeletonMode = skeletonMode;
         IncludeSemanticMarkers = includeSemanticMarkers;
         IncludePatternSummary = includePatternSummary;
         EnableRedaction = enableRedaction;
         IncludeRedactReport = includeRedactReport;
         IncludeRouteMap = includeRouteMap;
-        PublicApiMode = publicApiMode;
         IncludeProjectGraph = includeProjectGraph;
         CollapseGeneratedCode = collapseGeneratedCode;
     }

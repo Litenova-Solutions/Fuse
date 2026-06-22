@@ -9,11 +9,12 @@ the raw source, without losing the public API.
 ## Do it
 
 ```bash
-fuse dotnet --directory ./src --all
+fuse dotnet --directory ./src --level aggressive --collapse-generated
 ```
 
-`--all` applies every C# reduction at once: it removes comments, usings, namespaces, and
-regions, compresses aggressively, and collapses generated bodies.
+`--level aggressive` applies the full C# structural reduction: it removes comments, usings,
+namespaces, and regions, then compresses aggressively. Add `--collapse-generated` to also
+collapse EF Core generated bodies to their signatures.
 
 ## What you get
 
@@ -33,7 +34,7 @@ files largest first.
 Exclude test projects to fuse just the shipping surface:
 
 ```bash
-fuse dotnet --directory ./src --exclude-test-projects --all
+fuse dotnet --directory ./src --exclude-test-projects --level aggressive
 ```
 
 Use `--exclude-unit-test-projects` instead to drop unit tests but keep integration tests
@@ -41,7 +42,7 @@ and benchmarks.
 
 ## When to use it
 
-Reach for `--all` whenever you want the most reliable cut with the API intact: feeding a
+Reach for `--level aggressive` whenever you want the most reliable cut with the API intact: feeding a
 model the implementation, archiving context for a task, or pasting a project into a chat.
 If you only need the shape of the codebase, a [skeleton survey](/docs/scenarios/survey-cheaply)
 cuts far more. If the result is still too large, [scope it](/docs/concepts/scoping) to the

@@ -73,7 +73,7 @@ different set of choices:
 - **.NET-aware.** It knows project files, Razor, and configuration, excludes test
   and generated files by default, and can map ASP.NET routes and project references.
 - **Fidelity-preserving.** Reduction is not deletion. An independent Roslyn oracle
-  confirms the default and `--all` modes keep 99 to 100 percent of public types and
+  confirms the default and `--level aggressive` modes keep 99 to 100 percent of public types and
   methods, and `fuse verify` reports the preserved surface for any run.
 - **Deterministic.** Same input, same output. No similarity ranking in the default
   path, no index drift. The default path uses no runtime reflection and ships as a

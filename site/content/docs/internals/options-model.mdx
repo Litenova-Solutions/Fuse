@@ -50,16 +50,20 @@ The source directory, project template, and the resolved include and exclude lis
 
 ## Reduction Options
 
+A single `ReductionLevel` enum drives C# structural reduction. It has five values: `None`, `Standard`, `Aggressive`, `Skeleton`, and `PublicApi`. The level is the one dial; the remaining options are orthogonal and apply at any level.
+
 | Option | Default | Meaning |
 |--------|---------|---------|
+| Level | None | C# structural reduction level (None, Standard, Aggressive, Skeleton, PublicApi) |
 | TrimContent | true | Trim leading and trailing whitespace per line |
 | UseCondensing | true | Collapse blank lines |
 | MinifyXmlFiles | true | Minify XML-based files |
 | MinifyHtmlAndRazor | true | Minify HTML and Razor view files |
 | EnableRedaction | true | Redact secrets before token counting |
-| SkeletonMode | false | Emit C# structural skeleton only |
 
-The C# structural removals (comments, usings, namespaces, regions, and aggressive compression) all default to false, so a default fusion preserves C# structure and removes only whitespace.
+The per-category C# transforms are derived from the level rather than set independently. `Standard` removes comments, usings, namespaces, and regions together; `Aggressive` adds aggressive whitespace and syntax compression on top; `Skeleton` emits signatures with bodies removed; and `PublicApi` narrows the skeleton to public and protected members. The default level is `None`, so a default fusion preserves C# structure and removes only whitespace.
+
+The level does not absorb the other reduction options. Redaction and its report, generated-code collapse, the structural markers, the pattern summary, the route map, the project graph, and the XML and HTML/Razor minification flags stay separate and orthogonal to the level.
 
 ## Emission Options
 

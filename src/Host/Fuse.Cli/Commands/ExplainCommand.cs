@@ -62,14 +62,9 @@ public sealed class ExplainCommand : CommandBase
     {
         var builder = CreateRequestBuilder(ProjectTemplate.DotNet)
             .WithReductionOptions(new ReductionOptions(
+                level: Level,
                 trimContent: true,
                 useCondensing: true,
-                removeCSharpComments: All,
-                removeCSharpUsings: All,
-                removeCSharpNamespaces: All,
-                removeCSharpRegions: All,
-                aggressiveCSharpReduction: All,
-                skeletonMode: Skeleton,
                 enableRedaction: !NoRedact))
             .WithInMemory(true);
 
@@ -142,14 +137,9 @@ public sealed class ExplainCommand : CommandBase
     public int QueryTop { get; set; } = 10;
 
     /// <summary>
-    ///     Apply all .NET reduction flags when estimating tokens.
+    ///     The C# reduction level to estimate: <c>none</c>, <c>standard</c>, <c>aggressive</c>,
+    ///     <c>skeleton</c>, or <c>publicApi</c>.
     /// </summary>
-    [CliOption(Description = "Apply all reduction flags when estimating tokens.")]
-    public bool All { get; set; } = false;
-
-    /// <summary>
-    ///     Estimate tokens for skeleton (signatures only) reduction.
-    /// </summary>
-    [CliOption(Description = "Estimate tokens for skeleton (signatures only) reduction.")]
-    public bool Skeleton { get; set; } = false;
+    [CliOption(Description = "C# reduction level to estimate: none, standard, aggressive, skeleton, publicApi.")]
+    public ReductionLevel Level { get; set; } = ReductionLevel.None;
 }

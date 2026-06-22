@@ -6,7 +6,7 @@ namespace Fuse.Plugins.Languages.CSharp.Tests.Reducers;
 public sealed class CSharpReducerTests
 {
     private readonly CSharpReducer _reducer = new();
-    private readonly ReductionOptions _options = new(removeCSharpComments: true, removeCSharpUsings: true);
+    private readonly ReductionOptions _options = new(level: ReductionLevel.Standard);
 
     [Fact]
     public void SupportedExtensions_ContainsCs()
@@ -48,19 +48,14 @@ public sealed class CSharpReducerTests
             }
             """;
 
-        var result = _reducer.Reduce(
-            input,
-            new ReductionOptions(removeCSharpComments: true, aggressiveCSharpReduction: true));
+        var result = _reducer.Reduce(input, new ReductionOptions(level: ReductionLevel.Aggressive));
 
         Assert.DoesNotContain("DebuggerDisplay", result);
         Assert.DoesNotContain("GeneratedCode", result);
         Assert.Contains("public class Widget", result);
     }
 
-    private static readonly ReductionOptions Aggressive = new(
-        removeCSharpComments: true,
-        removeCSharpUsings: true,
-        aggressiveCSharpReduction: true);
+    private static readonly ReductionOptions Aggressive = new(level: ReductionLevel.Aggressive);
 
     [Fact]
     public void Reduce_Aggressive_PreservesTripleQuotedRawStringJson()

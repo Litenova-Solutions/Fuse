@@ -1,16 +1,22 @@
 # Layer 1: intrinsic, deterministic metrics over the pinned corpus.
-# Per repo and per reduction mode (default, --all, --skeleton) plus a Repomix arm:
+# Per repo and per reduction level (--level none|standard|aggressive|skeleton|publicapi) plus a Repomix arm:
 #   token count, reduction ratio vs raw concatenation, cold wall-clock, peak memory,
 #   and fidelity (fraction of public types, methods, routes preserved).
+#
+# The 'none' arm is the former 'default' (no flags); 'aggressive' is the former '--all'
+# (level aggressive plus generated-code collapse, which --all used to bundle); 'skeleton' is
+# the former '--skeleton'. 'standard' and 'publicapi' are new arms with no prior baseline.
 #
 # Output: results/layer1.json, results/layer1.csv, results/layer1.md
 
 . "$PSScriptRoot/common.ps1"
 
 $arms = @(
-    @{ Name = 'default';   Flags = @() }
-    @{ Name = 'all';       Flags = @('--all') }
-    @{ Name = 'skeleton';  Flags = @('--skeleton') }
+    @{ Name = 'none';       Flags = @() }
+    @{ Name = 'standard';   Flags = @('--level','standard') }
+    @{ Name = 'aggressive'; Flags = @('--level','aggressive','--collapse-generated') }
+    @{ Name = 'skeleton';   Flags = @('--level','skeleton') }
+    @{ Name = 'publicapi';  Flags = @('--level','publicapi') }
 )
 
 $rows = @()
@@ -60,7 +66,7 @@ foreach ($repo in Get-Corpus) {
         $combined = Join-Path $outDir '_combined.fuse.txt'
         Get-Content -LiteralPath ($outFiles.FullName) -Raw | Set-Content -LiteralPath $combined
         $tokens = Get-Tokens $combined
-        $skelFlag = if ($arm.Name -eq 'skeleton') { '--skeleton' } else { $null }
+        $skelFlag = if ($arm.Name -in @('skeleton','publicapi')) { '--skeleton' } else { $null }
         $fidArgs = @($repoPath, $combined)
         if ($skelFlag) { $fidArgs += $skelFlag }
         $fid = & $Fidelity @fidArgs | ConvertFrom-Json

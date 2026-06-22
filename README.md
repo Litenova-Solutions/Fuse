@@ -21,7 +21,7 @@ Fuse is a Model Context Protocol server for AI-assisted development on .NET. It 
 
 Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. An opt-in Roslyn precision tier and a hybrid-retrieval reranker raise accuracy further. The MCP server exposes eight tools; see [Connect your agent](https://fuse.codes/docs/start/connect-your-ai).
 
-Full documentation lives at **[fuse.codes](https://fuse.codes/docs)**. Maintained by [Litenova Solutions](https://github.com/Litenova-Solutions).
+Full documentation lives at **[fuse.codes](https://fuse.codes/docs)**.
 
 ## Why Fuse
 

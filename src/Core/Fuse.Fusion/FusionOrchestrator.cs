@@ -54,6 +54,7 @@ public sealed class FusionOrchestrator
     private readonly IReductionCacheFactory _reductionCacheFactory;
     private readonly IGitStatsProvider _gitStatsProvider;
     private readonly Enrichment.BoilerplateDeduplicator _boilerplateDeduplicator;
+    private readonly Enrichment.BodyDeduplicator _bodyDeduplicator;
     private readonly Session.ISessionTracker _sessionTracker;
 
     // Weight blended into seed/expansion scores from the query-independent graph-centrality prior, so at equal
@@ -97,6 +98,7 @@ public sealed class FusionOrchestrator
         IReductionCacheFactory reductionCacheFactory,
         IGitStatsProvider gitStatsProvider,
         Enrichment.BoilerplateDeduplicator boilerplateDeduplicator,
+        Enrichment.BodyDeduplicator bodyDeduplicator,
         Session.ISessionTracker sessionTracker,
         IRouteMapGenerator? routeMapGenerator = null,
         IProjectGraphGenerator? projectGraphGenerator = null)
@@ -122,6 +124,7 @@ public sealed class FusionOrchestrator
         _reductionCacheFactory = reductionCacheFactory;
         _gitStatsProvider = gitStatsProvider;
         _boilerplateDeduplicator = boilerplateDeduplicator;
+        _bodyDeduplicator = bodyDeduplicator;
         _sessionTracker = sessionTracker;
         _routeMapGenerator = routeMapGenerator;
         _projectGraphGenerator = projectGraphGenerator;
@@ -228,6 +231,12 @@ public sealed class FusionOrchestrator
             reducedContent = dedup.Content;
             headerPreamble = dedup.Preamble;
         }
+
+        // Near-duplicate member bodies are emitted once and referenced by a marker elsewhere; the canonical
+        // copy stays in place, so no preamble is needed. Runs before packing so the budget sees the saved
+        // tokens.
+        if (request.Emission.DeduplicateBodies)
+            reducedContent = _bodyDeduplicator.Deduplicate(reducedContent, tokenCounter).Content;
 
         if (request.Emission.IncludeProvenance && filterResult.Provenance is not null)
             reducedContent = AttachProvenance(reducedContent, filterResult.Provenance, filterResult.SelectedMembers);

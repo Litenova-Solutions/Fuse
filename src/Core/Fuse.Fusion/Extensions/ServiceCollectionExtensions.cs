@@ -92,6 +92,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<DependencyGraphBuilder>();
         services.AddSingleton<FocusSeedResolver>();
         services.AddSingleton<Enrichment.BoilerplateDeduplicator>();
+        services.AddSingleton<Enrichment.BodyDeduplicator>();
 
         services.AddSingleton<Session.ISessionTracker, Session.InMemorySessionTracker>();
         services.AddSingleton<IChangeDetector, GitChangeDetector>();

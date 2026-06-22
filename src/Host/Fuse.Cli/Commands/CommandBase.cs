@@ -270,6 +270,7 @@ public abstract class CommandBase
             TokenizerModel = Tokenizer ?? config?.Tokenizer ?? TokenizerFactory.DefaultModel,
             Format = EntryFormatterFactory.ParseFormat(Format ?? config?.Format),
             DeduplicateHeaders = DedupHeaders,
+            DeduplicateBodies = DedupBodies,
             TableOfContents = TableOfContents,
             SessionId = Session,
         };
@@ -557,6 +558,13 @@ public abstract class CommandBase
     /// </summary>
     [CliOption(Description = "Replace identical leading comment headers shared across files with a marker, emitted once.")]
     public bool DedupHeaders { get; set; } = false;
+
+    /// <summary>
+    ///     Replace member bodies that are identical across files (after normalization) with a marker
+    ///     referencing the canonical copy, keeping every signature.
+    /// </summary>
+    [CliOption(Description = "Replace member bodies identical across files with a marker referencing the canonical copy, keeping every signature.")]
+    public bool DedupBodies { get; set; } = false;
 
     /// <summary>
     ///     Output format (<c>xml</c>, <c>markdown</c>, <c>json</c>, or <c>compact</c>).

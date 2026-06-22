@@ -71,10 +71,26 @@ foreach ($repo in Get-Corpus) {
         if ($skelFlag) { $fidArgs += $skelFlag }
         $fid = & $Fidelity @fidArgs | ConvertFrom-Json
 
-        # Body-integrity guards the string-literal-preservation fixes. Parse-check only the body-preserving,
-        # still-valid levels (none, standard); aggressive output is intentionally not guaranteed to parse, and
-        # skeleton/publicApi drop bodies entirely so their literal ratio is expected to be low.
-        $bi = Get-BodyIntegrity $repoPath $combined -ParseCheck:($arm.Name -in @('none','standard'))
+        # Body-integrity guards the string-literal-preservation fixes. It is only meaningful for the
+        # body-preserving levels (skeleton/publicApi drop bodies, so their literal ratio is near zero by
+        # design) and it is measured against a redaction-disabled rerun, because redaction deliberately
+        # replaces secret literals and would otherwise mask the guard. The fused output is a multi-file XML
+        # document, never a single C# compilation unit, so the parse check is not used here.
+        $biRatio = $null
+        if ($arm.Name -in @('none','standard','aggressive')) {
+            $biDir = Join-Path $ResultsDir ".out/$($repo.name)/$($arm.Name)-bi"
+            if (Test-Path $biDir) { Remove-Item -Recurse -Force $biDir }
+            New-Item -ItemType Directory -Force -Path $biDir | Out-Null
+            $biArgs = @('dotnet','--directory', $repoPath, '--output', $biDir, '--overwrite', '--format', 'xml',
+                '--tokenizer', 'o200k_base', '--no-cache', '--no-redact') + $arm.Flags
+            $null = Measure-Process $Fuse $biArgs
+            $biFiles = @(Get-ChildItem -Path $biDir -File | Sort-Object Name)
+            if ($biFiles) {
+                $biCombined = Join-Path $biDir '_combined.fuse.txt'
+                Get-Content -LiteralPath ($biFiles.FullName) -Raw | Set-Content -LiteralPath $biCombined
+                $biRatio = (Get-BodyIntegrity $repoPath $biCombined).intactRatio
+            }
+        }
 
         $ratio = if ($rawTokens -gt 0) { [math]::Round(1 - ($tokens / $rawTokens), 4) } else { 0 }
         Write-Host ("  {0,-9}: {1,8} tok  reduce {2,6:P1}  {3,5}ms  {4,6}MB  types {5:P0} methods {6:P0} routes {7:P0}" -f `
@@ -100,10 +116,7 @@ foreach ($repo in Get-Corpus) {
             routes_total    = $fid.routes.total
             routes_kept     = $fid.routes.preserved
             routes_ratio    = $fid.routes.ratio
-            literals_total          = $bi.literalsTotal
-            literals_intact         = $bi.literalsIntact
-            literals_intact_ratio   = $bi.intactRatio
-            parses                  = $bi.parses
+            literals_intact_ratio   = $biRatio
         }
     }
 
@@ -143,16 +156,15 @@ $rows | Export-Csv -NoTypeInformation -Path (Join-Path $ResultsDir 'layer1.csv')
 $md = @()
 $md += '# Layer 1 results (intrinsic)'
 $md += ''
-$md += '| Repo | Size | Tool/Mode | Tokens | Reduction | Wall ms | Peak MB | Types | Methods | Routes | Literals | Parses |'
-$md += '|------|------|-----------|-------:|----------:|--------:|--------:|------:|--------:|-------:|---------:|:------:|'
+$md += '| Repo | Size | Tool/Mode | Tokens | Reduction | Wall ms | Peak MB | Types | Methods | Routes | Literals |'
+$md += '|------|------|-----------|-------:|----------:|--------:|--------:|------:|--------:|-------:|---------:|'
 foreach ($r in $rows) {
     $mb = if ($null -eq $r.peak_mb) { 'n/a' } else { $r.peak_mb }
     $lit = if ($null -eq $r.literals_intact_ratio) { 'n/a' } else { "{0:P0}" -f $r.literals_intact_ratio }
-    $parses = if ($null -eq $r.parses) { '-' } elseif ($r.parses) { 'yes' } else { 'NO' }
-    $md += ('| {0} | {1} | {2} | {3} | {4:P1} | {5} | {6} | {7:P0} | {8:P0} | {9} | {10} | {11} |' -f `
+    $md += ('| {0} | {1} | {2} | {3} | {4:P1} | {5} | {6} | {7:P0} | {8:P0} | {9} | {10} |' -f `
         $r.repo, $r.size, "$($r.tool)/$($r.arm)", $r.tokens, $r.reduction_ratio, $r.wall_ms, $mb,
         $r.types_ratio, $r.methods_ratio, ("{0:P0} ({1}/{2})" -f $r.routes_ratio, $r.routes_kept, $r.routes_total),
-        $lit, $parses)
+        $lit)
 }
 $md -join "`n" | Set-Content (Join-Path $ResultsDir 'layer1.md')
 

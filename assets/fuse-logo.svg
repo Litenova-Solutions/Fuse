@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="96" viewBox="0 0 360 96" fill="none" role="img" aria-label="Fuse">
+  <rect x="4" y="16" width="64" height="64" rx="15" fill="#6d4aff"/>
+  <g fill="none" stroke="#ffffff" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 33h11" opacity="0.7"/>
+    <path d="M18 48h9"/>
+    <path d="M18 63h11" opacity="0.7"/>
+    <path d="M29 33c8 0 3.5 15 11 15" opacity="0.7"/>
+    <path d="M29 63c8 0 3.5-15 11-15" opacity="0.7"/>
+    <path d="M44 48h12"/>
+  </g>
+  <circle cx="40" cy="48" r="5.6" fill="#ffffff"/>
+  <text x="88" y="62" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="50" font-weight="700" fill="#6d4aff">Fuse</text>
+</svg>

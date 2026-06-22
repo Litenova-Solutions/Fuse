@@ -1,6 +1,6 @@
 # Fuse performance benchmarks
 
-This folder holds two things: the reproducible benchmark suite (layers 1 and 2) described first, and the manual wall-clock timing notes described afterward. Published results and findings are in [docs/project/benchmarks.md](../../docs/project/benchmarks.md).
+This folder holds two things: the reproducible benchmark suite (layers 1 and 2) described first, and the manual wall-clock timing notes described afterward. Published results and findings are on [the benchmarks page](https://fuse.codes/docs/project/benchmarks).
 
 ## Reproducible benchmark suite (layers 1 and 2)
 
@@ -26,7 +26,7 @@ The cloned corpus under `.corpus/` and the per-run outputs under `results/.out`,
 
 ## Manual wall-clock timing
 
-The rest of this document covers ad hoc timing for pipeline changes. See also [docs/project/performance.md](../../docs/project/performance.md) for cold-start methodology and Native AOT packaging.
+The rest of this document covers ad hoc timing for pipeline changes. See also [the performance page](https://fuse.codes/docs/project/performance) for cold-start methodology and Native AOT packaging.
 
 ## Fixture
 

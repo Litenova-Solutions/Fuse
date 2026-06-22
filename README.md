@@ -1,17 +1,32 @@
-# Fuse
+<p align="center">
+  <img src="assets/fuse-logo.svg" alt="Fuse" width="300">
+</p>
 
-Fuse is a deep .NET-native context optimizer for AI-assisted development. It collects source files, reduces them for token efficiency, and emits a single structured output that agents can consume in one call instead of reading thousands of files individually.
+<p align="center">
+  <b>A .NET-native codebase context optimizer for AI-assisted development.</b>
+</p>
 
-Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. An opt-in Roslyn precision tier and a hybrid-retrieval reranker raise accuracy further, and a table-of-contents survey, the `fuse_ask` auto-scope tool, and session-delta emission cut the number of round-trips an agent needs. It ships as a .NET global tool (`fuse`) and as an MCP server with eight tools for Cursor, Claude Code, and GitHub Copilot.
+<p align="center">
+  <a href="https://fuse.codes">Website</a> .
+  <a href="https://fuse.codes/docs">Documentation</a> .
+  <a href="https://fuse.codes/docs/start/quickstart">Quickstart</a> .
+  <a href="https://fuse.codes/docs/project/benchmarks">Benchmarks</a>
+</p>
 
-Maintained by [Litenova Solutions](https://github.com/Litenova-Solutions).
+---
+
+Fuse collects the source files of a .NET codebase, reduces them for token efficiency, and emits one structured payload an AI agent or a developer can read in a single call instead of opening thousands of files. It cuts tokens while keeping the public API intact, scopes to the files a task needs, and trims the round-trips an agent makes while it explores a large codebase.
+
+Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. An opt-in Roslyn precision tier and a hybrid-retrieval reranker raise accuracy further. It ships as a .NET global tool (`fuse`) and as an MCP server with eight tools for Cursor, Claude Code, and GitHub Copilot.
+
+Full documentation lives at **[fuse.codes](https://fuse.codes/docs)**. Maintained by [Litenova Solutions](https://github.com/Litenova-Solutions).
 
 ## Why Fuse
 
-Measured over a pinned corpus of four real .NET libraries (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json), counted with the `o200k_base` tokenizer. Reduction ratios transfer across models even though absolute token counts do not. Every figure is reproducible with one command and reported in full, including the arms where Fuse ties or loses, on the [benchmarks page](docs/project/benchmarks.md).
+Measured over a pinned corpus of four real .NET libraries (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json), counted with the `o200k_base` tokenizer. Reduction ratios transfer across models even though absolute token counts do not. Every figure is reproducible with one command and reported in full, including the arms where Fuse ties or loses, on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
 
 <p align="center">
-  <img src="docs/assets/fuse-benchmarks.png" alt="Fuse benchmark results: 40 percent fewer tokens at full public-API fidelity, 88 percent change-scoping recall versus a 38 percent grep baseline, and 100 percent versus 4 percent skeleton method fidelity with the opt-in Roslyn tier." width="820">
+  <img src="assets/fuse-benchmarks.png" alt="Fuse benchmark results: 40 percent fewer tokens at full public-API fidelity, 88 percent change-scoping recall versus a 38 percent grep baseline, and 100 percent versus 4 percent skeleton method fidelity with the opt-in Roslyn tier." width="820">
 </p>
 
 - **Cuts tokens without dropping API.** Default reduction removes 7 to 10 percent and `--all` removes 21 to 40 percent of tokens while keeping 99 to 100 percent of public types and methods. `--skeleton` removes 66 to 93 percent for an architecture map.
@@ -27,8 +42,6 @@ Reproduce every number with `pwsh -File tests/benchmarks/harness/run-all.ps1`.
 
 **Prerequisites:** [.NET SDK 10.0](https://dotnet.microsoft.com/download) or later.
 
-### From NuGet
-
 ```bash
 dotnet tool install -g Fuse
 ```
@@ -39,76 +52,41 @@ Run without a global install via the .NET 10 SDK:
 dnx Fuse -- serve
 ```
 
-### From source (Windows)
-
-```cmd
-install.bat
-```
-
-### From source (any OS)
+Build from source on Windows with `install.bat`, or on any OS:
 
 ```bash
 dotnet pack src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release
 dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
 ```
 
-Verify:
+Verify with `fuse --help`. Full install notes: [fuse.codes/docs/start/install](https://fuse.codes/docs/start/install).
+
+## Quickstart
 
 ```bash
-fuse --help
-```
-
-## CLI quick start
-
-Fuse a .NET project with the DotNet template:
-
-```bash
+# fuse a .NET project with the DotNet template
 fuse dotnet --directory ./src
-```
 
-Maximum C# token reduction:
-
-```bash
+# maximum C# reduction, public API intact
 fuse dotnet --directory ./src --all
-```
 
-Architectural overview (signatures only):
-
-```bash
+# architecture overview, signatures only
 fuse dotnet --directory ./src --all --skeleton
-```
 
-Cheap survey before fetching files (tree, symbol outline, per-file token costs):
-
-```bash
+# cheap survey before fetching files (tree, symbol outline, token costs)
 fuse dotnet --directory ./src --toc
-```
 
-Accurate skeletons and dependency edges with the opt-in Roslyn precision tier:
-
-```bash
+# accurate skeletons and dependency edges with the Roslyn precision tier
 fuse dotnet --directory ./src --skeleton --semantic
-```
 
-PR-scoped fusion, with diff hunks and the callers of each changed file:
-
-```bash
+# PR-scoped fusion with diff hunks and the callers of each changed file
 fuse dotnet --directory ./src --changed-since main --review
-```
 
-Query-scoped fusion:
-
-```bash
+# query-scoped fusion
 fuse dotnet --directory ./src --query "payment gateway" --query-top 10
 ```
 
-Initialize a project config file:
-
-```bash
-fuse init
-```
-
-Output defaults to `Documents/Fuse`. Use `--output` and `--name` to control the destination.
+Output defaults to `Documents/Fuse`; use `--output` and `--name` to control the destination. Walkthrough: [fuse.codes/docs/start/quickstart](https://fuse.codes/docs/start/quickstart).
 
 ## Commands
 
@@ -120,28 +98,11 @@ Output defaults to `Documents/Fuse`. Use `--output` and `--name` to control the 
 | `fuse init` | Create `fuse.json` in the current directory. |
 | `fuse serve` | Start the MCP server on stdio. |
 
-Full option lists: [Commands](docs/reference/commands.md) and [Options](docs/reference/options.md).
+Full option lists: [Commands](https://fuse.codes/docs/reference/commands) and [Options](https://fuse.codes/docs/reference/options).
 
-## Recommended agent workflow
+## Connect to your AI
 
-Use MCP tools in this order for large .NET codebases:
-
-1. **Survey** with `fuse_toc` (directory tree, symbol outline, per-file token costs) or `fuse_skeleton` for a low-token architecture map.
-2. **Drill down** with `fuse_focus` (type/file seed) or `fuse_search` (natural-language query, with `rerank` for hybrid retrieval).
-3. **PR review** with `fuse_changes` (git diff scoping, `review=true` for diff hunks plus direct callers).
-4. **Full control** with `fuse_dotnet` when you need every option combined.
-
-Or skip the orchestration: call `fuse_ask` with a task and a token budget and Fuse picks the strategy and packs the context to budget. Across calls in one task, pass a `session` id so files already returned are not sent again.
-
-See [agent workflows](docs/agent-integration/workflows.md) for token budgets and composition rules.
-
-## MCP setup
-
-Run `fuse serve` and connect from your AI client.
-
-### Claude Code
-
-Add to `.mcp.json` in your project root:
+Run `fuse serve` and connect from your client. For Claude Code, add `.mcp.json` to your project root:
 
 ```json
 {
@@ -155,65 +116,22 @@ Add to `.mcp.json` in your project root:
 }
 ```
 
-Or: `claude mcp add fuse --scope project -- fuse serve`
+Or register it in one line: `claude mcp add fuse --scope project -- fuse serve`. Cursor uses `.cursor/mcp.json` and GitHub Copilot uses `.vscode/mcp.json`; see [Connect to your AI](https://fuse.codes/docs/start/connect-your-ai) for both.
 
-### Cursor
+A recommended agent flow on a large codebase: survey with `fuse_toc` or `fuse_skeleton`, drill in with `fuse_focus` or `fuse_search`, then review a branch with `fuse_changes`. Or call `fuse_ask` with a task and a token budget and let Fuse pick the strategy. See [Context for an agent](https://fuse.codes/docs/scenarios/context-for-an-agent).
 
-Add to `.cursor/mcp.json`:
+Tool catalog and parameters: [MCP Tools](https://fuse.codes/docs/reference/mcp-tools) and [MCP Resources](https://fuse.codes/docs/reference/mcp-resources). MCP Registry manifest: [mcp-registry/server.json](mcp-registry/server.json).
 
-```json
-{
-  "mcpServers": {
-    "fuse": {
-      "command": "fuse",
-      "args": ["serve"]
-    }
-  }
-}
-```
+## How it works
 
-### GitHub Copilot (VS Code)
+A fusion is a four-stage pipeline:
 
-Add to `.vscode/mcp.json`:
+1. **Collection** - scan the source directory and apply filters (extensions, `.gitignore`, binary detection, test projects, globs).
+2. **Filtering** - optional scoping: focus, git changes, or BM25 query with dependency expansion.
+3. **Reduction** - normalize whitespace, run language and format reducers, apply skeleton, markers, and secret redaction.
+4. **Emission** - count tokens, build the manifest, apply the output format, and write within a token budget.
 
-```json
-{
-  "servers": {
-    "fuse": {
-      "type": "stdio",
-      "command": "fuse",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-Tool catalog and parameters: [Tools Reference](docs/agent-integration/tools.md) and [Resources Reference](docs/agent-integration/resources.md). Client setup details: [MCP Overview and Setup](docs/agent-integration/overview.md). MCP Registry manifest: [docs/mcp-registry/server.json](docs/mcp-registry/server.json).
-
-## What Fuse does
-
-Fusion is a four-stage pipeline:
-
-1. **Collection** - Scan the source directory, apply filters (extensions, `.gitignore`, binary detection, test projects, globs).
-2. **Filtering** - Optional scoping: focus, git changes, or BM25 query with dependency expansion.
-3. **Reduction** - Normalize whitespace, run language and format reducers, apply skeleton/markers/redaction.
-4. **Emission** - Write fused output with token counting, manifest header, optional splitting, and size-based ordering.
-
-Architecture details: [Architecture](docs/architecture/pipeline.md). Feature reference: [Guides](docs/guides/index.md) and [Reference](docs/reference/index.md).
-
-## Output format
-
-Each file is wrapped in a path-tagged block (default XML):
-
-```xml
-<file path="src/Services/OrderService.cs">
-public class OrderService { }
-</file>
-```
-
-Also supported: `--format markdown` and `--format json`. A manifest header (file tree and token costs) is prepended by default; use `--no-manifest` to disable.
-
-Disk output filenames include a token estimate, for example `MyProject_2026-06-19_0130_22k.txt`.
+The concept in plain terms is at [How Fuse works](https://fuse.codes/docs/concepts/how-fuse-works); the internals are at [The pipeline](https://fuse.codes/docs/internals/pipeline).
 
 ## Repository layout
 
@@ -231,8 +149,10 @@ src/
     Fuse.Plugins.Languages.CSharp/    C# language plugin (regex, AOT-clean default)
     Fuse.Plugins.Languages.CSharp.Roslyn/  Opt-in Roslyn precision tier (excluded from the AOT build)
     Fuse.Plugins.Formats.Web/         Format reducers (HTML, JSON, YAML, SQL, TS/JS, etc.)
-tests/                                Unit and integration tests
-docs/                                 Full documentation
+tests/                                Unit, golden-output, and integration tests; benchmarks
+site/                                 The fuse.codes website and documentation (Next.js + Fumadocs)
+assets/                               Benchmark figure and the chart-generating script
+mcp-registry/                         MCP Registry server manifest
 ```
 
 ## Development
@@ -243,22 +163,7 @@ dotnet test Fuse.slnx --configuration Release --no-build
 dotnet format Fuse.slnx --verify-no-changes
 ```
 
-Contribution workflow: [Contributing](docs/project/contributing.md). Agent instructions: [AGENTS.md](AGENTS.md).
-
-## Documentation
-
-| Section | Contents |
-|---------|----------|
-| [Documentation home](docs/index.md) | Map of the full documentation |
-| [Getting started](docs/getting-started/introduction.md) | Install, first run, core concepts |
-| [Guides](docs/guides/index.md) | Reduction, scoping, formats, configuration |
-| [Agent integration](docs/agent-integration/overview.md) | MCP server, tools, resources, workflows |
-| [Reference](docs/reference/index.md) | Commands, options, templates, reducers, output |
-| [Architecture](docs/architecture/pipeline.md) | Pipeline, capability model, internals |
-| [Extending Fuse](docs/extending/language-plugin.md) | Language plugins, templates, reducers |
-| [Project](docs/project/performance.md) | Performance, roadmap, contributing |
-| [Benchmarks](docs/project/benchmarks.md) | Reproducible token reduction, fidelity, and scoping recall vs raw and Repomix |
-| [CHANGELOG](CHANGELOG.md) | Version history and migration notes |
+Contribution workflow: [Contributing](https://fuse.codes/docs/project/contributing). Agent instructions: [AGENTS.md](AGENTS.md). The documentation site is in [site/](site/); see [site/README.md](site/README.md) to run it locally.
 
 ## License
 

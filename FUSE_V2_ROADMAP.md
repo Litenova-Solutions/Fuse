@@ -89,8 +89,6 @@ You have internet access. Download and test real assets; do not stub what you ca
   Build first, then test with `--no-build`. CI also verifies the Native AOT publish (win-x64, linux-x64);
   verify it locally for 2.1 using the PATH fix above. New public API without XML docs is incomplete
   (see the Code Documentation Standard in AGENTS.md).
-- Branch off `feature/v2-roadmap` (so you build on the completed items) unless PR #12 has merged, then
-  branch off `main`. Land each item as its own commit. Do not merge, self-approve, or enable auto-merge.
 - Writing style for all prose (docs, comments, PR text): plain ASCII only, no em dashes (U+2014), no en
   dashes (U+2013), no emoji. A stop hook rejects non-ASCII punctuation. Measured numbers are exact and
   sourced from `tests/benchmarks/results`; never fabricate or weaken a number, and label any illustrative

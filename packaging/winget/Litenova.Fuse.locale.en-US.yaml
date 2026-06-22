@@ -1,11 +1,12 @@
 PackageIdentifier: Litenova.Fuse
-PackageVersion: 2.0.0
+PackageVersion: 2.0.1
 PackageLocale: en-US
 Publisher: Litenova Solutions
 PublisherUrl: https://github.com/Litenova-Solutions
 PublisherSupportUrl: https://github.com/Litenova-Solutions/Fuse/issues
 PackageName: Fuse
 PackageUrl: https://fuse.codes
+Moniker: fuse
 License: MIT
 LicenseUrl: https://github.com/Litenova-Solutions/Fuse/blob/main/LICENSE
 ShortDescription: A .NET-native codebase context optimizer for AI-assisted development.

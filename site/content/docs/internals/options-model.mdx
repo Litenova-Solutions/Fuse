@@ -30,7 +30,7 @@ A fusion request is composed of three required option groups, up to one optional
 
 At most one of Focus, Changes, and Query may be present; the validator rejects any combination of two or more.
 
-## Building And Merging
+## Building and Merging
 
 The request builder constructs a request from CLI flags or MCP tool parameters and merges them with values from a config file. Precedence is fixed: an explicit CLI flag overrides a config-file value, and a config-file value overrides the built-in default. The defaults below are those built-in values, applied when neither a flag nor config supplies one.
 

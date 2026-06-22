@@ -2,12 +2,13 @@
   "title": "Scenarios",
   "icon": "ListChecks",
   "pages": [
-    "cut-tokens-dotnet",
     "context-for-an-agent",
-    "scope-a-pr",
     "ask-one-question",
+    "refine-across-turns",
+    "scope-a-pr",
     "survey-cheaply",
-    "keep-secrets-out",
-    "stay-under-a-budget"
+    "stay-under-a-budget",
+    "cut-tokens-dotnet",
+    "keep-secrets-out"
   ]
 }

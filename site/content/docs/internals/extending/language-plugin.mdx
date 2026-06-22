@@ -26,7 +26,7 @@ A language can supply as many or as few capabilities as it needs. The only one r
 
 The capability model is described in full on the [Capability and Plugin Model](/docs/internals/capability-model) page. The C# plugin, in the `Fuse.Plugins.Languages.CSharp` project, implements every capability in the table and is the complete reference example to read alongside this guide.
 
-## Implement The Content Reducer
+## Implement the Content Reducer
 
 A content reducer applies extension-specific transformations to a file's text and returns the reduced result. The pipeline normalizes whitespace before calling a reducer, so a reducer should not trim lines or collapse blank lines itself; it removes only what is specific to the language, such as comments. A reducer must be stateless and pure, because reduction runs concurrently across files on several threads.
 

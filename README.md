@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <b>The MCP server that gives AI coding agents the right .NET code, for up to 40% fewer input tokens.</b>
+  <b>The MCP server that collapses an AI coding agent's explore phase on .NET into one scoped call.</b>
 </p>
 
 <p align="center">

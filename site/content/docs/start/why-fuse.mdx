@@ -8,7 +8,7 @@ the repository as text, and retrieval indexes that return fuzzy chunks. Fuse is
 neither. It is a structural, .NET-aware optimizer that cuts tokens while keeping the
 public API intact. This page explains the problem, the landscape, and the trade-offs.
 
-## The problem: the explore phase
+## The Problem: The Explore Phase
 
 An agentic coding tool such as Claude Code, Cursor, or GitHub Copilot does not start
 by editing. It starts by exploring. To make a safe change it first has to learn the
@@ -37,9 +37,9 @@ one call. The round-trip count is a bound from ground truth, not a measured agen
 the wall-clock benefit (an explore loop of minutes collapsing to one call) is a
 theory-grounded illustration of the mechanism, labeled as such, not a benchmark.
 
-## The landscape
+## The Landscape
 
-### Generic repository packers
+### Generic Repository Packers
 
 Tools such as Repomix, Code2Prompt, and Gitingest concatenate a repository into one
 text blob with a header and per-file separators. They are language-agnostic and easy
@@ -57,7 +57,7 @@ packer pays for everything: in the Layer 4 scenario, a Repomix dump averaged abo
 the changed files). The packer's recall is 1.00 only because it includes the entire
 repository.
 
-### RAG and embedding indexers
+### RAG and Embedding Indexers
 
 Retrieval-augmented generation indexes a codebase into vector embeddings and returns
 the chunks most similar to a query. This is useful for open-ended search across a
@@ -70,7 +70,38 @@ boundary can split a method from its signature. And the index has to be built an
 kept fresh, which adds infrastructure. RAG answers "what looks similar to this
 text"; it does not answer "give me this type and everything it depends on, intact".
 
-## What Fuse does differently
+## What Fuse Does Differently
+
+State the value against the three things you would otherwise reach for, strongest first.
+
+1. **Versus no tool, the baseline an agent lives in.** This is the headline. A blind
+   agent must read each file a task touches at least once before it has the context: a
+   measured structural lower bound of 5.8 files on average over 24 real merged pull
+   requests, and up to 14.5 on a large library. Fuse acquires the same context in one
+   scoped call. That is the round-trip collapse, and it is the value you feel.
+
+2. **Versus a generic packer (Repomix).** Both acquire context in one call, so Fuse ties
+   on round-trips and wins on tokens: about 40,000 tokens for the scoped set against about
+   512,000 for the whole-repo dump, roughly 12.8 times fewer, because Fuse scopes and the
+   packer dumps. To be plain: Fuse does not beat Repomix on round-trips; it ties at one
+   call and wins on tokens.
+
+3. **Versus RAG and embedding indexes.** Fuse returns whole types and their dependency
+   neighborhood, deterministically, with no index to build or keep fresh, where a vector
+   index returns ranked fuzzy chunks and can split a method from its signature.
+
+4. **And the code it returns keeps the surface intact.** Default and `--level aggressive`
+   reduction remove 7 to 40 percent of tokens while keeping 99 to 100 percent of public
+   types and methods; skeleton mode removes 66 to 93 percent for an architecture map.
+
+Fuse is not only one call. Across a task it is a few cheap scoped calls (survey with
+`fuse_toc`, drill in with `fuse_focus` or `fuse_search`, review with `fuse_changes`)
+instead of dozens of blind reads, and a `session` id means later calls do not resend
+files already returned. A packer dumps once; it cannot refine. See
+[The explore phase](/docs/concepts/the-explore-phase) and
+[Sessions and deltas](/docs/concepts/sessions-and-deltas).
+
+### The Choices Behind It
 
 Fuse is built specifically for the explore phase on a .NET codebase, and it makes a
 different set of choices:
@@ -92,13 +123,13 @@ different set of choices:
 - **MCP-native.** `fuse serve` is a Model Context Protocol server with eight tools,
   so the agent fetches scoped context in one call instead of reading files
   one by one.
-- **Round-trip-cutting.** A survey, a scoped drill-in, and a change review each
-  replace a sequence of read-decide-read hops with a single structured response.
 
-## How it compares
+## How It Compares
 
 | Capability | Generic packers | RAG / embeddings | Fuse |
 |------------|-----------------|------------------|------|
+| Round-trips to acquire context | One dump | One query, partial | One scoped call, or a few cheap refining calls |
+| Context per call | Whole repo | Ranked chunks | Scoped set, about 12.8x fewer tokens than a packer dump |
 | Understands C# structure | No, plain text | No, opaque chunks | Yes, types and signatures |
 | Cuts tokens vs raw | Often larger than raw | Per chunk only | 7 to 40 percent at full API fidelity |
 | Keeps the whole public API | Only by including everything | No, partial recall | 99 to 100 percent, verified |
@@ -112,7 +143,7 @@ repository a generic packer is simpler, and for open-ended semantic search acros
 huge corpus an embedding index has its place. For giving a .NET agent the right code
 with the API intact and the tokens cut, Fuse is purpose-built.
 
-## Honest boundaries
+## Honest Boundaries
 
 The default dependency graph is regex-based and best-effort: it can miss edges that
 come from dynamic dispatch or reflection, and it collapses on codebases with heavy

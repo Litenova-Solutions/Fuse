@@ -1,0 +1,60 @@
+---
+title: Sessions and deltas
+description: How a session id lets later Fuse calls in the same task skip files the agent already holds, so multi-turn refinement does not re-pay tokens.
+---
+
+A task is rarely one call. An agent surveys, drills into one area, then drills into a
+related one, and the second scoped call often overlaps the first. **Session-delta** is how
+Fuse avoids resending what the agent already holds: pass the same `session` id across calls
+and Fuse omits files it sent earlier in that session, so multi-turn refinement does not
+re-pay tokens for unchanged context.
+
+## How It Works
+
+A session is an opaque string you choose and reuse across calls in one task. Fuse tracks,
+per session, which files it has emitted and a hash of the content it sent. On a later call
+with the same session id:
+
+- A file sent earlier with the same content is **omitted**.
+- A file whose content changed since it was sent is **resent** (the new content matters).
+- A file not yet seen in the session is sent normally.
+
+Tracking is by content hash, not just path, so a file the agent already has is skipped
+while a file that changed is delivered fresh. The omitted files are not silently dropped:
+the response carries a note listing them, with a reminder to re-request any file by path
+if the agent no longer holds it.
+
+## Before and After
+
+The first call on a session returns the scoped set in full:
+
+```text
+fuse_focus(path="C:/Projects/MyApp/src", focus="OrderService", session="task-42")
+# returns OrderService.cs, Order.cs, IOrderRepository.cs, PricingPolicy.cs
+```
+
+A later call in the same task, on a related seed that shares some of those files, returns
+only the new ones and notes what it skipped:
+
+```text
+fuse_focus(path="C:/Projects/MyApp/src", focus="PricingPolicy", session="task-42")
+# returns DiscountRule.cs, TaxPolicy.cs
+# note: omitted 1 file already sent this session: PricingPolicy.cs
+```
+
+The second call pays only for the files the agent does not already have.
+
+## Honest Note
+
+Session state is per-session and held in memory in the running `fuse serve` process, which
+is the session boundary. It is never persisted, so it is lost when the server process
+exits, and resetting a session makes the next call resend everything. Session-delta is a
+property of the MCP server across a live agent conversation; a one-off CLI run does not
+carry session state between invocations.
+
+## Next
+
+See the multi-turn workflow in
+[Refine across turns](/docs/scenarios/refine-across-turns), the wider loop in
+[The explore phase](/docs/concepts/the-explore-phase), and the `session` parameter in the
+[MCP tools reference](/docs/reference/mcp-tools).

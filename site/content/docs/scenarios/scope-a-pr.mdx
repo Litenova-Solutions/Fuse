@@ -6,7 +6,7 @@ description: Fuse only the files a branch changed, plus the code most likely to 
 **Goal:** review a branch by fusing just what it changed and the code that depends on it,
 not the whole repository.
 
-## Do it
+## Do It
 
 ```bash
 fuse dotnet --directory ./src --changed-since main --include-dependents
@@ -17,7 +17,7 @@ the first-degree dependents of each changed file, the code most likely to break 
 change. The ref can be a branch, a commit, or a relative reference like `HEAD~5`. This
 needs `git` on your PATH.
 
-## Add a review map
+## Add a Review Map
 
 ```bash
 fuse dotnet --directory ./src --changed-since main --review
@@ -27,7 +27,7 @@ fuse dotnet --directory ./src --changed-since main --review
 callers, so a reviewer or an agent sees what changed and who calls it before reading the
 files.
 
-## What you get
+## What You Get
 
 A fusion scoped to the change set and its dependents, emitted most-relevant first so the
 changed files survive any token cut. Change scoping is the strongest mode by measurement:
@@ -36,13 +36,13 @@ It is also one call, not an explore loop: in the [Layer 4 scenario](/docs/projec
 a scoped call averaged about 40,000 tokens against roughly 512,000 for a whole-repository
 packer dump at the same single call.
 
-## When to use it
+## When to Use It
 
 Use this for branch and pull-request review, for understanding the blast radius of a
 change, and for handing an agent exactly the context a code review needs. For the MCP
 equivalent, call `fuse_changes` with `review` set to true.
 
-## Related concept
+## Related Concept
 
 The git seed and dependent expansion are covered in
 [Scoping](/docs/concepts/scoping); the recall and precision numbers are in

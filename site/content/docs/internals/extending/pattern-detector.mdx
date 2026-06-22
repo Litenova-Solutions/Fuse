@@ -15,7 +15,7 @@ A detected result carries the pattern name, a short summary line, an occurrence 
 
 Detection is name and text based. A detector scans reduced content with string or regular expression matching rather than a parsed model of the code, so it cannot tell a real usage from a coincidental name match, a reference inside a comment, or an unrelated type that happens to share a word. Results favor recall over precision. A detector should therefore be conservative, and its summary should describe what was found in plain terms without claiming a certainty the method cannot support.
 
-## Implement The Detector
+## Implement the Detector
 
 The following detector counts references whose names suggest a validator convention. It resets its counters, folds each file into them, and reports a result only when it found at least one match.
 

@@ -7,7 +7,7 @@ A reducer is a capability that shrinks a file's content according to its type. D
 
 This page is for engineers who want to know exactly which transforms run on a given file type and maintainers reasoning about token output.
 
-## Purpose And Scope
+## Purpose and Scope
 
 Each reducer declares the extensions it handles. When the Reduction stage processes a file, it looks up the reducer registered for that file's extension and applies it. A file whose extension has no registered reducer passes through with whitespace normalization only.
 

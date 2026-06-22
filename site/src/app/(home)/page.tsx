@@ -3,9 +3,9 @@ import Image from 'next/image';
 import type { Metadata } from 'next';
 import {
   ArrowRight,
-  Boxes,
   Crosshair,
   GitPullRequest,
+  Layers,
   Plug,
   ShieldCheck,
   Coins,
@@ -15,9 +15,9 @@ import { HeroVisual } from '@/components/hero-visual';
 import { githubUrl } from '@/lib/shared';
 
 export const metadata: Metadata = {
-  title: 'Fuse - up to 40% fewer input tokens for AI agents on .NET',
+  title: 'Fuse - collapse your AI agent\'s explore phase on .NET into one call',
   description:
-    'Fuse is a Model Context Protocol server and CLI that hands AI coding agents the right .NET code, scoped and reduced, in one call. Up to 40% fewer input tokens at full public-API fidelity.',
+    'Fuse is a Model Context Protocol server and CLI that finds the .NET code a task needs and hands it over scoped and reduced in one call, so your agent spends its time on the change instead of exploring.',
 };
 
 function CodeBlock({ children }: { children: React.ReactNode }) {
@@ -40,14 +40,15 @@ export default function HomePage() {
               MCP server for AI coding agents on .NET
             </span>
             <h1 className="mt-5 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-              Up to <span className="text-gradient">40% fewer input tokens</span>{' '}
-              on your .NET codebase.
+              Your agent&apos;s explore phase,{' '}
+              <span className="text-gradient">collapsed into one call</span>.
             </h1>
             <p className="mt-6 max-w-xl text-lg text-fd-muted-foreground">
-              Fuse is a Model Context Protocol server that hands your AI coding
-              agent the right .NET code, scoped and reduced, in one call, with 99
-              to 100% of the public API intact. Less of the context window spent
-              exploring, more spent on the task. A CLI is included.
+              An AI coding agent starts every task by exploring: listing, searching,
+              opening file after file to find the few that matter. Fuse finds the .NET
+              code a task needs and hands it over scoped and reduced in one call, so the
+              agent spends its time on the change instead of the hunt, with 99 to 100% of
+              the public API intact. A CLI is included.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
@@ -76,14 +77,15 @@ export default function HomePage() {
       {/* Measured metrics strip */}
       <section className="border-b border-fd-border bg-fd-card/40">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-6 px-6 py-10 md:grid-cols-4">
-          <Metric value="7-40%" label="fewer tokens at full API fidelity" />
+          <Metric value="1 call" label="to gather a change's context, vs at least ~6 blind file reads" />
+          <Metric value="~13x" label="fewer tokens than a generic packer at that one call" />
+          <Metric value="88%" label="change-scoping recall on real merged PRs" />
           <Metric value="99-100%" label="of public types and methods kept" />
-          <Metric value="88%" label="change-scoping recall on real PRs" />
-          <Metric value="66-93%" label="cut in skeleton (architecture) mode" />
         </div>
         <p className="pb-6 text-center text-xs text-fd-muted-foreground">
           Measured over a commit-pinned OSS corpus, counted with{' '}
-          <code className="font-mono">o200k_base</code>.{' '}
+          <code className="font-mono">o200k_base</code>. The blind-read count is a
+          structural lower bound; read the token win with its 51% query recall.{' '}
           <Link href="/docs/project/benchmarks" className="underline hover:text-fd-foreground">
             Reproduce the benchmarks
           </Link>
@@ -117,8 +119,8 @@ export default function HomePage() {
           <div className="grid gap-6 md:grid-cols-3">
             <Feature
               icon={<Plug className="size-5" />}
-              title="MCP-native"
-              body="fuse serve is a Model Context Protocol server with eight tools for Claude Code, Cursor, and Copilot, so your agent fetches scoped, reduced context directly instead of reading files one by one."
+              title="One call, not an explore loop"
+              body="fuse serve is a Model Context Protocol server with eight tools for Claude Code, Cursor, and Copilot. Your agent fetches scoped, reduced context in one call instead of opening files one by one, so its time goes to the change."
             />
             <Feature
               icon={<Crosshair className="size-5" />}
@@ -126,22 +128,22 @@ export default function HomePage() {
               body="Your agent scopes a fusion to a type and its dependencies, the files a git diff touched, or the files a query ranks highest. Fuse expands through a dependency graph instead of dumping everything."
             />
             <Feature
-              icon={<Coins className="size-5" />}
-              title="Fewer input tokens"
-              body="Structural C# reduction removes comments, usings, namespaces, and whitespace, and can drop bodies to signatures. The default and --all keep the public API while cutting 7-40% of tokens."
+              icon={<Layers className="size-5" />}
+              title="Refines across turns"
+              body="A shared session id means later calls in the same task skip files the agent already holds, so a multi-step change does not re-pay tokens for context it already has."
             />
             <Feature
-              icon={<ShieldCheck className="size-5" />}
-              title="Keeps the API intact"
-              body="Reduction is not deletion. An independent Roslyn oracle confirms default and --all keep 99-100% of public types and methods. fuse verify reports the preserved surface."
+              icon={<Coins className="size-5" />}
+              title="Fewer tokens, full API"
+              body="Structural C# reduction cuts 7-40% of tokens, and an independent Roslyn oracle confirms the default and --all keep 99-100% of public types and methods. Reduction is not deletion."
             />
             <Feature
               icon={<GitPullRequest className="size-5" />}
               title="Built for review"
-              body="Your agent scopes to a branch with change recall of 88% on real merged PRs, prepends a review map of diff hunks and callers, and emits only what changed since the last turn."
+              body="Your agent scopes to a branch with change recall of 88% on real merged PRs and prepends a review map of diff hunks and the callers of each changed file."
             />
             <Feature
-              icon={<Boxes className="size-5" />}
+              icon={<ShieldCheck className="size-5" />}
               title="Deterministic and AOT-clean"
               body="The default path uses no runtime reflection and ships as a Native AOT binary. Same input, same output. An opt-in Roslyn tier raises precision when you ask for it."
             />
@@ -153,12 +155,12 @@ export default function HomePage() {
       <section className="mx-auto w-full max-w-5xl px-6 py-20">
         <div className="text-center">
           <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            Reduction without losing the surface
+            Measured, and reported in full
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-fd-muted-foreground">
-            Token reduction and public-API fidelity across the benchmark corpus.
-            Every number comes from a harness anyone can rerun against the same
-            pinned commits.
+            Round-trips, tokens, scoping recall, and public-API fidelity across the
+            benchmark corpus. Every number comes from a harness anyone can rerun
+            against the same pinned commits, including the arms where Fuse ties or loses.
           </p>
         </div>
         <div className="mt-10 overflow-hidden rounded-xl border border-fd-border bg-fd-card p-4">
@@ -229,8 +231,8 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
               The same engine runs as a global tool. Point it at a .NET source
-              tree and read one file instead of thousands, with a manifest that
-              lists every included file and its token cost.
+              tree and get one scoped, reduced payload, with a manifest that lists
+              every included file and its token cost.
             </p>
             <Button asChild variant="ghost" className="mt-6">
               <Link href="/docs/start/quickstart">
@@ -265,16 +267,16 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
               </thead>
               <tbody className="text-fd-muted-foreground">
                 <ComparisonRow
+                  cap="Context for one task, one call"
+                  packer="One dump, ~512K tokens"
+                  rag="Ranked chunks, partial"
+                  fuse="One call, ~40K tokens (51% recall)"
+                />
+                <ComparisonRow
                   cap="Understands C# structure"
                   packer="No, plain text"
                   rag="No, opaque chunks"
                   fuse="Yes, types and signatures"
-                />
-                <ComparisonRow
-                  cap="Cuts tokens"
-                  packer="Often larger than raw"
-                  rag="Per chunk only"
-                  fuse="7-40% at full API fidelity"
                 />
                 <ComparisonRow
                   cap="Keeps whole API surface"
@@ -283,22 +285,10 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
                   fuse="99-100% verified"
                 />
                 <ComparisonRow
-                  cap="Context for one task, one call"
-                  packer="One dump, ~512K tokens"
-                  rag="Ranked chunks, partial"
-                  fuse="One call, ~40K tokens"
-                />
-                <ComparisonRow
                   cap="Deterministic output"
                   packer="Yes"
                   rag="No, similarity-ranked"
                   fuse="Yes"
-                />
-                <ComparisonRow
-                  cap="MCP server for agents"
-                  packer="Rarely"
-                  rag="Varies"
-                  fuse="Eight tools, built in"
                 />
               </tbody>
             </table>

@@ -16,7 +16,7 @@ There are three modes, and a single fusion uses at most one of them.
 | Changes | `--changed-since` | Files changed since a git ref, plus dependents | Reviewing a branch or pull request |
 | Query | `--query` | The top-ranked files for a search query | You have a topic but not a file name |
 
-## Focus: scope by name
+## Focus: Scope by Name
 
 ```bash
 fuse dotnet --directory ./src --focus OrderService --depth 2
@@ -27,7 +27,7 @@ files that define a type of that name, then a directory prefix. `--depth` (1 to 
 default 1) sets how many hops out through the graph Fuse follows. Focus pulls both
 what the seed depends on and the files that depend on it.
 
-## Changes: scope by git diff
+## Changes: Scope by Git Diff
 
 ```bash
 fuse dotnet --directory ./src --changed-since main --include-dependents
@@ -39,7 +39,7 @@ first-degree dependents of each changed file, the code most likely to break. Thi
 needs `git` on your PATH. It is the strongest mode by measurement: 88 percent change
 recall on real merged pull requests.
 
-## Query: scope by topic
+## Query: Scope by Topic
 
 ```bash
 fuse dotnet --directory ./src --query "discount calculation at checkout" --query-top 5 --depth 2
@@ -67,7 +67,7 @@ the methods it needs plus the shell of their type, not every line of the file. A
 type name still pulls the whole type in; only a query that lands on specific members trims
 the rest. The fallback path (no precision tier) chunks more coarsely but behaves the same way.
 
-## Spending the token budget
+## Spending the Token Budget
 
 When a query or focus runs under `--max-tokens`, Fuse picks the entries to emit by their
 real reduced token cost, not a byte estimate: it reduces the candidates, then fills the
@@ -75,7 +75,7 @@ budget by relevance-per-token so the most relevant members survive and the budge
 close to full. The single most relevant entry is always kept, so a scoped run never emits
 nothing.
 
-## Why expand through the graph
+## Why Expand through the Graph
 
 A changed file rarely stands alone. The type it calls, and the test that calls it, are
 part of the same task. Graph expansion brings that neighborhood in so the agent does
@@ -83,7 +83,7 @@ not have to discover it with more round-trips. Per-hop scoring decays with dista
 the seed neighborhood ranks above distant files; under a token budget the reduction-aware
 pack (above) then keeps the highest relevance-per-token entries and drops the rest.
 
-## A note on accuracy
+## A Note on Accuracy
 
 The default dependency graph is regex-based and best-effort: it can miss edges from
 dynamic dispatch or reflection. For accurate edges and member-level scoping, the
@@ -92,5 +92,7 @@ traversal are detailed in [Scoping internals](/docs/internals/scoping-internals)
 
 ## Next
 
-Put a mode to work: [Scope a pull request](/docs/scenarios/scope-a-pr) or
+Scoping is the step that makes the round-trip collapse possible; see
+[The explore phase](/docs/concepts/the-explore-phase) for how an agent uses it across a
+task. Or put a mode to work: [Scope a pull request](/docs/scenarios/scope-a-pr) or
 [Ask one question](/docs/scenarios/ask-one-question).

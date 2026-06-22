@@ -7,7 +7,7 @@ Fuse is configured through command-line flags. This page is the canonical list: 
 
 This page is for engineers and maintainers who need exact flag behavior and defaults. For task-oriented usage, follow the guide links at the end of each relevant section.
 
-## Purpose And Scope
+## Purpose and Scope
 
 This page documents flags only. It does not explain the pipeline (see [Core Concepts](/docs/concepts/how-fuse-works)), the configuration file (see [Configuration Keys](/docs/reference/configuration-keys)), or the output format (see [Output Specification](/docs/reference/output-specification)). Where a flag has a config-file equivalent, the config file is the lower-precedence source: an explicit flag always wins. Precedence and the supported keys are in the [Configuration Keys reference](/docs/reference/configuration-keys).
 
@@ -44,7 +44,7 @@ Types in the tables use these conventions: `bool` is a switch, `int` is a whole 
 | `--include-metadata` | bool | `false` | Include file metadata (size, dates) in output entries. |
 | `--respect-gitignore` | bool | `true` | Apply `.gitignore` rules found in the directory tree. |
 
-## Token And Output Options
+## Token and Output Options
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
@@ -102,7 +102,7 @@ The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds refer
 |------|------|---------|-------------|
 | `--exclude-test-projects` | bool | `false` | Exclude common test project directories. |
 
-## Cache And Watch Options
+## Cache and Watch Options
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
@@ -149,7 +149,7 @@ These flags are orthogonal to `--level`: they are not folded into the level and 
 | `--minify-html-and-razor` | bool | `true` | Minify HTML and Razor files. |
 | `--collapse-generated` | bool | `false` | Collapse EF Core migration and model-snapshot bodies to their signatures, dropping the large generated method bodies. |
 
-### Structure And Annotation
+### Structure and Annotation
 
 These flags are also orthogonal to `--level`.
 

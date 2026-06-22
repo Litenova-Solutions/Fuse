@@ -52,9 +52,22 @@ percent reduction but 4 percent method fidelity) to 694,862 tokens (Roslyn, 52.7
 reduction at 100 percent fidelity). The precision tier does not weaken fidelity to inflate
 reduction; it gives you a faithful signatures-only cut.
 
-The tier also unlocks **symbol-level scoping**: a `Type.Member` focus seed scopes the
+The tier also sharpens **symbol-level scoping**: a `Type.Member` focus seed scopes the
 seed file to that one member, keeping its body in full and reducing the rest of the file
-to signatures.
+to signatures. Query-based member retrieval (the thin host skeleton a `--query` emits for
+C#) runs on the default regex tier too, just with coarser member boundaries; the precision
+tier gives it exact boundaries.
+
+## A second opt-in tier: semantic embeddings
+
+The `--rerank` flag has its own opt-in backend, independent of the Roslyn tier. By default
+the reranker scores candidates with a dependency-free lexical hashing embedding. The
+`--embeddings` flag (or `FUSE_EMBEDDINGS`) switches in a real semantic encoder
+(`all-MiniLM-L6-v2`, ONNX), downloaded once to `~/.fuse/models` and verified against a
+pinned hash, so rerank can bridge a true semantic gap rather than only sharpening lexical
+overlap. Like Roslyn, ONNX is not AOT compatible, so it lives in a separate assembly the
+AOT package does not reference; the AOT binary always uses the hashing embedding, and any
+run falls back to hashing when the model cannot be fetched.
 
 ## Availability
 

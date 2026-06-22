@@ -164,7 +164,7 @@ export default function HomePage() {
         <div className="mt-10 overflow-hidden rounded-xl border border-fd-border bg-fd-card p-4">
           <Image
             src="/fuse-benchmarks.png"
-            alt="Fuse benchmark results across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with the opt-in Roslyn tier, and one scoped call delivering a task's context in about 13 times fewer tokens than a generic packer."
+            alt="Fuse benchmark results across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with the opt-in Roslyn tier, one scoped call replacing at least six grep-and-open round-trips, and that call delivering a task's context in about 13 times fewer tokens than a generic packer."
             width={1600}
             height={900}
             className="h-auto w-full rounded-lg"

@@ -4,18 +4,25 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# Fail the script if any native command (dotnet) returns a non-zero exit code.
+# Without this, a failing `dotnet pack` is silently skipped and the job reports
+# success while a package is missing.
+$PSNativeCommandUseErrorActionPreference = $true
 
 $root = Split-Path -Parent $PSScriptRoot
 $cliProject = Join-Path $root "src/Host/Fuse.Cli/Fuse.Cli.csproj"
 $outputDir = Join-Path $root "src/Host/Fuse.Cli/nupkg"
 $aotRoot = Join-Path $root "artifacts/aot"
 
-Write-Host "Packing framework-dependent Fuse tool (R2R)..."
+# A .NET global tool package is portable (RID-agnostic), so it cannot be
+# ReadyToRun-compiled at pack time (that needs a runtime identifier and fails
+# with NETSDK1094). Fast startup comes from the Fuse.Runtime.<rid> AOT packages
+# below, not from R2R on the portable tool.
+Write-Host "Packing framework-dependent Fuse tool..."
 dotnet pack $cliProject `
     --configuration Release `
     --output $outputDir `
-    -p:Version=$Version `
-    -p:PublishReadyToRun=true
+    -p:Version=$Version
 
 foreach ($rid in $Rids) {
     $profile = "aot-$rid"

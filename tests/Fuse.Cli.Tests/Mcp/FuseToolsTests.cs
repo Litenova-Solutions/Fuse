@@ -44,6 +44,32 @@ public sealed class FuseToolsTests
         Assert.Equal(expectedTemplate, attribute!.UriTemplate);
     }
 
+    [Theory]
+    [InlineData(nameof(FuseTools.FuseFocusAsync))]
+    [InlineData(nameof(FuseTools.FuseSearchAsync))]
+    [InlineData(nameof(FuseTools.FuseChangesAsync))]
+    [InlineData(nameof(FuseTools.FuseDotNetAsync))]
+    public void ScopedTools_DefaultLevelIsStandard(string methodName)
+    {
+        var method = typeof(FuseTools).GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        var levelParam = method!.GetParameters().Single(p => p.Name == "level");
+        Assert.Equal(typeof(Plugins.Abstractions.Options.ReductionLevel), levelParam.ParameterType);
+        Assert.Equal(Plugins.Abstractions.Options.ReductionLevel.Standard, levelParam.DefaultValue);
+    }
+
+    [Fact]
+    public void ScopedTools_ExposeLevelInsteadOfBooleanCluster()
+    {
+        var method = typeof(FuseTools).GetMethod(nameof(FuseTools.FuseDotNetAsync), BindingFlags.Public | BindingFlags.Static);
+        var paramNames = method!.GetParameters().Select(p => p.Name).ToHashSet();
+
+        Assert.Contains("level", paramNames);
+        foreach (var removed in new[] { "all", "aggressive", "skeleton", "removeCSharpComments", "removeCSharpUsings" })
+            Assert.DoesNotContain(removed, paramNames);
+    }
+
     [Fact]
     public async Task FuseTocAsync_EmitsTableOfContentsForDirectory()
     {

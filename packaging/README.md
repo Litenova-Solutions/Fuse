@@ -1,18 +1,21 @@
 # Packaging and publishing
 
-How Fuse is distributed, and what each file here is for. The canonical install
-is the .NET global tool; the other channels serve users without the .NET SDK.
+How Fuse is distributed. Fuse is a developer tool for .NET developers, so the
+canonical install is the .NET global tool. The other channels exist for people
+who do not have the .NET SDK and want a single self-contained binary.
 
 ## Channels and how they publish
 
 | Channel | Trigger | Workflow / source | Credentials |
 |---------|---------|-------------------|-------------|
 | NuGet (`dotnet tool install -g Fuse`) | `v*.*.*` tag | `.github/workflows/publish.yml` (`build/pack-aot.ps1`) | `NUGET_API_KEY` repo secret |
-| GitHub Release (installer, win-x64 zip, linux-x64 tarball, `SHA256SUMS.txt`) | `v*.*.*` tag | `.github/workflows/release.yml` | built-in `GITHUB_TOKEN` |
+| GitHub Release (installer, self-contained win-x64 zip, linux-x64 tarball, `SHA256SUMS.txt`) | `v*.*.*` tag | `.github/workflows/release.yml` | built-in `GITHUB_TOKEN` |
 | MCP Registry (`fuse serve` discovery) | `v*.*.*` tag | `.github/workflows/mcp-registry.yml` (`mcp-registry/server.json`) | GitHub OIDC, no secret |
-| Scoop (`scoop install fuse`) | manual / autoupdate | `packaging/scoop/fuse.json` -> the `scoop-bucket` repo | none |
-| Homebrew (`brew install fuse`, Linux) | manual / bump | `packaging/homebrew/fuse.rb` -> the `homebrew-fuse` tap | none |
+| Install scripts (`curl ... \| sh`, `irm ... \| iex`) | served from the site | `site/public/install.sh`, `site/public/install.ps1` (at fuse.codes) | none |
 | WinGet (`winget install Litenova.Fuse`) | manual PR | `packaging/winget/*` -> `microsoft/winget-pkgs` | none (PR review) |
+
+The self-contained binaries are Native AOT builds, so they run without the .NET
+SDK or runtime. The install scripts download those same release assets.
 
 ## Order of operations for a release
 
@@ -22,24 +25,17 @@ is the .NET global tool; the other channels serve users without the .NET SDK.
    the MCP Registry publish. The MCP publish validates the NuGet package and the
    `mcp-name: io.github.litenova-solutions/fuse` marker in the packed README, so
    it depends on the NuGet push having succeeded.
-4. Once the Release exists, update the downstream manifests with the real version
-   and hashes (the placeholder zeros below are filled from the release assets):
-   - **Scoop:** in the `scoop-bucket` repo, run the bundled checkver/autoupdate to
-     bump `fuse.json` (it reads hashes from `SHA256SUMS.txt`), or copy the updated
-     `packaging/scoop/fuse.json` over.
-   - **Homebrew:** set `version` and the `sha256` (from `SHA256SUMS.txt`) in the
-     tap's `fuse.rb`.
-   - **WinGet:** set `PackageVersion` and `InstallerSha256`, then submit the three
-     manifests as a PR to `microsoft/winget-pkgs` (the `wingetcreate` tool can do
-     both).
+4. The install scripts need no per-release change: they resolve the latest release
+   (or `FUSE_VERSION`) and verify against `SHA256SUMS.txt` at install time.
+5. For WinGet, once the Release exists, set `PackageVersion` and `InstallerSha256`
+   in `packaging/winget/*`, then submit the three manifests as a PR to
+   `microsoft/winget-pkgs` (the `wingetcreate` tool can do both).
 
 ## Notes
 
-- The placeholder `0000...` hashes are intentional: a manifest cannot carry a real
-  hash until the release asset it points at exists.
-- macOS is not packaged yet. Mac users with the .NET SDK still get Fuse via
-  `dotnet tool install -g Fuse`. Adding a macOS channel needs a macOS AOT build
-  (the `aot-osx-x64` profile exists) and, for an unwarned binary, Apple notarization.
-- The external `scoop-bucket` and `homebrew-fuse` repos hold the published copies
-  of the manifests in `packaging/scoop` and `packaging/homebrew`; this folder is
-  the source of truth that they track.
+- The placeholder `0000...` hash in the WinGet installer manifest is intentional:
+  a manifest cannot carry a real hash until the release asset it points at exists.
+- macOS is not packaged as a binary. Mac users get Fuse via
+  `dotnet tool install -g Fuse`. Adding a macOS channel would need a macOS AOT
+  build (the `aot-osx-x64` profile exists) and, for an unwarned binary, Apple
+  notarization.

@@ -42,26 +42,31 @@ Reproduce every number with `pwsh -File tests/benchmarks/harness/run-all.ps1`.
 
 ## Install
 
-**Prerequisites:** [.NET SDK 10.0](https://dotnet.microsoft.com/download) or later.
+Fuse is a developer tool for .NET developers, so the recommended install is the
+.NET global tool ([.NET SDK 10.0](https://dotnet.microsoft.com/download) or later):
 
 ```bash
 dotnet tool install -g Fuse
 ```
 
-Run without a global install via the .NET 10 SDK:
+Or run it on demand without installing: `dnx Fuse -- serve`.
+
+If you do not have the .NET SDK, install a self-contained binary (Native AOT, no
+runtime required) with the script for your platform:
 
 ```bash
-dnx Fuse -- serve
+# Linux
+curl -fsSL https://fuse.codes/install.sh | sh
 ```
 
-Build from source on Windows with `install.bat`, or on any OS:
-
-```bash
-dotnet pack src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release
-dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
+```powershell
+# Windows
+irm https://fuse.codes/install.ps1 | iex
 ```
 
-Verify with `fuse --help`. Full install notes: [fuse.codes/docs/start/install](https://fuse.codes/docs/start/install).
+On Windows you can also use `winget install Litenova.Fuse`, or download a binary
+from [Releases](https://github.com/Litenova-Solutions/Fuse/releases). Verify with
+`fuse --help`. Full notes: [fuse.codes/docs/start/install](https://fuse.codes/docs/start/install).
 
 ## Quickstart
 

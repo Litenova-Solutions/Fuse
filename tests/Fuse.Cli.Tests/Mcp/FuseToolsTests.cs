@@ -137,6 +137,31 @@ public sealed class FuseToolsTests
         Assert.StartsWith("Error", result);
     }
 
+    [Fact]
+    public async Task FuseFocusPreset_MatchesEquivalentFuseDotNetInvocation()
+    {
+        // Behavior parity (Phase 4.3): the fuse_focus preset routes through the same shared path as the
+        // full-control fuse_dotnet tool, so the set of emitted files is identical for an equivalent call.
+        using var fixture = new TempProject();
+        fixture.AddFile("Seed.cs", "public class Seed { public Dep D { get; set; } }");
+        fixture.AddFile("Dep.cs", "public class Dep { public int Id { get; set; } }");
+        fixture.AddFile("Other.cs", "public class Other { public string Name => \"x\"; }");
+
+        var (orchestrator, templates) = BuildServices();
+
+        // Both default the level to standard, so only the scoping path differs in how it is expressed.
+        var preset = await FuseTools.FuseFocusAsync(orchestrator, templates, fixture.Path, "Seed", depth: 1);
+        var full = await FuseTools.FuseDotNetAsync(orchestrator, templates, fixture.Path, focus: "Seed", depth: 1);
+
+        Assert.Equal(EmittedFiles(preset), EmittedFiles(full));
+    }
+
+    private static IReadOnlyList<string> EmittedFiles(string output) =>
+        System.Text.RegularExpressions.Regex.Matches(output, "<file path=\"([^\"]+)\"")
+            .Select(m => m.Groups[1].Value)
+            .OrderBy(p => p, StringComparer.Ordinal)
+            .ToList();
+
     private static (FusionOrchestrator, ProjectTemplateRegistry) BuildServices()
     {
         var provider = new ServiceCollection().AddFuse().BuildServiceProvider();

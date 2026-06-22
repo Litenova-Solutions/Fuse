@@ -24,10 +24,22 @@ namespace Fuse.Fusion.Scoping;
 ///     Per-path estimated token costs used with <paramref name="TokenBudget" />. Paths absent from the map
 ///     cost nothing. Ignored when <paramref name="TokenBudget" /> is <c>null</c>.
 /// </param>
+/// <param name="Centrality">
+///     Optional query-independent importance prior (normalized in-degree per path, see
+///     <see cref="GraphCentrality" />). Blended additively into the rank score so that at equal relevance the
+///     more depended-upon file ranks earlier. <c>null</c> disables the prior.
+/// </param>
+/// <param name="CentralityWeight">
+///     The weight applied to <paramref name="Centrality" /> when blending it into the rank score. A weight of
+///     <c>0</c> (the default) reproduces the prior ordering exactly. The blend is additive and never affects
+///     the score propagated to neighbours, so it cannot compound across hops.
+/// </param>
 public sealed record ExpansionOptions(
     int Depth,
     bool FollowReferences = true,
     bool FollowDependents = false,
     double HopDecay = 0.5,
     int? TokenBudget = null,
-    IReadOnlyDictionary<string, int>? TokenCosts = null);
+    IReadOnlyDictionary<string, int>? TokenCosts = null,
+    IReadOnlyDictionary<string, double>? Centrality = null,
+    double CentralityWeight = 0.0);

@@ -57,24 +57,18 @@ public sealed class DotNetCommand : CommandBase
                 ExcludeUnitTestProjects,
                 RespectGitIgnore)
             .WithReductionOptions(new ReductionOptions(
+                level: Level,
                 trimContent: true,
                 useCondensing: true,
-                removeCSharpComments: All || RemoveCSharpComments,
-                removeCSharpUsings: All || RemoveCSharpUsings,
-                removeCSharpNamespaces: All || RemoveCSharpNamespaces,
-                removeCSharpRegions: All || RemoveCSharpRegions,
-                aggressiveCSharpReduction: All || Aggressive,
                 minifyXmlFiles: MinifyXmlFiles,
                 minifyHtmlAndRazor: MinifyHtmlAndRazor,
-                skeletonMode: Skeleton || PublicApi,
                 includeSemanticMarkers: SemanticMarkers,
                 includePatternSummary: PatternSummary,
                 enableRedaction: !NoRedact,
                 includeRedactReport: RedactReport,
                 includeRouteMap: RouteMap,
-                publicApiMode: PublicApi,
                 includeProjectGraph: ProjectGraph,
-                collapseGeneratedCode: All || CollapseGenerated));
+                collapseGeneratedCode: CollapseGenerated));
 
         if (!string.IsNullOrWhiteSpace(Focus))
         {
@@ -91,34 +85,11 @@ public sealed class DotNetCommand : CommandBase
     }
 
     /// <summary>
-    ///     Remove namespace declarations from C# files.
+    ///     The C# reduction level: <c>none</c>, <c>standard</c>, <c>aggressive</c>, <c>skeleton</c>, or
+    ///     <c>publicApi</c>. Replaces the former cluster of per-transform reduction flags.
     /// </summary>
-    [CliOption(Description = "Remove namespace declarations from C# files.")]
-    public bool RemoveCSharpNamespaces { get; set; } = false;
-
-    /// <summary>
-    ///     Remove comments from C# files.
-    /// </summary>
-    [CliOption(Description = "Remove comments from C# files.")]
-    public bool RemoveCSharpComments { get; set; } = false;
-
-    /// <summary>
-    ///     Remove <c>#region</c> directives from C# files.
-    /// </summary>
-    [CliOption(Description = "Remove #region directives from C# files.")]
-    public bool RemoveCSharpRegions { get; set; } = false;
-
-    /// <summary>
-    ///     Remove all <c>using</c> statements from C# files.
-    /// </summary>
-    [CliOption(Description = "Remove all using statements from C# files.")]
-    public bool RemoveCSharpUsings { get; set; } = false;
-
-    /// <summary>
-    ///     Apply aggressive C# reduction (attributes, redundant keywords, compressed properties).
-    /// </summary>
-    [CliOption(Description = "Apply aggressive reduction (remove attributes, redundant keywords, compress properties).")]
-    public bool Aggressive { get; set; } = false;
+    [CliOption(Description = "C# reduction level: none, standard, aggressive, skeleton, publicApi.")]
+    public ReductionLevel Level { get; set; } = ReductionLevel.None;
 
     /// <summary>
     ///     Minify XML files such as <c>.csproj</c> and <c>.xml</c>.
@@ -137,18 +108,6 @@ public sealed class DotNetCommand : CommandBase
     /// </summary>
     [CliOption(Description = "Exclude only unit test project directories (keeps integration tests and benchmarks).")]
     public bool ExcludeUnitTestProjects { get; set; } = false;
-
-    /// <summary>
-    ///     Apply all .NET optimization flags at once.
-    /// </summary>
-    [CliOption(Description = "Apply all optimizations (remove namespaces, comments, regions, usings, aggressive reduction).")]
-    public bool All { get; set; } = false;
-
-    /// <summary>
-    ///     Emit structural skeleton only (signatures without bodies).
-    /// </summary>
-    [CliOption(Description = "Emit structural skeleton only (class/interface/method signatures, no bodies).")]
-    public bool Skeleton { get; set; } = false;
 
     /// <summary>
     ///     Prepend structural annotation comments to each file entry.
@@ -191,12 +150,6 @@ public sealed class DotNetCommand : CommandBase
     /// </summary>
     [CliOption(Description = "Prepend an ASP.NET route map to the output.")]
     public bool RouteMap { get; set; } = false;
-
-    /// <summary>
-    ///     Emit only public and protected member skeletons.
-    /// </summary>
-    [CliOption(Description = "Emit only public and protected member skeletons.")]
-    public bool PublicApi { get; set; } = false;
 
     /// <summary>
     ///     Prepend a solution and project reference graph to the output.

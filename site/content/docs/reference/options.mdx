@@ -57,6 +57,7 @@ Types in the tables use these conventions: `bool` is a switch, `int` is a whole 
 | `--git-stats` | bool | `false` | Include git churn and last-modified statistics in the manifest. |
 | `--provenance` | bool | `false` | Annotate entries with dependency inclusion provenance. |
 | `--dedup-headers` | bool | `false` | Replace identical leading comment headers shared by two or more files with a marker, emitted once in a preamble. |
+| `--dedup-bodies` | bool | `false` | Replace member bodies that are byte-identical across two or more files (after whitespace normalization) with a marker referencing the canonical copy, emitted once. The member signature is always preserved. |
 | `--session` | string | None | Session id for session-delta emission: files whose identical content was already emitted under this id are omitted on later runs, with a note listing them. Primarily for the MCP server. |
 | `--format` | xml \| markdown \| json \| compact | `xml` | Output format. |
 | `--tokenizer` | string | `o200k_base` | Tokenizer model or encoding name. |
@@ -126,25 +127,35 @@ These flags apply only to `fuse dotnet`.
 
 ### C# Reduction
 
+A single `--level` flag drives C# structural reduction. It takes one of five enum values and replaces the former cluster of per-category C# reduction switches.
+
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--remove-csharp-namespaces` | bool | `false` | Remove namespace declarations from C# files. |
-| `--remove-csharp-comments` | bool | `false` | Remove comments from C# files. |
-| `--remove-csharp-regions` | bool | `false` | Remove `#region` directives from C# files. |
-| `--remove-csharp-usings` | bool | `false` | Remove all `using` statements from C# files. |
-| `--aggressive` | bool | `false` | Apply aggressive reduction (remove attributes and redundant keywords, compress properties). |
+| `--level` | none \| standard \| aggressive \| skeleton \| publicApi | `none` | C# structural reduction level. See the per-level transform table below. |
+
+| Level | What it does to C# |
+|-------|--------------------|
+| `none` | No C# structural reduction. Whitespace trim and condense and the orthogonal flags below still apply. |
+| `standard` | Removes C# comments, `using` directives, namespace wrappers, and `#region` directives. |
+| `aggressive` | The `standard` removals plus aggressive whitespace and syntax compression (remove attributes and redundant keywords, compress properties). |
+| `skeleton` | Emits structural skeletons (type and member signatures), bodies removed. |
+| `publicApi` | Like `skeleton`, but keeps only public and protected members. |
+
+These flags are orthogonal to `--level`: they are not folded into the level and apply at any level.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
 | `--minify-xml-files` | bool | `true` | Minify XML files such as `.csproj` and `.xml`. |
 | `--minify-html-and-razor` | bool | `true` | Minify HTML and Razor files. |
 | `--collapse-generated` | bool | `false` | Collapse EF Core migration and model-snapshot bodies to their signatures, dropping the large generated method bodies. |
-| `--all` | bool | `false` | Apply all C# reductions at once (namespaces, comments, regions, usings, aggressive, collapse-generated). |
 
 ### Structure And Annotation
 
+These flags are also orthogonal to `--level`.
+
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--skeleton` | bool | `false` | Emit structural skeleton only (class, interface, and method signatures, no bodies). |
 | `--semantic-markers` | bool | `false` | Prepend structural annotation comments to each file entry. |
-| `--public-api` | bool | `false` | Emit only public and protected member skeletons. |
 | `--route-map` | bool | `false` | Prepend an ASP.NET route map to the output. |
 | `--project-graph` | bool | `false` | Prepend a solution and project reference graph to the output. |
 | `--pattern-summary` | bool | `false` | Detect and append a cross-codebase pattern summary to the output. |
@@ -162,10 +173,11 @@ The detected patterns are listed in the [Pattern Detectors reference](/docs/refe
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--focus` | string | None | Type name, filename, or relative directory to scope the fusion around. With the precision tier (`--semantic`), a `Type.Member` seed scopes the seed file to that member (symbol-level scoping). |
-| `--query` | string | None | Search query to scope fusion to the most relevant files. |
+| `--query` | string | None | Search query to scope fusion to the most relevant files. For C# the query ranks at member granularity and emits a thin host-type skeleton with the matched members in full and the rest collapsed to signatures (symbol-level retrieval). |
 | `--query-top` | int | `10` | Number of top-ranked files to seed query scoping. |
 | `--depth` | int | `1` | Dependency traversal depth for focus or query scoping. Valid range 1 to 10. |
 | `--rerank` | bool | `false` | Rerank query candidates with embedding-vector similarity (hybrid retrieval) before dependency expansion. |
+| `--embeddings` | bool | unset | Embedding backend for `--rerank`: on for the semantic ONNX model (downloaded once to `~/.fuse/models`), off for the dependency-free hashing embedding. Unset uses the build default. Ignored in the Native AOT build, which always uses hashing. |
 
 The three scoping modes (`--focus`, `--changed-since`, and `--query`) are mutually exclusive: a single fusion uses at most one. The [Scoping to What Matters](/docs/concepts/scoping) guide explains each mode, and [Reducing Tokens](/docs/concepts/reduction-levels) covers the reduction flags in practice.
 

@@ -13,6 +13,8 @@ The repository CHANGELOG.md file documents every notable change by version, incl
 
 ## Most Recent Notable Change
 
+Breaking change: the C# reduction boolean cluster is replaced by a single reduction level. The flags `--all`, `--skeleton`, `--public-api`, `--aggressive`, and the `--remove-csharp-*` switches are gone, replaced by one `--level` option (and a matching `level` MCP parameter) with the values `none`, `standard`, `aggressive`, `skeleton`, and `publicApi`. The CLI commands default to `none`; the scoped MCP tools (`fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_dotnet`) default to `standard`, so an agent gets the standard removals (which preserve 99 to 100 percent of the public API surface on the benchmark corpus) without specifying a level. Migrate `--all` to `--level aggressive` (add `--collapse-generated` if you relied on `--all` collapsing generated code), `--aggressive` to `--level aggressive`, `--skeleton` to `--level skeleton`, `--public-api` to `--level publicApi`, and any `--remove-csharp-*` flag to `--level standard`, which performs all four removals together. The redaction, generated-code collapse, semantic-marker, pattern-summary, route-map, project-graph, and minification flags are unchanged and remain orthogonal to the level.
+
 Fuse 2.0 is a structural rewrite. It replaces the monolithic layers with an axis-based layout split into Core pipeline libraries, a Host for the CLI and MCP server, and language plugins. Backward compatibility with 1.x output is not a goal; the changelog includes a migration table covering the MCP tool changes, the default tokenizer change to `o200k_base`, the manifest header, and secret redaction now defaulting on.
 
 ## What This Does Not Cover

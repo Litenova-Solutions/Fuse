@@ -20,7 +20,7 @@ count because each file contributes one line plus an outline regardless of its s
 ## The architecture map: a skeleton
 
 ```bash
-fuse dotnet --directory ./src --skeleton --all --semantic-markers
+fuse dotnet --directory ./src --level skeleton --semantic-markers
 ```
 
 A **skeleton** keeps class, interface, and method signatures and drops bodies, so the
@@ -33,13 +33,13 @@ the types it depends on.
 These prepend to the output, so combine them for a layered overview:
 
 ```bash
-fuse dotnet --directory ./src --route-map --project-graph --skeleton
+fuse dotnet --directory ./src --route-map --project-graph --level skeleton
 ```
 
 - `--route-map` prepends a table of HTTP verb, path, and handler from controllers and
   minimal API endpoints.
 - `--project-graph` prepends the solution and project reference structure.
-- `--public-api` keeps only public and protected member skeletons, the contract a
+- `--level publicApi` keeps only public and protected member skeletons, the contract a
   project presents to consumers.
 
 ## What you get

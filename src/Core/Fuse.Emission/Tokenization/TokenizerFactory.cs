@@ -15,9 +15,18 @@ public sealed class TokenizerFactory
     /// </summary>
     public const string DefaultModel = "o200k_base";
 
-    // Average characters per token used by the Anthropic and Gemini estimators. These are published
-    // rules-of-thumb (roughly 3.5 and 4 characters per token for English and code), not exact vocabularies;
-    // see ApproximateTokenCounter for why exact offline counting is not available for those families.
+    // Average characters per word-run token used by the Anthropic and Gemini estimators (see
+    // ApproximateTokenCounter, which charges ceil(wordLength / charsPerToken) per alphanumeric run and one
+    // token per other non-whitespace character). These are the providers' published rules-of-thumb (roughly
+    // 3.5 and 4 characters per token), not exact vocabularies; neither provider ships a local tokenizer, so
+    // exact offline counting is not possible.
+    //
+    // Calibration methodology: tests/benchmarks/harness/calibrate-tokenizers.ps1 measures ground-truth token
+    // counts for a held-out C# sample from the pinned corpus through each provider's token-counting API
+    // (Anthropic: POST /v1/messages/count_tokens with model claude-opus-4-8 and ANTHROPIC_API_KEY; Gemini: its
+    // count-tokens endpoint with GEMINI_API_KEY) and reports the chars-per-token band. TODO: once a working
+    // provider key is available, run the harness and pin the fitted constants here, citing the measured band.
+    // Until then these stay at the published rules-of-thumb (never fit to an unmeasured guess).
     private const double AnthropicCharsPerToken = 3.5;
     private const double GeminiCharsPerToken = 4.0;
 

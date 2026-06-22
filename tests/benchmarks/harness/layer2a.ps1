@@ -11,8 +11,11 @@
 
 . "$PSScriptRoot/common.ps1"
 
-$Budget = 50000     # token budget per scoped context
-$Depth  = 2         # dependency expansion depth for focus/query
+# recall@budget is measured at several budgets so Phase 2/3 deltas can be read across the budget curve, not
+# just at one point. The 50k budget remains the headline reported in the docs.
+$Budgets = @(10000, 25000, 50000)
+$Budget  = 50000    # headline budget (also the grep-baseline budget per level)
+$Depth   = 2        # dependency expansion depth for focus/query
 $stop = @('the','and','for','from','into','with','this','that','when','then','add','fix',
           'update','merge','pull','request','branch','copilot','use','via','not','are','was')
 
@@ -69,20 +72,22 @@ foreach ($g in $repoGroups) {
         )
 
         foreach ($mode in $modes) {
-            $outDir = Join-Path $ResultsDir ".scope/$($g.Name)_$($pr.pr)/$($mode.name)"
-            if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
-            New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-            $a = @('dotnet','--directory', $wt, '--output', $outDir, '--overwrite',
-                '--format','xml','--tokenizer','o200k_base','--no-cache',
-                '--max-tokens', "$Budget", '--no-manifest') + $mode.flags
-            $null = Measure-Process $Fuse $a
-            $emitted = Get-EmittedPaths $outDir
-            $r = Measure-Recall $emitted $truth
-            $outFile = Get-ChildItem -Path $outDir -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            $tok = if ($outFile) { Get-Tokens $outFile.FullName } else { 0 }
-            $results += [pscustomobject]@{
-                repo=$g.Name; pr=$pr.pr; mode=$mode.name; truth=$truth.Count
-                recall=$r.recall; precision=$r.precision; hits=$r.hits; emitted=$r.emitted; tokens=$tok
+            foreach ($b in $Budgets) {
+                $outDir = Join-Path $ResultsDir ".scope/$($g.Name)_$($pr.pr)/$($mode.name)_$b"
+                if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
+                New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+                $a = @('dotnet','--directory', $wt, '--output', $outDir, '--overwrite',
+                    '--format','xml','--tokenizer','o200k_base','--no-cache',
+                    '--max-tokens', "$b", '--no-manifest') + $mode.flags
+                $null = Measure-Process $Fuse $a
+                $emitted = Get-EmittedPaths $outDir
+                $r = Measure-Recall $emitted $truth
+                $outFile = Get-ChildItem -Path $outDir -File -ErrorAction SilentlyContinue | Select-Object -First 1
+                $tok = if ($outFile) { Get-Tokens $outFile.FullName } else { 0 }
+                $results += [pscustomobject]@{
+                    repo=$g.Name; pr=$pr.pr; mode=$mode.name; budget=$b; truth=$truth.Count
+                    recall=$r.recall; precision=$r.precision; hits=$r.hits; emitted=$r.emitted; tokens=$tok
+                }
             }
         }
 
@@ -113,15 +118,16 @@ foreach ($g in $repoGroups) {
         }
         $gr = Measure-Recall $sel $truth
         $results += [pscustomobject]@{
-            repo=$g.Name; pr=$pr.pr; mode='grep'; truth=$truth.Count
+            repo=$g.Name; pr=$pr.pr; mode='grep'; budget=$Budget; truth=$truth.Count
             recall=$gr.recall; precision=$gr.precision; hits=$gr.hits; emitted=$gr.emitted; tokens=$cum
         }
 
+        # Console summary reports the headline budget only.
         Write-Host ("  PR#{0,-5} truth {1,2}  changes {2:P0}  focus {3:P0}  query {4:P0}  grep {5:P0}" -f `
             $pr.pr, $truth.Count,
-            ($results | Where-Object { $_.pr -eq $pr.pr -and $_.mode -eq 'changes' }).recall,
-            ($results | Where-Object { $_.pr -eq $pr.pr -and $_.mode -eq 'focus' }).recall,
-            ($results | Where-Object { $_.pr -eq $pr.pr -and $_.mode -eq 'query' }).recall,
+            ($results | Where-Object { $_.pr -eq $pr.pr -and $_.mode -eq 'changes' -and $_.budget -eq $Budget }).recall,
+            ($results | Where-Object { $_.pr -eq $pr.pr -and $_.mode -eq 'focus' -and $_.budget -eq $Budget }).recall,
+            ($results | Where-Object { $_.pr -eq $pr.pr -and $_.mode -eq 'query' -and $_.budget -eq $Budget }).recall,
             $gr.recall)
 
         git -C $repoPath worktree remove --force $wt 2>$null
@@ -131,22 +137,23 @@ foreach ($g in $repoGroups) {
 
 $results | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $ResultsDir 'layer2a.json')
 
-# Aggregate mean recall/precision per mode.
-$agg = $results | Group-Object mode | ForEach-Object {
+# Aggregate mean recall/precision per (mode, budget) so recall@budget is visible across the curve.
+$agg = $results | Group-Object mode, budget | ForEach-Object {
     [pscustomobject]@{
-        mode = $_.Name
+        mode = $_.Group[0].mode
+        budget = $_.Group[0].budget
         mean_recall = [math]::Round(($_.Group | Measure-Object recall -Average).Average, 3)
         mean_precision = [math]::Round(($_.Group | Measure-Object precision -Average).Average, 3)
         mean_tokens = [math]::Round(($_.Group | Measure-Object tokens -Average).Average, 0)
         n = $_.Count
     }
 }
-$md = @('# Layer 2A results (scoping recall)','',
-        "Token budget: $Budget. Focus/query depth: $Depth. PRs: $($prs.Count).",'',
-        '| Mode | Mean recall | Mean precision | Mean tokens | N |',
-        '|------|------------:|---------------:|------------:|--:|')
-foreach ($a in ($agg | Sort-Object mode)) {
-    $md += ('| {0} | {1:P0} | {2:P0} | {3} | {4} |' -f $a.mode, $a.mean_recall, $a.mean_precision, $a.mean_tokens, $a.n)
+$md = @('# Layer 2A results (scoping recall@budget)','',
+        "Budgets: $($Budgets -join ', '). Headline budget: $Budget. Focus/query depth: $Depth. PRs: $($prs.Count).",'',
+        '| Mode | Budget | Mean recall | Mean precision | Mean tokens | N |',
+        '|------|-------:|------------:|---------------:|------------:|--:|')
+foreach ($a in ($agg | Sort-Object mode, budget)) {
+    $md += ('| {0} | {1} | {2:P0} | {3:P0} | {4} | {5} |' -f $a.mode, $a.budget, $a.mean_recall, $a.mean_precision, $a.mean_tokens, $a.n)
 }
 $md -join "`n" | Set-Content (Join-Path $ResultsDir 'layer2a.md')
 $agg | Format-Table | Out-String | Write-Host

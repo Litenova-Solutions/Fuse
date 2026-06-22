@@ -35,7 +35,7 @@ flowchart LR
 
 ## Concurrency And Statistics
 
-All cache operations are serialized under a single lock, so the cache is safe to share across the parallel reduction workers. The run tracks hits and misses, reported at the end as `cache: N hit / M miss`.
+Within one run, cache operations are serialized under a single lock, so the cache is safe to share across the parallel reduction workers. Across concurrent runs over the same directory, each run holds its own cache instance, so safety comes from writing every entry to a unique temp file and atomically moving it into place, and from treating a read or write that loses a race as a miss. Because every entry for a given key is byte-identical, a lost write only forces a recomputation, never a wrong result. The run tracks hits and misses, reported at the end as `cache: N hit / M miss`.
 
 ## Controls
 
@@ -43,7 +43,11 @@ Two run-level flags govern the cache. The no-cache control bypasses it entirely 
 
 ## Distinct From The Single-Read Content Provider
 
-The single-read content provider is a separate, per-run optimization. It reads each file's raw content once per run and shares it across graph building, query indexing, and reduction, so a file is not read from disk several times within one fusion. It holds raw content for the duration of a single run and is cleared at the start of each.
+## The Persisted Relevance Index
+
+Query scoping builds a BM25 index over the candidate files each call, and body tokenization is the dominant cost of that build. When the persistent index is enabled, the body tokens of each file are cached on disk under `.fuse/index` keyed by content hash, alongside the analysis index. A warm query against an unchanged tree finds every file's tokens in the cache and skips re-tokenizing, so the index build drops from a cost in the number of files to a cost in the number of changed files plus the query. Invalidation is automatic: an edited file hashes differently, misses the cache, and is re-tokenized, while its neighbours still hit. Only the body field is persisted; symbol and path tokenization are cheap, and symbol analysis is already served by the analysis index. The cache is best-effort and content-addressed, so it is safe to share across concurrent runs and a corrupted entry degrades to recomputation. Ranking with the persisted tokens is identical to the in-memory build.
+
+The single-read content provider is a separate, per-run optimization. It reads each file's raw content once per run and shares it across graph building, query indexing, and reduction, so a file is not read from disk several times within one fusion. Each run constructs its own provider, so it holds raw content only for the duration of that run and is never shared with or cleared by another run. The BM25 relevance index is likewise built per run. Because neither holds cross-run state, the orchestrator runs fusions concurrently with no process-wide gate: independent requests (for example two MCP tool calls) execute in parallel and scale toward the core count.
 
 The reduction cache, by contrast, is persistent: it holds reduced output between runs, keyed by content and options. The provider avoids re-reading within a run; the cache avoids re-reducing across runs. They are independent and neither replaces the other.
 

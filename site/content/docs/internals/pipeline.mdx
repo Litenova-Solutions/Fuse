@@ -61,7 +61,7 @@ flowchart LR
 
 ## The Single-Read Content Provider
 
-Several stages need the same file content. Filtering reads files to build the dependency graph and to index them for query ranking; reduction reads them to transform them. A single shared content provider reads each file once per run and serves that content to every consumer, so a file is not read from disk three times. The provider is cleared at the start of each fusion.
+Several stages need the same file content. Filtering reads files to build the dependency graph and to index them for query ranking; reduction reads them to transform them. A single shared content provider reads each file once per run and serves that content to every consumer, so a file is not read from disk three times. Each run constructs its own content provider (and its own BM25 relevance index), so this state is run-local rather than shared between runs. Because no per-run state is shared, the orchestrator holds no process-wide gate: independent fusion runs execute concurrently and scale toward the core count.
 
 This per-run sharing is distinct from the persistent reduction cache, which stores reduced output across runs. The content provider holds raw content for the duration of one run; the reduction cache holds reduced output between runs.
 

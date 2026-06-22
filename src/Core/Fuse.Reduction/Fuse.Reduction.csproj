@@ -13,6 +13,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Fuse.Reduction.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="System.IO.Hashing"/>
         <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj"/>

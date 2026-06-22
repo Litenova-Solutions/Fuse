@@ -28,11 +28,14 @@ files it is the expensive part of the task:
 - **Lost structure.** Reading files in isolation, the agent has to reconstruct the
   dependency relationships, the public surface, and the endpoints by hand.
 
-Illustrative: an explore loop that takes ten minutes and tens of thousands of tokens
-of file reads can collapse to about a minute when the agent is handed one scoped,
-reduced payload up front. That figure is a theory-grounded illustration of the
-mechanism, not a benchmark; the measured numbers on this site are labeled as such and
-sourced to the harness.
+The measured shape of this is on the [Benchmarks](/docs/project/benchmarks) page
+(Layer 4). Over 24 real merged pull requests, a blind agent must read each file a
+change needs at least once, a lower bound of about six round-trips, while one scoped
+Fuse call acquires that context in a single response at about 40,000 tokens and 51
+percent recall, against roughly 512,000 tokens for a generic-packer dump at the same
+one call. The round-trip count is a bound from ground truth, not a measured agent;
+the wall-clock benefit (an explore loop of minutes collapsing to one call) is a
+theory-grounded illustration of the mechanism, labeled as such, not a benchmark.
 
 ## The landscape
 
@@ -47,7 +50,12 @@ know what a C# type or a method signature is, so they cannot reduce by structure
 cannot preserve the public API while dropping noise, and cannot scope to the files a
 task touches. The envelope they add often makes the output larger than raw
 concatenation: on the benchmark corpus, Repomix output measured 1.3 to 3.9 percent
-larger than the raw files, while Fuse default was smaller than both.
+larger than the raw files, while Fuse default was smaller than both. Because a packer
+dumps the whole repository, both arms acquire a task's context in one call, but the
+packer pays for everything: in the Layer 4 scenario, a Repomix dump averaged about
+512,000 tokens against about 40,000 for one scoped Fuse call (at 51 percent recall of
+the changed files). The packer's recall is 1.00 only because it includes the entire
+repository.
 
 ### RAG and embedding indexers
 
@@ -73,7 +81,7 @@ different set of choices:
 - **.NET-aware.** It knows project files, Razor, and configuration, excludes test
   and generated files by default, and can map ASP.NET routes and project references.
 - **Fidelity-preserving.** Reduction is not deletion. An independent Roslyn oracle
-  confirms the default and `--all` modes keep 99 to 100 percent of public types and
+  confirms the default and `--level aggressive` modes keep 99 to 100 percent of public types and
   methods, and `fuse verify` reports the preserved surface for any run.
 - **Deterministic.** Same input, same output. No similarity ranking in the default
   path, no index drift. The default path uses no runtime reflection and ships as a

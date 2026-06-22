@@ -7,6 +7,10 @@ results/.mirror/
 results/.scope/
 results/.loc/
 results/.wt/
+results/.wt4/
+results/.scope4/
+results/.out4/
+results/.smoke/
 results/*.raw.cs.txt
 
 # Keep the committed summaries: results/*.json, results/*.csv, results/*.md

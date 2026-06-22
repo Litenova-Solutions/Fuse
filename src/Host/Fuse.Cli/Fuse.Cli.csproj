@@ -46,13 +46,22 @@
     </ItemGroup>
 
     <!--
-      Define FUSE_ROSLYN in a target so it is evaluated after publish profiles set PublishAot. A plain
-      PropertyGroup here would run before the .pubxml import (which sets PublishAot=true) and would wrongly
-      keep FUSE_ROSLYN defined while the package above is excluded, breaking the Native AOT build.
+      fuse rerank can use a semantic ONNX embedding model in the framework-dependent tool. ONNX Runtime is a
+      large native dependency that is not trim or AOT compatible, so it is excluded from the Native AOT build,
+      which falls back to the AOT-clean hashing embedding (see the FUSE_ONNX guard).
     -->
-    <Target Name="ConfigureFuseRoslyn" BeforeTargets="BeforeCompile;CoreCompile" Condition="'$(PublishAot)' != 'true'">
+    <ItemGroup Condition="'$(PublishAot)' != 'true'">
+        <ProjectReference Include="..\..\Core\Fuse.Fusion.Embeddings.Onnx\Fuse.Fusion.Embeddings.Onnx.csproj" />
+    </ItemGroup>
+
+    <!--
+      Define FUSE_ROSLYN and FUSE_ONNX in a target so they are evaluated after publish profiles set PublishAot.
+      A plain PropertyGroup here would run before the .pubxml import (which sets PublishAot=true) and would
+      wrongly keep the constants defined while the references above are excluded, breaking the Native AOT build.
+    -->
+    <Target Name="ConfigureFuseOptionalTiers" BeforeTargets="BeforeCompile;CoreCompile" Condition="'$(PublishAot)' != 'true'">
         <PropertyGroup>
-            <DefineConstants>$(DefineConstants);FUSE_ROSLYN</DefineConstants>
+            <DefineConstants>$(DefineConstants);FUSE_ROSLYN;FUSE_ONNX</DefineConstants>
         </PropertyGroup>
     </Target>
 </Project>

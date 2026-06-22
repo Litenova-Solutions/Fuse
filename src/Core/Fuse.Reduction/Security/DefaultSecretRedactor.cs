@@ -22,8 +22,16 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
         ("aws-secret-key", AwsSecretKeyRegex()),
         ("jwt", JwtRegex()),
         ("pem-private-key", PemPrivateKeyRegex()),
-        ("connection-string", ConnectionStringRegex()),
         ("api-token", ApiTokenRegex()),
+    ];
+
+    // Keys that, when present among the key=value pairs of a quoted literal, mark it as a real
+    // ADO.NET / EF / storage connection string rather than an incidental run of assignments.
+    private static readonly string[] ConnectionStringKeywords =
+    [
+        "server", "data source", "host", "initial catalog", "database",
+        "user id", "uid", "password", "pwd", "integrated security",
+        "trusted_connection", "port", "accountendpoint", "accountkey",
     ];
 
     /// <inheritdoc />
@@ -43,6 +51,8 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
             });
         }
 
+        content = RedactConnectionStrings(content, counts);
+
         content = HighEntropyLiteralRegex().Replace(content, match =>
         {
             var value = match.Groups["value"].Value;
@@ -54,6 +64,46 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
         });
 
         return new SecretRedactionResult(content, counts);
+    }
+
+    // Connection strings are only redacted when they sit inside a quoted literal and carry the structure of a
+    // real one: at least two semicolon-delimited key=value pairs, one of whose keys is a connection keyword.
+    // This avoids redacting ordinary C# assignments such as `Server = GetServer();`, which the old single-pair
+    // pattern matched, silently mutating code bodies that `verify` cannot detect.
+    private static string RedactConnectionStrings(string content, Dictionary<string, int> counts)
+    {
+        return ConnectionStringLiteralRegex().Replace(content, match =>
+        {
+            if (!LooksLikeConnectionString(match.Groups["value"].Value))
+                return match.Value;
+
+            Increment(counts, "connection-string");
+            return $"{match.Groups["quote"].Value}[REDACTED:connection-string]{match.Groups["quote2"].Value}";
+        });
+    }
+
+    private static bool LooksLikeConnectionString(string value)
+    {
+        var pairs = 0;
+        var hasKeyword = false;
+
+        foreach (var segment in value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var equals = segment.IndexOf('=');
+            if (equals <= 0 || equals == segment.Length - 1)
+                continue;
+
+            var key = segment[..equals].Trim();
+            // A key is a single identifier-like token, optionally with spaces (for example "User ID").
+            if (key.Length == 0 || !key.All(c => char.IsLetterOrDigit(c) || c is ' ' or '_'))
+                continue;
+
+            pairs++;
+            if (!hasKeyword && Array.IndexOf(ConnectionStringKeywords, key.ToLowerInvariant()) >= 0)
+                hasKeyword = true;
+        }
+
+        return pairs >= 2 && hasKeyword;
     }
 
     private static bool IsHighEntropy(string value)
@@ -108,8 +158,10 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
     [GeneratedRegex(@"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", RegexOptions.Compiled)]
     private static partial Regex PemPrivateKeyRegex();
 
-    [GeneratedRegex(@"(?:Server|Data Source|Host|User ID|Password|Pwd)\s*=\s*[^;\s""']+", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
-    private static partial Regex ConnectionStringRegex();
+    // Matches a single- or double-quoted literal with no embedded quote or newline, bounded to a sane length.
+    // Whether the captured value is actually a connection string is decided by LooksLikeConnectionString.
+    [GeneratedRegex(@"(?<quote>['""])(?<value>[^'""\r\n]{0,2048})(?<quote2>\k<quote>)", RegexOptions.Compiled)]
+    private static partial Regex ConnectionStringLiteralRegex();
 
     [GeneratedRegex(@"(?:api[_-]?key|api[_-]?token|secret[_-]?key|access[_-]?token)\s*[=:]\s*['""]?([A-Za-z0-9_\-]{16,})['""]?", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex ApiTokenRegex();

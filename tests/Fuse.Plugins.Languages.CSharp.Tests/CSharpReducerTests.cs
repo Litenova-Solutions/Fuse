@@ -56,4 +56,80 @@ public sealed class CSharpReducerTests
         Assert.DoesNotContain("GeneratedCode", result);
         Assert.Contains("public class Widget", result);
     }
+
+    private static readonly ReductionOptions Aggressive = new(
+        removeCSharpComments: true,
+        removeCSharpUsings: true,
+        aggressiveCSharpReduction: true);
+
+    [Fact]
+    public void Reduce_Aggressive_PreservesTripleQuotedRawStringJson()
+    {
+        // The embedded JSON contains structural punctuation (: , [ ]) surrounded by spaces. Whitespace
+        // compression would collapse those spaces if the raw literal were not masked.
+        const string input = """"
+            public class C
+            {
+                public string Json() => """
+            { "a": 1, "b": [2, 3] }
+            """;
+            }
+            """";
+
+        var result = _reducer.Reduce(input, Aggressive);
+
+        Assert.Contains("{ \"a\": 1, \"b\": [2, 3] }", result);
+    }
+
+    [Fact]
+    public void Reduce_Aggressive_PreservesFourQuoteRawStringContainingTripleQuotes()
+    {
+        // A four-quote raw literal whose body contains a literal """ sequence and spaced punctuation.
+        const string input = """""
+            public class C
+            {
+                public string Doc() => """"
+            see """ x : y , z """
+            """";
+            }
+            """"";
+
+        var result = _reducer.Reduce(input, Aggressive);
+
+        Assert.Contains("see \"\"\" x : y , z \"\"\"", result);
+    }
+
+    [Fact]
+    public void Reduce_Aggressive_PreservesInterpolatedRawString()
+    {
+        const string input = """"
+            public class C
+            {
+                public string Sql(int id) => $"""
+            SELECT * FROM t WHERE id = {id} ;
+            """;
+            }
+            """";
+
+        var result = _reducer.Reduce(input, Aggressive);
+
+        Assert.Contains("SELECT * FROM t WHERE id = {id} ;", result);
+    }
+
+    [Fact]
+    public void Reduce_Aggressive_DoesNotTreatSlashesInsideRawStringAsComment()
+    {
+        const string input = """"
+            public class C
+            {
+                public string Url() => """
+            https://example.com/path // not a comment
+            """;
+            }
+            """";
+
+        var result = _reducer.Reduce(input, Aggressive);
+
+        Assert.Contains("https://example.com/path // not a comment", result);
+    }
 }

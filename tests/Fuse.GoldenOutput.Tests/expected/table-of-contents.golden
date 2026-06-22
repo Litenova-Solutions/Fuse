@@ -1,4 +1,4 @@
-<!-- fuse:table-of-contents files=11 read-cost=~624 tokens
+<!-- fuse:table-of-contents files=11 read-cost=~606 tokens
      A map of the codebase. Each file shows its token cost to read and the types it declares.
      Fetch a file's full content with fuse_focus, fuse_search, or by path. -->
 README.md (~177 tokens)
@@ -20,7 +20,7 @@ src/
       PaymentService.cs (~45 tokens)
         class PaymentService: ProcessPayment
   SampleShop.Web/
-    appsettings.json (~34 tokens)
+    appsettings.json (~16 tokens)
     Controllers/
       OrdersController.cs (~75 tokens)
         class OrdersController: Get, Create

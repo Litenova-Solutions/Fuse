@@ -7,7 +7,7 @@ files: 11
   src/SampleShop.Core/SampleShop.Core.csproj (~44 tokens)
   src/SampleShop.Core/Services/OrderService.cs (~42 tokens)
   src/SampleShop.Core/Services/PaymentService.cs (~45 tokens)
-  src/SampleShop.Web/appsettings.json (~34 tokens)
+  src/SampleShop.Web/appsettings.json (~16 tokens)
   src/SampleShop.Web/Controllers/OrdersController.cs (~75 tokens)
   src/SampleShop.Web/Program.cs (~44 tokens)
   src/SampleShop.Web/SampleShop.Web.csproj (~67 tokens)
@@ -79,9 +79,6 @@ public string Token =
 "[REDACTED:jwt]";
 }
 </file>
-<file path="src/SampleShop.Web/appsettings.json">
-{"ConnectionStrings":{"Default":"[REDACTED:connection-string];[REDACTED:connection-string];[REDACTED:connection-string]"}}
-</file>
 <file path="src/SampleShop.Core/Payment/PaymentGateway.cs">
 namespace SampleShop.Core.Payment;
 public class PaymentGateway
@@ -98,4 +95,7 @@ public void ListProducts()
 {
 }
 }
+</file>
+<file path="src/SampleShop.Web/appsettings.json">
+{"ConnectionStrings":{"Default":"[REDACTED:connection-string]"}}
 </file>

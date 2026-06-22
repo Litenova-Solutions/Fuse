@@ -1,16 +1,21 @@
-# Layer 3: a simulated multi-turn agent (ILLUSTRATIVE, not a measured agent).
+# Layer 3: the illustrative prefill-growth model, subordinate to the layer-4 bound.
 #
-# It operationalizes the quadratic-accumulation argument: a stateless agent re-sends
-# its whole context every turn, so naive file-by-file exploration pays a prefill cost
-# that grows with the square of the number of turns. We compare three strategies and
-# record round-trips (K) and cumulative prefill tokens per repo:
+# The measured round-trip claim is layer 4's ground-truth bound: a blind agent must read
+# each file a task needs at least once (a structural LOWER BOUND from real PR change sets),
+# while Fuse and Repomix each acquire the context in one call. Layer 3 does NOT measure
+# round-trips; it only operationalizes the secondary quadratic-accumulation argument: a
+# stateless agent re-sends its whole context every turn, so naive file-by-file exploration
+# pays a prefill cost that grows with the square of the number of turns. It compares three
+# strategies and records round-trips (K) and cumulative prefill tokens per repo:
 #
 #   naive    - open files one at a time; turn i re-sends the sum of the first i files.
 #   guided   - fuse_toc to survey, then one budgeted fuse_search to fetch (K=2).
 #   ask      - a single budgeted fuse_ask-style retrieval (K=1).
 #
 # These are model outputs grounded in real Fuse token counts, NOT a benchmarked agent.
-# Treat K and prefill as illustrative of the round-trip structure, not as measurements.
+# Treat K and prefill as illustrative of the round-trip STRUCTURE, not as measurements;
+# the measured round-trip result is the layer-4 bound folded in below. A live-agent trace
+# (driving a programmatic agent across arms) remains out of scope for the keyless harness.
 #
 # Output: results/layer3.json
 
@@ -87,5 +92,34 @@ foreach ($repo in Get-Corpus) {
     }
 }
 
-$rows | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $ResultsDir 'layer3.json')
-Write-Host "Layer 3 (illustrative round-trip model) complete -> results/layer3.json"
+# Fold in the measured round-trip bound from layer 4 (ground truth), so layer 3's output leads
+# with the bound and keeps the prefill model clearly subordinate and labeled illustrative.
+$bound = $null
+$layer4Path = Join-Path $ResultsDir 'layer4-scenario.json'
+if (Test-Path $layer4Path) {
+    $l4 = Get-Content $layer4Path -Raw | ConvertFrom-Json
+    $headBudget = ($l4 | Measure-Object budget -Maximum).Maximum
+    $noFuse  = $l4 | Where-Object { $_.arm -eq 'no-fuse' -and $_.budget -eq $headBudget }
+    $fuseArm = $l4 | Where-Object { $_.arm -eq 'fuse'    -and $_.budget -eq $headBudget }
+    if ($noFuse) {
+        $bound = [pscustomobject]@{
+            source                       = 'layer4-scenario.json (real merged-PR change sets)'
+            headline_budget              = $headBudget
+            no_fuse_round_trips_mean     = [math]::Round(($noFuse | Measure-Object round_trips -Average).Average, 1)
+            no_fuse_round_trips_is_lower_bound = $true
+            fuse_round_trips             = 1
+            repomix_round_trips          = 1
+            fuse_recall_mean             = [math]::Round(($fuseArm | Measure-Object recall -Average).Average, 3)
+            note                         = 'A blind agent must read each needed file at least once; Fuse and Repomix acquire the context in one call. This bound is from ground truth, not the illustrative prefill model below.'
+        }
+        Write-Host ("  layer-4 bound: no-fuse round-trips mean >= {0} (lower bound); fuse/repomix = 1 call" -f $bound.no_fuse_round_trips_mean)
+    }
+}
+
+$out = [pscustomobject]@{
+    round_trip_bound          = $bound
+    illustrative_prefill_model = $rows
+    note                      = 'round_trip_bound is the measured result; illustrative_prefill_model is a model, not a benchmarked agent.'
+}
+$out | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $ResultsDir 'layer3.json')
+Write-Host "Layer 3 (round-trip bound + illustrative prefill model) complete -> results/layer3.json"

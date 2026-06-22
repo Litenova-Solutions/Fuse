@@ -497,9 +497,14 @@ public sealed class FusionOrchestrator
             documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols);
         }
 
-        // Per-run index: holds no cross-run state, so a fresh instance keeps concurrent queries isolated.
+        // Per-run index: holds no cross-run state, so a fresh instance keeps concurrent queries isolated. When
+        // the persistent index is enabled, body tokenization is cached on disk by content hash so a warm query
+        // against an unchanged tree skips re-tokenizing files it has already indexed.
         var relevanceIndex = _relevanceIndexFactory();
-        relevanceIndex.Index(documents);
+        var postingsStore = request.UsePersistentIndex
+            ? new Indexing.DiskRelevancePostingsStore(request.Collection.SourceDirectory)
+            : null;
+        relevanceIndex.Index(documents, postingsStore);
         var ranked = relevanceIndex.RankScored(request.Query!.Query, request.Query.TopFiles);
 
         if (ranked.Count == 0)

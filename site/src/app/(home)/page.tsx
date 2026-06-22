@@ -164,7 +164,7 @@ export default function HomePage() {
         <div className="mt-10 overflow-hidden rounded-xl border border-fd-border bg-fd-card p-4">
           <Image
             src="/fuse-benchmarks.png"
-            alt="Fuse benchmark results: token reduction and public API fidelity by mode across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json."
+            alt="Fuse benchmark results across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with the opt-in Roslyn tier, one scoped call replacing at least six grep-and-open round-trips, and that call delivering a task's context in about 13 times fewer tokens than a generic packer."
             width={1600}
             height={900}
             className="h-auto w-full rounded-lg"
@@ -281,6 +281,12 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
                   packer="Only if you include it all"
                   rag="No, partial recall"
                   fuse="99-100% verified"
+                />
+                <ComparisonRow
+                  cap="Context for one task, one call"
+                  packer="One dump, ~512K tokens"
+                  rag="Ranked chunks, partial"
+                  fuse="One call, ~40K tokens"
                 />
                 <ComparisonRow
                   cap="Deterministic output"

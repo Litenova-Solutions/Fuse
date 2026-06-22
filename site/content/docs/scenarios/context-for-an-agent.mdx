@@ -7,7 +7,14 @@ description: Give an AI agent the context it needs by starting wide and narrowin
 spending its window on files the task does not touch.
 
 The principle is to start wide and narrow: a cheap map first, then a scoped drill-in.
-Each step is one MCP tool call that returns scoped, reduced context.
+Each step is one MCP tool call that returns scoped, reduced context. The payoff is
+measured: in the [Layer 4 scenario](/docs/project/benchmarks), one scoped call
+acquired a task's context in about 40,000 tokens against roughly 512,000 for a generic
+packer dump at the same single call, while a blind agent must read each needed file at
+least once (a lower bound of about six round-trips over the 24 pull requests tested).
+Read that token number with its recall: one scoped query call reaches 51 percent of
+the changed files, and the change-scoping mode reaches 88 percent when a git base is
+available.
 
 ## The sequence
 
@@ -42,7 +49,7 @@ dependencies, and the third scopes a later review to the branch under review.
 | Architecture map | `fuse_skeleton` | 50,000 to 100,000 |
 | Focused drill-in | `fuse_focus` or `fuse_search` | 100,000 to 200,000 |
 | Change review | `fuse_changes` | 50,000 to 150,000 |
-| Full fusion | `fuse_dotnet --all` | 200,000 to 800,000 |
+| Full fusion | `fuse_dotnet level=aggressive` | 200,000 to 800,000 |
 
 ## Shortcut: ask once
 

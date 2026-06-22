@@ -40,27 +40,38 @@ public sealed class FusionOrchestrator
     private readonly FocusSeedResolver _focusSeedResolver;
     private readonly IChangeDetector _changeDetector;
     private readonly IFileSystem _fileSystem;
-    private readonly ISourceContentProvider _contentProvider;
+    private readonly Func<ISourceContentProvider> _contentProviderFactory;
     private readonly IEnumerable<PatternDetectorBase> _patternDetectors;
     private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
     private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
     private readonly CapabilityRegistry<ISymbolOutlineExtractor> _outlineExtractors;
     private readonly CapabilityRegistry<ISymbolSliceExtractor> _sliceExtractors;
-    private readonly IRelevanceIndex _relevanceIndex;
+    private readonly CapabilityRegistry<ISymbolChunkExtractor> _chunkExtractors;
+    private readonly Func<IRelevanceIndex> _relevanceIndexFactory;
     private readonly Retrieval.IEmbeddingModel _embeddingModel;
     private readonly IRouteMapGenerator? _routeMapGenerator;
     private readonly IProjectGraphGenerator? _projectGraphGenerator;
     private readonly IReductionCacheFactory _reductionCacheFactory;
     private readonly IGitStatsProvider _gitStatsProvider;
     private readonly Enrichment.BoilerplateDeduplicator _boilerplateDeduplicator;
+    private readonly Enrichment.BodyDeduplicator _bodyDeduplicator;
     private readonly Session.ISessionTracker _sessionTracker;
 
-    // Serializes fusion runs. The orchestrator is a singleton (and the SDK entry point), and a run mutates
-    // shared per-run state on the injected singletons (the content cache is cleared at the start of every run,
-    // and the BM25 index rebuilds all of its state on each query). Concurrent runs - for example two MCP tool
-    // calls handled at once - would otherwise corrupt that state. Fusion is coarse-grained, so serializing whole
-    // runs is the correct, low-overhead guard rather than locking each shared field.
-    private readonly SemaphoreSlim _runGate = new(1, 1);
+    // Weight blended into seed/expansion scores from the query-independent graph-centrality prior, so at equal
+    // relevance the more depended-upon file ranks earlier. Conservative default; FUSE_CENTRALITY_WEIGHT=0
+    // disables it and reproduces the pre-centrality ordering exactly.
+    private static readonly double CentralityWeight = ResolveCentralityWeight();
+
+    private static double ResolveCentralityWeight()
+    {
+        var raw = Environment.GetEnvironmentVariable("FUSE_CENTRALITY_WEIGHT");
+        if (!string.IsNullOrWhiteSpace(raw) &&
+            double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var w) &&
+            w >= 0)
+            return w;
+
+        return 0.15;
+    }
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionOrchestrator" /> class.
@@ -75,17 +86,19 @@ public sealed class FusionOrchestrator
         FocusSeedResolver focusSeedResolver,
         IChangeDetector changeDetector,
         IFileSystem fileSystem,
-        ISourceContentProvider contentProvider,
+        Func<ISourceContentProvider> contentProviderFactory,
         IEnumerable<PatternDetectorBase> patternDetectors,
         CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
         CapabilityRegistry<ITypeNameLocator> typeNameLocators,
         CapabilityRegistry<ISymbolOutlineExtractor> outlineExtractors,
         CapabilityRegistry<ISymbolSliceExtractor> sliceExtractors,
-        IRelevanceIndex relevanceIndex,
+        CapabilityRegistry<ISymbolChunkExtractor> chunkExtractors,
+        Func<IRelevanceIndex> relevanceIndexFactory,
         Retrieval.IEmbeddingModel embeddingModel,
         IReductionCacheFactory reductionCacheFactory,
         IGitStatsProvider gitStatsProvider,
         Enrichment.BoilerplateDeduplicator boilerplateDeduplicator,
+        Enrichment.BodyDeduplicator bodyDeduplicator,
         Session.ISessionTracker sessionTracker,
         IRouteMapGenerator? routeMapGenerator = null,
         IProjectGraphGenerator? projectGraphGenerator = null)
@@ -99,17 +112,19 @@ public sealed class FusionOrchestrator
         _focusSeedResolver = focusSeedResolver;
         _changeDetector = changeDetector;
         _fileSystem = fileSystem;
-        _contentProvider = contentProvider;
+        _contentProviderFactory = contentProviderFactory;
         _patternDetectors = patternDetectors;
         _dependencyExtractors = dependencyExtractors;
         _typeNameLocators = typeNameLocators;
         _outlineExtractors = outlineExtractors;
         _sliceExtractors = sliceExtractors;
-        _relevanceIndex = relevanceIndex;
+        _chunkExtractors = chunkExtractors;
+        _relevanceIndexFactory = relevanceIndexFactory;
         _embeddingModel = embeddingModel;
         _reductionCacheFactory = reductionCacheFactory;
         _gitStatsProvider = gitStatsProvider;
         _boilerplateDeduplicator = boilerplateDeduplicator;
+        _bodyDeduplicator = bodyDeduplicator;
         _sessionTracker = sessionTracker;
         _routeMapGenerator = routeMapGenerator;
         _projectGraphGenerator = projectGraphGenerator;
@@ -141,27 +156,16 @@ public sealed class FusionOrchestrator
     ///         <item><description>Emission: format and write output, then append optional route maps, project graphs, redaction reports, and pattern summaries.</description></item>
     ///     </list>
     ///     The request is validated through <see cref="FusionValidator.ValidateOrThrow" /> before any stage runs.
-    ///     Calls are serialized: the orchestrator is a shared singleton whose runs mutate per-run state, so
-    ///     concurrent callers are queued and run one at a time.
+    ///     Every run constructs its own content cache and relevance index, so concurrent runs against different
+    ///     (or the same) directories are fully isolated and scale toward the core count with no process-wide gate.
     /// </remarks>
     public async Task<FusionResult> FuseAsync(FusionRequest request, CancellationToken cancellationToken = default)
     {
-        await _runGate.WaitAsync(cancellationToken);
-        try
-        {
-            return await FuseCoreAsync(request, cancellationToken);
-        }
-        finally
-        {
-            _runGate.Release();
-        }
-    }
-
-    private async Task<FusionResult> FuseCoreAsync(FusionRequest request, CancellationToken cancellationToken)
-    {
         _validator.ValidateOrThrow(request);
 
-        _contentProvider.Clear();
+        // Run-scoped collaborators: a fresh content cache (read-once per run) and, when a query is present, a
+        // fresh BM25 index. Holding no cross-run state is what lets fusion runs execute concurrently.
+        var contentProvider = _contentProviderFactory();
 
         var parallelism = request.Parallelism > 0 ? request.Parallelism : Environment.ProcessorCount;
         var tokenCounter = _tokenizerFactory.GetCounter(request.Emission.TokenizerModel);
@@ -176,7 +180,7 @@ public sealed class FusionOrchestrator
             ? new Indexing.DiskAnalysisIndex(request.Collection.SourceDirectory)
             : null;
 
-        var filterResult = await FilterFilesAsync(request, collectionResult.Files, parallelism, analysisIndex, cancellationToken);
+        var filterResult = await FilterFilesAsync(request, collectionResult.Files, parallelism, analysisIndex, contentProvider, cancellationToken);
         if (filterResult is null)
             return CreateEmptyChangeResult(request);
 
@@ -190,6 +194,7 @@ public sealed class FusionOrchestrator
         var reducedContent = await _reductionPipeline.ReduceAsync(
             filterResult.Files,
             request.Reduction,
+            contentProvider,
             parallelism,
             reductionCache,
             tokenCounter,
@@ -198,13 +203,18 @@ public sealed class FusionOrchestrator
         // Symbol-level scoping: slice the focus seed file(s) to the requested member before any other emission
         // step, so token costs and downstream notes reflect the slice.
         if (filterResult.Slice is not null)
-            reducedContent = await ApplySymbolSliceAsync(reducedContent, filterResult.Slice, tokenCounter, cancellationToken);
+            reducedContent = await ApplySymbolSliceAsync(reducedContent, filterResult.Slice, contentProvider, tokenCounter, cancellationToken);
+
+        // Symbol-level packing (query path): for each query-matched file, keep the members that ranked in full
+        // and collapse the rest of the host type to signatures.
+        if (filterResult.SelectedMembers is { Count: > 0 })
+            reducedContent = await ApplyThinSkeletonAsync(reducedContent, filterResult.SelectedMembers, contentProvider, tokenCounter, cancellationToken);
 
         // Table-of-contents mode replaces body emission with a structural map. It runs after scoping and
         // reduction so the listed files and per-file token costs match what a full fetch would cost.
         if (request.Emission.TableOfContents)
         {
-            var tocResult = await EmitTableOfContentsAsync(reducedContent, request, tokenCounter, cancellationToken);
+            var tocResult = await EmitTableOfContentsAsync(reducedContent, request, contentProvider, tokenCounter, cancellationToken);
             return WithReductionCacheStats(tocResult, reductionCache);
         }
 
@@ -222,11 +232,27 @@ public sealed class FusionOrchestrator
             headerPreamble = dedup.Preamble;
         }
 
+        // Near-duplicate member bodies are emitted once and referenced by a marker elsewhere; the canonical
+        // copy stays in place, so no preamble is needed. Runs before packing so the budget sees the saved
+        // tokens.
+        if (request.Emission.DeduplicateBodies)
+            reducedContent = _bodyDeduplicator.Deduplicate(reducedContent, tokenCounter).Content;
+
         if (request.Emission.IncludeProvenance && filterResult.Provenance is not null)
-            reducedContent = AttachProvenance(reducedContent, filterResult.Provenance);
+            reducedContent = AttachProvenance(reducedContent, filterResult.Provenance, filterResult.SelectedMembers);
 
         if (filterResult.Scores is not null)
             reducedContent = AttachRelevance(reducedContent, filterResult.Scores);
+
+        // Reduction-aware single-pass packing: for focus and query runs under a token budget, select the
+        // entries to emit by real reduced token cost (relevance-per-token) rather than letting emission cut a
+        // set that expansion had already starved with a byte estimate.
+        if ((request.Focus is not null || request.Query is not null) &&
+            request.Emission.MaxTokens is { } maxTokens)
+        {
+            reducedContent = ReductionAwarePacker.Pack(
+                reducedContent, maxTokens, EmissionPipeline.MarkerOverheadTokens);
+        }
 
         PatternSummary? patternSummary = null;
         if (request.Reduction.IncludePatternSummary)
@@ -266,7 +292,7 @@ public sealed class FusionOrchestrator
                 await disposable.DisposeAsync();
         }
 
-        emissionResult = await ApplyStructuralMapsAsync(emissionResult, collectionResult.Files, request, cancellationToken);
+        emissionResult = await ApplyStructuralMapsAsync(emissionResult, collectionResult.Files, request, contentProvider, cancellationToken);
 
         if (request.Reduction.IncludeRedactReport)
             emissionResult = await ApplyRedactReportAsync(emissionResult, reducedContent);
@@ -288,14 +314,28 @@ public sealed class FusionOrchestrator
         return WithReductionCacheStats(emissionResult, reductionCache);
     }
 
+    // Attaches the dependency hop chain to each file, and for files that were scoped to specific members
+    // (symbol-level packing), appends those qualified member names so the provenance references the selected
+    // symbol, not just the file.
     private static IReadOnlyList<FusedContent> AttachProvenance(
         IReadOnlyList<FusedContent> content,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> provenance) =>
+        IReadOnlyDictionary<string, IReadOnlyList<string>> provenance,
+        IReadOnlyDictionary<string, IReadOnlySet<string>>? selectedMembers) =>
         content
             .Select(item =>
-                provenance.TryGetValue(item.NormalizedPath, out var chain)
-                    ? item.WithInclusionChain(chain)
-                    : item)
+            {
+                if (!provenance.TryGetValue(item.NormalizedPath, out var chain))
+                    return item;
+
+                if (selectedMembers is not null &&
+                    selectedMembers.TryGetValue(item.NormalizedPath, out var members) &&
+                    members.Count > 0)
+                {
+                    chain = [.. chain, .. members.OrderBy(m => m, StringComparer.Ordinal)];
+                }
+
+                return item.WithInclusionChain(chain);
+            })
             .ToArray();
 
     private static IReadOnlyList<FusedContent> AttachRelevance(
@@ -314,6 +354,7 @@ public sealed class FusionOrchestrator
     private async Task<IReadOnlyList<FusedContent>> ApplySymbolSliceAsync(
         IReadOnlyList<FusedContent> reducedContent,
         SymbolSliceRequest slice,
+        ISourceContentProvider contentProvider,
         Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
         CancellationToken cancellationToken)
     {
@@ -333,9 +374,55 @@ public sealed class FusionOrchestrator
                 continue;
             }
 
-            var source = await _contentProvider.GetContentAsync(entry.SourceFile, cancellationToken);
+            var source = await contentProvider.GetContentAsync(entry.SourceFile, cancellationToken);
             var sliced = extractor.ExtractSlice(source, slice.Member);
             result.Add(sliced is null ? entry : entry.WithReducedContent(sliced, tokenCounter));
+        }
+
+        return result;
+    }
+
+    // Rebuilds each query-matched file as a thin host skeleton: the members that ranked are kept verbatim and
+    // the rest of the host type collapses to signatures. Files with no selected members, no chunk extractor,
+    // or no chunks pass through unchanged, so dependency-expanded files keep their full reduced content.
+    //
+    // The skeleton is built from the original source, not the reduced content, so its member boundaries match
+    // the chunks that were indexed and ranked: reduction can merge a member's closing brace onto the next
+    // declaration's line, which would defeat the line-based chunker. This mirrors how the focus-seed symbol
+    // slice (ApplySymbolSliceAsync) operates on source.
+    private async Task<IReadOnlyList<FusedContent>> ApplyThinSkeletonAsync(
+        IReadOnlyList<FusedContent> reducedContent,
+        IReadOnlyDictionary<string, IReadOnlySet<string>> selectedMembers,
+        ISourceContentProvider contentProvider,
+        Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<FusedContent>(reducedContent.Count);
+        foreach (var entry in reducedContent)
+        {
+            if (!selectedMembers.TryGetValue(entry.NormalizedPath, out var members) || members.Count == 0)
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var extractor = _chunkExtractors.TryResolve(entry.SourceFile.Extension);
+            if (extractor is null)
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var source = await contentProvider.GetContentAsync(entry.SourceFile, cancellationToken);
+            var chunks = extractor.ExtractChunks(source);
+            if (chunks.Count == 0)
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var skeleton = ThinSkeletonAssembler.Assemble(source, chunks, members);
+            result.Add(entry.WithReducedContent(skeleton, tokenCounter));
         }
 
         return result;
@@ -402,16 +489,17 @@ public sealed class FusionOrchestrator
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
         Indexing.IAnalysisIndex? index,
+        ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
         if (request.Focus is not null)
-            return await FilterByFocusAsync(request, files, parallelism, index, cancellationToken);
+            return await FilterByFocusAsync(request, files, parallelism, index, contentProvider, cancellationToken);
 
         if (request.Changes is not null)
-            return await FilterByChangesAsync(request, files, parallelism, index, cancellationToken);
+            return await FilterByChangesAsync(request, files, parallelism, index, contentProvider, cancellationToken);
 
         if (request.Query is not null)
-            return await FilterByQueryAsync(request, files, parallelism, index, cancellationToken);
+            return await FilterByQueryAsync(request, files, parallelism, index, contentProvider, cancellationToken);
 
         return new FilteredFileSet(files, null, null);
     }
@@ -421,13 +509,14 @@ public sealed class FusionOrchestrator
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
         Indexing.IAnalysisIndex? index,
+        ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
-        var graph = await BuildGraphAsync(files, parallelism, index, cancellationToken);
+        var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
 
         var seed = request.Focus!.Seed;
         var seedPaths = await _focusSeedResolver.ResolveSeedPathsAsync(
-            seed, files, _contentProvider, cancellationToken);
+            seed, files, contentProvider, cancellationToken);
 
         // Symbol-level scoping: when the seed is "Type.Member" and the type alone resolves, scope to that
         // member. Only attempted when a slice extractor is registered (the opt-in precision tier), so the regex
@@ -441,7 +530,7 @@ public sealed class FusionOrchestrator
                 var typeSeed = seed[..dot];
                 var member = seed[(dot + 1)..];
                 seedPaths = await _focusSeedResolver.ResolveSeedPathsAsync(
-                    typeSeed, files, _contentProvider, cancellationToken);
+                    typeSeed, files, contentProvider, cancellationToken);
                 if (seedPaths.Count > 0)
                     sliceMember = member;
             }
@@ -458,12 +547,14 @@ public sealed class FusionOrchestrator
             : new SymbolSliceRequest(seedPaths.ToHashSet(StringComparer.OrdinalIgnoreCase), sliceMember);
 
         var seedScores = seedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase);
+        // No byte-budget gate on expansion: the reduction-aware packer applies the budget after reduction on
+        // the real reduced token cost (see ReductionAwarePacker), so expansion spreads by depth and relevance.
         var options = new ExpansionOptions(
             request.Focus.Depth,
             FollowReferences: true,
             FollowDependents: true,
-            TokenBudget: request.Emission.MaxTokens,
-            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens));
+            Centrality: GraphCentrality.Compute(graph),
+            CentralityWeight: CentralityWeight);
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
@@ -475,12 +566,18 @@ public sealed class FusionOrchestrator
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
         Indexing.IAnalysisIndex? index,
+        ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
+        // File selection ranks at FILE granularity (whole-file BM25F), which preserves recall: a query term
+        // anywhere in a file contributes with proper length normalization, so files whose match is spread
+        // across members are not penalized. Member-level granularity is applied only to emission (the thin
+        // skeleton below), where it improves precision without changing which files are included.
         var documents = new Dictionary<string, IndexedDocument>(StringComparer.OrdinalIgnoreCase);
+        var fileContents = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in files)
         {
-            var content = await _contentProvider.GetContentAsync(file, cancellationToken);
+            var content = await contentProvider.GetContentAsync(file, cancellationToken);
             var locator = _typeNameLocators.TryResolve(file.Extension);
             var extractor = _dependencyExtractors.TryResolve(file.Extension);
 
@@ -490,10 +587,18 @@ public sealed class FusionOrchestrator
                 : locator?.ExtractDefinedSymbols(content);
 
             documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols);
+            fileContents[file.NormalizedRelativePath] = content;
         }
 
-        _relevanceIndex.Index(documents);
-        var ranked = _relevanceIndex.RankScored(request.Query!.Query, request.Query.TopFiles);
+        // Per-run index: holds no cross-run state, so a fresh instance keeps concurrent queries isolated. When
+        // the persistent index is enabled, body tokenization is cached on disk by content hash so a warm query
+        // against an unchanged tree skips re-tokenizing files it has already indexed.
+        var relevanceIndex = _relevanceIndexFactory();
+        var postingsStore = request.UsePersistentIndex
+            ? new Indexing.DiskRelevancePostingsStore(request.Collection.SourceDirectory)
+            : null;
+        relevanceIndex.Index(documents, postingsStore);
+        var ranked = relevanceIndex.RankScored(request.Query!.Query, request.Query.TopFiles);
 
         if (ranked.Count == 0)
         {
@@ -507,7 +612,12 @@ public sealed class FusionOrchestrator
             ranked = RerankCandidates(request, documents, ranked);
 
         var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
-        var graph = await BuildGraphAsync(files, parallelism, index, cancellationToken);
+
+        // Symbol-level packing (precision only): pick, per matched file, the members the query is about so
+        // emission can keep them in full and collapse the rest to signatures. This never changes file
+        // selection, so recall is identical to the file-granular path.
+        var selectedMembers = SelectQueryMembers(ranked, fileContents, request.Query.Query);
+        var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
 
         // Query seeds are already content-matched; expand forward to their dependencies for context, but do
         // not follow dependents, which would broaden the set with files that merely use a matched type.
@@ -515,12 +625,96 @@ public sealed class FusionOrchestrator
             request.Query.Depth,
             FollowReferences: true,
             FollowDependents: false,
-            TokenBudget: request.Emission.MaxTokens,
-            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens));
+            Centrality: GraphCentrality.Compute(graph),
+            CentralityWeight: CentralityWeight);
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
-        return new FilteredFileSet(filtered, expansion.ProvenanceChains, expansion.Scores);
+        return new FilteredFileSet(
+            filtered, expansion.ProvenanceChains, expansion.Scores, SelectedMembers: selectedMembers);
+    }
+
+    // A member is kept verbatim only when its query-overlap score is at least this fraction of the file's best
+    // member. The floor separates the members the query is genuinely about from siblings that merely share the
+    // type, which collapse to signatures.
+    private const double MemberSelectionRatio = 0.4;
+
+    // A query-term hit in a member's name counts for more than one in its body, mirroring the symbol-field
+    // boost the file index uses.
+    private const double MemberSymbolWeight = 4.0;
+
+    // For each query-matched file, scores its members by query-term overlap and returns the qualified names of
+    // the members the query is about (those scoring near the file's best). Files with no chunk extractor, no
+    // chunks, or no matching member are omitted, so they keep their full reduced content; only files with a
+    // clear member match are trimmed to a thin skeleton. This is emission-only and never affects file
+    // selection, so query recall is identical to the file-granular path.
+    private Dictionary<string, IReadOnlySet<string>> SelectQueryMembers(
+        IReadOnlyList<RankedFile> ranked,
+        IReadOnlyDictionary<string, string> fileContents,
+        string query)
+    {
+        var queryTerms = RelevanceTokenizer.Tokenize(query)
+            .ToHashSet(StringComparer.Ordinal);
+        var selected = new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase);
+        if (queryTerms.Count == 0)
+            return selected;
+
+        foreach (var candidate in ranked)
+        {
+            if (!fileContents.TryGetValue(candidate.Path, out var content))
+                continue;
+
+            var extractor = _chunkExtractors.TryResolve(Path.GetExtension(candidate.Path));
+            var chunks = extractor?.ExtractChunks(content);
+            if (chunks is null || chunks.Count == 0)
+                continue;
+
+            var best = 0.0;
+            var scores = new List<(string Qualified, double Score)>(chunks.Count);
+            foreach (var chunk in chunks)
+            {
+                var score = MemberQueryScore(chunk, queryTerms);
+                if (score > 0)
+                {
+                    scores.Add((chunk.QualifiedName, score));
+                    if (score > best)
+                        best = score;
+                }
+            }
+
+            if (best <= 0)
+                continue; // No member matched the query: keep the whole (reduced) file.
+
+            var floor = best * MemberSelectionRatio;
+            var kept = scores
+                .Where(s => s.Score >= floor)
+                .Select(s => s.Qualified)
+                .ToHashSet(StringComparer.Ordinal);
+            if (kept.Count > 0)
+                selected[candidate.Path] = kept;
+        }
+
+        return selected;
+    }
+
+    private static double MemberQueryScore(
+        SymbolChunk chunk,
+        IReadOnlySet<string> queryTerms)
+    {
+        var score = 0.0;
+        foreach (var term in RelevanceTokenizer.Tokenize(chunk.SymbolName))
+        {
+            if (queryTerms.Contains(term))
+                score += MemberSymbolWeight;
+        }
+
+        foreach (var term in RelevanceTokenizer.Tokenize(chunk.Content))
+        {
+            if (queryTerms.Contains(term))
+                score += 1.0;
+        }
+
+        return score;
     }
 
     // Reranks the BM25 candidates with embedding-vector cosine similarity. Each candidate is embedded from its
@@ -560,6 +754,7 @@ public sealed class FusionOrchestrator
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
         Indexing.IAnalysisIndex? index,
+        ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
         IReadOnlyList<string> changedPaths;
@@ -594,7 +789,7 @@ public sealed class FusionOrchestrator
 
         if ((request.Changes.IncludeDependents || review) && matchedPaths.Count > 0)
         {
-            var graph = await BuildGraphAsync(files, parallelism, index, cancellationToken);
+            var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
 
             if (review)
             {
@@ -645,30 +840,15 @@ public sealed class FusionOrchestrator
         }
     }
 
-    private static IReadOnlyDictionary<string, int>? BuildTokenCosts(
-        IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
-        int? maxTokens)
-    {
-        if (maxTokens is null)
-            return null;
-
-        // Pre-reduction estimate: roughly four characters per token. Used only to bound expansion spread;
-        // emission applies the exact, relevance-ordered budget cut.
-        var costs = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in files)
-            costs[file.NormalizedRelativePath] = (int)Math.Max(1, file.FileInfo.Length / 4);
-
-        return costs;
-    }
-
     private Task<DependencyGraph> BuildGraphAsync(
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
         Indexing.IAnalysisIndex? index,
+        ISourceContentProvider contentProvider,
         CancellationToken cancellationToken) =>
         _dependencyGraphBuilder.BuildAsync(
             files,
-            _contentProvider,
+            contentProvider,
             _dependencyExtractors,
             _typeNameLocators,
             parallelism,
@@ -681,6 +861,7 @@ public sealed class FusionOrchestrator
     private async Task<FusionResult> EmitTableOfContentsAsync(
         IReadOnlyList<FusedContent> reducedContent,
         FusionRequest request,
+        ISourceContentProvider contentProvider,
         Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
         CancellationToken cancellationToken)
     {
@@ -695,7 +876,7 @@ public sealed class FusionOrchestrator
             var extractor = _outlineExtractors.TryResolve(item.SourceFile.Extension);
             if (extractor is not null)
             {
-                var source = await _contentProvider.GetContentAsync(item.SourceFile, cancellationToken);
+                var source = await contentProvider.GetContentAsync(item.SourceFile, cancellationToken);
                 symbols = extractor.ExtractOutline(source);
             }
 
@@ -755,6 +936,7 @@ public sealed class FusionOrchestrator
         FusionResult emissionResult,
         IReadOnlyList<Fuse.Collection.Models.SourceFile> collectedFiles,
         FusionRequest request,
+        ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
         if (!request.Reduction.IncludeRouteMap && !request.Reduction.IncludeProjectGraph)
@@ -767,7 +949,7 @@ public sealed class FusionOrchestrator
                 _routeMapGenerator?.SupportedExtensions.Contains(file.Extension) == true)
             {
                 fileContents[file.NormalizedRelativePath] =
-                    await _contentProvider.GetContentAsync(file, cancellationToken);
+                    await contentProvider.GetContentAsync(file, cancellationToken);
                 continue;
             }
 
@@ -775,7 +957,7 @@ public sealed class FusionOrchestrator
                 _projectGraphGenerator?.SupportedExtensions.Contains(file.Extension) == true)
             {
                 fileContents[file.NormalizedRelativePath] =
-                    await _contentProvider.GetContentAsync(file, cancellationToken);
+                    await contentProvider.GetContentAsync(file, cancellationToken);
             }
         }
 
@@ -833,7 +1015,10 @@ public sealed class FusionOrchestrator
             }
         }
 
-        var summary = new RedactionSummary(counts, counts.Values.Sum());
+        // The code-literal classification is a fidelity diagnostic, not a secret kind, so it is excluded from
+        // the secret total (it is rendered on its own line by RedactionSummary.ToComment).
+        var secretTotal = counts.Where(kv => kv.Key != SecretRedactionResult.CodeLiteralKind).Sum(kv => kv.Value);
+        var summary = new RedactionSummary(counts, secretTotal);
         var comment = summary.ToComment();
         if (string.IsNullOrEmpty(comment))
             return emissionResult;
@@ -918,7 +1103,8 @@ public sealed class FusionOrchestrator
         IReadOnlyDictionary<string, IReadOnlyList<string>>? Provenance,
         IReadOnlyDictionary<string, double>? Scores,
         string? Preamble = null,
-        SymbolSliceRequest? Slice = null);
+        SymbolSliceRequest? Slice = null,
+        IReadOnlyDictionary<string, IReadOnlySet<string>>? SelectedMembers = null);
 
     private sealed record SymbolSliceRequest(IReadOnlySet<string> Paths, string Member);
 }

@@ -46,6 +46,10 @@ Expansion can follow forward edges, reverse edges, or both. Focus follows both, 
 
 When a token budget is set, expansion is budget-aware: it keeps admitting candidates in score order until a rough pre-reduction token estimate of the admitted set would exceed the budget, then stops. Because admission is by score, the seeds and their nearest neighbourhood survive and the weakest, most distant files are the first to be cut. The per-file score that ordered the traversal is carried forward to emission, where entries are written most-relevant first so the closest files also survive the exact token budget applied after reduction.
 
+### The Centrality Prior
+
+A query-independent importance prior is blended into the rank score so that, at equal relevance, the more depended-upon file ranks earlier. The prior is normalized in-degree centrality computed from the already-built graph: a file's score is the count of distinct other files that reference any type it declares, divided by the largest such count, giving a value in the range 0 to 1. It is computed once per run and adds no extra file reads. The rank score is relevance plus weight times centrality, where the weight is the `FUSE_CENTRALITY_WEIGHT` environment variable (default 0.15). The blend is additive and is applied only to the recorded and admission-ordering score, never to the score propagated to neighbours, so it cannot compound across hops; a weight of 0 reproduces the pre-centrality ordering exactly.
+
 Query scoping reuses the same traversal from its ranked seed files.
 
 ```mermaid

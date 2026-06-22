@@ -73,12 +73,7 @@ public sealed class FuseResources
             path,
             builder => builder
                 .WithReductionOptions(new ReductionOptions(
-                    removeCSharpComments: true,
-                    removeCSharpUsings: true,
-                    removeCSharpNamespaces: true,
-                    removeCSharpRegions: true,
-                    aggressiveCSharpReduction: true,
-                    skeletonMode: true,
+                    level: ReductionLevel.Skeleton,
                     enableRedaction: true)),
             cancellationToken);
 

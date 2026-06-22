@@ -1,4 +1,5 @@
 using Fuse.Fusion.Scoping;
+using Fuse.Collection.FileSystem;
 using Fuse.Collection.Options;
 using Fuse.Emission.Models;
 using Fuse.Fusion;
@@ -78,7 +79,7 @@ public sealed class FusionOrchestratorScopingTests : IDisposable
         var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
         var request = new FusionRequest(
             new CollectionOptions(_sourceDirectory, extensions: [".cs"]),
-            new ReductionOptions(skeletonMode: true),
+            new ReductionOptions(level: ReductionLevel.Skeleton),
             new EmissionOptions(),
             inMemory: true);
 
@@ -184,9 +185,11 @@ public sealed class FusionOrchestratorScopingTests : IDisposable
                 "Order.cs",
                 new FileInfo(Path.Combine(_sourceDirectory, "Order.cs"))));
 
+        var contentProvider = _serviceProvider.GetRequiredService<Func<ISourceContentProvider>>()();
         var reduced = await pipeline.ReduceAsync(
             [file],
-            new ReductionOptions(skeletonMode: true, includeSemanticMarkers: true));
+            new ReductionOptions(level: ReductionLevel.Skeleton, includeSemanticMarkers: true),
+            contentProvider);
 
         Assert.Single(reduced);
         var content = reduced[0].Content;

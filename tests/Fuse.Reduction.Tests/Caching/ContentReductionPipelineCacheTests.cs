@@ -31,7 +31,6 @@ public sealed class ContentReductionPipelineCacheTests
             var skeletons = new CapabilityRegistry<ISkeletonExtractor>(Array.Empty<ISkeletonExtractor>());
             var markers = new CapabilityRegistry<ISemanticMarkerGenerator>(Array.Empty<ISemanticMarkerGenerator>());
             var pipeline = new ContentReductionPipeline(
-                provider,
                 reducers,
                 skeletons,
                 markers,
@@ -40,8 +39,8 @@ public sealed class ContentReductionPipelineCacheTests
             var options = new ReductionOptions(trimContent: true, enableRedaction: false);
             var cache = new DiskReductionCache(root);
 
-            await pipeline.ReduceAsync([sourceFile], options, 1, cache);
-            await pipeline.ReduceAsync([sourceFile], options, 1, cache);
+            await pipeline.ReduceAsync([sourceFile], options, provider, 1, cache);
+            await pipeline.ReduceAsync([sourceFile], options, provider, 1, cache);
 
             Assert.Equal(1, cache.Statistics.Hits);
             Assert.Equal(1, cache.Statistics.Misses);

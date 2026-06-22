@@ -37,6 +37,7 @@ public static class CSharpLanguageServiceCollectionExtensions
     {
         services.AddSingleton<ISkeletonExtractor, CSharpSkeletonExtractor>();
         services.AddSingleton<ISymbolOutlineExtractor, CSharpOutlineExtractor>();
+        services.AddSingleton<ISymbolChunkExtractor, CSharpSymbolChunkExtractor>();
         services.AddSingleton<ISemanticMarkerGenerator, CSharpSemanticMarkerGenerator>();
         services.AddSingleton<IDependencyExtractor, CSharpDependencyExtractor>();
         services.AddSingleton<ITypeNameLocator, CSharpTypeNameLocator>();

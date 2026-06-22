@@ -19,10 +19,19 @@ public sealed record RedactionSummary(IReadOnlyDictionary<string, int> CountsByK
         if (Total == 0)
             return string.Empty;
 
+        // The code-literal classification is reported on its own line, not as a secret kind, and excluded
+        // from the secret total. A non-zero value warns that redaction altered code bodies, not just config.
         var lines = CountsByKind
+            .Where(kv => kv.Key != SecretRedactionResult.CodeLiteralKind)
             .OrderByDescending(kv => kv.Value)
-            .Select(kv => $"{kv.Key}: {kv.Value}");
+            .Select(kv => $"{kv.Key}: {kv.Value}")
+            .ToList();
 
-        return "<!-- fuse:redactions\n" + string.Join("\n", lines) + $"\ntotal: {Total}\n-->";
+        var body = string.Join("\n", lines) + $"\ntotal: {Total}";
+
+        if (CountsByKind.TryGetValue(SecretRedactionResult.CodeLiteralKind, out var codeLiteral) && codeLiteral > 0)
+            body += $"\ncode-literal-modifications: {codeLiteral}";
+
+        return "<!-- fuse:redactions\n" + body + "\n-->";
     }
 }

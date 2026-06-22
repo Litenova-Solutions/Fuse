@@ -23,24 +23,20 @@ internal static class ReductionHasher
     /// </summary>
     public static ulong HashReductionOptions(string extension, ReductionOptions options)
     {
+        // Hash the single level plus the orthogonal flags. The per-transform C# decisions are derived from
+        // Level, so hashing them too would be redundant and bloat the key.
         var payload = string.Join('|',
             extension,
+            (int)options.Level,
             options.TrimContent,
             options.UseCondensing,
-            options.RemoveCSharpComments,
-            options.RemoveCSharpUsings,
-            options.RemoveCSharpNamespaces,
-            options.RemoveCSharpRegions,
-            options.AggressiveCSharpReduction,
             options.MinifyXmlFiles,
             options.MinifyHtmlAndRazor,
-            options.SkeletonMode,
             options.IncludeSemanticMarkers,
             options.IncludePatternSummary,
             options.EnableRedaction,
             options.IncludeRedactReport,
             options.IncludeRouteMap,
-            options.PublicApiMode,
             options.IncludeProjectGraph,
             options.CollapseGeneratedCode);
 

@@ -29,7 +29,6 @@ namespace Fuse.Reduction;
 /// </remarks>
 public sealed class ContentReductionPipeline
 {
-    private readonly ISourceContentProvider _contentProvider;
     private readonly CapabilityRegistry<IContentReducer> _reducers;
     private readonly CapabilityRegistry<ISkeletonExtractor> _skeletonExtractors;
     private readonly CapabilityRegistry<ISemanticMarkerGenerator> _semanticMarkerGenerators;
@@ -39,21 +38,18 @@ public sealed class ContentReductionPipeline
     /// <summary>
     ///     Initializes a new instance of the <see cref="ContentReductionPipeline" /> class.
     /// </summary>
-    /// <param name="contentProvider">Provider used to read raw file content.</param>
     /// <param name="reducers">Registry of per-extension format reducers.</param>
     /// <param name="skeletonExtractors">Registry of per-extension skeleton extractors.</param>
     /// <param name="semanticMarkerGenerators">Registry of per-extension semantic-marker generators.</param>
     /// <param name="tokenCounter">Default token counter used to populate <see cref="FusedContent.TokenCount" />.</param>
     /// <param name="secretRedactor">Redactor applied to content when redaction is enabled.</param>
     public ContentReductionPipeline(
-        ISourceContentProvider contentProvider,
         CapabilityRegistry<IContentReducer> reducers,
         CapabilityRegistry<ISkeletonExtractor> skeletonExtractors,
         CapabilityRegistry<ISemanticMarkerGenerator> semanticMarkerGenerators,
         ITokenCounter tokenCounter,
         ISecretRedactor secretRedactor)
     {
-        _contentProvider = contentProvider;
         _reducers = reducers;
         _skeletonExtractors = skeletonExtractors;
         _semanticMarkerGenerators = semanticMarkerGenerators;
@@ -67,6 +63,7 @@ public sealed class ContentReductionPipeline
     /// </summary>
     /// <param name="sourceFiles">The source files to reduce.</param>
     /// <param name="options">Options controlling which reduction stages run.</param>
+    /// <param name="contentProvider">Run-scoped provider used to read raw file content.</param>
     /// <param name="cancellationToken">Token used to cancel reads and reduction.</param>
     /// <returns>
     ///     The awaited result is the reduced content for each input file, in input order, with files whose
@@ -75,10 +72,12 @@ public sealed class ContentReductionPipeline
     public Task<IReadOnlyList<FusedContent>> ReduceAsync(
         IReadOnlyList<SourceFile> sourceFiles,
         ReductionOptions options,
+        ISourceContentProvider contentProvider,
         CancellationToken cancellationToken = default) =>
         ReduceAsync(
             sourceFiles,
             options,
+            contentProvider,
             Environment.ProcessorCount,
             null,
             tokenCounterOverride: null,
@@ -90,6 +89,7 @@ public sealed class ContentReductionPipeline
     /// </summary>
     /// <param name="sourceFiles">The source files to reduce.</param>
     /// <param name="options">Options controlling which reduction stages run.</param>
+    /// <param name="contentProvider">Run-scoped provider used to read raw file content.</param>
     /// <param name="parallelism">Maximum number of files reduced concurrently.</param>
     /// <param name="reductionCache">Cache consulted before reducing and populated on a miss; <c>null</c> disables caching.</param>
     /// <param name="tokenCounterOverride">Token counter to use instead of the injected default; <c>null</c> uses the default.</param>
@@ -101,6 +101,7 @@ public sealed class ContentReductionPipeline
     public async Task<IReadOnlyList<FusedContent>> ReduceAsync(
         IReadOnlyList<SourceFile> sourceFiles,
         ReductionOptions options,
+        ISourceContentProvider contentProvider,
         int parallelism,
         IReductionCache? reductionCache,
         ITokenCounter? tokenCounterOverride = null,
@@ -119,7 +120,7 @@ public sealed class ContentReductionPipeline
             parallelOptions,
             async (item, ct) =>
             {
-                var rawContent = await _contentProvider.GetContentAsync(item.file, ct);
+                var rawContent = await contentProvider.GetContentAsync(item.file, ct);
                 string content;
 
                 if (reductionCache is not null)
@@ -145,9 +146,10 @@ public sealed class ContentReductionPipeline
                 IReadOnlyDictionary<string, int>? redactionCounts = null;
                 if (options.EnableRedaction)
                 {
-                    var redaction = _secretRedactor.Redact(content);
+                    var isCSharp = string.Equals(item.file.Extension, ".cs", StringComparison.OrdinalIgnoreCase);
+                    var redaction = _secretRedactor.Redact(content, classifyCodeLiterals: isCSharp);
                     content = redaction.Content;
-                    if (redaction.TotalCount > 0)
+                    if (redaction.CountsByKind.Count > 0)
                         redactionCounts = redaction.CountsByKind;
                 }
 

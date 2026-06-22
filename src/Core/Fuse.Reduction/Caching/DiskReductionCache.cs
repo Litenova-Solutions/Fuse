@@ -4,9 +4,12 @@ namespace Fuse.Reduction.Caching;
 ///     Stores reduction results on disk under <c>.fuse/cache/</c> keyed by XXHash64 hashes.
 /// </summary>
 /// <remarks>
-///     All operations are serialized under an internal lock, so the cache is safe to share across the
-///     parallel reduction workers. Each entry is a single file named from the content and options hashes;
-///     the cache directory is created lazily on first <see cref="Set" />.
+///     Operations are serialized under an internal lock for the parallel reduction workers of a single run.
+///     Across concurrent runs (which each hold their own cache instance over the same directory) safety comes
+///     from writing each entry to a unique temp file and atomically moving it into place, and from treating a
+///     read or write that races another run as a miss: the cache is best-effort and every entry for a given
+///     key is byte-identical, so a lost write costs only a recomputation. Each entry is a single file named
+///     from the content and options hashes; the cache directory is created lazily on first <see cref="Set" />.
 /// </remarks>
 /// <seealso cref="IReductionCache" />
 public sealed class DiskReductionCache : IReductionCache
@@ -46,7 +49,18 @@ public sealed class DiskReductionCache : IReductionCache
                 return false;
             }
 
-            reducedContent = File.ReadAllText(path);
+            try
+            {
+                reducedContent = File.ReadAllText(path);
+            }
+            catch (IOException)
+            {
+                // A concurrent run is mid-move on this entry; treat as a miss and recompute.
+                Statistics.RecordMiss();
+                reducedContent = string.Empty;
+                return false;
+            }
+
             Statistics.RecordHit();
             return true;
         }
@@ -59,7 +73,39 @@ public sealed class DiskReductionCache : IReductionCache
         {
             Directory.CreateDirectory(_cacheDirectory);
             var path = GetEntryPath(contentHash, reductionOptionsHash);
-            File.WriteAllText(path, reducedContent);
+
+            // Write to a unique temp file then atomically move it into place, so a concurrent run reading or
+            // writing the same key never sees a partial file. A race on the move is swallowed: the entry is
+            // byte-identical regardless of which run wins, so a lost write only forces a recomputation.
+            var temp = path + '.' + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temp, reducedContent);
+                File.Move(temp, path, overwrite: true);
+            }
+            catch (IOException)
+            {
+                TryDelete(temp);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                TryDelete(temp);
+            }
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
     }
 

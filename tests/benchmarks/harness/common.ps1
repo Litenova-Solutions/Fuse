@@ -13,6 +13,7 @@ $script:CorpusJson = Join-Path $BenchRoot 'corpus.json'
 $script:Fuse      = Join-Path $RepoRoot 'src/Host/Fuse.Cli/bin/Release/net10.0/fuse.exe'
 $script:TokenCount = Join-Path $RepoRoot 'tests/benchmarks/tools/TokenCount/bin/Release/net10.0/tokencount.exe'
 $script:Fidelity  = Join-Path $RepoRoot 'tests/benchmarks/tools/Fidelity/bin/Release/net10.0/fidelity.exe'
+$script:BodyIntegrity = Join-Path $RepoRoot 'tests/benchmarks/tools/BodyIntegrity/bin/Release/net10.0/bodyintegrity.exe'
 
 New-Item -ItemType Directory -Force -Path $ResultsDir | Out-Null
 
@@ -68,6 +69,45 @@ function Get-CsFiles($repoPath) {
             $_.Name -notlike '*.g.cs' -and
             $_.Name -notlike '*.Designer.cs'
         }
+}
+
+# Body-integrity for one fused file: fraction of source string literals that survive byte-intact, and
+# (when -ParseCheck) whether the output still parses. Returns the parsed JSON object.
+function Get-BodyIntegrity($sourceDir, $fusedFile, [switch]$ParseCheck) {
+    $biArgs = @($sourceDir, $fusedFile)
+    if ($ParseCheck) { $biArgs += '--parse-check' }
+    return (& $BodyIntegrity @biArgs | ConvertFrom-Json)
+}
+
+# Compare a fresh results object against a committed baseline and fail on regression beyond tolerance.
+# `current` and `baseline` are arrays of row objects keyed by (repo, arm). Metrics checked: reduction_ratio
+# (must not drop), types_ratio / methods_ratio / routes_ratio (fidelity must not drop), and
+# literals_intact_ratio (body-integrity must not drop). Returns a result object with .ok and .regressions.
+function Compare-Results($current, $baseline, [double]$Tolerance = 0.01) {
+    $regressions = @()
+    $baseByKey = @{}
+    foreach ($b in $baseline) { $baseByKey["$($b.repo)/$($b.arm)"] = $b }
+
+    foreach ($c in $current) {
+        $key = "$($c.repo)/$($c.arm)"
+        if (-not $baseByKey.ContainsKey($key)) { continue }
+        $b = $baseByKey[$key]
+
+        foreach ($metric in @('reduction_ratio','types_ratio','methods_ratio','routes_ratio','literals_intact_ratio')) {
+            $cv = $c.$metric; $bv = $b.$metric
+            if ($null -eq $cv -or $null -eq $bv) { continue }
+            if (($bv - $cv) -gt $Tolerance) {
+                $regressions += [pscustomobject]@{ key = $key; metric = $metric; baseline = $bv; current = $cv }
+            }
+        }
+
+        # Body-integrity parse check is a hard gate: a true->false flip is always a regression.
+        if ($null -ne $b.parses -and $b.parses -eq $true -and $c.parses -eq $false) {
+            $regressions += [pscustomobject]@{ key = $key; metric = 'parses'; baseline = $true; current = $false }
+        }
+    }
+
+    return [pscustomobject]@{ ok = ($regressions.Count -eq 0); regressions = $regressions }
 }
 
 # Stage a C#-only mirror of a repo (preserving relative paths) so every tool

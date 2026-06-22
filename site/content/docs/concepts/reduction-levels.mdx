@@ -3,65 +3,92 @@ title: Reduction levels
 description: How Fuse shrinks C# from light cleanup to aggressive compression and signature-only skeletons, and how to pick the smallest level that answers the task.
 ---
 
-**Reduction** is how Fuse shrinks content without changing what it means. It runs as a
-ladder: each level builds on the one before, trading more of the source for fewer
-tokens. Pick the smallest level that still answers your task.
+**Reduction** is how Fuse shrinks content without changing what it means. A single dial,
+the **reduction level**, drives the C# structural reduction: it is one enum value that
+selects how far Fuse goes, from no structural change to signature-only skeletons. Pick
+the smallest level that still answers your task.
 
-## The ladder
+The level is set with `--level <value>` on the CLI and the `level` parameter on the MCP
+tools. The default is `none`.
 
-| Level | Command | Removes | Use it when |
-|-------|---------|---------|-------------|
-| Default | `fuse dotnet --directory ./src` | Whitespace and blank lines; minifies XML and Razor | Every fusion, a safe baseline |
-| Individual removals | `--remove-csharp-comments --remove-csharp-usings` | Selected categories: comments, usings, namespaces, regions | Trim noise but keep structure |
-| Aggressive | `--aggressive` | The removals plus attributes, `this.`, property whitespace | Maximum reduction with bodies intact |
-| All | `--all` | Every C# reduction at once | One switch for full compression |
-| Skeleton | `--skeleton` | Method bodies; signatures only | An architecture pass on an unfamiliar solution |
+## The five levels
 
-### Default
+| Level | What it does to C# | Use it when |
+|-------|--------------------|-------------|
+| `none` | No C# structural reduction. Whitespace trim and condense and the orthogonal flags below still apply. | Every fusion, a safe baseline |
+| `standard` | Removes C# comments, `using` directives, namespace wrappers, and `#region` directives. | Trim noise but keep structure |
+| `aggressive` | The `standard` removals plus aggressive whitespace and syntax compression. | Maximum reduction with bodies intact |
+| `skeleton` | Emits structural skeletons (type and member signatures), bodies removed. | An architecture pass on an unfamiliar solution |
+| `publicApi` | Like `skeleton`, but keeps only public and protected members. | The contract a project presents to consumers |
 
-The baseline does lossless cleanup: it normalizes whitespace, condenses blank lines,
-and minifies XML-family and Razor files. It runs on every fusion.
+The levels are cumulative in effect: `aggressive` includes everything `standard` does,
+and `publicApi` is `skeleton` narrowed to the public surface.
 
-### Individual removals
+### none
 
-Each category has its own flag, so you can keep what you need:
+The default does lossless cleanup only: it normalizes whitespace, condenses blank lines,
+and minifies XML-family and Razor files. It applies no C# structural reduction. This runs
+on every fusion regardless of level.
 
-- `--remove-csharp-comments` removes line and block comments, preserving string
-  contents.
-- `--remove-csharp-usings` removes using directives and aliases.
-- `--remove-csharp-namespaces` removes namespace declarations and their indentation.
-- `--remove-csharp-regions` removes `#region` markers and preprocessor directives.
+### standard
 
-### Aggressive
+`--level standard` removes four categories of C# structure together:
 
-`--aggressive` runs the standard removals and then a second tier: it strips noise
+- Comments: line and block comments, preserving string contents.
+- Using directives and aliases.
+- Namespace declarations and their indentation.
+- `#region` markers and preprocessor directives.
+
+These four were once separate flags; the level applies all of them at once.
+
+### aggressive
+
+`--level aggressive` runs the `standard` removals and then a second tier: it strips noise
 attributes such as `DebuggerDisplay` and `MethodImpl`, removes the `this.` prefix,
-rewrites auto-properties to a compact form, and collapses whitespace around
-delimiters. It preserves string-literal contents, but the output is no longer
-guaranteed to compile. Use it when the reader is a model that needs the logic, not a
-compiler.
+rewrites auto-properties to a compact form, and collapses whitespace around delimiters.
+It preserves string-literal contents, but the output is no longer guaranteed to compile.
+Use it when the reader is a model that needs the logic, not a compiler. On the benchmark
+corpus it removes 21 to 40 percent of tokens at 99 to 100 percent type and method
+fidelity, which makes it the dependable cut.
 
-### All
+### skeleton
 
-`--all` enables the full standard removal set together with aggressive mode and
-generated-code collapse in one switch. On the benchmark corpus it removes 21 to 40
-percent of tokens at 99 to 100 percent type and method fidelity, which makes it the
-dependable cut.
-
-### Skeleton
-
-`--skeleton` drops method bodies entirely and emits class, interface, and method
+`--level skeleton` drops method bodies entirely and emits class, interface, and method
 signatures only. It is the deepest cut, 66 to 93 percent on the corpus, and it is an
-architecture map, not a substitute for the source. On a codebase with heavy
-conditional compilation the regex skeleton can lose signatures; the
+architecture map, not a substitute for the source. On a codebase with heavy conditional
+compilation the regex skeleton can lose signatures; the
 [precision tier](/docs/concepts/precision-tier) fixes that.
+
+### publicApi
+
+`--level publicApi` is the skeleton narrowed to the contract a project exposes: it keeps
+only public and protected member signatures and drops the rest. Reach for it when you want
+the API surface alone.
+
+## The orthogonal flags
+
+The level is the single dial for C# structural reduction. A set of other options are
+separate and orthogonal: they are not folded into the level and apply at any level. They
+include secret redaction (`--no-redact`, `--redact-report`), generated-code collapse
+(`--collapse-generated`), the structural annotations (`--semantic-markers`), the pattern
+summary (`--pattern-summary`), the route map (`--route-map`), the project graph
+(`--project-graph`), XML and HTML/Razor minification (`--minify-xml-files`,
+`--minify-html-and-razor`), and the per-line content handling (trim and condense).
+
+For example, `--all` once bundled generated-code collapse with full reduction; now you
+combine them explicitly:
+
+```bash
+fuse dotnet --directory ./src --level aggressive --collapse-generated
+```
 
 ## Reduction is not deletion
 
-The default and `--all` levels are designed to keep the public API. An independent
-Roslyn oracle confirms 99 to 100 percent of public types and methods survive, and
-`fuse verify` reports the preserved surface for any run. Skeleton makes no claim of
-body fidelity, by design: it keeps signatures and drops bodies.
+The `none`, `standard`, and `aggressive` levels are designed to keep the public API. An
+independent Roslyn oracle confirms 99 to 100 percent of public types and methods survive,
+and `fuse verify` reports the preserved surface for any run. The `skeleton` and
+`publicApi` levels make no claim of body fidelity, by design: they keep signatures and
+drop bodies.
 
 ## Survey before you reduce
 

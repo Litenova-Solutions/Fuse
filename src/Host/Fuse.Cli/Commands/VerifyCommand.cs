@@ -65,14 +65,9 @@ public sealed class VerifyCommand : CommandBase
     {
         var builder = CreateRequestBuilder(ProjectTemplate.DotNet)
             .WithReductionOptions(new ReductionOptions(
+                level: Level,
                 trimContent: true,
                 useCondensing: true,
-                removeCSharpComments: All,
-                removeCSharpUsings: All,
-                removeCSharpNamespaces: All,
-                removeCSharpRegions: All,
-                aggressiveCSharpReduction: All,
-                skeletonMode: Skeleton,
                 enableRedaction: !NoRedact))
             .WithInMemory(true);
 
@@ -178,16 +173,11 @@ public sealed class VerifyCommand : CommandBase
     public int QueryTop { get; set; } = 10;
 
     /// <summary>
-    ///     Apply all .NET reduction flags before verifying.
+    ///     The C# reduction level to apply before verifying: <c>none</c>, <c>standard</c>, <c>aggressive</c>,
+    ///     <c>skeleton</c>, or <c>publicApi</c>.
     /// </summary>
-    [CliOption(Description = "Apply all reduction flags before verifying.")]
-    public bool All { get; set; } = false;
-
-    /// <summary>
-    ///     Verify skeleton (signatures only) reduction.
-    /// </summary>
-    [CliOption(Description = "Verify skeleton (signatures only) reduction.")]
-    public bool Skeleton { get; set; } = false;
+    [CliOption(Description = "C# reduction level to verify: none, standard, aggressive, skeleton, publicApi.")]
+    public ReductionLevel Level { get; set; } = ReductionLevel.None;
 
     /// <summary>
     ///     Emit the verification result as JSON to stdout.

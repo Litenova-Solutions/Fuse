@@ -156,11 +156,7 @@ public sealed class FuseTools
                 });
 
                 builder.WithReductionOptions(new ReductionOptions(
-                    removeCSharpComments: true,
-                    removeCSharpUsings: true,
-                    removeCSharpRegions: true,
-                    aggressiveCSharpReduction: true,
-                    skeletonMode: plan.Mode == AskMode.Skeleton,
+                    level: plan.Mode == AskMode.Skeleton ? ReductionLevel.Skeleton : ReductionLevel.Aggressive,
                     enableRedaction: true));
 
                 if (plan.Mode == AskMode.Focus && plan.Seed is not null)
@@ -188,7 +184,7 @@ public sealed class FuseTools
     /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludeTestProjects">When <see langword="true" />, skip all test project directories.</param>
     /// <param name="semanticMarkers">When <see langword="true" />, prepend structural annotation comments to each entry.</param>
-    /// <param name="all">When <see langword="true" />, apply all C# reduction options. Defaults to <see langword="true" /> for the smallest skeleton.</param>
+    /// <param name="publicApi">When <see langword="true" />, emit only public and protected member skeletons.</param>
     /// <param name="maxTokens">Hard token limit at which emission stops, or <see langword="null" /> for unlimited.</param>
     /// <param name="trackTopTokenFiles">When <see langword="true" />, append the top token-consuming files to the trailing stats comment.</param>
     /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
@@ -207,7 +203,7 @@ public sealed class FuseTools
         [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
         [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
         [Description("Prepend structural annotation comments.")] bool semanticMarkers = false,
-        [Description("Apply all C# reduction options.")] bool all = true,
+        [Description("Emit only public and protected member skeletons.")] bool publicApi = false,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
         CancellationToken cancellationToken = default) =>
@@ -226,12 +222,7 @@ public sealed class FuseTools
                         IncludeManifest = true
                     })
                     .WithReductionOptions(new ReductionOptions(
-                        removeCSharpComments: all,
-                        removeCSharpUsings: all,
-                        removeCSharpNamespaces: all,
-                        removeCSharpRegions: all,
-                        aggressiveCSharpReduction: all,
-                        skeletonMode: true,
+                        level: publicApi ? ReductionLevel.PublicApi : ReductionLevel.Skeleton,
                         includeSemanticMarkers: semanticMarkers,
                         enableRedaction: true));
 
@@ -256,7 +247,7 @@ public sealed class FuseTools
     /// <param name="excludeFiles">File names to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludeTestProjects">When <see langword="true" />, skip all test project directories.</param>
-    /// <param name="all">When <see langword="true" />, apply all C# reduction options.</param>
+    /// <param name="level">The C# reduction level (none, standard, aggressive, skeleton, publicApi).</param>
     /// <param name="maxTokens">Hard token limit at which emission stops, or <see langword="null" /> for unlimited.</param>
     /// <param name="trackTopTokenFiles">When <see langword="true" />, append the top token-consuming files to the trailing stats comment.</param>
     /// <param name="session">Session id for session-delta emission, or <see langword="null" /> to disable it.</param>
@@ -277,7 +268,7 @@ public sealed class FuseTools
         [Description("File names to exclude.")] string[]? excludeFiles = null,
         [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
         [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
-        [Description("Apply all C# reduction options.")] bool all = false,
+        [Description("C# reduction level: none, standard, aggressive, skeleton, publicApi. Defaults to standard.")] ReductionLevel level = ReductionLevel.Standard,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
         [Description("Session id: omit files already returned under this id earlier in the session.")] string? session = null,
@@ -297,13 +288,7 @@ public sealed class FuseTools
                         IncludeManifest = true,
                         SessionId = session
                     })
-                    .WithReductionOptions(new ReductionOptions(
-                        removeCSharpComments: all,
-                        removeCSharpUsings: all,
-                        removeCSharpNamespaces: all,
-                        removeCSharpRegions: all,
-                        aggressiveCSharpReduction: all,
-                        enableRedaction: true))
+                    .WithReductionOptions(new ReductionOptions(level: level, enableRedaction: true))
                     .WithFocusOptions(new FocusOptions(focus, depth));
 
                 FuseToolHelpers.ApplyCommonFilters(
@@ -329,7 +314,7 @@ public sealed class FuseTools
     /// <param name="excludeFiles">File names to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludeTestProjects">When <see langword="true" />, skip all test project directories.</param>
-    /// <param name="all">When <see langword="true" />, apply all C# reduction options.</param>
+    /// <param name="level">The C# reduction level (none, standard, aggressive, skeleton, publicApi).</param>
     /// <param name="maxTokens">Hard token limit at which emission stops, or <see langword="null" /> for unlimited.</param>
     /// <param name="trackTopTokenFiles">When <see langword="true" />, append the top token-consuming files to the trailing stats comment.</param>
     /// <param name="session">Session id for session-delta emission, or <see langword="null" /> to disable it.</param>
@@ -352,7 +337,7 @@ public sealed class FuseTools
         [Description("File names to exclude.")] string[]? excludeFiles = null,
         [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
         [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
-        [Description("Apply all C# reduction options.")] bool all = false,
+        [Description("C# reduction level: none, standard, aggressive, skeleton, publicApi. Defaults to standard.")] ReductionLevel level = ReductionLevel.Standard,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
         [Description("Session id: omit files already returned under this id earlier in the session.")] string? session = null,
@@ -372,13 +357,7 @@ public sealed class FuseTools
                         IncludeManifest = true,
                         SessionId = session
                     })
-                    .WithReductionOptions(new ReductionOptions(
-                        removeCSharpComments: all,
-                        removeCSharpUsings: all,
-                        removeCSharpNamespaces: all,
-                        removeCSharpRegions: all,
-                        aggressiveCSharpReduction: all,
-                        enableRedaction: true))
+                    .WithReductionOptions(new ReductionOptions(level: level, enableRedaction: true))
                     .WithQueryOptions(new QueryOptions(query, queryTop, depth, rerank));
 
                 FuseToolHelpers.ApplyCommonFilters(
@@ -403,7 +382,7 @@ public sealed class FuseTools
     /// <param name="excludeFiles">File names to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludeTestProjects">When <see langword="true" />, skip all test project directories.</param>
-    /// <param name="all">When <see langword="true" />, apply all C# reduction options.</param>
+    /// <param name="level">The C# reduction level (none, standard, aggressive, skeleton, publicApi).</param>
     /// <param name="maxTokens">Hard token limit at which emission stops, or <see langword="null" /> for unlimited.</param>
     /// <param name="trackTopTokenFiles">When <see langword="true" />, append the top token-consuming files to the trailing stats comment.</param>
     /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
@@ -424,7 +403,7 @@ public sealed class FuseTools
         [Description("File names to exclude.")] string[]? excludeFiles = null,
         [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
         [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
-        [Description("Apply all C# reduction options.")] bool all = false,
+        [Description("C# reduction level: none, standard, aggressive, skeleton, publicApi. Defaults to standard.")] ReductionLevel level = ReductionLevel.Standard,
         [Description("Hard token limit.")] int? maxTokens = null,
         [Description("Include top token-consuming files in the stats comment.")] bool trackTopTokenFiles = false,
         CancellationToken cancellationToken = default) =>
@@ -442,13 +421,7 @@ public sealed class FuseTools
                         TrackTopTokenFiles = trackTopTokenFiles,
                         IncludeManifest = true
                     })
-                    .WithReductionOptions(new ReductionOptions(
-                        removeCSharpComments: all,
-                        removeCSharpUsings: all,
-                        removeCSharpNamespaces: all,
-                        removeCSharpRegions: all,
-                        aggressiveCSharpReduction: all,
-                        enableRedaction: true))
+                    .WithReductionOptions(new ReductionOptions(level: level, enableRedaction: true))
                     .WithChangeOptions(new ChangeOptions(changedSince, includeDependents || review, review));
 
                 FuseToolHelpers.ApplyCommonFilters(
@@ -480,13 +453,7 @@ public sealed class FuseTools
     /// <param name="maxFileSizeKb">Maximum file size in KB; <c>0</c> means unlimited.</param>
     /// <param name="excludeTestProjects">When <see langword="true" />, skip all test project directories.</param>
     /// <param name="excludeUnitTestProjects">When <see langword="true" />, skip only unit test project directories.</param>
-    /// <param name="removeCSharpComments">When <see langword="true" />, strip C# comments.</param>
-    /// <param name="removeCSharpUsings">When <see langword="true" />, strip C# using directives.</param>
-    /// <param name="removeCSharpNamespaces">When <see langword="true" />, strip C# namespace declarations.</param>
-    /// <param name="removeCSharpRegions">When <see langword="true" />, strip C# <c>#region</c> directives.</param>
-    /// <param name="aggressive">When <see langword="true" />, apply aggressive C# reduction.</param>
-    /// <param name="all">When <see langword="true" />, enable every C# reduction option regardless of the individual flags.</param>
-    /// <param name="skeleton">When <see langword="true" />, emit a structural skeleton only.</param>
+    /// <param name="level">The C# reduction level: none, standard, aggressive, skeleton, or publicApi.</param>
     /// <param name="semanticMarkers">When <see langword="true" />, prepend structural annotation comments to each entry.</param>
     /// <param name="focus">Type name, filename, or path to scope around, or <see langword="null" /> to skip focus scoping.</param>
     /// <param name="depth">Dependency traversal depth applied to focus and query scoping.</param>
@@ -519,13 +486,7 @@ public sealed class FuseTools
         [Description("Maximum file size in KB. Zero means unlimited.")] int maxFileSizeKb = 0,
         [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
         [Description("Exclude only unit test project directories.")] bool excludeUnitTestProjects = false,
-        [Description("Remove C# comments.")] bool removeCSharpComments = false,
-        [Description("Remove C# using directives.")] bool removeCSharpUsings = false,
-        [Description("Remove C# namespace declarations.")] bool removeCSharpNamespaces = false,
-        [Description("Remove C# region directives.")] bool removeCSharpRegions = false,
-        [Description("Apply aggressive C# reduction.")] bool aggressive = false,
-        [Description("Apply all reduction options at once.")] bool all = false,
-        [Description("Emit structural skeleton only.")] bool skeleton = false,
+        [Description("C# reduction level: none, standard, aggressive, skeleton, publicApi. Defaults to standard.")] ReductionLevel level = ReductionLevel.Standard,
         [Description("Prepend structural annotation comments.")] bool semanticMarkers = false,
         [Description("Type name, filename, or path to scope around.")] string? focus = null,
         [Description("Dependency traversal depth.")] int depth = 1,
@@ -560,12 +521,7 @@ public sealed class FuseTools
                     IncludeGitStats = gitStats
                 })
                 .WithReductionOptions(new ReductionOptions(
-                    removeCSharpComments: all || removeCSharpComments,
-                    removeCSharpUsings: all || removeCSharpUsings,
-                    removeCSharpNamespaces: all || removeCSharpNamespaces,
-                    removeCSharpRegions: all || removeCSharpRegions,
-                    aggressiveCSharpReduction: all || aggressive,
-                    skeletonMode: skeleton,
+                    level: level,
                     includeSemanticMarkers: semanticMarkers,
                     includePatternSummary: patternSummary,
                     collapseGeneratedCode: collapseGenerated,

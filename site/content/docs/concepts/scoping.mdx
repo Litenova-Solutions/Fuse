@@ -48,15 +48,40 @@ fuse dotnet --directory ./src --query "discount calculation at checkout" --query
 Query ranks files by relevance, seeds on the top ones (`--query-top`, default 10), and
 expands through their dependencies. Ranking weights a file's declared type and member
 names and its path above the body, so a query lands on the file that declares a
-concept rather than one that merely mentions it.
+concept rather than one that merely mentions it. Query needs no prior knowledge of a
+change, which makes it the honest default for one-call context: in the
+[Layer 4 scenario](/docs/project/benchmarks) a scoped query call reached 51 percent of
+the files 24 real pull requests touched at a 50,000-token budget, in about 40,000
+tokens against roughly 512,000 for a whole-repository packer dump. When a git base is
+available, the changes mode below reaches higher recall.
+
+Focus and query ranking also fold in a small importance prior: at equal relevance, a file
+that more of the codebase depends on ranks earlier, so a central type surfaces ahead of a
+peripheral one. The prior is conservative and set by `FUSE_CENTRALITY_WEIGHT`; set it to 0
+to rank on relevance alone.
+
+For C#, query ranking works at member granularity, not whole files. It scores each declared
+member, then for a matched file emits a thin host-type skeleton: the members the query hit
+stay in full and the rest of the type collapses to signatures. A focused question pulls in
+the methods it needs plus the shell of their type, not every line of the file. A query by
+type name still pulls the whole type in; only a query that lands on specific members trims
+the rest. The fallback path (no precision tier) chunks more coarsely but behaves the same way.
+
+## Spending the token budget
+
+When a query or focus runs under `--max-tokens`, Fuse picks the entries to emit by their
+real reduced token cost, not a byte estimate: it reduces the candidates, then fills the
+budget by relevance-per-token so the most relevant members survive and the budget lands
+close to full. The single most relevant entry is always kept, so a scoped run never emits
+nothing.
 
 ## Why expand through the graph
 
 A changed file rarely stands alone. The type it calls, and the test that calls it, are
 part of the same task. Graph expansion brings that neighborhood in so the agent does
-not have to discover it with more round-trips. Per-hop scoring decays with distance and
-a token budget stops the expansion, so the seed neighborhood survives and distant files
-drop first.
+not have to discover it with more round-trips. Per-hop scoring decays with distance, so
+the seed neighborhood ranks above distant files; under a token budget the reduction-aware
+pack (above) then keeps the highest relevance-per-token entries and drops the rest.
 
 ## A note on accuracy
 

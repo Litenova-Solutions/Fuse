@@ -1,31 +1,31 @@
-repo,size,arm,tool,cs_files,raw_tokens,tokens,reduction_ratio,wall_ms,peak_mb,types_total,types_kept,types_ratio,methods_total,methods_kept,methods_ratio,routes_total,routes_kept,routes_ratio,literals_intact_ratio,note
-MediatR,small,none,fuse,152,83052,77135,0.0712,510,108.8,258,258,1,207,207,1,0,0,1,1,
-MediatR,small,standard,fuse,152,83052,64835,0.2193,482,108.9,258,258,1,207,207,1,0,0,1,1,
-MediatR,small,aggressive,fuse,152,83052,61282,0.2621,461,112.5,258,258,1,207,207,1,0,0,1,1,
-MediatR,small,skeleton,fuse,152,83052,26405,0.6821,455,108.6,258,258,1,207,174,0.8406,0,0,1,,
-MediatR,small,publicapi,fuse,152,83052,23083,0.7221,471,109.0,258,258,1,207,174,0.8406,0,0,1,,
-MediatR,small,full,repomix,152,83052,86328,-0.0394,1893,,258,258,1,207,207,1,0,0,1,,repomix arm from prior committed run; npx repomix unavailable in this environment
-FluentValidation,small-mid,none,fuse,217,260630,242458,0.0697,522,112.2,257,257,1,901,901,1,0,0,1,1,
-FluentValidation,small-mid,standard,fuse,217,260630,179608,0.3109,506,116.0,257,257,1,901,901,1,0,0,1,1,
-FluentValidation,small-mid,aggressive,fuse,217,260630,166740,0.3602,526,116.6,257,257,1,901,901,1,0,0,1,0.9979,
-FluentValidation,small-mid,skeleton,fuse,217,260630,51890,0.8009,453,110.2,257,253,0.9844,901,890,0.9878,0,0,1,,
-FluentValidation,small-mid,publicapi,fuse,217,260630,44609,0.8288,456,109.3,257,252,0.9805,901,882,0.9789,0,0,1,,
-FluentValidation,small-mid,full,repomix,217,260630,264895,-0.0164,1468,,257,257,1,901,901,1,0,0,1,,repomix arm from prior committed run; npx repomix unavailable in this environment
-AutoMapper,mid,none,fuse,511,466131,420320,0.0983,615,121.3,2138,2118,0.9906,1074,1074,1,0,0,1,0.99,
-AutoMapper,mid,standard,fuse,511,466131,397621,0.147,643,121.4,2138,2118,0.9906,1074,1074,1,0,0,1,0.99,
-AutoMapper,mid,aggressive,fuse,511,466131,366121,0.2146,637,129.2,2138,2118,0.9906,1074,1072,0.9981,0,0,1,0.9677,
-AutoMapper,mid,skeleton,fuse,511,466131,159542,0.6577,555,117.9,2138,1945,0.9097,1074,921,0.8575,0,0,1,,
-AutoMapper,mid,publicapi,fuse,511,466131,136413,0.7074,570,118.9,2138,1943,0.9088,1074,907,0.8445,0,0,1,,
-AutoMapper,mid,full,repomix,511,466131,475896,-0.0209,1645,,2138,2118,0.9906,1074,1074,1,0,0,1,,repomix arm from prior committed run; npx repomix unavailable in this environment
-NewtonsoftJson,large,none,fuse,942,1468144,1337544,0.089,992,158.7,1288,1288,1,3058,3058,1,0,0,1,0.7962,
-NewtonsoftJson,large,standard,fuse,942,1468144,957958,0.3475,882,158.4,1288,1288,1,3058,3058,1,0,0,1,0.7962,
-NewtonsoftJson,large,aggressive,fuse,942,1468144,873992,0.4047,903,168.4,1288,1288,1,3058,3017,0.9866,0,0,1,0.7935,
-NewtonsoftJson,large,skeleton,fuse,942,1468144,96953,0.934,633,141.7,1288,919,0.7135,3058,117,0.0383,0,0,1,,
-NewtonsoftJson,large,publicapi,fuse,942,1468144,86989,0.9407,583,146.1,1288,919,0.7135,3058,116,0.0379,0,0,1,,
-NewtonsoftJson,large,full,repomix,942,1468144,1486596,-0.0126,1662,,1288,1288,1,3058,3058,1,0,0,1,,repomix arm from prior committed run; npx repomix unavailable in this environment
-SampleShop,micro (in-repo),none,fuse,7,490,552,-0.1265,432,94.4,6,6,1,6,6,1,4,4,1,1,
-SampleShop,micro (in-repo),standard,fuse,7,490,497,-0.0143,445,94.3,6,6,1,6,6,1,4,4,1,1,
-SampleShop,micro (in-repo),aggressive,fuse,7,490,480,0.0204,473,95.1,6,6,1,6,6,1,4,4,1,1,
-SampleShop,micro (in-repo),skeleton,fuse,7,490,449,0.0837,446,94.1,6,6,1,6,6,1,4,0,0,,
-SampleShop,micro (in-repo),publicapi,fuse,7,490,413,0.1571,458,94.4,6,6,1,6,6,1,4,0,0,,
-SampleShop,micro (in-repo),full,repomix,7,490,990,-1.0204,1478,,6,6,1,6,6,1,4,4,1,,repomix arm from prior committed run; npx repomix unavailable in this environment
+"repo","size","arm","tool","cs_files","raw_tokens","tokens","reduction_ratio","wall_ms","peak_mb","types_total","types_kept","types_ratio","methods_total","methods_kept","methods_ratio","routes_total","routes_kept","routes_ratio","literals_intact_ratio"
+"MediatR","small","none","fuse","152","83052","77135","0.0712","468","108.9","258","258","1","207","207","1","0","0","1","1"
+"MediatR","small","standard","fuse","152","83052","64835","0.2193","485","109.1","258","258","1","207","207","1","0","0","1","1"
+"MediatR","small","aggressive","fuse","152","83052","61282","0.2621","477","109.5","258","258","1","207","207","1","0","0","1","1"
+"MediatR","small","skeleton","fuse","152","83052","26405","0.6821","446","109.5","258","258","1","207","174","0.8406","0","0","1",
+"MediatR","small","publicapi","fuse","152","83052","23083","0.7221","449","109.4","258","258","1","207","174","0.8406","0","0","1",
+"MediatR","small","full","repomix","152","83052","86308","-0.0392","1687",,"258","258","1","207","207","1","0","0","1",
+"FluentValidation","small-mid","none","fuse","217","260630","242458","0.0697","553","115.9","257","257","1","901","901","1","0","0","1","1"
+"FluentValidation","small-mid","standard","fuse","217","260630","179608","0.3109","520","116.4","257","257","1","901","901","1","0","0","1","1"
+"FluentValidation","small-mid","aggressive","fuse","217","260630","166740","0.3602","513","112.2","257","257","1","901","901","1","0","0","1","0.9979"
+"FluentValidation","small-mid","skeleton","fuse","217","260630","51890","0.8009","462","110.1","257","253","0.9844","901","890","0.9878","0","0","1",
+"FluentValidation","small-mid","publicapi","fuse","217","260630","44609","0.8288","468","109.2","257","252","0.9805","901","882","0.9789","0","0","1",
+"FluentValidation","small-mid","full","repomix","217","260630","264875","-0.0163","1516",,"257","257","1","901","901","1","0","0","1",
+"AutoMapper","mid","none","fuse","511","466131","420320","0.0983","616","119.5","2138","2118","0.9906","1074","1074","1","0","0","1","0.99"
+"AutoMapper","mid","standard","fuse","511","466131","397621","0.147","640","120.6","2138","2118","0.9906","1074","1074","1","0","0","1","0.99"
+"AutoMapper","mid","aggressive","fuse","511","466131","366121","0.2146","628","136.8","2138","2118","0.9906","1074","1072","0.9981","0","0","1","0.9677"
+"AutoMapper","mid","skeleton","fuse","511","466131","159542","0.6577","550","118.6","2138","1945","0.9097","1074","921","0.8575","0","0","1",
+"AutoMapper","mid","publicapi","fuse","511","466131","136413","0.7074","553","118.1","2138","1943","0.9088","1074","907","0.8445","0","0","1",
+"AutoMapper","mid","full","repomix","511","466131","475876","-0.0209","1666",,"2138","2118","0.9906","1074","1074","1","0","0","1",
+"NewtonsoftJson","large","none","fuse","942","1468144","1337544","0.089","1030","162","1288","1288","1","3058","3058","1","0","0","1","0.7962"
+"NewtonsoftJson","large","standard","fuse","942","1468144","957958","0.3475","919","159","1288","1288","1","3058","3058","1","0","0","1","0.7962"
+"NewtonsoftJson","large","aggressive","fuse","942","1468144","873992","0.4047","919","174","1288","1288","1","3058","3017","0.9866","0","0","1","0.7935"
+"NewtonsoftJson","large","skeleton","fuse","942","1468144","96953","0.934","576","137.3","1288","919","0.7135","3058","117","0.0383","0","0","1",
+"NewtonsoftJson","large","publicapi","fuse","942","1468144","86989","0.9407","554","137.2","1288","919","0.7135","3058","116","0.0379","0","0","1",
+"NewtonsoftJson","large","full","repomix","942","1468144","1486576","-0.0126","1619",,"1288","1288","1","3058","3058","1","0","0","1",
+"SampleShop","micro (in-repo)","none","fuse","7","490","552","-0.1265","396","93.5","6","6","1","6","6","1","4","4","1","1"
+"SampleShop","micro (in-repo)","standard","fuse","7","490","497","-0.0143","415","94.3","6","6","1","6","6","1","4","4","1","1"
+"SampleShop","micro (in-repo)","aggressive","fuse","7","490","480","0.0204","443","94.5","6","6","1","6","6","1","4","4","1","1"
+"SampleShop","micro (in-repo)","skeleton","fuse","7","490","449","0.0837","410","94","6","6","1","6","6","1","4","0","0",
+"SampleShop","micro (in-repo)","publicapi","fuse","7","490","413","0.1571","397","94.9","6","6","1","6","6","1","4","0","0",
+"SampleShop","micro (in-repo)","full","repomix","7","490","970","-0.9796","1550",,"6","6","1","6","6","1","4","4","1",

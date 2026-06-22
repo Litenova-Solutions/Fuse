@@ -4,7 +4,8 @@ name: Publish to MCP Registry
 # tag, after the NuGet package is live (the registry validates that the package
 # exists and carries the `mcp-name` ownership marker, which is in the packed
 # README). Authentication uses GitHub Actions OIDC: the io.github.litenova-solutions
-# namespace is owned by this repository's org, so no secret is needed.
+# namespace (io.github.Litenova-Solutions) is owned by this repository's org, so
+# no secret is needed.
 
 on:
   push:

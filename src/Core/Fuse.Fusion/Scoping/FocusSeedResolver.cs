@@ -139,14 +139,18 @@ public sealed class FocusSeedResolver
         var queue = new PriorityQueue<FrontierNode, (double NegScore, string Path)>(FrontierComparer);
         var budgetUsed = 0;
 
-        // Admit all seeds first, in deterministic strongest-first order, regardless of budget.
-        foreach (var seed in seedScores.OrderByDescending(s => s.Value).ThenBy(s => s.Key, StringComparer.OrdinalIgnoreCase))
+        // Admit all seeds first, ordered by rank score (relevance blended with the centrality prior),
+        // strongest first, regardless of budget. The propagated score stays centrality-free so the prior
+        // never compounds across hops.
+        foreach (var seed in seedScores
+                     .OrderByDescending(s => RankScore(options, s.Key, s.Value))
+                     .ThenBy(s => s.Key, StringComparer.OrdinalIgnoreCase))
         {
             if (!included.Add(seed.Key))
                 continue;
 
             provenance[seed.Key] = [seed.Key];
-            scores[seed.Key] = seed.Value;
+            scores[seed.Key] = RankScore(options, seed.Key, seed.Value);
             budgetUsed += Cost(options, seed.Key);
 
             if (options.Depth > 0)
@@ -164,7 +168,8 @@ public sealed class FocusSeedResolver
 
                 included.Add(node.Path);
                 provenance[node.Path] = node.Chain;
-                scores[node.Path] = node.Score;
+                // Record the rank score (relevance + centrality prior); propagate the centrality-free score.
+                scores[node.Path] = RankScore(options, node.Path, node.Score);
                 budgetUsed += cost;
 
                 if (node.Hop < options.Depth)
@@ -173,6 +178,16 @@ public sealed class FocusSeedResolver
         }
 
         return new PathExpansionResult(included, provenance, scores);
+    }
+
+    // Relevance blended with the query-independent centrality prior. Additive and zero at CentralityWeight 0,
+    // so a zero weight reproduces the prior ordering exactly.
+    private static double RankScore(ExpansionOptions options, string path, double traversalScore)
+    {
+        if (options.CentralityWeight == 0 || options.Centrality is null)
+            return traversalScore;
+
+        return traversalScore + options.CentralityWeight * options.Centrality.GetValueOrDefault(path);
     }
 
     private static void EnqueueNeighbours(
@@ -191,7 +206,7 @@ public sealed class FocusSeedResolver
             foreach (var typeName in referencedTypes)
             {
                 if (graph.TypeIndex.TryGetValue(typeName, out var definingPaths))
-                    EnqueueEach(queue, definingPaths, path, parentChain, nextScore, hop);
+                    EnqueueEach(queue, options, definingPaths, path, parentChain, nextScore, hop);
             }
         }
 
@@ -200,13 +215,14 @@ public sealed class FocusSeedResolver
             foreach (var typeName in declaredTypes)
             {
                 if (graph.TypeReferences.TryGetValue(typeName, out var referencingPaths))
-                    EnqueueEach(queue, referencingPaths, path, parentChain, nextScore, hop);
+                    EnqueueEach(queue, options, referencingPaths, path, parentChain, nextScore, hop);
             }
         }
     }
 
     private static void EnqueueEach(
         PriorityQueue<FrontierNode, (double NegScore, string Path)> queue,
+        ExpansionOptions options,
         IReadOnlyList<string> neighbours,
         string parentPath,
         IReadOnlyList<string> parentChain,
@@ -219,7 +235,9 @@ public sealed class FocusSeedResolver
                 continue;
 
             var chain = new List<string>(parentChain) { neighbour };
-            queue.Enqueue(new FrontierNode(neighbour, chain, score, hop), (-score, neighbour));
+            // The node carries the centrality-free traversal score for propagation; the queue is ordered by the
+            // rank score so the centrality prior influences which neighbours win admission under a budget.
+            queue.Enqueue(new FrontierNode(neighbour, chain, score, hop), (-RankScore(options, neighbour, score), neighbour));
         }
     }
 

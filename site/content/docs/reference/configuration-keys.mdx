@@ -44,6 +44,14 @@ An explicit flag always overrides the configuration file, and the configuration 
 
 The full behavior, type conventions, and defaults for each corresponding flag are in the [Options reference](/docs/reference/options).
 
+## Environment Variables
+
+A few behaviors are controlled by environment variables rather than the config file or a flag:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FUSE_CENTRALITY_WEIGHT` | `0.15` | Weight of the query-independent graph-centrality prior blended into focus and query ranking, so at equal relevance the more depended-upon file ranks earlier. Set to `0` to disable the prior and reproduce the pre-centrality ordering exactly. |
+
 ## The Scaffold From fuse init
 
 Running `fuse init` writes the following `fuse.json` to the current directory when one is absent:

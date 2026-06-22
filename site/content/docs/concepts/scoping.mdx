@@ -50,6 +50,11 @@ expands through their dependencies. Ranking weights a file's declared type and m
 names and its path above the body, so a query lands on the file that declares a
 concept rather than one that merely mentions it.
 
+Focus and query ranking also fold in a small importance prior: at equal relevance, a file
+that more of the codebase depends on ranks earlier, so a central type surfaces ahead of a
+peripheral one. The prior is conservative and set by `FUSE_CENTRALITY_WEIGHT`; set it to 0
+to rank on relevance alone.
+
 ## Why expand through the graph
 
 A changed file rarely stands alone. The type it calls, and the test that calls it, are

@@ -62,7 +62,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<FusionValidator>();
         services.AddSingleton<FusionOrchestrator>();
         services.AddSingleton<ISecretRedactor, DefaultSecretRedactor>();
-        services.AddSingleton<IRelevanceIndex, Bm25RelevanceIndex>();
+        // Per-run relevance index: the BM25 index rebuilds all of its state per query and shares nothing, so a
+        // factory hands each fusion run a fresh instance instead of a serialized singleton.
+        services.AddSingleton<Func<IRelevanceIndex>>(_ => () => new Bm25RelevanceIndex());
         services.AddSingleton<Retrieval.IEmbeddingModel>(_ => new Retrieval.HashingEmbeddingModel());
 
         services.AddTransient<FileCollectionPipeline>();
@@ -70,7 +72,10 @@ public static class ServiceCollectionExtensions
         services.AddTransient<EmissionPipeline>();
 
         services.AddSingleton<IFileSystem, PhysicalFileSystem>();
-        services.AddSingleton<ISourceContentProvider, SourceContentProvider>();
+        // Per-run content cache: a fresh instance per run keeps the read-once-per-run invariant intact under
+        // concurrent runs (a shared cache would be cleared mid-flight by another run).
+        services.AddSingleton<Func<ISourceContentProvider>>(sp =>
+            () => new SourceContentProvider(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<GitIgnoreParser>();
         services.AddSingleton<ProjectTemplateRegistry>();
         services.AddSingleton<OutputNamingService>();

@@ -13,7 +13,11 @@ Collection, reduction, and graph building run in parallel. The `--parallelism` f
 
 ## The Single-Read Content Provider
 
-A fusion reads each file once per run. The content provider holds that single read and shares it across the stages that need file content: graph building, query indexing, and reduction. No stage re-reads the source directory, so file I/O scales with the number of candidate files rather than the number of stages that consume them.
+A fusion reads each file once per run. The content provider holds that single read and shares it across the stages that need file content: graph building, query indexing, and reduction. No stage re-reads the source directory, so file I/O scales with the number of candidate files rather than the number of stages that consume them. Each run constructs its own content provider, so this single-read state is run-local.
+
+## Concurrent Runs
+
+The orchestrator holds no process-wide gate. Each run constructs its own content cache and BM25 relevance index, so independent runs share no mutable state and execute concurrently, scaling toward the core count. On a server hosting the MCP tools, several tool calls handled at once run in parallel rather than queueing behind one another. This concurrency is a structural property of the per-run design rather than a benchmarked figure; treat any specific throughput multiple as illustrative until a reproducible harness arm measures it.
 
 ## The Reduction Cache
 

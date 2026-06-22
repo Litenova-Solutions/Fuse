@@ -85,11 +85,13 @@ foreach (var file in csFiles)
         if (!isString)
             continue;
 
-        // ValueText is the decoded literal content. We require it to appear verbatim in the fused output,
-        // which proves whitespace compression and comment removal never reached inside the literal.
-        var value = token.ValueText;
-        if (value.Length >= minLength)
-            literals.Add(value);
+        // token.Text is the verbatim source slice of the literal (delimiters and escape sequences intact).
+        // Reduction preserves a literal byte-for-byte, so the raw text must appear in the fused output. We
+        // compare the raw text, not the decoded ValueText, because the output keeps the escaped source form
+        // (for example \n stays as the two characters backslash-n, not a real newline).
+        var rawLiteral = token.Text;
+        if (rawLiteral.Length >= minLength)
+            literals.Add(rawLiteral);
     }
 }
 

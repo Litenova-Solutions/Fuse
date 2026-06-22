@@ -5,9 +5,9 @@ description: The coined terms used across the Fuse documentation, each defined i
 
 The vocabulary you meet across these docs, defined once.
 
-**Fusion.** One run of Fuse: it takes a source directory and produces a single output,
-either a file on disk or an in-memory payload returned to an MCP client. To "fuse" is to
-perform that run.
+**Fusion.** One scoped, reduced view of a codebase assembled for a single request,
+returned as an MCP tool response to an agent or written to a file from the CLI. To "fuse"
+is to assemble that view.
 
 **Token.** The unit a language model reads; a model's context window is measured in
 tokens, so a fusion's token count decides how much of the window it consumes and what it
@@ -39,7 +39,17 @@ which directories to skip for a project type; `fuse dotnet` uses the DotNet temp
 skeleton, or detecting routes, resolved by file extension.
 
 **Round-trip.** One read-decide cycle an agent makes while exploring; Fuse cuts round-trips
-by answering a survey, a drill-in, or a review in a single response.
+by answering a survey, a drill-in, or a review in a single response. See
+[The explore phase](/docs/concepts/the-explore-phase).
+
+**Session-delta.** A way to skip resending files an agent already has: pass a `session` id
+across calls in the same task and Fuse omits files it sent earlier (tracked by content
+hash), so multi-turn refinement does not re-pay tokens. See
+[Sessions and deltas](/docs/concepts/sessions-and-deltas).
+
+**Hybrid retrieval.** The opt-in reranking path that combines BM25 keyword scoring with
+local vector embeddings to order scoped results, enabled with `--rerank`. See
+[Precision tier](/docs/concepts/precision-tier).
 
 **Precision tier.** The opt-in Roslyn analysis path that replaces the default regex
 extraction for higher-fidelity skeletons and dependency edges. See

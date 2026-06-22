@@ -1,0 +1,53 @@
+---
+title: Refine across turns
+description: Work a multi-step change with several Fuse calls in one task, sharing a session so unchanged files are not sent twice.
+---
+
+**Goal:** work a multi-step change that needs context from several areas of a codebase
+without paying tokens twice for files an earlier call already returned.
+
+The lever is a shared session: pass the same `session` id to every call in one task and
+Fuse omits files it already sent unchanged. See
+[Sessions and deltas](/docs/concepts/sessions-and-deltas) for the mechanism.
+
+## Do It
+
+Pick a session id for the task and reuse it across the call sequence. Here an agent works
+a change to checkout pricing that spreads from the order service into the pricing rules.
+
+```text
+# 1. Survey, cheaply, to orient.
+fuse_toc(path="C:/Projects/MyApp/src", session="checkout-pricing")
+
+# 2. Drill into the order service and its dependencies.
+fuse_focus(path="C:/Projects/MyApp/src", focus="OrderService",
+           depth=1, session="checkout-pricing")
+# returns OrderService.cs, Order.cs, IOrderRepository.cs, PricingPolicy.cs
+
+# 3. Drill into the pricing rules, which share PricingPolicy with step 2.
+fuse_focus(path="C:/Projects/MyApp/src", focus="PricingPolicy",
+           depth=1, session="checkout-pricing")
+# returns DiscountRule.cs, TaxPolicy.cs
+# note: omitted 1 file already sent this session: PricingPolicy.cs
+
+# 4. Review the branch once the change is made.
+fuse_changes(path="C:/Projects/MyApp/src", changedSince="origin/main",
+             review=true, session="checkout-pricing")
+```
+
+Step 3 returns only the files the agent does not already hold; `PricingPolicy.cs` arrived
+in step 2 and is skipped, with a note saying so. Step 4 scopes the review to the branch
+and again skips anything unchanged that the session already carries.
+
+## When to Use It
+
+Use a shared session for any task that takes more than one Fuse call: a change that
+touches several areas, an investigation that narrows over several turns, or a review that
+follows a drill-in. For a single call, the session id is harmless but does nothing.
+
+## Related Concept
+
+The omission rules are in [Sessions and deltas](/docs/concepts/sessions-and-deltas), the
+wider survey-scope-drill-review loop is in
+[The explore phase](/docs/concepts/the-explore-phase), and the `session` parameter is in
+the [MCP tools reference](/docs/reference/mcp-tools).

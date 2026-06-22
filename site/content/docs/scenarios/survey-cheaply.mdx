@@ -6,7 +6,7 @@ description: Build a first-pass map of an unfamiliar .NET solution with a table 
 **Goal:** understand the shape of an unfamiliar solution, its types, endpoints, and
 layering, without reading the source.
 
-## The cheapest map: a table of contents
+## The Cheapest Map: A Table of Contents
 
 ```bash
 fuse dotnet --directory ./src --toc
@@ -17,7 +17,7 @@ file bodies. It is the cheapest first call: on the sample fixture the table of c
 is 221 tokens against 624 to read every listed file, and the saving grows with file
 count because each file contributes one line plus an outline regardless of its size.
 
-## The architecture map: a skeleton
+## The Architecture Map: A Skeleton
 
 ```bash
 fuse dotnet --directory ./src --level skeleton --semantic-markers
@@ -28,7 +28,7 @@ type and member surface of the whole solution fits in a fraction of the tokens.
 `--semantic-markers` annotates each type with its kind, the interfaces it implements, and
 the types it depends on.
 
-## Add structural maps
+## Add Structural Maps
 
 These prepend to the output, so combine them for a layered overview:
 
@@ -42,18 +42,18 @@ fuse dotnet --directory ./src --route-map --project-graph --level skeleton
 - `--level publicApi` keeps only public and protected member skeletons, the contract a
   project presents to consumers.
 
-## What you get
+## What You Get
 
 A small, structural payload that opens with the project graph and route map, then the
 skeleton of every type: enough to orient a reader or an agent before any scoped drill-in.
 
-## When to use it
+## When to Use It
 
 Use a survey at the start of work on a codebase you do not know, or to produce a
 high-level map for review. Follow it with a [scoped fusion](/docs/concepts/scoping) to
 bring detail to the area that matters.
 
-## Related concept
+## Related Concept
 
 Skeletons sit at the deep end of [Reduction levels](/docs/concepts/reduction-levels); the
 detected conventions in a pattern summary are in

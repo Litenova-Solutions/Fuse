@@ -27,7 +27,7 @@ Reduction results are cached per file under `.fuse/cache`, so an unchanged file 
 
 Watch mode re-runs a fusion when source files change, which keeps in-process state warm across iterations. Enable it with `--watch`. Watch mode is disabled under MCP stdio, because the server already holds resident state for the session.
 
-## Cold Start And Native AOT
+## Cold Start and Native AOT
 
 One-shot commands are sensitive to cold start, so Fuse reduces the fixed cost in several ways. Token counting uses `Microsoft.ML.Tokenizers`, which initializes faster than the previous tokenizer and produces accurate `o200k_base` and `cl100k_base` counts. Configuration and JSON output use source-generated `System.Text.Json` contexts, which are trim and AOT safe. Remaining dynamic patterns use `[GeneratedRegex]`, so there is no runtime regex compiler. The binary probe uses `ArrayPool` and span-based line scans to lower allocation volume on large repositories.
 
@@ -41,7 +41,7 @@ Native AOT removes most JIT and startup time on .NET 10 and later. Fuse distribu
 
 Native AOT on Linux requires `clang` and `zlib1g-dev`.
 
-## How To Run The Benchmarks
+## How to Run the Benchmarks
 
 Measure fresh-process wall time, not warm in-shell repeats. JIT tiering makes second invocations faster than a true cold start, so repeated runs in one shell report misleading figures.
 

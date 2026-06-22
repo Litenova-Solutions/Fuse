@@ -23,7 +23,7 @@ That script builds the CLI and two measurement tools, clones the corpus at the p
 
 The inputs that make the run reproducible are committed alongside the harness: the corpus manifest pins each repository to an exact commit, the PR ground truth records base and head commits per change set, and the localization question set records each question with its known answer file.
 
-## What Is Measured, And How It Stays Fair
+## What Is Measured, and How It Stays Fair
 
 Token counts use the `o200k_base` encoding through `Microsoft.ML.Tokenizers`, the same encoding Fuse uses by default. Reduction ratios transfer across models because they are ratios; absolute token counts do not, because each model tokenizes differently. Every arm in a comparison is counted with the one tokenizer, so raw concatenation, Fuse output, and Repomix output are measured on the same scale.
 
@@ -48,7 +48,7 @@ The corpus is four open-source .NET libraries pinned by commit, plus the in-repo
 | Newtonsoft.Json | large | 945 |
 | SampleShop | micro, in-repo | 7 |
 
-## Layer 1: Token Reduction And Fidelity
+## Layer 1: Token Reduction and Fidelity
 
 Layer 1 runs each reduction mode against the raw concatenation baseline and against Repomix. The modes are the no-flag default (`--level none`), `--level aggressive` (every C# reduction combined), and `--level skeleton` (signatures only, bodies removed by design). Reduction ratio is the fraction of baseline tokens removed; a negative value means the output is larger than raw concatenation.
 
@@ -149,7 +149,10 @@ Findings, including losses:
 - Focus improved but still trails. Focus accuracy rose from 25 to 42 percent now that it follows dependents as well as dependencies, and it remains the cheapest mode by far at about 5,800 tokens. When the seed is a concept rather than a type name it still misses, which is why query is the better localization tool.
 - A lexical ceiling remains. Ranking rewards shared vocabulary, so a question that shares no words or stems with the target file still misses. This is the case the planned embeddings rerank is meant to address; Layer 2B is the regression guard for it.
 
-## Layer 4: Context Acquisition (Fuse vs no Fuse vs Repomix)
+## Layer 4: Context Acquisition (Fuse VS No Fuse VS Repomix)
+
+This layer is the proof behind the front-door claim that Fuse collapses the explore phase
+into one scoped call; the concept is in [The explore phase](/docs/concepts/the-explore-phase).
 
 Layers 1 and 2 measure Fuse in isolation. Layer 4 puts three approaches side by side on the two axes that decide the real cost of a task: the round-trips it takes to acquire the context, and the input tokens that context costs. The task is the same one Layer 2A uses, "assemble the context this change needs," and the needed files are the C# files each of the 24 real merged pull requests touched. For every pull request the harness reconstructs the head state in a Git worktree and measures three arms at the same 50,000 token budget (with 10,000 and 25,000 token points for the curve). All counts use `o200k_base`.
 
@@ -202,11 +205,11 @@ pwsh -File tests/benchmarks/harness/layer4-scenario.ps1
 
 Results land in `results/layer4-scenario.{json,csv,md}`, one row per pull request, arm, and budget, so the curve and the per-repository view are reconstructable. The Repomix arm needs `npx`; when it is unavailable that arm is omitted (never stubbed), and every Fuse-versus-no-fuse number still stands.
 
-## Retrieval And Output Changes: Before And After
+## Retrieval and Output Changes: Before and After
 
 This section records the effect of the retrieval work and the output and trust work against the same pinned corpus. All token counts use `o200k_base`. Layer 1 reduction and fidelity did not change: the default and `--level aggressive` still keep 99 to 100 percent of public types and methods, and skeleton still collapses on Newtonsoft.Json, so the cut was not bought by dropping API.
 
-### Retrieval And Scoping
+### Retrieval and Scoping
 
 The six retrieval items change one scoring and expansion pipeline, so the harness measures their combined effect rather than isolating each. The before column is the previous release; the after column is this release at the same budgets and depths.
 
@@ -229,7 +232,7 @@ What each item contributes to that combined movement:
 5. Query normalization. CamelCase splitting, stopword removal, and light stemming align a natural-language question with code identifiers, contributing to the query gains in both layers.
 6. Relevance-ordered truncation. Under a token budget, emission now writes most-relevant first instead of largest first, so the seed file survives the cut. This protects recall and accuracy at the 50,000 and 20,000 token budgets used here.
 
-### Output And Trust
+### Output and Trust
 
 These features are opt-in and do not change the default output, so they do not move the Layer 1 or Layer 2 arms above. Their effect is measured directly.
 
@@ -239,7 +242,7 @@ These features are opt-in and do not change the default output, so they do not m
 - Verify. On MediatR excluding tests, `fuse verify` reports 86 of 86 public types and 36 of 36 public methods preserved under the default and `--level aggressive`. It is a trust check, not a reduction metric.
 - Explain and the JSON run report. Both surface the run without changing it: explain lists included and excluded files with a token estimate, and `--report` emits a machine-readable summary that names the tokenizer. They have no token-reduction figure to report.
 
-### Round-Trips And The Precision Tier
+### Round-Trips and the Precision Tier
 
 The round-trip features (table-of-contents survey, the `fuse_ask` auto-scope tool, review-shaped change emission, session-delta emission) and the precision tier (Roslyn analysis, symbol-level scoping, the persistent index, hybrid retrieval, cross-language reduction, and generated-code collapse) are all opt-in. None of them change the default reduction or scoping path. The harness was rerun over the same pinned corpus to confirm that, and the Layer 1 token counts and fidelity and the Layer 2 recall and precision above are byte-identical to the previous release. The gains are not bought by changing the default, because the default did not change.
 
@@ -261,7 +264,7 @@ Each item is measured directly where the harness exercises it:
 
   The Newtonsoft.Json row is the headline: regex skeleton kept 4 percent of method signatures, Roslyn keeps 100 percent. The cost is honest output size. Because the regex skeleton dropped most signatures, its deep cut was partly a fidelity failure, not real saving. The Roslyn skeleton is a faithful signatures-only cut and is therefore larger: Newtonsoft.Json moves from 96,953 tokens (regex, 93.4 percent reduction but 4 percent method fidelity) to 694,862 tokens (Roslyn, 52.7 percent reduction at 100 percent fidelity). MediatR moves from 26,405 to 39,865 tokens, FluentValidation from 51,890 to 115,635, AutoMapper from 159,542 to 258,427. This is the intended trade: the precision tier does not weaken fidelity to inflate reduction. Symbol-level scoping rides on the same tier and is unit-tested rather than measured over the corpus, since the corpus carries no god-class for a representative member slice.
 
-### The Persistent Index: Cold Versus Warm
+### The Persistent Index: Cold versus Warm
 
 The persistent index (`--index`, on by default in watch and serve) caches per-file analysis on disk so repeated scoped calls reuse it. Measured on MediatR (152 C# files) with a query-scoped run, wall-clock cold (a cleared index) versus warm (the index populated by a prior run), counted on one Windows machine and including the fixed process startup cost:
 
@@ -274,13 +277,13 @@ The warm run is about half the cold run. The Roslyn tier is more expensive cold 
 
 A note on the competitor arm: the Repomix comparison in the Layer 1 table and the Layer 4 scenario was measured live in this environment through `npx`. When `npx` is unavailable, the harness does not publish a broken stub: Layer 1 carries the prior committed Repomix row with a clear notice, and Layer 4 omits the Repomix arm for that run. The Fuse-versus-raw and Fuse-versus-no-fuse numbers do not need `npx` and stand regardless.
 
-## How To Read These Results Together
+## How to Read These Results Together
 
 Layer 1 is the strong, clean claim: Fuse cuts 7 to 40 percent of tokens at full public-API fidelity with the default and `--level aggressive`, cuts far more with skeleton at signature level, and beats Repomix on token cost in every mode. That claim is deterministic and holds across all four repositories.
 
 Layer 2 is the honest boundary, and it moved this release. Change scoping is reliable because it rests on Git, and it now carries high precision through one-hop dependents. Focus and query still rest on a best-effort regex dependency graph and a lexical index, but with reverse edges, fielded ranking, comment and string stripping, and query normalization they now clear the grep baseline on both the recall and the localization tasks. They help most when the query carries real domain words and the codebase is not dominated by conditional compilation, which is why Newtonsoft.Json still trails. The planned Roslyn semantic plugin and embeddings rerank target the remaining lexical ceiling, and Layer 2 is the regression guard that will show whether they close it.
 
-## Blocked And Out Of Scope
+## Blocked and Out of Scope
 
 - Layer 3, task resolution. A SWE-bench-style harness that drives a programmatic agent across arms and scores patches with a test oracle is not built here. It needs provisioned model credentials and compute, and it is confounded and scaffold-specific. It remains aspirational, as the roadmap states.
 - Cross-machine timing. Wall-clock and memory were captured on one Windows machine. They are directional. Token counts and fidelity are machine-independent.

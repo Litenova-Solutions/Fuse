@@ -7,7 +7,7 @@ Fuse is a developer tool for .NET developers, so the recommended install is the
 .NET global tool. If you do not have the .NET SDK, there is a self-contained
 binary that needs nothing else.
 
-## Recommended: the .NET global tool
+## Recommended: The .NET Global Tool
 
 ```bash
 dotnet tool install -g Fuse
@@ -28,7 +28,7 @@ dotnet tool update -g Fuse
 **Requirements:** the .NET SDK 10.0 or later. Git change scoping also needs the
 `git` executable on your PATH.
 
-### Run without installing
+### Run without Installing
 
 The .NET 10 SDK can run Fuse on demand without a global install:
 
@@ -41,7 +41,7 @@ dnx Fuse -- serve
 These give you a single self-contained binary (Native AOT, no runtime required).
 Linux x64 and Windows x64 are published; on macOS use the .NET global tool above.
 
-### Install script
+### Install Script
 
 ```bash
 # Linux
@@ -63,13 +63,13 @@ choose the location.
 winget install Litenova.Fuse
 ```
 
-### Download a binary
+### Download a Binary
 
 Grab `fuse-<version>-win-x64.zip` or `fuse-<version>-linux-x64.tar.gz` from the
 [GitHub Releases](https://github.com/Litenova-Solutions/Fuse/releases) page,
 verify it against `SHA256SUMS.txt`, extract, and put `fuse` on your PATH.
 
-## Build from source
+## Build from Source
 
 On Windows, the bundled script builds, packs, and installs the tool locally:
 

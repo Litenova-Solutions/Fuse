@@ -1,12 +1,33 @@
 ---
 title: What is Fuse
-description: Fuse turns a .NET codebase into one token-efficient payload an AI agent reads in a single call, cutting tokens while keeping the public API intact.
+description: Fuse collapses an AI agent's explore phase into one scoped call, finding the code a task needs and handing it over reduced, with the public API intact.
 ---
 
-You point Fuse at a .NET solution and get back one file: a structured payload that
-holds the whole codebase, reduced for token efficiency, with a manifest at the top
-listing every file and its token cost. An agent reads that one payload instead of
-opening hundreds of files to find its way around.
+An AI coding agent spends the start of every task exploring: listing directories,
+searching, opening file after file to find the few that matter. Fuse collapses that
+explore phase into one scoped call: it finds the code a task needs and hands it over
+already reduced, so the agent starts work instead of hunting.
+
+The collapse is measured. Over 24 real merged pull requests, one scoped call acquires a
+change's context in about 40,000 tokens at 51 percent recall, against a blind agent that
+must read each needed file at least once (a structural lower bound of about six reads)
+and a generic packer that dumps the whole repository at roughly 512,000 tokens. Read the
+token number with its recall; the change-scoping mode reaches 88 percent recall when a
+git base is available. See [The explore phase](/docs/concepts/the-explore-phase) and the
+[Layer 4 benchmark](/docs/project/benchmarks).
+
+Hand it to an agent through the MCP server: give `fuse_ask` a task and a token budget and
+it picks the scoping strategy and packs to fit.
+
+```text
+fuse_ask(
+  path="C:/Projects/MyApp/src",
+  task="where is the discount applied at checkout?",
+  tokenBudget=20000
+)
+```
+
+It also runs as a CLI for humans and CI:
 
 ```bash
 # install once
@@ -27,24 +48,26 @@ That run took 511 C# files down by 21.5 percent and kept 99 percent of public ty
 and 100 percent of public methods. The cut is not deletion: the surface an agent
 reads the code for is still there.
 
-## What it does, in one line
+## What It Does, in One Line
 
-Fuse is a .NET-native codebase context optimizer. It collects source files, reduces
-them, and emits one payload an agent or a developer can consume in a single call
-instead of reading thousands of files individually.
+Fuse is a retrieval engine for .NET coding agents: it finds the code a task needs and
+hands it over scoped and reduced in one call, instead of letting the agent open thousands
+of files to find its way around.
 
-A single run is a **fusion**: it takes a source directory and produces one output,
-either a file on disk or an in-memory payload returned to an AI client.
+A single request returns a **fusion**: one scoped, reduced view of a codebase assembled
+for that request, returned as an MCP tool response to an agent or written to a file from
+the CLI.
 
-## Why that matters
+## Why That Matters
 
-An AI coding agent spends the start of every task exploring: listing directories,
-searching, and opening file after file to learn which ones are relevant. On a large
-solution that discovery burns most of the context window and many slow round-trips
-before any real work begins. Fuse front-loads that work into one deterministic step
-and hands the agent scoped, reduced context that fits the window.
+On a solution with hundreds or thousands of C# files, the explore phase is the expensive
+part of the task: every file the agent opens to orient itself burns context window, each
+open is a separate round-trip with latency, and reading files in isolation loses the
+dependency structure. Fuse front-loads that work into one deterministic step and hands
+the agent scoped, reduced context that fits the window. For the full mechanism, see
+[The explore phase](/docs/concepts/the-explore-phase).
 
-## Reduction without losing the surface
+## Reduction without Losing the Surface
 
 Across a commit-pinned corpus of real .NET libraries, the default and `--level aggressive`
 reductions cut 7 to 40 percent of tokens while keeping 99 to 100 percent of public
@@ -57,7 +80,7 @@ Every number comes from a harness anyone can rerun against the same pinned commi
 See [Benchmarks](/docs/project/benchmarks) for the method and the full results,
 including where Fuse loses.
 
-## Two ways to run it
+## Two Ways to Run It
 
 Fuse ships from one package in two forms:
 
@@ -67,11 +90,12 @@ Fuse ships from one package in two forms:
   Code, Cursor, or GitHub Copilot, so the agent requests scoped context directly.
   See [Connect to your AI](/docs/start/connect-your-ai).
 
-## What it is not
+## What It Is Not
 
 Fuse is not a generic file packer that concatenates text, and it is not an embedding
-index that returns fuzzy chunks. It understands C# structure, preserves the public
-API, and produces the same output for the same input. The
+index that returns fuzzy chunks. It is also not a one-shot dump: it scopes to the files a
+task needs and refines across calls in a session. It understands C# structure, preserves
+the public API, and produces the same output for the same input. The
 [Why Fuse](/docs/start/why-fuse) page covers the landscape and the trade-offs in full.
 
 ## Next

@@ -13,7 +13,7 @@ A format reducer implements the same interface as a language reducer, `IContentR
 
 Format reducers and language reducers share one registry, so the same last-registration-wins rule applies: whichever reducer for a given extension is registered last is the one the pipeline calls. The pipeline normalizes whitespace before invoking any reducer and runs reducers concurrently across files, so an implementation must be stateless and must not re-trim or re-collapse whitespace itself.
 
-## Implement The Reducer
+## Implement the Reducer
 
 The following reducer collapses a hypothetical configuration format whose files end in `.myconf`. It declares its extension and returns the input reduced.
 

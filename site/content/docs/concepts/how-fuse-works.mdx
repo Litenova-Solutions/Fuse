@@ -3,11 +3,17 @@ title: How Fuse works
 description: The four stages of a fusion, what each one does, and why the pipeline is shaped this way.
 ---
 
-A **fusion** is one run of Fuse: a source directory in, one reduced payload out. That
-run moves through four stages. You do not need to know them to use Fuse, but they
-explain every flag and every result.
+A **fusion** is one scoped, reduced view of a codebase assembled for a single request:
+returned as an MCP tool response to an agent, or written to a file from the CLI. This
+page is about what happens inside one fusion. For how an agent uses Fuse across a whole
+task (survey, scope, drill in, review, refine), see
+[The explore phase](/docs/concepts/the-explore-phase); the four stages below are what one
+call does internally.
 
-## The four stages
+Assembling that view moves through four stages. You do not need to know them to use Fuse,
+but they explain every flag and every result.
+
+## The Four Stages
 
 | Stage | What it does |
 |-------|--------------|
@@ -45,7 +51,7 @@ Emission counts tokens with a real tokenizer, builds the **manifest** (the heade
 that lists each file and its token cost), applies the chosen output format, and writes
 the result, splitting into parts if a fusion exceeds the split threshold.
 
-## Why it is shaped this way
+## Why It Is Shaped This Way
 
 The stages are separated because they change for different reasons. Collection cares
 about the filesystem, filtering about relevance, reduction about language structure,
@@ -54,7 +60,7 @@ reduction plugin, not a pipeline change, and scoping is one optional stage rathe
 logic threaded through everything. The deeper design is in
 [the pipeline internals](/docs/internals/pipeline).
 
-## Tokens, the unit that matters
+## Tokens, the Unit That Matters
 
 A **token** is the unit a language model reads. Models have a fixed context window
 measured in tokens, so the token count of a fusion decides how much of that window it

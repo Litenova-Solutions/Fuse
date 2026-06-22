@@ -1,18 +1,18 @@
 ---
 title: Fuse documentation
-description: Fuse is a .NET-native codebase context optimizer for AI-assisted development. Start here to install it, connect it to your agent, and learn how it cuts tokens while keeping the public API.
+description: Fuse collapses an AI coding agent's explore phase on a .NET codebase into one scoped call. Start here to install it, connect it to your agent, and learn how it works.
 ---
 
-Fuse collects the source files of a .NET codebase, reduces them for token
-efficiency, and emits one structured payload an AI agent or a developer can read
-in a single call instead of opening thousands of files. It ships as a .NET global
-tool (`fuse`) and as a Model Context Protocol server (`fuse serve`) with eight
-tools.
+Fuse collapses an AI coding agent's explore phase into one scoped call: it finds the
+code a task needs on a .NET codebase and hands it over already reduced, so the agent
+starts work instead of opening thousands of files to find its way around. It ships as
+a Model Context Protocol server (`fuse serve`) with eight tools for an agent, and as a
+.NET global tool (`fuse`) for the terminal and CI.
 
 These docs are organized so you can read top to bottom to learn, or jump to a
 reference page for exact detail.
 
-## Get going
+## Get Going
 
 <Cards>
   <Card title="What is Fuse" href="/docs/start/what-is-fuse" description="The outcome, with a worked example and the benchmark figure." />
@@ -21,7 +21,7 @@ reference page for exact detail.
   <Card title="Why Fuse" href="/docs/start/why-fuse" description="The problem, the landscape, and how Fuse compares." />
 </Cards>
 
-## The map
+## The Map
 
 - **[Start](/docs/start/what-is-fuse)**: what Fuse is, why it exists, install, the first run, and the MCP setup.
 - **[Scenarios](/docs/scenarios/cut-tokens-dotnet)**: task-shaped how-tos. Each is a job with one command and real output.

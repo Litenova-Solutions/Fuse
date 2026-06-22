@@ -1,55 +1,25 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
-
-const RAW = 1_487_000;
-const FUSED = 880_000;
-
-function useCountUp(target: number, run: boolean, durationMs = 1100) {
-  const [value, setValue] = useState(run ? 0 : target);
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    if (!run) return;
-    if (reduce) {
-      setValue(target);
-      return;
-    }
-    let raf = 0;
-    let start: number | null = null;
-    const step = (t: number) => {
-      if (start === null) start = t;
-      const p = Math.min(1, (t - start) / durationMs);
-      // easeOutCubic
-      const eased = 1 - Math.pow(1 - p, 3);
-      setValue(Math.round(target * eased));
-      if (p < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [run, target, durationMs, reduce]);
-
-  return value;
-}
+import { useRef } from 'react';
 
 /**
- * The single Motion moment on the landing page: a terminal card whose token
- * bar collapses from the raw repository count to the fused count, with the
- * number counting down alongside it. Numbers are the measured Newtonsoft.Json
- * `--all` arm (see the benchmarks page). Respects reduced-motion.
+ * The single Motion moment on the landing page: a terminal card that contrasts
+ * an agent's blind explore phase (file-open after file-open) with one scoped
+ * Fuse call. The round-trip figure is a structural lower bound and the token
+ * figure is paired with its recall, matching the benchmarks page (Layer 4).
+ * Respects reduced-motion.
  */
 export function HeroVisual() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.4 });
   const reduce = useReducedMotion();
-  const fusedCount = useCountUp(FUSED, inView);
-  const pct = Math.round((1 - FUSED / RAW) * 100);
 
-  const lines = [
-    { text: '$ fuse dotnet --directory ./src --all', muted: false },
-    { text: 'Collecting 945 C# files ...', muted: true },
-    { text: 'Reducing ... cache: 0 hit / 945 miss', muted: true },
+  const blindReads = [
+    'read OrderService.cs',
+    'read Order.cs',
+    'read PricingPolicy.cs',
+    'grep "discount" ... read 3 more',
   ];
 
   return (
@@ -60,70 +30,88 @@ export function HeroVisual() {
           <span className="size-3 rounded-full bg-red-400/70" />
           <span className="size-3 rounded-full bg-yellow-400/70" />
           <span className="size-3 rounded-full bg-green-400/70" />
-          <span className="ml-3 text-xs text-fd-muted-foreground">fuse</span>
+          <span className="ml-3 text-xs text-fd-muted-foreground">agent + fuse</span>
         </div>
 
         <div className="space-y-1.5 px-4 py-4 font-mono text-[13px] leading-relaxed">
-          {lines.map((line, i) => (
+          <div className="text-fd-muted-foreground">
+            # task: apply the discount at checkout
+          </div>
+
+          {/* Without Fuse: blind reads, one round-trip each */}
+          {blindReads.map((line, i) => (
             <motion.div
-              key={line.text}
+              key={line}
               initial={reduce ? false : { opacity: 0, y: 4 }}
               animate={inView ? { opacity: 1, y: 0 } : undefined}
-              transition={{ delay: 0.1 + i * 0.18, duration: 0.3 }}
-              className={line.muted ? 'text-fd-muted-foreground' : 'text-fd-foreground'}
+              transition={{ delay: 0.1 + i * 0.16, duration: 0.3 }}
+              className="text-fd-muted-foreground/80"
             >
-              {line.text}
+              <span className="text-fd-muted-foreground/50">without fuse </span>
+              {line}
             </motion.div>
           ))}
 
           <motion.div
             initial={reduce ? false : { opacity: 0 }}
             animate={inView ? { opacity: 1 } : undefined}
-            transition={{ delay: 0.7, duration: 0.3 }}
-            className="pt-2"
+            transition={{ delay: 0.85, duration: 0.3 }}
+            className="flex items-baseline justify-between pt-1 text-xs text-fd-muted-foreground"
           >
-            <div className="flex items-baseline justify-between text-xs text-fd-muted-foreground">
-              <span>raw concatenation</span>
-              <span className="tabular-nums">{RAW.toLocaleString()} tokens</span>
-            </div>
-            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-fd-muted">
-              <div className="h-full w-full rounded-full bg-fd-muted-foreground/30" />
-            </div>
-
-            <div className="mt-3 flex items-baseline justify-between text-xs">
-              <span className="font-medium text-fd-foreground">fused output</span>
-              <span className="tabular-nums font-medium text-[var(--brand)]">
-                {fusedCount.toLocaleString()} tokens
-              </span>
-            </div>
-            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-fd-muted">
-              <motion.div
-                initial={reduce ? false : { width: '100%' }}
-                animate={inView ? { width: `${(FUSED / RAW) * 100}%` } : undefined}
-                transition={{ delay: 0.8, duration: 1.1, ease: 'easeOut' }}
-                className="h-full rounded-full"
-                style={{
-                  background: 'linear-gradient(90deg, var(--brand), var(--brand-soft))',
-                }}
-              />
-            </div>
+            <span>blind explore phase</span>
+            <span className="tabular-nums">&gt;= 6 round-trips</span>
           </motion.div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-fd-muted">
+            <div className="h-full w-full rounded-full bg-fd-muted-foreground/30" />
+          </div>
+
+          {/* With Fuse: one scoped call */}
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 4 }}
+            animate={inView ? { opacity: 1, y: 0 } : undefined}
+            transition={{ delay: 1.1, duration: 0.3 }}
+            className="pt-3 text-fd-foreground"
+          >
+            <span className="text-[var(--brand)]">fuse_ask</span>
+            (&quot;discount at checkout&quot;, 20k)
+          </motion.div>
+
+          <motion.div
+            initial={reduce ? false : { opacity: 0 }}
+            animate={inView ? { opacity: 1 } : undefined}
+            transition={{ delay: 1.3, duration: 0.3 }}
+            className="flex items-baseline justify-between pt-1 text-xs"
+          >
+            <span className="font-medium text-fd-foreground">one scoped call</span>
+            <span className="tabular-nums font-medium text-[var(--brand)]">1 call</span>
+          </motion.div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-fd-muted">
+            <motion.div
+              initial={reduce ? false : { width: '100%' }}
+              animate={inView ? { width: '16%' } : undefined}
+              transition={{ delay: 1.4, duration: 1.0, ease: 'easeOut' }}
+              className="h-full rounded-full"
+              style={{
+                background: 'linear-gradient(90deg, var(--brand), var(--brand-soft))',
+              }}
+            />
+          </div>
 
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 4 }}
             animate={inView ? { opacity: 1, y: 0 } : undefined}
-            transition={{ delay: 1.5, duration: 0.3 }}
+            transition={{ delay: 1.9, duration: 0.3 }}
             className="pt-2 text-fd-foreground"
           >
-            <span className="text-[var(--brand)]">{pct}% fewer tokens</span>{' '}
+            <span className="text-[var(--brand)]">~40K tokens</span>{' '}
             <span className="text-fd-muted-foreground">
-              at 100% of public types and methods
+              at 51% recall, vs ~512K for a packer dump
             </span>
           </motion.div>
         </div>
       </div>
       <p className="mt-3 text-center text-xs text-fd-muted-foreground">
-        Measured: Newtonsoft.Json, <code className="font-mono">--all</code> mode.{' '}
+        Lower-bound round-trips over 24 real merged PRs.{' '}
         <a href="/docs/project/benchmarks" className="underline hover:text-fd-foreground">
           See the benchmarks
         </a>

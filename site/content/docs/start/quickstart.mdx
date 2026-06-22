@@ -6,7 +6,33 @@ description: Run Fuse against a .NET project, read the output it produces, and f
 This walks you from an installed tool to a fused payload you can read. If you have
 not installed Fuse yet, see [Install](/docs/start/install).
 
-## Run one command
+Fuse runs two ways: handed to an AI agent through the MCP server, or as a CLI in your
+terminal. The agent path is the primary use; the CLI walkthrough below is the local one.
+
+## Hand It to an Agent
+
+Start the MCP server and connect your client (Claude Code, Cursor, GitHub Copilot):
+
+```bash
+fuse serve
+```
+
+Then the agent asks for the context a task needs in one call. Give `fuse_ask` a task and
+a token budget and it picks the scoping strategy and packs to fit:
+
+```text
+fuse_ask(
+  path="C:/Projects/MyApp/src",
+  task="where is the discount applied at checkout?",
+  tokenBudget=20000
+)
+```
+
+That collapses the explore phase into one scoped call instead of the agent opening file
+after file. See [Connect to your AI](/docs/start/connect-your-ai) for client setup and
+[Context for an agent](/docs/scenarios/context-for-an-agent) for the full workflow.
+
+## Run One Command
 
 Point Fuse at a .NET source directory:
 
@@ -17,7 +43,7 @@ fuse dotnet --directory ./src
 The `dotnet` command selects the file extensions and exclusions appropriate for a
 .NET solution (C#, project files, Razor, configuration) and applies C# reduction.
 
-## Read what it prints
+## Read What It Prints
 
 When the run finishes, Fuse reports the shape of the result:
 
@@ -33,7 +59,7 @@ that cut from raw concatenation, the reduction cache split as `cache: N hit / M 
 and where the file was written. By default the output goes to a `Fuse` folder inside
 your Documents directory, and the file name ends with a token estimate such as `420k`.
 
-## Look inside the output
+## Look Inside the Output
 
 The file opens with a **manifest**: a header that lists every included file with its
 token cost, so a reader or an agent can judge the shape and cost of the fusion before
@@ -49,7 +75,7 @@ public class OrderService { }
 Files are ordered largest first by token count, so the most expensive content is at
 the top.
 
-## Choose how much to reduce
+## Choose How Much to Reduce
 
 The default run does light, lossless cleanup. To cut more while keeping the public
 API, raise the reduction level with `--level aggressive`:
@@ -69,7 +95,7 @@ The [Reduction levels](/docs/concepts/reduction-levels) concept page explains ea
 step, and [Cut tokens for .NET](/docs/scenarios/cut-tokens-dotnet) is the task-shaped
 version of this.
 
-## Control the output
+## Control the Output
 
 Name the file and choose where it lands:
 
@@ -77,7 +103,7 @@ Name the file and choose where it lands:
 fuse dotnet --directory ./src --output ./context --name myproject
 ```
 
-## Set project defaults
+## Set Project Defaults
 
 To avoid repeating flags, write a configuration file once:
 

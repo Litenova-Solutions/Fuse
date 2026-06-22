@@ -9,7 +9,7 @@
     "source": "github",
     "subfolder": "src/Host/Fuse.Cli"
   },
-  "websiteUrl": "https://github.com/Litenova-Solutions/Fuse",
+  "websiteUrl": "https://fuse.codes",
   "packages": [
     {
       "registryType": "nuget",

@@ -1,0 +1,46 @@
+name: Publish to MCP Registry
+
+# Publishes mcp-registry/server.json to the official MCP Registry on a version
+# tag, after the NuGet package is live (the registry validates that the package
+# exists and carries the `mcp-name` ownership marker, which is in the packed
+# README). Authentication uses GitHub Actions OIDC: the io.github.litenova-solutions
+# namespace is owned by this repository's org, so no secret is needed.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # required for OIDC authentication to the registry
+  contents: read
+
+jobs:
+  publish:
+    name: Publish server.json
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version in server.json from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' \
+            mcp-registry/server.json > mcp-registry/server.tmp
+          mv mcp-registry/server.tmp mcp-registry/server.json
+          echo "server.json version set to $VERSION"
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Authenticate to MCP Registry (GitHub OIDC)
+        working-directory: mcp-registry
+        run: ../mcp-publisher login github-oidc
+
+      - name: Publish server to MCP Registry
+        working-directory: mcp-registry
+        run: ../mcp-publisher publish

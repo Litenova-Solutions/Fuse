@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.litenova-solutions/fuse -->
+
 <p align="center">
   <img src="assets/fuse-logo.svg" alt="Fuse" width="300">
 </p>

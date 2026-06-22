@@ -1,5 +1,10 @@
 name: Release
 
+# On a version tag, build the Native AOT binaries and publish a GitHub Release
+# carrying: the Windows installer (Inno Setup), a portable win-x64 zip, a
+# linux-x64 tarball, and a SHA256SUMS file. The portable archives and their
+# checksums are what the Scoop manifest and Homebrew formula consume.
+
 on:
   push:
     tags:
@@ -9,10 +14,9 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build and Publish
+  windows:
+    name: Build Windows (win-x64)
     runs-on: windows-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,17 +30,23 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"
-          $version = $tag.TrimStart('v')
+          $version = "${{ github.ref_name }}".TrimStart('v')
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Publish Native AOT Windows x64
+      - name: Publish Native AOT win-x64
         shell: pwsh
         run: |
           dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj `
             --configuration Release `
             /p:PublishProfile=aot-win-x64 `
             /p:Version=${{ steps.version.outputs.VERSION }}
+
+      - name: Package portable zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Compress-Archive -Path artifacts/aot/win-x64/fuse.exe `
+            -DestinationPath "dist/fuse-${{ steps.version.outputs.VERSION }}-win-x64.zip" -Force
 
       - name: Stage installer binary
         shell: pwsh
@@ -50,8 +60,70 @@ jobs:
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             /DMyAppVersion=${{ steps.version.outputs.VERSION }} `
             installer/fuse.iss
+          Copy-Item "publish/installer/fuse-${{ steps.version.outputs.VERSION }}-setup.exe" dist/ -Force
 
-      - name: Create GitHub Release and upload asset
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+
+  linux:
+    name: Build Linux (linux-x64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Native AOT prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Native AOT linux-x64
+        run: |
+          dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj \
+            --configuration Release \
+            /p:PublishProfile=aot-linux-x64 \
+            /p:Version=${{ steps.version.outputs.VERSION }}
+
+      - name: Package tarball
+        run: |
+          mkdir -p dist
+          tar -czf "dist/fuse-${{ steps.version.outputs.VERSION }}-linux-x64.tar.gz" \
+            -C artifacts/aot/linux-x64 fuse
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+
+  release:
+    name: Publish GitHub Release
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt
+
+      - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -59,4 +131,4 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
-          files: publish/installer/fuse-${{ steps.version.outputs.VERSION }}-setup.exe
+          files: dist/*

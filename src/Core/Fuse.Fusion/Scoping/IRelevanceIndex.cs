@@ -11,7 +11,7 @@ public interface IRelevanceIndex
     /// <param name="fileContents">Map of normalized relative path to raw file content to index.</param>
     /// <remarks>
     ///     Replaces any previously indexed content. Must be called before <see cref="Rank" />. Equivalent to
-    ///     <see cref="Index(IReadOnlyDictionary{string, IndexedDocument})" /> with content-only documents.
+    ///     <see cref="Index(IReadOnlyDictionary{string, IndexedDocument}, Indexing.IRelevancePostingsStore)" /> with content-only documents.
     /// </remarks>
     void Index(IReadOnlyDictionary<string, string> fileContents);
 

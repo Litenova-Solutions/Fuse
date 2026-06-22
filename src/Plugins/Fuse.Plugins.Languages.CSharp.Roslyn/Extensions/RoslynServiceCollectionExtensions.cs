@@ -30,6 +30,7 @@ public static class RoslynServiceCollectionExtensions
         services.AddSingleton<ITypeNameLocator, RoslynTypeNameLocator>();
         services.AddSingleton<ISymbolOutlineExtractor, RoslynOutlineExtractor>();
         services.AddSingleton<ISymbolSliceExtractor, RoslynSymbolSliceExtractor>();
+        services.AddSingleton<ISymbolChunkExtractor, RoslynSymbolChunkExtractor>();
         return services;
     }
 }

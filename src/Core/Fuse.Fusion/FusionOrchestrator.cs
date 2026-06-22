@@ -235,6 +235,16 @@ public sealed class FusionOrchestrator
         if (filterResult.Scores is not null)
             reducedContent = AttachRelevance(reducedContent, filterResult.Scores);
 
+        // Reduction-aware single-pass packing: for focus and query runs under a token budget, select the
+        // entries to emit by real reduced token cost (relevance-per-token) rather than letting emission cut a
+        // set that expansion had already starved with a byte estimate.
+        if ((request.Focus is not null || request.Query is not null) &&
+            request.Emission.MaxTokens is { } maxTokens)
+        {
+            reducedContent = ReductionAwarePacker.Pack(
+                reducedContent, maxTokens, EmissionPipeline.MarkerOverheadTokens);
+        }
+
         PatternSummary? patternSummary = null;
         if (request.Reduction.IncludePatternSummary)
             patternSummary = DetectPatterns(reducedContent);
@@ -528,12 +538,12 @@ public sealed class FusionOrchestrator
             : new SymbolSliceRequest(seedPaths.ToHashSet(StringComparer.OrdinalIgnoreCase), sliceMember);
 
         var seedScores = seedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase);
+        // No byte-budget gate on expansion: the reduction-aware packer applies the budget after reduction on
+        // the real reduced token cost (see ReductionAwarePacker), so expansion spreads by depth and relevance.
         var options = new ExpansionOptions(
             request.Focus.Depth,
             FollowReferences: true,
             FollowDependents: true,
-            TokenBudget: request.Emission.MaxTokens,
-            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens),
             Centrality: GraphCentrality.Compute(graph),
             CentralityWeight: CentralityWeight);
 
@@ -607,8 +617,6 @@ public sealed class FusionOrchestrator
             request.Query.Depth,
             FollowReferences: true,
             FollowDependents: false,
-            TokenBudget: request.Emission.MaxTokens,
-            TokenCosts: BuildTokenCosts(files, request.Emission.MaxTokens),
             Centrality: GraphCentrality.Compute(graph),
             CentralityWeight: CentralityWeight);
 
@@ -816,22 +824,6 @@ public sealed class FusionOrchestrator
         {
             return [];
         }
-    }
-
-    private static IReadOnlyDictionary<string, int>? BuildTokenCosts(
-        IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
-        int? maxTokens)
-    {
-        if (maxTokens is null)
-            return null;
-
-        // Pre-reduction estimate: roughly four characters per token. Used only to bound expansion spread;
-        // emission applies the exact, relevance-ordered budget cut.
-        var costs = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in files)
-            costs[file.NormalizedRelativePath] = (int)Math.Max(1, file.FileInfo.Length / 4);
-
-        return costs;
     }
 
     private Task<DependencyGraph> BuildGraphAsync(

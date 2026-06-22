@@ -13,7 +13,7 @@ opening hundreds of files to find its way around.
 dotnet tool install -g Fuse
 
 # fuse a project, keeping the full public API
-fuse dotnet --directory ./src --all
+fuse dotnet --directory ./src --level aggressive
 ```
 
 ```text
@@ -46,7 +46,7 @@ and hands the agent scoped, reduced context that fits the window.
 
 ## Reduction without losing the surface
 
-Across a commit-pinned corpus of real .NET libraries, the default and `--all`
+Across a commit-pinned corpus of real .NET libraries, the default and `--level aggressive`
 reductions cut 7 to 40 percent of tokens while keeping 99 to 100 percent of public
 types and methods. Skeleton mode, which keeps signatures and drops bodies, cuts 66
 to 93 percent for an architecture-level survey.

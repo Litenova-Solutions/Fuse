@@ -9,7 +9,7 @@ model you are feeding.
 ## Cap with a hard limit
 
 ```bash
-fuse dotnet --directory ./src --skeleton --max-tokens 100000
+fuse dotnet --directory ./src --level skeleton --max-tokens 100000
 ```
 
 `--max-tokens` stops emission when the running total reaches the limit. In a scoped
@@ -20,7 +20,7 @@ content is acceptable.
 ## Split instead of dropping
 
 ```bash
-fuse dotnet --directory ./src --all --split-tokens 200000
+fuse dotnet --directory ./src --level aggressive --split-tokens 200000
 ```
 
 `--split-tokens` (default 800,000) divides the output into multiple parts when a part would
@@ -30,7 +30,7 @@ delivered in pieces a model reads in sequence.
 ## Find what to trim
 
 ```bash
-fuse dotnet --directory ./src --all --track-top-token-files
+fuse dotnet --directory ./src --level aggressive --track-top-token-files
 ```
 
 `--track-top-token-files` reports the largest files after the run, so you know which to
@@ -39,7 +39,7 @@ scope out or reduce further when you are over budget.
 ## Match the tokenizer to the model
 
 ```bash
-fuse dotnet --directory ./src --all --tokenizer o200k_base --max-tokens 150000
+fuse dotnet --directory ./src --level aggressive --tokenizer o200k_base --max-tokens 150000
 ```
 
 A token count is only accurate against the tokenizer that produced it, so set `--tokenizer`
@@ -50,10 +50,10 @@ to match the model the fusion is destined for. Supported names are in
 
 | Workflow | Command shape | Budget |
 |----------|---------------|--------|
-| Architecture skeleton | `--skeleton` | 50k to 100k |
+| Architecture skeleton | `--level skeleton` | 50k to 100k |
 | Focus or query scope | `--focus` or `--query` | 100k to 200k |
 | Change review | `--changed-since` | 50k to 150k |
-| Full reduction | `--all` | 200k to 800k |
+| Full reduction | `--level aggressive` | 200k to 800k |
 
 ## When to use it
 

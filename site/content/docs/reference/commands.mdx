@@ -38,10 +38,10 @@ The shared options for this command are documented in the [Options reference](/d
 This command fuses a .NET project, including C#, F#, and web files. It applies C# reduction and supports scoping a fusion to the files relevant to a task through focus, change, and query modes. It carries .NET-specific options beyond the shared set, including the C# reduction flags, skeleton extraction, and the scoping flags.
 
 ```bash
-fuse dotnet --directory ./src --all --skeleton
+fuse dotnet --directory ./src --level aggressive
 ```
 
-The .NET-specific flags and the three mutually exclusive scoping modes are documented in the [Options reference](/docs/reference/options). The same command also exposes the table-of-contents survey (`--toc`), generated-code collapse (`--collapse-generated`), the on-disk analysis index (`--index`), the opt-in Roslyn precision tier (`--semantic`), and the query reranker (`--rerank`). For task-oriented usage, see the [Scoping to What Matters](/docs/concepts/scoping) and [Reducing Tokens](/docs/concepts/reduction-levels) guides.
+The .NET-specific flags and the three mutually exclusive scoping modes are documented in the [Options reference](/docs/reference/options). C# structural reduction is set with a single `--level` flag (`none`, `standard`, `aggressive`, `skeleton`, or `publicApi`). The same command also exposes the table-of-contents survey (`--toc`), generated-code collapse (`--collapse-generated`), the on-disk analysis index (`--index`), the opt-in Roslyn precision tier (`--semantic`), and the query reranker (`--rerank`). For task-oriented usage, see the [Scoping to What Matters](/docs/concepts/scoping) and [Reducing Tokens](/docs/concepts/reduction-levels) guides.
 
 ## fuse wiki
 
@@ -61,15 +61,15 @@ This command previews a .NET fusion without writing anything. It runs collection
 fuse explain --directory ./src --focus OrderService --depth 2
 ```
 
-It accepts the shared options plus a subset of the `fuse dotnet` scoping and reduction flags (`--focus`, `--query`, `--query-top`, `--depth`, `--all`, `--skeleton`), documented in the [Options reference](/docs/reference/options).
+It accepts the shared options plus a subset of the `fuse dotnet` scoping and reduction flags (`--focus`, `--query`, `--query-top`, `--depth`, `--level`), documented in the [Options reference](/docs/reference/options).
 
 ## fuse verify
 
-This command reports how much of a project's public API surface survives a .NET fusion. It runs a fusion in memory, then compares the public and protected types and methods, and ASP.NET route templates, declared in the included source against the fused output, printing the preserved percentage for each category. Pass `--json` for a machine-readable result. Use it to confirm that a reduction mode keeps the API you expect: a drop under the default or `--all` reduction signals lost API, while skeleton is signatures only by design.
+This command reports how much of a project's public API surface survives a .NET fusion. It runs a fusion in memory, then compares the public and protected types and methods, and ASP.NET route templates, declared in the included source against the fused output, printing the preserved percentage for each category. Pass `--json` for a machine-readable result. Use it to confirm that a reduction level keeps the API you expect: a drop under the `none`, `standard`, or `aggressive` level signals lost API, while `skeleton` and `publicApi` are signatures only by design.
 
 ```bash
-fuse verify --directory ./src --all
-fuse verify --directory ./src --skeleton --json
+fuse verify --directory ./src --level aggressive
+fuse verify --directory ./src --level skeleton --json
 ```
 
 The source side is parsed by Roslyn in the framework-dependent tool and by an AOT-clean regex analyzer in the Native AOT build; both report the same categories. It accepts the same scoping and reduction subset as `fuse explain`, plus `--json`, documented in the [Options reference](/docs/reference/options).

@@ -55,11 +55,11 @@ Structural skeleton only (signatures, no bodies). Cold-start architecture review
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
 | `semanticMarkers` | bool | false | Prepend structural annotation comments |
-| `all` | bool | true | Apply all C# reduction options |
+| `publicApi` | bool | false | Keep only public and protected member skeletons |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 
-The `all` parameter defaults to true here, which produces the smallest skeleton. This differs from the CLI `--all` flag, which defaults to false.
+This tool always emits a skeleton (signatures, no bodies). Set `publicApi` to true to narrow the skeleton to public and protected members only.
 
 ## fuse_focus
 
@@ -74,7 +74,7 @@ Scope to a type, file, or path plus dependency traversal.
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `all` | bool | false | Apply all C# reduction options |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 | `session` | string | null | Session id: omit files already returned under this id earlier in the session |
@@ -96,7 +96,7 @@ BM25F query-scoped fusion plus dependency expansion.
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `all` | bool | false | Apply all C# reduction options |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 | `session` | string | null | Session id: omit files already returned under this id earlier in the session |
@@ -115,7 +115,7 @@ Files changed since a git ref plus optional dependents.
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `all` | bool | false | Apply all C# reduction options |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 
@@ -135,13 +135,7 @@ Full-control .NET fusion with all options.
 | `maxFileSizeKb` | int | 0 | Maximum file size in KB; 0 means unlimited |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
 | `excludeUnitTestProjects` | bool | false | Skip only unit test project directories |
-| `removeCSharpComments` | bool | false | Strip C# comments |
-| `removeCSharpUsings` | bool | false | Strip C# using directives |
-| `removeCSharpNamespaces` | bool | false | Strip C# namespace declarations |
-| `removeCSharpRegions` | bool | false | Strip C# region directives |
-| `aggressive` | bool | false | Apply aggressive C# reduction |
-| `all` | bool | false | Enable every C# reduction option at once |
-| `skeleton` | bool | false | Emit a structural skeleton only |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
 | `semanticMarkers` | bool | false | Prepend structural annotation comments |
 | `focus` | string | null | Type name, filename, or path to scope around |
 | `depth` | int | 1 | Dependency traversal depth for focus and query scoping |

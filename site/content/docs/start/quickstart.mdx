@@ -52,17 +52,17 @@ the top.
 ## Choose how much to reduce
 
 The default run does light, lossless cleanup. To cut more while keeping the public
-API, add `--all`:
+API, raise the reduction level with `--level aggressive`:
 
 ```bash
-fuse dotnet --directory ./src --all
+fuse dotnet --directory ./src --level aggressive
 ```
 
 For an architecture-level survey, drop method bodies to signatures with a
 **skeleton**, which typically runs 66 to 93 percent smaller than a full fusion:
 
 ```bash
-fuse dotnet --directory ./src --all --skeleton
+fuse dotnet --directory ./src --level skeleton
 ```
 
 The [Reduction levels](/docs/concepts/reduction-levels) concept page explains each

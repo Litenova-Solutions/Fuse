@@ -78,7 +78,7 @@ public sealed class FusionOrchestratorScopingTests : IDisposable
         var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
         var request = new FusionRequest(
             new CollectionOptions(_sourceDirectory, extensions: [".cs"]),
-            new ReductionOptions(skeletonMode: true),
+            new ReductionOptions(level: ReductionLevel.Skeleton),
             new EmissionOptions(),
             inMemory: true);
 
@@ -186,7 +186,7 @@ public sealed class FusionOrchestratorScopingTests : IDisposable
 
         var reduced = await pipeline.ReduceAsync(
             [file],
-            new ReductionOptions(skeletonMode: true, includeSemanticMarkers: true));
+            new ReductionOptions(level: ReductionLevel.Skeleton, includeSemanticMarkers: true));
 
         Assert.Single(reduced);
         var content = reduced[0].Content;

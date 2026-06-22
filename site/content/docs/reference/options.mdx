@@ -126,25 +126,35 @@ These flags apply only to `fuse dotnet`.
 
 ### C# Reduction
 
+A single `--level` flag drives C# structural reduction. It takes one of five enum values and replaces the former cluster of per-category C# reduction switches.
+
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--remove-csharp-namespaces` | bool | `false` | Remove namespace declarations from C# files. |
-| `--remove-csharp-comments` | bool | `false` | Remove comments from C# files. |
-| `--remove-csharp-regions` | bool | `false` | Remove `#region` directives from C# files. |
-| `--remove-csharp-usings` | bool | `false` | Remove all `using` statements from C# files. |
-| `--aggressive` | bool | `false` | Apply aggressive reduction (remove attributes and redundant keywords, compress properties). |
+| `--level` | none \| standard \| aggressive \| skeleton \| publicApi | `none` | C# structural reduction level. See the per-level transform table below. |
+
+| Level | What it does to C# |
+|-------|--------------------|
+| `none` | No C# structural reduction. Whitespace trim and condense and the orthogonal flags below still apply. |
+| `standard` | Removes C# comments, `using` directives, namespace wrappers, and `#region` directives. |
+| `aggressive` | The `standard` removals plus aggressive whitespace and syntax compression (remove attributes and redundant keywords, compress properties). |
+| `skeleton` | Emits structural skeletons (type and member signatures), bodies removed. |
+| `publicApi` | Like `skeleton`, but keeps only public and protected members. |
+
+These flags are orthogonal to `--level`: they are not folded into the level and apply at any level.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
 | `--minify-xml-files` | bool | `true` | Minify XML files such as `.csproj` and `.xml`. |
 | `--minify-html-and-razor` | bool | `true` | Minify HTML and Razor files. |
 | `--collapse-generated` | bool | `false` | Collapse EF Core migration and model-snapshot bodies to their signatures, dropping the large generated method bodies. |
-| `--all` | bool | `false` | Apply all C# reductions at once (namespaces, comments, regions, usings, aggressive, collapse-generated). |
 
 ### Structure And Annotation
 
+These flags are also orthogonal to `--level`.
+
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--skeleton` | bool | `false` | Emit structural skeleton only (class, interface, and method signatures, no bodies). |
 | `--semantic-markers` | bool | `false` | Prepend structural annotation comments to each file entry. |
-| `--public-api` | bool | `false` | Emit only public and protected member skeletons. |
 | `--route-map` | bool | `false` | Prepend an ASP.NET route map to the output. |
 | `--project-graph` | bool | `false` | Prepend a solution and project reference graph to the output. |
 | `--pattern-summary` | bool | `false` | Detect and append a cross-codebase pattern summary to the output. |

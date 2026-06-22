@@ -32,18 +32,18 @@ The format reducers handle web and configuration file types. Each strips comment
 
 ## C# Reducer
 
-The C# reducer handles `.cs` files. Unlike the format reducers, its transforms are individually configurable through reduction options, so the same reducer produces output ranging from light cleanup to compressed source. Its steps fall into two tiers.
+The C# reducer handles `.cs` files. Unlike the format reducers, its transforms are driven by a single reduction level (`--level`), so the same reducer produces output ranging from light cleanup to compressed source. Its steps fall into two tiers, each selected by a level.
 
-The standard removals each have their own flag and run when enabled:
+The standard removals run together at `--level standard` (and at the levels above it):
 
-| Removal | Removes | Flag |
-|---------|---------|------|
-| Comments | Line and block comments, preserving string-literal contents | `--remove-csharp-comments` |
-| Preprocessor and region directives | `#region` and `#endregion` markers, and other preprocessor directives | `--remove-csharp-regions` |
-| Using statements | `using` directives and `using` aliases | `--remove-csharp-usings` |
-| Namespace wrappers | File-scoped and block namespace declarations, and the indentation a block namespace adds | `--remove-csharp-namespaces` |
+| Removal | Removes |
+|---------|---------|
+| Comments | Line and block comments, preserving string-literal contents |
+| Preprocessor and region directives | `#region` and `#endregion` markers, and other preprocessor directives |
+| Using statements | `using` directives and `using` aliases |
+| Namespace wrappers | File-scoped and block namespace declarations, and the indentation a block namespace adds |
 
-Aggressive mode, enabled with `--aggressive`, runs the standard removals and then applies a second tier:
+Aggressive mode, selected with `--level aggressive`, runs the standard removals and then applies a second tier:
 
 - Removes noise attributes such as `DebuggerDisplay`, `MethodImpl`, `ExcludeFromCodeCoverage`, and the assembly-info attributes.
 - Removes assembly-level `SuppressMessage` attributes.
@@ -53,7 +53,7 @@ Aggressive mode, enabled with `--aggressive`, runs the standard removals and the
 
 Every string and character literal, including raw string literals (`"""..."""`, the four-quote form, and interpolated raw strings `$"""..."""`), is masked behind a placeholder before any removal or whitespace pass runs, then restored verbatim. Embedded JSON, SQL, and templates inside a literal survive reduction byte-identical at all levels, and a `//` or `/* */` sequence inside a raw string is never mistaken for a comment.
 
-Aggressive mode maximizes token savings but produces output that is no longer guaranteed to compile. The `--all` flag enables the full standard removal set together with aggressive mode in one switch.
+Aggressive mode maximizes token savings but produces output that is no longer guaranteed to compile. `--level aggressive` enables the full standard removal set together with the aggressive tier in one value. The deeper `--level skeleton` and `--level publicApi` drop method bodies entirely, emitting signatures only.
 
 ## What This Does Not Cover
 

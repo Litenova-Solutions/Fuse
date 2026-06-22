@@ -12,7 +12,8 @@ Fuse is a .NET-native codebase context optimizer for AI-assisted development. It
 - `src/Host`: user-facing surfaces - `Fuse.Cli` (CLI commands and the MCP server).
 - `src/Plugins`: `Fuse.Plugins.Abstractions`, `Fuse.Plugins.Languages.CSharp`, `Fuse.Plugins.Languages.CSharp.Roslyn`, `Fuse.Plugins.Formats.Web`.
 - `tests/`: unit, golden-output, and integration tests. `tests/benchmarks/`: the harness, corpus manifest, and recorded results.
-- `docs/`: documentation. `docs/assets/`: figures, including `fuse-benchmarks.png` and `.svg`.
+- `site/`: the documentation website (Next.js + Fumadocs), published at fuse.codes. All prose documentation lives here as MDX under `site/content/docs`.
+- `assets/`: the benchmark figure (`fuse-benchmarks.png` and `.svg`) and the chart-generating script. `mcp-registry/`: the MCP Registry server manifest.
 - Solution file: `Fuse.slnx`.
 
 ## Build, Test, Format
@@ -37,7 +38,7 @@ Eight tools: `fuse_toc`, `fuse_skeleton`, `fuse_focus`, `fuse_search`, `fuse_cha
 
 ## Measured Results (source of truth)
 
-All numbers come from `tests/benchmarks/results` and `docs/project/benchmarks.md`, over a commit-pinned OSS corpus, counted with `o200k_base`. Reproduce with `pwsh -File tests/benchmarks/harness/run-all.ps1`. Never fabricate or weaken a number; verify against the results before quoting. Current headline figures:
+All numbers come from `tests/benchmarks/results` (the recorded data) and the benchmarks page at `site/content/docs/project/benchmarks.mdx` (published at fuse.codes/docs/project/benchmarks), over a commit-pinned OSS corpus, counted with `o200k_base`. Reproduce with `pwsh -File tests/benchmarks/harness/run-all.ps1`. Never fabricate or weaken a number; verify against the results before quoting. Current headline figures:
 
 - Token reduction at full API fidelity: default 7 to 10 percent, `--all` 21 to 40 percent, keeping 99 to 100 percent of public types and methods. Skeleton mode removes 66 to 93 percent.
 - Change scoping recall 88 percent at 61 percent precision over 24 real merged PRs; all scoping modes beat a grep baseline (38 percent).
@@ -86,4 +87,4 @@ Use regular comments for non-obvious `private` or `internal` logic: heuristics, 
 | Detectors and reducers | Summary plus remarks on false-positive tradeoffs | Non-obvious matching rules |
 | Options and DTO records | Summary when the name alone is ambiguous | Rarely needed |
 
-Full contribution workflow: [docs/project/contributing.md](docs/project/contributing.md). Pipeline context: [docs/architecture/index.md](docs/architecture/index.md).
+Full contribution workflow: [fuse.codes/docs/project/contributing](https://fuse.codes/docs/project/contributing). Pipeline context: [fuse.codes/docs/internals/pipeline](https://fuse.codes/docs/internals/pipeline). Documentation source lives in `site/content/docs`.

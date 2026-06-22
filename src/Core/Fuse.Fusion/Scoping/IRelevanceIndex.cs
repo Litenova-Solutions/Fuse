@@ -16,11 +16,19 @@ public interface IRelevanceIndex
     void Index(IReadOnlyDictionary<string, string> fileContents);
 
     /// <summary>
-    ///     Indexes the supplied fielded documents keyed by normalized relative path.
+    ///     Indexes the supplied fielded documents keyed by normalized relative path, optionally caching body
+    ///     tokenization in a persistent store.
     /// </summary>
     /// <param name="documents">Map of normalized relative path to a fielded document to index.</param>
+    /// <param name="postingsStore">
+    ///     Optional store consulted for each document's body tokens keyed by content hash, and populated on a
+    ///     miss, so a warm run skips re-tokenizing unchanged files. <c>null</c> tokenizes every body in memory
+    ///     and produces output identical to the uncached path.
+    /// </param>
     /// <remarks>Replaces any previously indexed content. Must be called before <see cref="Rank" />.</remarks>
-    void Index(IReadOnlyDictionary<string, IndexedDocument> documents);
+    void Index(
+        IReadOnlyDictionary<string, IndexedDocument> documents,
+        Indexing.IRelevancePostingsStore? postingsStore = null);
 
     /// <summary>
     ///     Ranks indexed files against the query, returning paths only.

@@ -846,7 +846,10 @@ public sealed class FusionOrchestrator
             }
         }
 
-        var summary = new RedactionSummary(counts, counts.Values.Sum());
+        // The code-literal classification is a fidelity diagnostic, not a secret kind, so it is excluded from
+        // the secret total (it is rendered on its own line by RedactionSummary.ToComment).
+        var secretTotal = counts.Where(kv => kv.Key != SecretRedactionResult.CodeLiteralKind).Sum(kv => kv.Value);
+        var summary = new RedactionSummary(counts, secretTotal);
         var comment = summary.ToComment();
         if (string.IsNullOrEmpty(comment))
             return emissionResult;

@@ -35,12 +35,15 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
     ];
 
     /// <inheritdoc />
-    public SecretRedactionResult Redact(string content)
+    public SecretRedactionResult Redact(string content, bool classifyCodeLiterals = false)
     {
         if (string.IsNullOrEmpty(content))
             return new SecretRedactionResult(content, new Dictionary<string, int>());
 
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        // Classify against the ORIGINAL content's literal spans, computed before any replacement shifts offsets.
+        var codeLiteralRedactions = classifyCodeLiterals ? CountCodeLiteralRedactions(content) : 0;
 
         foreach (var (kind, pattern) in Patterns)
         {
@@ -63,7 +66,147 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
             return $"{match.Groups["quote"].Value}[REDACTED:high-entropy]{match.Groups["quote2"].Value}";
         });
 
+        if (codeLiteralRedactions > 0)
+            counts[SecretRedactionResult.CodeLiteralKind] = codeLiteralRedactions;
+
         return new SecretRedactionResult(content, counts);
+    }
+
+    // Counts, on the original content, the secret matches that fall inside a C# string literal. This is an
+    // additive diagnostic computed independently of the replacement chain (whose offsets shift), so it never
+    // affects redaction output. It mirrors the redaction decisions: named patterns always redact on match;
+    // connection-string and high-entropy apply their predicates.
+    private int CountCodeLiteralRedactions(string content)
+    {
+        var spans = FindStringLiteralSpans(content);
+        if (spans.Count == 0)
+            return 0;
+
+        var count = 0;
+
+        foreach (var (_, pattern) in Patterns)
+            foreach (Match match in pattern.Matches(content))
+                if (IsInsideLiteral(spans, match.Index))
+                    count++;
+
+        foreach (Match match in ConnectionStringLiteralRegex().Matches(content))
+            if (LooksLikeConnectionString(match.Groups["value"].Value) && IsInsideLiteral(spans, match.Index))
+                count++;
+
+        foreach (Match match in HighEntropyLiteralRegex().Matches(content))
+            if (IsHighEntropy(match.Groups["value"].Value) && IsInsideLiteral(spans, match.Index))
+                count++;
+
+        return count;
+    }
+
+    private static bool IsInsideLiteral(List<(int Start, int End)> spans, int index)
+    {
+        foreach (var (start, end) in spans)
+            if (index >= start && index < end)
+                return true;
+        return false;
+    }
+
+    // Minimal C# string-literal span scanner (regular, verbatim, and raw forms). Kept local to the reduction
+    // layer to avoid a dependency on the C# language plugin; it only needs literal boundaries, not full lexing.
+    private static List<(int Start, int End)> FindStringLiteralSpans(string content)
+    {
+        var spans = new List<(int, int)>();
+        var i = 0;
+        var length = content.Length;
+
+        while (i < length)
+        {
+            var c = content[i];
+
+            // Raw string literal: a run of three or more quotes (optionally $-prefixed).
+            var rawStart = i;
+            var dollars = 0;
+            while (i < length && content[i] == '$') { i++; dollars++; }
+            var quotes = 0;
+            var q = i;
+            while (q < length && content[q] == '"') { q++; quotes++; }
+            if (quotes >= 3)
+            {
+                i = q;
+                while (i < length)
+                {
+                    if (content[i] == '"')
+                    {
+                        var run = 0;
+                        while (i + run < length && content[i + run] == '"') run++;
+                        i += run;
+                        if (run >= quotes) break;
+                        continue;
+                    }
+
+                    i++;
+                }
+
+                spans.Add((rawStart, i));
+                continue;
+            }
+
+            i = rawStart; // not a raw string; rewind the speculative $/quote scan
+            c = content[i];
+
+            var verbatim = false;
+            if (c is '@' or '$')
+            {
+                var j = i + 1;
+                if (j < length && (content[j] == '@' || content[j] == '$')) j++;
+                if (j < length && content[j] == '"')
+                {
+                    verbatim = content.AsSpan(i, j - i).Contains('@');
+                    var start = i;
+                    i = j + 1; // past opening quote
+                    while (i < length)
+                    {
+                        if (verbatim)
+                        {
+                            if (content[i] == '"')
+                            {
+                                if (i + 1 < length && content[i + 1] == '"') { i += 2; continue; }
+                                i++;
+                                break;
+                            }
+
+                            i++;
+                            continue;
+                        }
+
+                        if (content[i] == '\\' && i + 1 < length) { i += 2; continue; }
+                        if (content[i] == '"') { i++; break; }
+                        if (content[i] == '\n') break;
+                        i++;
+                    }
+
+                    spans.Add((start, i));
+                    continue;
+                }
+            }
+
+            if (c == '"')
+            {
+                var start = i;
+                i++;
+                while (i < length)
+                {
+                    if (content[i] == '\\' && i + 1 < length) { i += 2; continue; }
+                    if (content[i] == '"') { i++; break; }
+                    if (content[i] == '\n') break;
+                    i++;
+                }
+
+                spans.Add((start, i));
+                continue;
+            }
+
+            i++;
+        }
+
+        return spans;
     }
 
     // Connection strings are only redacted when they sit inside a quoted literal and carry the structure of a

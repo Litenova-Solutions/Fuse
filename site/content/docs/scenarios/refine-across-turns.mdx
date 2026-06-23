@@ -17,7 +17,7 @@ a change to checkout pricing that spreads from the order service into the pricin
 
 ```text
 # 1. Survey, cheaply, to orient.
-fuse_toc(path="C:/Projects/MyApp/src", session="checkout-pricing")
+fuse_toc(path="C:/Projects/MyApp/src")
 
 # 2. Drill into the order service and its dependencies.
 fuse_focus(path="C:/Projects/MyApp/src", focus="OrderService",
@@ -32,12 +32,13 @@ fuse_focus(path="C:/Projects/MyApp/src", focus="PricingPolicy",
 
 # 4. Review the branch once the change is made.
 fuse_changes(path="C:/Projects/MyApp/src", changedSince="origin/main",
-             review=true, session="checkout-pricing")
+             review=true)
 ```
 
 Step 3 returns only the files the agent does not already hold; `PricingPolicy.cs` arrived
-in step 2 and is skipped, with a note saying so. Step 4 scopes the review to the branch
-and again skips anything unchanged that the session already carries.
+in step 2 and is skipped, with a note saying so. Step 4 scopes the review to the branch;
+session-delta applies only to `fuse_focus` and `fuse_search`, so the change review returns
+the full scoped set.
 
 ## When to Use It
 

@@ -1,5 +1,4 @@
-using System.Collections.Concurrent;
-using System.Text;
+using Fuse.Fusion.Storage;
 using Fuse.Reduction.Caching;
 
 namespace Fuse.Fusion.Indexing;
@@ -17,16 +16,20 @@ public sealed class SqliteAnalysisIndex : IAnalysisIndex
 {
     private const string StoreName = "analysis";
 
-    private static readonly string[] Empty = [];
-
-    private readonly IKeyValueStore _store;
-    private readonly ConcurrentDictionary<string, FileAnalysis> _memory = new(StringComparer.Ordinal);
+    private readonly NamespacedKvCache<string, FileAnalysis> _cache;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SqliteAnalysisIndex" /> class.
     /// </summary>
     /// <param name="store">The shared key-value store for the run.</param>
-    public SqliteAnalysisIndex(IKeyValueStore store) => _store = store;
+    public SqliteAnalysisIndex(IKeyValueStore store) =>
+        _cache = new NamespacedKvCache<string, FileAnalysis>(
+            store,
+            StoreName,
+            static key => key,
+            NamespacedKvCodec.EncodeFileAnalysis,
+            NamespacedKvCodec.DecodeFileAnalysis,
+            StringComparer.Ordinal);
 
     /// <inheritdoc />
     public AnalysisIndexStatistics Statistics { get; } = new();
@@ -34,26 +37,11 @@ public sealed class SqliteAnalysisIndex : IAnalysisIndex
     /// <inheritdoc />
     public bool TryGet(string key, out FileAnalysis? analysis)
     {
-        if (_memory.TryGetValue(key, out var cached))
+        if (_cache.TryGet(key, out var cached))
         {
             Statistics.RecordHit();
             analysis = cached;
             return true;
-        }
-
-        if (_store.TryGet(StoreName, key, out var bytes) && bytes is not null)
-        {
-            try
-            {
-                var lines = Encoding.UTF8.GetString(bytes).Split('\n');
-                analysis = new FileAnalysis(Split(lines, 0), Split(lines, 1), Split(lines, 2));
-                _memory[key] = analysis;
-                Statistics.RecordHit();
-                return true;
-            }
-            catch (DecoderFallbackException)
-            {
-            }
         }
 
         Statistics.RecordMiss();
@@ -62,20 +50,5 @@ public sealed class SqliteAnalysisIndex : IAnalysisIndex
     }
 
     /// <inheritdoc />
-    public void Set(string key, FileAnalysis analysis)
-    {
-        _memory[key] = analysis;
-        var content = string.Join('\t', analysis.ReferencedTypes) + "\n"
-            + string.Join('\t', analysis.DeclaredTypes) + "\n"
-            + string.Join('\t', analysis.DeclaredSymbols);
-        _store.Set(StoreName, key, Encoding.UTF8.GetBytes(content));
-    }
-
-    private static IReadOnlyList<string> Split(string[] lines, int index)
-    {
-        if (index >= lines.Length || lines[index].Length == 0)
-            return Empty;
-
-        return lines[index].Split('\t', StringSplitOptions.RemoveEmptyEntries);
-    }
+    public void Set(string key, FileAnalysis analysis) => _cache.Set(key, analysis);
 }

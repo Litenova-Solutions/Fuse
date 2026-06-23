@@ -1,7 +1,6 @@
-using System.IO.Hashing;
-using System.Text;
+using System.Diagnostics;
 using Fuse.Fusion.Scoping;
-using Fuse.Fusion.Enrichment;
+using Fuse.Fusion.PostReduction;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
 using Fuse.Emission;
@@ -10,14 +9,13 @@ using Fuse.Emission.Models;
 using Fuse.Emission.Tokenization;
 using Fuse.Emission.Writers;
 using Fuse.Plugins.Abstractions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
-using Fuse.Plugins.Abstractions.Maps;
 using Fuse.Plugins.Abstractions.Outline;
-using Fuse.Plugins.Abstractions.Patterns;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Reduction.Models;
-using Fuse.Reduction.Security;
 using Fuse.Reduction.Tokenization;
 
 namespace Fuse.Fusion;
@@ -27,7 +25,9 @@ namespace Fuse.Fusion;
 /// </summary>
 /// <remarks>
 ///     This is the top-level entry point for the SDK. It validates the request, then delegates each stage to
-///     the collection, reduction, and emission pipelines. See <see cref="FuseAsync" /> for the stage ordering.
+///     the collection, reduction, and emission pipelines. Post-reduction enrichment and emission append paths
+///     delegate to <see cref="PostReduction.PostReductionEnrichmentPipeline" />. See <see cref="FuseAsync" /> for
+///     the stage ordering.
 /// </remarks>
 public sealed class FusionOrchestrator
 {
@@ -35,13 +35,12 @@ public sealed class FusionOrchestrator
     private readonly TokenizerFactory _tokenizerFactory;
     private readonly FileCollectionPipeline _collectionPipeline;
     private readonly ContentReductionPipeline _reductionPipeline;
-    private readonly EmissionPipeline _emissionPipeline;
+    private readonly PostReductionEnrichmentPipeline _postReductionPipeline;
     private readonly DependencyGraphBuilder _dependencyGraphBuilder;
     private readonly FocusSeedResolver _focusSeedResolver;
     private readonly IChangeDetector _changeDetector;
     private readonly IFileSystem _fileSystem;
     private readonly Func<ISourceContentProvider> _contentProviderFactory;
-    private readonly IEnumerable<PatternDetectorBase> _patternDetectors;
     private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
     private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
     private readonly CapabilityRegistry<ISymbolOutlineExtractor> _outlineExtractors;
@@ -49,13 +48,8 @@ public sealed class FusionOrchestrator
     private readonly CapabilityRegistry<ISymbolChunkExtractor> _chunkExtractors;
     private readonly Func<IRelevanceIndex> _relevanceIndexFactory;
     private readonly Retrieval.IEmbeddingModel _embeddingModel;
-    private readonly IRouteMapGenerator? _routeMapGenerator;
-    private readonly IProjectGraphGenerator? _projectGraphGenerator;
     private readonly IFuseStoreFactory _fuseStoreFactory;
-    private readonly IGitStatsProvider _gitStatsProvider;
-    private readonly Enrichment.BoilerplateDeduplicator _boilerplateDeduplicator;
-    private readonly Enrichment.BodyDeduplicator _bodyDeduplicator;
-    private readonly Session.ISessionTracker _sessionTracker;
+    private readonly ILogger<FusionOrchestrator> _logger;
 
     // Weight blended into seed/expansion scores from the query-independent graph-centrality prior, so at equal
     // relevance the more depended-upon file ranks earlier. Conservative default; FUSE_CENTRALITY_WEIGHT=0
@@ -76,18 +70,36 @@ public sealed class FusionOrchestrator
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionOrchestrator" /> class.
     /// </summary>
+    /// <param name="validator">Request validator.</param>
+    /// <param name="tokenizerFactory">Tokenizer factory.</param>
+    /// <param name="collectionPipeline">Collection stage pipeline.</param>
+    /// <param name="reductionPipeline">Reduction stage pipeline.</param>
+    /// <param name="postReductionPipeline">Post-reduction enrichment, packing, and emission pipeline.</param>
+    /// <param name="dependencyGraphBuilder">Dependency graph builder for scoping.</param>
+    /// <param name="focusSeedResolver">Focus seed resolver.</param>
+    /// <param name="changeDetector">Git change detector.</param>
+    /// <param name="fileSystem">File system abstraction.</param>
+    /// <param name="contentProviderFactory">Per-run content provider factory.</param>
+    /// <param name="dependencyExtractors">Dependency extractors by extension.</param>
+    /// <param name="typeNameLocators">Type-name locators by extension.</param>
+    /// <param name="outlineExtractors">Outline extractors by extension.</param>
+    /// <param name="sliceExtractors">Symbol slice extractors by extension.</param>
+    /// <param name="chunkExtractors">Symbol chunk extractors by extension.</param>
+    /// <param name="relevanceIndexFactory">Per-run relevance index factory.</param>
+    /// <param name="embeddingModel">Query embedding model.</param>
+    /// <param name="fuseStoreFactory">Persistent store factory.</param>
+    /// <param name="logger">Optional logger.</param>
     public FusionOrchestrator(
         FusionValidator validator,
         TokenizerFactory tokenizerFactory,
         FileCollectionPipeline collectionPipeline,
         ContentReductionPipeline reductionPipeline,
-        EmissionPipeline emissionPipeline,
+        PostReductionEnrichmentPipeline postReductionPipeline,
         DependencyGraphBuilder dependencyGraphBuilder,
         FocusSeedResolver focusSeedResolver,
         IChangeDetector changeDetector,
         IFileSystem fileSystem,
         Func<ISourceContentProvider> contentProviderFactory,
-        IEnumerable<PatternDetectorBase> patternDetectors,
         CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
         CapabilityRegistry<ITypeNameLocator> typeNameLocators,
         CapabilityRegistry<ISymbolOutlineExtractor> outlineExtractors,
@@ -96,24 +108,18 @@ public sealed class FusionOrchestrator
         Func<IRelevanceIndex> relevanceIndexFactory,
         Retrieval.IEmbeddingModel embeddingModel,
         IFuseStoreFactory fuseStoreFactory,
-        IGitStatsProvider gitStatsProvider,
-        Enrichment.BoilerplateDeduplicator boilerplateDeduplicator,
-        Enrichment.BodyDeduplicator bodyDeduplicator,
-        Session.ISessionTracker sessionTracker,
-        IRouteMapGenerator? routeMapGenerator = null,
-        IProjectGraphGenerator? projectGraphGenerator = null)
+        ILogger<FusionOrchestrator>? logger = null)
     {
         _validator = validator;
         _tokenizerFactory = tokenizerFactory;
         _collectionPipeline = collectionPipeline;
         _reductionPipeline = reductionPipeline;
-        _emissionPipeline = emissionPipeline;
+        _postReductionPipeline = postReductionPipeline;
         _dependencyGraphBuilder = dependencyGraphBuilder;
         _focusSeedResolver = focusSeedResolver;
         _changeDetector = changeDetector;
         _fileSystem = fileSystem;
         _contentProviderFactory = contentProviderFactory;
-        _patternDetectors = patternDetectors;
         _dependencyExtractors = dependencyExtractors;
         _typeNameLocators = typeNameLocators;
         _outlineExtractors = outlineExtractors;
@@ -122,12 +128,7 @@ public sealed class FusionOrchestrator
         _relevanceIndexFactory = relevanceIndexFactory;
         _embeddingModel = embeddingModel;
         _fuseStoreFactory = fuseStoreFactory;
-        _gitStatsProvider = gitStatsProvider;
-        _boilerplateDeduplicator = boilerplateDeduplicator;
-        _bodyDeduplicator = bodyDeduplicator;
-        _sessionTracker = sessionTracker;
-        _routeMapGenerator = routeMapGenerator;
-        _projectGraphGenerator = projectGraphGenerator;
+        _logger = logger ?? NullLogger<FusionOrchestrator>.Instance;
     }
 
     /// <summary>
@@ -192,16 +193,26 @@ public sealed class FusionOrchestrator
 
         try
         {
+            var stageTimer = Stopwatch.StartNew();
             var collectionResult = await _collectionPipeline.CollectAsync(
                 request.Collection,
                 parallelism,
                 cancellationToken);
+            LogStageComplete("collection", stageTimer.ElapsedMilliseconds, collectionResult.Files.Count);
 
+            stageTimer.Restart();
             var filterResult = await FilterFilesAsync(
                 request, collectionResult.Files, parallelism, analysisIndex, fuseStore, contentProvider, cancellationToken);
             if (filterResult is null)
+            {
+                LogStageComplete("scoping", stageTimer.ElapsedMilliseconds, 0, ResolveScopingMode(request));
                 return CreateEmptyChangeResult(request);
+            }
 
+            LogAnalysisIndexStats(analysisIndex);
+            LogStageComplete("scoping", stageTimer.ElapsedMilliseconds, filterResult.Files.Count, ResolveScopingMode(request));
+
+            stageTimer.Restart();
             var reducedContent = await _reductionPipeline.ReduceAsync(
                 filterResult.Files,
                 request.Reduction,
@@ -210,117 +221,52 @@ public sealed class FusionOrchestrator
                 reductionCache,
                 tokenCounter,
                 cancellationToken);
+            LogReductionComplete(stageTimer.ElapsedMilliseconds, reducedContent.Count, reductionCache);
 
             // Symbol-level scoping: slice the focus seed file(s) to the requested member before any other emission
             // step, so token costs and downstream notes reflect the slice.
             if (filterResult.Slice is not null)
+            {
+                stageTimer.Restart();
                 reducedContent = await ApplySymbolSliceAsync(reducedContent, filterResult.Slice, contentProvider, tokenCounter, cancellationToken);
+                LogStageComplete("symbol-slice", stageTimer.ElapsedMilliseconds, reducedContent.Count);
+            }
 
             // Symbol-level packing (query path): for each query-matched file, keep the members that ranked in full
             // and collapse the rest of the host type to signatures.
             if (filterResult.SelectedMembers is { Count: > 0 })
+            {
+                stageTimer.Restart();
                 reducedContent = await ApplyThinSkeletonAsync(reducedContent, filterResult.SelectedMembers, contentProvider, tokenCounter, cancellationToken);
+                LogStageComplete("symbol-packing", stageTimer.ElapsedMilliseconds, reducedContent.Count);
+            }
 
             // Table-of-contents mode replaces body emission with a structural map. It runs after scoping and
             // reduction so the listed files and per-file token costs match what a full fetch would cost.
             if (request.Emission.TableOfContents)
             {
+                stageTimer.Restart();
                 var tocResult = await EmitTableOfContentsAsync(reducedContent, request, contentProvider, tokenCounter, cancellationToken);
+                LogStageComplete("table-of-contents", stageTimer.ElapsedMilliseconds, tocResult.ProcessedFileCount);
                 return WithReductionCacheStats(tocResult, reductionCache);
             }
 
-            // Session-delta mode drops files whose identical content was already emitted earlier in the session, so
-            // a multi-call task does not pay to resend material the agent already holds.
-            string? sessionNote = null;
-            if (!string.IsNullOrEmpty(request.Emission.SessionId))
-                (reducedContent, sessionNote) = ApplySessionDelta(reducedContent, request.Emission.SessionId);
-
-            string? headerPreamble = null;
-            if (request.Emission.DeduplicateHeaders)
-            {
-                var dedup = _boilerplateDeduplicator.Deduplicate(reducedContent, tokenCounter);
-                reducedContent = dedup.Content;
-                headerPreamble = dedup.Preamble;
-            }
-
-            // Near-duplicate member bodies are emitted once and referenced by a marker elsewhere; the canonical
-            // copy stays in place, so no preamble is needed. Runs before packing so the budget sees the saved
-            // tokens.
-            if (request.Emission.DeduplicateBodies)
-                reducedContent = _bodyDeduplicator.Deduplicate(reducedContent, tokenCounter).Content;
-
-            if (request.Emission.IncludeProvenance && filterResult.Provenance is not null)
-                reducedContent = AttachProvenance(reducedContent, filterResult.Provenance, filterResult.SelectedMembers);
-
-            if (filterResult.Scores is not null)
-                reducedContent = AttachRelevance(reducedContent, filterResult.Scores);
-
-            // Reduction-aware single-pass packing: for focus and query runs under a token budget, select the
-            // entries to emit by real reduced token cost (relevance-per-token) rather than letting emission cut a
-            // set that expansion had already starved with a byte estimate.
-            if ((request.Focus is not null || request.Query is not null) &&
-                request.Emission.MaxTokens is { } maxTokens)
-            {
-                reducedContent = ReductionAwarePacker.Pack(
-                    reducedContent, maxTokens, EmissionPipeline.MarkerOverheadTokens);
-            }
-
-            PatternSummary? patternSummary = null;
-            if (request.Reduction.IncludePatternSummary)
-                patternSummary = DetectPatterns(reducedContent);
-
-            GitStatsResult? gitStats = null;
-            if (request.Emission.IncludeGitStats)
-            {
-                var paths = reducedContent
-                    .Where(c => !c.IsTrivial)
-                    .Select(c => c.NormalizedPath)
-                    .ToArray();
-                gitStats = await _gitStatsProvider.GetStatsAsync(
-                    request.Collection.SourceDirectory,
-                    paths,
-                    cancellationToken);
-            }
-
-            IOutputWriter writer = request.InMemory
-                ? new InMemoryOutputWriter(request.Emission, tokenCounter, entryFormatter)
-                : new DiskOutputWriter(request.Emission, tokenCounter, entryFormatter);
-
-            FusionResult emissionResult;
-            try
-            {
-                emissionResult = await _emissionPipeline.EmitAsync(
-                    reducedContent,
-                    request.Emission,
-                    writer,
-                    request.Emission.IncludeManifest ? patternSummary : null,
-                    request.Emission.IncludeManifest ? gitStats : null,
-                    cancellationToken);
-            }
-            finally
-            {
-                if (writer is IAsyncDisposable disposable)
-                    await disposable.DisposeAsync();
-            }
-
-            emissionResult = await ApplyStructuralMapsAsync(emissionResult, collectionResult.Files, request, contentProvider, cancellationToken);
-
-            if (request.Reduction.IncludeRedactReport)
-                emissionResult = await ApplyRedactReportAsync(emissionResult, reducedContent);
-
-            if (request.Reduction.IncludePatternSummary && !request.Emission.IncludeManifest)
-                emissionResult = await ApplyPatternSummaryAsync(emissionResult, patternSummary);
-
-            if (headerPreamble is not null)
-                emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, headerPreamble);
-
-            // The review map goes to the very top so a reviewer sees what changed and who calls it before the
-            // file bodies that follow.
-            if (!string.IsNullOrEmpty(filterResult.Preamble))
-                emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, filterResult.Preamble);
-
-            if (!string.IsNullOrEmpty(sessionNote))
-                emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, sessionNote);
+            stageTimer.Restart();
+            var postReductionContext = new PostReductionContext(
+                request,
+                reducedContent,
+                collectionResult.Files,
+                filterResult.Provenance,
+                filterResult.Scores,
+                filterResult.SelectedMembers,
+                filterResult.Preamble,
+                tokenCounter,
+                entryFormatter);
+            var emissionResult = await _postReductionPipeline.ProcessAsync(
+                postReductionContext,
+                contentProvider,
+                cancellationToken);
+            LogStageComplete("post-reduction", stageTimer.ElapsedMilliseconds, emissionResult.ProcessedFileCount);
 
             return WithReductionCacheStats(emissionResult, reductionCache);
         }
@@ -331,39 +277,64 @@ public sealed class FusionOrchestrator
         }
     }
 
-    // Attaches the dependency hop chain to each file, and for files that were scoped to specific members
-    // (symbol-level packing), appends those qualified member names so the provenance references the selected
-    // symbol, not just the file.
-    private static IReadOnlyList<FusedContent> AttachProvenance(
-        IReadOnlyList<FusedContent> content,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> provenance,
-        IReadOnlyDictionary<string, IReadOnlySet<string>>? selectedMembers) =>
-        content
-            .Select(item =>
-            {
-                if (!provenance.TryGetValue(item.NormalizedPath, out var chain))
-                    return item;
+    private static string ResolveScopingMode(FusionRequest request)
+    {
+        if (request.Focus is not null)
+            return "focus";
+        if (request.Changes is not null)
+            return "changes";
+        if (request.Query is not null)
+            return "query";
+        return "none";
+    }
 
-                if (selectedMembers is not null &&
-                    selectedMembers.TryGetValue(item.NormalizedPath, out var members) &&
-                    members.Count > 0)
-                {
-                    chain = [.. chain, .. members.OrderBy(m => m, StringComparer.Ordinal)];
-                }
+    private void LogStageComplete(string stage, long elapsedMs, int fileCount, string? scopingMode = null)
+    {
+        if (scopingMode is not null)
+        {
+            _logger.LogInformation(
+                "Fusion stage {Stage} complete: {FileCount} files, mode {ScopingMode}, {ElapsedMs} ms",
+                stage,
+                fileCount,
+                scopingMode,
+                elapsedMs);
+            return;
+        }
 
-                return item.WithInclusionChain(chain);
-            })
-            .ToArray();
+        _logger.LogInformation(
+            "Fusion stage {Stage} complete: {FileCount} files, {ElapsedMs} ms",
+            stage,
+            fileCount,
+            elapsedMs);
+    }
 
-    private static IReadOnlyList<FusedContent> AttachRelevance(
-        IReadOnlyList<FusedContent> content,
-        IReadOnlyDictionary<string, double> scores) =>
-        content
-            .Select(item =>
-                scores.TryGetValue(item.NormalizedPath, out var score)
-                    ? item.WithRelevanceScore(score)
-                    : item)
-            .ToArray();
+    private void LogAnalysisIndexStats(Indexing.IAnalysisIndex? analysisIndex)
+    {
+        if (analysisIndex is null)
+            return;
+
+        _logger.LogInformation(
+            "Analysis index during scoping: hits {IndexHits}, misses {IndexMisses}",
+            analysisIndex.Statistics.Hits,
+            analysisIndex.Statistics.Misses);
+    }
+
+    private void LogReductionComplete(long elapsedMs, int fileCount, IReductionCache? cache)
+    {
+        if (cache is null)
+        {
+            LogStageComplete("reduction", elapsedMs, fileCount);
+            return;
+        }
+
+        _logger.LogInformation(
+            "Fusion stage {Stage} complete: {FileCount} files, cache hits {CacheHits}, misses {CacheMisses}, {ElapsedMs} ms",
+            "reduction",
+            fileCount,
+            cache.Statistics.Hits,
+            cache.Statistics.Misses,
+            elapsedMs);
+    }
 
     // Replaces each seed file's content with a slice that keeps only the requested member in full and reduces
     // the rest of the file to signatures. Falls back to the original entry when no slice extractor handles the
@@ -443,43 +414,6 @@ public sealed class FusionOrchestrator
         }
 
         return result;
-    }
-
-    // Splits reduced content into the entries to emit (new or changed for the session) and a note listing the
-    // entries omitted because they were already sent. Trivial entries pass through untouched.
-    private (IReadOnlyList<FusedContent> Kept, string? Note) ApplySessionDelta(
-        IReadOnlyList<FusedContent> reducedContent,
-        string sessionId)
-    {
-        var kept = new List<FusedContent>(reducedContent.Count);
-        var omitted = new List<string>();
-
-        foreach (var entry in reducedContent)
-        {
-            if (entry.IsTrivial)
-            {
-                kept.Add(entry);
-                continue;
-            }
-
-            var hash = XxHash64.HashToUInt64(Encoding.UTF8.GetBytes(entry.Content));
-            if (_sessionTracker.TryClaim(sessionId, entry.NormalizedPath, hash))
-                kept.Add(entry);
-            else
-                omitted.Add(entry.NormalizedPath);
-        }
-
-        return (kept, Session.SessionDeltaBuilder.BuildNote(sessionId, omitted));
-    }
-
-    private PatternSummary? DetectPatterns(IReadOnlyList<FusedContent> reducedContent)
-    {
-        var snapshots = reducedContent
-            .Select(c => new FusedFileSnapshot(c.NormalizedPath, c.Content))
-            .ToArray();
-
-        var patterns = PatternDetectionBatch.Run(_patternDetectors, snapshots);
-        return patterns.Count == 0 ? null : new PatternSummary(patterns);
     }
 
     private static FusionResult WithReductionCacheStats(FusionResult result, IReductionCache? cache)
@@ -839,8 +773,7 @@ public sealed class FusionOrchestrator
         return new FilteredFileSet(filtered, provenance, scores, reviewPreamble);
     }
 
-    // Diffs for the genuinely changed files that are also in the collected set. Failures to read diffs are
-    // tolerated here: a missing diff degrades the review map rather than failing the whole run.
+    // Diffs for the genuinely changed files that are also in the collected set.
     private async Task<IReadOnlyList<FileDiff>> GetReviewDiffsAsync(
         FusionRequest request,
         HashSet<string> collectedPaths,
@@ -854,9 +787,9 @@ public sealed class FusionOrchestrator
                 cancellationToken);
             return diffs.Where(d => collectedPaths.Contains(d.Path)).ToArray();
         }
-        catch (ChangeDetectionException)
+        catch (ChangeDetectionException ex)
         {
-            return [];
+            throw new FusionException(ex.Message);
         }
     }
 
@@ -975,172 +908,6 @@ public sealed class FusionOrchestrator
             0,
             TimeSpan.Zero,
             []);
-    }
-
-    private async Task<FusionResult> ApplyStructuralMapsAsync(
-        FusionResult emissionResult,
-        IReadOnlyList<Fuse.Collection.Models.SourceFile> collectedFiles,
-        FusionRequest request,
-        ISourceContentProvider contentProvider,
-        CancellationToken cancellationToken)
-    {
-        if (!request.Reduction.IncludeRouteMap && !request.Reduction.IncludeProjectGraph)
-            return emissionResult;
-
-        var fileContents = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in collectedFiles)
-        {
-            if (request.Reduction.IncludeRouteMap &&
-                _routeMapGenerator?.SupportedExtensions.Contains(file.Extension) == true)
-            {
-                fileContents[file.NormalizedRelativePath] =
-                    await contentProvider.GetContentAsync(file, cancellationToken);
-                continue;
-            }
-
-            if (request.Reduction.IncludeProjectGraph &&
-                _projectGraphGenerator?.SupportedExtensions.Contains(file.Extension) == true)
-            {
-                fileContents[file.NormalizedRelativePath] =
-                    await contentProvider.GetContentAsync(file, cancellationToken);
-            }
-        }
-
-        var prefix = string.Empty;
-        if (request.Reduction.IncludeRouteMap && _routeMapGenerator is not null)
-            prefix += _routeMapGenerator.Generate(fileContents) + "\n";
-
-        if (request.Reduction.IncludeProjectGraph && _projectGraphGenerator is not null)
-            prefix += _projectGraphGenerator.Generate(fileContents) + "\n";
-
-        if (string.IsNullOrWhiteSpace(prefix))
-            return emissionResult;
-
-        prefix = prefix.TrimEnd();
-        var inMemoryContent = emissionResult.InMemoryContent;
-        if (!string.IsNullOrEmpty(inMemoryContent))
-            inMemoryContent = prefix + "\n" + inMemoryContent;
-
-        var generatedPaths = emissionResult.GeneratedPaths.ToList();
-        if (generatedPaths.Count > 0)
-        {
-            var lastPath = generatedPaths[^1];
-            var existing = await _fileSystem.ReadAllTextAsync(lastPath);
-            await _fileSystem.WriteAllTextAsync(lastPath, prefix + "\n" + existing);
-        }
-
-        return new FusionResult(
-            generatedPaths,
-            inMemoryContent,
-            emissionResult.TotalTokens,
-            emissionResult.ProcessedFileCount,
-            emissionResult.TotalFileCount,
-            emissionResult.Duration,
-            emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary,
-            emissionResult.ReductionCacheHits,
-            emissionResult.ReductionCacheMisses,
-            emissionResult.EmittedFileTokens);
-    }
-
-    private async Task<FusionResult> ApplyRedactReportAsync(
-        FusionResult emissionResult,
-        IReadOnlyList<FusedContent> reducedContent)
-    {
-        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var entry in reducedContent)
-        {
-            if (entry.RedactionCounts is null)
-                continue;
-
-            foreach (var (kind, count) in entry.RedactionCounts)
-            {
-                counts.TryGetValue(kind, out var current);
-                counts[kind] = current + count;
-            }
-        }
-
-        // The code-literal classification is a fidelity diagnostic, not a secret kind, so it is excluded from
-        // the secret total (it is rendered on its own line by RedactionSummary.ToComment).
-        var secretTotal = counts.Where(kv => kv.Key != SecretRedactionResult.CodeLiteralKind).Sum(kv => kv.Value);
-        var summary = new RedactionSummary(counts, secretTotal);
-        var comment = summary.ToComment();
-        if (string.IsNullOrEmpty(comment))
-            return emissionResult;
-
-        return await AppendToDiskOrMemoryAsync(emissionResult, comment);
-    }
-
-    private async Task<FusionResult> ApplyPatternSummaryAsync(
-        FusionResult emissionResult,
-        PatternSummary? patternSummary)
-    {
-        if (patternSummary is null)
-            return emissionResult;
-
-        var comment = patternSummary.ToComment();
-        if (string.IsNullOrEmpty(comment))
-            return emissionResult;
-
-        return await AppendToDiskOrMemoryAsync(emissionResult, comment);
-    }
-
-    private async Task<FusionResult> AppendToDiskOrMemoryAsync(FusionResult emissionResult, string comment)
-    {
-        var inMemoryContent = emissionResult.InMemoryContent;
-        if (!string.IsNullOrEmpty(inMemoryContent))
-            inMemoryContent += "\n" + comment;
-
-        var generatedPaths = emissionResult.GeneratedPaths.ToList();
-        if (generatedPaths.Count > 0)
-        {
-            var lastPath = generatedPaths[^1];
-            var existing = await _fileSystem.ReadAllTextAsync(lastPath);
-            await _fileSystem.WriteAllTextAsync(lastPath, existing + "\n" + comment);
-        }
-
-        return new FusionResult(
-            generatedPaths,
-            inMemoryContent,
-            emissionResult.TotalTokens,
-            emissionResult.ProcessedFileCount,
-            emissionResult.TotalFileCount,
-            emissionResult.Duration,
-            emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary,
-            emissionResult.ReductionCacheHits,
-            emissionResult.ReductionCacheMisses,
-            emissionResult.EmittedFileTokens);
-    }
-
-    private async Task<FusionResult> PrependToDiskOrMemoryAsync(FusionResult emissionResult, string preamble)
-    {
-        var inMemoryContent = emissionResult.InMemoryContent;
-        // Prepend even to empty in-memory content so a note survives when every entry was omitted (for example
-        // a session-delta call where the agent already holds every file).
-        if (inMemoryContent is not null)
-            inMemoryContent = string.IsNullOrEmpty(inMemoryContent) ? preamble : preamble + "\n" + inMemoryContent;
-
-        var generatedPaths = emissionResult.GeneratedPaths.ToList();
-        if (generatedPaths.Count > 0)
-        {
-            var firstPath = generatedPaths[0];
-            var existing = await _fileSystem.ReadAllTextAsync(firstPath);
-            await _fileSystem.WriteAllTextAsync(firstPath, preamble + "\n" + existing);
-        }
-
-        return new FusionResult(
-            generatedPaths,
-            inMemoryContent,
-            emissionResult.TotalTokens,
-            emissionResult.ProcessedFileCount,
-            emissionResult.TotalFileCount,
-            emissionResult.Duration,
-            emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary,
-            emissionResult.ReductionCacheHits,
-            emissionResult.ReductionCacheMisses,
-            emissionResult.EmittedFileTokens);
     }
 
     private sealed record FilteredFileSet(

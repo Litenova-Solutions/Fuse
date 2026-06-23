@@ -6,6 +6,7 @@
     "capability-model",
     "scoping-internals",
     "caching-internals",
+    "operator",
     "options-model",
     "extending"
   ]

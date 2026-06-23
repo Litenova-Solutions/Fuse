@@ -1,5 +1,6 @@
 using Fuse.Fusion.Retrieval;
 using Fuse.Fusion.Scoping;
+using Fuse.Reduction.Caching;
 
 namespace Fuse.Fusion.Tests.Retrieval;
 
@@ -80,37 +81,46 @@ public class VectorRerankerTests
     }
 }
 
-public sealed class DiskVectorStoreTests : IDisposable
+public sealed class SqliteVectorStoreTests : IDisposable
 {
-    private readonly string _root;
+    private readonly string _databasePath;
 
-    public DiskVectorStoreTests()
-    {
-        _root = Path.Combine(Path.GetTempPath(), "fuse-vec-tests", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_root);
-    }
+    public SqliteVectorStoreTests() =>
+        _databasePath = SqliteTestHelpers.NewDatabasePath("fuse-vec-tests");
 
     [Fact]
-    public void Set_Then_Get_RoundTripsAcrossInstances()
+    public async Task Set_Then_Get_RoundTripsAcrossInstances()
     {
         var vector = new[] { 0.1f, -0.2f, 0.3f, 0.4f };
-        new DiskVectorStore(_root, vector.Length).Set("k1", vector);
+        await using (var writerStore = new SqliteKeyValueStore(_databasePath))
+        {
+            new SqliteVectorStore(writerStore, vector.Length).Set("k1", vector);
+            await writerStore.FlushAsync();
+        }
 
-        var reader = new DiskVectorStore(_root, vector.Length);
+        await using var readerStore = new SqliteKeyValueStore(_databasePath);
+        var reader = new SqliteVectorStore(readerStore, vector.Length);
         Assert.True(reader.TryGet("k1", out var loaded));
         Assert.Equal(vector, loaded);
     }
 
     [Fact]
-    public void TryGet_WrongDimensions_IsMiss()
+    public async Task TryGet_WrongDimensions_IsMiss()
     {
-        new DiskVectorStore(_root, 4).Set("k2", [1f, 2f, 3f, 4f]);
-        Assert.False(new DiskVectorStore(_root, 8).TryGet("k2", out _));
+        await using (var writerStore = new SqliteKeyValueStore(_databasePath))
+        {
+            new SqliteVectorStore(writerStore, 4).Set("k2", [1f, 2f, 3f, 4f]);
+            await writerStore.FlushAsync();
+        }
+
+        await using var readerStore = new SqliteKeyValueStore(_databasePath);
+        Assert.False(new SqliteVectorStore(readerStore, 8).TryGet("k2", out _));
     }
 
     public void Dispose()
     {
-        if (Directory.Exists(_root))
-            Directory.Delete(_root, recursive: true);
+        var root = Path.GetDirectoryName(_databasePath);
+        if (root is not null && Directory.Exists(root))
+            Directory.Delete(root, recursive: true);
     }
 }

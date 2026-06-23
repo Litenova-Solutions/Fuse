@@ -6,13 +6,14 @@ namespace Fuse.Reduction.Caching;
 public interface IFuseStoreFactory
 {
     /// <summary>
-    ///     Opens or creates <c>.fuse/fuse.db</c> under the source directory.
+    ///     Opens or creates the persistent SQLite store for a fusion source directory.
     /// </summary>
-    /// <param name="sourceDirectory">The project root directory.</param>
+    /// <param name="sourceDirectory">The fusion source directory.</param>
     /// <returns>A key-value store that flushes on dispose.</returns>
     /// <remarks>
-    ///     On first open for a source directory in this process, legacy <c>.fuse/cache</c> and
-    ///     <c>.fuse/index</c> directories are best-effort deleted.
+    ///     Inside a git repository the database is <c>{repoRoot}/.fuse/fuse.db</c>. Otherwise it is
+    ///     <c>~/.fuse/fuse.db</c> (override with <see cref="FuseStorePaths.UserDataEnvironmentVariable" />).
     /// </remarks>
+    /// <returns>A key-value store that flushes on dispose.</returns>
     IKeyValueStore Open(string sourceDirectory);
 }

@@ -1,5 +1,4 @@
-using System.Collections.Concurrent;
-using System.Text;
+using Fuse.Fusion.Storage;
 using Fuse.Reduction.Caching;
 
 namespace Fuse.Fusion.Indexing;
@@ -16,51 +15,34 @@ public sealed class SqliteRelevancePostingsStore : IRelevancePostingsStore
 {
     private const string StoreName = "postings";
 
-    private static readonly string[] Empty = [];
-
-    private readonly IKeyValueStore _store;
-    private readonly ConcurrentDictionary<ulong, IReadOnlyList<string>> _memory = new();
+    private readonly NamespacedKvCache<ulong, IReadOnlyList<string>> _cache;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SqliteRelevancePostingsStore" /> class.
     /// </summary>
     /// <param name="store">The shared key-value store for the run.</param>
-    public SqliteRelevancePostingsStore(IKeyValueStore store) => _store = store;
+    public SqliteRelevancePostingsStore(IKeyValueStore store) =>
+        _cache = new NamespacedKvCache<ulong, IReadOnlyList<string>>(
+            store,
+            StoreName,
+            NamespacedKvCodec.HashKey,
+            NamespacedKvCodec.EncodeTokens,
+            NamespacedKvCodec.DecodeTokens);
 
     /// <inheritdoc />
     public bool TryGetBodyTokens(ulong contentHash, out IReadOnlyList<string> tokens)
     {
-        if (_memory.TryGetValue(contentHash, out var cached))
+        if (_cache.TryGet(contentHash, out var cached))
         {
-            tokens = cached;
+            tokens = cached!;
             return true;
         }
 
-        var key = Key(contentHash);
-        if (_store.TryGet(StoreName, key, out var bytes) && bytes is not null)
-        {
-            try
-            {
-                var text = Encoding.UTF8.GetString(bytes);
-                tokens = text.Length == 0 ? Empty : text.Split('\t', StringSplitOptions.RemoveEmptyEntries);
-                _memory[contentHash] = tokens;
-                return true;
-            }
-            catch (DecoderFallbackException)
-            {
-            }
-        }
-
-        tokens = Empty;
+        tokens = NamespacedKvCodec.EmptyTokens;
         return false;
     }
 
     /// <inheritdoc />
-    public void SetBodyTokens(ulong contentHash, IReadOnlyList<string> tokens)
-    {
-        _memory[contentHash] = tokens;
-        _store.Set(StoreName, Key(contentHash), Encoding.UTF8.GetBytes(string.Join('\t', tokens)));
-    }
-
-    private static string Key(ulong contentHash) => $"{contentHash:x16}";
+    public void SetBodyTokens(ulong contentHash, IReadOnlyList<string> tokens) =>
+        _cache.Set(contentHash, tokens);
 }

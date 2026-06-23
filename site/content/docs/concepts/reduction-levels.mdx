@@ -74,8 +74,7 @@ summary (`--pattern-summary`), the route map (`--route-map`), the project graph
 (`--project-graph`), XML and HTML/Razor minification (`--minify-xml-files`,
 `--minify-html-and-razor`), and the per-line content handling (trim and condense).
 
-For example, `--all` once bundled generated-code collapse with full reduction; now you
-combine them explicitly:
+Generated-code collapse is separate from the level. Combine it when you need both:
 
 ```bash
 fuse dotnet --directory ./src --level aggressive --collapse-generated

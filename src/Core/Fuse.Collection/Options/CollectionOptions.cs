@@ -88,7 +88,9 @@ public sealed record CollectionOptions
     /// <remarks>
     ///     When non-null and non-empty, the collection pipeline builds source files from exactly these paths
     ///     (resolved relative to <see cref="SourceDirectory" /> when not rooted) and skips directory enumeration
-    ///     and the include/exclude filters. Used by the reduce path to compact a caller-supplied file set.
+    ///     and the include/exclude filters. Only paths contained within the normalized
+    ///     <see cref="SourceDirectory" /> are collected; paths outside the root are skipped. Used by the reduce
+    ///     path to compact a caller-supplied file set.
     /// </remarks>
     public IReadOnlyCollection<string>? ExplicitFiles { get; init; }
 

@@ -1,7 +1,8 @@
+using System.Reflection;
 using DotMake.CommandLine;
+using Fuse.Cli.Extensions;
 using Fuse.Cli.Mcp;
 using Fuse.Cli.Services;
-using Fuse.Fusion.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -48,9 +49,8 @@ public sealed class McpServeCommand
         builder.Logging.SetMinimumLevel(LogLevel.Information);
 
         builder.Services.AddSingleton<IConsoleUI, StderrConsoleUI>();
+        // Semantic ONNX embeddings in MCP are opt-in via FUSE_EMBEDDINGS (no --embeddings flag on serve).
         builder.Services.AddFuse();
-        Fuse.Plugins.Languages.CSharp.Roslyn.Extensions.RoslynServiceCollectionExtensions.AddCSharpRoslyn(builder.Services);
-        Fuse.Fusion.Embeddings.Onnx.Extensions.OnnxEmbeddingsServiceCollectionExtensions.AddFuseOnnxEmbeddings(builder.Services, explicitFlag: null);
 
         builder.Services
             .AddMcpServer(options =>
@@ -58,7 +58,10 @@ public sealed class McpServeCommand
                 options.ServerInfo = new()
                 {
                     Name = "fuse",
-                    Version = "2.4.0"
+                    Version = typeof(McpServeCommand).Assembly
+                        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                        ?? typeof(McpServeCommand).Assembly.GetName().Version?.ToString(3)
+                        ?? "0.0.0"
                 };
                 options.ServerInstructions =
                     "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +

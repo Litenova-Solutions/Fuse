@@ -2,7 +2,7 @@ using System.Reflection;
 using Fuse.Cli.Mcp;
 using Fuse.Collection.Templates;
 using Fuse.Fusion;
-using Fuse.Fusion.Extensions;
+using Fuse.Plugins.Abstractions.Options;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
 
@@ -19,6 +19,7 @@ public sealed class FuseToolsTests
     [InlineData(nameof(FuseTools.FuseChangesAsync), "fuse_changes")]
     [InlineData(nameof(FuseTools.FuseDotNetAsync), "fuse_dotnet")]
     [InlineData(nameof(FuseTools.FuseGenericAsync), "fuse_generic")]
+    [InlineData(nameof(FuseTools.FuseReduceAsync), "fuse_reduce")]
     public void ToolMethods_AreRegisteredWithExpectedNames(string methodName, string expectedToolName)
     {
         var method = typeof(FuseTools).GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
@@ -135,6 +136,29 @@ public sealed class FuseToolsTests
         var (orchestrator, templates) = BuildServices();
         var result = await FuseTools.FuseAskAsync(orchestrator, templates, Path.GetTempPath(), "  ");
         Assert.StartsWith("Error", result);
+    }
+
+    [Fact]
+    public async Task FuseReduceAsync_ReducesExplicitFiles()
+    {
+        using var fixture = new TempProject();
+        fixture.AddFile("Sample.cs", """
+            public class Sample
+            {
+                public int Add(int x, int y)
+                {
+                    return x + y + 8675309;
+                }
+            }
+            """);
+
+        var (orchestrator, templates) = BuildServices();
+        var result = await FuseTools.FuseReduceAsync(
+            orchestrator, templates, fixture.Path, files: ["Sample.cs"], level: ReductionLevel.Skeleton);
+
+        Assert.Contains("Sample.cs", result);
+        Assert.Contains("Add", result);
+        Assert.DoesNotContain("8675309", result);
     }
 
     [Fact]

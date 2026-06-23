@@ -42,7 +42,7 @@ Measured over a pinned corpus of four real .NET libraries (MediatR, FluentValida
 </p>
 
 - **One scoped call instead of an explore loop.** Over 24 real merged pull requests, one `fuse --query` call delivers the files a change needs in about 40,000 tokens at 51 percent recall, against a generic-packer dump of about 512,000 tokens (about 13 times more) at the same single call, and about 494,000 tokens to read the repository blind. Fuse ties a packer at one call and wins on tokens; with a git base the change-scoping mode reaches 88 percent recall. Read the token number with its recall.
-- **Cuts tokens without dropping API.** Default reduction removes 7 to 10 percent and `--all` removes 21 to 40 percent of tokens while keeping 99 to 100 percent of public types and methods. `--skeleton` removes 66 to 93 percent for an architecture map.
+- **Cuts tokens without dropping API.** `--level none` removes 7 to 10 percent and `--level aggressive` removes 21 to 40 percent of tokens while keeping 99 to 100 percent of public types and methods. `--level skeleton` removes 66 to 93 percent for an architecture map.
 - **Smaller than the generic packers.** Repomix output runs 1.3 to 3.9 percent larger than raw concatenation on these repositories; Fuse is smaller than raw in every mode.
 - **Finds the files a change touches.** Change scoping recalls 88 percent of the files in 24 real merged pull requests at 61 percent precision, and all three scoping modes beat an agent-style grep baseline.
 - **Trustworthy skeletons on hard code.** Roslyn structural analysis keeps 100 percent of method signatures on all four benchmark libraries, including Newtonsoft.Json, where the retired regex skeleton kept 4 percent.
@@ -124,16 +124,13 @@ The same engine runs as a CLI:
 fuse dotnet --directory ./src
 
 # maximum C# reduction, public API intact
-fuse dotnet --directory ./src --all
+fuse dotnet --directory ./src --level aggressive
 
 # architecture overview, signatures only
-fuse dotnet --directory ./src --all --skeleton
+fuse dotnet --directory ./src --level skeleton
 
 # cheap survey before fetching files (tree, symbol outline, token costs)
 fuse dotnet --directory ./src --toc
-
-# accurate skeletons and dependency edges with the Roslyn precision tier
-fuse dotnet --directory ./src --skeleton --semantic
 
 # PR-scoped fusion with diff hunks and the callers of each changed file
 fuse dotnet --directory ./src --changed-since main --review

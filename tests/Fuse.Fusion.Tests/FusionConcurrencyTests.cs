@@ -94,18 +94,55 @@ public sealed class FusionConcurrencyTests : IDisposable
             Assert.Equal(first, result.InMemoryContent);
     }
 
-    private static FusionRequest BuildQueryRequest(string dir, string query) =>
+    [Fact]
+    public async Task FuseAsync_ConcurrentPersistentRunsAgainstSameDirectory_ProduceConsistentResults()
+    {
+        var dir = NewDirectory();
+        WriteFile(dir, "Alpha.cs", """
+            public class Alpha
+            {
+                public string Name => "alpha-token";
+            }
+            """);
+        WriteFile(dir, "Beta.cs", """
+            public class Beta
+            {
+                public int Value => 42;
+            }
+            """);
+
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+
+        var tasks = Enumerable.Range(0, 12)
+            .Select(_ => orchestrator.FuseAsync(BuildQueryRequest(dir, "Alpha", usePersistentIndex: true)))
+            .ToArray();
+
+        var results = await Task.WhenAll(tasks);
+
+        var first = results[0].InMemoryContent;
+        Assert.NotNull(first);
+        Assert.Contains("Alpha.cs", first);
+        foreach (var result in results)
+            Assert.Equal(first, result.InMemoryContent);
+
+        Assert.True(File.Exists(SqliteTestHelpers.FuseDatabasePath(dir)));
+    }
+
+    private static FusionRequest BuildQueryRequest(string dir, string query, bool usePersistentIndex = false) =>
         new(
             new CollectionOptions(dir, extensions: [".cs"]),
             new ReductionOptions(),
             new EmissionOptions(),
             inMemory: true,
-            query: new QueryOptions(query));
+            query: new QueryOptions(query),
+            useReductionCache: usePersistentIndex ? false : true,
+            usePersistentIndex: usePersistentIndex);
 
     private string NewDirectory()
     {
         var dir = Path.Combine(Path.GetTempPath(), "fuse-concurrency-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
+        SqliteTestHelpers.InitializeGitRepository(dir);
         _dirs.Add(dir);
         return dir;
     }

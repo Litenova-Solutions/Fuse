@@ -107,7 +107,7 @@ The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds refer
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--no-cache` | bool | `false` | Disable per-file reduction caching. |
-| `--clear-cache` | bool | `false` | Clear the cache directory before running. |
+| `--clear-cache` | bool | `false` | Clear the `reduction` namespace in `.fuse/fuse.db` before running. |
 | `--index` | bool | `false` | Cache per-file analysis, relevance tokens, and optional vectors on disk (`.fuse/fuse.db`) so repeated scoped runs reuse them. Enabled automatically in watch mode and the MCP server. |
 | `--watch` | bool | `false` | Watch for file changes and re-run fusion after edits settle. Disabled automatically when stdio is redirected (MCP). |
 

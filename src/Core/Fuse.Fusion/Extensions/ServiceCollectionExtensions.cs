@@ -1,5 +1,6 @@
 using Fuse.Fusion.Scoping;
 using Fuse.Fusion.Enrichment;
+using Fuse.Fusion.PostReduction;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Filters;
@@ -7,15 +8,12 @@ using Fuse.Collection.Templates;
 using Fuse.Collection.Templates.Definitions;
 using Fuse.Emission;
 using Fuse.Emission.Tokenization;
-using Fuse.Emission.Writers;
-using Fuse.Plugins.Formats.Web.Extensions;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
 using Fuse.Plugins.Abstractions.Markers;
 using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Plugins.Abstractions.Reducers;
 using Fuse.Plugins.Abstractions.Skeleton;
-using Fuse.Plugins.Languages.CSharp.Extensions;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Reduction.Security;
@@ -30,35 +28,20 @@ namespace Fuse.Fusion.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    ///     Registers all Fuse fusion services required to execute the collection, reduction, and emission pipelines,
-    ///     including the C# language plugin and built-in format reducers.
-    /// </summary>
-    /// <param name="services">The service collection to add registrations to.</param>
-    /// <returns>The same <paramref name="services" /> instance, to allow chaining.</returns>
-    public static IServiceCollection AddFuse(this IServiceCollection services)
-    {
-        services.AddFuseCore();
-        services.AddCSharpLanguage();
-        services.AddFormatReducers();
-        return services;
-    }
-
-    /// <summary>
-    ///     Registers the core fusion pipelines, analysis engine, capability registries, file filters, and project
-    ///     templates, without any language-specific plugins.
+    ///     Registers stage pipelines, capability registries, the SQLite store factory, and the default hashing
+    ///     embedding model.
     /// </summary>
     /// <param name="services">The service collection to add registrations to.</param>
     /// <returns>The same <paramref name="services" /> instance, to allow chaining.</returns>
     /// <remarks>
-    ///     Use <see cref="AddFuse" /> for the full default registration. Call this directly only when composing a
-    ///     custom set of language plugins on top of the core services. File filter registration order equals
-    ///     evaluation order.
+    ///     Does not register language or format plugins. Hosts call language-specific extension methods
+    ///     (for example <c>AddCSharpLanguage</c> and <c>AddFormatReducers</c>) after this when needed.
+    ///     File filter registration order equals evaluation order.
     /// </remarks>
     public static IServiceCollection AddFuseCore(this IServiceCollection services)
     {
         services.AddSingleton<TokenizerFactory>();
         services.AddSingleton<ITokenCounter>(sp => sp.GetRequiredService<TokenizerFactory>().GetCounter());
-        services.AddSingleton<IEntryFormatter, XmlEntryFormatter>();
         services.AddSingleton<FusionValidator>();
         services.AddSingleton<FusionOrchestrator>();
         services.AddSingleton<ISecretRedactor, DefaultSecretRedactor>();
@@ -70,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<FileCollectionPipeline>();
         services.AddTransient<ContentReductionPipeline>();
         services.AddTransient<EmissionPipeline>();
+        services.AddSingleton<PostReductionEnrichmentPipeline>();
 
         services.AddSingleton<IFileSystem, PhysicalFileSystem>();
         // Per-run content cache: a fresh instance per run keeps the read-once-per-run invariant intact under

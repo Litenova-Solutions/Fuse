@@ -1,8 +1,8 @@
 using DotMake.CommandLine;
 using Fuse.Cli;
 using Fuse.Cli.Commands;
+using Fuse.Cli.Extensions;
 using Fuse.Cli.Services;
-using Fuse.Fusion.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 var embeddingsChoice = EmbeddingsModeDetector.ExplicitFlag(args);
@@ -10,9 +10,7 @@ var embeddingsChoice = EmbeddingsModeDetector.ExplicitFlag(args);
 Cli.Ext.ConfigureServices(services =>
 {
     services.AddSingleton<IConsoleUI, ConsoleUI>();
-    services.AddFuse();
-    Fuse.Plugins.Languages.CSharp.Roslyn.Extensions.RoslynServiceCollectionExtensions.AddCSharpRoslyn(services);
-    Fuse.Fusion.Embeddings.Onnx.Extensions.OnnxEmbeddingsServiceCollectionExtensions.AddFuseOnnxEmbeddings(services, embeddingsChoice);
+    services.AddFuse(embeddingsChoice);
 
     services.AddTransient<FuseCliCommand>();
     services.AddTransient<DotNetCommand>();

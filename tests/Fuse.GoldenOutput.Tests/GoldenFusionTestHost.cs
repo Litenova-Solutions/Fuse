@@ -5,7 +5,6 @@ using Fuse.Emission.Models;
 using Fuse.Fusion;
 using Fuse.Fusion.Extensions;
 using Fuse.Plugins.Abstractions.Options;
-using Fuse.Plugins.Languages.CSharp.Roslyn.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.GoldenOutput.Tests;
@@ -18,8 +17,7 @@ public sealed class GoldenFusionTestHost : IDisposable
     public GoldenFusionTestHost()
     {
         var services = new ServiceCollection();
-        services.AddFuse();
-        services.AddCSharpRoslyn();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
         _templateRegistry = _serviceProvider.GetRequiredService<ProjectTemplateRegistry>();
     }

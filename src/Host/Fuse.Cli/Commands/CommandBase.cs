@@ -650,22 +650,22 @@ public abstract class CommandBase
     #region Cache and Watch Options
 
     /// <summary>
-    ///     Disable per-file reduction caching.
+    ///     Disable per-file reduction caching in <c>.fuse/fuse.db</c>.
     /// </summary>
-    [CliOption(Description = "Disable per-file reduction caching.")]
+    [CliOption(Description = "Disable per-file reduction caching in .fuse/fuse.db.")]
     public bool NoCache { get; set; } = false;
 
     /// <summary>
-    ///     Clear the <c>.fuse/cache</c> directory before running.
+    ///     Clear the reduction cache namespace in <c>.fuse/fuse.db</c> before running.
     /// </summary>
-    [CliOption(Description = "Clear the .fuse/cache directory before running.")]
+    [CliOption(Description = "Clear the reduction cache namespace in .fuse/fuse.db before running.")]
     public bool ClearCache { get; set; } = false;
 
     /// <summary>
-    ///     Cache per-file dependency and symbol analysis in the on-disk index (<c>.fuse/index</c>) so repeated
-    ///     scoped runs reuse it. Pays off across a session and amortizes the cost of the Roslyn precision tier.
+    ///     Cache per-file dependency and symbol analysis in <c>.fuse/fuse.db</c> so repeated scoped runs
+    ///     reuse it. Pays off across a session and amortizes the cost of the Roslyn precision tier.
     /// </summary>
-    [CliOption(Description = "Cache dependency/symbol analysis on disk (.fuse/index) to speed up repeated scoped runs.")]
+    [CliOption(Description = "Cache dependency/symbol analysis in .fuse/fuse.db to speed up repeated scoped runs.")]
     public bool Index { get; set; } = false;
 
     /// <summary>

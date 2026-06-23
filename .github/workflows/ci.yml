@@ -23,6 +23,39 @@ jobs:
       - name: Restore
         run: dotnet restore Fuse.slnx
 
+      - name: Check vulnerable packages (shipped)
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem -Path src -Recurse -Filter *.csproj | ForEach-Object {
+            $project = $_.FullName
+            Write-Host "Auditing $project"
+            $jsonText = dotnet list $project package --vulnerable --include-transitive --format json
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "dotnet list package failed for $project"
+              $failed = $true
+              return
+            }
+            $report = $jsonText | ConvertFrom-Json
+            foreach ($entry in $report.projects) {
+              foreach ($framework in $entry.frameworks) {
+                $packages = @()
+                if ($framework.topLevelPackages) { $packages += $framework.topLevelPackages }
+                if ($framework.transitivePackages) { $packages += $framework.transitivePackages }
+                foreach ($package in $packages) {
+                  if (-not $package.vulnerabilities) { continue }
+                  foreach ($advisory in $package.vulnerabilities) {
+                    if ($advisory.severity -eq 'High' -or $advisory.severity -eq 'Critical') {
+                      Write-Host "::error::$($package.id) $($package.resolvedVersion) [$($advisory.severity)] $($advisory.advisoryurl)"
+                      $failed = $true
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if ($failed) { exit 1 }
+
       - name: Build
         run: dotnet build Fuse.slnx --configuration Release --no-restore
 

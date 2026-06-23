@@ -80,7 +80,7 @@ On Linux or macOS, replace `%NUMBER_OF_PROCESSORS%` with the output of `nproc` o
 
 After persistent reduction cache is enabled (default unless `--no-cache`):
 
-1. Run once to populate `.fuse/cache/` under the source directory.
+1. Run once to populate `.fuse/fuse.db` at the repo root (or `~/.fuse/fuse.db` outside a git repository).
 2. Run the same command again without `--clear-cache`.
 3. Compare the second run wall-clock to the cold parallel run.
 

@@ -8,11 +8,18 @@ namespace Fuse.Reduction.Caching;
 /// </summary>
 /// <remarks>
 ///     Reads use pooled connections for concurrency; writes are buffered and committed once via
-///     <see cref="FlushAsync" />. A malformed database is deleted and recreated on open rather than failing the
-///     run, because the file holds only derived cache data.
+///     <see cref="FlushAsync" />. A malformed database is deleted and recreated on open, read, or flush rather than
+///     failing the run, because the file holds only derived cache data. Concurrent runs share the same file via
+///     WAL; <c>busy_timeout</c> and flush retries on <c>SQLITE_BUSY</c> tolerate overlapping writers.
 /// </remarks>
 public sealed class SqliteKeyValueStore : IKeyValueStore
 {
+    private const int BusyTimeoutSeconds = 30;
+    private const int MaxFlushAttempts = 5;
+    private const int SqliteBusy = 5;
+    private const int SqliteCorrupt = 11;
+    private const int SqliteNotADb = 26;
+
     private readonly string _databasePath;
     private readonly string _connectionString;
     private readonly ConcurrentDictionary<(string Store, string Key), byte[]> _pending = new();
@@ -29,6 +36,7 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             DataSource = databasePath,
             Pooling = true,
             Cache = SqliteCacheMode.Shared,
+            DefaultTimeout = BusyTimeoutSeconds,
         }.ToString();
         Initialize();
     }
@@ -43,17 +51,30 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             return true;
         }
 
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT value FROM kv WHERE store = $s AND key = $k";
-        command.Parameters.AddWithValue("$s", store);
-        command.Parameters.AddWithValue("$k", key);
-        using var reader = command.ExecuteReader();
-        if (reader.Read())
+        for (var attempt = 0; attempt < 2; attempt++)
         {
-            value = (byte[])reader["value"];
-            return true;
+            try
+            {
+                using var connection = new SqliteConnection(_connectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT value FROM kv WHERE store = $s AND key = $k";
+                command.Parameters.AddWithValue("$s", store);
+                command.Parameters.AddWithValue("$k", key);
+                using var reader = command.ExecuteReader();
+                if (reader.Read())
+                {
+                    value = (byte[])reader["value"];
+                    return true;
+                }
+
+                value = null;
+                return false;
+            }
+            catch (SqliteException ex) when (IsCorruptDatabaseError(ex) && attempt == 0)
+            {
+                RecoverCorruptDatabase();
+            }
         }
 
         value = null;
@@ -70,6 +91,75 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             return;
 
         var snapshot = _pending.ToArray();
+        for (var attempt = 0; attempt < MaxFlushAttempts; attempt++)
+        {
+            try
+            {
+                await FlushSnapshotAsync(snapshot, cancellationToken);
+                foreach (var entry in snapshot)
+                    _pending.TryRemove(entry.Key, out _);
+                return;
+            }
+            catch (SqliteException ex) when (ex.SqliteErrorCode == SqliteBusy && attempt < MaxFlushAttempts - 1)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(50 * (attempt + 1)), cancellationToken);
+            }
+            catch (SqliteException ex) when (IsCorruptDatabaseError(ex) && attempt < MaxFlushAttempts - 1)
+            {
+                RecoverCorruptDatabase();
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public void Clear(string store)
+    {
+        foreach (var entry in _pending.Keys)
+        {
+            if (entry.Store == store)
+                _pending.TryRemove(entry, out _);
+        }
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(_connectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "DELETE FROM kv WHERE store = $s";
+                command.Parameters.AddWithValue("$s", store);
+                command.ExecuteNonQuery();
+                return;
+            }
+            catch (SqliteException ex) when (IsCorruptDatabaseError(ex) && attempt == 0)
+            {
+                RecoverCorruptDatabase();
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await FlushAsync();
+        }
+        catch (SqliteException)
+        {
+            // Derived cache data; flush on dispose is best-effort.
+        }
+        finally
+        {
+            SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
+        }
+    }
+
+    private async Task FlushSnapshotAsync(
+        KeyValuePair<(string Store, string Key), byte[]>[] snapshot,
+        CancellationToken cancellationToken)
+    {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
@@ -90,32 +180,6 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         }
 
         await transaction.CommitAsync(cancellationToken);
-        foreach (var entry in snapshot)
-            _pending.TryRemove(entry.Key, out _);
-    }
-
-    /// <inheritdoc />
-    public void Clear(string store)
-    {
-        foreach (var entry in _pending.Keys)
-        {
-            if (entry.Store == store)
-                _pending.TryRemove(entry, out _);
-        }
-
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM kv WHERE store = $s";
-        command.Parameters.AddWithValue("$s", store);
-        command.ExecuteNonQuery();
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        await FlushAsync();
-        SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
     }
 
     private void Initialize()
@@ -127,10 +191,18 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         catch (SqliteException)
         {
             // A malformed database is derived data; delete and recreate rather than fail the run.
-            SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
-            DeleteDatabaseFiles();
-            CreateSchema();
+            RecoverCorruptDatabase();
         }
+    }
+
+    private static bool IsCorruptDatabaseError(SqliteException ex) =>
+        ex.SqliteErrorCode is SqliteCorrupt or SqliteNotADb;
+
+    private void RecoverCorruptDatabase()
+    {
+        SqliteConnection.ClearAllPools();
+        DeleteDatabaseFiles();
+        CreateSchema();
     }
 
     private void CreateSchema()
@@ -140,6 +212,7 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText =
+            $"PRAGMA busy_timeout = {BusyTimeoutSeconds * 1000};" +
             "PRAGMA journal_mode = WAL;" +
             "PRAGMA synchronous = NORMAL;" +
             "CREATE TABLE IF NOT EXISTS kv(" +

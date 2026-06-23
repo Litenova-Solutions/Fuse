@@ -550,6 +550,10 @@ public sealed class FuseTools
             return await FuseToolHelpers.ExecuteInMemoryAsync(
                 orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
         }
+        catch (FusionException ex)
+        {
+            return $"Error: {ex.Message}";
+        }
         catch (Exception ex)
         {
             return $"Error during fusion: {ex.Message}";

@@ -42,6 +42,7 @@ public sealed class FusionValidator
         }
 
         ValidateScopingMutualExclusivity(request, errors);
+        ValidateChangeConstraints(request, errors);
         ValidateDepthConstraints(request, errors);
         ValidateQueryConstraints(request, errors);
 
@@ -92,7 +93,16 @@ public sealed class FusionValidator
             return;
 
         errors.Add(
-            "FocusOptions, ChangeOptions, and QueryOptions are mutually exclusive. Remove all but one scoping mode.");
+            "FocusOptions, ChangeOptions, and QueryOptions are mutually exclusive. Specify at most one of focus, query, or changedSince.");
+    }
+
+    private static void ValidateChangeConstraints(FusionRequest request, List<string> errors)
+    {
+        if (request.Changes is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(request.Changes.Since))
+            errors.Add("ChangeOptions.Since is required when change scoping is enabled.");
     }
 
     private static void ValidateDepthConstraints(FusionRequest request, List<string> errors)

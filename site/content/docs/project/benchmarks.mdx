@@ -253,7 +253,7 @@ Each item is measured directly where the harness exercises it:
 - Generated-code collapse (`--collapse-generated`). The corpus libraries contain no EF Core migrations, so this item does not move the Layer 1 numbers; it is unit-tested on a migration fixture, where the generated `Up`, `Down`, and `BuildModel` bodies are dropped while the class and method signatures are kept. It is reported here as not exercised by the corpus rather than as an improvement.
 - Cross-language reduction (TS, JS, SQL). The corpus is a C#-only mirror, so this item does not move the Layer 1 numbers either; the TypeScript-family and SQL reducers are unit-tested for comment and whitespace removal. Extending the corpus with a TypeScript or SQL repository is the way to confirm a ratio, and is noted as future work rather than claimed here.
 - Hybrid retrieval (`--rerank`). The bundled embedding is a deterministic lexical hashing model with no learned semantics, so on the Layer 2B localization questions, which are the lexical-ceiling cases, it does not change accuracy: BM25 already selects the candidates and the lexical vector reorders within the same lexical space. This is the honest result the roadmap predicts; closing the lexical gap needs a learned embedding model, for which the reranker provides the plug point. Layer 2B remains the regression guard for it.
-- Roslyn precision tier (`--semantic`). This is the accuracy result of the whole effort. Running `--level skeleton --semantic` over the same C#-only mirrors the harness uses, with the same independent Roslyn fidelity oracle, the precision tier keeps the signatures the regex skeleton drops:
+- Roslyn structural analysis. This is the accuracy result of the whole effort. Running `--level skeleton` over the same C#-only mirrors the harness uses, with the same independent Roslyn fidelity oracle, Roslyn keeps the signatures the retired regex skeleton dropped:
 
   | Repo | Regex skeleton | Roslyn skeleton |
   |------|----------------|-----------------|
@@ -271,7 +271,7 @@ The persistent index (`--index`, on by default in watch and serve) caches per-fi
 | Tier | Cold | Warm |
 |------|-----:|-----:|
 | Regex (default) | 1,032 ms | 626 ms |
-| Roslyn (`--semantic`) | 1,127 to 1,217 ms | 611 to 644 ms |
+| Roslyn | 1,127 to 1,217 ms | 611 to 644 ms |
 
 The warm run is about half the cold run. The Roslyn tier is more expensive cold because it parses each file, and the index is what amortizes that parse: warm, the two tiers converge because neither re-analyzes an unchanged file. These figures are directional and machine-specific, like the other wall-clock numbers on this page; the index's correctness (a hit returns the stored analysis, a changed file misses) is covered by unit tests.
 

@@ -119,13 +119,14 @@ public sealed class FileCollectionPipeline
     }
 
     // Builds source files from a caller-supplied path list, bypassing directory enumeration and the filters.
-    // Paths are resolved relative to SourceDirectory when not rooted; missing paths are skipped so a stale
-    // entry degrades the set rather than failing the run. Input order is preserved so the caller controls
-    // emission order.
+    // Paths are resolved relative to SourceDirectory when not rooted; paths outside the normalized root and
+    // missing paths are skipped so a stale or out-of-scope entry degrades the set rather than failing the run.
+    // Input order is preserved so the caller controls emission order.
     private CollectionResult CollectExplicitFiles(CollectionOptions options)
     {
         var files = new List<SourceFile>();
         var candidateCount = 0;
+        var rootDirectory = Path.GetFullPath(options.SourceDirectory);
 
         foreach (var raw in options.ExplicitFiles!)
         {
@@ -135,16 +136,27 @@ public sealed class FileCollectionPipeline
             candidateCount++;
             var fullPath = Path.IsPathRooted(raw)
                 ? Path.GetFullPath(raw)
-                : Path.GetFullPath(Path.Combine(options.SourceDirectory, raw));
+                : Path.GetFullPath(Path.Combine(rootDirectory, raw));
+
+            if (!IsPathUnderRoot(rootDirectory, fullPath))
+                continue;
 
             var fileInfo = _fileSystem.GetFileInfo(fullPath);
             if (!fileInfo.Exists)
                 continue;
 
-            var relativePath = _fileSystem.GetRelativePath(options.SourceDirectory, fullPath);
+            var relativePath = _fileSystem.GetRelativePath(rootDirectory, fullPath);
             files.Add(new SourceFile(new FileCandidate(fullPath, relativePath, fileInfo)));
         }
 
         return new CollectionResult(files, candidateCount);
+    }
+
+    // Rejects resolved paths that escape the collection root via ".." segments or point at a different drive.
+    private static bool IsPathUnderRoot(string rootDirectory, string fullPath)
+    {
+        var relativePath = Path.GetRelativePath(rootDirectory, fullPath);
+        return !relativePath.StartsWith("..", StringComparison.Ordinal)
+            && !Path.IsPathRooted(relativePath);
     }
 }

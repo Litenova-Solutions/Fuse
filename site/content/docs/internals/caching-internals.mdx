@@ -13,7 +13,14 @@ The store trades disk for compute. Reduction entries are keyed so that any chang
 
 ## Location and Layout
 
-All persistent cache data lives in a single SQLite database at `.fuse/fuse.db` under the source root. The file uses WAL journal mode and a single `kv` table partitioned by a `store` column. Four logical namespaces share the database:
+All persistent cache data lives in a single SQLite database file named `fuse.db`. Placement depends on whether the fusion source directory is inside a git repository:
+
+| Context | Path |
+|---------|------|
+| Inside a git repo | `{repoRoot}/.fuse/fuse.db` at the directory that contains `.git`, not under the scoped subdirectory or process working directory |
+| Outside a git repo | `~/.fuse/fuse.db` (override the directory with the `FUSE_USER_DATA` environment variable) |
+
+The file uses WAL journal mode and a single `kv` table partitioned by a `store` column. Four logical namespaces share the database:
 
 | Store namespace | Purpose |
 |-----------------|---------|
@@ -22,9 +29,7 @@ All persistent cache data lives in a single SQLite database at `.fuse/fuse.db` u
 | `postings` | Tokenized body text for BM25 relevance indexing |
 | `vectors` | Embedding vectors for hybrid query reranking |
 
-The database is created lazily on the first write. A corrupt file is deleted and recreated on open rather than failing the run, because every entry holds only derived data.
-
-On first open after an upgrade from an older Fuse version, legacy directories `.fuse/cache` and `.fuse/index` are removed if present. They are not migrated entry by entry; the new database repopulates from scratch on the next run.
+The database is created lazily on the first write. A corrupt file is deleted and recreated on open rather than failing the run, because every entry holds only derived data. See [Operator guide](/docs/internals/operator) for reset and purge actions.
 
 ```mermaid
 flowchart LR
@@ -82,4 +87,4 @@ This page documents the persistent store and its relationship to the content pro
 
 ## Next
 
-See [The Fusion Pipeline](/docs/internals/pipeline) for where reduction and its caching sit in a fusion, and [Performance](/docs/project/performance) for measured cold-versus-warm timings.
+See [The Fusion Pipeline](/docs/internals/pipeline) for where reduction and its caching sit in a fusion, [Performance](/docs/project/performance) for measured cold-versus-warm timings, and [Operator guide](/docs/internals/operator) for reset and MCP environment variables.

@@ -15,6 +15,8 @@ The three scoping parameters (`focus`, `changedSince`, and `query`) are mutually
 
 The scoping tools share one retrieval engine, documented in [Scoping Internals](/docs/internals/scoping-internals). Three behaviors are worth knowing when calling them. Focus pulls in both the files a seed depends on and the files that depend on it (its dependents), so a seed reaches its callers as well as its callees. Search ranks with BM25F, weighting a file's declared type and member names and its path above its body, so the file that declares a concept ranks above files that merely mention it. When `maxTokens` is set, the result is emitted most-relevant first, so the files closest to the seed survive the limit.
 
+Reduction level defaults differ by surface. CLI commands default to `none`; the scoped MCP tools (`fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_dotnet`) default to `standard`, so an agent gets the standard removals without naming a level.
+
 ## fuse_toc
 
 Table of contents (directory tree, symbol outline, per-file token costs) instead of file bodies. The cheapest first call: survey the codebase, then fetch specific files.
@@ -26,6 +28,7 @@ Table of contents (directory tree, symbol outline, per-file token costs) instead
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
+| `maxTokens` | int | 24000 | Largest table of contents to return, in tokens; the map degrades to fit rather than overflow |
 
 ## fuse_ask
 
@@ -77,7 +80,7 @@ reads.
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 | `session` | string | null | Session id: omit files already returned under this id earlier in the session |
@@ -102,7 +105,7 @@ opt-in tier; the default ranking is pure BM25F and uses no model.
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 | `session` | string | null | Session id: omit files already returned under this id earlier in the session |
@@ -123,7 +126,7 @@ instead of reading the diff and then chasing callers by hand.
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 
@@ -143,7 +146,7 @@ Full-control .NET fusion with all options.
 | `maxFileSizeKb` | int | 0 | Maximum file size in KB; 0 means unlimited |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
 | `excludeUnitTestProjects` | bool | false | Skip only unit test project directories |
-| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `semanticMarkers` | bool | false | Prepend structural annotation comments |
 | `focus` | string | null | Type name, filename, or path to scope around |
 | `depth` | int | 1 | Dependency traversal depth for focus and query scoping |

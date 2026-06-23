@@ -5,7 +5,4 @@
         <Nullable>enable</Nullable>
         <UseFileScopedNamespaces>true</UseFileScopedNamespaces>
     </PropertyGroup>
-    <ItemGroup>
-        <ProjectReference Include="..\..\Core\Fuse.Collection\Fuse.Collection.csproj"/>
-    </ItemGroup>
 </Project>

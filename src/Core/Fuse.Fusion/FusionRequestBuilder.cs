@@ -321,8 +321,8 @@ public sealed class FusionRequestBuilder
     /// <summary>
     ///     Sets reduction cache behavior for the fusion run.
     /// </summary>
-    /// <param name="useCache">Whether to read and write <c>.fuse/cache/</c> entries.</param>
-    /// <param name="clearCache">Whether to clear cached entries before fusion runs.</param>
+    /// <param name="useCache">Whether to read and write reduction cache entries in <c>.fuse/fuse.db</c>.</param>
+    /// <param name="clearCache">Whether to clear cached reduction entries in <c>.fuse/fuse.db</c> before fusion runs.</param>
     /// <returns>The current builder instance.</returns>
     public FusionRequestBuilder WithReductionCacheOptions(bool useCache, bool clearCache = false)
     {
@@ -332,7 +332,7 @@ public sealed class FusionRequestBuilder
     }
 
     /// <summary>
-    ///     Enables or disables the persistent on-disk analysis index (<c>.fuse/index</c>).
+    ///     Enables or disables the persistent analysis index stored in <c>.fuse/fuse.db</c>.
     /// </summary>
     /// <param name="usePersistentIndex">Whether to cache per-file dependency and symbol analysis on disk.</param>
     /// <returns>The current builder instance.</returns>
@@ -408,7 +408,7 @@ public sealed class FusionRequestBuilder
             {
                 throw new InvalidOperationException(
                     "A ProjectTemplateRegistry is required to resolve template defaults. " +
-                    "Construct FusionRequestBuilder with a registry or register services via AddFuse.");
+                    "Construct FusionRequestBuilder with a registry or register services via AddFuseCore.");
             }
 
             var template = _templateRegistry.GetTemplate(_template!.Value);

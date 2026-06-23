@@ -1,0 +1,57 @@
+---
+title: Operator guide
+description: Managing the on-disk store, clearing namespaces, recovering from corruption, and MCP environment variables.
+---
+
+This page is for operators running Fuse as an MCP server or in CI: where derived data lives, how to reset it, and which environment variables affect agent-facing behavior. For key derivation and store layout, see [Caching Internals](/docs/internals/caching-internals).
+
+## fuse.db lifecycle
+
+All persistent derived data for a source tree lives in one SQLite file named `fuse.db`. Placement depends on whether the fusion source directory is inside a git repository:
+
+| Context | Path |
+|---------|------|
+| Inside a git repo | `{repoRoot}/.fuse/fuse.db` at the repository root, so every scoped call in the same repo (for example `src/` or an MCP `path` scoped to one project folder) shares one warm index |
+| Outside a git repo | `~/.fuse/fuse.db` (override the directory with `FUSE_USER_DATA`) |
+
+The database is created on the first write. One-shot CLI runs use the reduction namespace by default; analysis, postings, and vectors are written when `--index` is on (enabled automatically in watch mode and `fuse mcp serve`). The MCP server keeps the store open across tool calls, so a multi-call task pays analysis cost once.
+
+Deleting the store file is a full reset: all namespaces are gone and every namespace repopulates from scratch on the next run. Inside a git repo, delete `{repoRoot}/.fuse/fuse.db`; outside git, delete `~/.fuse/fuse.db` (or the path under `FUSE_USER_DATA` when set).
+
+## Version control
+
+Add `.fuse/` to your repository `.gitignore`. The directory holds derived cache data (like `bin/` or `obj/`): it can grow large, varies by machine, and is rebuilt on the next run. The Fuse repository ignores `.fuse/` itself; your project should too. Running `fuse init` inside a git repo appends `.fuse/` to `.gitignore` when the entry is missing.
+
+## Namespace purge
+
+| Action | Effect |
+|--------|--------|
+| Delete the store file (`{repoRoot}/.fuse/fuse.db` or `~/.fuse/fuse.db`) | Full reset of reduction, analysis, postings, and vectors |
+| `--clear-cache` | Clears only the `reduction` namespace before the run; analysis and relevance data remain |
+| `--no-cache` | Skips the reduction namespace for one run (no reads or writes); does not delete on disk |
+| `--index` off | Skips writing analysis, postings, and vectors for that run; existing index rows remain on disk |
+
+There is no per-namespace CLI flag beyond `--clear-cache` for reduction. To drop analysis or vectors without a full reset, delete the database file.
+
+## Corrupt recovery
+
+Every entry in `.fuse/fuse.db` is derived data. If SQLite reports a malformed database on open, Fuse deletes the file and recreates an empty database rather than failing the run. The next fusion repopulates whatever namespaces the run uses.
+
+If corruption persists after recreation, check filesystem permissions on `.fuse/` and that no other process holds a stale lock on the WAL files.
+
+## MCP environment variables
+
+These variables apply to the `fuse mcp serve` process (set them in the MCP client config or the shell that launches the server):
+
+| Variable | Effect |
+|----------|--------|
+| `FUSE_USER_DATA` | Directory for machine-wide Fuse data when fusing outside a git repository (default `~/.fuse`). The store file is `{FUSE_USER_DATA}/fuse.db`. Inside a git repo the store stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
+| `FUSE_EMBEDDINGS` | When `fuse_search` or `fuse_dotnet` runs with `rerank=true`, selects the embedding backend if no explicit `--embeddings` flag is set: `1` or `true` uses the semantic ONNX model; `0` or `false` forces the hashing embedding. Unset uses the build default. Falls back to hashing when the model is unavailable. |
+| `FUSE_EMBEDDINGS_MODEL_PATH` | Directory containing a sideloaded model (`model.onnx` and `vocab.txt`). When set, no download is attempted. |
+| `FUSE_CENTRALITY_WEIGHT` | Weight of the graph-centrality prior in focus and query ranking (default `0.15`). Set to `0` to disable. |
+
+Full semantics are in [Configuration Keys](/docs/reference/configuration-keys). Session-delta state (`session` on `fuse_focus` and `fuse_search`) is held in memory inside the running server only; it is not stored in `.fuse/fuse.db` and is lost when the process exits.
+
+## Next
+
+See [Caching Internals](/docs/internals/caching-internals) for keys and namespaces, or [Connect to your AI](/docs/start/connect-your-ai) for MCP client setup.

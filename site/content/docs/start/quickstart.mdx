@@ -11,14 +11,20 @@ terminal. The agent path is the primary use; the CLI walkthrough below is the lo
 
 ## Hand It to an Agent
 
-Start the MCP server and connect your client (Claude Code, Cursor, GitHub Copilot):
+Register Fuse with your client once. From your project root:
 
 ```bash
-fuse serve
+fuse mcp install
 ```
 
-Then the agent asks for the context a task needs in one call. Give `fuse_ask` a task and
-a token budget and it picks the scoping strategy and packs to fit:
+Your AI client (Claude Code, Cursor, or GitHub Copilot) then launches `fuse mcp serve`
+automatically when MCP is enabled. You do not run the server in a terminal yourself.
+Use `fuse mcp install --scope user` to register Fuse for every project on this machine.
+See [Connect to your AI](/docs/start/connect-your-ai) for per-client details.
+
+That collapses the explore phase into one scoped call instead of the agent opening file
+after file. Give `fuse_ask` a task and a token budget and it picks the scoping strategy
+and packs to fit:
 
 ```text
 fuse_ask(
@@ -28,8 +34,7 @@ fuse_ask(
 )
 ```
 
-That collapses the explore phase into one scoped call instead of the agent opening file
-after file. See [Connect to your AI](/docs/start/connect-your-ai) for client setup and
+See [Connect to your AI](/docs/start/connect-your-ai) for client setup and
 [Context for an agent](/docs/scenarios/context-for-an-agent) for the full workflow.
 
 ## Run One Command

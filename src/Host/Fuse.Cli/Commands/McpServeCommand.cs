@@ -15,7 +15,7 @@ namespace Fuse.Cli.Commands;
 [CliCommand(
     Name = "serve",
     Description = "Start the Fuse MCP server for AI agent integration. Communicates via stdio using the Model Context Protocol.",
-    Parent = typeof(FuseCliCommand))]
+    Parent = typeof(McpCommand))]
 public sealed class McpServeCommand
 {
     /// <summary>
@@ -69,7 +69,7 @@ public sealed class McpServeCommand
                 options.ServerInfo = new()
                 {
                     Name = "fuse",
-                    Version = "2.0.0"
+                    Version = "2.2.0"
                 };
                 options.ServerInstructions =
                     "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +

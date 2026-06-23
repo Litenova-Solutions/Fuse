@@ -3,7 +3,7 @@ title: Performance and Benchmarking
 description: How Fuse keeps fusion fast, what each performance feature does, and how to measure cold-start and pipeline timing.
 ---
 
-Fuse runs in two shapes with different performance profiles. One-shot commands such as `fuse dotnet` and `fuse init` pay a fixed cost on every invocation: process startup, dependency injection graph construction, and tokenizer initialization. On small repositories that fixed cost can dominate wall time. The long-running `fuse serve` (MCP) server stays resident, so startup is paid once per session and pipeline work dominates from then on. This page describes the features that govern fusion speed and the method for measuring it.
+Fuse runs in two shapes with different performance profiles. One-shot commands such as `fuse dotnet` and `fuse init` pay a fixed cost on every invocation: process startup, dependency injection graph construction, and tokenizer initialization. On small repositories that fixed cost can dominate wall time. The long-running `fuse mcp serve` (MCP) server stays resident, so startup is paid once per session and pipeline work dominates from then on. This page describes the features that govern fusion speed and the method for measuring it.
 
 This page is for engineers tuning a fusion run and maintainers comparing builds. A reader who only needs the timing numbers can skip to How To Run The Benchmarks.
 

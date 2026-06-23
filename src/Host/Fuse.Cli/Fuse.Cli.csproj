@@ -5,7 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AssemblyName>fuse</AssemblyName>
-        <Version>2.3.0</Version>
+        <Version>2.4.0</Version>
         <Product>Fuse</Product>
         <Description>A .NET-native codebase context optimizer for AI-assisted development. Fuse collects source files, reduces them for token efficiency, and emits a single structured payload that an agent or developer can consume in one call. Available as a global tool and an MCP server.</Description>
         <PackAsTool>true</PackAsTool>

@@ -64,6 +64,11 @@ public sealed class FileCollectionPipeline
         int parallelism,
         CancellationToken cancellationToken = default)
     {
+        // Explicit-file mode (the reduce path): collect exactly the caller-supplied paths and skip enumeration
+        // and filters. The caller chose these files deliberately, so include/exclude rules do not apply.
+        if (options.ExplicitFiles is { Count: > 0 })
+            return CollectExplicitFiles(options);
+
         var searchOption = options.Recursive
             ? SearchOption.AllDirectories
             : SearchOption.TopDirectoryOnly;
@@ -108,7 +113,38 @@ public sealed class FileCollectionPipeline
             .Select(entry => entry.File)
             .OrderBy(file => file.NormalizedRelativePath, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        // (explicit-file mode returns earlier; see CollectExplicitFiles)
 
         return new CollectionResult(sortedFiles, filePaths.Length);
+    }
+
+    // Builds source files from a caller-supplied path list, bypassing directory enumeration and the filters.
+    // Paths are resolved relative to SourceDirectory when not rooted; missing paths are skipped so a stale
+    // entry degrades the set rather than failing the run. Input order is preserved so the caller controls
+    // emission order.
+    private CollectionResult CollectExplicitFiles(CollectionOptions options)
+    {
+        var files = new List<SourceFile>();
+        var candidateCount = 0;
+
+        foreach (var raw in options.ExplicitFiles!)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                continue;
+
+            candidateCount++;
+            var fullPath = Path.IsPathRooted(raw)
+                ? Path.GetFullPath(raw)
+                : Path.GetFullPath(Path.Combine(options.SourceDirectory, raw));
+
+            var fileInfo = _fileSystem.GetFileInfo(fullPath);
+            if (!fileInfo.Exists)
+                continue;
+
+            var relativePath = _fileSystem.GetRelativePath(options.SourceDirectory, fullPath);
+            files.Add(new SourceFile(new FileCandidate(fullPath, relativePath, fileInfo)));
+        }
+
+        return new CollectionResult(files, candidateCount);
     }
 }

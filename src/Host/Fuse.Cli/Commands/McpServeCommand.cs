@@ -69,7 +69,7 @@ public sealed class McpServeCommand
                 options.ServerInfo = new()
                 {
                     Name = "fuse",
-                    Version = "2.3.0"
+                    Version = "2.4.0"
                 };
                 options.ServerInstructions =
                     "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +
@@ -83,7 +83,8 @@ public sealed class McpServeCommand
                     "- fuse_changes: Git diff-scoped fusion for PR review.\n" +
                     "- fuse_ask: Give a task and token budget; Fuse picks skeleton, focus, or search and packs to budget.\n" +
                     "- fuse_dotnet: Full-control .NET fusion with all options combined.\n" +
-                    "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n\n" +
+                    "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n" +
+                    "- fuse_reduce: Compact a specific set of files (or raw content) you already identified, without collecting a whole directory.\n\n" +
                     "RECOMMENDED WORKFLOW:\n" +
                     "1. Call fuse_toc (or fuse_skeleton) to survey the codebase at low token cost.\n" +
                     "2. Identify the relevant area from the tree and per-file token costs.\n" +

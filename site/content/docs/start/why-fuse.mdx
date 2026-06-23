@@ -120,7 +120,7 @@ different set of choices:
 - **Scoped, not fuzzy.** Scope a fusion to a type and its dependencies, the files a
   git diff touched, or the files a query ranks highest, expanded through a dependency
   graph, so the agent gets the relevant neighborhood whole rather than ranked chunks.
-- **MCP-native.** `fuse mcp serve` is a Model Context Protocol server with eight tools,
+- **MCP-native.** `fuse mcp serve` is a Model Context Protocol server with nine tools,
   so the agent fetches scoped context in one call instead of reading files
   one by one.
 
@@ -135,7 +135,7 @@ different set of choices:
 | Keeps the whole public API | Only by including everything | No, partial recall | 99 to 100 percent, verified |
 | Deterministic output | Yes | No, similarity-ranked | Yes |
 | Scope to a task | No | By query only | Type, git change, or query, with graph expansion |
-| Built for agents (MCP) | Rarely | Varies | Eight tools, built in |
+| Built for agents (MCP) | Rarely | Varies | Nine tools, built in |
 | Setup and freshness | None | Build and refresh an index | None, runs on demand |
 
 Fuse is complementary to the other two where their strengths lie. For a polyglot

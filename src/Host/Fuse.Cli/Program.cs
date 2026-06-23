@@ -40,6 +40,7 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<McpServeCommand>();
     services.AddTransient<ExplainCommand>();
     services.AddTransient<VerifyCommand>();
+    services.AddTransient<ReduceCommand>();
 });
 
 await Cli.RunAsync<FuseCliCommand>(args);

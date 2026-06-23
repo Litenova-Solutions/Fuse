@@ -6,7 +6,7 @@ description: Cap a fusion with a hard token limit, split it into parts, or find 
 **Goal:** keep a fusion within a fixed token budget so it fits the context window of the
 model you are feeding.
 
-## Cap with a hard limit
+## Cap with a Hard Limit
 
 ```bash
 fuse dotnet --directory ./src --level skeleton --max-tokens 100000
@@ -17,7 +17,7 @@ fusion the most relevant files are emitted first, so the files closest to the se
 the cut and the least relevant drop. Use it when the fusion must fit the window and partial
 content is acceptable.
 
-## Split instead of dropping
+## Split Instead of Dropping
 
 ```bash
 fuse dotnet --directory ./src --level aggressive --split-tokens 200000
@@ -27,7 +27,7 @@ fuse dotnet --directory ./src --level aggressive --split-tokens 200000
 exceed the threshold, rather than dropping anything. Use it when you want the whole fusion,
 delivered in pieces a model reads in sequence.
 
-## Find what to trim
+## Find What to Trim
 
 ```bash
 fuse dotnet --directory ./src --level aggressive --track-top-token-files
@@ -36,7 +36,7 @@ fuse dotnet --directory ./src --level aggressive --track-top-token-files
 `--track-top-token-files` reports the largest files after the run, so you know which to
 scope out or reduce further when you are over budget.
 
-## Match the tokenizer to the model
+## Match the Tokenizer to the Model
 
 ```bash
 fuse dotnet --directory ./src --level aggressive --tokenizer o200k_base --max-tokens 150000
@@ -46,7 +46,7 @@ A token count is only accurate against the tokenizer that produced it, so set `-
 to match the model the fusion is destined for. Supported names are in
 [Tokenizers](/docs/reference/tokenizers).
 
-## Suggested budgets
+## Suggested Budgets
 
 | Workflow | Command shape | Budget |
 |----------|---------------|--------|
@@ -55,13 +55,13 @@ to match the model the fusion is destined for. Supported names are in
 | Change review | `--changed-since` | 50k to 150k |
 | Full reduction | `--level aggressive` | 200k to 800k |
 
-## When to use it
+## When to Use It
 
 Set a budget whenever the fusion is destined for a model with a fixed window or when you
 are capping the cost of a run. `--max-tokens` enforces a ceiling by dropping content;
 `--split-tokens` keeps everything by dividing it.
 
-## Related concept
+## Related Concept
 
 How parts and budgets are written is in the
 [Output specification](/docs/reference/output-specification); choosing the smallest

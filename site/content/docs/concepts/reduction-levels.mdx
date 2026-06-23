@@ -11,7 +11,7 @@ the smallest level that still answers your task.
 The level is set with `--level <value>` on the CLI and the `level` parameter on the MCP
 tools. The default is `none`.
 
-## The five levels
+## The Five Levels
 
 | Level | What it does to C# | Use it when |
 |-------|--------------------|-------------|
@@ -65,7 +65,7 @@ compilation the regex skeleton can lose signatures; the
 only public and protected member signatures and drops the rest. Reach for it when you want
 the API surface alone.
 
-## The orthogonal flags
+## The Orthogonal Flags
 
 The level is the single dial for C# structural reduction. A set of other options are
 separate and orthogonal: they are not folded into the level and apply at any level. They
@@ -82,7 +82,7 @@ combine them explicitly:
 fuse dotnet --directory ./src --level aggressive --collapse-generated
 ```
 
-## Reduction is not deletion
+## Reduction Is Not Deletion
 
 The `none`, `standard`, and `aggressive` levels are designed to keep the public API. An
 independent Roslyn oracle confirms 99 to 100 percent of public types and methods survive,
@@ -90,7 +90,7 @@ and `fuse verify` reports the preserved surface for any run. The `skeleton` and
 `publicApi` levels make no claim of body fidelity, by design: they keep signatures and
 drop bodies.
 
-## Survey before you reduce
+## Survey Before You Reduce
 
 When you only need a map, the table-of-contents survey is cheaper still:
 

@@ -11,7 +11,7 @@ This page is for maintainers working on caching and for engineers diagnosing why
 
 The cache trades disk for compute. It is keyed so that any change to a file's content or to any reduction option produces a distinct entry, which means a stale entry cannot be served: a cache hit is only possible when both the content and the full reduction configuration match exactly. The cost is one small file per cached entry under the source root.
 
-## Location And Layout
+## Location and Layout
 
 The cache lives in a directory named `.fuse/cache` at the source root. Each entry is a single file, named from its key. The directory is created lazily on the first write, so a read-only or never-written cache leaves no directory behind.
 
@@ -33,7 +33,7 @@ flowchart LR
     E --> F[(.fuse/cache entry)]
 ```
 
-## Concurrency And Statistics
+## Concurrency and Statistics
 
 Within one run, cache operations are serialized under a single lock, so the cache is safe to share across the parallel reduction workers. Across concurrent runs over the same directory, each run holds its own cache instance, so safety comes from writing every entry to a unique temp file and atomically moving it into place, and from treating a read or write that loses a race as a miss. Because every entry for a given key is byte-identical, a lost write only forces a recomputation, never a wrong result. The run tracks hits and misses, reported at the end as `cache: N hit / M miss`.
 
@@ -41,7 +41,7 @@ Within one run, cache operations are serialized under a single lock, so the cach
 
 Two run-level flags govern the cache. The no-cache control bypasses it entirely for the run, so every file is reduced fresh and nothing is read or written. The clear-cache control empties the cache directory before the run begins, then proceeds normally, so the run repopulates it from scratch.
 
-## Distinct From The Single-Read Content Provider
+## Distinct from the Single-Read Content Provider
 
 ## The Persisted Relevance Index
 

@@ -2,9 +2,11 @@
   "title": "Concepts",
   "icon": "Lightbulb",
   "pages": [
+    "the-explore-phase",
     "how-fuse-works",
     "reduction-levels",
     "scoping",
+    "sessions-and-deltas",
     "precision-tier",
     "glossary"
   ]

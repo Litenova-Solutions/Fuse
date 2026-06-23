@@ -13,7 +13,7 @@ A template implements `IProjectTemplate`, which declares four members: a `Name`,
 
 Templates are discovered through dependency injection. At startup the template registry collects every registered `IProjectTemplate` and keys each one by its `Name`, which must match a value of the project template enumeration exactly. Resolution is by that enumeration value, and an unknown request falls back to the generic template. Existing templates live in the `Fuse.Collection` project under its templates directory and are worth reading as models.
 
-## Define The Template Class
+## Define the Template Class
 
 The following template describes a project type whose sources end in `.mylang`, with two build directories and one generated-file pattern to exclude. Extensions and directory names carry their natural form; extensions include the leading dot.
 

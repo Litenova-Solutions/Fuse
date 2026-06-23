@@ -2,6 +2,12 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 2.0 is a structural rewrite; backward compatibility with 1.x output is not a goal.
 
+## [2.2.1]
+
+### Fixed
+
+- **`fuse mcp install` no longer requires `--command`.** The optional `--command` option was inferred as required by the command framework, so `fuse mcp install` failed with `Option '--command' is required` unless a value was passed. It is now declared optional and defaults to the running fuse binary, as documented. (2.2.0 shipped with this regression; 2.2.0 is unusable for install without an explicit `--command`.)
+
 ## [2.2.0]
 
 Registering Fuse with an AI client is now one command, and the MCP surface is grouped under `fuse mcp`. The change is about setup ergonomics; the reduction, scoping, and emission paths are unchanged.

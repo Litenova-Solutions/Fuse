@@ -5,7 +5,7 @@ description: Install the Fuse global tool from NuGet, or grab a self-contained b
 
 Fuse is a developer tool for .NET developers, so the recommended install is the
 .NET global tool. If you do not have the .NET SDK, there is a self-contained
-binary that needs nothing else.
+binary that bundles the .NET runtime and needs nothing else on the machine.
 
 ## Recommended: The .NET Global Tool
 
@@ -38,7 +38,7 @@ dnx Fuse -- serve
 
 ## Without the .NET SDK
 
-These give you a single self-contained binary (Native AOT, no runtime required).
+These give you a single self-contained binary with the .NET runtime bundled.
 Linux x64 and Windows x64 are published; on macOS use the .NET global tool above.
 
 ### Install Script

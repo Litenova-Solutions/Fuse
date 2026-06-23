@@ -19,7 +19,7 @@ public sealed class FusionOrchestratorSessionTests : IDisposable
         File.WriteAllText(Path.Combine(_sourceDirectory, "B.cs"), "public class B { }");
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

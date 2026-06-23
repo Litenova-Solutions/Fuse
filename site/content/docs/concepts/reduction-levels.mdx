@@ -55,9 +55,8 @@ fidelity, which makes it the dependable cut.
 
 `--level skeleton` drops method bodies entirely and emits class, interface, and method
 signatures only. It is the deepest cut, 66 to 93 percent on the corpus, and it is an
-architecture map, not a substitute for the source. On a codebase with heavy conditional
-compilation the regex skeleton can lose signatures; the
-[precision tier](/docs/concepts/precision-tier) fixes that.
+architecture map, not a substitute for the source. On the benchmark corpus it removes
+66 to 93 percent of tokens and keeps method signatures via Roslyn syntax analysis.
 
 ### publicApi
 

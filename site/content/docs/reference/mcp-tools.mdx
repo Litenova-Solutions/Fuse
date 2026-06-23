@@ -82,7 +82,7 @@ reads.
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 | `session` | string | null | Session id: omit files already returned under this id earlier in the session |
 
-A `focus` of the form `Type.Member` scopes the seed file to that member when the precision tier is active (the server is started with `FUSE_SEMANTIC`).
+A `focus` of the form `Type.Member` scopes the seed file to that member, keeping its body in full and reducing the rest of the file to signatures.
 
 ## fuse_search
 

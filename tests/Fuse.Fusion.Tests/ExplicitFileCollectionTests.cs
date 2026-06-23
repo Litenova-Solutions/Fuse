@@ -19,7 +19,7 @@ public sealed class ExplicitFileCollectionTests : IDisposable
         File.WriteAllText(Path.Combine(_dir, "C.cs"), "namespace N; public class C { }");
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

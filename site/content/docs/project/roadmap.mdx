@@ -9,13 +9,18 @@ This page is for stakeholders gauging direction and engineers deciding where new
 
 ## Planned Themes
 
-- Accuracy through semantic analysis. An opt-in Roslyn-backed plugin would provide accurate dependency extraction, skeleton extraction, and type location behind the existing capability registry, replacing the best-effort regex graph in a precision mode. The regex plugin stays the AOT-fast default.
-- Symbol-level scoping. Emit only the relevant members of a large file rather than the whole file, which depends on precise member resolution from semantic analysis.
-- A persistent incremental index. Keep the dependency graph and search index on disk under `.fuse/index`, keyed by content hash and updated incrementally, so an agent making several calls in one task pays the index cost once.
 - An auto-scope tool. A single MCP tool that takes a natural-language task and a token budget, decides internally between skeleton, focus, and search, then packs the result to the budget.
 - Session-delta emission. A session-aware mode that tracks what was already sent and emits only new material across turns.
-- Hybrid retrieval. Optional on-disk vectors that rerank search candidates so intent-based queries resolve even when they do not match lexically.
+- Hybrid retrieval with learned embeddings. Optional ONNX vectors that rerank search candidates so intent-based queries resolve even when they do not match lexically; the plug point exists today with a hashing default.
 - An eval harness. Extend the benchmark fixtures into a task-success measurement that compares tokens-to-correct-answer with and without Fuse.
+
+## Recently Shipped (no longer on the roadmap)
+
+These items moved to the [Changelog](/docs/project/changelog) when they shipped:
+
+- Roslyn structural analysis for C# (skeleton, dependency graph, type location, outlines, route maps, semantic markers) is the default path; regex remains for content reduction, the project graph, and pattern detectors.
+- Symbol-level scoping (`Type.Member` focus seeds and member-granularity query retrieval).
+- A persistent SQLite store at `.fuse/fuse.db` for reduction output, analysis, relevance tokens, and optional embedding vectors, replacing the former `.fuse/cache` and `.fuse/index` directories.
 
 ## How This Relates to Shipped Work
 

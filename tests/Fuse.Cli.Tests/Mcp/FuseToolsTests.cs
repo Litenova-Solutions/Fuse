@@ -164,7 +164,7 @@ public sealed class FuseToolsTests
 
     private static (FusionOrchestrator, ProjectTemplateRegistry) BuildServices()
     {
-        var provider = new ServiceCollection().AddFuse().BuildServiceProvider();
+        var provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
         return (
             provider.GetRequiredService<FusionOrchestrator>(),
             provider.GetRequiredService<ProjectTemplateRegistry>());

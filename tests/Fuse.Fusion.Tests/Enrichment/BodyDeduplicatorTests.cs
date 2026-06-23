@@ -48,7 +48,7 @@ public sealed class BodyDeduplicatorTests : IDisposable
             """);
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

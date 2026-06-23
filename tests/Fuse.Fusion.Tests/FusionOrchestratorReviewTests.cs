@@ -33,7 +33,7 @@ public sealed class FusionOrchestratorReviewTests : IDisposable
             "public class Order\n{\n    public int Id { get; set; }\n    public string Name { get; set; }\n}");
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

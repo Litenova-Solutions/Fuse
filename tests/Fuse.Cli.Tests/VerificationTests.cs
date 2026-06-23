@@ -3,48 +3,6 @@ using Fuse.Emission.Models;
 
 namespace Fuse.Cli.Tests;
 
-public sealed class RegexApiSurfaceAnalyzerTests
-{
-    private readonly RegexApiSurfaceAnalyzer _analyzer = new();
-
-    [Fact]
-    public void Collect_ExtractsPublicTypesMethodsAndRoutes()
-    {
-        const string source = """
-            using Microsoft.AspNetCore.Mvc;
-            [Route("api/orders")]
-            public class OrdersController
-            {
-                [HttpGet("{id}")]
-                public IActionResult Get(int id) => Ok();
-                private void Helper() { }
-            }
-            """;
-
-        var types = new HashSet<string>();
-        var methods = new HashSet<string>();
-        var routes = new HashSet<string>();
-        _analyzer.Collect(source, types, methods, routes);
-
-        Assert.Contains("OrdersController", types);
-        Assert.Contains("Get", methods);
-        Assert.DoesNotContain("Helper", methods); // private
-        Assert.Contains("api/orders", routes);
-        Assert.Contains("{id}", routes);
-    }
-
-    [Fact]
-    public void Collect_IgnoresTypeNamesInComments()
-    {
-        const string source = "// public class GhostType\npublic class Real { }";
-        var types = new HashSet<string>();
-        _analyzer.Collect(source, types, new HashSet<string>(), new HashSet<string>());
-
-        Assert.Contains("Real", types);
-        Assert.DoesNotContain("GhostType", types);
-    }
-}
-
 public sealed class ApiSurfaceAnalyzerFactoryTests
 {
     [Fact]
@@ -54,19 +12,17 @@ public sealed class ApiSurfaceAnalyzerFactoryTests
     }
 
     [Fact]
-    public void BackendName_IsRegexOrRoslyn()
+    public void BackendName_IsRoslyn()
     {
-        // The backend is selected at compile time by the FUSE_ROSLYN constant: "roslyn" for the
-        // framework-dependent build, "regex" for the AOT build. Both are valid; assert it is one of them.
-        Assert.True(ApiSurfaceAnalyzerFactory.BackendName is "regex" or "roslyn");
+        Assert.Equal("roslyn", ApiSurfaceAnalyzerFactory.BackendName);
     }
 
     [Fact]
-    public void BackendName_MatchesAnalyzerImplementation()
+    public void Create_ReturnsAnalyzerWithRoslynBackend()
     {
         var analyzer = ApiSurfaceAnalyzerFactory.Create();
-        var expectedRegex = ApiSurfaceAnalyzerFactory.BackendName == "regex";
-        Assert.Equal(expectedRegex, analyzer is RegexApiSurfaceAnalyzer);
+        Assert.NotNull(analyzer);
+        Assert.Equal("roslyn", ApiSurfaceAnalyzerFactory.BackendName);
     }
 }
 

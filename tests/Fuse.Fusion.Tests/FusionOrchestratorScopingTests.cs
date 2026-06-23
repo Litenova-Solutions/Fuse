@@ -40,7 +40,7 @@ public sealed class FusionOrchestratorScopingTests : IDisposable
             """);
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -144,7 +144,7 @@ public sealed class FusionOrchestratorScopingTests : IDisposable
     public async Task FuseAsync_ChangedPathNotInCollection_ExcludesPath()
     {
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         services.AddSingleton<IChangeDetector>(new StubChangeDetector(["Seed.cs", "Outside.py"]));
         await using var provider = services.BuildServiceProvider();
 

@@ -6,9 +6,9 @@ namespace Fuse.Fusion.Retrieval;
 /// </summary>
 /// <remarks>
 ///     The default implementation is a deterministic lexical hashing embedding that needs no model file or
-///     network, so it is Native AOT compatible. The interface is the extension point for a learned embedding
-///     model: replacing the registration swaps in semantic vectors without changing the reranker. Vectors are
-///     L2-normalized, so similarity is the dot product.
+///     network. The interface is the extension point for a learned embedding model: replacing the registration
+///     swaps in semantic vectors without changing the reranker. Vectors are L2-normalized, so similarity is the
+///     dot product.
 /// </remarks>
 public interface IEmbeddingModel
 {

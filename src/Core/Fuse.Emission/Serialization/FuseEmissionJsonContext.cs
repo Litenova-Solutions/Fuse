@@ -8,7 +8,7 @@ namespace Fuse.Emission.Serialization;
 /// </summary>
 /// <remarks>
 ///     Serializes <see cref="JsonManifestDto" /> and <see cref="JsonFileEntryDto" /> with camelCase
-///     property names, omitting null values. Used for AOT-safe JSON emission.
+///     property names, omitting null values. Used for source-generated JSON emission.
 /// </remarks>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

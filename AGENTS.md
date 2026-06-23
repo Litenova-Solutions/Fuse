@@ -24,12 +24,13 @@ dotnet test Fuse.slnx -c Release --no-build
 dotnet format Fuse.slnx --verify-no-changes
 ```
 
-Build first, then test with `--no-build`. CI verifies all three plus a Native AOT publish for win-x64 and linux-x64.
+Build first, then test with `--no-build`. CI verifies build, test, format, and a self-contained publish smoke test for win-x64 and linux-x64.
 
 ## Design Invariants
 
-- The default regex/BM25 path is Native AOT clean: `IL2026` and `IL3050` are errors under `PublishAot`, and the default path uses no runtime reflection.
-- The Roslyn precision tier and the vector reranker are opt-in and isolated. The Roslyn assembly is excluded from the AOT package (`Condition` on `PublishAot != 'true'`, call sites gated by `FUSE_ROSLYN`); the AOT binary falls back to the regex analyzer.
+- C# structural analysis (skeleton, outline, dependency, type-name, route map, semantic markers, symbol slice) uses Roslyn syntax parsing. Regex remains for lexer-based reduction, project-graph parsing, format reducers, pattern detectors, and secret redaction.
+- The ONNX embedding reranker is opt-in behind `--embeddings` or `FUSE_EMBEDDINGS`; the default hashing embedding needs no model download.
+- Persistent cache and index data live in a single SQLite file at `.fuse/fuse.db` (WAL mode).
 - JSON uses source-generated `JsonSerializerContext` only (no reflection serialization).
 
 ## MCP Tools
@@ -42,7 +43,7 @@ All numbers come from `tests/benchmarks/results` (the recorded data) and the ben
 
 - Token reduction at full API fidelity: default 7 to 10 percent, `--all` 21 to 40 percent, keeping 99 to 100 percent of public types and methods. Skeleton mode removes 66 to 93 percent.
 - Change scoping recall 88 percent at 61 percent precision over 24 real merged PRs; all scoping modes beat a grep baseline (38 percent).
-- The opt-in Roslyn tier keeps 100 percent of method signatures, including Newtonsoft.Json where the regex skeleton kept 4 percent.
+- The Roslyn skeleton keeps 100 percent of method signatures, including Newtonsoft.Json where the regex skeleton kept 4 percent.
 - The persistent analysis index roughly halves warm-call wall-clock.
 - Context acquisition (layer 4, the same 24 PRs, 50,000 token budget): one scoped `fuse --query` call delivers the task's files in about 40,000 tokens at 51 percent recall, against a generic-packer (Repomix) dump of about 512,000 tokens at the same one call, and against about 494,000 tokens to read the repository blind. Couple Fuse's tokens with recall: 40,000 tokens at 51 percent recall is the honest pairing, and the change-scoping mode reaches 88 percent recall when a git base is available.
 

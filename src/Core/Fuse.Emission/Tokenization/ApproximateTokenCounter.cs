@@ -12,7 +12,7 @@ namespace Fuse.Emission.Tokenization;
 ///     <c>ceil(length / charsPerToken)</c> tokens and each other non-whitespace character costs one token.
 ///     The result is an estimate for budgeting, not an exact count. Use an OpenAI encoding (<c>o200k_base</c>,
 ///     <c>cl100k_base</c>) for exact offline counts, or the provider API for an exact provider-specific count.
-///     The estimate is deterministic and allocation-light, with no reflection, so it is safe under AOT.
+///     The estimate is deterministic and allocation-light, with no reflection.
 /// </remarks>
 public sealed class ApproximateTokenCounter : ITokenCounter
 {

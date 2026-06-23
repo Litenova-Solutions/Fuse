@@ -5,10 +5,8 @@ namespace Fuse.Cli.Verification;
 ///     templates) from C# source for the <c>fuse verify</c> command.
 /// </summary>
 /// <remarks>
-///     Two implementations exist: a Roslyn syntax-only analyzer used in the framework-dependent tool, and an
-///     AOT-clean regex analyzer used when the tool is published with Native AOT (where Roslyn is excluded).
-///     Both extract the same categories so the command behaves consistently; the Roslyn analyzer is the more
-///     accurate of the two.
+///     Implemented by <see cref="RoslynApiSurfaceAnalyzer" />, which parses each file's syntax tree without
+///     semantic binding or metadata references.
 /// </remarks>
 public interface IApiSurfaceAnalyzer
 {

@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Fuse.Emission.Serialization;
 
 /// <summary>
-///     Serializes an API-surface verification result to JSON using the source-generated, AOT-safe context.
+///     Serializes an API-surface verification result to JSON using the source-generated context.
 /// </summary>
 /// <remarks>
 ///     Accepts primitive counts rather than a domain type so that the CLI verification types need not be

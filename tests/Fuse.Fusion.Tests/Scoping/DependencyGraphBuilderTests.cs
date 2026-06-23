@@ -1,6 +1,6 @@
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
-using Fuse.Plugins.Languages.CSharp.Dependencies;
+using Fuse.Plugins.Languages.CSharp.Roslyn;
 using Fuse.Fusion.Scoping;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
@@ -10,10 +10,10 @@ namespace Fuse.Fusion.Tests.Scoping;
 public class DependencyGraphBuilderTests
 {
     private static readonly CapabilityRegistry<IDependencyExtractor> Extractors =
-        new([new CSharpDependencyExtractor()]);
+        new([new RoslynDependencyExtractor()]);
 
     private static readonly CapabilityRegistry<ITypeNameLocator> TypeLocators =
-        new([new CSharpTypeNameLocator()]);
+        new([new RoslynTypeNameLocator()]);
 
     [Fact]
     public async Task BuildAsync_TwoFiles_FirstReferencesSecond_BuildsEdge()

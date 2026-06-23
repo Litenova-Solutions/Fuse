@@ -51,7 +51,7 @@ public sealed class FusionOrchestrator
     private readonly Retrieval.IEmbeddingModel _embeddingModel;
     private readonly IRouteMapGenerator? _routeMapGenerator;
     private readonly IProjectGraphGenerator? _projectGraphGenerator;
-    private readonly IReductionCacheFactory _reductionCacheFactory;
+    private readonly IFuseStoreFactory _fuseStoreFactory;
     private readonly IGitStatsProvider _gitStatsProvider;
     private readonly Enrichment.BoilerplateDeduplicator _boilerplateDeduplicator;
     private readonly Enrichment.BodyDeduplicator _bodyDeduplicator;
@@ -95,7 +95,7 @@ public sealed class FusionOrchestrator
         CapabilityRegistry<ISymbolChunkExtractor> chunkExtractors,
         Func<IRelevanceIndex> relevanceIndexFactory,
         Retrieval.IEmbeddingModel embeddingModel,
-        IReductionCacheFactory reductionCacheFactory,
+        IFuseStoreFactory fuseStoreFactory,
         IGitStatsProvider gitStatsProvider,
         Enrichment.BoilerplateDeduplicator boilerplateDeduplicator,
         Enrichment.BodyDeduplicator bodyDeduplicator,
@@ -121,7 +121,7 @@ public sealed class FusionOrchestrator
         _chunkExtractors = chunkExtractors;
         _relevanceIndexFactory = relevanceIndexFactory;
         _embeddingModel = embeddingModel;
-        _reductionCacheFactory = reductionCacheFactory;
+        _fuseStoreFactory = fuseStoreFactory;
         _gitStatsProvider = gitStatsProvider;
         _boilerplateDeduplicator = boilerplateDeduplicator;
         _bodyDeduplicator = bodyDeduplicator;
@@ -171,147 +171,164 @@ public sealed class FusionOrchestrator
         var tokenCounter = _tokenizerFactory.GetCounter(request.Emission.TokenizerModel);
         var entryFormatter = EntryFormatterFactory.Create(request.Emission.Format);
 
-        var collectionResult = await _collectionPipeline.CollectAsync(
-            request.Collection,
-            parallelism,
-            cancellationToken);
+        IKeyValueStore? fuseStore = null;
+        IReductionCache? reductionCache = null;
+        Indexing.IAnalysisIndex? analysisIndex = null;
 
-        var analysisIndex = request.UsePersistentIndex
-            ? new Indexing.DiskAnalysisIndex(request.Collection.SourceDirectory)
-            : null;
-
-        var filterResult = await FilterFilesAsync(request, collectionResult.Files, parallelism, analysisIndex, contentProvider, cancellationToken);
-        if (filterResult is null)
-            return CreateEmptyChangeResult(request);
-
-        var reductionCache = request.UseReductionCache
-            ? _reductionCacheFactory.Create(
-                request.Collection.SourceDirectory,
-                enabled: true,
-                clearBeforeRun: request.ClearReductionCache)
-            : null;
-
-        var reducedContent = await _reductionPipeline.ReduceAsync(
-            filterResult.Files,
-            request.Reduction,
-            contentProvider,
-            parallelism,
-            reductionCache,
-            tokenCounter,
-            cancellationToken);
-
-        // Symbol-level scoping: slice the focus seed file(s) to the requested member before any other emission
-        // step, so token costs and downstream notes reflect the slice.
-        if (filterResult.Slice is not null)
-            reducedContent = await ApplySymbolSliceAsync(reducedContent, filterResult.Slice, contentProvider, tokenCounter, cancellationToken);
-
-        // Symbol-level packing (query path): for each query-matched file, keep the members that ranked in full
-        // and collapse the rest of the host type to signatures.
-        if (filterResult.SelectedMembers is { Count: > 0 })
-            reducedContent = await ApplyThinSkeletonAsync(reducedContent, filterResult.SelectedMembers, contentProvider, tokenCounter, cancellationToken);
-
-        // Table-of-contents mode replaces body emission with a structural map. It runs after scoping and
-        // reduction so the listed files and per-file token costs match what a full fetch would cost.
-        if (request.Emission.TableOfContents)
+        if (request.UseReductionCache || request.UsePersistentIndex)
         {
-            var tocResult = await EmitTableOfContentsAsync(reducedContent, request, contentProvider, tokenCounter, cancellationToken);
-            return WithReductionCacheStats(tocResult, reductionCache);
+            fuseStore = _fuseStoreFactory.Open(request.Collection.SourceDirectory);
+
+            if (request.UsePersistentIndex)
+                analysisIndex = new Indexing.SqliteAnalysisIndex(fuseStore);
+
+            if (request.UseReductionCache)
+            {
+                reductionCache = new SqliteReductionCache(fuseStore);
+                if (request.ClearReductionCache)
+                    reductionCache.Clear();
+            }
         }
 
-        // Session-delta mode drops files whose identical content was already emitted earlier in the session, so
-        // a multi-call task does not pay to resend material the agent already holds.
-        string? sessionNote = null;
-        if (!string.IsNullOrEmpty(request.Emission.SessionId))
-            (reducedContent, sessionNote) = ApplySessionDelta(reducedContent, request.Emission.SessionId);
-
-        string? headerPreamble = null;
-        if (request.Emission.DeduplicateHeaders)
-        {
-            var dedup = _boilerplateDeduplicator.Deduplicate(reducedContent, tokenCounter);
-            reducedContent = dedup.Content;
-            headerPreamble = dedup.Preamble;
-        }
-
-        // Near-duplicate member bodies are emitted once and referenced by a marker elsewhere; the canonical
-        // copy stays in place, so no preamble is needed. Runs before packing so the budget sees the saved
-        // tokens.
-        if (request.Emission.DeduplicateBodies)
-            reducedContent = _bodyDeduplicator.Deduplicate(reducedContent, tokenCounter).Content;
-
-        if (request.Emission.IncludeProvenance && filterResult.Provenance is not null)
-            reducedContent = AttachProvenance(reducedContent, filterResult.Provenance, filterResult.SelectedMembers);
-
-        if (filterResult.Scores is not null)
-            reducedContent = AttachRelevance(reducedContent, filterResult.Scores);
-
-        // Reduction-aware single-pass packing: for focus and query runs under a token budget, select the
-        // entries to emit by real reduced token cost (relevance-per-token) rather than letting emission cut a
-        // set that expansion had already starved with a byte estimate.
-        if ((request.Focus is not null || request.Query is not null) &&
-            request.Emission.MaxTokens is { } maxTokens)
-        {
-            reducedContent = ReductionAwarePacker.Pack(
-                reducedContent, maxTokens, EmissionPipeline.MarkerOverheadTokens);
-        }
-
-        PatternSummary? patternSummary = null;
-        if (request.Reduction.IncludePatternSummary)
-            patternSummary = DetectPatterns(reducedContent);
-
-        GitStatsResult? gitStats = null;
-        if (request.Emission.IncludeGitStats)
-        {
-            var paths = reducedContent
-                .Where(c => !c.IsTrivial)
-                .Select(c => c.NormalizedPath)
-                .ToArray();
-            gitStats = await _gitStatsProvider.GetStatsAsync(
-                request.Collection.SourceDirectory,
-                paths,
-                cancellationToken);
-        }
-
-        IOutputWriter writer = request.InMemory
-            ? new InMemoryOutputWriter(request.Emission, tokenCounter, entryFormatter)
-            : new DiskOutputWriter(request.Emission, tokenCounter, entryFormatter);
-
-        FusionResult emissionResult;
         try
         {
-            emissionResult = await _emissionPipeline.EmitAsync(
-                reducedContent,
-                request.Emission,
-                writer,
-                request.Emission.IncludeManifest ? patternSummary : null,
-                request.Emission.IncludeManifest ? gitStats : null,
+            var collectionResult = await _collectionPipeline.CollectAsync(
+                request.Collection,
+                parallelism,
                 cancellationToken);
+
+            var filterResult = await FilterFilesAsync(
+                request, collectionResult.Files, parallelism, analysisIndex, fuseStore, contentProvider, cancellationToken);
+            if (filterResult is null)
+                return CreateEmptyChangeResult(request);
+
+            var reducedContent = await _reductionPipeline.ReduceAsync(
+                filterResult.Files,
+                request.Reduction,
+                contentProvider,
+                parallelism,
+                reductionCache,
+                tokenCounter,
+                cancellationToken);
+
+            // Symbol-level scoping: slice the focus seed file(s) to the requested member before any other emission
+            // step, so token costs and downstream notes reflect the slice.
+            if (filterResult.Slice is not null)
+                reducedContent = await ApplySymbolSliceAsync(reducedContent, filterResult.Slice, contentProvider, tokenCounter, cancellationToken);
+
+            // Symbol-level packing (query path): for each query-matched file, keep the members that ranked in full
+            // and collapse the rest of the host type to signatures.
+            if (filterResult.SelectedMembers is { Count: > 0 })
+                reducedContent = await ApplyThinSkeletonAsync(reducedContent, filterResult.SelectedMembers, contentProvider, tokenCounter, cancellationToken);
+
+            // Table-of-contents mode replaces body emission with a structural map. It runs after scoping and
+            // reduction so the listed files and per-file token costs match what a full fetch would cost.
+            if (request.Emission.TableOfContents)
+            {
+                var tocResult = await EmitTableOfContentsAsync(reducedContent, request, contentProvider, tokenCounter, cancellationToken);
+                return WithReductionCacheStats(tocResult, reductionCache);
+            }
+
+            // Session-delta mode drops files whose identical content was already emitted earlier in the session, so
+            // a multi-call task does not pay to resend material the agent already holds.
+            string? sessionNote = null;
+            if (!string.IsNullOrEmpty(request.Emission.SessionId))
+                (reducedContent, sessionNote) = ApplySessionDelta(reducedContent, request.Emission.SessionId);
+
+            string? headerPreamble = null;
+            if (request.Emission.DeduplicateHeaders)
+            {
+                var dedup = _boilerplateDeduplicator.Deduplicate(reducedContent, tokenCounter);
+                reducedContent = dedup.Content;
+                headerPreamble = dedup.Preamble;
+            }
+
+            // Near-duplicate member bodies are emitted once and referenced by a marker elsewhere; the canonical
+            // copy stays in place, so no preamble is needed. Runs before packing so the budget sees the saved
+            // tokens.
+            if (request.Emission.DeduplicateBodies)
+                reducedContent = _bodyDeduplicator.Deduplicate(reducedContent, tokenCounter).Content;
+
+            if (request.Emission.IncludeProvenance && filterResult.Provenance is not null)
+                reducedContent = AttachProvenance(reducedContent, filterResult.Provenance, filterResult.SelectedMembers);
+
+            if (filterResult.Scores is not null)
+                reducedContent = AttachRelevance(reducedContent, filterResult.Scores);
+
+            // Reduction-aware single-pass packing: for focus and query runs under a token budget, select the
+            // entries to emit by real reduced token cost (relevance-per-token) rather than letting emission cut a
+            // set that expansion had already starved with a byte estimate.
+            if ((request.Focus is not null || request.Query is not null) &&
+                request.Emission.MaxTokens is { } maxTokens)
+            {
+                reducedContent = ReductionAwarePacker.Pack(
+                    reducedContent, maxTokens, EmissionPipeline.MarkerOverheadTokens);
+            }
+
+            PatternSummary? patternSummary = null;
+            if (request.Reduction.IncludePatternSummary)
+                patternSummary = DetectPatterns(reducedContent);
+
+            GitStatsResult? gitStats = null;
+            if (request.Emission.IncludeGitStats)
+            {
+                var paths = reducedContent
+                    .Where(c => !c.IsTrivial)
+                    .Select(c => c.NormalizedPath)
+                    .ToArray();
+                gitStats = await _gitStatsProvider.GetStatsAsync(
+                    request.Collection.SourceDirectory,
+                    paths,
+                    cancellationToken);
+            }
+
+            IOutputWriter writer = request.InMemory
+                ? new InMemoryOutputWriter(request.Emission, tokenCounter, entryFormatter)
+                : new DiskOutputWriter(request.Emission, tokenCounter, entryFormatter);
+
+            FusionResult emissionResult;
+            try
+            {
+                emissionResult = await _emissionPipeline.EmitAsync(
+                    reducedContent,
+                    request.Emission,
+                    writer,
+                    request.Emission.IncludeManifest ? patternSummary : null,
+                    request.Emission.IncludeManifest ? gitStats : null,
+                    cancellationToken);
+            }
+            finally
+            {
+                if (writer is IAsyncDisposable disposable)
+                    await disposable.DisposeAsync();
+            }
+
+            emissionResult = await ApplyStructuralMapsAsync(emissionResult, collectionResult.Files, request, contentProvider, cancellationToken);
+
+            if (request.Reduction.IncludeRedactReport)
+                emissionResult = await ApplyRedactReportAsync(emissionResult, reducedContent);
+
+            if (request.Reduction.IncludePatternSummary && !request.Emission.IncludeManifest)
+                emissionResult = await ApplyPatternSummaryAsync(emissionResult, patternSummary);
+
+            if (headerPreamble is not null)
+                emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, headerPreamble);
+
+            // The review map goes to the very top so a reviewer sees what changed and who calls it before the
+            // file bodies that follow.
+            if (!string.IsNullOrEmpty(filterResult.Preamble))
+                emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, filterResult.Preamble);
+
+            if (!string.IsNullOrEmpty(sessionNote))
+                emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, sessionNote);
+
+            return WithReductionCacheStats(emissionResult, reductionCache);
         }
         finally
         {
-            if (writer is IAsyncDisposable disposable)
-                await disposable.DisposeAsync();
+            if (fuseStore is not null)
+                await fuseStore.DisposeAsync();
         }
-
-        emissionResult = await ApplyStructuralMapsAsync(emissionResult, collectionResult.Files, request, contentProvider, cancellationToken);
-
-        if (request.Reduction.IncludeRedactReport)
-            emissionResult = await ApplyRedactReportAsync(emissionResult, reducedContent);
-
-        if (request.Reduction.IncludePatternSummary && !request.Emission.IncludeManifest)
-            emissionResult = await ApplyPatternSummaryAsync(emissionResult, patternSummary);
-
-        if (headerPreamble is not null)
-            emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, headerPreamble);
-
-        // The review map goes to the very top so a reviewer sees what changed and who calls it before the
-        // file bodies that follow.
-        if (!string.IsNullOrEmpty(filterResult.Preamble))
-            emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, filterResult.Preamble);
-
-        if (!string.IsNullOrEmpty(sessionNote))
-            emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, sessionNote);
-
-        return WithReductionCacheStats(emissionResult, reductionCache);
     }
 
     // Attaches the dependency hop chain to each file, and for files that were scoped to specific members
@@ -489,6 +506,7 @@ public sealed class FusionOrchestrator
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
         Indexing.IAnalysisIndex? index,
+        IKeyValueStore? fuseStore,
         ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
@@ -499,7 +517,7 @@ public sealed class FusionOrchestrator
             return await FilterByChangesAsync(request, files, parallelism, index, contentProvider, cancellationToken);
 
         if (request.Query is not null)
-            return await FilterByQueryAsync(request, files, parallelism, index, contentProvider, cancellationToken);
+            return await FilterByQueryAsync(request, files, parallelism, index, fuseStore, contentProvider, cancellationToken);
 
         return new FilteredFileSet(files, null, null);
     }
@@ -566,6 +584,7 @@ public sealed class FusionOrchestrator
         IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
         int parallelism,
         Indexing.IAnalysisIndex? index,
+        IKeyValueStore? fuseStore,
         ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
@@ -594,8 +613,8 @@ public sealed class FusionOrchestrator
         // the persistent index is enabled, body tokenization is cached on disk by content hash so a warm query
         // against an unchanged tree skips re-tokenizing files it has already indexed.
         var relevanceIndex = _relevanceIndexFactory();
-        var postingsStore = request.UsePersistentIndex
-            ? new Indexing.DiskRelevancePostingsStore(request.Collection.SourceDirectory)
+        var postingsStore = request.UsePersistentIndex && fuseStore is not null
+            ? new Indexing.SqliteRelevancePostingsStore(fuseStore)
             : null;
         relevanceIndex.Index(documents, postingsStore);
         var ranked = relevanceIndex.RankScored(request.Query!.Query, request.Query.TopFiles);
@@ -609,7 +628,7 @@ public sealed class FusionOrchestrator
         // Hybrid retrieval: rerank the BM25 candidates by embedding-vector similarity. BM25 stays the recall
         // stage, so a candidate it did not select cannot appear here; vectors only reorder.
         if (request.Query.Rerank)
-            ranked = RerankCandidates(request, documents, ranked);
+            ranked = RerankCandidates(request, documents, ranked, fuseStore);
 
         var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
 
@@ -723,10 +742,11 @@ public sealed class FusionOrchestrator
     private IReadOnlyList<RankedFile> RerankCandidates(
         FusionRequest request,
         IReadOnlyDictionary<string, IndexedDocument> documents,
-        IReadOnlyList<RankedFile> ranked)
+        IReadOnlyList<RankedFile> ranked,
+        IKeyValueStore? fuseStore)
     {
-        Retrieval.IVectorStore? store = request.UsePersistentIndex
-            ? new Retrieval.DiskVectorStore(request.Collection.SourceDirectory, _embeddingModel.Dimensions)
+        Retrieval.IVectorStore? vectorStore = request.UsePersistentIndex && fuseStore is not null
+            ? new Retrieval.SqliteVectorStore(fuseStore, _embeddingModel.Dimensions)
             : null;
 
         var candidates = new List<Retrieval.RerankCandidate>(ranked.Count);
@@ -740,13 +760,13 @@ public sealed class FusionOrchestrator
             var bodyPrefix = document.Content.Length > 2000 ? document.Content[..2000] : document.Content;
             var text = $"{symbols}\n{document.Path}\n{bodyPrefix}";
 
-            var cacheKey = store is null
+            var cacheKey = vectorStore is null
                 ? null
                 : Indexing.AnalysisHasher.Key(text, "vec:" + _embeddingModel.Dimensions);
             candidates.Add(new Retrieval.RerankCandidate(rankedFile, text, cacheKey));
         }
 
-        return Retrieval.VectorReranker.Rerank(request.Query!.Query, candidates, _embeddingModel, store);
+        return Retrieval.VectorReranker.Rerank(request.Query!.Query, candidates, _embeddingModel, vectorStore);
     }
 
     private async Task<FilteredFileSet?> FilterByChangesAsync(
@@ -866,7 +886,7 @@ public sealed class FusionOrchestrator
         CancellationToken cancellationToken)
     {
         var started = DateTime.Now;
-        var entries = new List<TocFileEntry>(reducedContent.Count);
+        var entries = new List<TableOfContentsFileEntry>(reducedContent.Count);
         foreach (var item in reducedContent)
         {
             if (item.IsTrivial)
@@ -880,11 +900,10 @@ public sealed class FusionOrchestrator
                 symbols = extractor.ExtractOutline(source);
             }
 
-            entries.Add(new TocFileEntry(item.NormalizedPath, item.TokenCount, symbols));
+            entries.Add(new TableOfContentsFileEntry(item.NormalizedPath, item.TokenCount, symbols));
         }
 
-        var document = TableOfContentsBuilder.Build(entries, request.Emission.Format);
-        var totalTokens = tokenCounter.Count(document);
+        var (document, totalTokens) = BuildTocWithinBudget(entries, request.Emission, tokenCounter);
         var emittedFileTokens = entries
             .Select(e => new FileTokenInfo(e.Path, e.Tokens))
             .ToArray();
@@ -915,6 +934,32 @@ public sealed class FusionOrchestrator
             DateTime.Now - started,
             [],
             emittedFileTokens: emittedFileTokens);
+    }
+
+    // Renders the table of contents at the highest detail level that fits the configured token budget. With no
+    // budget the full document is returned unchanged; otherwise detail degrades in steps (drop symbol outlines,
+    // then collapse to directory aggregates) so a large codebase produces a usable map rather than a payload a
+    // size-capped consumer rejects.
+    private static (string Document, int Tokens) BuildTocWithinBudget(
+        IReadOnlyList<TableOfContentsFileEntry> entries,
+        EmissionOptions emission,
+        Fuse.Reduction.Tokenization.ITokenCounter tokenCounter)
+    {
+        var document = TableOfContentsBuilder.Build(entries, emission.Format, TableOfContentsDetail.Full);
+        var tokens = tokenCounter.Count(document);
+
+        if (emission.TableOfContentsMaxTokens is not int budget || tokens <= budget)
+            return (document, tokens);
+
+        foreach (var detail in (ReadOnlySpan<TableOfContentsDetail>)[TableOfContentsDetail.PathsOnly, TableOfContentsDetail.Directories])
+        {
+            document = TableOfContentsBuilder.Build(entries, emission.Format, detail);
+            tokens = tokenCounter.Count(document);
+            if (tokens <= budget)
+                break;
+        }
+
+        return (document, tokens);
     }
 
     private FusionResult CreateEmptyChangeResult(FusionRequest request)

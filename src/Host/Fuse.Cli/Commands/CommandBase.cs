@@ -534,14 +534,6 @@ public abstract class CommandBase
     public string? Session { get; set; }
 
     /// <summary>
-    ///     Engage the opt-in Roslyn precision tier for C# analysis (more accurate skeletons, dependency edges,
-    ///     and outlines). Available in the framework-dependent tool only; the Native AOT build always uses the
-    ///     regex tier. The tier is selected at startup, so this option is also detected before parsing.
-    /// </summary>
-    [CliOption(Description = "Use the Roslyn precision tier for C# (framework-dependent build only).")]
-    public bool Semantic { get; set; } = false;
-
-    /// <summary>
     ///     Include git churn and last-modified stats in the manifest.
     /// </summary>
     [CliOption(Description = "Include git churn and last-modified stats in the manifest.")]
@@ -568,10 +560,9 @@ public abstract class CommandBase
 
     /// <summary>
     ///     Select the embedding backend for rerank: on for the semantic ONNX model (downloaded once), off for
-    ///     the dependency-free hashing embedding. Unset uses the build default. Ignored in the Native AOT build,
-    ///     which always uses hashing.
+    ///     the dependency-free hashing embedding. Unset uses the build default.
     /// </summary>
-    [CliOption(Required = false, Description = "Embedding backend for --rerank: true for the semantic ONNX model (downloaded once), false for hashing. Ignored in the Native AOT build.")]
+    [CliOption(Required = false, Description = "Embedding backend for --rerank: true for the semantic ONNX model (downloaded once), false for hashing.")]
     public bool? Embeddings { get; set; }
 
     /// <summary>

@@ -6,14 +6,14 @@ namespace Fuse.Fusion.Retrieval;
 
 /// <summary>
 ///     A deterministic, dependency-free embedding that hashes tokens and their character trigrams into a fixed
-///     number of buckets. Native AOT compatible because it is pure arithmetic with no model file or network.
+///     number of buckets. Pure arithmetic with no model file or network.
 /// </summary>
 /// <remarks>
 ///     Including character trigrams lets the vector capture sub-word overlap, so a query term matches an
 ///     identifier that shares stems even when the whole tokens differ. This is a lexical signal: it sharpens
 ///     identifier matching but does not bridge a true semantic gap (a query sharing no words or sub-words with
 ///     the target). A learned <see cref="IEmbeddingModel" /> can be registered in its place to close that gap;
-///     this model is the AOT-clean default and the regression baseline.
+///     this model is the default when ONNX embeddings are not enabled.
 /// </remarks>
 public sealed class HashingEmbeddingModel : IEmbeddingModel
 {

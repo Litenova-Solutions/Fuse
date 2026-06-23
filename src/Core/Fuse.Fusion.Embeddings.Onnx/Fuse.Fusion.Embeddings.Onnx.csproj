@@ -4,13 +4,6 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <UseFileScopedNamespaces>true</UseFileScopedNamespaces>
-        <!--
-          Opt-in semantic embeddings tier. This assembly references ONNX Runtime, a large native dependency
-          that is not Native AOT compatible, so the default AOT package does not reference it (see
-          Fuse.Cli.csproj, gated on PublishAot). The hashing embedding stays the AOT-clean default; this
-          assembly is referenced only by the framework-dependent build.
-        -->
-        <IsAotCompatible>false</IsAotCompatible>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.ML.OnnxRuntime" />

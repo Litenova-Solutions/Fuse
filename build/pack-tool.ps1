@@ -4,20 +4,16 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-# Fail the script if any native command (dotnet) returns a non-zero exit code.
-# Without this, a failing `dotnet pack` is silently skipped and the job reports
-# success while a package is missing.
 $PSNativeCommandUseErrorActionPreference = $true
 
 $root = Split-Path -Parent $PSScriptRoot
 $cliProject = Join-Path $root "src/Host/Fuse.Cli/Fuse.Cli.csproj"
 $outputDir = Join-Path $root "src/Host/Fuse.Cli/nupkg"
-$aotRoot = Join-Path $root "artifacts/aot"
+$runtimeRoot = Join-Path $root "artifacts/runtime"
 
-# A .NET global tool package is portable (RID-agnostic), so it cannot be
-# ReadyToRun-compiled at pack time (that needs a runtime identifier and fails
-# with NETSDK1094). Fast startup comes from the Fuse.Runtime.<rid> AOT packages
-# below, not from R2R on the portable tool.
+# A .NET global tool package is portable (RID-agnostic), so it cannot be ReadyToRun-compiled at pack time
+# (that needs a runtime identifier and fails with NETSDK1094). Fast startup comes from the Fuse.Runtime.<rid>
+# self-contained packages below, not from R2R on the portable tool.
 Write-Host "Packing framework-dependent Fuse tool..."
 dotnet pack $cliProject `
     --configuration Release `
@@ -25,14 +21,14 @@ dotnet pack $cliProject `
     -p:Version=$Version
 
 foreach ($rid in $Rids) {
-    $profile = "aot-$rid"
-    Write-Host "Publishing Native AOT for $rid..."
+    $profile = "runtime-$rid"
+    Write-Host "Publishing self-contained runtime for $rid..."
     dotnet publish $cliProject `
         --configuration Release `
         /p:PublishProfile=$profile `
         /p:Version=$Version
 
-    $publishDir = Join-Path $aotRoot $rid
+    $publishDir = Join-Path $runtimeRoot $rid
     if (-not (Test-Path $publishDir)) {
         throw "Expected publish output at $publishDir"
     }
@@ -64,10 +60,10 @@ foreach ($rid in $Rids) {
     <id>$runtimePackageId</id>
     <version>$Version</version>
     <authors>Litenova Solutions</authors>
-    <description>Native AOT runtime asset for Fuse on $rid.</description>
+    <description>Self-contained runtime asset for Fuse on $rid.</description>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/Litenova-Solutions/Fuse</projectUrl>
-    <tags>fuse;nativeaot;dotnet-tool</tags>
+    <tags>fuse;dotnet-tool;self-contained</tags>
   </metadata>
   <files>
     <file src="tools/**" target="" />
@@ -75,9 +71,6 @@ foreach ($rid in $Rids) {
 </package>
 "@ | Set-Content -Path $nuspecPath -Encoding UTF8
 
-    # `dotnet nuget` has no `pack` verb. Pack the nuspec through a stub SDK
-    # project that points at it, which works with only the .NET SDK present
-    # (no nuget.exe) on Windows and Linux alike.
     $stubProject = Join-Path $stageDir "$runtimePackageId.pack.csproj"
     @"
 <Project Sdk="Microsoft.NET.Sdk">

@@ -1,4 +1,3 @@
-#if FUSE_ROSLYN
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,8 +10,6 @@ namespace Fuse.Cli.Verification;
 ///     attribute route templates, and minimal-API route templates.
 /// </summary>
 /// <remarks>
-///     Compiled only for the framework-dependent tool. The Native AOT build excludes the Roslyn package and
-///     falls back to <see cref="RegexApiSurfaceAnalyzer" />, because Roslyn is not trim or AOT compatible.
 ///     This mirrors the independent Roslyn oracle used by the benchmark fidelity tool.
 /// </remarks>
 public sealed class RoslynApiSurfaceAnalyzer : IApiSurfaceAnalyzer
@@ -91,4 +88,3 @@ public sealed class RoslynApiSurfaceAnalyzer : IApiSurfaceAnalyzer
     private static bool HasPublicOrProtected(SyntaxTokenList modifiers) =>
         modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword) || m.IsKind(SyntaxKind.ProtectedKeyword));
 }
-#endif

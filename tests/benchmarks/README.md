@@ -26,7 +26,7 @@ The cloned corpus under `.corpus/` and the per-run outputs under `results/.out`,
 
 ## Manual wall-clock timing
 
-The rest of this document covers ad hoc timing for pipeline changes. See also [the performance page](https://fuse.codes/docs/project/performance) for cold-start methodology and Native AOT packaging.
+The rest of this document covers ad hoc timing for pipeline changes. See also [the performance page](https://fuse.codes/docs/project/performance) for cold-start methodology and self-contained packaging.
 
 ## Fixture
 
@@ -53,7 +53,7 @@ Start-Process -FilePath fuse.exe -ArgumentList "dotnet","--directory","...","--o
 $sw.ElapsedMilliseconds
 ```
 
-Compare before/after Native AOT builds using the same command. CI smoke tests in `.github/workflows/ci.yml` use this pattern on published AOT binaries.
+Compare before/after self-contained builds using the same command. CI smoke tests in `.github/workflows/ci.yml` use this pattern on published runtime binaries.
 
 ## Cold run (serial baseline)
 

@@ -15,17 +15,12 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(PublishAot)' == 'true' Or '$(PublishTrimmed)' == 'true'">
+  <PropertyGroup Condition="'$(PublishTrimmed)' == 'true'">
     <InvariantGlobalization>true</InvariantGlobalization>
     <EventSourceSupport>false</EventSourceSupport>
     <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
     <DebuggerSupport>false</DebuggerSupport>
     <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(PublishAot)' == 'true'">
-    <PublishTrimmed>true</PublishTrimmed>
-    <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050</WarningsAsErrors>
   </PropertyGroup>
 </Project>

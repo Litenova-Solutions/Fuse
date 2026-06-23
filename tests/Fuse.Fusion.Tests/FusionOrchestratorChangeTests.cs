@@ -30,7 +30,7 @@ public sealed class FusionOrchestratorChangeTests : IDisposable
         File.WriteAllText(Path.Combine(_repoDirectory, "Tracked.cs"), "public class Tracked { public int Id; }");
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

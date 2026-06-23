@@ -65,7 +65,7 @@ member, then for a matched file emits a thin host-type skeleton: the members the
 stay in full and the rest of the type collapses to signatures. A focused question pulls in
 the methods it needs plus the shell of their type, not every line of the file. A query by
 type name still pulls the whole type in; only a query that lands on specific members trims
-the rest. The fallback path (no precision tier) chunks more coarsely but behaves the same way.
+the rest. Member boundaries come from the Roslyn parse tree.
 
 ## Spending the Token Budget
 
@@ -85,10 +85,7 @@ pack (above) then keeps the highest relevance-per-token entries and drops the re
 
 ## A Note on Accuracy
 
-The default dependency graph is regex-based and best-effort: it can miss edges from
-dynamic dispatch or reflection. For accurate edges and member-level scoping, the
-[precision tier](/docs/concepts/precision-tier) swaps in Roslyn. The ranking and
-traversal are detailed in [Scoping internals](/docs/internals/scoping-internals).
+The dependency graph for C# is built from Roslyn syntax analysis and is best-effort: it can miss edges from dynamic dispatch or reflection because it does not bind types across a compilation. Query and focus scoping also rest on a lexical BM25 index, so a query that shares no vocabulary with the target file can miss. The ranking and traversal are detailed in [Scoping internals](/docs/internals/scoping-internals).
 
 ## Next
 

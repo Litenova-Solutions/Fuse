@@ -19,27 +19,27 @@ A fusion reads each file once per run. The content provider holds that single re
 
 The orchestrator holds no process-wide gate. Each run constructs its own content cache and BM25 relevance index, so independent runs share no mutable state and execute concurrently, scaling toward the core count. On a server hosting the MCP tools, several tool calls handled at once run in parallel rather than queueing behind one another. This concurrency is a structural property of the per-run design rather than a benchmarked figure; treat any specific throughput multiple as illustrative until a reproducible harness arm measures it.
 
-## The Reduction Cache
+## The Persistent Store
 
-Reduction results are cached per file under `.fuse/cache`, so an unchanged file is not reduced again on a later run. The cache is on by default; disable it with `--no-cache` and clear it with `--clear-cache`. The cache key and eviction behavior are documented in [Caching Internals](/docs/internals/caching-internals).
+Reduction results, analysis, relevance tokens, and optional embedding vectors are cached in a single SQLite database at `.fuse/fuse.db`, so an unchanged file is not reduced or re-analyzed again on a later run. The store is on by default for reduction; disable it with `--no-cache` and clear the reduction namespace with `--clear-cache`. Analysis caching is controlled by `--index` (enabled automatically in watch mode and the MCP server). Key derivation and store layout are documented in [Caching Internals](/docs/internals/caching-internals).
 
 ## Watch Mode
 
 Watch mode re-runs a fusion when source files change, which keeps in-process state warm across iterations. Enable it with `--watch`. Watch mode is disabled under MCP stdio, because the server already holds resident state for the session.
 
-## Cold Start and Native AOT
+## Cold Start and Distribution
 
-One-shot commands are sensitive to cold start, so Fuse reduces the fixed cost in several ways. Token counting uses `Microsoft.ML.Tokenizers`, which initializes faster than the previous tokenizer and produces accurate `o200k_base` and `cl100k_base` counts. Configuration and JSON output use source-generated `System.Text.Json` contexts, which are trim and AOT safe. Remaining dynamic patterns use `[GeneratedRegex]`, so there is no runtime regex compiler. The binary probe uses `ArrayPool` and span-based line scans to lower allocation volume on large repositories.
+One-shot commands are sensitive to cold start. Token counting uses `Microsoft.ML.Tokenizers`, which initializes faster than the previous tokenizer and produces accurate `o200k_base` and `cl100k_base` counts. Configuration and JSON output use source-generated `System.Text.Json` contexts. Remaining dynamic patterns use `[GeneratedRegex]`, so there is no runtime regex compiler. The binary probe uses `ArrayPool` and span-based line scans to lower allocation volume on large repositories.
 
-Native AOT removes most JIT and startup time on .NET 10 and later. Fuse distributes binaries in layers:
+Fuse distributes as a framework-dependent .NET global tool and as self-contained runtime-specific packages that bundle the .NET runtime:
 
 | Package | Role |
 |---------|------|
-| `Fuse` | Framework-dependent dotnet tool with `RollForward=LatestMajor` and ReadyToRun, used as the portable fallback |
-| `Fuse.Runtime.win-x64` (and the other RIDs) | Native AOT binary for that runtime identifier, selected by .NET 10+ tool resolution when available |
-| Windows installer | Ships the AOT-compiled `fuse.exe` from the release workflow |
+| `Fuse` | Framework-dependent dotnet tool with `RollForward=LatestMajor` and ReadyToRun |
+| `Fuse.Runtime.win-x64` (and the other RIDs) | Self-contained binary for that runtime identifier, selected by .NET 10+ tool resolution when available |
+| Windows installer | Ships the self-contained `fuse.exe` from the release workflow |
 
-Native AOT on Linux requires `clang` and `zlib1g-dev`.
+Self-contained packages include the .NET runtime and do not require a separate SDK install on the target machine. Roslyn structural analysis is always included; there is no trimmed or regex-only binary.
 
 ## How to Run the Benchmarks
 
@@ -56,11 +56,11 @@ $sw.Stop()
 "$($sw.ElapsedMilliseconds) ms (exit $($p.ExitCode))"
 ```
 
-For repeatable measurement with BenchmarkDotNet, use `RunStrategy=ColdStart` and `WarmupCount=0` when comparing CLI frameworks or pre and post AOT builds.
+For repeatable measurement with BenchmarkDotNet, use `RunStrategy=ColdStart` and `WarmupCount=0` when comparing CLI frameworks or builds.
 
 Use `tests/fixtures/SampleShop` for small-repo comparisons. For throughput work, use a medium monorepo of several thousand source files. Record the fixture size, the command line, the hardware, the operating system, the cold wall time, and the pipeline duration reported on the `Stats:` line. The benchmark fixtures and harness are described in `tests/benchmarks/README.md`.
 
-The `aot` job in `.github/workflows/ci.yml` validates the AOT path on every change. It publishes Native AOT for `win-x64` and `linux-x64`, then smoke-runs `fuse init --help` and `fuse dotnet` on SampleShop with the required `--format` and `--tokenizer`. Trim and AOT builds treat IL2026 and IL3050 as errors in project code.
+The `runtime` job in `.github/workflows/ci.yml` validates the self-contained publish path on every change. It publishes for `win-x64` and `linux-x64`, then smoke-runs `fuse init --help` and `fuse dotnet` on SampleShop with the required `--format` and `--tokenizer`.
 
 ## What This Does Not Cover
 
@@ -72,4 +72,4 @@ This page covers the method for timing a single run. For published, reproducible
 
 ## Next
 
-Read [Benchmarks](/docs/project/benchmarks) for the full results, [Caching Internals](/docs/internals/caching-internals) for how the reduction cache decides what to reuse, or [Pipeline](/docs/internals/pipeline) for the stages that the parallelism and content-provider features apply to.
+Read [Benchmarks](/docs/project/benchmarks) for the full results, [Caching Internals](/docs/internals/caching-internals) for how the store decides what to reuse, or [Pipeline](/docs/internals/pipeline) for the stages that the parallelism and content-provider features apply to.

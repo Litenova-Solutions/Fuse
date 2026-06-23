@@ -140,7 +140,7 @@ Use `--scope user` instead of `--scope project` to make Fuse available in every 
 When your client needs Fuse, it spawns `fuse mcp serve` and keeps it alive for the session.
 Stdout carries the protocol byte stream, so all logging is routed to stderr. Every fusion
 runs in memory and is returned in the tool response; unlike the CLI, the server writes no
-files. It also keeps an on-disk analysis index warm across calls, so a multi-call task
+files. It also keeps the on-disk store at `.fuse/fuse.db` warm across calls, so a multi-call task
 pays the analysis cost once.
 
 ## The Nine Tools
@@ -160,12 +160,6 @@ pays the analysis cost once.
 The full parameter list for each is in the [MCP tools reference](/docs/reference/mcp-tools),
 and the read-only [MCP resources](/docs/reference/mcp-resources) cover the
 `fuse://` URI forms.
-
-## Enable the Precision Tier
-
-To use the opt-in Roslyn [precision tier](/docs/concepts/precision-tier) for a server
-session, set the `FUSE_SEMANTIC` environment variable in the MCP server environment
-for your client.
 
 ## Next
 

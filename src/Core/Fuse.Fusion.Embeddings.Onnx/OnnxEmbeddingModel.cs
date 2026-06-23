@@ -12,10 +12,9 @@ namespace Fuse.Fusion.Embeddings.Onnx;
 ///     similarity reflects semantic closeness rather than only lexical overlap.
 /// </summary>
 /// <remarks>
-///     This type references ONNX Runtime and is therefore excluded from the Native AOT build, where the
-///     hashing embedding remains the fallback. Inference is deterministic, so a repeated query yields an
-///     identical vector and a stable ranking. The instance is thread-safe for concurrent <see cref="Embed" />
-///     calls and owns the underlying session, which is disposed with it.
+///     Inference is deterministic, so a repeated query yields an identical vector and a stable ranking. The
+///     instance is thread-safe for concurrent <see cref="Embed" /> calls and owns the underlying session,
+///     which is disposed with it.
 /// </remarks>
 public sealed class OnnxEmbeddingModel : IEmbeddingModel, IDisposable
 {

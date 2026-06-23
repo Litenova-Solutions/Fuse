@@ -19,6 +19,7 @@ public sealed class McpInstallTests
             McpInstallScope.Project,
             root,
             "/usr/local/bin/fuse",
+            writeRules: false,
             console,
             CancellationToken.None);
 
@@ -73,6 +74,7 @@ public sealed class McpInstallTests
             McpInstallScope.Project,
             root,
             "fuse",
+            writeRules: false,
             new RecordingConsoleUI(),
             CancellationToken.None);
 
@@ -140,6 +142,7 @@ public sealed class McpInstallTests
             McpInstallScope.Project,
             root,
             "fuse",
+            writeRules: false,
             new RecordingConsoleUI(),
             CancellationToken.None);
 
@@ -179,6 +182,81 @@ public sealed class McpInstallTests
     {
         var path = McpInstallService.ResolveFuseCommand();
         Assert.False(string.IsNullOrWhiteSpace(path));
+    }
+
+    [Fact]
+    public async Task InstallAsync_WriteRules_ProjectScope_WritesRuleFilesForAllClients()
+    {
+        var root = CreateTempDirectory();
+        var service = new McpInstallService();
+
+        await service.InstallAsync(
+            [McpInstallClient.Claude, McpInstallClient.Cursor, McpInstallClient.Copilot],
+            McpInstallScope.Project,
+            root,
+            "fuse",
+            writeRules: true,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        var claude = await File.ReadAllTextAsync(Path.Combine(root, "CLAUDE.md"));
+        Assert.Contains("fuse_search", claude);
+        Assert.Contains("<!-- fuse:begin", claude);
+
+        var cursor = await File.ReadAllTextAsync(Path.Combine(root, ".cursor", "rules", "fuse.mdc"));
+        Assert.Contains("alwaysApply: true", cursor);
+        Assert.Contains("fuse_toc", cursor);
+
+        var copilot = await File.ReadAllTextAsync(Path.Combine(root, ".github", "copilot-instructions.md"));
+        Assert.Contains("fuse_focus", copilot);
+    }
+
+    [Fact]
+    public async Task InstallAsync_WriteRules_IsIdempotentAndPreservesSurroundingContent()
+    {
+        var root = CreateTempDirectory();
+        await File.WriteAllTextAsync(
+            Path.Combine(root, "CLAUDE.md"),
+            "# My project rules\n\nKeep this paragraph.\n");
+
+        var service = new McpInstallService();
+
+        // Run twice; the managed block must appear exactly once and the user's content must survive.
+        for (var i = 0; i < 2; i++)
+            await service.InstallAsync(
+                [McpInstallClient.Claude],
+                McpInstallScope.Project,
+                root,
+                "fuse",
+                writeRules: true,
+                new RecordingConsoleUI(),
+                CancellationToken.None);
+
+        var claude = await File.ReadAllTextAsync(Path.Combine(root, "CLAUDE.md"));
+        Assert.Contains("Keep this paragraph.", claude);
+        Assert.Equal("# My project rules", claude.Split('\n')[0]);
+        var occurrences = claude.Split("<!-- fuse:begin").Length - 1;
+        Assert.Equal(1, occurrences);
+    }
+
+    [Fact]
+    public async Task InstallAsync_WriteRules_UserScope_SkipsCursorAndCopilot()
+    {
+        var root = CreateTempDirectory();
+        var service = new McpInstallService();
+
+        await service.InstallAsync(
+            [McpInstallClient.Cursor, McpInstallClient.Copilot],
+            McpInstallScope.User,
+            root,
+            "fuse",
+            writeRules: true,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        // User scope has no Cursor/Copilot rules file, so nothing is written under the project root.
+        Assert.False(File.Exists(Path.Combine(root, ".cursor", "rules", "fuse.mdc")));
+        Assert.False(File.Exists(Path.Combine(root, ".github", "copilot-instructions.md")));
     }
 
     [Fact]

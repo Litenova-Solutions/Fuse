@@ -21,7 +21,7 @@ This page covers the command surface: names, descriptions, and one example invoc
 | `fuse explain` | Nothing; previews a .NET fusion in memory | Same as `fuse dotnet` | Focus, changes, query | Shared plus a scoping subset |
 | `fuse verify` | Nothing; checks a .NET fusion in memory | Same as `fuse dotnet` | Focus, changes, query | Shared plus a scoping subset |
 | `fuse init` | Nothing; writes a config file | Not applicable | Not applicable | None |
-| `fuse mcp install` | Nothing; registers Fuse with MCP clients | Not applicable | Not applicable | `--client`, `--scope`, `--command` |
+| `fuse mcp install` | Nothing; registers Fuse with MCP clients | Not applicable | Not applicable | `--client`, `--scope`, `--rules`, `--command` |
 | `fuse mcp serve` | Nothing; starts the MCP server | Not applicable | Not applicable | None |
 
 ## fuse
@@ -93,13 +93,16 @@ registration) so the client can launch `fuse mcp serve` automatically. You do no
 `fuse mcp serve` manually for normal agent use.
 
 ```bash
-fuse mcp install
+fuse mcp install --rules
 fuse mcp install --client cursor --scope user
 ```
 
 Use `--client` to pick `claude`, `cursor`, `copilot`, or `all` (default). Use `--scope
 project` (default) to configure the current directory, or `--scope user` to register Fuse
-for every project on this machine. Use `--command` to override the executable the client
+for every project on this machine. Add `--rules` (recommended) to also write a short rule
+into each client's instruction file (`CLAUDE.md`, `.cursor/rules/fuse.mdc`,
+`.github/copilot-instructions.md`) that biases the agent toward the `fuse_*` tools; it is
+project-scoped and idempotent. Use `--command` to override the executable the client
 launches (default: the running `fuse` binary or `fuse` on PATH).
 
 For what each client reads and the manual JSON shapes, see the [Agent Integration overview](/docs/start/connect-your-ai).

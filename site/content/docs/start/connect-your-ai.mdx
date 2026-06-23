@@ -16,35 +16,60 @@ it needs context.
 
 ## Register in One Command
 
-From your project root:
+From your project root, register Fuse and write the rule that points your agent at it:
 
 ```bash
-fuse mcp install
+fuse mcp install --rules
 ```
 
-This writes MCP config for Claude Code, Cursor, and GitHub Copilot in the current
-directory. To register Fuse for every project you open on this machine:
+This does two things. It writes MCP config for Claude Code, Cursor, and GitHub Copilot in
+the current directory, and `--rules` writes a short rule into each client's instruction file
+so the agent reaches for the `fuse_*` tools instead of grepping and opening files blindly.
+The `--rules` step is what makes agents actually use Fuse, so it is the recommended install.
+
+To register for every project you open on this machine:
 
 ```bash
-fuse mcp install --scope user
+fuse mcp install --rules --scope user
 ```
 
 Pick one client only:
 
 ```bash
-fuse mcp install --client cursor
-fuse mcp install --client claude --scope user
-fuse mcp install --client copilot
+fuse mcp install --client cursor --rules
+fuse mcp install --client claude --rules
+fuse mcp install --client copilot --rules
 ```
 
 | Flag | Values | Default |
 |------|--------|---------|
 | `--client` | `claude`, `cursor`, `copilot`, `all` | `all` |
 | `--scope` | `project`, `user` | `project` |
+| `--rules` | write the agent rule (recommended) | off |
+| `--command` | executable the client launches | running `fuse` |
 
 Project scope writes config files in the repo (commit them so your team gets Fuse
 automatically). User scope writes user-global config for Cursor and Copilot, and runs
 `claude mcp add` for Claude Code.
+
+## Bias the Agent Toward Fuse
+
+Registering the server makes the `fuse_*` tools available, but each client still decides per
+turn whether to use them or fall back to its built-in grep. `--rules` writes a short,
+conservative rule into the client's instruction file so the agent prefers Fuse for surveying
+and scoping, and keeps grep for exact-string lookups:
+
+| Client | Rule file (project scope) |
+|--------|---------------------------|
+| Claude Code | `CLAUDE.md` |
+| Cursor | `.cursor/rules/fuse.mdc` |
+| GitHub Copilot | `.github/copilot-instructions.md` |
+
+For Claude and Copilot the rule is a marker-delimited block, so re-running `--rules` updates
+it in place and leaves the rest of the file untouched. Rules are project-scoped; under
+`--scope user` only Claude has a global file (`~/.claude/CLAUDE.md`), and the Cursor and
+Copilot rules are skipped with a note. This biases the agent, it does not force it, which is
+intentional: grep is still the right tool for an exact string or symbol.
 
 ## What Gets Written
 

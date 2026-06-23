@@ -22,6 +22,11 @@ public sealed class McpInstallService
     /// <param name="scope">Project-local files or user-global registration.</param>
     /// <param name="projectDirectory">The project root for project scope; defaults to the current directory.</param>
     /// <param name="fuseCommand">The executable the client should launch; defaults to the running binary or <c>fuse</c>.</param>
+    /// <param name="writeRules">
+    ///     When <see langword="true" />, also writes a rule biasing the agent toward the <c>fuse_*</c> tools into
+    ///     each client's instruction file. Rule files are project-scoped; under user scope only Claude has a
+    ///     global equivalent and the others are skipped with a note.
+    /// </param>
     /// <param name="consoleUI">The console UI for status output.</param>
     /// <param name="cancellationToken">A token that cancels Claude CLI registration.</param>
     /// <returns>The number of clients configured successfully.</returns>
@@ -30,6 +35,7 @@ public sealed class McpInstallService
         McpInstallScope scope,
         string? projectDirectory,
         string? fuseCommand,
+        bool writeRules,
         IConsoleUI consoleUI,
         CancellationToken cancellationToken)
     {
@@ -56,6 +62,10 @@ public sealed class McpInstallService
             if (success)
                 configured++;
         }
+
+        if (writeRules)
+            foreach (var client in clients)
+                WriteClientRule(client, scope, projectRoot, consoleUI);
 
         return configured;
     }
@@ -275,6 +285,135 @@ public sealed class McpInstallService
 
     private static string DescribeScope(McpInstallScope scope) =>
         scope == McpInstallScope.User ? "user scope, all projects" : "project";
+
+    // Idempotency markers for the managed rule block in freeform instruction files (CLAUDE.md, copilot-
+    // instructions.md). A re-run replaces the region between them; a future remove can excise it cleanly.
+    private const string RuleBeginMarker = "<!-- fuse:begin (managed by `fuse mcp install --rules`; edit outside these markers) -->";
+    private const string RuleEndMarker = "<!-- fuse:end -->";
+
+    // Deliberately conservative: Fuse for surveying and context-gathering, grep for exact lookups. A blanket
+    // "always prefer Fuse" would be wrong in non-.NET repos where the regex tier is weaker than native search.
+    private static readonly string RuleBody = string.Join(
+        "\n",
+        "## Fuse: codebase context",
+        "",
+        "This repo has the Fuse MCP server. For gathering codebase context, prefer the `fuse_*` tools over reading files one by one or grepping broadly:",
+        "",
+        "- Start with `fuse_toc` to survey structure and per-file token costs.",
+        "- Use `fuse_search` to find where a feature or concept lives (ranked files plus dependencies, reduced).",
+        "- Use `fuse_focus` for a known type or file and its dependency neighborhood.",
+        "- Use `fuse_changes` to scope a pull request or diff review.",
+        "",
+        "Use built-in grep and file reads for exact string or symbol lookups, where they are the better tool.");
+
+    /// <summary>
+    ///     Writes the Fuse usage rule into the given client's instruction file, scope permitting.
+    /// </summary>
+    /// <param name="client">The MCP client whose instruction file to update.</param>
+    /// <param name="scope">Project scope writes repo files; user scope writes only Claude's global memory.</param>
+    /// <param name="projectRoot">The project root for project-scoped rule files.</param>
+    /// <param name="consoleUI">The console UI for status output.</param>
+    /// <returns><see langword="true" /> when a rule file was written; <see langword="false" /> when skipped.</returns>
+    private static bool WriteClientRule(
+        McpInstallClient client,
+        McpInstallScope scope,
+        string projectRoot,
+        IConsoleUI consoleUI)
+    {
+        switch (client)
+        {
+            case McpInstallClient.Claude:
+                var claudePath = scope == McpInstallScope.User
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "CLAUDE.md")
+                    : Path.Combine(projectRoot, "CLAUDE.md");
+                UpsertMarkedBlock(claudePath, RuleBody);
+                consoleUI.WriteSuccess($"Wrote Fuse rule for Claude Code: {claudePath}");
+                return true;
+
+            case McpInstallClient.Cursor:
+                if (scope == McpInstallScope.User)
+                {
+                    consoleUI.WriteStep("Cursor has no user-global rules file; skipped the rule (use project scope for the Cursor rule).");
+                    return false;
+                }
+
+                var cursorPath = Path.Combine(projectRoot, ".cursor", "rules", "fuse.mdc");
+                WriteCursorRuleFile(cursorPath);
+                consoleUI.WriteSuccess($"Wrote Fuse rule for Cursor: {cursorPath}");
+                return true;
+
+            case McpInstallClient.Copilot:
+                if (scope == McpInstallScope.User)
+                {
+                    consoleUI.WriteStep("GitHub Copilot has no user-global instructions file; skipped the rule (use project scope for the Copilot rule).");
+                    return false;
+                }
+
+                var copilotPath = Path.Combine(projectRoot, ".github", "copilot-instructions.md");
+                UpsertMarkedBlock(copilotPath, RuleBody);
+                consoleUI.WriteSuccess($"Wrote Fuse rule for GitHub Copilot: {copilotPath}");
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    ///     Inserts or replaces the marker-delimited Fuse rule block in a freeform markdown instruction file,
+    ///     preserving all content outside the markers.
+    /// </summary>
+    /// <param name="path">The instruction file path.</param>
+    /// <param name="body">The rule body to wrap between the begin and end markers.</param>
+    private static void UpsertMarkedBlock(string path, string body)
+    {
+        var block = RuleBeginMarker + "\n" + body + "\n" + RuleEndMarker;
+
+        string content;
+        if (File.Exists(path))
+        {
+            var existing = File.ReadAllText(path);
+            var begin = existing.IndexOf(RuleBeginMarker, StringComparison.Ordinal);
+            var end = existing.IndexOf(RuleEndMarker, StringComparison.Ordinal);
+            if (begin >= 0 && end > begin)
+            {
+                // Replace the existing managed region in place, leaving surrounding content untouched.
+                content = existing[..begin] + block + existing[(end + RuleEndMarker.Length)..];
+            }
+            else
+            {
+                // Append after the user's content with a blank-line separator.
+                var separator = existing.Length == 0 || existing.EndsWith('\n') ? string.Empty : "\n";
+                content = existing + separator + "\n" + block + "\n";
+            }
+        }
+        else
+        {
+            content = block + "\n";
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content);
+    }
+
+    /// <summary>
+    ///     Writes the Cursor rule as a dedicated, fully managed <c>.mdc</c> file with always-apply frontmatter.
+    /// </summary>
+    /// <param name="path">The <c>.cursor/rules/fuse.mdc</c> path.</param>
+    private static void WriteCursorRuleFile(string path)
+    {
+        var content = string.Join(
+            "\n",
+            "---",
+            "description: Prefer Fuse MCP tools for codebase context gathering",
+            "alwaysApply: true",
+            "---",
+            "",
+            RuleBody) + "\n";
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content);
+    }
 
     /// <summary>
     ///     Resolves the VS Code user profile directory that holds the user-level <c>mcp.json</c>.

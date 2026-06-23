@@ -14,13 +14,15 @@ terminal. The agent path is the primary use; the CLI walkthrough below is the lo
 Register Fuse with your client once. From your project root:
 
 ```bash
-fuse mcp install
+fuse mcp install --rules
 ```
 
 Your AI client (Claude Code, Cursor, or GitHub Copilot) then launches `fuse mcp serve`
-automatically when MCP is enabled. You do not run the server in a terminal yourself.
-Use `fuse mcp install --scope user` to register Fuse for every project on this machine.
-See [Connect to your AI](/docs/start/connect-your-ai) for per-client details.
+automatically when MCP is enabled. You do not run the server in a terminal yourself. The
+`--rules` flag also writes a short rule into your client's instruction file so the agent
+actually reaches for the `fuse_*` tools instead of grepping blindly; it is the recommended
+install. Use `--scope user` to register Fuse for every project on this machine. See
+[Connect to your AI](/docs/start/connect-your-ai) for per-client details.
 
 That collapses the explore phase into one scoped call instead of the agent opening file
 after file. Give `fuse_ask` a task and a token budget and it picks the scoping strategy

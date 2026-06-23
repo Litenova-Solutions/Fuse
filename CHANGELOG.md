@@ -2,6 +2,35 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 2.0 is a structural rewrite; backward compatibility with 1.x output is not a goal.
 
+## [2.2.0]
+
+Registering Fuse with an AI client is now one command, and the MCP surface is grouped under `fuse mcp`. The change is about setup ergonomics; the reduction, scoping, and emission paths are unchanged.
+
+### Breaking changes
+
+- **`fuse serve` moved to `fuse mcp serve`.** The stdio MCP server (the long-running process your client launches) is now a subcommand of the new `fuse mcp` group. Client configuration that launched `fuse serve` must change its arguments from `["serve"]` to `["mcp", "serve"]`. Re-running `fuse mcp install` rewrites them for you; for hand-written config, edit the `args` array. The MCP Registry manifest and the published package arguments are updated to match.
+
+### Added
+
+- **`fuse mcp install`**: registers Fuse as an MCP server with Claude Code, Cursor, or GitHub Copilot in one command, replacing per-tool JSON editing. `--client` targets one client or `all` (default); `--scope` writes project-local config (default, commit it so the team inherits Fuse) or user-global config (every project you open); `--command` overrides the launched executable. Claude Code user scope is registered through the Claude CLI; the other clients have their config file written directly. The installer merges into an existing config without dropping a co-located server's `env` or `cwd` block or top-level keys such as Copilot's `inputs` array, and it resolves the per-OS VS Code user profile directory rather than a path VS Code does not read.
+- **`fuse mcp` command group**: parents `install` and `serve`, separating the MCP server surface from the one-shot CLI.
+
+## [2.1.0]
+
+### Breaking changes
+
+- **Single reduction level replaces the C# reduction flag cluster.** `--all`, `--skeleton`, `--public-api`, `--aggressive`, and the `--remove-csharp-*` switches are removed in favor of one `--level` option (and a matching `level` MCP parameter) with the values `none`, `standard`, `aggressive`, `skeleton`, and `publicApi`. The CLI commands default to `none`; the scoped MCP tools (`fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_dotnet`) default to `standard`, so an agent gets the standard removals (which preserve 99 to 100 percent of the public API surface on the benchmark corpus) without naming a level. Migrate `--all` to `--level aggressive` (add `--collapse-generated` if you relied on `--all` collapsing generated code), `--aggressive` to `--level aggressive`, `--skeleton` to `--level skeleton`, `--public-api` to `--level publicApi`, and any `--remove-csharp-*` flag to `--level standard`. Redaction, generated-code collapse, semantic markers, pattern summary, route map, project graph, and minification stay orthogonal to the level.
+
+### Added
+
+- **Opt-in local embedding model for hybrid rerank** (`FUSE_EMBEDDINGS`): the `--rerank` vector path can use a real local ONNX embedding model, realizing the `IEmbeddingModel` plug point that shipped in 2.0 behind a deterministic lexical fallback. The model assembly is excluded from the Native AOT package, matching the isolation of the Roslyn precision tier, so the default AOT binary stays reflection-free.
+- **Chunk-granular query retrieval.** A `SymbolChunk` model and member-level chunk extractors let query scoping rank and pack at member granularity rather than whole files, feeding a thin-skeleton packing path that keeps the matched members in full while reducing the rest. Member selection is decoupled from file ranking so that packing at the member level does not lower file recall.
+- **Reduction-aware single-pass packing.** Packing fits content to a token budget in one pass with reduction accounted for, instead of reducing and then re-fitting.
+- **Near-duplicate member-body deduplication.** Members whose bodies are near-identical are collapsed, so repeated boilerplate bodies cost their tokens once.
+- **Persistent BM25 body-tokenization cache.** Body tokenization for the relevance index is cached by content hash, so repeated scoped runs skip re-tokenizing unchanged files. This is separate from the persistent analysis index added in 2.0.
+- **Tokenizer calibration harness.** A harness and a gated accuracy test calibrate the estimating tokenizers (the Anthropic and Gemini estimators) against reference counts.
+- **Redaction fidelity reporting.** The redaction report distinguishes secrets found in code literals from those in configuration, so a run can show where redaction acted.
+
 ## [2.0.0]
 
 Fuse 2.0 replaces the monolithic 1.x engine with axis-based projects and adds a Roslyn precision tier, hybrid retrieval, survey and round-trip tools, and a reproducible benchmark suite. Every measured figure below comes from the benchmark harness over the pinned corpus, counted with `o200k_base`; see [the benchmarks page](https://fuse.codes/docs/project/benchmarks). The precision tier and the survey, round-trip, and retrieval-rerank features are opt-in and do not change the default reduction or scoping path, so the default Layer 1 reduction and fidelity and the Layer 2 recall and precision are stable across runs.

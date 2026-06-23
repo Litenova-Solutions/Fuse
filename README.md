@@ -81,7 +81,17 @@ from [Releases](https://github.com/Litenova-Solutions/Fuse/releases). Verify wit
 
 ## Connect your agent
 
-Run `fuse serve` and connect from your client. For Claude Code, add `.mcp.json` to your project root:
+Register Fuse once; your AI client launches `fuse mcp serve` automatically when MCP is enabled:
+
+```bash
+fuse mcp install
+```
+
+That writes MCP config for Claude Code, Cursor, and GitHub Copilot in the current project.
+Use `fuse mcp install --scope user` to register Fuse for every project on this machine.
+Use `fuse mcp install --client cursor` to configure one client only.
+
+Manual registration is also supported. For Claude Code, add `.mcp.json` to your project root:
 
 ```json
 {
@@ -89,13 +99,15 @@ Run `fuse serve` and connect from your client. For Claude Code, add `.mcp.json` 
     "fuse": {
       "type": "stdio",
       "command": "fuse",
-      "args": ["serve"]
+      "args": ["mcp", "serve"]
     }
   }
 }
 ```
 
-Or register it in one line: `claude mcp add fuse --scope project -- fuse serve`. Cursor uses `.cursor/mcp.json` and GitHub Copilot uses `.vscode/mcp.json`; see [Connect to your AI](https://fuse.codes/docs/start/connect-your-ai) for both.
+Or register with the Claude CLI: `claude mcp add fuse --scope project -- fuse mcp serve`
+(use `--scope user` for all projects). Cursor uses `.cursor/mcp.json` and GitHub Copilot
+uses `.vscode/mcp.json`; see [Connect to your AI](https://fuse.codes/docs/start/connect-your-ai) for both.
 
 A recommended agent flow on a large codebase: survey with `fuse_toc` or `fuse_skeleton`, drill in with `fuse_focus` or `fuse_search`, then review a branch with `fuse_changes`. Or call `fuse_ask` with a task and a token budget and let Fuse pick the strategy. See [Context for an agent](https://fuse.codes/docs/scenarios/context-for-an-agent).
 
@@ -138,7 +150,8 @@ Output defaults to `Documents/Fuse`; use `--output` and `--name` to control the 
 | `fuse dotnet` | .NET projects: C# reduction, structural maps, dependency-aware scoping. |
 | `fuse wiki` | Azure DevOps wikis: Markdown only. |
 | `fuse init` | Create `fuse.json` in the current directory. |
-| `fuse serve` | Start the MCP server on stdio. |
+| `fuse mcp install` | Register Fuse with MCP clients (Claude Code, Cursor, Copilot). |
+| `fuse mcp serve` | MCP server entry point on stdio (launched by your client, not run manually). |
 
 Full option lists: [Commands](https://fuse.codes/docs/reference/commands) and [Options](https://fuse.codes/docs/reference/options).
 

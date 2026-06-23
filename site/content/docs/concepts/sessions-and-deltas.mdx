@@ -46,7 +46,7 @@ The second call pays only for the files the agent does not already have.
 
 ## Honest Note
 
-Session state is per-session and held in memory in the running `fuse serve` process, which
+Session state is per-session and held in memory in the running `fuse mcp serve` process, which
 is the session boundary. It is never persisted, so it is lost when the server process
 exits, and resetting a session makes the next call resend everything. Session-delta is a
 property of the MCP server across a live agent conversation; a one-off CLI run does not

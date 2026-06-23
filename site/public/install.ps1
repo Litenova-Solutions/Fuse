@@ -58,7 +58,7 @@ if ($env:FUSE_MCP) {
         & claude mcp add fuse --scope user -- "$dir\fuse.exe" serve
       } else {
         Write-Host "FUSE_MCP=claude set, but the 'claude' CLI was not found."
-        Write-Host "Install Claude Code, then run: claude mcp add fuse -- fuse serve"
+        Write-Host "Install Claude Code, then run: claude mcp add fuse -- fuse mcp serve"
       }
     }
     default { Write-Host "Unknown FUSE_MCP value '$($env:FUSE_MCP)' (supported: claude). Skipping MCP registration." }

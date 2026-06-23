@@ -8,7 +8,7 @@ namespace Fuse.Cli;
 
 /// <summary>
 ///     Root Fuse CLI command. Runs a generic template fusion and parents the <c>dotnet</c>, <c>wiki</c>,
-///     <c>init</c>, and <c>serve</c> subcommands.
+///     <c>init</c>, and <c>mcp</c> subcommands (the latter grouping <c>mcp install</c> and <c>mcp serve</c>).
 /// </summary>
 [CliCommand(Description = "A flexible file combining tool for developers.")]
 public class FuseCliCommand : CommandBase

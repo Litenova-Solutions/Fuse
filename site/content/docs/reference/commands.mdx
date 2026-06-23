@@ -3,13 +3,13 @@ title: Commands
 description: The five Fuse commands, what each one fuses, and the options they accept.
 ---
 
-Fuse exposes its work through seven commands. Three of them (`fuse`, `fuse dotnet`, and `fuse wiki`) produce a fusion from a source directory and differ only in which file types they collect and how they reduce them. Two more (`fuse explain` and `fuse verify`) run a fusion in memory to report on it without writing output. The remaining two (`fuse init` and `fuse serve`) manage configuration and the agent server and run no fusion of their own. This page states what each command does, when to reach for it, and which option set applies.
+Fuse exposes its work through eight commands. Three of them (`fuse`, `fuse dotnet`, and `fuse wiki`) produce a fusion from a source directory and differ only in which file types they collect and how they reduce them. Two more (`fuse explain` and `fuse verify`) run a fusion in memory to report on it without writing output. The remaining three (`fuse init`, `fuse mcp install`, and `fuse mcp serve`) manage configuration and the agent server and run no fusion of their own. This page states what each command does, when to reach for it, and which option set applies.
 
 This page is for engineers choosing a command and for maintainers who need the exact dispatch behavior. Stakeholders can read the summary table alone.
 
 ## Purpose and Scope
 
-This page covers the command surface: names, descriptions, and one example invocation each. It does not document the flags themselves. Every fusion command (`fuse`, `fuse dotnet`, `fuse wiki`) shares the option set in the [Options reference](/docs/reference/options), and `fuse dotnet` adds .NET-specific flags described there. The `fuse explain` and `fuse verify` commands share the same options plus a subset of the .NET scoping and reduction flags. The commands `fuse init` and `fuse serve` take no fusion options.
+This page covers the command surface: names, descriptions, and one example invocation each. It does not document the flags themselves. Every fusion command (`fuse`, `fuse dotnet`, `fuse wiki`) shares the option set in the [Options reference](/docs/reference/options), and `fuse dotnet` adds .NET-specific flags described there. The `fuse explain` and `fuse verify` commands share the same options plus a subset of the .NET scoping and reduction flags. The commands `fuse init`, `fuse mcp install`, and `fuse mcp serve` take no fusion options.
 
 ## Summary
 
@@ -21,7 +21,8 @@ This page covers the command surface: names, descriptions, and one example invoc
 | `fuse explain` | Nothing; previews a .NET fusion in memory | Same as `fuse dotnet` | Focus, changes, query | Shared plus a scoping subset |
 | `fuse verify` | Nothing; checks a .NET fusion in memory | Same as `fuse dotnet` | Focus, changes, query | Shared plus a scoping subset |
 | `fuse init` | Nothing; writes a config file | Not applicable | Not applicable | None |
-| `fuse serve` | Nothing; starts the MCP server | Not applicable | Not applicable | None |
+| `fuse mcp install` | Nothing; registers Fuse with MCP clients | Not applicable | Not applicable | `--client`, `--scope`, `--command` |
+| `fuse mcp serve` | Nothing; starts the MCP server | Not applicable | Not applicable | None |
 
 ## fuse
 
@@ -84,12 +85,36 @@ fuse init
 
 The scaffold it writes and every supported key are documented in the [Configuration Keys reference](/docs/reference/configuration-keys).
 
-## fuse serve
+## fuse mcp install
 
-This command starts the Fuse MCP server for AI agent integration. The server communicates over stdio: stdout is reserved for the Model Context Protocol byte stream, so all logging is routed to stderr to avoid corrupting the protocol. It takes no fusion options; each fusion is requested by the connected client through a tool call.
+This command registers Fuse as an MCP server with Claude Code, Cursor, and GitHub Copilot.
+It writes the client-specific JSON config (or invokes the Claude CLI for user-scope Claude
+registration) so the client can launch `fuse mcp serve` automatically. You do not run
+`fuse mcp serve` manually for normal agent use.
 
 ```bash
-fuse serve
+fuse mcp install
+fuse mcp install --client cursor --scope user
+```
+
+Use `--client` to pick `claude`, `cursor`, `copilot`, or `all` (default). Use `--scope
+project` (default) to configure the current directory, or `--scope user` to register Fuse
+for every project on this machine. Use `--command` to override the executable the client
+launches (default: the running `fuse` binary or `fuse` on PATH).
+
+For what each client reads and the manual JSON shapes, see the [Agent Integration overview](/docs/start/connect-your-ai).
+
+## fuse mcp serve
+
+This command starts the Fuse MCP server for AI agent integration. In normal use your MCP
+client launches it as a child process; you run this command directly only when debugging
+or testing the server. The server communicates over stdio: stdout is reserved for the
+Model Context Protocol byte stream, so all logging is routed to stderr to avoid corrupting
+the protocol. It takes no fusion options; each fusion is requested by the connected client
+through a tool call.
+
+```bash
+fuse mcp serve
 ```
 
 The server keeps the on-disk analysis index warm across calls, so a multi-call task pays the analysis cost once. Set the `FUSE_SEMANTIC` environment variable before starting the server to enable the Roslyn precision tier for that session.

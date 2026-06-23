@@ -76,10 +76,10 @@ if [ -n "${FUSE_MCP:-}" ]; then
       if command -v claude >/dev/null 2>&1; then
         echo "Registering Fuse with Claude Code ..."
         claude mcp add fuse --scope user -- "$bindir/fuse" serve \
-          || echo "Automatic registration failed. Run: claude mcp add fuse -- fuse serve"
+          || echo "Automatic registration failed. Run: claude mcp add fuse -- fuse mcp serve"
       else
         echo "FUSE_MCP=claude set, but the 'claude' CLI was not found."
-        echo "Install Claude Code, then run: claude mcp add fuse -- fuse serve"
+        echo "Install Claude Code, then run: claude mcp add fuse -- fuse mcp serve"
       fi
       ;;
     *)

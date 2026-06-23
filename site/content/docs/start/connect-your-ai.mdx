@@ -1,27 +1,67 @@
 ---
 title: Connect to your AI
-description: Start the Fuse MCP server and connect it to Claude Code, Cursor, or GitHub Copilot so your agent fetches scoped context directly.
+description: Register Fuse with Claude Code, Cursor, or GitHub Copilot so your agent fetches scoped context directly.
 ---
 
-Fuse runs as a Model Context Protocol (MCP) server. Once connected, your agent gets
+Fuse runs as a Model Context Protocol (MCP) server. Once registered, your agent gets
 eight tools for surveying a codebase, drilling into a type, scoping to a query or a
 branch, and asking one question, all returning scoped, reduced context in a single
 call.
 
-## Start the Server
+You do not run `fuse mcp serve` manually for normal use. Fuse uses stdio MCP: your AI client
+launches `fuse mcp serve` as a child process when MCP is enabled, talks JSON-RPC over
+stdin/stdout, and tears the process down when the session ends. Your job is a one-time
+registration; after that the agent calls `fuse_toc`, `fuse_search`, and the rest whenever
+it needs context.
+
+## Register in One Command
+
+From your project root:
 
 ```bash
-fuse serve
+fuse mcp install
 ```
 
-The server communicates over stdio: stdout carries the protocol byte stream, so all
-logging is routed to stderr. Every fusion runs in memory and is returned in the tool
-response; unlike the CLI, the server writes no files. It also keeps an on-disk
-analysis index warm across calls, so a multi-call task pays the analysis cost once.
+This writes MCP config for Claude Code, Cursor, and GitHub Copilot in the current
+directory. To register Fuse for every project you open on this machine:
 
-## Claude Code
+```bash
+fuse mcp install --scope user
+```
 
-Add a `.mcp.json` to your project root:
+Pick one client only:
+
+```bash
+fuse mcp install --client cursor
+fuse mcp install --client claude --scope user
+fuse mcp install --client copilot
+```
+
+| Flag | Values | Default |
+|------|--------|---------|
+| `--client` | `claude`, `cursor`, `copilot`, `all` | `all` |
+| `--scope` | `project`, `user` | `project` |
+
+Project scope writes config files in the repo (commit them so your team gets Fuse
+automatically). User scope writes user-global config for Cursor and Copilot, and runs
+`claude mcp add` for Claude Code.
+
+## What Gets Written
+
+| Client | Project scope | User scope |
+|--------|---------------|------------|
+| Claude Code | `.mcp.json` | `claude mcp add fuse --scope user -- fuse mcp serve` |
+| Cursor | `.cursor/mcp.json` | `~/.cursor/mcp.json` |
+| GitHub Copilot | `.vscode/mcp.json` | VS Code user `mcp.json` (`%APPDATA%\Code\User` on Windows, `~/Library/Application Support/Code/User` on macOS, `~/.config/Code/User` on Linux) |
+
+Each entry points the client at `fuse mcp serve`. The client invokes that command; you never
+keep a terminal open.
+
+## Manual Registration
+
+If you prefer to edit JSON yourself, the shapes are:
+
+**Claude Code** (`.mcp.json`):
 
 ```json
 {
@@ -29,36 +69,34 @@ Add a `.mcp.json` to your project root:
     "fuse": {
       "type": "stdio",
       "command": "fuse",
-      "args": ["serve"]
+      "args": ["mcp", "serve"]
     }
   }
 }
 ```
 
-Or register it in one line:
+Or register with the Claude CLI:
 
 ```bash
-claude mcp add fuse --scope project -- fuse serve
+claude mcp add fuse --scope project -- fuse mcp serve
 ```
 
-## Cursor
+Use `--scope user` instead of `--scope project` to make Fuse available in every project.
 
-Add `.cursor/mcp.json`:
+**Cursor** (`.cursor/mcp.json`):
 
 ```json
 {
   "mcpServers": {
     "fuse": {
       "command": "fuse",
-      "args": ["serve"]
+      "args": ["mcp", "serve"]
     }
   }
 }
 ```
 
-## GitHub Copilot in VS Code
-
-Add `.vscode/mcp.json`:
+**GitHub Copilot in VS Code** (`.vscode/mcp.json`):
 
 ```json
 {
@@ -66,11 +104,19 @@ Add `.vscode/mcp.json`:
     "fuse": {
       "type": "stdio",
       "command": "fuse",
-      "args": ["serve"]
+      "args": ["mcp", "serve"]
     }
   }
 }
 ```
+
+## How the Server Runs
+
+When your client needs Fuse, it spawns `fuse mcp serve` and keeps it alive for the session.
+Stdout carries the protocol byte stream, so all logging is routed to stderr. Every fusion
+runs in memory and is returned in the tool response; unlike the CLI, the server writes no
+files. It also keeps an on-disk analysis index warm across calls, so a multi-call task
+pays the analysis cost once.
 
 ## The Eight Tools
 
@@ -92,7 +138,8 @@ and the read-only [MCP resources](/docs/reference/mcp-resources) cover the
 ## Enable the Precision Tier
 
 To use the opt-in Roslyn [precision tier](/docs/concepts/precision-tier) for a server
-session, set the `FUSE_SEMANTIC` environment variable before starting `fuse serve`.
+session, set the `FUSE_SEMANTIC` environment variable in the MCP server environment
+for your client.
 
 ## Next
 

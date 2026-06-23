@@ -34,6 +34,9 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<DotNetCommand>();
     services.AddTransient<AzureDevOpsWikiCommand>();
     services.AddTransient<InitCommand>();
+    services.AddTransient<McpCommand>();
+    services.AddTransient<InstallCommand>();
+    services.AddSingleton<McpInstallService>();
     services.AddTransient<McpServeCommand>();
     services.AddTransient<ExplainCommand>();
     services.AddTransient<VerifyCommand>();

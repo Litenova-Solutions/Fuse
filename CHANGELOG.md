@@ -2,6 +2,16 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 2.0 is a structural rewrite; backward compatibility with 1.x output is not a goal.
 
+## [2.3.0]
+
+### Added
+
+- **`fuse mcp install --rules`**: opt-in flag that, alongside registering the MCP server, writes a short rule biasing the agent toward the `fuse_*` tools into each client's instruction file (Claude `CLAUDE.md`, Cursor `.cursor/rules/fuse.mdc`, GitHub Copilot `.github/copilot-instructions.md`). The rule is conservative: prefer Fuse for surveying and context-gathering, use grep for exact-string and symbol lookups. Freeform files (Claude, Copilot) get a marker-delimited block that re-runs replace in place rather than duplicate, preserving surrounding content. Rules are project-scoped; under `--scope user` only Claude has a global equivalent (`~/.claude/CLAUDE.md`) and the others are skipped with a note. A normal `fuse mcp install` now prints a tip pointing at the flag.
+
+### Changed
+
+- **More directive MCP tool guidance.** The `fuse_toc` and `fuse_search` tool descriptions and the server instruction block now tell the agent to prefer the `fuse_*` tools over raw grep or reading files one by one when surveying or scoping, and to use grep only for exact-string or symbol lookups. This biases clients (especially Cursor and Copilot, which lean on tool descriptions) toward Fuse without changing any behavior.
+
 ## [2.2.1]
 
 ### Fixed

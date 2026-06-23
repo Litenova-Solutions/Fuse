@@ -56,6 +56,14 @@ public sealed class InstallCommand
     public string? Command { get; set; }
 
     /// <summary>
+    ///     When set, also writes a short rule biasing the agent toward the <c>fuse_*</c> tools into each client's
+    ///     instruction file (Claude <c>CLAUDE.md</c>, Cursor <c>.cursor/rules/fuse.mdc</c>, Copilot
+    ///     <c>.github/copilot-instructions.md</c>).
+    /// </summary>
+    [CliOption(Required = false, Description = "Also write a project rule that biases the agent toward the fuse_* tools (CLAUDE.md, .cursor/rules/fuse.mdc, .github/copilot-instructions.md). Recommended.")]
+    public bool Rules { get; set; }
+
+    /// <summary>
     ///     Writes MCP configuration for the selected client(s) and scope.
     /// </summary>
     /// <param name="context">The CLI invocation context.</param>
@@ -84,6 +92,7 @@ public sealed class InstallCommand
             scope,
             projectDirectory: null,
             fuseCommand: Command,
+            writeRules: Rules,
             _consoleUI,
             context.CancellationToken);
 
@@ -96,6 +105,11 @@ public sealed class InstallCommand
         _consoleUI.WriteResult(
             $"Configured {configured} client{(configured == 1 ? string.Empty : "s")}. " +
             "Your AI client will launch fuse mcp serve automatically when MCP is enabled.");
+
+        if (!Rules)
+            _consoleUI.WriteStep(
+                "Tip: re-run with --rules to also bias your agent toward the fuse_* tools "
+                + "(writes a short rule into your client's instructions file).");
     }
 
     private static bool TryParseClient(string value, out IReadOnlyList<McpInstallClient> clients)

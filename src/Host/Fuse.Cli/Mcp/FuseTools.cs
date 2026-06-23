@@ -37,7 +37,7 @@ public sealed class FuseTools
     ///     is missing or fusion fails.
     /// </returns>
     [McpServerTool(Name = "fuse_toc", ReadOnly = true)]
-    [Description("Emits a table of contents (directory tree, symbol outline, and per-file token costs) for a .NET codebase. The cheapest first call: survey the codebase, then fetch specific files with fuse_focus or fuse_search.")]
+    [Description("Emits a table of contents (directory tree, symbol outline, and per-file token costs) for a .NET codebase. The cheapest first call when exploring: prefer this over grepping or opening files blindly to survey the codebase, then fetch specific files with fuse_focus or fuse_search.")]
     public static Task<string> FuseTocAsync(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
@@ -324,7 +324,7 @@ public sealed class FuseTools
     ///     is missing or fusion fails.
     /// </returns>
     [McpServerTool(Name = "fuse_search", ReadOnly = true)]
-    [Description("BM25 query-scoped fusion for a .NET codebase. Returns the most relevant files plus dependency expansion.")]
+    [Description("Finds where a feature or concept lives in a .NET codebase: BM25-ranked relevant files plus their dependencies, reduced, in one call. Prefer over grep for concept or feature lookups; use grep only for exact strings or symbol names.")]
     public static Task<string> FuseSearchAsync(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,

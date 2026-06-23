@@ -69,10 +69,12 @@ public sealed class McpServeCommand
                 options.ServerInfo = new()
                 {
                     Name = "fuse",
-                    Version = "2.2.1"
+                    Version = "2.3.0"
                 };
                 options.ServerInstructions =
                     "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +
+                    "Prefer these tools over raw grep or reading files one by one when surveying or scoping a codebase; " +
+                    "reach for grep only for exact-string or symbol lookups.\n\n" +
                     "TOOLS:\n" +
                     "- fuse_toc: Table of contents (directory tree, symbol outline, per-file token costs). The cheapest first call.\n" +
                     "- fuse_skeleton: Structural skeleton only (signatures, no bodies). Use for architecture review.\n" +

@@ -84,12 +84,14 @@ from [Releases](https://github.com/Litenova-Solutions/Fuse/releases). Verify wit
 Register Fuse once; your AI client launches `fuse mcp serve` automatically when MCP is enabled:
 
 ```bash
-fuse mcp install
+fuse mcp install --rules
 ```
 
-That writes MCP config for Claude Code, Cursor, and GitHub Copilot in the current project.
-Use `fuse mcp install --scope user` to register Fuse for every project on this machine.
-Use `fuse mcp install --client cursor` to configure one client only.
+That writes MCP config for Claude Code, Cursor, and GitHub Copilot in the current project,
+and `--rules` (recommended) writes a short rule into each client's instruction file
+(`CLAUDE.md`, `.cursor/rules/fuse.mdc`, `.github/copilot-instructions.md`) so the agent
+reaches for the `fuse_*` tools instead of grepping blindly. Use `fuse mcp install --scope user`
+to register for every project on this machine, or `--client cursor` to configure one client only.
 
 Manual registration is also supported. For Claude Code, add `.mcp.json` to your project root:
 

@@ -52,7 +52,7 @@ public sealed class InstallCommand
     /// <summary>
     ///     Gets or sets the Fuse executable the client should launch; defaults to the running binary or <c>fuse</c>.
     /// </summary>
-    [CliOption(Description = "Executable the client launches (default: the running fuse binary or fuse on PATH).")]
+    [CliOption(Required = false, Description = "Executable the client launches (default: the running fuse binary or fuse on PATH).")]
     public string? Command { get; set; }
 
     /// <summary>

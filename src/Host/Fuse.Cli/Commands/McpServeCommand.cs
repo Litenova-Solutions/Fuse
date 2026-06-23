@@ -69,7 +69,7 @@ public sealed class McpServeCommand
                 options.ServerInfo = new()
                 {
                     Name = "fuse",
-                    Version = "2.2.0"
+                    Version = "2.2.1"
                 };
                 options.ServerInstructions =
                     "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +

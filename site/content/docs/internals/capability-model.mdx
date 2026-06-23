@@ -11,7 +11,7 @@ This page is for engineers who want to understand the plugin boundary and for co
 
 A pipeline that switches on file extension strings grows a branch for every new language and couples every stage to every language. Fuse inverts that. Each unit of language behavior implements a small interface, plugins register their implementations through dependency injection, and the pipeline resolves the right implementation by extension. Adding a language is then a registration, not an edit to the pipeline. The pipeline never names a language and never inspects an extension string directly.
 
-## Registration Through Dependency Injection
+## Registration through Dependency Injection
 
 Language behavior is registered with the service container, not hard-coded. The default composition registers the C# language plugin and the built-in format reducers:
 

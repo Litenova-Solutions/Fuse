@@ -16,7 +16,7 @@ Read that token number with its recall: one scoped query call reaches 51 percent
 the changed files, and the change-scoping mode reaches 88 percent when a git base is
 available.
 
-## The sequence
+## The Sequence
 
 1. **Survey.** Call `fuse_toc` first. It returns a directory tree with per-file token
    costs and a symbol outline, a low-token map of the whole codebase that also tells the
@@ -30,7 +30,7 @@ available.
 4. **Full control.** When you need options the workflow tools do not expose, call
    `fuse_dotnet`.
 
-## Example call sequence
+## Example Call Sequence
 
 ```text
 fuse_skeleton(path="C:/Projects/MyApp/src", maxTokens=80000)
@@ -41,7 +41,7 @@ fuse_changes(path="C:/Projects/MyApp/src", changedSince="origin/main", maxTokens
 The first call orients the agent, the second pulls the order-processing area and its
 dependencies, and the third scopes a later review to the branch under review.
 
-## Budget guidance
+## Budget Guidance
 
 | Stage | Tool | Typical tokens |
 |-------|------|----------------|
@@ -51,7 +51,7 @@ dependencies, and the third scopes a later review to the branch under review.
 | Change review | `fuse_changes` | 50,000 to 150,000 |
 | Full fusion | `fuse_dotnet level=aggressive` | 200,000 to 800,000 |
 
-## Shortcut: ask once
+## Shortcut: Ask Once
 
 `fuse_ask` collapses the survey and drill-in: give it a task and a token budget and it
 chooses skeleton, focus, or search and packs to budget. See
@@ -59,12 +59,13 @@ chooses skeleton, focus, or search and packs to budget. See
 `session` id to `fuse_focus` and `fuse_search` so files already returned are not sent
 again.
 
-## When to use it
+## When to Use It
 
 Use this progressive flow on any codebase too large to hand an agent whole. On a small
 project, one `fuse_dotnet` call is simpler.
 
-## Related concept
+## Related Concept
 
+The mental model behind this flow is [The explore phase](/docs/concepts/the-explore-phase).
 The tool parameters are in the [MCP tools reference](/docs/reference/mcp-tools), and the
 modes behind them in [Scoping](/docs/concepts/scoping).

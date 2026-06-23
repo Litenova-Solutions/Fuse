@@ -45,7 +45,8 @@ The result is prefixed with a one-line note naming the chosen strategy.
 
 ## fuse_skeleton
 
-Structural skeleton only (signatures, no bodies). Cold-start architecture review.
+Structural skeleton only (signatures, no bodies). Cold-start architecture review: one call
+maps the whole codebase instead of opening files to learn its shape.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -63,7 +64,9 @@ This tool always emits a skeleton (signatures, no bodies). Set `publicApi` to tr
 
 ## fuse_focus
 
-Scope to a type, file, or path plus dependency traversal.
+Scope to a type, file, or path plus dependency traversal. One call returns the seed and
+its dependency neighborhood whole, so the agent does not discover dependencies with more
+reads.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -83,7 +86,10 @@ A `focus` of the form `Type.Member` scopes the seed file to that member when the
 
 ## fuse_search
 
-BM25F query-scoped fusion plus dependency expansion.
+BM25F query-scoped fusion plus dependency expansion. One call turns a topic into the
+ranked files and their neighborhood, replacing a grep-and-open loop. Set `rerank` to true
+to reorder the BM25 candidates by embedding-vector similarity (hybrid retrieval), an
+opt-in tier; the default ranking is pure BM25F and uses no model.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -103,7 +109,9 @@ BM25F query-scoped fusion plus dependency expansion.
 
 ## fuse_changes
 
-Files changed since a git ref plus optional dependents.
+Files changed since a git ref plus optional dependents. With `review` set, one call answers
+"what changed and what breaks" with diff hunks and the callers of each changed file,
+instead of reading the diff and then chasing callers by hand.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|

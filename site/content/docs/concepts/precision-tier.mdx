@@ -8,7 +8,7 @@ skeletons, dependency edges, type location, and outlines. An opt-in **precision 
 swaps in Roslyn syntax analysis for those same jobs when accuracy matters more than
 the default's speed and Native AOT cleanliness.
 
-## The default: regex
+## The Default: Regex
 
 The default path reads C# with regular expressions. It is fast, deterministic, uses no
 runtime reflection, and is Native AOT clean, which is why it ships in the AOT binary.
@@ -19,7 +19,7 @@ strings can desynchronize the regex skeleton, so it drops signatures. On the ben
 corpus this is stark on Newtonsoft.Json: the regex skeleton kept only 4 percent of
 method signatures.
 
-## The precision tier: Roslyn
+## The Precision Tier: Roslyn
 
 Enable it with the `--semantic` flag, or the `FUSE_SEMANTIC` environment variable for
 the MCP server:
@@ -44,7 +44,7 @@ signatures where regex kept 4 percent:
 | AutoMapper | types 91%, methods 86% | types 99%, methods 100% |
 | Newtonsoft.Json | types 71%, methods 4% | types 100%, methods 100% |
 
-## The trade-off
+## The Trade-Off
 
 Higher fidelity means larger output, because the regex skeleton's deep cut was partly a
 fidelity failure, not real saving. Newtonsoft.Json moves from 96,953 tokens (regex, 93.4
@@ -58,7 +58,7 @@ to signatures. Query-based member retrieval (the thin host skeleton a `--query` 
 C#) runs on the default regex tier too, just with coarser member boundaries; the precision
 tier gives it exact boundaries.
 
-## A second opt-in tier: semantic embeddings
+## A Second Opt-In Tier: Semantic Embeddings
 
 The `--rerank` flag has its own opt-in backend, independent of the Roslyn tier. By default
 the reranker scores candidates with a dependency-free lexical hashing embedding. The

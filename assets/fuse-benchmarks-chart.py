@@ -58,6 +58,22 @@ def pill(x, y, label, fg, bg):
     text(x + w / 2, y, label, size=10.5, fill=fg, anchor="middle", weight="600", spacing="0.04em")
     return w
 
+def wrap(s, max_w, *, size, char_w=0.54):
+    # Greedy word wrap to fit max_w pixels, estimating glyph advance as size * char_w.
+    per = max(1, int(max_w / (size * char_w)))
+    words, lines, cur = s.split(), [], ""
+    for word in words:
+        cand = word if not cur else cur + " " + word
+        if len(cand) <= per:
+            cur = cand
+        else:
+            if cur:
+                lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines or [""]
+
 def card(y, num, title, subtitle, subtexts, rows, dmax, conclusion, *, fuse=EMBER, fuse2=EMBER2, illustrative=False):
     cx, cw = PAD, W - 2 * PAD
     o_title = 38
@@ -67,7 +83,13 @@ def card(y, num, title, subtitle, subtexts, rows, dmax, conclusion, *, fuse=EMBE
     o_bars = o_sub0 + len(subtexts) * st_h + 12
     bars_h = len(rows) * (BAR_H + ROW_GAP) - ROW_GAP
     o_concl = o_bars + bars_h + 18
-    concl_h = 38
+    # Conclusion text wraps inside the result box; the box grows with the line count
+    # so long conclusions (cards 04 and 05) stay within the border instead of bleeding past it.
+    concl_text_x = CPAD + 78
+    concl_avail = cw - 2 * CPAD - 78 - 16
+    concl_lines = wrap(conclusion, concl_avail, size=13.5)
+    concl_lh = 18
+    concl_h = max(38, 14 + len(concl_lines) * concl_lh)
     card_h = o_concl + concl_h + 24
 
     rrect(cx, y, cw, card_h, 16, CARD, stroke=BORDER)
@@ -101,8 +123,11 @@ def card(y, num, title, subtitle, subtexts, rows, dmax, conclusion, *, fuse=EMBE
     cyc = y + o_concl
     rrect(cx + CPAD, cyc, cw - 2 * CPAD, concl_h, 9, "#fff4ec" if not illustrative else "#f3f5f8", stroke="#f3d8c4" if not illustrative else BORDER)
     rrect(cx + CPAD, cyc, 4, concl_h, 2, fuse)
-    text(cx + CPAD + 18, cyc + 24, "Result", size=10.5, fill=fuse, weight="700", spacing="0.08em")
-    text(cx + CPAD + 78, cyc + 24, conclusion, size=13.5, fill=TEXT, font=SANS, weight="600")
+    # Vertically center the wrapped block within the result box.
+    block_top = cyc + (concl_h - len(concl_lines) * concl_lh) / 2 + 14
+    text(cx + CPAD + 18, block_top - 1, "Result", size=10.5, fill=fuse, weight="700", spacing="0.08em")
+    for i, ln in enumerate(concl_lines):
+        text(cx + concl_text_x, block_top - 1 + i * concl_lh, ln, size=13.5, fill=TEXT, font=SANS, weight="600")
     return y + card_h + CARD_GAP
 
 def header():

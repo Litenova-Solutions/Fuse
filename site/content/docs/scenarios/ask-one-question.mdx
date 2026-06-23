@@ -12,7 +12,7 @@ single call. One call is the measured shape: in the
 context in about 40,000 tokens (51 percent recall of the changed files) against roughly
 512,000 tokens for a generic-packer dump at the same single call.
 
-## Do it
+## Do It
 
 ```text
 fuse_ask(
@@ -22,7 +22,7 @@ fuse_ask(
 )
 ```
 
-## How it chooses
+## How It Chooses
 
 Fuse reads the task text and picks a strategy:
 
@@ -34,7 +34,7 @@ Focus falls back to search when the named type does not resolve. The result is p
 with a one-line note saying which strategy it chose, so the agent knows how the context
 was assembled, and it is packed to the `tokenBudget` (default 20,000).
 
-## When to use it
+## When to Use It
 
 Use `fuse_ask` as the default first call for an agent that has a task in natural language
 but does not yet know the codebase. Use the specific tools (`fuse_skeleton`,
@@ -42,7 +42,7 @@ but does not yet know the codebase. Use the specific tools (`fuse_skeleton`,
 want and want to control its parameters. The progressive flow is in
 [Context for an agent](/docs/scenarios/context-for-an-agent).
 
-## Related concept
+## Related Concept
 
 The strategies it chooses among are the modes in [Scoping](/docs/concepts/scoping); the
 full parameter list is in the [MCP tools reference](/docs/reference/mcp-tools).

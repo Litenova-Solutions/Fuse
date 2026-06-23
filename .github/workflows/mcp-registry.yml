@@ -25,23 +25,62 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set version in server.json from the tag
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Resolve package version
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' \
-            mcp-registry/server.json > mcp-registry/server.tmp
-          mv mcp-registry/server.tmp mcp-registry/server.json
-          echo "server.json version set to $VERSION"
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' \
+              mcp-registry/server.json > mcp-registry/server.tmp
+            mv mcp-registry/server.tmp mcp-registry/server.json
+            echo "server.json version set from tag to $VERSION"
+          else
+            VERSION="$(jq -r '.version' mcp-registry/server.json)"
+            echo "No tag; using server.json version $VERSION"
+          fi
+          echo "PKG_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Install mcp-publisher
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
 
+      # The registry validates that the NuGet package version exists before it will accept the
+      # server.json. NuGet push and indexing lag the tag push by minutes, so poll the flat
+      # container until the version is live (or warn and try anyway). Prevents the
+      # "version X does not exist in the registry ... wait for validation" 400 on fresh releases.
+      - name: Wait for NuGet to index the package version
+        run: |
+          set -uo pipefail
+          PKG_ID="fuse"  # NuGet flat-container paths use the lowercase package id
+          URL="https://api.nuget.org/v3-flatcontainer/${PKG_ID}/index.json"
+          echo "Waiting for ${PKG_ID} ${PKG_VERSION} to be indexed on NuGet..."
+          for attempt in $(seq 1 30); do
+            if curl -sf "$URL" | jq -e --arg v "$PKG_VERSION" '.versions | index($v)' >/dev/null 2>&1; then
+              echo "Found ${PKG_ID} ${PKG_VERSION} on NuGet (attempt ${attempt})."
+              exit 0
+            fi
+            echo "Not indexed yet (attempt ${attempt}/30); sleeping 20s..."
+            sleep 20
+          done
+          echo "::warning::${PKG_ID} ${PKG_VERSION} not indexed on NuGet after ~10 minutes; attempting publish anyway."
+
       - name: Authenticate to MCP Registry (GitHub OIDC)
         working-directory: mcp-registry
         run: ../mcp-publisher login github-oidc
 
+      # Retry to cover the brief window where NuGet's flat container lists the version but the
+      # registry's own package check has not caught up yet.
       - name: Publish server to MCP Registry
         working-directory: mcp-registry
-        run: ../mcp-publisher publish
+        run: |
+          set -uo pipefail
+          for attempt in $(seq 1 5); do
+            if ../mcp-publisher publish; then
+              echo "Published to MCP Registry on attempt ${attempt}."
+              exit 0
+            fi
+            echo "Publish attempt ${attempt}/5 failed; sleeping 30s before retry..."
+            sleep 30
+          done
+          echo "::error::mcp-publisher publish failed after 5 attempts."
+          exit 1

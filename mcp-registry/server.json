@@ -3,7 +3,7 @@
   "name": "io.github.Litenova-Solutions/fuse",
   "title": "Fuse",
   "description": "Token-efficient .NET codebase context for AI coding agents: skeleton, scoping, change-aware fusion.",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "repository": {
     "url": "https://github.com/Litenova-Solutions/Fuse",
     "source": "github",
@@ -15,7 +15,7 @@
       "registryType": "nuget",
       "registryBaseUrl": "https://api.nuget.org/v3/index.json",
       "identifier": "Fuse",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "runtimeHint": "dnx",
       "transport": {
         "type": "stdio"

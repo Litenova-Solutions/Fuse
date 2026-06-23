@@ -181,6 +181,19 @@ public sealed class McpInstallTests
         Assert.False(string.IsNullOrWhiteSpace(path));
     }
 
+    [Fact]
+    public void Install_DoesNotRequireCommandOption()
+    {
+        // Regression: the optional --command option was inferred as required by the command framework, so
+        // `fuse mcp install` failed with "Option '--command' is required" unless a value was passed. Parse only
+        // (no execution) so this never writes real client config.
+        var result = DotMake.CommandLine.Cli.Parse<Fuse.Cli.FuseCliCommand>(["mcp", "install", "--scope", "user"]);
+
+        Assert.DoesNotContain(
+            result.ParseResult.Errors,
+            error => error.Message.Contains("command", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "fuse-install-test", Guid.NewGuid().ToString("N"));

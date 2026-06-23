@@ -4,7 +4,7 @@ description: Register Fuse with Claude Code, Cursor, or GitHub Copilot so your a
 ---
 
 Fuse runs as a Model Context Protocol (MCP) server. Once registered, your agent gets
-eight tools for surveying a codebase, drilling into a type, scoping to a query or a
+nine tools for surveying a codebase, drilling into a type, scoping to a query or a
 branch, and asking one question, all returning scoped, reduced context in a single
 call.
 
@@ -143,7 +143,7 @@ runs in memory and is returned in the tool response; unlike the CLI, the server 
 files. It also keeps an on-disk analysis index warm across calls, so a multi-call task
 pays the analysis cost once.
 
-## The Eight Tools
+## The Nine Tools
 
 | Tool | Use it to |
 |------|-----------|
@@ -155,6 +155,7 @@ pays the analysis cost once.
 | `fuse_ask` | Give a task and a token budget; Fuse picks the strategy and packs to budget. |
 | `fuse_dotnet` | Full-control .NET fusion with every option. |
 | `fuse_generic` | Fusion for any template (Python, Go, Rust, and others). |
+| `fuse_reduce` | Compact a specific set of files, or raw content, you already identified, without collecting a directory. |
 
 The full parameter list for each is in the [MCP tools reference](/docs/reference/mcp-tools),
 and the read-only [MCP resources](/docs/reference/mcp-resources) cover the

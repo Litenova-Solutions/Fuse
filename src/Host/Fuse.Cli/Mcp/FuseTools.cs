@@ -650,4 +650,44 @@ public sealed class FuseTools
             return $"Error during fusion: {ex.Message}";
         }
     }
+
+    /// <summary>
+    ///     Compacts a caller-supplied set of files, or raw content, by running Fuse's reduction without
+    ///     collecting a whole directory. Lets an agent shrink context it has already identified.
+    /// </summary>
+    /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
+    /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
+    /// <param name="path">Base directory for resolving relative <paramref name="files" /> paths.</param>
+    /// <param name="files">Explicit file paths to reduce; mutually exclusive with <paramref name="content" />.</param>
+    /// <param name="content">Raw content to reduce instead of files; uses <paramref name="extension" /> to pick the reducer.</param>
+    /// <param name="extension">The extension that selects the reducer for <paramref name="content" />.</param>
+    /// <param name="level">The C# reduction level to apply.</param>
+    /// <param name="maxTokens">Token ceiling for the output, or zero for no limit.</param>
+    /// <param name="cancellationToken">Token used to cancel the run.</param>
+    /// <returns>The reduced output, or a descriptive error message when the input is invalid or fusion fails.</returns>
+    [McpServerTool(Name = "fuse_reduce", ReadOnly = true)]
+    [Description("Compacts a specific set of files (or raw content) by running Fuse's reduction, without collecting a whole directory. Pass `files` (paths you already identified) or `content` (+ `extension`). Use to shrink context before working with it, when fuse_search or fuse_focus is too broad.")]
+    public static Task<string> FuseReduceAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        [Description("Base directory for resolving relative file paths. Ignored in content mode.")] string path = ".",
+        [Description("File paths to reduce, absolute or relative to path.")] string[]? files = null,
+        [Description("Raw content to reduce instead of files. Provide extension to select the reducer.")] string? content = null,
+        [Description("Extension that selects the reducer for content (for example .cs, .ts, .py). Defaults to .cs.")] string extension = ".cs",
+        [Description("C# reduction level: none, standard, aggressive, skeleton, publicApi. Defaults to standard.")] ReductionLevel level = ReductionLevel.Standard,
+        [Description("Maximum tokens the reduced output may use, or 0 for no limit.")] int maxTokens = 0,
+        CancellationToken cancellationToken = default)
+    {
+        int? maxTokenLimit = maxTokens > 0 ? maxTokens : null;
+
+        if (!string.IsNullOrEmpty(content))
+            return ReduceRunner.ReduceContentAsync(
+                orchestrator, templateRegistry, content, extension, level, maxTokenLimit, cancellationToken);
+
+        if (files is { Length: > 0 })
+            return ReduceRunner.ReduceFilesAsync(
+                orchestrator, templateRegistry, path, files, level, maxTokenLimit, cancellationToken);
+
+        return Task.FromResult("Error: provide either files (paths) or content to reduce.");
+    }
 }

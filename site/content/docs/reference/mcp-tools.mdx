@@ -1,9 +1,9 @@
 ---
 title: Tools Reference
-description: Parameters and defaults for the eight MCP tools the Fuse server exposes to AI clients.
+description: Parameters and defaults for the nine MCP tools the Fuse server exposes to AI clients.
 ---
 
-The Fuse MCP server exposes eight tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
+The Fuse MCP server exposes nine tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
 
 This page is for engineers writing agent instructions and for experts who need the exact default of each parameter.
 
@@ -178,6 +178,19 @@ Generic fusion for any template (Python, Go, Rust, and others).
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 | `gitStats` | bool | false | Include git churn stats in the manifest |
+
+## fuse_reduce
+
+Compacts a caller-supplied set of files, or raw content, by running Fuse's reduction without collecting a whole directory. Use it to shrink context you have already identified, when `fuse_search` or `fuse_focus` would pull in more than you want. Pass `files` (paths) or `content` (with `extension`); the latter writes a temporary file so the reducer is selected by extension.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | `.` | Base directory for resolving relative `files` paths; ignored in content mode |
+| `files` | string[] | null | File paths to reduce, absolute or relative to `path` |
+| `content` | string | null | Raw content to reduce instead of files |
+| `extension` | string | `.cs` | Extension that selects the reducer for `content` |
+| `level` | enum | `standard` | C# reduction level: `none`, `standard`, `aggressive`, `skeleton`, `publicApi` |
+| `maxTokens` | int | 0 | Token ceiling for the output; 0 means unlimited |
 
 ## What This Does Not Cover
 

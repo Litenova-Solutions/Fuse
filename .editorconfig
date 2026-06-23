@@ -1,0 +1,31 @@
+root = true
+
+# All files
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C# source files
+[*.{cs,csx}]
+indent_size = 4
+indent_style = space
+tab_width = 4
+
+[*.cs]
+# One type (class, struct, interface, enum, or delegate) per file.
+# Enforced by convention; split types into separate files named after the type.
+
+# Match existing Fuse style.
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+# Shell and web assets keep LF where pinned in .gitattributes.
+[*.{sh,mdx,md,yml,yaml,json}]
+end_of_line = lf
+
+[*.{csproj,props,targets,slnx,xml,md,mdx,json,yml,yaml,html,css,tsx,ts,js}]
+indent_size = 2
+indent_style = space
+
+[*.cs]
+indent_size = 4

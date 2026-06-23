@@ -120,7 +120,7 @@ export default function HomePage() {
             <Feature
               icon={<Plug className="size-5" />}
               title="One call, not an explore loop"
-              body="fuse serve is a Model Context Protocol server with eight tools for Claude Code, Cursor, and Copilot. Your agent fetches scoped, reduced context in one call instead of opening files one by one, so its time goes to the change."
+              body="fuse mcp serve is a Model Context Protocol server with eight tools for Claude Code, Cursor, and Copilot. Your agent fetches scoped, reduced context in one call instead of opening files one by one, so its time goes to the change."
             />
             <Feature
               icon={<Crosshair className="size-5" />}
@@ -183,7 +183,7 @@ export default function HomePage() {
               Connect it to your agent in one line
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
-              Run <code className="font-mono">fuse serve</code> and your agent gets
+              Run <code className="font-mono">fuse mcp serve</code> and your agent gets
               eight tools: survey a codebase, drill into a type, scope to a query
               or a branch, or ask one question and let Fuse pick the strategy. It
               works with Claude Code, Cursor, and GitHub Copilot.
@@ -201,12 +201,12 @@ export default function HomePage() {
     "fuse": {
       "type": "stdio",
       "command": "fuse",
-      "args": ["serve"]
+      "args": ["mcp", "serve"]
     }
   }
 }`}</CodeBlock>
             <CodeBlock>{`# or register it with Claude Code in one line
-claude mcp add fuse --scope project -- fuse serve`}</CodeBlock>
+claude mcp add fuse --scope project -- fuse mcp serve`}</CodeBlock>
           </div>
         </div>
       </section>

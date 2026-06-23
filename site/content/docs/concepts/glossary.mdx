@@ -49,11 +49,12 @@ hash), so multi-turn refinement does not re-pay tokens. See
 
 **Hybrid retrieval.** The opt-in reranking path that combines BM25 keyword scoring with
 local vector embeddings to order scoped results, enabled with `--rerank`. See
-[Precision tier](/docs/concepts/precision-tier).
+[Roslyn structural analysis vs regex](/docs/concepts/precision-tier).
 
-**Precision tier.** The opt-in Roslyn analysis path that replaces the default regex
-extraction for higher-fidelity skeletons and dependency edges. See
-[Precision tier](/docs/concepts/precision-tier).
+**Roslyn structural analysis.** The default C# parse-tree path for skeletons, dependency
+edges, type location, outlines, route maps, and semantic markers. Regex still handles
+content reduction, the project graph, and pattern detectors. See
+[Roslyn structural analysis vs regex](/docs/concepts/precision-tier).
 
 **Provenance.** An annotation that records the inclusion chain that pulled a file into a
 scoped fusion, answering why a file is present.

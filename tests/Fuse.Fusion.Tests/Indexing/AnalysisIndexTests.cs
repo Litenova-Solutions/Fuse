@@ -4,17 +4,17 @@ using Fuse.Fusion.Indexing;
 using Fuse.Fusion.Scoping;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
-using Fuse.Plugins.Languages.CSharp.Dependencies;
+using Fuse.Plugins.Languages.CSharp.Roslyn;
 
 namespace Fuse.Fusion.Tests.Indexing;
 
 public sealed class AnalysisIndexTests : IDisposable
 {
     private static readonly CapabilityRegistry<IDependencyExtractor> Extractors =
-        new([new CSharpDependencyExtractor()]);
+        new([new RoslynDependencyExtractor()]);
 
     private static readonly CapabilityRegistry<ITypeNameLocator> TypeLocators =
-        new([new CSharpTypeNameLocator()]);
+        new([new RoslynTypeNameLocator()]);
 
     private readonly string _root;
 

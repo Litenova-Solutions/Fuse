@@ -19,7 +19,7 @@ public sealed class FusionConcurrencyTests : IDisposable
     public FusionConcurrencyTests()
     {
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

@@ -115,8 +115,7 @@ different set of choices:
   confirms the default and `--level aggressive` modes keep 99 to 100 percent of public types and
   methods, and `fuse verify` reports the preserved surface for any run.
 - **Deterministic.** Same input, same output. No similarity ranking in the default
-  path, no index drift. The default path uses no runtime reflection and ships as a
-  Native AOT binary.
+  path, no index drift.
 - **Scoped, not fuzzy.** Scope a fusion to a type and its dependencies, the files a
   git diff touched, or the files a query ranks highest, expanded through a dependency
   graph, so the agent gets the relevant neighborhood whole rather than ranked chunks.
@@ -145,10 +144,9 @@ with the API intact and the tokens cut, Fuse is purpose-built.
 
 ## Honest Boundaries
 
-The default dependency graph is regex-based and best-effort: it can miss edges that
-come from dynamic dispatch or reflection, and it collapses on codebases with heavy
-conditional compilation, where the opt-in [precision tier](/docs/concepts/precision-tier)
-swaps in Roslyn. Query and focus scoping rest on a lexical index, so a query that
+The C# dependency graph is syntax-level and best-effort: it can miss edges that
+come from dynamic dispatch or reflection because types are not resolved across assemblies.
+Query and focus scoping rest on a lexical index, so a query that
 shares no vocabulary with the target file can miss. The
 [Benchmarks](/docs/project/benchmarks) page reports exactly where Fuse ties or loses,
 not only where it wins.

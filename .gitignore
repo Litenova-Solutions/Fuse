@@ -145,8 +145,8 @@ publish/
 *.pubxml
 *.publishproj
 
-# Fuse ships its Native AOT and tool publish profiles; the CI publish step and
-# build/pack-aot.ps1 resolve them by name, so they must be tracked.
+# Fuse ships its runtime and tool publish profiles; the CI publish step and
+# build/pack-tool.ps1 resolve them by name, so they must be tracked.
 !src/Host/Fuse.Cli/Properties/PublishProfiles/*.pubxml
 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to

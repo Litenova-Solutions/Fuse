@@ -5,10 +5,8 @@ namespace Fuse.Cli;
 ///     backend can be chosen when the dependency-injection container is built.
 /// </summary>
 /// <remarks>
-///     Like <see cref="SemanticModeDetector" />, this runs before command parsing and scans the raw arguments.
-///     It reports only the explicit flag; the environment variable and the build default are folded in by the
-///     ONNX registration. In the Native AOT build the ONNX assembly is not referenced, so the result is unused
-///     and the hashing embedding is always selected.
+///     This runs before command parsing and scans the raw arguments for <c>--embeddings</c>. It reports only
+///     the explicit flag; the environment variable and the build default are folded in by the ONNX registration.
 /// </remarks>
 internal static class EmbeddingsModeDetector
 {

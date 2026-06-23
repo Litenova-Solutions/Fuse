@@ -7,7 +7,7 @@ namespace Fuse.Emission.Tests;
 
 public class TableOfContentsBuilderTests
 {
-    private static TocFileEntry Entry(string path, long tokens, params OutlineSymbol[] symbols) =>
+    private static TableOfContentsFileEntry Entry(string path, long tokens, params OutlineSymbol[] symbols) =>
         new(path, tokens, symbols);
 
     [Fact]
@@ -84,5 +84,55 @@ public class TableOfContentsBuilderTests
         var toc = TableOfContentsBuilder.Build(files, OutputFormat.Xml);
 
         Assert.True(toc.IndexOf("alpha.cs", StringComparison.Ordinal) < toc.IndexOf("zeta.cs", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Build_Tree_PathsOnly_OmitsSymbolOutlinesButKeepsFiles()
+    {
+        var files = new[]
+        {
+            Entry("src/Services/OrderService.cs", 1200, new OutlineSymbol("class", "OrderService", ["PlaceOrder"])),
+        };
+
+        var toc = TableOfContentsBuilder.Build(files, OutputFormat.Xml, TableOfContentsDetail.PathsOnly);
+
+        Assert.Contains("OrderService.cs (~1.2k tokens)", toc);
+        Assert.DoesNotContain("class OrderService", toc);
+        Assert.Contains("outlines omitted", toc);
+    }
+
+    [Fact]
+    public void Build_Tree_Directories_CollapsesToDirectoryAggregates()
+    {
+        var files = new[]
+        {
+            Entry("src/Services/OrderService.cs", 1000, new OutlineSymbol("class", "OrderService", ["PlaceOrder"])),
+            Entry("src/Services/PaymentService.cs", 500, new OutlineSymbol("class", "PaymentService", [])),
+            Entry("src/Models/Order.cs", 300, new OutlineSymbol("class", "Order", [])),
+        };
+
+        var toc = TableOfContentsBuilder.Build(files, OutputFormat.Xml, TableOfContentsDetail.Directories);
+
+        // Individual files and their outlines are gone; directories carry a file count and aggregate cost.
+        Assert.DoesNotContain("OrderService.cs", toc);
+        Assert.DoesNotContain("class OrderService", toc);
+        Assert.Contains("src/Services/ (2 files, ~1.5k tokens)", toc);
+        Assert.Contains("src/Models/ (1 files, ~300 tokens)", toc);
+    }
+
+    [Fact]
+    public void Build_Json_PathsOnly_DropsSymbols()
+    {
+        var files = new[]
+        {
+            Entry("src/A.cs", 100, new OutlineSymbol("class", "A", ["M"])),
+        };
+
+        var json = TableOfContentsBuilder.Build(files, OutputFormat.Json, TableOfContentsDetail.PathsOnly);
+        using var doc = JsonDocument.Parse(json);
+
+        var entry = doc.RootElement.GetProperty("entries")[0];
+        Assert.Equal("src/A.cs", entry.GetProperty("path").GetString());
+        Assert.Equal(0, entry.GetProperty("symbols").GetArrayLength());
     }
 }

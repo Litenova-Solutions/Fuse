@@ -51,7 +51,7 @@ A few behaviors are controlled by environment variables rather than the config f
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FUSE_CENTRALITY_WEIGHT` | `0.15` | Weight of the query-independent graph-centrality prior blended into focus and query ranking, so at equal relevance the more depended-upon file ranks earlier. Set to `0` to disable the prior and reproduce the pre-centrality ordering exactly. |
-| `FUSE_EMBEDDINGS` | unset | Embedding backend for `--rerank` when no explicit `--embeddings` flag is given: `1`/`true` selects the semantic ONNX model, `0`/`false` forces the hashing embedding. Unset uses the build default. The explicit flag wins over this variable. Ignored in the Native AOT build, which always uses hashing. |
+| `FUSE_EMBEDDINGS` | unset | Embedding backend for `--rerank` when no explicit `--embeddings` flag is given: `1`/`true` selects the semantic ONNX model, `0`/`false` forces the hashing embedding. Unset uses the build default. The explicit flag wins over this variable. Falls back to hashing when the model is unavailable. |
 | `FUSE_EMBEDDINGS_MODEL_PATH` | unset | Directory holding a sideloaded embedding model (`model.onnx` and `vocab.txt`). When set, the model loads from this path and no download is attempted. Otherwise the model is cached per machine under `~/.fuse/models/<name>/`, downloaded once from a pinned URL and verified against a pinned SHA-256 (a mismatch is refused). If the model is unavailable (offline, nothing cached), the run falls back to the hashing embedding rather than failing. |
 
 ## The Scaffold from `fuse init`

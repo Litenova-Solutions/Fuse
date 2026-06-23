@@ -1,82 +1,46 @@
 ---
-title: Precision tier (regex vs Roslyn)
-description: When the default regex analysis is enough, when to switch on the opt-in Roslyn tier, and the trade-off it makes.
+title: Roslyn structural analysis vs regex
+description: What Roslyn provides by default for C# structure, what regex still handles, and the opt-in embedding reranker.
 ---
 
-Fuse analyzes C# two ways. By default it uses fast, regex-based extraction for
-skeletons, dependency edges, type location, and outlines. An opt-in **precision tier**
-swaps in Roslyn syntax analysis for those same jobs when accuracy matters more than
-the default's speed and Native AOT cleanliness.
+Fuse analyzes C# in two layers. **Roslyn** parses each `.cs` file and drives every structural capability: skeletons, dependency edges, type location, outlines, symbol slicing, route maps, and semantic markers. **Regex** still handles C# content reduction (comment and using removal, whitespace compression), the solution and project reference graph (`.sln` and `.csproj` text), and cross-codebase pattern detection. This page explains the split, what each layer is good at, and where an optional embedding backend fits.
 
-## The Default: Regex
+## Roslyn: Default Structural Analysis
 
-The default path reads C# with regular expressions. It is fast, deterministic, uses no
-runtime reflection, and is Native AOT clean, which is why it ships in the AOT binary.
-For most codebases its skeletons and dependency graph are good enough.
+Roslyn is mandatory for C# structural work. There is no flag to disable it and no regex fallback for skeleton, dependency, outline, route-map, or semantic-marker extraction.
 
-Its limit shows on hard C#. Conditional compilation, partial classes, and braces inside
-strings can desynchronize the regex skeleton, so it drops signatures. On the benchmark
-corpus this is stark on Newtonsoft.Json: the regex skeleton kept only 4 percent of
-method signatures.
+The Roslyn extractors work from the parsed syntax tree rather than line-based regex, so conditional compilation, partial classes, and braces inside strings no longer desynchronize the skeleton extractor, and the dependency extractor captures references regex would miss, such as return types, generics, and object creations. The analysis is syntax-level, not full semantic binding: it identifies type-position identifiers without resolving them across a compilation, so it is more accurate than regex but not a guaranteed-complete call graph.
 
-## The Precision Tier: Roslyn
+On the benchmark corpus, the Roslyn skeleton keeps method signatures the old regex skeleton dropped on hard codebases. Newtonsoft.Json is the headline case: regex skeleton kept 4 percent of method signatures; Roslyn keeps 100 percent:
 
-Enable it with the `--semantic` flag, or the `FUSE_SEMANTIC` environment variable for
-the MCP server:
-
-```bash
-fuse dotnet --directory ./src --level skeleton --semantic
-```
-
-The tier replaces the regex extractors with Roslyn ones behind the same interfaces. It
-parses each file, so it does not lose signatures to conditional compilation or partial
-classes, and it captures references the regex misses, such as return types, generics,
-and object creations. It is syntax-level analysis, not full semantic binding, so it is
-more accurate than regex but not guaranteed complete.
-
-On the same Newtonsoft.Json case, the Roslyn skeleton keeps 100 percent of method
-signatures where regex kept 4 percent:
-
-| Repo | Regex skeleton | Roslyn skeleton |
-|------|----------------|-----------------|
+| Repo | Regex skeleton (historical) | Roslyn skeleton |
+|------|----------------------------|-----------------|
 | MediatR | types 100%, methods 84% | types 100%, methods 100% |
 | FluentValidation | types 98%, methods 99% | types 100%, methods 100% |
 | AutoMapper | types 91%, methods 86% | types 99%, methods 100% |
 | Newtonsoft.Json | types 71%, methods 4% | types 100%, methods 100% |
 
-## The Trade-Off
+Higher fidelity means larger skeleton output on complex code, because the regex skeleton's deep cut was partly a fidelity failure, not real saving. Newtonsoft.Json moves from 96,953 tokens (regex, 93.4 percent reduction but 4 percent method fidelity) to 694,862 tokens (Roslyn, 52.7 percent reduction at 100 percent fidelity). Roslyn does not weaken fidelity to inflate reduction; it gives a faithful signatures-only cut.
 
-Higher fidelity means larger output, because the regex skeleton's deep cut was partly a
-fidelity failure, not real saving. Newtonsoft.Json moves from 96,953 tokens (regex, 93.4
-percent reduction but 4 percent method fidelity) to 694,862 tokens (Roslyn, 52.7 percent
-reduction at 100 percent fidelity). The precision tier does not weaken fidelity to inflate
-reduction; it gives you a faithful signatures-only cut.
+Roslyn also powers **symbol-level scoping**: a `Type.Member` focus seed scopes the seed file to that one member, keeping its body in full and reducing every other member to its signature. Query-based member retrieval emits a thin host-type skeleton with matched members in full and the rest collapsed to signatures, using exact member boundaries from the parse tree.
 
-The tier also sharpens **symbol-level scoping**: a `Type.Member` focus seed scopes the
-seed file to that one member, keeping its body in full and reducing the rest of the file
-to signatures. Query-based member retrieval (the thin host skeleton a `--query` emits for
-C#) runs on the default regex tier too, just with coarser member boundaries; the precision
-tier gives it exact boundaries.
+## Regex: Reduction, Project Graph, and Patterns
 
-## A Second Opt-In Tier: Semantic Embeddings
+Regex remains the right tool where a full parse is unnecessary or the input is not C# source.
 
-The `--rerank` flag has its own opt-in backend, independent of the Roslyn tier. By default
-the reranker scores candidates with a dependency-free lexical hashing embedding. The
-`--embeddings` flag (or `FUSE_EMBEDDINGS`) switches in a real semantic encoder
-(`all-MiniLM-L6-v2`, ONNX), downloaded once to `~/.fuse/models` and verified against a
-pinned hash, so rerank can bridge a true semantic gap rather than only sharpening lexical
-overlap. Like Roslyn, ONNX is not AOT compatible, so it lives in a separate assembly the
-AOT package does not reference; the AOT binary always uses the hashing embedding, and any
-run falls back to hashing when the model cannot be fetched.
+| Area | Mechanism | Examples |
+|------|-----------|----------|
+| C# content reduction | Lexer and regex transforms in `CSharpReducer` | Comment removal, using stripping, aggressive compression |
+| Project graph | Regex over `.sln` and `.csproj` text | Solution entries, `ProjectReference` edges |
+| Pattern detectors | Regex and heuristics over fused content | DI registration, CQRS, repository conventions |
+| Secret redaction | Regex plus entropy heuristics | API keys, connection strings |
 
-## Availability
+The project graph is best-effort: references injected through imported targets, MSBuild variables, or globbing are not resolved. Pattern detectors name conventions; they do not perform semantic analysis.
 
-The Roslyn tier is not Native AOT compatible, so it is isolated in a separate assembly
-that the AOT package does not reference. The AOT binary always uses the regex tier; the
-framework-dependent tool can use either. The mechanism is described in
-[Scoping internals](/docs/internals/scoping-internals).
+## Opt-In: Semantic Embeddings for Rerank
+
+Hybrid query reranking (`--rerank`) has its own opt-in backend, independent of Roslyn structural analysis. By default the reranker scores candidates with a dependency-free lexical hashing embedding. The `--embeddings` flag (or `FUSE_EMBEDDINGS`) switches in a real semantic encoder (`all-MiniLM-L6-v2`, ONNX), downloaded once to `~/.fuse/models` and verified against a pinned hash, so rerank can bridge a true semantic gap rather than only sharpening lexical overlap. If the model cannot be fetched, the run falls back to hashing rather than failing.
 
 ## Next
 
-See [Scoping](/docs/concepts/scoping) for the modes the tier sharpens, or the measured
-fidelity in [Benchmarks](/docs/project/benchmarks).
+See [Scoping](/docs/concepts/scoping) for the modes Roslyn sharpens, [Scoping internals](/docs/internals/scoping-internals) for graph and index detail, or the measured fidelity in [Benchmarks](/docs/project/benchmarks).

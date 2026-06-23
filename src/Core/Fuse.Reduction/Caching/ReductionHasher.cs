@@ -10,6 +10,12 @@ namespace Fuse.Reduction.Caching;
 internal static class ReductionHasher
 {
     /// <summary>
+    ///     Schema version for <see cref="HashReductionOptions" />. Bump when the hashed payload shape changes
+    ///     so stale cache entries are not reused across incompatible analyzer tiers.
+    /// </summary>
+    internal const int SchemaVersion = 2;
+
+    /// <summary>
     ///     Hashes raw file content for cache lookup.
     /// </summary>
     public static ulong HashContent(string content)
@@ -26,6 +32,7 @@ internal static class ReductionHasher
         // Hash the single level plus the orthogonal flags. The per-transform C# decisions are derived from
         // Level, so hashing them too would be redundant and bloat the key.
         var payload = string.Join('|',
+            SchemaVersion,
             extension,
             (int)options.Level,
             options.TrimContent,

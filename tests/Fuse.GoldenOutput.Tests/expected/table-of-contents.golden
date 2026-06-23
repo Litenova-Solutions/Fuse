@@ -6,7 +6,7 @@ src/
   SampleShop.Core/
     Config/
       SecretsHolder.cs (~40 tokens)
-        class SecretsHolder
+        class SecretsHolder: ApiKey, Token
     Models/
       CatalogItem.cs (~27 tokens)
         class CatalogItem: Name, ListProducts
@@ -16,13 +16,13 @@ src/
     SampleShop.Core.csproj (~44 tokens)
     Services/
       OrderService.cs (~42 tokens)
-        class OrderService: PlaceOrder
+        class OrderService: _payments, PlaceOrder
       PaymentService.cs (~45 tokens)
-        class PaymentService: ProcessPayment
+        class PaymentService: _gateway, ProcessPayment
   SampleShop.Web/
     appsettings.json (~16 tokens)
     Controllers/
       OrdersController.cs (~75 tokens)
-        class OrdersController: Get, Create
+        class OrdersController: _orders, Get, Create
     Program.cs (~44 tokens)
     SampleShop.Web.csproj (~67 tokens)

@@ -22,7 +22,7 @@ public sealed class FusionOrchestratorRerankTests : IDisposable
             "public class XmlConfigSerializer { public string Serialize() { return string.Empty; } }");
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

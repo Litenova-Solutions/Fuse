@@ -7,8 +7,8 @@ namespace Fuse.Emission.Serialization;
 ///     Builds the machine-readable JSON run report for a completed fusion run.
 /// </summary>
 /// <remarks>
-///     Serialization uses the source-generated <see cref="FuseEmissionJsonContext" />, so the report is
-///     AOT-safe. The report always names the tokenizer used for its token counts.
+///     Serialization uses the source-generated <see cref="FuseEmissionJsonContext" />. The report always
+///     names the tokenizer used for its token counts.
 /// </remarks>
 public static class RunReportBuilder
 {

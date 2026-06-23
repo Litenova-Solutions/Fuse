@@ -1,27 +1,28 @@
 using Fuse.Plugins.Abstractions.Dependencies;
+using Fuse.Plugins.Abstractions.Markers;
+using Fuse.Plugins.Abstractions.Maps;
 using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Plugins.Abstractions.Skeleton;
+using Fuse.Plugins.Languages.CSharp.Roslyn.Maps;
+using Fuse.Plugins.Languages.CSharp.Roslyn.Markers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Plugins.Languages.CSharp.Roslyn.Extensions;
 
 /// <summary>
-///     Registers the opt-in Roslyn precision tier for C#.
+///     Registers the Roslyn structural tier for C#.
 /// </summary>
 public static class RoslynServiceCollectionExtensions
 {
     /// <summary>
-    ///     Registers Roslyn implementations of the C# skeleton, dependency, type-name, and outline capabilities.
+    ///     Registers Roslyn implementations of the C# skeleton, dependency, type-name, outline, slice, chunk,
+    ///     route-map, and semantic-marker capabilities.
     /// </summary>
     /// <param name="services">The service collection to add the capabilities to.</param>
-    /// <returns>The same <paramref name="services" /> instance, to allow chaining.</returns>
+    /// <returns>The same <paramref name="services" /> instance, to allow call chaining.</returns>
     /// <remarks>
-    ///     Call this <em>after</em> the regex C# plugin is registered (after <c>AddFuse</c>). Each capability
-    ///     registry resolves an extension to its last registration, so registering the Roslyn implementations
-    ///     last makes them win for <c>.cs</c> while the regex implementations remain the fallback for any
-    ///     capability the Roslyn tier does not provide. This method is invoked only when semantic analysis is
-    ///     requested, so the regex tier stays the default; it is never reached in the Native AOT build, which
-    ///     does not reference this assembly.
+    ///     Call this after <c>AddCSharpLanguage</c> (typically via <c>AddFuse</c>) so Roslyn supplies
+    ///     every structural capability for <c>.cs</c>.
     /// </remarks>
     public static IServiceCollection AddCSharpRoslyn(this IServiceCollection services)
     {
@@ -31,6 +32,8 @@ public static class RoslynServiceCollectionExtensions
         services.AddSingleton<ISymbolOutlineExtractor, RoslynOutlineExtractor>();
         services.AddSingleton<ISymbolSliceExtractor, RoslynSymbolSliceExtractor>();
         services.AddSingleton<ISymbolChunkExtractor, RoslynSymbolChunkExtractor>();
+        services.AddSingleton<IRouteMapGenerator, RoslynRouteMapGenerator>();
+        services.AddSingleton<ISemanticMarkerGenerator, RoslynSemanticMarkerGenerator>();
         return services;
     }
 }

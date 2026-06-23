@@ -46,6 +46,36 @@ public sealed class GoldenOutputTests
     }
 
     [Fact]
+    public async Task SampleShop_Skeleton_MatchesGolden()
+    {
+        using var host = new GoldenFusionTestHost();
+        var output = await host.FuseSampleShopAsync(
+            reduction: new ReductionOptions(level: ReductionLevel.Skeleton),
+            emission: new EmissionOptions { IncludeManifest = false, IncludeGitStats = false });
+        GoldenOutputAssert.AssertMatches("skeleton-fusion", output);
+    }
+
+    [Fact]
+    public async Task SampleShop_TableOfContents_TinyBudget_DegradesToDirectories()
+    {
+        using var host = new GoldenFusionTestHost();
+        var output = await host.FuseSampleShopAsync(
+            emission: new EmissionOptions
+            {
+                TableOfContents = true,
+                TableOfContentsMaxTokens = 60,
+                IncludeManifest = false,
+                IncludeGitStats = false,
+            });
+
+        // Under a budget the full per-file map cannot meet, the document degrades to directory aggregates
+        // rather than overflowing: no per-file outline lines, and the degradation note is present.
+        Assert.Contains("Large codebase", output);
+        Assert.Contains("files, ~", output);
+        Assert.DoesNotContain("class OrderService", output);
+    }
+
+    [Fact]
     public void XmlEntryFormatter_SampleEntry_MatchesGolden()
     {
         var formatter = new XmlEntryFormatter();

@@ -97,7 +97,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Session.ISessionTracker, Session.InMemorySessionTracker>();
         services.AddSingleton<IChangeDetector, GitChangeDetector>();
         services.AddSingleton<IGitStatsProvider, GitStatsProvider>();
-        services.AddSingleton<IReductionCacheFactory, ReductionCacheFactory>();
+        services.AddSingleton<IFuseStoreFactory, FuseStoreFactory>();
 
         RegisterFileFilters(services);
         RegisterProjectTemplates(services);

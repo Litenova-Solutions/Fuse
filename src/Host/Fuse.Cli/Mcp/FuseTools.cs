@@ -31,13 +31,18 @@ public sealed class FuseTools
     /// <param name="excludeFiles">File names to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" /> for none.</param>
     /// <param name="excludeTestProjects">When <see langword="true" />, skip all test project directories.</param>
+    /// <param name="maxTokens">
+    ///     The largest table of contents to return. On a codebase whose full map would exceed this, the document
+    ///     degrades (drops symbol outlines, then collapses to directory aggregates) so the result stays inline
+    ///     rather than overflowing the tool-result size cap.
+    /// </param>
     /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
     /// <returns>
     ///     The table-of-contents document as a single string, or a descriptive error message when the directory
     ///     is missing or fusion fails.
     /// </returns>
     [McpServerTool(Name = "fuse_toc", ReadOnly = true)]
-    [Description("Emits a table of contents (directory tree, symbol outline, and per-file token costs) for a .NET codebase. The cheapest first call when exploring: prefer this over grepping or opening files blindly to survey the codebase, then fetch specific files with fuse_focus or fuse_search.")]
+    [Description("Emits a table of contents (directory tree, symbol outline, and per-file token costs) for a .NET codebase. The cheapest first call when exploring: prefer this over grepping or opening files blindly to survey the codebase, then fetch specific files with fuse_focus or fuse_search. On a large codebase the map degrades to fit maxTokens (drops outlines, then collapses to directories) instead of overflowing.")]
     public static Task<string> FuseTocAsync(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
@@ -46,6 +51,7 @@ public sealed class FuseTools
         [Description("File names to exclude.")] string[]? excludeFiles = null,
         [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
         [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        [Description("Largest table of contents to return, in tokens. The map degrades to fit rather than overflow. Defaults to 24000.")] int maxTokens = 24000,
         CancellationToken cancellationToken = default) =>
         FuseToolHelpers.ExecuteDotNetAsync(
             orchestrator,
@@ -59,6 +65,7 @@ public sealed class FuseTools
                         ShowTokenCount = false,
                         IncludeManifest = false,
                         TableOfContents = true,
+                        TableOfContentsMaxTokens = maxTokens > 0 ? maxTokens : 24000,
                     })
                     .WithReductionOptions(new ReductionOptions(enableRedaction: true));
 

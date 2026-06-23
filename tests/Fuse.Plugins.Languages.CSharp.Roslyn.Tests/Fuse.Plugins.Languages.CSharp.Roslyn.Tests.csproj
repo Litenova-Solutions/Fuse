@@ -16,6 +16,10 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj"/>
+        <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Languages.CSharp\Fuse.Plugins.Languages.CSharp.csproj"/>
         <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="expected\**\*" CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
 </Project>

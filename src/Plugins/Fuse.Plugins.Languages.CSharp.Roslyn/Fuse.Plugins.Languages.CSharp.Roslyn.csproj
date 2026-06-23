@@ -4,13 +4,6 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <UseFileScopedNamespaces>true</UseFileScopedNamespaces>
-        <!--
-          Opt-in precision tier. This assembly references Roslyn, which is not trim or Native AOT compatible,
-          so the default AOT package does not reference it (see Fuse.Cli.csproj, gated on PublishAot). The
-          regex C# plugin stays the AOT-clean default; this plugin is registered only when semantic analysis
-          is requested.
-        -->
-        <IsAotCompatible>false</IsAotCompatible>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />

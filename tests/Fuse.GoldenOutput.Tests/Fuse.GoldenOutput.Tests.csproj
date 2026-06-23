@@ -18,6 +18,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\Core\Fuse.Fusion\Fuse.Fusion.csproj"/>
         <ProjectReference Include="..\..\src\Core\Fuse.Emission\Fuse.Emission.csproj"/>
+        <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj"/>
     </ItemGroup>
     <ItemGroup>
         <None Include="expected\**\*" CopyToOutputDirectory="PreserveNewest"/>

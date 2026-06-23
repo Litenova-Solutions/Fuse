@@ -83,6 +83,16 @@ public sealed record CollectionOptions
     public bool RespectGitIgnore { get; init; }
 
     /// <summary>
+    ///     An explicit set of file paths to collect instead of walking <see cref="SourceDirectory" />.
+    /// </summary>
+    /// <remarks>
+    ///     When non-null and non-empty, the collection pipeline builds source files from exactly these paths
+    ///     (resolved relative to <see cref="SourceDirectory" /> when not rooted) and skips directory enumeration
+    ///     and the include/exclude filters. Used by the reduce path to compact a caller-supplied file set.
+    /// </remarks>
+    public IReadOnlyCollection<string>? ExplicitFiles { get; init; }
+
+    /// <summary>
     ///     Initializes a new instance of the <see cref="CollectionOptions" /> record.
     /// </summary>
     /// <param name="sourceDirectory">The root directory to scan.</param>

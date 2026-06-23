@@ -2,6 +2,12 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 2.0 is a structural rewrite; backward compatibility with 1.x output is not a goal.
 
+## [2.4.0]
+
+### Added
+
+- **`fuse reduce` CLI command and `fuse_reduce` MCP tool.** Compacts a caller-supplied set of files, or raw content, by running Fuse's reduction without collecting a whole directory. The agent (or a script) compacts context it has already identified instead of re-scoping. The CLI takes `--files` (a path list, written to stdout) or `--stdin` (piped content, with `--ext` selecting the reducer); the MCP tool takes `files` (paths) or `content` (with `extension`). Both accept a reduction `level` and a token ceiling. Content mode materializes a temporary file so the reducer is selected by extension, then deletes it. Backed by a new explicit-file collection mode (`CollectionOptions.ExplicitFiles`, `FusionRequestBuilder.WithExplicitFiles`) that reuses the full reduction and emission pipeline; missing paths are skipped rather than failing the run.
+
 ## [2.3.0]
 
 ### Added

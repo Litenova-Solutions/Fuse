@@ -6,6 +6,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- **SQLite pending-write race in the cache flush (C4).** `SqliteKeyValueStore.FlushAsync` snapshotted the
+  buffered writes, committed them, then removed the flushed keys by key alone. A `Set` on a snapshot key while
+  the commit was in flight was therefore dropped: the just-flushed (older) value's key was removed, discarding
+  the newer pending value. Removal is now by value (the `KeyValuePair` overload), so a concurrent update with a
+  different array reference stays pending for the next flush instead of being lost. Covered by a test that
+  overlaps a hot-key writer with repeated flushes over a large batch. (The related per-call store pooling, where
+  the serve path opens a fresh store per call and so does not share the pending buffer, is folded into item 24's
+  repo-scoped index cache rather than fixed in isolation, since the two share a lifecycle.)
 - **Concurrency hazards under the MCP server (C3).** The orchestrator is a singleton and the MCP server can run
   tool calls concurrently against different repositories, which exposed three shared-state races, now fixed.
   (1) `GitIgnoreFilter` held a mutable pattern set updated per run via `SetPatterns`; concurrent collection runs

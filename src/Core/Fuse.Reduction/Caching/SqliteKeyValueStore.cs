@@ -96,8 +96,12 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             try
             {
                 await FlushSnapshotAsync(snapshot, cancellationToken);
+                // Remove only entries whose value is still the one just flushed. A concurrent Set on the same
+                // key replaces the value with a different array reference, so the KeyValuePair overload (value
+                // equality, reference equality for byte[]) leaves that newer value pending for the next flush
+                // instead of dropping it. Removing by key alone would lose the concurrent update.
                 foreach (var entry in snapshot)
-                    _pending.TryRemove(entry.Key, out _);
+                    ((ICollection<KeyValuePair<(string Store, string Key), byte[]>>)_pending).Remove(entry);
                 return;
             }
             catch (SqliteException ex) when (ex.SqliteErrorCode == SqliteBusy && attempt < MaxFlushAttempts - 1)

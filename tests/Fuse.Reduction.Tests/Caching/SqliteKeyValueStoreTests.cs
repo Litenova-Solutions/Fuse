@@ -113,6 +113,41 @@ public sealed class SqliteKeyValueStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task FlushAsync_SetDuringFlush_DoesNotDropTheConcurrentUpdate()
+    {
+        // C4: FlushAsync snapshots the pending writes, commits them, then removes the flushed keys. A Set that
+        // lands on a snapshot key while the commit is in flight must survive: removal is by value, so the newer
+        // value stays pending for the next flush instead of being dropped. A large background batch keeps each
+        // flush long enough to overlap the hot-key writer.
+        await using var store = new SqliteKeyValueStore(_databasePath);
+        for (var i = 0; i < 4000; i++)
+            store.Set("bulk", $"k{i}", BitConverter.GetBytes(i));
+
+        const int iterations = 300;
+        var setter = Task.Run(async () =>
+        {
+            for (var v = 1; v <= iterations; v++)
+            {
+                store.Set("hot", "key", BitConverter.GetBytes(v));
+                await Task.Yield();
+            }
+        });
+        var flusher = Task.Run(async () =>
+        {
+            for (var f = 0; f < iterations; f++)
+                await store.FlushAsync();
+        });
+
+        await Task.WhenAll(setter, flusher);
+        await store.FlushAsync();
+
+        // The last value the setter wrote is never lost: it is either flushed or still pending, but retrievable.
+        await using var reader = new SqliteKeyValueStore(_databasePath);
+        Assert.True(reader.TryGet("hot", "key", out var value));
+        Assert.Equal(iterations, BitConverter.ToInt32(value!));
+    }
+
+    [Fact]
     public async Task FlushAsync_WhenDatabaseIsBusy_RetriesAndSucceeds()
     {
         await using (var initializer = new SqliteKeyValueStore(_databasePath))

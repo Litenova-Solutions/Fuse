@@ -16,8 +16,11 @@ deviation from the playbook.
 - [x] `fuse/scope`: runs a focus/search/changes fusion through the shared orchestrator, returns the emitted
       file plan with token costs, and writes the payload to a temp file the extension opens read-only.
       Integration-tested (search surfaces the matched file and writes a readable payload).
-- [ ] Engine-data methods: `fuse/graph`, `fuse/explain`, `fuse/diagnostics` (DTOs/protocol partly staged; the
-      projections are the next increments).
+- [x] `fuse/graph`: projects the dependency graph (nodes with declared types, PageRank centrality, and an
+      estimated token cost; reference edges) at `Files` or `Directories` level of detail (directory supernodes
+      fold files and aggregate cross-directory edges). Integration-tested (a reference edge appears at file
+      level; directories fold files into supernodes).
+- [ ] Engine-data methods: `fuse/explain`, `fuse/diagnostics` (the projections are the next increments).
 - [ ] Warm-index lifecycle (pooled repo-root store, resident analysis index, incremental invalidation).
 - [ ] Concurrency test (simultaneous fuse/graph and fuse/scope against one root).
 - [ ] Host-publish CI matrix per RID.

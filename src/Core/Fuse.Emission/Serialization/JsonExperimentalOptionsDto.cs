@@ -20,4 +20,9 @@ public sealed class JsonExperimentalOptionsDto
     ///     Whether tiered emission skeletonized dependency-expanded neighbours on the query and focus paths.
     /// </summary>
     public bool TieredEmission { get; set; }
+
+    /// <summary>
+    ///     Whether the query path fused several query variants with Reciprocal Rank Fusion.
+    /// </summary>
+    public bool MultiQueryFusion { get; set; }
 }

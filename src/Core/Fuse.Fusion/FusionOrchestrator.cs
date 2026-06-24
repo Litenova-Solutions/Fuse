@@ -610,15 +610,43 @@ public sealed class FusionOrchestrator
                 $"Query '{request.Query.Query}' matched no collected files.");
         }
 
-        // Pseudo-relevance feedback: rewrite a sparse query in the codebase's own vocabulary by blending in
-        // recurring declared-symbol terms from the first pass's top files, then re-rank. Conservative by
-        // construction (symbol field only, multi-doc terms only, reduced weight); a no-op when disabled or
-        // when no term qualifies, so the seed set then equals the single-pass ordering.
-        if (experimental.QueryExpansion)
+        if (experimental.MultiQueryFusion)
         {
-            var expansionOptions = new QueryExpansionOptions();
+            // Multi-query fusion: rank a few diverse query variants and combine with Reciprocal Rank Fusion, so
+            // a file several variants agree on outranks one variant's lone top hit. Variants: the raw query, an
+            // identifier-only subset (the compound type-like tokens, which carry the strongest code signal), and
+            // the pseudo-relevance-expanded query. RRF needs no score calibration across the variants.
+            var variants = new List<IReadOnlyList<RankedFile>> { ranked };
+
+            var identifierTerms = ExtractIdentifierTerms(request.Query.Query);
+            if (identifierTerms.Count > 0)
+            {
+                var identifierRanked = relevanceIndex.RankScored(identifierTerms, request.Query.TopFiles);
+                if (identifierRanked.Count > 0)
+                    variants.Add(identifierRanked);
+            }
+
+            if (experimental.QueryExpansion)
+            {
+                var expandedQuery = PseudoRelevanceExpander.Expand(
+                    request.Query.Query, ranked, documents, new QueryExpansionOptions(), relevanceIndex.InverseDocumentFrequency);
+                var prfRanked = relevanceIndex.RankScored(expandedQuery, request.Query.TopFiles);
+                if (prfRanked.Count > 0)
+                    variants.Add(prfRanked);
+            }
+
+            var fused = RankFusion.Fuse(variants, request.Query.TopFiles);
+            if (fused.Count > 0)
+                ranked = fused;
+        }
+        else if (experimental.QueryExpansion)
+        {
+            // Pseudo-relevance feedback: rewrite a sparse query in the codebase's own vocabulary by blending in
+            // recurring declared-symbol terms from the first pass's top files, then re-rank. Conservative by
+            // construction (symbol field only, multi-doc terms only, reduced weight); a no-op when disabled or
+            // when no term qualifies, so the seed set then equals the single-pass ordering.
             var expandedQuery = PseudoRelevanceExpander.Expand(
-                request.Query.Query, ranked, documents, expansionOptions, relevanceIndex.InverseDocumentFrequency);
+                request.Query.Query, ranked, documents, new QueryExpansionOptions(), relevanceIndex.InverseDocumentFrequency);
             var reranked = relevanceIndex.RankScored(expandedQuery, request.Query.TopFiles);
             // Merge rather than replace: expansion adds the files it surfaces but never drops a first-pass
             // seed, so a misfiring expansion cannot lower recall below the single-pass result.
@@ -650,6 +678,24 @@ public sealed class FusionOrchestrator
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
         return new FilteredFileSet(
             filtered, expansion.ProvenanceChains, expansion.Scores, SelectedMembers: selectedMembers);
+    }
+
+    // Compound PascalCase identifiers (two or more humps, for example OrderService, TokenBucketMiddleware): the
+    // strongest code signal in a query. The multi-query-fusion variant ranks on just these so a file that
+    // declares the named type is weighed independently of the surrounding prose words.
+    private static readonly System.Text.RegularExpressions.Regex IdentifierTokenRegex =
+        new(@"\b[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+\b", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Extracts the compound-identifier tokens from a query as a weighted-term set for an identifier-only ranking
+    // variant. Empty when the query names no compound identifier, in which case the variant is skipped.
+    private static Dictionary<string, double> ExtractIdentifierTerms(string query)
+    {
+        var terms = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (System.Text.RegularExpressions.Match match in IdentifierTokenRegex.Matches(query))
+            foreach (var term in RelevanceTokenizer.Tokenize(match.Value))
+                terms[term] = 1.0;
+
+        return terms;
     }
 
     // A member is kept verbatim only when its query-overlap score is at least this fraction of the file's best

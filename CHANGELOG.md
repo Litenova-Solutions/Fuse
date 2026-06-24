@@ -59,6 +59,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Agentic next-best-action breadcrumb for tiered emission (item 30).** When tiered emission skeletonizes a
+  dependency-expanded neighbour, the output now ends with a machine-readable `<!-- fuse:next ... -->` comment
+  that names each skeletonized file and the `fuse_focus "Type"` call that expands its body, so the budget wall
+  is a navigable next step instead of a silent loss. The breadcrumb is deterministic, lists at most twenty files
+  (the rest summarized as a count), and is charged against the token budget (reserved before packing) so the
+  strict-accounting guarantee still holds. It pays off on the interactive round-trip metric rather than one-shot
+  recall; its only measured one-shot effect was focus recall at the tight 25,000 token budget (71 to 69 percent),
+  with the 50,000 token headline figures and the per-repo table unchanged.
 - **Tiered emission for query and focus scoping (on by default).** Dependency-expanded neighbour files
   (provenance hop two or deeper) are now reduced to signature skeletons instead of full bodies, so each costs
   fewer tokens and the budget-aware packer fits more files under the same budget; because recall counts file

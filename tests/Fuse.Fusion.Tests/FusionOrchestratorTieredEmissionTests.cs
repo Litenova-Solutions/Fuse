@@ -72,6 +72,27 @@ public sealed class FusionOrchestratorTieredEmissionTests : IDisposable
         Assert.Contains("neighbour-body-marker-token", result.InMemoryContent);
     }
 
+    [Fact]
+    public async Task FuseAsync_TieredOn_AppendsNavigationBreadcrumbForSkeletonizedNeighbour()
+    {
+        var result = await FuseQueryAsync(tiered: true);
+
+        Assert.NotNull(result.InMemoryContent);
+        // Item 30: the budget wall is navigable -- a breadcrumb names the skeletonized neighbour and the
+        // fuse_focus call that expands it.
+        Assert.Contains("fuse:next", result.InMemoryContent);
+        Assert.Contains("fuse_focus \"PaymentGateway\"", result.InMemoryContent);
+    }
+
+    [Fact]
+    public async Task FuseAsync_TieredOff_EmitsNoBreadcrumb()
+    {
+        var result = await FuseQueryAsync(tiered: false);
+
+        Assert.NotNull(result.InMemoryContent);
+        Assert.DoesNotContain("fuse:next", result.InMemoryContent);
+    }
+
     private async Task<FusionResult> FuseQueryAsync(bool tiered)
     {
         var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();

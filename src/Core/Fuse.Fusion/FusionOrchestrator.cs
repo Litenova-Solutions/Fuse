@@ -256,7 +256,8 @@ public sealed class FusionOrchestrator
                 filterResult.SelectedMembers,
                 filterResult.Preamble,
                 tokenCounter,
-                entryFormatter);
+                entryFormatter,
+                experimental);
             var emissionResult = await _postReductionPipeline.ProcessAsync(
                 postReductionContext,
                 contentProvider,

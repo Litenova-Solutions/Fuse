@@ -18,6 +18,7 @@ namespace Fuse.Fusion.PostReduction;
 /// <param name="ReviewPreamble">Optional review map preamble from change scoping.</param>
 /// <param name="TokenCounter">The tokenizer used for token counts during enrichment.</param>
 /// <param name="EntryFormatter">The formatter used when constructing the output writer.</param>
+/// <param name="Experimental">The resolved experimental knobs, used to drive next-best-action breadcrumbs.</param>
 public sealed record PostReductionContext(
     FusionRequest Request,
     IReadOnlyList<FusedContent> ReducedContent,
@@ -27,4 +28,5 @@ public sealed record PostReductionContext(
     IReadOnlyDictionary<string, IReadOnlySet<string>>? SelectedMembers,
     string? ReviewPreamble,
     ITokenCounter TokenCounter,
-    IEntryFormatter EntryFormatter);
+    IEntryFormatter EntryFormatter,
+    ExperimentalOptions Experimental);

@@ -50,9 +50,9 @@
     "recall": 0.5,
     "precision": 0.01,
     "hits": 1,
-    "emitted": 104,
-    "tokens": 9174,
-    "wasted": 9086.0,
+    "emitted": 98,
+    "tokens": 9158,
+    "wasted": 9065.0,
     "stratum": "small (1-3)"
   },
   {
@@ -64,9 +64,9 @@
     "recall": 1.0,
     "precision": 0.009,
     "hits": 2,
-    "emitted": 217,
-    "tokens": 23076,
-    "wasted": 22863.0,
+    "emitted": 214,
+    "tokens": 23096,
+    "wasted": 22880.0,
     "stratum": "small (1-3)"
   },
   {
@@ -78,9 +78,9 @@
     "recall": 1.0,
     "precision": 0.006,
     "hits": 2,
-    "emitted": 325,
-    "tokens": 47036,
-    "wasted": 46747.0,
+    "emitted": 323,
+    "tokens": 46842,
+    "wasted": 46552.0,
     "stratum": "small (1-3)"
   },
   {
@@ -92,9 +92,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 67,
-    "tokens": 9263,
-    "wasted": 9263.0,
+    "emitted": 63,
+    "tokens": 9234,
+    "wasted": 9234.0,
     "stratum": "small (1-3)"
   },
   {
@@ -106,9 +106,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 132,
-    "tokens": 23419,
-    "wasted": 23419.0,
+    "emitted": 130,
+    "tokens": 23357,
+    "wasted": 23357.0,
     "stratum": "small (1-3)"
   },
   {
@@ -120,9 +120,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 200,
-    "tokens": 47744,
-    "wasted": 47744.0,
+    "emitted": 199,
+    "tokens": 47729,
+    "wasted": 47729.0,
     "stratum": "small (1-3)"
   },
   {
@@ -188,11 +188,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.023,
+    "precision": 0.026,
     "hits": 1,
-    "emitted": 43,
-    "tokens": 9566,
-    "wasted": 9344.0,
+    "emitted": 38,
+    "tokens": 9531,
+    "wasted": 9280.0,
     "stratum": "small (1-3)"
   },
   {
@@ -202,11 +202,11 @@
     "budget": 25000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.007,
+    "precision": 0.008,
     "hits": 1,
-    "emitted": 135,
-    "tokens": 23590,
-    "wasted": 23415.0,
+    "emitted": 132,
+    "tokens": 23543,
+    "wasted": 23365.0,
     "stratum": "small (1-3)"
   },
   {
@@ -218,9 +218,9 @@
     "recall": 0.5,
     "precision": 0.005,
     "hits": 1,
-    "emitted": 221,
-    "tokens": 47652,
-    "wasted": 47436.0,
+    "emitted": 220,
+    "tokens": 47442,
+    "wasted": 47226.0,
     "stratum": "small (1-3)"
   },
   {
@@ -232,9 +232,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 62,
-    "tokens": 9241,
-    "wasted": 9241.0,
+    "emitted": 59,
+    "tokens": 9275,
+    "wasted": 9275.0,
     "stratum": "small (1-3)"
   },
   {
@@ -246,9 +246,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 129,
-    "tokens": 23435,
-    "wasted": 23435.0,
+    "emitted": 128,
+    "tokens": 23547,
+    "wasted": 23547.0,
     "stratum": "small (1-3)"
   },
   {
@@ -260,9 +260,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 193,
-    "tokens": 47652,
-    "wasted": 47652.0,
+    "emitted": 192,
+    "tokens": 47809,
+    "wasted": 47809.0,
     "stratum": "small (1-3)"
   },
   {
@@ -328,11 +328,11 @@
     "budget": 10000,
     "truth": 4,
     "recall": 1.0,
-    "precision": 0.078,
+    "precision": 0.082,
     "hits": 4,
-    "emitted": 51,
-    "tokens": 9417,
-    "wasted": 8678.0,
+    "emitted": 49,
+    "tokens": 9338,
+    "wasted": 8576.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -342,11 +342,11 @@
     "budget": 25000,
     "truth": 4,
     "recall": 1.0,
-    "precision": 0.047,
+    "precision": 0.048,
     "hits": 4,
-    "emitted": 85,
-    "tokens": 23925,
-    "wasted": 22799.0,
+    "emitted": 84,
+    "tokens": 23773,
+    "wasted": 22641.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -356,11 +356,11 @@
     "budget": 50000,
     "truth": 4,
     "recall": 1.0,
-    "precision": 0.035,
+    "precision": 0.036,
     "hits": 4,
-    "emitted": 113,
-    "tokens": 48735,
-    "wasted": 47010.0,
+    "emitted": 112,
+    "tokens": 47960,
+    "wasted": 46247.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -370,11 +370,11 @@
     "budget": 10000,
     "truth": 4,
     "recall": 0.25,
-    "precision": 0.013,
+    "precision": 0.014,
     "hits": 1,
-    "emitted": 75,
-    "tokens": 9205,
-    "wasted": 9082.0,
+    "emitted": 72,
+    "tokens": 9223,
+    "wasted": 9095.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -386,9 +386,9 @@
     "recall": 0.25,
     "precision": 0.007,
     "hits": 1,
-    "emitted": 140,
-    "tokens": 23413,
-    "wasted": 23246.0,
+    "emitted": 138,
+    "tokens": 23509,
+    "wasted": 23339.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -400,9 +400,9 @@
     "recall": 0.25,
     "precision": 0.005,
     "hits": 1,
-    "emitted": 203,
-    "tokens": 47735,
-    "wasted": 47500.0,
+    "emitted": 202,
+    "tokens": 47472,
+    "wasted": 47237.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -468,11 +468,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.015,
+    "precision": 0.016,
     "hits": 1,
-    "emitted": 65,
-    "tokens": 9309,
-    "wasted": 9166.0,
+    "emitted": 61,
+    "tokens": 9341,
+    "wasted": 9188.0,
     "stratum": "small (1-3)"
   },
   {
@@ -484,9 +484,9 @@
     "recall": 1.0,
     "precision": 0.013,
     "hits": 2,
-    "emitted": 156,
-    "tokens": 23401,
-    "wasted": 23101.0,
+    "emitted": 154,
+    "tokens": 23412,
+    "wasted": 23108.0,
     "stratum": "small (1-3)"
   },
   {
@@ -498,9 +498,9 @@
     "recall": 1.0,
     "precision": 0.008,
     "hits": 2,
-    "emitted": 239,
-    "tokens": 47525,
-    "wasted": 47127.0,
+    "emitted": 238,
+    "tokens": 47546,
+    "wasted": 47146.0,
     "stratum": "small (1-3)"
   },
   {
@@ -512,9 +512,9 @@
     "recall": 0.5,
     "precision": 0.014,
     "hits": 1,
-    "emitted": 74,
-    "tokens": 9230,
-    "wasted": 9105.0,
+    "emitted": 70,
+    "tokens": 9216,
+    "wasted": 9084.0,
     "stratum": "small (1-3)"
   },
   {
@@ -526,9 +526,9 @@
     "recall": 0.5,
     "precision": 0.007,
     "hits": 1,
-    "emitted": 143,
-    "tokens": 23504,
-    "wasted": 23340.0,
+    "emitted": 141,
+    "tokens": 23400,
+    "wasted": 23234.0,
     "stratum": "small (1-3)"
   },
   {
@@ -540,9 +540,9 @@
     "recall": 0.5,
     "precision": 0.005,
     "hits": 1,
-    "emitted": 207,
-    "tokens": 47762,
-    "wasted": 47531.0,
+    "emitted": 205,
+    "tokens": 47671,
+    "wasted": 47438.0,
     "stratum": "small (1-3)"
   },
   {
@@ -608,11 +608,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.013,
+    "precision": 0.014,
     "hits": 1,
-    "emitted": 76,
-    "tokens": 9180,
-    "wasted": 9059.0,
+    "emitted": 72,
+    "tokens": 9126,
+    "wasted": 8999.0,
     "stratum": "small (1-3)"
   },
   {
@@ -624,9 +624,9 @@
     "recall": 1.0,
     "precision": 0.014,
     "hits": 2,
-    "emitted": 140,
-    "tokens": 23488,
-    "wasted": 23152.0,
+    "emitted": 138,
+    "tokens": 23325,
+    "wasted": 22987.0,
     "stratum": "small (1-3)"
   },
   {
@@ -638,9 +638,9 @@
     "recall": 1.0,
     "precision": 0.01,
     "hits": 2,
-    "emitted": 195,
-    "tokens": 47613,
-    "wasted": 47125.0,
+    "emitted": 194,
+    "tokens": 47421,
+    "wasted": 46932.0,
     "stratum": "small (1-3)"
   },
   {
@@ -650,11 +650,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.013,
+    "precision": 0.014,
     "hits": 1,
-    "emitted": 76,
-    "tokens": 9128,
-    "wasted": 9008.0,
+    "emitted": 73,
+    "tokens": 9119,
+    "wasted": 8994.0,
     "stratum": "small (1-3)"
   },
   {
@@ -666,9 +666,9 @@
     "recall": 0.5,
     "precision": 0.007,
     "hits": 1,
-    "emitted": 143,
-    "tokens": 23341,
-    "wasted": 23178.0,
+    "emitted": 142,
+    "tokens": 23444,
+    "wasted": 23279.0,
     "stratum": "small (1-3)"
   },
   {
@@ -680,9 +680,9 @@
     "recall": 1.0,
     "precision": 0.01,
     "hits": 2,
-    "emitted": 208,
-    "tokens": 47582,
-    "wasted": 47124.0,
+    "emitted": 207,
+    "tokens": 47724,
+    "wasted": 47263.0,
     "stratum": "small (1-3)"
   },
   {
@@ -748,11 +748,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.018,
+    "precision": 0.02,
     "hits": 1,
-    "emitted": 55,
-    "tokens": 9349,
-    "wasted": 9179.0,
+    "emitted": 51,
+    "tokens": 9404,
+    "wasted": 9220.0,
     "stratum": "small (1-3)"
   },
   {
@@ -762,11 +762,11 @@
     "budget": 25000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.013,
+    "precision": 0.014,
     "hits": 2,
-    "emitted": 149,
-    "tokens": 23390,
-    "wasted": 23076.0,
+    "emitted": 147,
+    "tokens": 23411,
+    "wasted": 23092.0,
     "stratum": "small (1-3)"
   },
   {
@@ -778,9 +778,9 @@
     "recall": 1.0,
     "precision": 0.008,
     "hits": 2,
-    "emitted": 240,
-    "tokens": 47512,
-    "wasted": 47116.0,
+    "emitted": 239,
+    "tokens": 47542,
+    "wasted": 47144.0,
     "stratum": "small (1-3)"
   },
   {
@@ -792,9 +792,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 45,
-    "tokens": 9483,
-    "wasted": 9483.0,
+    "emitted": 41,
+    "tokens": 9507,
+    "wasted": 9507.0,
     "stratum": "small (1-3)"
   },
   {
@@ -806,9 +806,9 @@
     "recall": 0.5,
     "precision": 0.008,
     "hits": 1,
-    "emitted": 128,
-    "tokens": 23635,
-    "wasted": 23450.0,
+    "emitted": 125,
+    "tokens": 23715,
+    "wasted": 23525.0,
     "stratum": "small (1-3)"
   },
   {
@@ -820,9 +820,9 @@
     "recall": 0.5,
     "precision": 0.005,
     "hits": 1,
-    "emitted": 202,
-    "tokens": 47803,
-    "wasted": 47566.0,
+    "emitted": 200,
+    "tokens": 47758,
+    "wasted": 47519.0,
     "stratum": "small (1-3)"
   },
   {
@@ -888,11 +888,11 @@
     "budget": 10000,
     "truth": 9,
     "recall": 0.111,
-    "precision": 0.056,
+    "precision": 0.059,
     "hits": 1,
-    "emitted": 18,
-    "tokens": 9604,
-    "wasted": 9070.0,
+    "emitted": 17,
+    "tokens": 9602,
+    "wasted": 9037.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -902,11 +902,11 @@
     "budget": 25000,
     "truth": 9,
     "recall": 0.556,
-    "precision": 0.085,
+    "precision": 0.086,
     "hits": 5,
-    "emitted": 59,
-    "tokens": 24148,
-    "wasted": 22102.0,
+    "emitted": 58,
+    "tokens": 24336,
+    "wasted": 22238.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -918,9 +918,9 @@
     "recall": 0.778,
     "precision": 0.064,
     "hits": 7,
-    "emitted": 110,
-    "tokens": 48601,
-    "wasted": 45508.0,
+    "emitted": 109,
+    "tokens": 48596,
+    "wasted": 45475.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -930,11 +930,11 @@
     "budget": 10000,
     "truth": 9,
     "recall": 0.111,
-    "precision": 0.05,
+    "precision": 0.056,
     "hits": 1,
-    "emitted": 20,
-    "tokens": 9690,
-    "wasted": 9206.0,
+    "emitted": 18,
+    "tokens": 9666,
+    "wasted": 9129.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -944,11 +944,11 @@
     "budget": 25000,
     "truth": 9,
     "recall": 0.222,
-    "precision": 0.028,
+    "precision": 0.029,
     "hits": 2,
-    "emitted": 71,
-    "tokens": 24293,
-    "wasted": 23609.0,
+    "emitted": 70,
+    "tokens": 24186,
+    "wasted": 23495.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -961,8 +961,8 @@
     "precision": 0.074,
     "hits": 6,
     "emitted": 81,
-    "tokens": 44312,
-    "wasted": 41030.0,
+    "tokens": 44766,
+    "wasted": 41450.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1028,11 +1028,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.069,
+    "precision": 0.071,
     "hits": 2,
-    "emitted": 29,
-    "tokens": 9387,
-    "wasted": 8740.0,
+    "emitted": 28,
+    "tokens": 9496,
+    "wasted": 8818.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1042,11 +1042,11 @@
     "budget": 25000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.037,
+    "precision": 0.038,
     "hits": 2,
-    "emitted": 54,
-    "tokens": 24395,
-    "wasted": 23491.0,
+    "emitted": 53,
+    "tokens": 24175,
+    "wasted": 23263.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1059,8 +1059,8 @@
     "precision": 0.027,
     "hits": 2,
     "emitted": 74,
-    "tokens": 48463,
-    "wasted": 47153.0,
+    "tokens": 48948,
+    "wasted": 47625.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1070,11 +1070,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.1,
+    "precision": 0.105,
     "hits": 2,
-    "emitted": 20,
-    "tokens": 9516,
-    "wasted": 8564.0,
+    "emitted": 19,
+    "tokens": 9471,
+    "wasted": 8474.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1087,8 +1087,8 @@
     "precision": 0.059,
     "hits": 2,
     "emitted": 34,
-    "tokens": 23937,
-    "wasted": 22529.0,
+    "tokens": 24404,
+    "wasted": 22968.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1101,8 +1101,8 @@
     "precision": 0.057,
     "hits": 2,
     "emitted": 35,
-    "tokens": 25914,
-    "wasted": 24433.0,
+    "tokens": 26380,
+    "wasted": 24873.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1168,11 +1168,11 @@
     "budget": 10000,
     "truth": 4,
     "recall": 0.25,
-    "precision": 0.027,
+    "precision": 0.029,
     "hits": 1,
-    "emitted": 37,
-    "tokens": 9502,
-    "wasted": 9245.0,
+    "emitted": 35,
+    "tokens": 9602,
+    "wasted": 9328.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1182,11 +1182,11 @@
     "budget": 25000,
     "truth": 4,
     "recall": 0.25,
-    "precision": 0.012,
+    "precision": 0.013,
     "hits": 1,
-    "emitted": 80,
-    "tokens": 24149,
-    "wasted": 23847.0,
+    "emitted": 78,
+    "tokens": 23984,
+    "wasted": 23677.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1199,8 +1199,8 @@
     "precision": 0.017,
     "hits": 2,
     "emitted": 119,
-    "tokens": 48047,
-    "wasted": 47239.0,
+    "tokens": 48644,
+    "wasted": 47826.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1212,9 +1212,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 25,
-    "tokens": 9545,
-    "wasted": 9545.0,
+    "emitted": 24,
+    "tokens": 9593,
+    "wasted": 9593.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1226,9 +1226,9 @@
     "recall": 0.25,
     "precision": 0.019,
     "hits": 1,
-    "emitted": 53,
-    "tokens": 24355,
-    "wasted": 23895.0,
+    "emitted": 52,
+    "tokens": 24326,
+    "wasted": 23858.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1241,8 +1241,8 @@
     "precision": 0.041,
     "hits": 3,
     "emitted": 73,
-    "tokens": 48342,
-    "wasted": 46355.0,
+    "tokens": 48847,
+    "wasted": 46840.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1308,11 +1308,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.08,
+    "precision": 0.083,
     "hits": 2,
-    "emitted": 25,
-    "tokens": 9509,
-    "wasted": 8748.0,
+    "emitted": 24,
+    "tokens": 9111,
+    "wasted": 8352.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1325,8 +1325,8 @@
     "precision": 0.047,
     "hits": 2,
     "emitted": 43,
-    "tokens": 22711,
-    "wasted": 21655.0,
+    "tokens": 23214,
+    "wasted": 22134.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1339,8 +1339,8 @@
     "precision": 0.043,
     "hits": 2,
     "emitted": 47,
-    "tokens": 31730,
-    "wasted": 30380.0,
+    "tokens": 32236,
+    "wasted": 30864.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1352,9 +1352,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 31,
-    "tokens": 9675,
-    "wasted": 9675.0,
+    "emitted": 29,
+    "tokens": 9741,
+    "wasted": 9741.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1366,9 +1366,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 78,
-    "tokens": 24245,
-    "wasted": 24245.0,
+    "emitted": 77,
+    "tokens": 24290,
+    "wasted": 24290.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1380,9 +1380,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 113,
-    "tokens": 48509,
-    "wasted": 48509.0,
+    "emitted": 112,
+    "tokens": 47750,
+    "wasted": 47750.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1448,11 +1448,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.026,
+    "precision": 0.029,
     "hits": 1,
-    "emitted": 38,
-    "tokens": 9581,
-    "wasted": 9329.0,
+    "emitted": 35,
+    "tokens": 9519,
+    "wasted": 9247.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1462,11 +1462,11 @@
     "budget": 25000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.023,
+    "precision": 0.024,
     "hits": 2,
-    "emitted": 86,
-    "tokens": 24006,
-    "wasted": 23448.0,
+    "emitted": 85,
+    "tokens": 24178,
+    "wasted": 23609.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1479,8 +1479,8 @@
     "precision": 0.019,
     "hits": 2,
     "emitted": 103,
-    "tokens": 47484,
-    "wasted": 46562.0,
+    "tokens": 48113,
+    "wasted": 47179.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1492,9 +1492,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 42,
-    "tokens": 9676,
-    "wasted": 9676.0,
+    "emitted": 39,
+    "tokens": 9634,
+    "wasted": 9634.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1504,11 +1504,11 @@
     "budget": 25000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.011,
+    "precision": 0.012,
     "hits": 1,
-    "emitted": 87,
-    "tokens": 24213,
-    "wasted": 23935.0,
+    "emitted": 85,
+    "tokens": 24115,
+    "wasted": 23831.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1521,8 +1521,8 @@
     "precision": 0.017,
     "hits": 2,
     "emitted": 119,
-    "tokens": 48158,
-    "wasted": 47349.0,
+    "tokens": 48794,
+    "wasted": 47974.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1588,11 +1588,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.037,
+    "precision": 0.038,
     "hits": 1,
-    "emitted": 27,
-    "tokens": 9641,
-    "wasted": 9284.0,
+    "emitted": 26,
+    "tokens": 9414,
+    "wasted": 9052.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1604,9 +1604,9 @@
     "recall": 0.5,
     "precision": 0.016,
     "hits": 1,
-    "emitted": 64,
-    "tokens": 23971,
-    "wasted": 23596.0,
+    "emitted": 63,
+    "tokens": 24012,
+    "wasted": 23631.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1619,8 +1619,8 @@
     "precision": 0.02,
     "hits": 2,
     "emitted": 99,
-    "tokens": 48344,
-    "wasted": 47367.0,
+    "tokens": 48856,
+    "wasted": 47869.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1632,9 +1632,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 33,
-    "tokens": 9607,
-    "wasted": 9607.0,
+    "emitted": 31,
+    "tokens": 9666,
+    "wasted": 9666.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1646,9 +1646,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 80,
-    "tokens": 24110,
-    "wasted": 24110.0,
+    "emitted": 78,
+    "tokens": 24228,
+    "wasted": 24228.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1660,9 +1660,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 132,
-    "tokens": 48721,
-    "wasted": 48721.0,
+    "emitted": 131,
+    "tokens": 48491,
+    "wasted": 48491.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1730,9 +1730,9 @@
     "recall": 1.0,
     "precision": 0.03,
     "hits": 2,
-    "emitted": 67,
-    "tokens": 9372,
-    "wasted": 9092.0,
+    "emitted": 66,
+    "tokens": 9343,
+    "wasted": 9060.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1745,8 +1745,8 @@
     "precision": 0.022,
     "hits": 2,
     "emitted": 93,
-    "tokens": 22400,
-    "wasted": 21918.0,
+    "tokens": 22877,
+    "wasted": 22385.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1759,8 +1759,8 @@
     "precision": 0.021,
     "hits": 2,
     "emitted": 95,
-    "tokens": 28991,
-    "wasted": 28381.0,
+    "tokens": 29468,
+    "wasted": 28848.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1770,11 +1770,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.053,
+    "precision": 0.054,
     "hits": 2,
-    "emitted": 38,
-    "tokens": 9306,
-    "wasted": 8816.0,
+    "emitted": 37,
+    "tokens": 9239,
+    "wasted": 8740.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1787,8 +1787,8 @@
     "precision": 0.048,
     "hits": 2,
     "emitted": 42,
-    "tokens": 20205,
-    "wasted": 19243.0,
+    "tokens": 20663,
+    "wasted": 19679.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1801,8 +1801,8 @@
     "precision": 0.048,
     "hits": 2,
     "emitted": 42,
-    "tokens": 20205,
-    "wasted": 19243.0,
+    "tokens": 20663,
+    "wasted": 19679.0,
     "stratum": "small (1-3)"
   },
   {
@@ -1871,8 +1871,8 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 2067,
-    "wasted": 1034.0,
+    "tokens": 2256,
+    "wasted": 1128.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1885,8 +1885,8 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 2067,
-    "wasted": 1034.0,
+    "tokens": 2256,
+    "wasted": 1128.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1899,8 +1899,8 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 2067,
-    "wasted": 1034.0,
+    "tokens": 2256,
+    "wasted": 1128.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1910,11 +1910,11 @@
     "budget": 10000,
     "truth": 4,
     "recall": 0.75,
-    "precision": 0.059,
+    "precision": 0.061,
     "hits": 3,
-    "emitted": 51,
-    "tokens": 9442,
-    "wasted": 8887.0,
+    "emitted": 49,
+    "tokens": 9466,
+    "wasted": 8886.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1924,11 +1924,11 @@
     "budget": 25000,
     "truth": 4,
     "recall": 1.0,
-    "precision": 0.047,
+    "precision": 0.048,
     "hits": 4,
-    "emitted": 85,
-    "tokens": 23901,
-    "wasted": 22776.0,
+    "emitted": 84,
+    "tokens": 23189,
+    "wasted": 22085.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -1941,8 +1941,8 @@
     "precision": 0.044,
     "hits": 4,
     "emitted": 91,
-    "tokens": 33804,
-    "wasted": 32318.0,
+    "tokens": 34286,
+    "wasted": 32779.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -2008,11 +2008,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.032,
+    "precision": 0.033,
     "hits": 2,
-    "emitted": 62,
-    "tokens": 9219,
-    "wasted": 8922.0,
+    "emitted": 61,
+    "tokens": 9420,
+    "wasted": 9111.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2025,8 +2025,8 @@
     "precision": 0.024,
     "hits": 2,
     "emitted": 84,
-    "tokens": 23474,
-    "wasted": 22915.0,
+    "tokens": 23944,
+    "wasted": 23374.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2039,8 +2039,8 @@
     "precision": 0.024,
     "hits": 2,
     "emitted": 85,
-    "tokens": 27295,
-    "wasted": 26653.0,
+    "tokens": 27765,
+    "wasted": 27112.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2050,11 +2050,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.047,
+    "precision": 0.048,
     "hits": 2,
-    "emitted": 43,
-    "tokens": 9474,
-    "wasted": 9033.0,
+    "emitted": 42,
+    "tokens": 9540,
+    "wasted": 9086.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2067,8 +2067,8 @@
     "precision": 0.027,
     "hits": 2,
     "emitted": 74,
-    "tokens": 23397,
-    "wasted": 22765.0,
+    "tokens": 23840,
+    "wasted": 23196.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2081,8 +2081,8 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 78,
-    "tokens": 32535,
-    "wasted": 31701.0,
+    "tokens": 32976,
+    "wasted": 32130.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2148,11 +2148,11 @@
     "budget": 10000,
     "truth": 3,
     "recall": 0.333,
-    "precision": 0.017,
+    "precision": 0.019,
     "hits": 1,
-    "emitted": 58,
-    "tokens": 9446,
-    "wasted": 9283.0,
+    "emitted": 54,
+    "tokens": 9474,
+    "wasted": 9299.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2161,12 +2161,12 @@
     "mode": "focus",
     "budget": 25000,
     "truth": 3,
-    "recall": 1.0,
-    "precision": 0.026,
-    "hits": 3,
-    "emitted": 115,
-    "tokens": 23551,
-    "wasted": 22937.0,
+    "recall": 0.667,
+    "precision": 0.018,
+    "hits": 2,
+    "emitted": 114,
+    "tokens": 23585,
+    "wasted": 23171.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2179,8 +2179,8 @@
     "precision": 0.024,
     "hits": 3,
     "emitted": 124,
-    "tokens": 36184,
-    "wasted": 35309.0,
+    "tokens": 36677,
+    "wasted": 35790.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2190,11 +2190,11 @@
     "budget": 10000,
     "truth": 3,
     "recall": 0.333,
-    "precision": 0.018,
+    "precision": 0.019,
     "hits": 1,
-    "emitted": 56,
-    "tokens": 9429,
-    "wasted": 9261.0,
+    "emitted": 53,
+    "tokens": 9378,
+    "wasted": 9201.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2207,8 +2207,8 @@
     "precision": 0.027,
     "hits": 2,
     "emitted": 73,
-    "tokens": 23505,
-    "wasted": 22861.0,
+    "tokens": 23948,
+    "wasted": 23292.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2221,8 +2221,8 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 76,
-    "tokens": 32495,
-    "wasted": 31640.0,
+    "tokens": 32938,
+    "wasted": 32071.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2290,9 +2290,9 @@
     "recall": 0.667,
     "precision": 0.032,
     "hits": 2,
-    "emitted": 63,
-    "tokens": 9187,
-    "wasted": 8895.0,
+    "emitted": 62,
+    "tokens": 9388,
+    "wasted": 9085.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2305,8 +2305,8 @@
     "precision": 0.035,
     "hits": 3,
     "emitted": 85,
-    "tokens": 23625,
-    "wasted": 22791.0,
+    "tokens": 24096,
+    "wasted": 23246.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2319,8 +2319,8 @@
     "precision": 0.035,
     "hits": 3,
     "emitted": 86,
-    "tokens": 27446,
-    "wasted": 26489.0,
+    "tokens": 27917,
+    "wasted": 26943.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2330,11 +2330,11 @@
     "budget": 10000,
     "truth": 3,
     "recall": 0.667,
-    "precision": 0.038,
+    "precision": 0.04,
     "hits": 2,
-    "emitted": 52,
-    "tokens": 9415,
-    "wasted": 9053.0,
+    "emitted": 50,
+    "tokens": 9457,
+    "wasted": 9079.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2346,9 +2346,9 @@
     "recall": 1.0,
     "precision": 0.034,
     "hits": 3,
-    "emitted": 88,
-    "tokens": 23886,
-    "wasted": 23072.0,
+    "emitted": 87,
+    "tokens": 23555,
+    "wasted": 22743.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2361,8 +2361,8 @@
     "precision": 0.032,
     "hits": 3,
     "emitted": 95,
-    "tokens": 40357,
-    "wasted": 39083.0,
+    "tokens": 40846,
+    "wasted": 39556.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2430,9 +2430,9 @@
     "recall": 1.0,
     "precision": 0.032,
     "hits": 2,
-    "emitted": 63,
-    "tokens": 9187,
-    "wasted": 8895.0,
+    "emitted": 62,
+    "tokens": 9388,
+    "wasted": 9085.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2445,8 +2445,8 @@
     "precision": 0.024,
     "hits": 2,
     "emitted": 85,
-    "tokens": 23625,
-    "wasted": 23069.0,
+    "tokens": 24096,
+    "wasted": 23529.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2459,8 +2459,8 @@
     "precision": 0.023,
     "hits": 2,
     "emitted": 86,
-    "tokens": 27446,
-    "wasted": 26808.0,
+    "tokens": 27917,
+    "wasted": 27268.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2470,11 +2470,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.029,
+    "precision": 0.03,
     "hits": 2,
-    "emitted": 68,
-    "tokens": 9334,
-    "wasted": 9059.0,
+    "emitted": 66,
+    "tokens": 9340,
+    "wasted": 9057.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2486,9 +2486,9 @@
     "recall": 1.0,
     "precision": 0.022,
     "hits": 2,
-    "emitted": 92,
-    "tokens": 24070,
-    "wasted": 23547.0,
+    "emitted": 91,
+    "tokens": 22682,
+    "wasted": 22183.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2501,8 +2501,8 @@
     "precision": 0.021,
     "hits": 2,
     "emitted": 96,
-    "tokens": 34091,
-    "wasted": 33381.0,
+    "tokens": 34572,
+    "wasted": 33852.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2582,11 +2582,11 @@
     "budget": 25000,
     "truth": 4,
     "recall": 0.25,
-    "precision": 0.026,
+    "precision": 0.028,
     "hits": 1,
-    "emitted": 38,
-    "tokens": 24537,
-    "wasted": 23891.0,
+    "emitted": 36,
+    "tokens": 24485,
+    "wasted": 23805.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -2598,9 +2598,9 @@
     "recall": 0.25,
     "precision": 0.009,
     "hits": 1,
-    "emitted": 112,
-    "tokens": 48751,
-    "wasted": 48316.0,
+    "emitted": 111,
+    "tokens": 49004,
+    "wasted": 48563.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -2612,9 +2612,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 14,
-    "tokens": 9829,
-    "wasted": 9829.0,
+    "emitted": 13,
+    "tokens": 9732,
+    "wasted": 9732.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -2626,9 +2626,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 51,
-    "tokens": 24512,
-    "wasted": 24512.0,
+    "emitted": 49,
+    "tokens": 24276,
+    "wasted": 24276.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -2640,9 +2640,9 @@
     "recall": 0.5,
     "precision": 0.02,
     "hits": 2,
-    "emitted": 102,
-    "tokens": 48996,
-    "wasted": 48035.0,
+    "emitted": 100,
+    "tokens": 48956,
+    "wasted": 47977.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -2708,11 +2708,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.033,
+    "precision": 0.036,
     "hits": 1,
-    "emitted": 30,
-    "tokens": 9616,
-    "wasted": 9295.0,
+    "emitted": 28,
+    "tokens": 9554,
+    "wasted": 9213.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2724,9 +2724,9 @@
     "recall": 0.5,
     "precision": 0.014,
     "hits": 1,
-    "emitted": 71,
-    "tokens": 24194,
-    "wasted": 23853.0,
+    "emitted": 70,
+    "tokens": 24372,
+    "wasted": 24024.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2738,9 +2738,9 @@
     "recall": 0.5,
     "precision": 0.008,
     "hits": 1,
-    "emitted": 132,
-    "tokens": 48765,
-    "wasted": 48396.0,
+    "emitted": 131,
+    "tokens": 48891,
+    "wasted": 48518.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2750,11 +2750,11 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.1,
+    "precision": 0.105,
     "hits": 2,
-    "emitted": 20,
-    "tokens": 9609,
-    "wasted": 8648.0,
+    "emitted": 19,
+    "tokens": 9523,
+    "wasted": 8521.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2764,11 +2764,11 @@
     "budget": 25000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.044,
+    "precision": 0.047,
     "hits": 2,
-    "emitted": 45,
-    "tokens": 24448,
-    "wasted": 23361.0,
+    "emitted": 43,
+    "tokens": 24177,
+    "wasted": 23052.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2780,9 +2780,9 @@
     "recall": 1.0,
     "precision": 0.023,
     "hits": 2,
-    "emitted": 87,
-    "tokens": 48826,
-    "wasted": 47704.0,
+    "emitted": 86,
+    "tokens": 48660,
+    "wasted": 47528.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2848,11 +2848,11 @@
     "budget": 10000,
     "truth": 25,
     "recall": 0.16,
-    "precision": 0.211,
+    "precision": 0.222,
     "hits": 4,
-    "emitted": 19,
-    "tokens": 9529,
-    "wasted": 7523.0,
+    "emitted": 18,
+    "tokens": 9406,
+    "wasted": 7316.0,
     "stratum": "large (10+)"
   },
   {
@@ -2861,12 +2861,12 @@
     "mode": "focus",
     "budget": 25000,
     "truth": 25,
-    "recall": 0.2,
-    "precision": 0.135,
-    "hits": 5,
-    "emitted": 37,
-    "tokens": 24613,
-    "wasted": 21287.0,
+    "recall": 0.16,
+    "precision": 0.111,
+    "hits": 4,
+    "emitted": 36,
+    "tokens": 23839,
+    "wasted": 21190.0,
     "stratum": "large (10+)"
   },
   {
@@ -2879,8 +2879,8 @@
     "precision": 0.188,
     "hits": 9,
     "emitted": 48,
-    "tokens": 46615,
-    "wasted": 37875.0,
+    "tokens": 47156,
+    "wasted": 38314.0,
     "stratum": "large (10+)"
   },
   {
@@ -2904,11 +2904,11 @@
     "budget": 25000,
     "truth": 25,
     "recall": 0.04,
-    "precision": 0.034,
+    "precision": 0.036,
     "hits": 1,
-    "emitted": 29,
-    "tokens": 24514,
-    "wasted": 23669.0,
+    "emitted": 28,
+    "tokens": 24727,
+    "wasted": 23844.0,
     "stratum": "large (10+)"
   },
   {
@@ -2918,11 +2918,11 @@
     "budget": 50000,
     "truth": 25,
     "recall": 0.08,
-    "precision": 0.019,
+    "precision": 0.02,
     "hits": 2,
-    "emitted": 104,
-    "tokens": 48889,
-    "wasted": 47949.0,
+    "emitted": 102,
+    "tokens": 48695,
+    "wasted": 47740.0,
     "stratum": "large (10+)"
   },
   {
@@ -2988,11 +2988,11 @@
     "budget": 10000,
     "truth": 24,
     "recall": 0.125,
-    "precision": 0.158,
+    "precision": 0.167,
     "hits": 3,
-    "emitted": 19,
-    "tokens": 9529,
-    "wasted": 8024.0,
+    "emitted": 18,
+    "tokens": 9406,
+    "wasted": 7838.0,
     "stratum": "large (10+)"
   },
   {
@@ -3001,12 +3001,12 @@
     "mode": "focus",
     "budget": 25000,
     "truth": 24,
-    "recall": 0.167,
-    "precision": 0.108,
-    "hits": 4,
-    "emitted": 37,
-    "tokens": 24613,
-    "wasted": 21952.0,
+    "recall": 0.125,
+    "precision": 0.083,
+    "hits": 3,
+    "emitted": 36,
+    "tokens": 23839,
+    "wasted": 21852.0,
     "stratum": "large (10+)"
   },
   {
@@ -3019,8 +3019,8 @@
     "precision": 0.167,
     "hits": 8,
     "emitted": 48,
-    "tokens": 46615,
-    "wasted": 38846.0,
+    "tokens": 47156,
+    "wasted": 39297.0,
     "stratum": "large (10+)"
   },
   {
@@ -3032,9 +3032,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 16,
-    "tokens": 9757,
-    "wasted": 9757.0,
+    "emitted": 15,
+    "tokens": 9804,
+    "wasted": 9804.0,
     "stratum": "large (10+)"
   },
   {
@@ -3046,9 +3046,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 58,
-    "tokens": 24323,
-    "wasted": 24323.0,
+    "emitted": 56,
+    "tokens": 24291,
+    "wasted": 24291.0,
     "stratum": "large (10+)"
   },
   {
@@ -3060,9 +3060,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 130,
-    "tokens": 48684,
-    "wasted": 48684.0,
+    "emitted": 128,
+    "tokens": 48551,
+    "wasted": 48551.0,
     "stratum": "large (10+)"
   },
   {
@@ -3128,11 +3128,11 @@
     "budget": 10000,
     "truth": 23,
     "recall": 0.043,
-    "precision": 0.05,
+    "precision": 0.056,
     "hits": 1,
-    "emitted": 20,
-    "tokens": 9698,
-    "wasted": 9213.0,
+    "emitted": 18,
+    "tokens": 9567,
+    "wasted": 9036.0,
     "stratum": "large (10+)"
   },
   {
@@ -3144,9 +3144,9 @@
     "recall": 0.043,
     "precision": 0.015,
     "hits": 1,
-    "emitted": 67,
-    "tokens": 24326,
-    "wasted": 23963.0,
+    "emitted": 65,
+    "tokens": 24219,
+    "wasted": 23846.0,
     "stratum": "large (10+)"
   },
   {
@@ -3158,9 +3158,9 @@
     "recall": 0.043,
     "precision": 0.007,
     "hits": 1,
-    "emitted": 135,
-    "tokens": 48666,
-    "wasted": 48306.0,
+    "emitted": 134,
+    "tokens": 48530,
+    "wasted": 48168.0,
     "stratum": "large (10+)"
   },
   {
@@ -3170,11 +3170,11 @@
     "budget": 10000,
     "truth": 23,
     "recall": 0.043,
-    "precision": 0.05,
+    "precision": 0.056,
     "hits": 1,
-    "emitted": 20,
-    "tokens": 9774,
-    "wasted": 9285.0,
+    "emitted": 18,
+    "tokens": 9669,
+    "wasted": 9132.0,
     "stratum": "large (10+)"
   },
   {
@@ -3186,9 +3186,9 @@
     "recall": 0.043,
     "precision": 0.018,
     "hits": 1,
-    "emitted": 56,
-    "tokens": 24239,
-    "wasted": 23806.0,
+    "emitted": 55,
+    "tokens": 24350,
+    "wasted": 23907.0,
     "stratum": "large (10+)"
   },
   {
@@ -3198,11 +3198,11 @@
     "budget": 50000,
     "truth": 23,
     "recall": 0.13,
-    "precision": 0.025,
+    "precision": 0.026,
     "hits": 3,
-    "emitted": 118,
-    "tokens": 48693,
-    "wasted": 47455.0,
+    "emitted": 116,
+    "tokens": 48682,
+    "wasted": 47423.0,
     "stratum": "large (10+)"
   },
   {
@@ -3268,11 +3268,11 @@
     "budget": 10000,
     "truth": 9,
     "recall": 0.111,
-    "precision": 0.038,
+    "precision": 0.042,
     "hits": 1,
-    "emitted": 26,
-    "tokens": 9677,
-    "wasted": 9305.0,
+    "emitted": 24,
+    "tokens": 9526,
+    "wasted": 9129.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -3284,9 +3284,9 @@
     "recall": 0.111,
     "precision": 0.016,
     "hits": 1,
-    "emitted": 63,
-    "tokens": 24336,
-    "wasted": 23950.0,
+    "emitted": 62,
+    "tokens": 24145,
+    "wasted": 23756.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -3298,9 +3298,9 @@
     "recall": 0.222,
     "precision": 0.017,
     "hits": 2,
-    "emitted": 116,
-    "tokens": 48547,
-    "wasted": 47710.0,
+    "emitted": 115,
+    "tokens": 48625,
+    "wasted": 47779.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -3310,11 +3310,11 @@
     "budget": 10000,
     "truth": 9,
     "recall": 0.111,
-    "precision": 0.059,
+    "precision": 0.062,
     "hits": 1,
-    "emitted": 17,
-    "tokens": 9738,
-    "wasted": 9165.0,
+    "emitted": 16,
+    "tokens": 9679,
+    "wasted": 9074.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -3324,11 +3324,11 @@
     "budget": 25000,
     "truth": 9,
     "recall": 0.111,
-    "precision": 0.018,
+    "precision": 0.019,
     "hits": 1,
-    "emitted": 56,
-    "tokens": 24331,
-    "wasted": 23897.0,
+    "emitted": 54,
+    "tokens": 24244,
+    "wasted": 23795.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -3338,11 +3338,11 @@
     "budget": 50000,
     "truth": 9,
     "recall": 0.222,
-    "precision": 0.016,
+    "precision": 0.017,
     "hits": 2,
-    "emitted": 123,
-    "tokens": 48752,
-    "wasted": 47959.0,
+    "emitted": 121,
+    "tokens": 48607,
+    "wasted": 47804.0,
     "stratum": "medium (4-9)"
   },
   {

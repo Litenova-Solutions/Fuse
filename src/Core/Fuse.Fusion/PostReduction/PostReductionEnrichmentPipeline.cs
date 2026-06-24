@@ -177,6 +177,12 @@ public sealed class PostReductionEnrichmentPipeline
         if (request.Reduction.IncludePatternSummary && !request.Emission.IncludeManifest)
             emissionResult = await ApplyPatternSummaryAsync(emissionResult, patternSummary);
 
+        // Item 30: a next-best-action breadcrumb for files emitted as signatures only by tiered emission, so the
+        // budget wall becomes a navigable step (call fuse_focus to expand a body) rather than a silent loss.
+        var breadcrumb = BuildNavigationBreadcrumb(reducedContent, context);
+        if (!string.IsNullOrEmpty(breadcrumb))
+            emissionResult = await AppendToDiskOrMemoryAsync(emissionResult, breadcrumb);
+
         if (headerPreamble is not null)
             emissionResult = await PrependToDiskOrMemoryAsync(emissionResult, headerPreamble);
 
@@ -379,7 +385,60 @@ public sealed class PostReductionEnrichmentPipeline
                 reserve += counter.Count(comment);
         }
 
+        // The tiered-emission breadcrumb is appended after packing; reserve for it using the pre-pack candidate
+        // set, an upper bound on the packed set it actually describes, so the total still fits the budget.
+        var breadcrumb = BuildNavigationBreadcrumb(candidateContent, context);
+        if (!string.IsNullOrEmpty(breadcrumb))
+            reserve += counter.Count(breadcrumb);
+
         return reserve;
+    }
+
+    // Maximum skeletonized files listed individually in the breadcrumb; the rest are summarized as a count so a
+    // wide neighbour set does not bloat the trailing hint.
+    private const int MaxBreadcrumbEntries = 20;
+
+    // Builds the next-best-action breadcrumb (item 30): when tiered emission skeletonized dependency-expanded
+    // neighbours, list those that survived packing with the fuse_focus call that expands each one's body, or
+    // null when tiering is off, the run is not query/focus, or nothing was skeletonized. Deterministic.
+    private static string? BuildNavigationBreadcrumb(
+        IReadOnlyList<FusedContent> emitted,
+        PostReductionContext context)
+    {
+        if (!context.Experimental.TieredEmission)
+            return null;
+        if (context.Request.Focus is null && context.Request.Query is null)
+            return null;
+        if (context.Provenance is not { } provenance)
+            return null;
+
+        // Skeletonized neighbours are the emitted files at provenance hop two or deeper (BuildTieredLevelResolver
+        // assigns them the skeleton tier); seeds (chain length one) keep their bodies.
+        var neighbours = emitted
+            .Where(e => !e.IsTrivial)
+            .Where(e => provenance.TryGetValue(e.NormalizedPath, out var chain) && chain.Count > 1)
+            .Select(e => e.NormalizedPath)
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (neighbours.Count == 0)
+            return null;
+
+        var sb = new StringBuilder();
+        sb.Append("<!-- fuse:next ");
+        sb.Append(neighbours.Count);
+        sb.Append(neighbours.Count == 1 ? " file was" : " files were");
+        sb.Append(" emitted as signatures only (tiered emission). Expand a body with fuse_focus:");
+        foreach (var path in neighbours.Take(MaxBreadcrumbEntries))
+        {
+            var seed = Path.GetFileNameWithoutExtension(path);
+            sb.Append("\n  fuse_focus \"").Append(seed).Append("\"   (").Append(path).Append(')');
+        }
+
+        if (neighbours.Count > MaxBreadcrumbEntries)
+            sb.Append("\n  ... and ").Append(neighbours.Count - MaxBreadcrumbEntries).Append(" more");
+
+        sb.Append(" -->");
+        return sb.ToString();
     }
 
     private async Task<FusionResult> ApplyRedactReportAsync(

@@ -82,6 +82,15 @@ public sealed record ExperimentalOptions
     public double GitChurnWeight { get; init; }
 
     /// <summary>
+    ///     Whether a file whose reduced content is still very large is replaced with a compact structural sketch
+    ///     (its type and member names, no bodies) so it keeps presence and navigation without consuming the
+    ///     budget that several smaller files need. Off by default; the corpus failure mode is multi-file
+    ///     truncation rather than single-giant-file pack-outs, so this is opt-in and does not change the default
+    ///     output. Overridden by <c>FUSE_SKETCH_HUGE</c> (<c>1</c>, <c>on</c>, or <c>true</c> enables it).
+    /// </summary>
+    public bool SketchHugeFiles { get; init; }
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -168,6 +177,16 @@ public sealed record ExperimentalOptions
             gitChurnWeight = churnWeight;
         }
 
+        var sketchHugeFiles = resolved.SketchHugeFiles;
+        var rawSketch = Environment.GetEnvironmentVariable("FUSE_SKETCH_HUGE");
+        if (!string.IsNullOrWhiteSpace(rawSketch) &&
+            (rawSketch.Equals("1", StringComparison.Ordinal) ||
+             rawSketch.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawSketch.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            sketchHugeFiles = true;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -177,6 +196,7 @@ public sealed record ExperimentalOptions
             BudgetAwareExpansion = budgetAwareExpansion,
             DenseRerank = denseRerank,
             GitChurnWeight = gitChurnWeight,
+            SketchHugeFiles = sketchHugeFiles,
         };
     }
 }

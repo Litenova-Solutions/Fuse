@@ -42,4 +42,9 @@ public sealed class JsonExperimentalOptionsDto
     ///     The weight of the git churn ranking prior on the query path (<c>0</c> when off).
     /// </summary>
     public double GitChurnWeight { get; set; }
+
+    /// <summary>
+    ///     Whether over-large reduced files were replaced with a structural sketch (item 16).
+    /// </summary>
+    public bool SketchHugeFiles { get; set; }
 }

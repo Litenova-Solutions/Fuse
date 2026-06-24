@@ -178,6 +178,7 @@ public abstract class CommandBase
             BudgetAwareExpansion = resolved.BudgetAwareExpansion,
             DenseRerank = resolved.DenseRerank,
             GitChurnWeight = resolved.GitChurnWeight,
+            SketchHugeFiles = resolved.SketchHugeFiles,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

@@ -13,6 +13,18 @@ public sealed class ExperimentalOptionsTests
 
         Assert.Equal(0.15, options.CentralityWeight);
         Assert.True(options.QueryExpansion);
+        Assert.True(options.BudgetAwareExpansion);
+    }
+
+    [Fact]
+    public void ResolveFromEnvironment_BudgetExpansionOff_Disables()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_BUDGET_EXPANSION", "0"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.False(resolved.BudgetAwareExpansion);
     }
 
     [Fact]

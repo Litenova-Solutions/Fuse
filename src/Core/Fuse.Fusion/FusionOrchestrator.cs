@@ -50,6 +50,7 @@ public sealed class FusionOrchestrator
     private readonly Func<IRelevanceIndex> _relevanceIndexFactory;
     private readonly IFuseStoreFactory _fuseStoreFactory;
     private readonly ISecretRedactor _secretRedactor;
+    private readonly ITokenCostModel _tokenCostModel;
     private readonly ILogger<FusionOrchestrator> _logger;
 
     /// <summary>
@@ -73,6 +74,7 @@ public sealed class FusionOrchestrator
     /// <param name="relevanceIndexFactory">Per-run relevance index factory.</param>
     /// <param name="fuseStoreFactory">Persistent store factory.</param>
     /// <param name="secretRedactor">Redactor re-applied to content rewritten after reduction (thin skeleton, symbol slice, tiered emission), so a post-reduction rewrite cannot reintroduce a secret the reduction-stage redaction already removed.</param>
+    /// <param name="tokenCostModel">Per-file token cost estimator used to make query-path dependency expansion budget-aware.</param>
     /// <param name="logger">Optional logger.</param>
     public FusionOrchestrator(
         FusionValidator validator,
@@ -93,6 +95,7 @@ public sealed class FusionOrchestrator
         Func<IRelevanceIndex> relevanceIndexFactory,
         IFuseStoreFactory fuseStoreFactory,
         ISecretRedactor secretRedactor,
+        ITokenCostModel tokenCostModel,
         ILogger<FusionOrchestrator>? logger = null)
     {
         _validator = validator;
@@ -113,6 +116,7 @@ public sealed class FusionOrchestrator
         _relevanceIndexFactory = relevanceIndexFactory;
         _fuseStoreFactory = fuseStoreFactory;
         _secretRedactor = secretRedactor;
+        _tokenCostModel = tokenCostModel;
         _logger = logger ?? NullLogger<FusionOrchestrator>.Instance;
     }
 
@@ -669,6 +673,34 @@ public sealed class FusionOrchestrator
         var selectedMembers = SelectQueryMembers(ranked, fileContents, request.Query.Query);
         var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
 
+        // Budget-aware expansion (item 4): when a token ceiling is set, gate neighbour admission by an
+        // estimated reduced cost so the graph stops admitting once the budget is spent, instead of admitting
+        // the whole neighbourhood and leaving the packer to cut it (which wastes reduction on files that never
+        // emit, and can lose a truth file in the knapsack). Costs are estimated at the level each file will be
+        // emitted at: a seed at the request level, a neighbour at the skeleton level when tiered emission is on
+        // (matching BuildTieredLevelResolver), so a cheap skeletonized neighbour is not rejected as a full body.
+        int? expansionBudget = null;
+        IReadOnlyDictionary<string, int>? expansionCosts = null;
+        if (experimental.BudgetAwareExpansion && request.Emission.MaxTokens is { } maxTokens && maxTokens > 0)
+        {
+            expansionBudget = maxTokens;
+            var seedLevel = request.Reduction.Level;
+            var neighbourLevel = experimental.TieredEmission
+                ? Fuse.Plugins.Abstractions.Options.ReductionLevel.Skeleton
+                : seedLevel;
+            var costs = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in files)
+            {
+                if (!fileContents.TryGetValue(file.NormalizedRelativePath, out var content))
+                    continue;
+
+                var level = seedScores.ContainsKey(file.NormalizedRelativePath) ? seedLevel : neighbourLevel;
+                costs[file.NormalizedRelativePath] = _tokenCostModel.EstimateReducedTokens(content, file.Extension, level);
+            }
+
+            expansionCosts = costs;
+        }
+
         // Query seeds are already content-matched; expand forward to their dependencies for context, but do
         // not follow dependents, which would broaden the set with files that merely use a matched type. A
         // measured A/B over the pinned corpus confirmed this: enabling reverse hops dropped query recall 51 to
@@ -678,6 +710,8 @@ public sealed class FusionOrchestrator
             request.Query.Depth,
             FollowReferences: true,
             FollowDependents: false,
+            TokenBudget: expansionBudget,
+            TokenCosts: expansionCosts,
             Centrality: GraphCentrality.Compute(graph),
             CentralityWeight: experimental.CentralityWeight);
 

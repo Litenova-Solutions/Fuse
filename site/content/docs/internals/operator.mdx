@@ -48,6 +48,7 @@ These variables apply to the `fuse mcp serve` process (set them in the MCP clien
 | `FUSE_USER_DATA` | Directory for machine-wide Fuse data when fusing outside a git repository (default `~/.fuse`). The store file is `{FUSE_USER_DATA}/fuse.db`. Inside a git repo the store stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
 | `FUSE_CENTRALITY_WEIGHT` | Weight of the graph-centrality prior in focus and query ranking (default `0.15`). Set to `0` to disable. |
 | `FUSE_QUERY_EXPANSION` | Pseudo-relevance feedback query expansion in query ranking (default on). Set to `0` to disable and reproduce the single-pass BM25F ordering. |
+| `FUSE_BUDGET_EXPANSION` | Budget-aware query-path dependency expansion (default on): when a token ceiling is set, the graph admits neighbours by estimated cost rather than admitting the whole neighbourhood for the packer to cut. Set to `0` to disable and reproduce the unbounded expansion. |
 
 Full semantics are in [Configuration Keys](/docs/reference/configuration-keys). Session-delta state (`session` on `fuse_focus` and `fuse_search`) is held in memory inside the running server only; it is not stored in `.fuse/fuse.db` and is lost when the process exits.
 

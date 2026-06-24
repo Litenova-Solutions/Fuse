@@ -175,6 +175,7 @@ public abstract class CommandBase
             QueryExpansion = resolved.QueryExpansion,
             TieredEmission = resolved.TieredEmission,
             MultiQueryFusion = resolved.MultiQueryFusion,
+            BudgetAwareExpansion = resolved.BudgetAwareExpansion,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

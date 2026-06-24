@@ -49,6 +49,19 @@ public sealed record ExperimentalOptions
     public bool MultiQueryFusion { get; init; }
 
     /// <summary>
+    ///     Whether dependency expansion on the query path is budget-aware: when a token ceiling is set, the
+    ///     graph admits neighbours highest-score first only while their estimated reduced cost fits the budget,
+    ///     instead of admitting the whole neighbourhood and leaving the packer to cut it. The per-file estimate
+    ///     comes from the <see cref="Scoping.ITokenCostModel" /> at the level each file will be emitted at
+    ///     (skeleton for neighbours when <see cref="TieredEmission" /> is on, the request level otherwise), so a
+    ///     cheap skeletonized neighbour is not rejected as if it cost a full body. Seeds are always admitted.
+    ///     This saves reducing files that would never emit and keeps the admitted set aligned with what the
+    ///     packer keeps. On by default; set <c>FUSE_BUDGET_EXPANSION=0</c> (or <c>off</c>/<c>false</c>) to
+    ///     reproduce the unbounded expansion.
+    /// </summary>
+    public bool BudgetAwareExpansion { get; init; } = true;
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -106,12 +119,23 @@ public sealed record ExperimentalOptions
             multiQueryFusion = true;
         }
 
+        var budgetAwareExpansion = resolved.BudgetAwareExpansion;
+        var rawBudget = Environment.GetEnvironmentVariable("FUSE_BUDGET_EXPANSION");
+        if (!string.IsNullOrWhiteSpace(rawBudget) &&
+            (rawBudget.Equals("0", StringComparison.Ordinal) ||
+             rawBudget.Equals("off", StringComparison.OrdinalIgnoreCase) ||
+             rawBudget.Equals("false", StringComparison.OrdinalIgnoreCase)))
+        {
+            budgetAwareExpansion = false;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
             QueryExpansion = queryExpansion,
             TieredEmission = tieredEmission,
             MultiQueryFusion = multiQueryFusion,
+            BudgetAwareExpansion = budgetAwareExpansion,
         };
     }
 }

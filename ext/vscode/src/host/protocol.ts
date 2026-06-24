@@ -1,0 +1,61 @@
+// TypeScript mirror of the .NET host RPC DTOs (src/Host/Fuse.Cli/Host/Rpc/FuseHostDtos.cs), serialized through
+// the source-generated FuseHostJsonContext with camelCase names. These shapes are the wire contract: the .NET
+// FuseHostContractTests pin the JSON, and the extension's own contract test (added with the Phase 2 scaffolding)
+// parses the same fixtures, so any drift on either side fails a test. Keep this file in lockstep with the DTOs.
+
+/** Wire protocol version; must equal FuseHostService.ProtocolVersion on the host. */
+export const PROTOCOL_VERSION = 1;
+
+/** Result of `fuse/handshake`: host package version and the wire protocol version to match. */
+export interface FuseHostHandshake {
+  hostVersion: string;
+  protocolVersion: number;
+}
+
+/** Result of `fuse/stats`: cheap process-level health for the status bar and index panel. */
+export interface FuseHostStats {
+  hostVersion: string;
+  processId: number;
+  uptimeMs: number;
+  workingSetBytes: number;
+}
+
+/** A dependency-graph node projected for the webview. `role` is present only when a scope is active. */
+export interface GraphNodeDto {
+  path: string;
+  declaredTypes: string[];
+  centrality: number;
+  tokenCost: number;
+  role?: string;
+}
+
+/** A directed dependency-graph edge. */
+export interface GraphEdgeDto {
+  from: string;
+  to: string;
+  weight: number;
+  kind: string;
+}
+
+/** Result of `fuse/graph`: the dependency graph at the requested level of detail. */
+export interface GraphDto {
+  nodes: GraphNodeDto[];
+  edges: GraphEdgeDto[];
+  detail: "Files" | "Directories";
+}
+
+/** Result of `fuse/index`: the warm-index state after collecting and building the graph. */
+export interface IndexResultDto {
+  indexState: "Warm" | "Indexing" | "NotIndexed";
+  fileCount: number;
+  elapsedMs: number;
+}
+
+/** RPC method names exposed by the host (the `fuse/` namespace). */
+export const Methods = {
+  handshake: "fuse/handshake",
+  stats: "fuse/stats",
+  index: "fuse/index",
+  graph: "fuse/graph",
+  shutdown: "fuse/shutdown",
+} as const;

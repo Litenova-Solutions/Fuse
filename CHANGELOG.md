@@ -4,6 +4,22 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+### Added
+
+- **`fuse host`: a JSON-RPC endpoint for the VS Code extension (extension Phase 1).** A new long-lived host
+  command serves the warm engine to the editor over a named pipe (Windows) or Unix domain socket (elsewhere),
+  sharing the same `AddFuse` dependency graph as `fuse mcp serve`, so the agent (over MCP) and the developer
+  (over this transport) read one warm engine. The endpoint address is derived from the repository root, so a
+  second editor window reuses the running host and two repositories stay isolated; the accept loop serves
+  multiple connections until a client calls `fuse/shutdown`. Wire JSON goes through a source-generated
+  `FuseHostJsonContext` (no reflection), mirrored by `ext/vscode/src/host/protocol.ts` and pinned by a contract
+  test; the lifecycle methods (`fuse/handshake` version match, `fuse/stats` process health, `fuse/shutdown`) are
+  verified end to end over an in-memory duplex pipe. The engine-data methods (`fuse/index`, `fuse/graph`,
+  `fuse/scope`, `fuse/explain`, `fuse/diagnostics`) have DTOs and protocol entries in place and are the next
+  increment. The extension build is tracked under `ext/vscode` (DECISIONS, PROGRESS). Transitive of this work:
+  the VS Threading analyzers (suppressed repo-wide; they flagged unrelated synchronous console writes) and a
+  transitive MessagePack advisory (suppressed; the MessagePack formatter is never used, only System.Text.Json).
+
 ## [3.0.0] - 2026-06-25
 
 Fuse 3.0 is a retrieval, packing, and benchmarking release built on the IMPROVEMENT-OPPORTUNITIES playbook: a first-class `ContextPlan`, budget-aware expansion and tiered emission, downgrade-before-drop packing, auto-mode MCP routing with session-delta diff overlays, a measured opt-in rerank stack (bi-encoder, cross-encoder, project graph, churn, member-level), and a far more honest benchmark suite (per-repo CI gate, bootstrap intervals, ranking metrics, latency layer, cost-adjusted recall). Default-path scoping stays lexical and offline by construction; every opt-in lever degrades gracefully to that floor. Breaking changes are intentional and listed below.

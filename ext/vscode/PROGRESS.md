@@ -1,0 +1,49 @@
+# Fuse VS Code extension: progress log
+
+Per-commit status for the extension build. Updated after each commit: item, status, what was tested, any
+deviation from the playbook.
+
+## Phase 1: host extraction (fuse host JSON-RPC)
+
+- [x] `fuse host` command: JSON-RPC over a named pipe (Windows) / Unix domain socket (else) sharing AddFuse DI,
+      with an accept loop that serves multiple connections (multiple editor windows) until shutdown. Tested.
+- [x] Host RPC DTOs and source-generated `FuseHostJsonContext` (camelCase, reflection-free). Mirrored in
+      `src/host/protocol.ts`, pinned by `FuseHostContractTests`.
+- [x] Lifecycle methods: `fuse/handshake` (version match), `fuse/stats` (process health), `fuse/shutdown`.
+      Verified end to end by `FuseHostServiceRpcTests` over an in-memory duplex pipe.
+- [ ] Engine-data methods: `fuse/index`, `fuse/graph`, `fuse/scope`, `fuse/explain`, `fuse/diagnostics` (DTOs
+      and protocol.ts entries are in place; the engine projections are the next commit).
+- [ ] Warm-index lifecycle (pooled repo-root store, resident analysis index, incremental invalidation).
+- [ ] Concurrency test (simultaneous fuse/graph and fuse/scope against one root).
+- [ ] Host-publish CI matrix per RID.
+
+Build note: adding StreamJsonRpc pulled in the VS Threading analyzers (VSTHRD103, suppressed via NoWarn since it
+flagged pre-existing synchronous console writes) and a transitive MessagePack with a known advisory
+(GHSA-hv8m-jj95-wg3x, suppressed via NuGetAuditSuppress because the MessagePack formatter is never used; the host
+uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale and the csproj comments.
+
+## Phase 2: thin read-only extension
+
+- [ ] Not started.
+
+## Phase 3: context diagnostics
+
+- [ ] Not started.
+
+## Phase 4: graph webview with level-of-detail
+
+- [ ] Not started.
+
+## Phase 5: scoping commands, hover, lenses, panels
+
+- [ ] Not started.
+
+## Phase 6: packaging and distribution
+
+- [ ] Not started.
+
+## Notes and deviations
+
+- The engine gate (`dotnet build` 0 warnings, `dotnet test`, `dotnet format --verify-no-changes`) is run after
+  every host commit; the extension gate (`npm run build && npm run lint && npm test`) is added once the TS
+  extension scaffolding lands in Phase 2.

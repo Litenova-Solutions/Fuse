@@ -36,6 +36,7 @@ dotnet build (Join-Path $RepoRoot 'tests/benchmarks/tools/BodyIntegrity/BodyInte
 & "$PSScriptRoot/layer4-scenario.ps1"
 & "$PSScriptRoot/layer2b.ps1"
 & "$PSScriptRoot/layer3.ps1"
+& "$PSScriptRoot/layer-latency.ps1"
 
 if ($Compare) {
     $baselinePath = if ([System.IO.Path]::IsPathRooted($Compare)) { $Compare } else { Join-Path $RepoRoot $Compare }

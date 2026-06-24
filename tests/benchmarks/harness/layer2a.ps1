@@ -40,6 +40,22 @@ function Measure-Recall($emitted, $truth) {
     return [pscustomobject]@{ recall = $recall; precision = $precision; hits = $hit.Count; emitted = $emCs.Count }
 }
 
+# B10 change-set-size stratum from the ground-truth file count: the budget wall mostly bites the large stratum,
+# which the overall mean hides.
+function Get-Stratum($truthCount) {
+    if ($truthCount -le 3) { return 'small (1-3)' }
+    if ($truthCount -le 9) { return 'medium (4-9)' }
+    return 'large (10+)'
+}
+
+# B8 wasted tokens: the tokens spent on emitted files that were not in the truth set. Approximated from the
+# emitted-file fractions (the harness counts whole-output tokens, not per-file), so it is a proportional
+# estimate of budget spent off-target, not an exact per-file figure.
+function Get-WastedTokens($tokens, $emitted, $hits) {
+    if ($emitted -le 0) { return 0 }
+    return [math]::Round($tokens * ($emitted - $hits) / $emitted, 0)
+}
+
 $repoGroups = $prs | Group-Object repo
 foreach ($g in $repoGroups) {
     $repo = Get-Corpus | Where-Object { $_.name -eq $g.Name }
@@ -87,6 +103,7 @@ foreach ($g in $repoGroups) {
                 $results += [pscustomobject]@{
                     repo=$g.Name; pr=$pr.pr; mode=$mode.name; budget=$b; truth=$truth.Count
                     recall=$r.recall; precision=$r.precision; hits=$r.hits; emitted=$r.emitted; tokens=$tok
+                    wasted=(Get-WastedTokens $tok $r.emitted $r.hits); stratum=(Get-Stratum $truth.Count)
                 }
             }
         }
@@ -120,6 +137,7 @@ foreach ($g in $repoGroups) {
         $results += [pscustomobject]@{
             repo=$g.Name; pr=$pr.pr; mode='grep'; budget=$Budget; truth=$truth.Count
             recall=$gr.recall; precision=$gr.precision; hits=$gr.hits; emitted=$gr.emitted; tokens=$cum
+            wasted=(Get-WastedTokens $cum $gr.emitted $gr.hits); stratum=(Get-Stratum $truth.Count)
         }
 
         # Console summary reports the headline budget only.
@@ -137,28 +155,59 @@ foreach ($g in $repoGroups) {
 
 $results | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $ResultsDir 'layer2a.json')
 
-# Aggregate mean recall/precision per (mode, budget) so recall@budget is visible across the curve.
+# Aggregate mean recall/precision per (mode, budget) so recall@budget is visible across the curve. Also report
+# mean wasted tokens (B8) and a cost-adjusted recall = recall x precision (B11), which punishes a mode that
+# buys recall by emitting a wide, low-precision set.
 $agg = $results | Group-Object mode, budget | ForEach-Object {
+    $meanRecall = [math]::Round(($_.Group | Measure-Object recall -Average).Average, 3)
+    $meanPrecision = [math]::Round(($_.Group | Measure-Object precision -Average).Average, 3)
     [pscustomobject]@{
         mode = $_.Group[0].mode
         budget = $_.Group[0].budget
-        mean_recall = [math]::Round(($_.Group | Measure-Object recall -Average).Average, 3)
-        mean_precision = [math]::Round(($_.Group | Measure-Object precision -Average).Average, 3)
+        mean_recall = $meanRecall
+        mean_precision = $meanPrecision
         mean_tokens = [math]::Round(($_.Group | Measure-Object tokens -Average).Average, 0)
+        mean_wasted = [math]::Round(($_.Group | Measure-Object wasted -Average).Average, 0)
+        cost_adjusted = [math]::Round($meanRecall * $meanPrecision, 3)
         n = $_.Count
     }
 }
 $md = @('# Layer 2A results (scoping recall@budget)','',
         "Budgets: $($Budgets -join ', '). Headline budget: $Budget. Focus/query depth: $Depth. PRs: $($prs.Count).",'',
-        '| Mode | Budget | Mean recall | Mean precision | Mean tokens | N |',
-        '|------|-------:|------------:|---------------:|------------:|--:|')
+        'Wasted tokens (B8) is the proportional estimate of budget spent on emitted files outside the truth set.',
+        'Cost-adjusted recall (B11) is mean recall times mean precision.','',
+        '| Mode | Budget | Mean recall | Mean precision | Mean tokens | Wasted tokens | Recall x precision | N |',
+        '|------|-------:|------------:|---------------:|------------:|--------------:|-------------------:|--:|')
 foreach ($a in ($agg | Sort-Object mode, budget)) {
-    $md += ('| {0} | {1} | {2:P0} | {3:P0} | {4} | {5} |' -f $a.mode, $a.budget, $a.mean_recall, $a.mean_precision, $a.mean_tokens, $a.n)
+    $md += ('| {0} | {1} | {2:P0} | {3:P0} | {4} | {5} | {6:P0} | {7} |' -f `
+        $a.mode, $a.budget, $a.mean_recall, $a.mean_precision, $a.mean_tokens, $a.mean_wasted, $a.cost_adjusted, $a.n)
+}
+
+# B10 recall by change-set size at the headline budget: the large stratum is where the token budget truncates
+# truth files, which the overall mean hides.
+$modeOrder = @('changes','focus','query','grep')
+$strataOrder = @('small (1-3)', 'medium (4-9)', 'large (10+)')
+$strata = $results | Where-Object { $_.budget -eq $Budget } | Group-Object mode, stratum | ForEach-Object {
+    [pscustomobject]@{
+        mode = $_.Group[0].mode
+        stratum = $_.Group[0].stratum
+        mean_recall = [math]::Round(($_.Group | Measure-Object recall -Average).Average, 3)
+        n = $_.Count
+    }
+}
+$md += @('', "## Recall by change-set size (headline budget $Budget)", '',
+         ('| Mode | ' + (($strataOrder | ForEach-Object { $_ }) -join ' | ') + ' |'),
+         ('|------|' + (($strataOrder | ForEach-Object { '-----:' }) -join '|') + '|'))
+foreach ($m in $modeOrder) {
+    $cells = foreach ($s in $strataOrder) {
+        $row = $strata | Where-Object { $_.mode -eq $m -and $_.stratum -eq $s } | Select-Object -First 1
+        if ($row) { '{0:P0} (n={1})' -f $row.mean_recall, $row.n } else { 'n/a' }
+    }
+    $md += ('| {0} | {1} |' -f $m, ($cells -join ' | '))
 }
 
 # Per-repo mean recall at the headline budget, so the per-repo table (which the aggregate hides) is visible in
 # the committed results, not just on the benchmarks page. Modes are columns; repos are rows.
-$modeOrder = @('changes','focus','query','grep')
 $repoRecall = $results | Where-Object { $_.budget -eq $Budget } | Group-Object repo, mode | ForEach-Object {
     [pscustomobject]@{
         repo = $_.Group[0].repo

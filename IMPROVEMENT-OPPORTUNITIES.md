@@ -795,3 +795,89 @@ Three scoping commits plus research-notes commits landed:
 A throwaway A/B helper exists at `tests/benchmarks/harness/spike-query-expansion.ps1` (toggles
 `FUSE_QUERY_EXPANSION`, query mode only, ~5 min) and is the fastest way to sanity-check a query-path
 change before a full layer run.
+
+---
+
+## 14. Implementation status report
+
+A verified accounting of this plan against the code on `feature/roslyn-mandatory-sqlite-cache`, checked
+by inspecting the source, tests, harness, and `CHANGELOG.md` (not by assertion). Roughly 50 of about 60
+items are implemented; the rest are runtime-blocked, gated by the plan's own conditions, or genuinely
+not yet started. Every implemented retrieval or packing change was measured from the harness, kept
+opt-in when it did not clear its bar, and recorded in `tests/benchmarks/results/opt-in-levers.md` and
+the `benchmarks.mdx` Findings; the default-path numbers (layer 2A/2B/4) are unchanged by the opt-in
+levers and the B9 per-repo gate passes.
+
+### Implemented
+
+- **Phase 0, correctness and safety (C1-C6): all done.** C1 redaction re-run after post-reduction
+  rewrites (`RewriteRedacted` on every slice, thin-skeleton, sketch, and downgrade path); C2 strict
+  total-token accounting; C3 DI lifetime and concurrency under MCP; C4 SQLite pending-write race, plus
+  the corrupt-database recovery race fixed here (private cache and missing-table self-heal); C5 stable
+  symbol identity (`SymbolChunk.Identity`); C6 whole-PEM-block and cloud-key redaction.
+- **Phase 1, architecture enablers (A1-A4): all done.** A1 first-class `ContextPlan` (role and tier per
+  file, replacing provenance-length inference); A2 extracted `QueryScopingPipeline`; A3 `TokenCostModel`;
+  A4 separated candidate, seed, and emit counts.
+- **Phase 2, default-path retrieval (most):** item 4 budget-aware expansion; item 1 tiered emission;
+  item 2 multi-query fusion; item 3 identifier-aware tokenization; Q3 exact symbol and path boosts; Q4
+  distributional thesaurus (opt-in); Q5 member-level retrieval (opt-in, measured query 61 to 68 at 50k);
+  Q6 git churn prior (opt-in, leak-safe, a no-op on the pinned benchmark by construction); Q7 PageRank
+  centrality (real power iteration, not in-degree); item 6 false-edge fixes; item 7 proximity edges
+  (opt-in, measured neutral); item 24 process-lifetime relevance index cache.
+- **Phase 3, packing and emission: done.** P1 downgrade-before-drop and role-aware packing (the largest
+  focus and tight-budget lift); item 16 deterministic huge-file sketches (opt-in); item 30 agentic
+  breadcrumbs; P2 structural map prepended to the first part.
+- **Phase 4, MCP and the interactive loop: all done.** item 13 auto-mode routing (`AskStrategySelector`);
+  item 31 CLI `ask` command; item 32 change-plus-query hybrid (spiked); item 14 session-delta diff
+  overlays; item 33 `fuse_find` and `fuse_explain` tools.
+- **Phase 5, opt-in heavy levers (the measurable ones):** item 9 dense bi-encoder rerank (measured,
+  below the 60 percent bar, opt-in); item 11 cross-encoder rerank (measured 33 percent on hard repos,
+  opt-in); item 8 coarse `.csproj` project-reference graph (measured query 61 to 62, opt-in); item 23
+  rerank embedding cache.
+- **Benchmarking:** B3 ranking metrics (recall@k, MRR, nDCG, `layer-ranking.ps1`); B4 recall@k versus
+  recall@budget; B5 held-out dev/test split; B6 bootstrap confidence intervals; B8 precision and wasted
+  tokens; B9 per-repo CI regression gate (`check-regressions.ps1`); B10 change-set-size strata; B11
+  cost-adjusted recall; B12 title-only versus title-plus-body; B13 latency layer; experimental flags
+  recorded in results.
+
+### Not implemented
+
+Runtime- or data-blocked (cannot be completed in the current environment):
+
+- **B1, task-success eval with round-trips:** needs a programmatic agent runner that drives the arms and
+  scores patches. No such runtime is present.
+- **item 12, LLM query rewrite / HyDE:** needs a language model at query time; the hard invariant bars a
+  model and network from the default path, so this is opt-in only and the runtime is absent.
+- **B2, larger and cleaner corpus:** the data work is done and staged
+  (`tests/benchmarks/corpus-candidates/serilog.json`: a fifth repository with six git-verified PRs), but
+  wiring it in is a full rebaseline. A trial run over the resulting 30-PR corpus moved every headline
+  mean (query 61 to 64, focus 92 to 90, changes 87 to 89, grep 38 to 37), and the benchmarks page states
+  about fifteen per-feature A/B deltas each measured over the pinned 24-PR corpus, so a faithful B2
+  re-runs every layer and every feature spike and rewrites all coupled prose at once. Left as deliberate
+  fresh-context work to avoid a mis-synced (weakened) number.
+
+Gated by the plan's own conditions:
+
+- **item 5, scalar admission tuning:** the plan forbids tuning until B2 and B5 exist (it overfits the 24
+  PRs otherwise). Blocked on B2.
+- **F1, SQLite FTS5 backend:** the plan says "only if profiling demands it"; the B13 latency layer shows
+  the in-memory index is not the bottleneck, so it is not warranted.
+- **item 10, learned-sparse (SPLADE):** an XL opt-in rewrite the plan gates on dense rerank (item 9)
+  paying off, which it did not on this corpus.
+
+Genuinely not started (implementable here, no blocker):
+
+- **Q1, single-pass parallel document indexing:** a warm-latency optimization (build the graph once and
+  parallelize the document loop). The query pipeline still indexes documents in a sequential loop.
+- **Q2, fielded comments and doc-comments:** the BM25F index still has only body, symbols, and path
+  fields; promoting comments to their own weighted field could lift recall on prose titles.
+- **B7, adversarial-case reporting:** report the mean both including and excluding merge-noise and
+  adversarial titles. Depends on the B2 tags to be fully meaningful.
+- **Reading-set ground truth:** label, per PR, the files an agent must read but not edit (interfaces,
+  callers, tests), distinct from the editing set, so recall is scored against what is genuinely needed.
+
+### Suggested next order for the remaining unblocked work
+
+Q2 (prose-title recall, default path) and Q1 (warm latency) first, since they are self-contained and
+measurable on the existing harness; then B7 and the reading-set labeling (benchmark honesty), which pair
+naturally with B2 when that rebaseline is taken on in a fresh session.

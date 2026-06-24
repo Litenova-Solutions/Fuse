@@ -40,6 +40,17 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
 
 ### Changed
 
+- **First-class `ContextPlan` for scoped results (architecture enabler A1).** A scoped result now produces an
+  explicit `ContextPlan` of `PlannedFile` records, each carrying the file's `Role` (Seed, Dependency, or
+  Changed), its reduction `Tier`, relevance score, provenance, query-selected members, and a `MustKeep` flag.
+  This replaces the former implicit scheme where seed-versus-neighbour was inferred downstream from the length
+  of a file's provenance chain and the per-file reduction tier was chosen by a separate ad-hoc resolver. The
+  plan is built once after scoping by `ContextPlanBuilder` and drives the per-file reduction tier (a non-seed
+  file reduces to a signature skeleton when tiered emission is active; seeds keep the request's level), making
+  role and tier a single explicit source of truth that packing and emission can read instead of re-deriving.
+  The refactor is behavior-preserving: the plan's tier mapping reproduces the previous resolver exactly, so the
+  full test suite and a fresh layer 2A run reproduce the published recall and token numbers with no change. This
+  completes the Phase 1 architecture enablers (A1 through A4).
 - **Extract `QueryScopingPipeline` from the orchestrator (architecture enabler A2).** The query scoping path
   (index build, candidate ranking, pseudo-relevance feedback, multi-query fusion, the distributional thesaurus,
   member-level retrieval, the git churn prior, dense rerank, seed promotion, member selection, and graph
@@ -50,9 +61,7 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
   refactor is behavior-preserving: the full test suite and a fresh layer 2A run reproduce the published query
   numbers exactly (no change to selection, recall, or token cost). The nested `FilteredFileSet` and
   `SymbolSliceRequest` records are now internal top-level types so the pipeline can return them. This completes
-  enabler A2 alongside A3 (`TokenCostModel`) and A4 (candidate/seed/emit split); A1 (a first-class `ContextPlan`)
-  remains the one enabler not extracted, since its purpose (backing tiered emission, role-aware packing, and
-  `fuse_explain`) is already delivered by the shipped per-file level resolver and those features are validated.
+  enabler A2 alongside A1 (`ContextPlan`, above), A3 (`TokenCostModel`), and A4 (candidate/seed/emit split).
 - **Cache rerank document embeddings by content hash (item 23).** The dense reranker (item 9, opt-in) embedded
   every candidate's text on every query; it now caches each document embedding by a content hash, so a warm
   rerank over an unchanged file reuses the vector instead of re-running the model. The cache is process-lifetime

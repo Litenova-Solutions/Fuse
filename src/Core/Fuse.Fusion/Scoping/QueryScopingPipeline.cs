@@ -97,7 +97,9 @@ internal sealed class QueryScopingPipeline
         // function of these (symbols are derived from content deterministically), so the signature keys the
         // process-lifetime index cache: a warm query on an unchanged tree reuses the built index. Files are
         // collected in a stable order, so the order-dependent mix is deterministic.
-        var indexSignature = 0UL;
+        // Seed the signature with the comment-field flag so a warm cache built with one setting is not reused by
+        // the other (the index is otherwise a pure function of path and content; this flag changes its fields).
+        var indexSignature = experimental.FieldedComments ? 1UL : 0UL;
         foreach (var file in files)
         {
             var content = await contentProvider.GetContentAsync(file, cancellationToken);
@@ -109,7 +111,11 @@ internal sealed class QueryScopingPipeline
                 ? DependencyGraphBuilder.Analyze(content, extractor, locator, index).DeclaredSymbols
                 : locator?.ExtractDefinedSymbols(content);
 
-            documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols);
+            // Q2: index comments as their own weighted field only when the lever is on, so the default ranking
+            // is byte-identical. Comment extraction is lexical and cheap (a single regex pass over the source).
+            var comments = experimental.FieldedComments ? CommentExtractor.Extract(content) : null;
+
+            documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols, comments);
             fileContents[file.NormalizedRelativePath] = content;
             indexSignature = MixSignature(indexSignature, file.NormalizedRelativePath, content);
         }

@@ -130,6 +130,16 @@ public sealed record ExperimentalOptions
     public bool MemberLevelRetrieval { get; init; }
 
     /// <summary>
+    ///     Whether comments and documentation comments are indexed as their own weighted BM25F field (Q2). They
+    ///     carry the natural-language vocabulary a prose query matches, which is otherwise diluted in the body
+    ///     field. When on, a query term found in a file's comments contributes an extra, deliberately weighted
+    ///     signal above the body so a file documented with the query's wording ranks higher. Fully lexical, no
+    ///     model. Off pending an A/B. Overridden by <c>FUSE_FIELDED_COMMENTS</c> (<c>1</c>, <c>on</c>, or
+    ///     <c>true</c> enables it).
+    /// </summary>
+    public bool FieldedComments { get; init; }
+
+    /// <summary>
     ///     Whether expansion follows coarse project-reference edges (item 8): each candidate is linked to the
     ///     files in the projects its owning <c>.csproj</c> references or is referenced by, so a seed reaches a
     ///     related file across an assembly boundary that the intra-project type-reference graph misses (for
@@ -286,6 +296,16 @@ public sealed record ExperimentalOptions
             projectGraph = true;
         }
 
+        var fieldedComments = resolved.FieldedComments;
+        var rawComments = Environment.GetEnvironmentVariable("FUSE_FIELDED_COMMENTS");
+        if (!string.IsNullOrWhiteSpace(rawComments) &&
+            (rawComments.Equals("1", StringComparison.Ordinal) ||
+             rawComments.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawComments.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            fieldedComments = true;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -301,6 +321,7 @@ public sealed record ExperimentalOptions
             ProximityEdges = proximityEdges,
             MemberLevelRetrieval = memberLevelRetrieval,
             ProjectGraph = projectGraph,
+            FieldedComments = fieldedComments,
         };
     }
 }

@@ -205,6 +205,13 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
 
 ### Added
 
+- **Opt-in fielded comments on the query path (Q2).** Comments and documentation comments can be indexed as
+  their own weighted BM25F field (above the body, below symbols and path) so a query term documented in a
+  file's comments contributes a deliberate signal rather than being diluted in the body. Fully lexical, no
+  model; extraction is a single regex pass. Enable with `FUSE_FIELDED_COMMENTS=1`. A measured A/B
+  (`spike-fielded-comments.ps1`) was neutral at the 50,000 token headline (61 percent on and off; FluentValidation
+  57 to 59, a 2-point dip at the 10,000 token budget, others flat), so it is off by default; see the research
+  note. The comment field is inert unless comment text is supplied, so the default ranking is byte-identical.
 - **Opt-in member-level retrieval (Q5).** A query-path pass that indexes each declared member as its own
   document and rolls the per-member scores up to a file score (best member wins), then adds any file the member
   pass surfaces that the file-granular pass missed as an extra seed. This reaches a file whose match is
@@ -463,6 +470,18 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
 
 ### Research notes
 
+- **Source:** fielded comments (Q2): index comments and doc-comments as their own weighted BM25F field so
+  prose queries match their natural-language vocabulary. **Fit:** the vocabulary wall on prose titles.
+  **Decision:** **built and measured, kept opt-in.** A query-mode A/B over the 24-PR corpus
+  (`spike-fielded-comments.ps1`) was neutral at the 50,000 token headline (61 percent on and off), with a
+  small gain on FluentValidation (57 to 59) offset by a 2-point dip at the 10,000 token budget and no overall
+  movement, so it does not clear the bar to change the default. The cause is structural on this corpus: the PR
+  titles are mostly identifier and feature phrases that already match through the symbol and body fields, and
+  the comment field overlaps the body, so promoting comments rarely surfaces a file the body did not already
+  rank. It ships opt-in (`FUSE_FIELDED_COMMENTS=1`) because a deployment with genuinely prose queries (natural
+  -language task descriptions rather than titles) is exactly the case it targets, and the lever is free of any
+  model or network. The open follow-up is to re-test it against a prose-query benchmark (B12 title-plus-body,
+  or a future natural-language task corpus) rather than identifier-like PR titles.
 - **Source:** cross-encoder rerank (item 11): rerank the BM25 candidate pool with a model that scores each
   query-document pair jointly (ms-marco-MiniLM-L-6-v2), the more accurate reranker family than the item 9
   bi-encoder. **Fit:** clear the ~60 percent bar on the hard repos that the bi-encoder missed. **Decision:**

@@ -91,4 +91,59 @@ public sealed class OnnxRerankTests
             Assert.StartsWith("https://", f.Url);
         });
     }
+
+    [Fact]
+    public void CrossEncoderModel_HasDistinctCacheDirectory()
+    {
+        var bi = RerankModelLocator.ModelDirectory(RerankModelLocator.ModelId);
+        var cross = RerankModelLocator.ModelDirectory(RerankModelLocator.CrossEncoderModelId);
+
+        Assert.NotEqual(bi, cross);
+        Assert.Contains(RerankModelLocator.CrossEncoderModelId, cross);
+    }
+
+    [Fact]
+    public void FilesFor_KnownModels_ArePinned_UnknownThrows()
+    {
+        Assert.All(RerankModelDownloader.FilesFor(RerankModelLocator.CrossEncoderModelId), f =>
+        {
+            Assert.Equal(64, f.Sha256.Length);
+            Assert.StartsWith("https://", f.Url);
+        });
+        Assert.Same(RerankModelDownloader.Files, RerankModelDownloader.FilesFor(RerankModelLocator.ModelId));
+        Assert.Throws<ArgumentException>(() => RerankModelDownloader.FilesFor("not-a-model"));
+    }
+
+    [Fact]
+    public void CrossEncoderReranker_AbsentModel_IsUnavailableAndKeepsOrder()
+    {
+        var missingDir = Path.Combine(Path.GetTempPath(), "fuse-no-cross", Guid.NewGuid().ToString("N"));
+        var reranker = new OnnxCrossEncoderReranker(
+            Path.Combine(missingDir, "model.onnx"),
+            Path.Combine(missingDir, "vocab.txt"));
+
+        Assert.False(reranker.IsAvailable);
+
+        var candidates = new List<RankedFile>
+        {
+            new("a.cs", 3.0),
+            new("b.cs", 2.0),
+            new("c.cs", 1.0),
+        };
+        var result = reranker.Rerank("query", candidates, new Dictionary<string, string>());
+
+        // Absent a model the cross-encoder is a no-op: the lexical floor is preserved exactly.
+        Assert.Equal(candidates.Select(c => c.Path), result.Select(r => r.Path));
+    }
+
+    [Fact]
+    public void CrossEncoderReranker_SingleCandidate_ReturnsInput()
+    {
+        var reranker = new OnnxCrossEncoderReranker("missing.onnx", "missing.txt");
+        var candidates = new List<RankedFile> { new("only.cs", 1.0) };
+
+        var result = reranker.Rerank("query", candidates, new Dictionary<string, string>());
+
+        Assert.Same(candidates, result);
+    }
 }

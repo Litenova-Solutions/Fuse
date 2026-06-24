@@ -22,8 +22,9 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
   and publish on test. Tuning the 24-PR corpus now would overfit; blocked on B2.
 - **B1 (task-success eval with round-trips):** needs a programmatic agent harness driving the arms and scoring
   patches, which is not built. Blocked on that runner.
-- **Items 10 and 11 (learned-sparse SPLADE, cross-encoder rerank):** XL opt-in retrieval rewrites the plan
-  marks "as warranted by data"; warranted only after dense rerank (item 9) pays off, which it did not here.
+- **Item 10 (learned-sparse SPLADE):** an XL opt-in retrieval rewrite the plan marks "as warranted by data";
+  warranted only after dense rerank (item 9) pays off, which it did not here. (Item 11, its sibling, was built
+  and measured this release; see Added and the research note.)
 - **Item 12 (LLM query rewrite / HyDE):** an LLM at query time is opt-in only, since the default path must run
   with no model and no network; deferred with the other opt-in model levers.
 - **F1 (SQLite FTS5 BM25 backend):** an architectural swap the plan says to do "only if profiling demands it";
@@ -184,6 +185,20 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
   file whose match is diluted across a large file is surfaced when on, not when off) and an environment test.
   My earlier prediction that Q5 would be neutral was wrong; building and measuring it found a real win, which
   is why it is shipped (opt-in) rather than deferred.
+- **Opt-in cross-encoder reranker (item 11), selectable with `FUSE_RERANK_MODEL=cross`.** A second `IReranker`
+  built on the ms-marco-MiniLM-L-6-v2 cross-encoder, which scores each query-document pair jointly (the query
+  attends directly to a candidate's text) instead of comparing two independently pooled embeddings like the
+  bi-encoder (item 9). It reuses the ONNX plugin's tokenizer and download/cache machinery; `fuse models
+  download --model cross` fetches it (SHA-256 pinned, about 23 MB), and `FUSE_RERANK=1` with
+  `FUSE_RERANK_MODEL=cross` selects it. Both rerank arms always fall back to the lexical floor when the model
+  is absent or offline, preserving the no-model invariant. Measured both arms on the hard repos (AutoMapper,
+  Newtonsoft.Json) at the 50,000 token headline: cross-encoder 33 percent against the lexical floor at 46 and
+  the bi-encoder at 44, so it did not clear the plan's ~60 percent bar and is **not** a default. The cause is
+  structural, not a wiring bug (the scores select real changed files): a cross-encoder runs once per candidate
+  over the pair truncated to the model's context window, so at file granularity the relevant member deep in a
+  large file falls outside the window. It ships opt-in and documented because it is the per-pair-accurate
+  reranker family and may help on other corpora or once member-level chunks (Q5) feed it shorter inputs.
+  Covered by reranker fallback tests and model-locator/downloader tests; see the research note.
 - **Session-delta diff overlays for changed files (item 14).** When a file already sent earlier in a session
   is requested again after it changed, the session path now re-sends a unified diff of the change rather than
   the whole file, so a long multi-turn MCP session spends tokens only on what moved. Unchanged files are still
@@ -403,6 +418,19 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
 
 ### Research notes
 
+- **Source:** cross-encoder rerank (item 11): rerank the BM25 candidate pool with a model that scores each
+  query-document pair jointly (ms-marco-MiniLM-L-6-v2), the more accurate reranker family than the item 9
+  bi-encoder. **Fit:** clear the ~60 percent bar on the hard repos that the bi-encoder missed. **Decision:**
+  **built and measured, kept opt-in, not defaulted.** A three-arm A/B (`spike-rerank-cross.ps1`) on AutoMapper
+  and Newtonsoft.Json at the 50,000 token headline scored cross-encoder 33 percent against the lexical floor at
+  46 and the bi-encoder at 44, so it regressed rather than clearing the bar. The cause is structural: a
+  cross-encoder runs once per candidate over the pair truncated to the model's 512-token window, so at file
+  granularity the relevant member deep in a large file is outside the window the model sees (the scores still
+  select real changed files, so it is not a wiring fault). This corroborates the item 9 finding that the rerank
+  family does not beat lexical BM25F on this corpus at file granularity. The code ships opt-in
+  (`FUSE_RERANK_MODEL=cross`) because it is a genuine alternative reranker and the natural next experiment is to
+  feed it the shorter member-level chunks (Q5) rather than whole truncated files; that re-test is the open
+  follow-up, and the bar to default it remains ~60 percent on the hard repos with no per-repo 50k regression.
 - **Source:** reference graph beyond syntax (item 8): a cheap first cut parsing `.csproj`
   `ProjectReference`/`PackageReference` for a coarse inter-project assembly graph, then a later Roslyn
   `Compilation` tier with metadata references. **Fit:** cross-assembly recall on hard repos. **Decision:**

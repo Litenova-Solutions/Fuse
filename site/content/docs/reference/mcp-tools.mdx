@@ -90,9 +90,7 @@ A `focus` of the form `Type.Member` scopes the seed file to that member, keeping
 ## fuse_search
 
 BM25F query-scoped fusion plus dependency expansion. One call turns a topic into the
-ranked files and their neighborhood, replacing a grep-and-open loop. Set `rerank` to true
-to reorder the BM25 candidates by embedding-vector similarity (hybrid retrieval), an
-opt-in tier; the default ranking is pure BM25F and uses no model.
+ranked files and their neighborhood, replacing a grep-and-open loop.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -100,7 +98,6 @@ opt-in tier; the default ranking is pure BM25F and uses no model.
 | `query` | string | required | Natural-language or keyword query, ranked with BM25F |
 | `queryTop` | int | 10 | Number of top-ranked files used to seed dependency expansion |
 | `depth` | int | 1 | Dependency hops to traverse out from the seed files |
-| `rerank` | bool | false | Rerank the BM25 candidates with embedding-vector similarity (hybrid retrieval) |
 | `excludeDirectories` | string[] | null | Directory names to skip |
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |

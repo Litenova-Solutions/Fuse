@@ -31,7 +31,6 @@
   <Folder Name="/src/Core/">
     <Project Path="src/Core/Fuse.Collection/Fuse.Collection.csproj" />
     <Project Path="src/Core/Fuse.Emission/Fuse.Emission.csproj" />
-    <Project Path="src/Core/Fuse.Fusion.Embeddings.Onnx/Fuse.Fusion.Embeddings.Onnx.csproj" />
     <Project Path="src/Core/Fuse.Fusion/Fuse.Fusion.csproj" />
     <Project Path="src/Core/Fuse.Reduction/Fuse.Reduction.csproj" />
   </Folder>
@@ -45,7 +44,6 @@
     <Project Path="tests/Fuse.Collection.Tests/Fuse.Collection.Tests.csproj" />
     <Project Path="tests/Fuse.Emission.Tests/Fuse.Emission.Tests.csproj" />
     <Project Path="tests/Fuse.Plugins.Formats.Web.Tests/Fuse.Plugins.Formats.Web.Tests.csproj" />
-    <Project Path="tests/Fuse.Fusion.Embeddings.Onnx.Tests/Fuse.Fusion.Embeddings.Onnx.Tests.csproj" />
     <Project Path="tests/Fuse.Fusion.Tests/Fuse.Fusion.Tests.csproj" />
     <Project Path="tests/Fuse.GoldenOutput.Tests/Fuse.GoldenOutput.Tests.csproj" />
     <Project Path="tests/Fuse.Plugins.Languages.CSharp.Tests/Fuse.Plugins.Languages.CSharp.Tests.csproj" />

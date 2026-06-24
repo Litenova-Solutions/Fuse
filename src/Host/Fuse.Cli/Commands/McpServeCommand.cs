@@ -49,7 +49,6 @@ public sealed class McpServeCommand
         builder.Logging.SetMinimumLevel(LogLevel.Information);
 
         builder.Services.AddSingleton<IConsoleUI, StderrConsoleUI>();
-        // Semantic ONNX embeddings in MCP are opt-in via FUSE_EMBEDDINGS (no --embeddings flag on serve).
         builder.Services.AddFuse();
 
         builder.Services

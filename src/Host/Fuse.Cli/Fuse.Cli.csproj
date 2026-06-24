@@ -37,6 +37,5 @@
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp\Fuse.Plugins.Languages.CSharp.csproj" />
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj" />
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Formats.Web\Fuse.Plugins.Formats.Web.csproj" />
-        <ProjectReference Include="..\..\Core\Fuse.Fusion.Embeddings.Onnx\Fuse.Fusion.Embeddings.Onnx.csproj" />
     </ItemGroup>
 </Project>

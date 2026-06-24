@@ -2,6 +2,16 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 2.0 is a structural rewrite; backward compatibility with 1.x output is not a goal.
 
+## [Unreleased]
+
+### Breaking changes
+
+- **Removed `--rerank` and `--embeddings` CLI flags.** Query scoping is BM25F-only again.
+- **Removed `FUSE_EMBEDDINGS` and `FUSE_EMBEDDINGS_MODEL_PATH`.** No embedding backend or model resolution remains.
+- **Removed MCP tool parameter `rerank` on `fuse_search` and `fuse_dotnet`.**
+- **Removed bundled ONNX model from NuGet and runtime packages.** Release artifacts no longer ship a `models/` directory.
+- **Removed the entire hybrid retrieval stack** (`IEmbeddingModel`, hashing rerank, vector cache in `.fuse/fuse.db`).
+
 ## [2.4.0]
 
 ### Added

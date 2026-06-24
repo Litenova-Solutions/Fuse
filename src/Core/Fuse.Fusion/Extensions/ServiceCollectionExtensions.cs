@@ -28,8 +28,7 @@ namespace Fuse.Fusion.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    ///     Registers stage pipelines, capability registries, the SQLite store factory, and the default hashing
-    ///     embedding model.
+    ///     Registers stage pipelines, capability registries, and the SQLite store factory.
     /// </summary>
     /// <param name="services">The service collection to add registrations to.</param>
     /// <returns>The same <paramref name="services" /> instance, to allow chaining.</returns>
@@ -48,7 +47,6 @@ public static class ServiceCollectionExtensions
         // Per-run relevance index: the BM25 index rebuilds all of its state per query and shares nothing, so a
         // factory hands each fusion run a fresh instance instead of a serialized singleton.
         services.AddSingleton<Func<IRelevanceIndex>>(_ => () => new Bm25RelevanceIndex());
-        services.AddSingleton<Retrieval.IEmbeddingModel>(_ => new Retrieval.HashingEmbeddingModel());
 
         services.AddTransient<FileCollectionPipeline>();
         services.AddTransient<ContentReductionPipeline>();

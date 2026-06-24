@@ -29,7 +29,7 @@ Build first, then test with `--no-build`. CI verifies build, test, format, and a
 ## Design Invariants
 
 - C# structural analysis (skeleton, outline, dependency, type-name, route map, semantic markers, symbol slice) uses Roslyn syntax parsing. Regex remains for lexer-based reduction, project-graph parsing, format reducers, pattern detectors, and secret redaction.
-- The ONNX embedding reranker is opt-in behind `--embeddings` or `FUSE_EMBEDDINGS`; the default hashing embedding needs no model download.
+- Query scoping ranks files with BM25F; Fuse performs no model download.
 - Persistent cache and index data live in a single SQLite file at `.fuse/fuse.db` (WAL mode).
 - JSON uses source-generated `JsonSerializerContext` only (no reflection serialization).
 

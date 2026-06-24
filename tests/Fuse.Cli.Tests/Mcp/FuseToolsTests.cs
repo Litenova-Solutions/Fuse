@@ -83,7 +83,7 @@ public sealed class FuseToolsTests
             """);
 
         var (orchestrator, templates) = BuildServices();
-        var result = await FuseTools.FuseTocAsync(orchestrator, templates, fixture.Path);
+        var result = await FuseTools.FuseTocAsync(orchestrator, templates, fixture.ProjectPath);
 
         Assert.Contains("fuse:table-of-contents", result);
         Assert.Contains("OrderService.cs", result);
@@ -104,7 +104,7 @@ public sealed class FuseToolsTests
 
         var (orchestrator, templates) = BuildServices();
         var result = await FuseTools.FuseAskAsync(
-            orchestrator, templates, fixture.Path, "How does OrderService place an order", tokenBudget: 20000);
+            orchestrator, templates, fixture.ProjectPath, "How does OrderService place an order", tokenBudget: 20000);
 
         Assert.Contains("fuse_ask: strategy=focus", result);
         Assert.Contains("OrderService", result);
@@ -123,7 +123,7 @@ public sealed class FuseToolsTests
 
         var (orchestrator, templates) = BuildServices();
         var result = await FuseTools.FuseAskAsync(
-            orchestrator, templates, fixture.Path, "Give me an architecture overview", tokenBudget: 20000);
+            orchestrator, templates, fixture.ProjectPath, "Give me an architecture overview", tokenBudget: 20000);
 
         Assert.Contains("fuse_ask: strategy=skeleton", result);
         // Skeleton keeps signatures but drops method bodies.
@@ -154,7 +154,7 @@ public sealed class FuseToolsTests
 
         var (orchestrator, templates) = BuildServices();
         var result = await FuseTools.FuseReduceAsync(
-            orchestrator, templates, fixture.Path, files: ["Sample.cs"], level: ReductionLevel.Skeleton);
+            orchestrator, templates, fixture.ProjectPath, files: ["Sample.cs"], level: ReductionLevel.Skeleton);
 
         Assert.Contains("Sample.cs", result);
         Assert.Contains("Add", result);
@@ -174,8 +174,8 @@ public sealed class FuseToolsTests
         var (orchestrator, templates) = BuildServices();
 
         // Both default the level to standard, so only the scoping path differs in how it is expressed.
-        var preset = await FuseTools.FuseFocusAsync(orchestrator, templates, fixture.Path, "Seed", depth: 1);
-        var full = await FuseTools.FuseDotNetAsync(orchestrator, templates, fixture.Path, focus: "Seed", depth: 1);
+        var preset = await FuseTools.FuseFocusAsync(orchestrator, templates, fixture.ProjectPath, "Seed", depth: 1);
+        var full = await FuseTools.FuseDotNetAsync(orchestrator, templates, fixture.ProjectPath, focus: "Seed", depth: 1);
 
         Assert.Equal(EmittedFiles(preset), EmittedFiles(full));
     }
@@ -186,7 +186,15 @@ public sealed class FuseToolsTests
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToList();
 
-    private static (FusionOrchestrator, ProjectTemplateRegistry) BuildServices()
+    private static (FusionOrchestrator, ProjectTemplateRegistry) BuildServices() =>
+        FuseToolsTestHost.BuildServices();
+
+    private sealed class TempProject : FuseToolsTestHost.TempProject;
+}
+
+internal static class FuseToolsTestHost
+{
+    internal static (FusionOrchestrator, ProjectTemplateRegistry) BuildServices()
     {
         var provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
         return (
@@ -194,24 +202,38 @@ public sealed class FuseToolsTests
             provider.GetRequiredService<ProjectTemplateRegistry>());
     }
 
-    private sealed class TempProject : IDisposable
+    internal static string RepoRoot()
     {
-        public string Path { get; } =
-            System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-mcp-tests", Guid.NewGuid().ToString("N"));
+        var dir = AppContext.BaseDirectory;
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir, "Fuse.slnx")))
+                return dir;
 
-        public TempProject() => Directory.CreateDirectory(Path);
+            dir = Directory.GetParent(dir)?.FullName;
+        }
+
+        throw new InvalidOperationException("Could not locate repository root (Fuse.slnx).");
+    }
+
+    internal class TempProject : IDisposable
+    {
+        public string ProjectPath { get; } =
+            Path.Combine(Path.GetTempPath(), "fuse-mcp-tests", Guid.NewGuid().ToString("N"));
+
+        public TempProject() => Directory.CreateDirectory(ProjectPath);
 
         public void AddFile(string relativePath, string content)
         {
-            var full = System.IO.Path.Combine(Path, relativePath);
-            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
+            var full = Path.Combine(ProjectPath, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
             File.WriteAllText(full, content);
         }
 
         public void Dispose()
         {
-            if (Directory.Exists(Path))
-                Directory.Delete(Path, recursive: true);
+            if (Directory.Exists(ProjectPath))
+                Directory.Delete(ProjectPath, recursive: true);
         }
     }
 }

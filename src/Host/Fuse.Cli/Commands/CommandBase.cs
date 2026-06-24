@@ -559,13 +559,6 @@ public abstract class CommandBase
     public bool DedupBodies { get; set; } = false;
 
     /// <summary>
-    ///     Select the embedding backend for rerank: on for the semantic ONNX model (downloaded once), off for
-    ///     the dependency-free hashing embedding. Unset uses the build default.
-    /// </summary>
-    [CliOption(Required = false, Description = "Embedding backend for --rerank: true for the semantic ONNX model (downloaded once), false for hashing.")]
-    public bool? Embeddings { get; set; }
-
-    /// <summary>
     ///     Output format (<c>xml</c>, <c>markdown</c>, <c>json</c>, or <c>compact</c>).
     /// </summary>
     [CliOption(Required = false, Description = "Output format: xml, markdown, json, or compact.")]

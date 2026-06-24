@@ -1,9 +1,9 @@
 ---
 title: Roslyn structural analysis vs regex
-description: What Roslyn provides by default for C# structure, what regex still handles, and the opt-in embedding reranker.
+description: What Roslyn provides by default for C# structure and what regex still handles.
 ---
 
-Fuse analyzes C# in two layers. **Roslyn** parses each `.cs` file and drives every structural capability: skeletons, dependency edges, type location, outlines, symbol slicing, route maps, and semantic markers. **Regex** still handles C# content reduction (comment and using removal, whitespace compression), the solution and project reference graph (`.sln` and `.csproj` text), and cross-codebase pattern detection. This page explains the split, what each layer is good at, and where an optional embedding backend fits.
+Fuse analyzes C# in two layers. **Roslyn** parses each `.cs` file and drives every structural capability: skeletons, dependency edges, type location, outlines, symbol slicing, route maps, and semantic markers. **Regex** still handles C# content reduction (comment and using removal, whitespace compression), the solution and project reference graph (`.sln` and `.csproj` text), and cross-codebase pattern detection. This page explains the split and what each layer is good at.
 
 ## Roslyn: Default Structural Analysis
 
@@ -36,10 +36,6 @@ Regex remains the right tool where a full parse is unnecessary or the input is n
 | Secret redaction | Regex plus entropy heuristics | API keys, connection strings |
 
 The project graph is best-effort: references injected through imported targets, MSBuild variables, or globbing are not resolved. Pattern detectors name conventions; they do not perform semantic analysis.
-
-## Opt-In: Semantic Embeddings for Rerank
-
-Hybrid query reranking (`--rerank`) has its own opt-in backend, independent of Roslyn structural analysis. By default the reranker scores candidates with a dependency-free lexical hashing embedding. The `--embeddings` flag (or `FUSE_EMBEDDINGS`) switches in a real semantic encoder (`all-MiniLM-L6-v2`, ONNX), downloaded once to `~/.fuse/models` and verified against a pinned hash, so rerank can bridge a true semantic gap rather than only sharpening lexical overlap. If the model cannot be fetched, the run falls back to hashing rather than failing.
 
 ## Next
 

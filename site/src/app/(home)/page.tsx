@@ -145,7 +145,7 @@ export default function HomePage() {
             <Feature
               icon={<ShieldCheck className="size-5" />}
               title="Roslyn structural analysis"
-              body="C# skeletons, dependency edges, route maps, and semantic markers use Roslyn syntax parsing by default. ONNX embeddings for rerank stay opt-in behind --embeddings."
+              body="C# skeletons, dependency edges, route maps, and semantic markers use Roslyn syntax parsing by default."
             />
           </div>
         </div>

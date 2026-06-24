@@ -53,6 +53,7 @@ public sealed class FusionOrchestrator
     private readonly ITokenCostModel _tokenCostModel;
     private readonly IReranker? _reranker;
     private readonly Enrichment.IGitStatsProvider _gitStatsProvider;
+    private readonly RelevanceIndexCache _relevanceIndexCache;
     private readonly ILogger<FusionOrchestrator> _logger;
 
     /// <summary>
@@ -79,6 +80,7 @@ public sealed class FusionOrchestrator
     /// <param name="tokenCostModel">Per-file token cost estimator used to make query-path dependency expansion budget-aware.</param>
     /// <param name="gitStatsProvider">Provides per-file git churn used by the optional churn ranking prior.</param>
     /// <param name="reranker">Optional dense reranker for the query candidate pool; <see langword="null" /> keeps the lexical BM25F ordering (the no-model floor).</param>
+    /// <param name="relevanceIndexCache">Process-lifetime cache reusing a built relevance index across queries on an unchanged tree.</param>
     /// <param name="logger">Optional logger.</param>
     public FusionOrchestrator(
         FusionValidator validator,
@@ -101,6 +103,7 @@ public sealed class FusionOrchestrator
         ISecretRedactor secretRedactor,
         ITokenCostModel tokenCostModel,
         Enrichment.IGitStatsProvider gitStatsProvider,
+        RelevanceIndexCache relevanceIndexCache,
         IReranker? reranker = null,
         ILogger<FusionOrchestrator>? logger = null)
     {
@@ -125,6 +128,7 @@ public sealed class FusionOrchestrator
         _tokenCostModel = tokenCostModel;
         _reranker = reranker;
         _gitStatsProvider = gitStatsProvider;
+        _relevanceIndexCache = relevanceIndexCache;
         _logger = logger ?? NullLogger<FusionOrchestrator>.Instance;
     }
 
@@ -740,6 +744,11 @@ public sealed class FusionOrchestrator
         // skeleton below), where it improves precision without changing which files are included.
         var documents = new Dictionary<string, IndexedDocument>(StringComparer.OrdinalIgnoreCase);
         var fileContents = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Accumulate a content signature over (path, content) of every indexed file. The index is a pure
+        // function of these (symbols are derived from content deterministically), so the signature keys the
+        // process-lifetime index cache: a warm query on an unchanged tree reuses the built index. Files are
+        // collected in a stable order, so the order-dependent mix is deterministic.
+        var indexSignature = 0UL;
         foreach (var file in files)
         {
             var content = await contentProvider.GetContentAsync(file, cancellationToken);
@@ -753,16 +762,23 @@ public sealed class FusionOrchestrator
 
             documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols);
             fileContents[file.NormalizedRelativePath] = content;
+            indexSignature = MixSignature(indexSignature, file.NormalizedRelativePath, content);
         }
 
-        // Per-run index: holds no cross-run state, so a fresh instance keeps concurrent queries isolated. When
-        // the persistent index is enabled, body tokenization is cached on disk by content hash so a warm query
-        // against an unchanged tree skips re-tokenizing files it has already indexed.
-        var relevanceIndex = _relevanceIndexFactory();
-        var postingsStore = request.UsePersistentIndex && fuseStore is not null
-            ? new Indexing.SqliteRelevancePostingsStore(fuseStore)
-            : null;
-        relevanceIndex.Index(documents, postingsStore);
+        // Reuse a built index across queries on an unchanged tree (item 24): the index rebuilds its
+        // document-frequency and length statistics otherwise, which is the dominant warm-call cost once body
+        // tokenization is cached. A built index is read-only, so sharing the cached instance across concurrent
+        // queries is safe. On a miss, build a fresh per-run index (no cross-run state) and index it; when the
+        // persistent index is enabled, body tokenization is cached on disk by content hash as well.
+        var relevanceIndex = _relevanceIndexCache.GetOrBuild(indexSignature, () =>
+        {
+            var freshIndex = _relevanceIndexFactory();
+            var postingsStore = request.UsePersistentIndex && fuseStore is not null
+                ? new Indexing.SqliteRelevancePostingsStore(fuseStore)
+                : null;
+            freshIndex.Index(documents, postingsStore);
+            return freshIndex;
+        });
         // Rank a candidate pool (A4): wider than the seed set so a reranking stage has room to reorder. The
         // lexical default keeps the pool equal to the seed count, so behavior is unchanged.
         var candidateTopK = request.Query!.ResolvedCandidateTopK;
@@ -1010,6 +1026,19 @@ public sealed class FusionOrchestrator
 
         var edges = ProximityEdgeBuilder.Build(files.Select(f => f.NormalizedRelativePath).ToList());
         return (edges, ProximityExpansionWeight);
+    }
+
+    // Folds one file's path and content into the running index signature with an FNV-style mix over their
+    // 64-bit hashes. Order-dependent, but files are collected in a stable order, so the signature is
+    // deterministic for a given tree and changes whenever any file's path or content changes.
+    private static ulong MixSignature(ulong accumulator, string path, string content)
+    {
+        const ulong prime = 1099511628211UL;
+        var pathHash = System.IO.Hashing.XxHash64.HashToUInt64(System.Text.Encoding.UTF8.GetBytes(path));
+        var contentHash = System.IO.Hashing.XxHash64.HashToUInt64(System.Text.Encoding.UTF8.GetBytes(content));
+        accumulator = (accumulator ^ pathHash) * prime;
+        accumulator = (accumulator ^ contentHash) * prime;
+        return accumulator;
     }
 
     // Tokenizes a file's declared symbols into the term set the distributional thesaurus co-occurs over, using

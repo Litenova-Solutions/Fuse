@@ -113,8 +113,8 @@ Layer 2A measures whether a scoping mode includes the files a real change touche
 | Mode | Mean recall | Mean precision | Mean tokens |
 |------|------------:|---------------:|------------:|
 | changes | 87% | 50% | 29,607 |
-| focus | 77% | 5% | 41,771 |
-| query | 61% | 8% | 40,258 |
+| focus | 92% | 6% | 40,527 |
+| query | 61% | 7% | 39,189 |
 | grep (baseline) | 38% | 11% | 41,452 |
 
 Recall varies widely by repository, and the aggregate hides that:
@@ -122,20 +122,21 @@ Recall varies widely by repository, and the aggregate hides that:
 | Repo | changes | focus | query | grep |
 |------|--------:|------:|------:|-----:|
 | MediatR | 100% | 100% | 94% | 94% |
-| FluentValidation | 100% | 88% | 57% | 23% |
+| FluentValidation | 100% | 100% | 57% | 23% |
 | AutoMapper | 92% | 92% | 50% | 29% |
-| Newtonsoft.Json | 56% | 28% | 42% | 5% |
+| Newtonsoft.Json | 56% | 74% | 42% | 5% |
 
 Findings, including losses:
 
 - Change scoping is the strongest mode. It leads recall at 87 percent at 50 percent precision, because following reverse edges one hop reaches the files that use a changed file without pulling in a wide neighborhood. On MediatR and FluentValidation it recalls every changed file. Its mean emitted tokens (29,607) sit well under the 50,000 budget because emission now stops before the one entry that would cross the cap rather than overrunning it by that entry (strict total-token accounting); this raised precision and trimmed the mean tokens, at the cost of about one budget-crossing file per large change set (Newtonsoft.Json change recall 58 to 56 percent).
-- All three scoping modes beat the grep baseline at the headline budget. Focus (77 percent) and query (61 percent) both clear grep (38 percent). Focus gains because it pulls a seed's dependents as well as its dependencies, so a changed test that references the seed is reached. Query gains from fielded BM25F ranking, query normalization, and a pseudo-relevance feedback pass that rewrites a sparse title in the codebase's declared-symbol vocabulary before selecting files.
+- All three scoping modes beat the grep baseline at the headline budget. Focus (92 percent) and query (61 percent) both clear grep (38 percent). Focus gains because it pulls a seed's dependents as well as its dependencies, so a changed test that references the seed is reached. Query gains from fielded BM25F ranking, query normalization, and a pseudo-relevance feedback pass that rewrites a sparse title in the codebase's declared-symbol vocabulary before selecting files.
 - Tiered emission is the largest single lift on focus and query. Dependency-expanded neighbours (provenance hop two or deeper) are reduced to signature skeletons rather than full bodies, so each costs fewer tokens and the budget-aware packer fits more files; recall counts file presence, so fitting more truth files raises recall. It lifted query at the headline budget from 51 to 55 percent and focus from 71 to 77 percent at fewer tokens (focus 46,543 to 41,505, query 46,366 to 43,190), with no per-repository regression: focus rose on AutoMapper (88 to 92), FluentValidation (74 to 88), and Newtonsoft.Json (21 to 28), query on AutoMapper (29 to 38), FluentValidation (51 to 57), and Newtonsoft.Json (30 to 32). The gain concentrates on the medium and large change-set strata, where the budget previously truncated truth files (focus medium 51 to 62 percent, large 14 to 24 percent). It is applied to query and focus only, not change mode. Set `FUSE_TIERED_EMISSION=0` to reproduce the untiered ordering.
 - Identifier-aware tokenization adds the last query points. Splitting identifiers on digit boundaries and acronym runs (so `OAuth2Token` yields `auth`, `2`, `token` and `HTTPClientFactory` yields `http`, `client`, `factory`) while keeping the whole token bridges a query that uses only part of a compound name. It lifted query recall at the headline budget from 55 to 57 percent, concentrated on AutoMapper (38 to 46 percent), with no per-repository regression at the headline budget; the tight 10,000 token row dips slightly (the extra sub-words shift ranking under a small budget), so the gain is a headline-budget effect.
 - Query expansion lifts the repositories where the title alone is too sparse. The second pass raised FluentValidation query recall from 47 to 51 percent and Newtonsoft.Json from 27 to 30 percent at the headline budget, with MediatR (94 percent) and AutoMapper (29 percent) unchanged, so the gain does not come at the cost of a per-repository regression. It is held to a low blend weight so an off-topic title does not displace an incidental first-pass hit. The effect is smaller at tight budgets (the 10,000 and 25,000 token query rows are slightly below the single-pass values) because the extra admitted seeds compete for a small budget; at the 50,000 token headline it is a clear gain.
 - Budget-aware expansion is the largest query lift this release. When a token ceiling is set, dependency expansion admits neighbours highest-score first only while their estimated reduced cost (skeleton-level for neighbours, since tiered emission skeletonizes them) fits the budget, instead of admitting the whole neighbourhood for the packer to cut. Holding the budget on the seeds and their closest neighbours lifted query recall at the headline budget from 57 to 61 percent (25,000 token row 45 to 49, 10,000 token row 33 to 39), with precision up (3 to 8 percent, wasted tokens 40,886 to 37,118) at fewer mean tokens (41,885 to 40,258). No per-repository regression at the headline budget (AutoMapper 46 to 50, Newtonsoft.Json 32 to 42, FluentValidation and MediatR unchanged), and every change-set-size stratum rose (small 68 to 71, medium 56 to 61, large 7 to 10). It is applied to the query path only. Set `FUSE_BUDGET_EXPANSION=0` to reproduce the unbounded expansion.
 - Dense rerank was measured and kept opt-in, not made the default, because it did not beat the lexical path. An optional in-process embedder (all-MiniLM-L6-v2) can rerank the candidate pool, blending the lexical score with query-to-document similarity. A measured A/B over the corpus (both arms) regressed the headline rather than clearing the roughly 60 percent bar set for making it the default: query recall at 50,000 tokens fell from 61 to 57 percent (AutoMapper 50 to 42, Newtonsoft.Json 42 to 38, FluentValidation 57 to 55, MediatR unchanged). It helped only AutoMapper at the tight 10,000 token budget (25 to 42 percent). A general-purpose sentence embedder promotes plausible-but-wrong files over lexically exact ones once the budget is generous, so the lexical path remains the default and the published headline; dense rerank is available behind `FUSE_RERANK=1` with a downloaded model, and a code-trained embedder is the route to revisit it.
-- Precision stays modest under forward expansion. Seeding and graph expansion still surface more files than the task strictly needed; the relevance-ordered budget cut keeps the most relevant within the 50,000 tokens rather than the largest.
+- Downgrade-before-drop is the largest focus lift and the largest tight-budget query lift. When the reduced set exceeds the budget, the lower-relevance tail that the packer would drop is replaced with a compact structural sketch (type and member names) instead, so a would-be-dropped file stays present; recall counts file presence. It only adds sketched files and never displaces a fuller one, so it cannot regress recall: focus rose from 77 to 92 percent at the headline budget (Newtonsoft.Json 28 to 74, FluentValidation 88 to 100), query rose at the tight budgets (10,000 token 39 to 46, 25,000 50 to 54) with the 50,000 headline unchanged at 61. The gain concentrates on focus, whose wide dependency neighbourhood the budget used to truncate, and on the medium and large change-set strata (focus medium 62 to 94 percent, large 24 to 60). It applies to query and focus under a budget, not change mode. Set `FUSE_DOWNGRADE_DROP=0` to reproduce the drop-only packer.
+- Precision stays modest under forward expansion. Seeding and graph expansion still surface more files than the task strictly needed; the relevance-ordered budget cut keeps the most relevant within the 50,000 tokens rather than the largest, and downgrade-before-drop keeps the rest as cheap sketches.
 - Newtonsoft.Json remains the hardest repository, but it is no longer a near-total miss. Change recall rose from 17 to 56 percent and query from 0 to 42 percent as comment and string stripping removed false graph edges, fielded ranking found concept files, query expansion surfaced co-occurring symbol names, and budget-aware expansion kept the budget on the highest-ranked files. Deeply nested types and conditional compilation still defeat parts of the regex graph, so it trails the smaller libraries.
 
 ## Layer 2B: Single-Turn Localization
@@ -144,15 +145,15 @@ Layer 2B is a cheap, outcome-flavored signal. It asks twelve natural-language qu
 
 | Mode | Accuracy | Hits | Mean tokens |
 |------|---------:|-----:|------------:|
+| query | 75% | 9/12 | 17,209 |
 | grep (baseline) | 58% | 7/12 | 19,924 |
-| focus | 42% | 5/12 | 8,078 |
-| query | 42% | 5/12 | 19,203 |
+| focus | 42% | 5/12 | 7,401 |
 
 Findings, including losses:
 
-- Grep leads this task. The baseline lands 7 of 12 answer files inside the 20,000 token budget by ranking on query-term hit count. Query and focus each reach 5 of 12 (42 percent). Fielded BM25F ranking and query normalization help when the question shares vocabulary with the target file, but they do not beat a straight grep on this set.
-- Focus ties query on accuracy at lower cost. Focus accuracy rose from 25 to 42 percent now that it follows dependents as well as dependencies, and it spends about 8,100 tokens against query's 19,100. When the seed is a concept rather than a type name both modes still miss.
-- A lexical ceiling remains. Ranking rewards shared vocabulary, so a question that shares no words or stems with the target file still misses regardless of mode. Layer 2B is the regression guard for future retrieval improvements.
+- Query now leads this task, after downgrade-before-drop. The baseline lands 7 of 12 answer files inside the 20,000 token budget by ranking on query-term hit count; query reaches 9 of 12 (75 percent) and focus 5 of 12 (42 percent). Query overtook grep because a target file that the 20,000 token budget used to drop is now kept as a compact sketch, so it is surfaced for localization even when its body did not fit. Before downgrade-before-drop, query and focus each reached 5 of 12 (42 percent) and grep led.
+- Focus spends the fewest tokens. Focus accuracy rose from 25 to 42 percent once it followed dependents as well as dependencies, and it spends about 7,400 tokens against query's 17,200. When the seed is a concept rather than a type name it still misses.
+- A lexical ceiling remains for the seed ranking. Ranking rewards shared vocabulary, so a question that shares no words or stems with the target file still ranks it low; downgrade-before-drop helps surface it within the budget once it is ranked at all, but a file the ranking never reaches is still missed. Layer 2B is the regression guard for future retrieval improvements.
 
 ## Layer 4: Context Acquisition (Fuse VS No Fuse VS Repomix)
 
@@ -174,17 +175,17 @@ Means across the 24 pull requests at the headline budget:
 | no-fuse (blind, whole repo) | >= 5.8 | 493,661 | 1.00 |
 | no-fuse (relevant set) | >= 5.8 | 27,473 | 1.00 |
 | Repomix (one dump) | 1 | 511,574 | 1.00 |
-| Fuse (`--query`) | 1 | 39,947 | 61% |
+| Fuse (`--query`) | 1 | 38,887 | 61% |
 
-The round-trip number for no-fuse is a lower bound, not a measured agent: it is the mean count of files the change touched (5.8), and a real agent reads more while discovering them. Recall for no-fuse and Repomix is 1.00 by construction, so this is not a recall contest; the contest is tokens at one call (against Repomix) and round-trips against blind exploration. Always read Fuse's token number together with its recall: 39,947 tokens at 61 percent recall is the honest pairing for the query stress floor.
+The round-trip number for no-fuse is a lower bound, not a measured agent: it is the mean count of files the change touched (5.8), and a real agent reads more while discovering them. Recall for no-fuse and Repomix is 1.00 by construction, so this is not a recall contest; the contest is tokens at one call (against Repomix) and round-trips against blind exploration. Always read Fuse's token number together with its recall: 38,887 tokens at 61 percent recall is the honest pairing for the query stress floor.
 
 The table above uses the query arm as a deliberate stress floor: only a PR title, no Git base, so Fuse routes to search. When a Git base is available, the routed default is change scoping, and the story strengthens from "fewer tokens at lower recall" to "the task's files at a fraction of Repomix tokens":
 
 | Arm | Recall | Mean tokens |
 |-----|-------:|------------:|
 | `fuse --changed-since` (routed) | 88% | 26,825 |
-| `fuse ask` (routed) | 57% | 40,506 |
-| `fuse --query` (stress floor) | 61% | 39,947 |
+| `fuse ask` (routed) | 60% | 39,733 |
+| `fuse --query` (stress floor) | 61% | 38,887 |
 
 The change-scoped arm reaches 88 percent of the changed files at 26,825 tokens, against Repomix's 511,574 at the same one call, about 19 times fewer at higher useful recall. The ask arm is what Fuse picks from the title alone (search for most of these titles), so it tracks the query floor rather than the change arm; ask is the routing convenience, change scoping is the recall win when a base exists. Reading the budget curve as tokens-to-target-recall makes the gap concrete: change scoping clears 80 percent mean recall at the 25,000 token budget (14,631 mean tokens), while neither query nor ask reaches 80 percent by 50,000 tokens.
 
@@ -193,22 +194,22 @@ Recall varies widely by repository, and the mean hides that. The per-repository 
 | Repo | no-fuse round-trips (>=) | no-fuse relevant set | whole repo | Repomix | Fuse | Fuse recall |
 |------|-------------------------:|---------------------:|-----------:|--------:|-----:|------------:|
 | MediatR | 2.7 | 3,326 | 79,282 | 84,894 | 32,384 | 94% |
-| FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 41,118 | 57% |
-| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 45,331 | 50% |
-| Newtonsoft.Json | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 40,954 | 42% |
+| FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 40,624 | 57% |
+| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 43,882 | 50% |
+| Newtonsoft.Json | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 38,657 | 42% |
 
 Recall rises with the budget, as expected, since a larger budget admits more of the neighborhood:
 
 | Budget | Fuse mean recall | Fuse mean tokens |
 |-------:|-----------------:|-----------------:|
-| 10,000 | 39% | 9,390 |
-| 25,000 | 50% | 22,446 |
-| 50,000 | 61% | 39,947 |
+| 10,000 | 46% | 8,640 |
+| 25,000 | 54% | 19,991 |
+| 50,000 | 61% | 38,887 |
 
 Findings, including the honest boundary:
 
 - One Fuse call replaces many blind round-trips. A blind agent must read at least the files a change touches, a mean of 5.8 and as many as 14.5 on Newtonsoft.Json, before it has the context; Fuse and Repomix each acquire it in one call. Fuse does not beat Repomix on round-trips, it ties it at one call.
-- At that one call, Fuse costs far fewer tokens than the generic packer. Fuse delivers the scoped context in 39,947 tokens on average against Repomix's 511,574, about 12.8 times fewer, and against the 493,661 tokens of reading the whole repository blind. The Fuse number is the reduced, scoped set the task needs, not the whole repository.
+- At that one call, Fuse costs far fewer tokens than the generic packer. Fuse delivers the scoped context in 38,887 tokens on average against Repomix's 511,574, about 13.2 times fewer, and against the 493,661 tokens of reading the whole repository blind. The Fuse number is the reduced, scoped set the task needs, not the whole repository.
 - The token win is paired with partial recall, and that is the trade. Fuse query reaches 61 percent of the changed files at the headline budget, against 1.00 for Repomix and the relevant set, which include everything by construction. Where the query carries real domain words and the repository is not dominated by conditional compilation, recall is high (MediatR 94 percent); on Newtonsoft.Json and on broad changes it is lower. For pull-request review, where a Git base is available, the change-scoping mode in Layer 2A reaches 87 percent recall. The defensible claim is coupled: Fuse reaches recall R of a task's files in one call at far fewer tokens than a generic packer needs for the same one call, while blind exploration needs at least K round-trips.
 
 Reproduce this layer with the full suite or on its own:
@@ -231,17 +232,17 @@ The six retrieval items change one scoring and expansion pipeline, so the harnes
 | Metric | Before | After |
 |--------|-------:|------:|
 | Layer 2A recall, changes | 71% | 87% |
-| Layer 2A recall, focus | 26% | 77% |
+| Layer 2A recall, focus | 26% | 92% |
 | Layer 2A recall, query | 37% | 61% |
 | Layer 2A precision, changes | 21% | 50% |
 | Layer 2B accuracy, focus | 25% | 42% |
-| Layer 2B accuracy, query | 25% | 42% |
+| Layer 2B accuracy, query | 25% | 75% |
 | Grep baseline (unchanged) | 38% / 58% | 38% / 58% |
 
 What each item contributes to that combined movement:
 
 1. Reverse edges and dependents. Focus and changed-since now pull files that reference a seed's declared types, not only the files it references. This is the main driver of the focus recall gain and the changes precision gain (dependents replace a wider forward expansion).
-2. Fielded ranking (BM25F). Declared type and member names and path tokens are weighted above the body, which moves the file that declares a concept above files that mention it. This contributes to the Layer 2A query recall gain and lifts Layer 2B query accuracy from 25 to 42 percent, though grep still leads localization at 58 percent.
+2. Fielded ranking (BM25F). Declared type and member names and path tokens are weighted above the body, which moves the file that declares a concept above files that mention it. This contributes to the Layer 2A query recall gain and lifted Layer 2B query accuracy from 25 to 42 percent; downgrade-before-drop later took query localization to 75 percent, overtaking grep (58 percent).
 3. Comment and string stripping. Removing type names that appear only in comments or strings before graph extraction cut false edges; this is the largest contributor to the Newtonsoft.Json improvement, where prose and string mentions previously polluted the graph.
 4. Budget-aware, rank-decayed expansion. Best-first expansion with per-hop decay and a budget stop keeps the seed neighborhood and drops distant files first, which holds precision as recall rises.
 5. Query normalization. CamelCase splitting, stopword removal, and light stemming align a natural-language question with code identifiers, contributing to the query gains in both layers.
@@ -296,7 +297,7 @@ A note on the competitor arm: the Repomix comparison in the Layer 1 table and th
 
 Layer 1 is the strong, clean claim: Fuse cuts 7 to 40 percent of tokens at full public-API fidelity with the default and `--level aggressive`, cuts far more with skeleton at signature level, and beats Repomix on token cost in every mode. That claim is deterministic and holds across all four repositories.
 
-Layer 2 is the honest boundary, and it moved this release. Change scoping is reliable because it rests on Git, and it carries moderate precision through one-hop dependents. Focus and query rest on a best-effort dependency graph and a lexical BM25F index; with reverse edges, fielded ranking, comment and string stripping, and query normalization they clear the grep baseline on the pull-request recall task. They help most when the query carries real domain words and the codebase is not dominated by conditional compilation, which is why Newtonsoft.Json still trails. On single-turn localization, grep still leads and a lexical ceiling remains when the question shares no vocabulary with the target file.
+Layer 2 is the honest boundary, and it moved this release. Change scoping is reliable because it rests on Git, and it carries moderate precision through one-hop dependents. Focus and query rest on a best-effort dependency graph and a lexical BM25F index; with reverse edges, fielded ranking, comment and string stripping, and query normalization they clear the grep baseline on the pull-request recall task. They help most when the query carries real domain words and the codebase is not dominated by conditional compilation, which is why Newtonsoft.Json still trails. On single-turn localization, query now leads because downgrade-before-drop surfaces a dropped answer file as a sketch within the budget, though a lexical ceiling remains when the question shares no vocabulary with the target file.
 
 ## Blocked and Out of Scope
 

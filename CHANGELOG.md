@@ -6,6 +6,23 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Changed
 
+- **Downgrade-before-drop packing (P1), on by default.** When the reduced set exceeds the token budget, the
+  lower-relevance tail the packer would otherwise drop is now replaced with a compact structural sketch (type
+  and member names, no bodies, from the Roslyn outline) instead of being cut, so a would-be-dropped file stays
+  present as a navigable outline. It runs as a redaction-correct post-reduction rewrite (C1) on the query and
+  focus paths under a token budget, ordering by relevance and sketching only the tail beyond the budget; it
+  only adds sketched files and never displaces a fuller one, so it cannot regress recall. Measured (Layer 2A,
+  regenerated): focus rose from 77 to 92 percent at the headline budget (Newtonsoft.Json focus 28 to 74,
+  FluentValidation 88 to 100, the focus medium and large change-set strata 62 to 94 and 24 to 60), and query
+  rose at the tight budgets (10,000 token 39 to 46, 25,000 50 to 54) with the 50,000 headline unchanged at 61
+  percent. No per-repository regression at any budget; change mode is excluded (its recall rests on full
+  bodies). It also lifted Layer 2B single-turn localization for query from 42 to 75 percent (9 of 12),
+  overtaking the grep baseline (58 percent), because an answer file the 20,000 token budget used to drop now
+  surfaces as a sketch. This is the largest focus lift of the release, targeting the multi-file-truncation
+  failure mode directly: the wide focus neighbourhood the budget used to truncate now survives as sketches. Set
+  `FUSE_DOWNGRADE_DROP=0` to reproduce the drop-only packer. Covered by orchestrator tests (a would-be-dropped
+  tail file is emitted as a sketch when on, dropped when off) and the env-override test.
+
 - **Budget-aware query-path dependency expansion (item 4).** When a token ceiling is set, query-path
   expansion now admits neighbours highest-score first only while their estimated reduced cost fits the budget,
   instead of admitting the whole neighbourhood and leaving the packer to cut it. The per-file estimate comes

@@ -47,4 +47,10 @@ public sealed class JsonExperimentalOptionsDto
     ///     Whether over-large reduced files were replaced with a structural sketch (item 16).
     /// </summary>
     public bool SketchHugeFiles { get; set; }
+
+    /// <summary>
+    ///     Whether the lower-relevance tail that would exceed the budget was downgraded to a sketch instead of
+    ///     dropped (P1).
+    /// </summary>
+    public bool DowngradeBeforeDrop { get; set; }
 }

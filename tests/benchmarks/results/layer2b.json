@@ -5,7 +5,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18338
+    "tokens": 18096
   },
   {
     "repo": "MediatR",
@@ -29,7 +29,7 @@
     "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 17563
+    "tokens": 18875
   },
   {
     "repo": "MediatR",
@@ -77,7 +77,7 @@
     "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 19564
+    "tokens": 13922
   },
   {
     "repo": "FluentValidation",
@@ -101,7 +101,7 @@
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 17973
+    "tokens": 19225
   },
   {
     "repo": "FluentValidation",
@@ -109,7 +109,7 @@
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19430
+    "tokens": 19286
   },
   {
     "repo": "FluentValidation",
@@ -125,7 +125,7 @@
     "answer": "src/FluentValidation/Validators/EmailValidator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 19387
+    "tokens": 15635
   },
   {
     "repo": "FluentValidation",
@@ -148,8 +148,8 @@
     "question": "Which file holds the main entry-point class that maps one object to another?",
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 18567
+    "hit": 1,
+    "tokens": 16525
   },
   {
     "repo": "AutoMapper",
@@ -157,7 +157,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 18974
+    "tokens": 18586
   },
   {
     "repo": "AutoMapper",
@@ -172,8 +172,8 @@
     "question": "Where is the execution plan for a type map compiled into a mapping function?",
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 18701
+    "hit": 1,
+    "tokens": 19428
   },
   {
     "repo": "AutoMapper",
@@ -197,7 +197,7 @@
     "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18693
+    "tokens": 18387
   },
   {
     "repo": "AutoMapper",
@@ -220,8 +220,8 @@
     "question": "Which file contains the serializer that reads and writes JSON through converters?",
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 19162
+    "hit": 1,
+    "tokens": 17092
   },
   {
     "repo": "NewtonsoftJson",
@@ -229,7 +229,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19652
+    "tokens": 18505
   },
   {
     "repo": "NewtonsoftJson",
@@ -244,8 +244,8 @@
     "question": "Where is the forward-only reader that parses JSON from text implemented?",
     "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 19235
+    "hit": 1,
+    "tokens": 16195
   },
   {
     "repo": "NewtonsoftJson",
@@ -269,7 +269,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19533
+    "tokens": 15148
   },
   {
     "repo": "NewtonsoftJson",
@@ -277,7 +277,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19548
+    "tokens": 18907
   },
   {
     "repo": "NewtonsoftJson",

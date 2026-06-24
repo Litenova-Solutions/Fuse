@@ -126,4 +126,45 @@ public sealed class Bm25RelevanceIndexTests
 
         Assert.Empty(index.RankScored(new Dictionary<string, double>(), topN: 5));
     }
+
+    [Fact]
+    public void CommentField_SurfacesAFileMatchedOnlyInItsComments()
+    {
+        // Q2: the query word "throttling" appears only in one file's comment; the code is otherwise identical.
+        // With the comment field populated, that file outranks the equivalent file with no such comment.
+        var index = new Bm25RelevanceIndex();
+        index.Index(new Dictionary<string, IndexedDocument>
+        {
+            ["Documented.cs"] = new IndexedDocument(
+                "public class Limiter { public void Run() {} }",
+                "Documented.cs",
+                ["Limiter", "Run"],
+                Comments: "// Handles request throttling and backoff."),
+            ["Plain.cs"] = new IndexedDocument(
+                "public class Limiter { public void Run() {} }",
+                "Plain.cs",
+                ["Limiter", "Run"]),
+        });
+
+        var ranked = index.RankScored("throttling", topN: 2);
+
+        Assert.NotEmpty(ranked);
+        Assert.Equal("Documented.cs", ranked[0].Path);
+    }
+
+    [Fact]
+    public void CommentField_AbsentComments_IsInert()
+    {
+        // The comment field must contribute nothing when no document supplies comments, so the default ranking
+        // is byte-identical with the lever off: a query whose only possible match is a comment term finds nothing.
+        var index = new Bm25RelevanceIndex();
+        index.Index(new Dictionary<string, IndexedDocument>
+        {
+            ["A.cs"] = new IndexedDocument("public class Alpha { void Pay() {} }", "A.cs", ["Alpha", "Pay"]),
+            ["B.cs"] = new IndexedDocument("public class Beta { void List() {} }", "B.cs", ["Beta", "List"]),
+        });
+
+        Assert.Equal("A.cs", index.RankScored("pay alpha", topN: 5)[0].Path);
+        Assert.Empty(index.RankScored("throttling", topN: 5));
+    }
 }

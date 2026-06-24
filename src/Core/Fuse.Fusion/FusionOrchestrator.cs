@@ -711,7 +711,8 @@ public sealed class FusionOrchestrator
             : new SymbolSliceRequest(seedPaths.ToHashSet(StringComparer.OrdinalIgnoreCase), sliceMember);
 
         var seedScores = seedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase);
-        var (focusProximityEdges, focusProximityWeight) = ResolveProximity(experimental, files);
+        var (focusProximityEdges, focusProximityWeight) =
+            ResolveProximity(experimental, files, request.Collection.SourceDirectory);
         // No byte-budget gate on expansion: the reduction-aware packer applies the budget after reduction on
         // the real reduced token cost (see ReductionAwarePacker), so expansion spreads by depth and relevance.
         var options = new ExpansionOptions(
@@ -978,7 +979,8 @@ public sealed class FusionOrchestrator
         // measured A/B over the pinned corpus confirmed this: enabling reverse hops dropped query recall 51 to
         // 45 percent at the headline budget (Newtonsoft.Json 30 to 13), as common-type dependents displaced
         // the real targets under the token budget.
-        var (queryProximityEdges, queryProximityWeight) = ResolveProximity(experimental, files);
+        var (queryProximityEdges, queryProximityWeight) =
+            ResolveProximity(experimental, files, request.Collection.SourceDirectory);
         var options = new ExpansionOptions(
             request.Query.Depth,
             FollowReferences: true,
@@ -1048,17 +1050,46 @@ public sealed class FusionOrchestrator
     // The factor applied to a structural proximity neighbour's score, so it enters below a real type reference.
     private const double ProximityExpansionWeight = 0.5;
 
-    // Builds the proximity adjacency for expansion when the proximity-edges experiment is on; otherwise returns
-    // no edges and a zero weight, which disables proximity expansion in the resolver.
+    // Builds the expansion adjacency from the optional structural-proximity (item 7) and coarse project-graph
+    // (item 8) experiments. Both feed the resolver's proximity-edge channel at the same decayed weight; when
+    // both are on their neighbour lists are merged per file. Returns no edges and a zero weight when neither is
+    // on, which disables proximity expansion in the resolver.
     private static (IReadOnlyDictionary<string, IReadOnlyList<string>>? Edges, double Weight) ResolveProximity(
         ExperimentalOptions experimental,
-        IReadOnlyList<Fuse.Collection.Models.SourceFile> files)
+        IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
+        string sourceRoot)
     {
-        if (!experimental.ProximityEdges)
+        if (!experimental.ProximityEdges && !experimental.ProjectGraph)
             return (null, 0.0);
 
-        var edges = ProximityEdgeBuilder.Build(files.Select(f => f.NormalizedRelativePath).ToList());
-        return (edges, ProximityExpansionWeight);
+        var paths = files.Select(f => f.NormalizedRelativePath).ToList();
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? proximity =
+            experimental.ProximityEdges ? ProximityEdgeBuilder.Build(paths) : null;
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? project =
+            experimental.ProjectGraph ? ProjectGraphEdgeBuilder.Build(sourceRoot, paths) : null;
+
+        if (project is null || project.Count == 0)
+            return (proximity, ProximityExpansionWeight);
+        if (proximity is null || proximity.Count == 0)
+            return (project, ProximityExpansionWeight);
+
+        // Both on: union the neighbour lists per file, de-duplicated and ordered for determinism.
+        var merged = new Dictionary<string, IReadOnlyList<string>>(proximity, StringComparer.OrdinalIgnoreCase);
+        foreach (var (path, projectNeighbours) in project)
+        {
+            if (merged.TryGetValue(path, out var existing))
+            {
+                var union = new SortedSet<string>(existing, StringComparer.OrdinalIgnoreCase);
+                union.UnionWith(projectNeighbours);
+                merged[path] = union.ToList();
+            }
+            else
+            {
+                merged[path] = projectNeighbours;
+            }
+        }
+
+        return (merged, ProximityExpansionWeight);
     }
 
     // Member-level retrieval (Q5). Indexes each declared member of each file as its own document, ranks the

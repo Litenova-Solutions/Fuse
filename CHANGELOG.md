@@ -83,6 +83,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **`TokenCostModel` for unified pre-reduce estimate and post-reduce count (architecture enabler A3).** A new
+  `ITokenCostModel` (default `DefaultTokenCostModel`) gives a cheap per-file token estimate at a reduction level
+  before any file is reduced, and the exact count once content exists, so scoping and packing can reason about
+  one consistent notion of token cost. The estimate applies a per-level retention factor (calibrated from the
+  Layer 1 benchmark ratios: roughly 0.92 at default/standard, 0.70 aggressive, 0.15 skeleton for C#; 0.95 for
+  non-C#) to the raw count. It is the foundation budget-aware expansion needs (a per-file estimate before
+  reduction); not yet wired into the hot path, so behavior and benchmarks are unchanged. Unit-tested for the
+  retention profile and the skeleton-costs-far-less direction.
 - **Identifier-aware tokenization for relevance ranking (item 3).** The shared relevance tokenizer now splits
   identifiers on digit boundaries and around all-caps acronym runs in addition to camelCase and snake_case, so
   `OAuth2Token` yields `auth`, `2`, `token`, `HTTPClientFactory` yields `http`, `client`, `factory`, and

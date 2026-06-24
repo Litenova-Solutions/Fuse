@@ -2,6 +2,7 @@ using Fuse.Fusion.Extensions;
 using Fuse.Plugins.Formats.Web.Extensions;
 using Fuse.Plugins.Languages.CSharp.Extensions;
 using Fuse.Plugins.Languages.CSharp.Roslyn.Extensions;
+using Fuse.Plugins.Rerank.Onnx;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Cli.Extensions;
@@ -26,6 +27,9 @@ public static class FuseServiceCollectionExtensions
         services.AddCSharpLanguage();
         services.AddCSharpRoslyn();
         services.AddFormatReducers();
+        // Registers the dense reranker only when its model is cached; absent a model the query path stays
+        // lexical, so the no-model floor is preserved.
+        services.AddOnnxDenseReranker();
         return services;
     }
 }

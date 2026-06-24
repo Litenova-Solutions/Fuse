@@ -109,6 +109,25 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Opt-in dense rerank of the query candidate pool (item 9), plus `fuse models` and the `Fuse.Plugins.Rerank.Onnx`
+  assembly.** An optional `IReranker` reorders the BM25 candidate pool by blending the lexical score with a
+  dense query-to-document similarity from an in-process all-MiniLM-L6-v2 ONNX embedder (no Python, no HTTP at
+  query time), so the reranker chooses the seeds from a candidate pool widened to several times the seed count.
+  It is wired end to end but stays **off by default**: enable with `FUSE_RERANK=1` after fetching the model
+  with `fuse models download` (about 23 MB to `~/.fuse/models`, pinned by SHA-256). With no model, offline, or
+  the flag unset, the query path runs on the lexical BM25F floor unchanged, so the no-model, no-network guarantee
+  holds. `fuse models status|download|remove` manages the cache.
+
+  **It is not the MCP default, because it did not clear the bar.** The plan's policy is to default dense rerank
+  on only if it reaches about 60 percent on the hard repos; a measured A/B (`spike-rerank.ps1`, both arms) shows
+  it does not and regresses the headline: query recall at 50,000 tokens 61 to 57 percent overall (AutoMapper 50
+  to 42, Newtonsoft.Json 42 to 38, FluentValidation 57 to 55, MediatR unchanged). It helps only AutoMapper at
+  the tight 10,000 token budget (25 to 42 percent) and is mixed elsewhere. The general-purpose sentence embedder
+  promotes plausible-but-wrong files over lexically exact ones once the budget is generous; a code-trained
+  embedder is the path to clearing the bar, and the `IReranker` seam plus the candidate/seed split (A4) are now
+  in place for it. The lexical path remains the published default and headline (61 percent at 50k). Covered by
+  orchestrator wiring tests (a stub reranker selects the seed when on; off and unavailable keep the lexical
+  order) and plugin tests (model-absent is a no-op, the integrity check, the cache locator).
 - **`fuse_explain` MCP tool: preview a scoped selection before fetching it (item 33).** A read-only tool that
   reports which files a focus, query, or change-scoped fusion would include and which it would exclude, with a
   per-file token estimate, without returning any file bodies. It mirrors the existing `fuse explain` CLI command

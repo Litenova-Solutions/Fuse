@@ -62,6 +62,16 @@ public sealed record ExperimentalOptions
     public bool BudgetAwareExpansion { get; init; } = true;
 
     /// <summary>
+    ///     Whether the query path reranks its BM25 candidate pool with a dense embedding model, blending the
+    ///     lexical score with query-to-document similarity so a semantically matching file can outrank one that
+    ///     merely shares words. Requires a registered <see cref="Scoping.IReranker" /> with a present model; when
+    ///     no reranker is available (no model, offline, or absent assembly) the query path stays on the lexical
+    ///     BM25F floor regardless of this flag. Off by default; overridden by <c>FUSE_RERANK</c> (<c>1</c>,
+    ///     <c>on</c>, or <c>true</c> enables it).
+    /// </summary>
+    public bool DenseRerank { get; init; }
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -129,6 +139,16 @@ public sealed record ExperimentalOptions
             budgetAwareExpansion = false;
         }
 
+        var denseRerank = resolved.DenseRerank;
+        var rawRerank = Environment.GetEnvironmentVariable("FUSE_RERANK");
+        if (!string.IsNullOrWhiteSpace(rawRerank) &&
+            (rawRerank.Equals("1", StringComparison.Ordinal) ||
+             rawRerank.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawRerank.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            denseRerank = true;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -136,6 +156,7 @@ public sealed record ExperimentalOptions
             TieredEmission = tieredEmission,
             MultiQueryFusion = multiQueryFusion,
             BudgetAwareExpansion = budgetAwareExpansion,
+            DenseRerank = denseRerank,
         };
     }
 }

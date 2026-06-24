@@ -51,6 +51,7 @@ public sealed class FusionOrchestrator
     private readonly IFuseStoreFactory _fuseStoreFactory;
     private readonly ISecretRedactor _secretRedactor;
     private readonly ITokenCostModel _tokenCostModel;
+    private readonly IReranker? _reranker;
     private readonly ILogger<FusionOrchestrator> _logger;
 
     /// <summary>
@@ -75,6 +76,7 @@ public sealed class FusionOrchestrator
     /// <param name="fuseStoreFactory">Persistent store factory.</param>
     /// <param name="secretRedactor">Redactor re-applied to content rewritten after reduction (thin skeleton, symbol slice, tiered emission), so a post-reduction rewrite cannot reintroduce a secret the reduction-stage redaction already removed.</param>
     /// <param name="tokenCostModel">Per-file token cost estimator used to make query-path dependency expansion budget-aware.</param>
+    /// <param name="reranker">Optional dense reranker for the query candidate pool; <see langword="null" /> keeps the lexical BM25F ordering (the no-model floor).</param>
     /// <param name="logger">Optional logger.</param>
     public FusionOrchestrator(
         FusionValidator validator,
@@ -96,6 +98,7 @@ public sealed class FusionOrchestrator
         IFuseStoreFactory fuseStoreFactory,
         ISecretRedactor secretRedactor,
         ITokenCostModel tokenCostModel,
+        IReranker? reranker = null,
         ILogger<FusionOrchestrator>? logger = null)
     {
         _validator = validator;
@@ -117,6 +120,7 @@ public sealed class FusionOrchestrator
         _fuseStoreFactory = fuseStoreFactory;
         _secretRedactor = secretRedactor;
         _tokenCostModel = tokenCostModel;
+        _reranker = reranker;
         _logger = logger ?? NullLogger<FusionOrchestrator>.Instance;
     }
 
@@ -610,6 +614,11 @@ public sealed class FusionOrchestrator
         // lexical default keeps the pool equal to the seed count, so behavior is unchanged.
         var candidateTopK = request.Query!.ResolvedCandidateTopK;
         var seedTopK = request.Query.ResolvedSeedTopK;
+        // Dense rerank only changes the seed set when the candidate pool is wider than the seed count, since it
+        // chooses which candidates become seeds. Widen the pool to several times the seed count when reranking,
+        // so the model can promote a vocabulary-mismatched file the lexical pass ranked just outside the seeds.
+        if (experimental.DenseRerank && _reranker is { IsAvailable: true })
+            candidateTopK = Math.Max(candidateTopK, seedTopK * RerankCandidatePoolFactor);
         var ranked = relevanceIndex.RankScored(request.Query.Query, candidateTopK);
 
         if (ranked.Count == 0)
@@ -660,6 +669,23 @@ public sealed class FusionOrchestrator
             // seed, so a misfiring expansion cannot lower recall below the single-pass result.
             if (reranked.Count > 0)
                 ranked = PseudoRelevanceExpander.MergePreservingSeeds(ranked, reranked);
+        }
+
+        // Dense rerank (item 9): reorder the candidate pool by blending the lexical score with a model's
+        // query-to-document similarity, so a semantically matching file is promoted to a seed even when it
+        // shares fewer query words. Optional and gated: when no reranker is registered (no model, offline, or
+        // the assembly is absent) or the flag is off, the pool keeps its lexical order, which is the guaranteed
+        // no-model floor. The text embedded per candidate is its declared symbols, path, and a content sketch.
+        if (experimental.DenseRerank && _reranker is { IsAvailable: true } reranker && ranked.Count > 1)
+        {
+            var rerankText = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var candidate in ranked)
+            {
+                if (documents.TryGetValue(candidate.Path, out var doc))
+                    rerankText[candidate.Path] = BuildRerankText(doc);
+            }
+
+            ranked = reranker.Rerank(request.Query.Query, ranked, rerankText);
         }
 
         // Promote the top seedTopK of the (possibly reranked) candidate pool to expansion seeds. With the
@@ -726,6 +752,27 @@ public sealed class FusionOrchestrator
     // declares the named type is weighed independently of the surrounding prose words.
     private static readonly System.Text.RegularExpressions.Regex IdentifierTokenRegex =
         new(@"\b[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+\b", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Characters of file content included in the dense-rerank text. The declared symbols and path carry most of
+    // the signal; a short body sketch adds context. Capped so a large file does not dominate, and the model
+    // truncates to its own window regardless.
+    private const int RerankSketchChars = 2000;
+
+    // When dense reranking, the BM25 candidate pool is widened to this multiple of the seed count so the
+    // reranker selects the seeds from a pool several times larger than it will keep.
+    private const int RerankCandidatePoolFactor = 4;
+
+    // Builds the text a candidate file is embedded as for dense reranking: its declared symbols first (the
+    // strongest concept signal), then its path, then a short content sketch.
+    private static string BuildRerankText(IndexedDocument document)
+    {
+        var symbols = document.Symbols is { Count: > 0 } declared
+            ? string.Join(' ', declared)
+            : string.Empty;
+        var content = document.Content;
+        var sketch = content.Length > RerankSketchChars ? content[..RerankSketchChars] : content;
+        return $"{symbols}\n{document.Path ?? string.Empty}\n{sketch}";
+    }
 
     // Extracts the compound-identifier tokens from a query as a weighted-term set for an identifier-only ranking
     // variant. Empty when the query names no compound identifier, in which case the variant is skipped.

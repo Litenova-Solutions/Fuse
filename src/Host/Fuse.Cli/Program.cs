@@ -22,6 +22,7 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<ExplainCommand>();
     services.AddTransient<VerifyCommand>();
     services.AddTransient<ReduceCommand>();
+    services.AddTransient<ModelsCommand>();
 });
 
 await Cli.RunAsync<FuseCliCommand>(args);

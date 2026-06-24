@@ -40,11 +40,11 @@ tokens of that.
 ## The Collapse: One Scoped Call
 
 Fuse acquires that context in one call. Read its token number with its recall: one scoped
-`fuse --query` call delivers about 43,000 tokens at 55 percent recall of the changed
+`fuse --query` call delivers about 42,000 tokens at 57 percent recall of the changed
 files, and the change-scoping mode reaches 87 percent recall when a git base is available.
 
 Against a generic packer (Repomix), which dumps the whole repository in one call of about
-511,574 tokens, Fuse ties on round-trips and wins on tokens, roughly 11.8 times fewer,
+511,574 tokens, Fuse ties on round-trips and wins on tokens, roughly 12.1 times fewer,
 because Fuse scopes and the packer dumps. Fuse does not make fewer round-trips than a
 packer; both are one call. The win against a packer is tokens; the win against no tool is
 the round-trip collapse.

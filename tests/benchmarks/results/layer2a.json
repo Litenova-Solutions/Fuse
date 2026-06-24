@@ -11,7 +11,8 @@
     "emitted": 3,
     "tokens": 7047,
     "wasted": 2349.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -25,7 +26,8 @@
     "emitted": 3,
     "tokens": 7047,
     "wasted": 2349.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -39,7 +41,8 @@
     "emitted": 3,
     "tokens": 7047,
     "wasted": 2349.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -53,7 +56,8 @@
     "emitted": 102,
     "tokens": 9230,
     "wasted": 9140.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -67,7 +71,8 @@
     "emitted": 215,
     "tokens": 23117,
     "wasted": 22902.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -81,7 +86,8 @@
     "emitted": 324,
     "tokens": 46846,
     "wasted": 46557.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -95,7 +101,8 @@
     "emitted": 63,
     "tokens": 9207,
     "wasted": 9207.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -109,7 +116,8 @@
     "emitted": 130,
     "tokens": 23411,
     "wasted": 23411.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -123,7 +131,8 @@
     "emitted": 201,
     "tokens": 47701,
     "wasted": 47464.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -137,7 +146,8 @@
     "emitted": 8,
     "tokens": 49987,
     "wasted": 49987.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -151,7 +161,8 @@
     "emitted": 1,
     "tokens": 8699,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -165,7 +176,8 @@
     "emitted": 2,
     "tokens": 22322,
     "wasted": 11161.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -179,7 +191,8 @@
     "emitted": 7,
     "tokens": 48765,
     "wasted": 41799.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -193,7 +206,8 @@
     "emitted": 37,
     "tokens": 9522,
     "wasted": 9265.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -207,7 +221,8 @@
     "emitted": 132,
     "tokens": 23490,
     "wasted": 23312.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -221,7 +236,8 @@
     "emitted": 217,
     "tokens": 47087,
     "wasted": 46870.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -235,7 +251,8 @@
     "emitted": 84,
     "tokens": 9304,
     "wasted": 9304.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -249,7 +266,8 @@
     "emitted": 124,
     "tokens": 22099,
     "wasted": 22099.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -263,7 +281,8 @@
     "emitted": 138,
     "tokens": 44536,
     "wasted": 44536.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -277,7 +296,8 @@
     "emitted": 26,
     "tokens": 25084,
     "wasted": 25084.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -291,7 +311,8 @@
     "emitted": 6,
     "tokens": 8834,
     "wasted": 2945.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -305,7 +326,8 @@
     "emitted": 6,
     "tokens": 8834,
     "wasted": 2945.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -319,7 +341,8 @@
     "emitted": 6,
     "tokens": 8834,
     "wasted": 2945.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -333,7 +356,8 @@
     "emitted": 49,
     "tokens": 9235,
     "wasted": 8481.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -347,7 +371,8 @@
     "emitted": 84,
     "tokens": 23773,
     "wasted": 22641.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -361,7 +386,8 @@
     "emitted": 112,
     "tokens": 48285,
     "wasted": 46561.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -372,10 +398,11 @@
     "recall": 0.25,
     "precision": 0.014,
     "hits": 1,
-    "emitted": 72,
-    "tokens": 9214,
-    "wasted": 9086.0,
-    "stratum": "medium (4-9)"
+    "emitted": 71,
+    "tokens": 9160,
+    "wasted": 9031.0,
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -386,10 +413,11 @@
     "recall": 0.25,
     "precision": 0.007,
     "hits": 1,
-    "emitted": 139,
-    "tokens": 23489,
-    "wasted": 23320.0,
-    "stratum": "medium (4-9)"
+    "emitted": 136,
+    "tokens": 23403,
+    "wasted": 23231.0,
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -400,10 +428,11 @@
     "recall": 0.25,
     "precision": 0.005,
     "hits": 1,
-    "emitted": 202,
-    "tokens": 47500,
-    "wasted": 47265.0,
-    "stratum": "medium (4-9)"
+    "emitted": 199,
+    "tokens": 47789,
+    "wasted": 47549.0,
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -417,7 +446,8 @@
     "emitted": 28,
     "tokens": 49995,
     "wasted": 48209.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -431,7 +461,8 @@
     "emitted": 2,
     "tokens": 2802,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -445,7 +476,8 @@
     "emitted": 4,
     "tokens": 24397,
     "wasted": 12198.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -459,7 +491,8 @@
     "emitted": 9,
     "tokens": 48642,
     "wasted": 37833.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -473,7 +506,8 @@
     "emitted": 60,
     "tokens": 9347,
     "wasted": 9191.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -487,7 +521,8 @@
     "emitted": 155,
     "tokens": 23359,
     "wasted": 23058.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -501,7 +536,8 @@
     "emitted": 237,
     "tokens": 47402,
     "wasted": 47002.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -515,7 +551,8 @@
     "emitted": 70,
     "tokens": 9216,
     "wasted": 9084.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -529,7 +566,8 @@
     "emitted": 141,
     "tokens": 23400,
     "wasted": 23234.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -543,7 +581,8 @@
     "emitted": 205,
     "tokens": 47671,
     "wasted": 47438.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -557,7 +596,8 @@
     "emitted": 22,
     "tokens": 49934,
     "wasted": 45395.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -571,7 +611,8 @@
     "emitted": 2,
     "tokens": 1344,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -585,7 +626,8 @@
     "emitted": 2,
     "tokens": 1344,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -599,7 +641,8 @@
     "emitted": 4,
     "tokens": 42126,
     "wasted": 21063.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -613,7 +656,8 @@
     "emitted": 73,
     "tokens": 9150,
     "wasted": 9025.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -627,7 +671,8 @@
     "emitted": 140,
     "tokens": 23508,
     "wasted": 23340.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -641,7 +686,8 @@
     "emitted": 194,
     "tokens": 47331,
     "wasted": 46843.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -655,7 +701,8 @@
     "emitted": 74,
     "tokens": 9168,
     "wasted": 9044.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -669,7 +716,8 @@
     "emitted": 142,
     "tokens": 23444,
     "wasted": 23279.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -683,7 +731,8 @@
     "emitted": 207,
     "tokens": 47376,
     "wasted": 46918.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -697,7 +746,8 @@
     "emitted": 17,
     "tokens": 49902,
     "wasted": 49902.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "AutoMapper",
@@ -711,7 +761,8 @@
     "emitted": 3,
     "tokens": 8640,
     "wasted": 2880.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -725,7 +776,8 @@
     "emitted": 9,
     "tokens": 24193,
     "wasted": 18817.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -739,7 +791,8 @@
     "emitted": 19,
     "tokens": 28685,
     "wasted": 25666.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -753,7 +806,8 @@
     "emitted": 51,
     "tokens": 9403,
     "wasted": 9219.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -767,7 +821,8 @@
     "emitted": 149,
     "tokens": 23496,
     "wasted": 23181.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -781,7 +836,8 @@
     "emitted": 237,
     "tokens": 47342,
     "wasted": 46942.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -795,7 +851,8 @@
     "emitted": 42,
     "tokens": 9569,
     "wasted": 9569.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -809,7 +866,8 @@
     "emitted": 125,
     "tokens": 23715,
     "wasted": 23525.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -823,7 +881,8 @@
     "emitted": 200,
     "tokens": 47758,
     "wasted": 47519.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "AutoMapper",
@@ -837,7 +896,8 @@
     "emitted": 18,
     "tokens": 49926,
     "wasted": 47152.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -851,7 +911,8 @@
     "emitted": 3,
     "tokens": 9737,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -865,7 +926,8 @@
     "emitted": 9,
     "tokens": 14118,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -879,7 +941,8 @@
     "emitted": 13,
     "tokens": 49084,
     "wasted": 15103.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -893,7 +956,8 @@
     "emitted": 17,
     "tokens": 9760,
     "wasted": 9186.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -907,7 +971,8 @@
     "emitted": 58,
     "tokens": 24004,
     "wasted": 21935.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -921,7 +986,8 @@
     "emitted": 109,
     "tokens": 48373,
     "wasted": 45266.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -930,12 +996,13 @@
     "budget": 10000,
     "truth": 9,
     "recall": 0.111,
-    "precision": 0.056,
+    "precision": 0.083,
     "hits": 1,
-    "emitted": 18,
-    "tokens": 9666,
-    "wasted": 9129.0,
-    "stratum": "medium (4-9)"
+    "emitted": 12,
+    "tokens": 8245,
+    "wasted": 7558.0,
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -943,13 +1010,14 @@
     "mode": "query",
     "budget": 25000,
     "truth": 9,
-    "recall": 0.222,
-    "precision": 0.029,
-    "hits": 2,
-    "emitted": 68,
-    "tokens": 22927,
-    "wasted": 22253.0,
-    "stratum": "medium (4-9)"
+    "recall": 0.444,
+    "precision": 0.16,
+    "hits": 4,
+    "emitted": 25,
+    "tokens": 22877,
+    "wasted": 19217.0,
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -958,12 +1026,13 @@
     "budget": 50000,
     "truth": 9,
     "recall": 0.667,
-    "precision": 0.074,
+    "precision": 0.207,
     "hits": 6,
-    "emitted": 81,
-    "tokens": 44766,
-    "wasted": 41450.0,
-    "stratum": "medium (4-9)"
+    "emitted": 29,
+    "tokens": 33928,
+    "wasted": 26908.0,
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -977,7 +1046,8 @@
     "emitted": 10,
     "tokens": 49991,
     "wasted": 44992.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -991,7 +1061,8 @@
     "emitted": 2,
     "tokens": 710,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1005,7 +1076,8 @@
     "emitted": 5,
     "tokens": 18478,
     "wasted": 11087.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1019,7 +1091,8 @@
     "emitted": 5,
     "tokens": 18478,
     "wasted": 11087.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1033,7 +1106,8 @@
     "emitted": 28,
     "tokens": 9444,
     "wasted": 8769.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1047,7 +1121,8 @@
     "emitted": 53,
     "tokens": 24266,
     "wasted": 23350.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1061,7 +1136,8 @@
     "emitted": 74,
     "tokens": 48948,
     "wasted": 47625.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1075,7 +1151,8 @@
     "emitted": 19,
     "tokens": 9471,
     "wasted": 8474.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1089,7 +1166,8 @@
     "emitted": 34,
     "tokens": 24404,
     "wasted": 22968.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1103,7 +1181,8 @@
     "emitted": 35,
     "tokens": 26380,
     "wasted": 24873.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1117,7 +1196,8 @@
     "emitted": 20,
     "tokens": 49922,
     "wasted": 49922.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1131,7 +1211,8 @@
     "emitted": 4,
     "tokens": 8844,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1145,7 +1226,8 @@
     "emitted": 9,
     "tokens": 24067,
     "wasted": 13371.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1159,7 +1241,8 @@
     "emitted": 44,
     "tokens": 49528,
     "wasted": 45025.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1173,7 +1256,8 @@
     "emitted": 36,
     "tokens": 9643,
     "wasted": 9375.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1187,7 +1271,8 @@
     "emitted": 78,
     "tokens": 24111,
     "wasted": 23802.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1201,7 +1286,8 @@
     "emitted": 119,
     "tokens": 48558,
     "wasted": 47742.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1213,9 +1299,10 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 24,
-    "tokens": 9593,
-    "wasted": 9593.0,
-    "stratum": "medium (4-9)"
+    "tokens": 9575,
+    "wasted": 9575.0,
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1229,7 +1316,8 @@
     "emitted": 52,
     "tokens": 24326,
     "wasted": 23858.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1238,12 +1326,13 @@
     "budget": 50000,
     "truth": 4,
     "recall": 0.75,
-    "precision": 0.041,
+    "precision": 0.042,
     "hits": 3,
-    "emitted": 73,
-    "tokens": 48847,
-    "wasted": 46840.0,
-    "stratum": "medium (4-9)"
+    "emitted": 72,
+    "tokens": 48169,
+    "wasted": 46162.0,
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1257,7 +1346,8 @@
     "emitted": 18,
     "tokens": 50000,
     "wasted": 47222.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1271,7 +1361,8 @@
     "emitted": 5,
     "tokens": 5061,
     "wasted": 3037.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1285,7 +1376,8 @@
     "emitted": 5,
     "tokens": 5061,
     "wasted": 3037.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1299,7 +1391,8 @@
     "emitted": 5,
     "tokens": 5061,
     "wasted": 3037.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1313,7 +1406,8 @@
     "emitted": 25,
     "tokens": 9527,
     "wasted": 8765.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1327,7 +1421,8 @@
     "emitted": 43,
     "tokens": 23214,
     "wasted": 22134.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1341,7 +1436,8 @@
     "emitted": 47,
     "tokens": 32236,
     "wasted": 30864.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1352,10 +1448,11 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 29,
-    "tokens": 9685,
-    "wasted": 9685.0,
-    "stratum": "small (1-3)"
+    "emitted": 28,
+    "tokens": 9571,
+    "wasted": 9571.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1366,10 +1463,11 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 77,
-    "tokens": 24282,
-    "wasted": 24282.0,
-    "stratum": "small (1-3)"
+    "emitted": 73,
+    "tokens": 23913,
+    "wasted": 23913.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1380,10 +1478,11 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 112,
-    "tokens": 47750,
-    "wasted": 47750.0,
-    "stratum": "small (1-3)"
+    "emitted": 90,
+    "tokens": 41508,
+    "wasted": 41508.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1397,7 +1496,8 @@
     "emitted": 13,
     "tokens": 49859,
     "wasted": 49859.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1411,7 +1511,8 @@
     "emitted": 4,
     "tokens": 7674,
     "wasted": 3837.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1425,7 +1526,8 @@
     "emitted": 13,
     "tokens": 23834,
     "wasted": 20167.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1439,7 +1541,8 @@
     "emitted": 37,
     "tokens": 49504,
     "wasted": 46828.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1453,7 +1556,8 @@
     "emitted": 39,
     "tokens": 9675,
     "wasted": 9427.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1467,7 +1571,8 @@
     "emitted": 85,
     "tokens": 24178,
     "wasted": 23609.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1481,7 +1586,8 @@
     "emitted": 103,
     "tokens": 48113,
     "wasted": 47179.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1495,7 +1601,8 @@
     "emitted": 39,
     "tokens": 9529,
     "wasted": 9529.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1509,7 +1616,8 @@
     "emitted": 85,
     "tokens": 24115,
     "wasted": 23831.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1523,7 +1631,8 @@
     "emitted": 119,
     "tokens": 48794,
     "wasted": 47974.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1537,7 +1646,8 @@
     "emitted": 8,
     "tokens": 10817,
     "wasted": 8113.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "FluentValidation",
@@ -1551,7 +1661,8 @@
     "emitted": 5,
     "tokens": 8006,
     "wasted": 4804.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1565,7 +1676,8 @@
     "emitted": 5,
     "tokens": 8006,
     "wasted": 4804.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1579,7 +1691,8 @@
     "emitted": 5,
     "tokens": 8006,
     "wasted": 4804.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1593,7 +1706,8 @@
     "emitted": 27,
     "tokens": 9693,
     "wasted": 9334.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1607,7 +1721,8 @@
     "emitted": 63,
     "tokens": 24012,
     "wasted": 23631.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1621,7 +1736,8 @@
     "emitted": 99,
     "tokens": 48856,
     "wasted": 47869.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1632,10 +1748,11 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 31,
-    "tokens": 9661,
-    "wasted": 9661.0,
-    "stratum": "small (1-3)"
+    "emitted": 30,
+    "tokens": 9602,
+    "wasted": 9602.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1646,10 +1763,11 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 79,
-    "tokens": 24123,
-    "wasted": 24123.0,
-    "stratum": "small (1-3)"
+    "emitted": 76,
+    "tokens": 24105,
+    "wasted": 24105.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1660,10 +1778,11 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 131,
-    "tokens": 48491,
-    "wasted": 48491.0,
-    "stratum": "small (1-3)"
+    "emitted": 112,
+    "tokens": 48863,
+    "wasted": 48863.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "FluentValidation",
@@ -1677,7 +1796,8 @@
     "emitted": 13,
     "tokens": 49903,
     "wasted": 49903.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1691,7 +1811,8 @@
     "emitted": 6,
     "tokens": 7874,
     "wasted": 5249.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1705,7 +1826,8 @@
     "emitted": 6,
     "tokens": 7874,
     "wasted": 5249.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1719,7 +1841,8 @@
     "emitted": 6,
     "tokens": 7874,
     "wasted": 5249.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1733,7 +1856,8 @@
     "emitted": 66,
     "tokens": 9311,
     "wasted": 9029.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1747,7 +1871,8 @@
     "emitted": 93,
     "tokens": 22877,
     "wasted": 22385.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1761,7 +1886,8 @@
     "emitted": 95,
     "tokens": 29468,
     "wasted": 28848.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1775,7 +1901,8 @@
     "emitted": 37,
     "tokens": 9239,
     "wasted": 8740.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1789,7 +1916,8 @@
     "emitted": 42,
     "tokens": 20663,
     "wasted": 19679.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1803,7 +1931,8 @@
     "emitted": 42,
     "tokens": 20663,
     "wasted": 19679.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1817,7 +1946,8 @@
     "emitted": 12,
     "tokens": 17895,
     "wasted": 14912.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1831,7 +1961,8 @@
     "emitted": 5,
     "tokens": 9490,
     "wasted": 1898.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1845,7 +1976,8 @@
     "emitted": 8,
     "tokens": 10979,
     "wasted": 5490.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1859,7 +1991,8 @@
     "emitted": 8,
     "tokens": 10979,
     "wasted": 5490.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1873,7 +2006,8 @@
     "emitted": 8,
     "tokens": 2256,
     "wasted": 1128.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1887,7 +2021,8 @@
     "emitted": 8,
     "tokens": 2256,
     "wasted": 1128.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1901,7 +2036,8 @@
     "emitted": 8,
     "tokens": 2256,
     "wasted": 1128.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1915,7 +2051,8 @@
     "emitted": 49,
     "tokens": 9466,
     "wasted": 8886.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1927,9 +2064,10 @@
     "precision": 0.048,
     "hits": 4,
     "emitted": 84,
-    "tokens": 23189,
-    "wasted": 22085.0,
-    "stratum": "medium (4-9)"
+    "tokens": 23916,
+    "wasted": 22777.0,
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1940,10 +2078,11 @@
     "recall": 1.0,
     "precision": 0.044,
     "hits": 4,
-    "emitted": 91,
-    "tokens": 34286,
-    "wasted": 32779.0,
-    "stratum": "medium (4-9)"
+    "emitted": 90,
+    "tokens": 33821,
+    "wasted": 32318.0,
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1957,7 +2096,8 @@
     "emitted": 10,
     "tokens": 16989,
     "wasted": 10193.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -1971,7 +2111,8 @@
     "emitted": 5,
     "tokens": 7721,
     "wasted": 4633.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1985,7 +2126,8 @@
     "emitted": 5,
     "tokens": 7721,
     "wasted": 4633.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -1999,7 +2141,8 @@
     "emitted": 5,
     "tokens": 7721,
     "wasted": 4633.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2013,7 +2156,8 @@
     "emitted": 61,
     "tokens": 9388,
     "wasted": 9080.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2027,7 +2171,8 @@
     "emitted": 84,
     "tokens": 23944,
     "wasted": 23374.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2041,7 +2186,8 @@
     "emitted": 85,
     "tokens": 27765,
     "wasted": 27112.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2053,9 +2199,10 @@
     "precision": 0.048,
     "hits": 2,
     "emitted": 42,
-    "tokens": 9540,
-    "wasted": 9086.0,
-    "stratum": "small (1-3)"
+    "tokens": 9538,
+    "wasted": 9084.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2066,10 +2213,11 @@
     "recall": 1.0,
     "precision": 0.027,
     "hits": 2,
-    "emitted": 75,
-    "tokens": 23898,
-    "wasted": 23261.0,
-    "stratum": "small (1-3)"
+    "emitted": 74,
+    "tokens": 22839,
+    "wasted": 22222.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2083,7 +2231,8 @@
     "emitted": 78,
     "tokens": 31975,
     "wasted": 31155.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2097,7 +2246,8 @@
     "emitted": 5,
     "tokens": 8614,
     "wasted": 5168.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2111,7 +2261,8 @@
     "emitted": 7,
     "tokens": 7752,
     "wasted": 4430.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2125,7 +2276,8 @@
     "emitted": 7,
     "tokens": 7752,
     "wasted": 4430.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2139,7 +2291,8 @@
     "emitted": 7,
     "tokens": 7752,
     "wasted": 4430.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2153,7 +2306,8 @@
     "emitted": 55,
     "tokens": 9476,
     "wasted": 9304.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2167,7 +2321,8 @@
     "emitted": 115,
     "tokens": 23961,
     "wasted": 23336.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2181,7 +2336,8 @@
     "emitted": 124,
     "tokens": 36677,
     "wasted": 35790.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2195,7 +2351,8 @@
     "emitted": 47,
     "tokens": 9453,
     "wasted": 9453.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2207,9 +2364,10 @@
     "precision": 0.027,
     "hits": 2,
     "emitted": 73,
-    "tokens": 23721,
-    "wasted": 23071.0,
-    "stratum": "small (1-3)"
+    "tokens": 23728,
+    "wasted": 23078.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2221,9 +2379,10 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 76,
-    "tokens": 33050,
-    "wasted": 32180.0,
-    "stratum": "small (1-3)"
+    "tokens": 33057,
+    "wasted": 32187.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2237,7 +2396,8 @@
     "emitted": 52,
     "tokens": 49983,
     "wasted": 47099.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2251,7 +2411,8 @@
     "emitted": 3,
     "tokens": 5059,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2265,7 +2426,8 @@
     "emitted": 10,
     "tokens": 24841,
     "wasted": 17389.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2279,7 +2441,8 @@
     "emitted": 56,
     "tokens": 43427,
     "wasted": 41101.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2293,7 +2456,8 @@
     "emitted": 62,
     "tokens": 9379,
     "wasted": 9076.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2307,7 +2471,8 @@
     "emitted": 85,
     "tokens": 24096,
     "wasted": 23246.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2321,7 +2486,8 @@
     "emitted": 86,
     "tokens": 27917,
     "wasted": 26943.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2335,7 +2501,8 @@
     "emitted": 49,
     "tokens": 9436,
     "wasted": 9051.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2347,9 +2514,10 @@
     "precision": 0.034,
     "hits": 3,
     "emitted": 87,
-    "tokens": 23555,
-    "wasted": 22743.0,
-    "stratum": "small (1-3)"
+    "tokens": 24048,
+    "wasted": 23219.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2360,10 +2528,11 @@
     "recall": 1.0,
     "precision": 0.032,
     "hits": 3,
-    "emitted": 95,
-    "tokens": 40846,
-    "wasted": 39556.0,
-    "stratum": "small (1-3)"
+    "emitted": 94,
+    "tokens": 40519,
+    "wasted": 39226.0,
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2377,7 +2546,8 @@
     "emitted": 14,
     "tokens": 28067,
     "wasted": 24057.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "dev"
   },
   {
     "repo": "MediatR",
@@ -2391,7 +2561,8 @@
     "emitted": 3,
     "tokens": 8266,
     "wasted": 2755.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2405,7 +2576,8 @@
     "emitted": 10,
     "tokens": 24833,
     "wasted": 19866.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2419,7 +2591,8 @@
     "emitted": 55,
     "tokens": 43287,
     "wasted": 41713.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2433,7 +2606,8 @@
     "emitted": 62,
     "tokens": 9379,
     "wasted": 9076.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2447,7 +2621,8 @@
     "emitted": 85,
     "tokens": 24096,
     "wasted": 23529.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2461,7 +2636,8 @@
     "emitted": 86,
     "tokens": 27917,
     "wasted": 27268.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2473,9 +2649,10 @@
     "precision": 0.03,
     "hits": 2,
     "emitted": 66,
-    "tokens": 9340,
-    "wasted": 9057.0,
-    "stratum": "small (1-3)"
+    "tokens": 9173,
+    "wasted": 8895.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2487,9 +2664,10 @@
     "precision": 0.022,
     "hits": 2,
     "emitted": 91,
-    "tokens": 22682,
-    "wasted": 22183.0,
-    "stratum": "small (1-3)"
+    "tokens": 22515,
+    "wasted": 22020.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2501,9 +2679,10 @@
     "precision": 0.021,
     "hits": 2,
     "emitted": 96,
-    "tokens": 34572,
-    "wasted": 33852.0,
-    "stratum": "small (1-3)"
+    "tokens": 34405,
+    "wasted": 33688.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "MediatR",
@@ -2517,7 +2696,8 @@
     "emitted": 36,
     "tokens": 38228,
     "wasted": 36104.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2531,7 +2711,8 @@
     "emitted": 1,
     "tokens": 14242,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2545,7 +2726,8 @@
     "emitted": 1,
     "tokens": 14242,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2559,7 +2741,8 @@
     "emitted": 4,
     "tokens": 32443,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2573,7 +2756,8 @@
     "emitted": 1,
     "tokens": 14242,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2587,7 +2771,8 @@
     "emitted": 35,
     "tokens": 24669,
     "wasted": 23964.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2601,7 +2786,8 @@
     "emitted": 112,
     "tokens": 49000,
     "wasted": 48562.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2615,7 +2801,8 @@
     "emitted": 13,
     "tokens": 9732,
     "wasted": 9732.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2629,7 +2816,8 @@
     "emitted": 50,
     "tokens": 24401,
     "wasted": 24401.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2640,10 +2828,11 @@
     "recall": 0.5,
     "precision": 0.02,
     "hits": 2,
-    "emitted": 101,
-    "tokens": 48886,
-    "wasted": 47918.0,
-    "stratum": "medium (4-9)"
+    "emitted": 102,
+    "tokens": 48861,
+    "wasted": 47903.0,
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2657,7 +2846,8 @@
     "emitted": 6,
     "tokens": 49983,
     "wasted": 49983.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2671,7 +2861,8 @@
     "emitted": 2,
     "tokens": 2149,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2685,7 +2876,8 @@
     "emitted": 2,
     "tokens": 2149,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2699,7 +2891,8 @@
     "emitted": 2,
     "tokens": 2149,
     "wasted": 0.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2713,7 +2906,8 @@
     "emitted": 29,
     "tokens": 9590,
     "wasted": 9259.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2727,7 +2921,8 @@
     "emitted": 70,
     "tokens": 24331,
     "wasted": 23983.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2741,7 +2936,8 @@
     "emitted": 130,
     "tokens": 48917,
     "wasted": 48541.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2753,9 +2949,10 @@
     "precision": 0.105,
     "hits": 2,
     "emitted": 19,
-    "tokens": 9523,
-    "wasted": 8521.0,
-    "stratum": "small (1-3)"
+    "tokens": 9324,
+    "wasted": 8343.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2764,12 +2961,13 @@
     "budget": 25000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.047,
+    "precision": 0.045,
     "hits": 2,
-    "emitted": 43,
-    "tokens": 24177,
-    "wasted": 23052.0,
-    "stratum": "small (1-3)"
+    "emitted": 44,
+    "tokens": 24350,
+    "wasted": 23243.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2781,9 +2979,10 @@
     "precision": 0.023,
     "hits": 2,
     "emitted": 86,
-    "tokens": 48660,
-    "wasted": 47528.0,
-    "stratum": "small (1-3)"
+    "tokens": 48728,
+    "wasted": 47595.0,
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2797,7 +2996,8 @@
     "emitted": 7,
     "tokens": 49990,
     "wasted": 49990.0,
-    "stratum": "small (1-3)"
+    "stratum": "small (1-3)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2811,7 +3011,8 @@
     "emitted": 1,
     "tokens": 18992,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2825,7 +3026,8 @@
     "emitted": 1,
     "tokens": 18992,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2839,7 +3041,8 @@
     "emitted": 3,
     "tokens": 48160,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2853,7 +3056,8 @@
     "emitted": 18,
     "tokens": 9582,
     "wasted": 7453.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2867,7 +3071,8 @@
     "emitted": 36,
     "tokens": 23839,
     "wasted": 21190.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2881,7 +3086,8 @@
     "emitted": 48,
     "tokens": 47156,
     "wasted": 38314.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2895,7 +3101,8 @@
     "emitted": 1,
     "tokens": 18059,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2909,7 +3116,8 @@
     "emitted": 28,
     "tokens": 24727,
     "wasted": 23844.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2923,7 +3131,8 @@
     "emitted": 102,
     "tokens": 48725,
     "wasted": 47770.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2937,7 +3146,8 @@
     "emitted": 6,
     "tokens": 49932,
     "wasted": 49932.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2951,7 +3161,8 @@
     "emitted": 1,
     "tokens": 18992,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2965,7 +3176,8 @@
     "emitted": 1,
     "tokens": 18992,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2979,7 +3191,8 @@
     "emitted": 3,
     "tokens": 48162,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2993,7 +3206,8 @@
     "emitted": 18,
     "tokens": 9582,
     "wasted": 7985.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3007,7 +3221,8 @@
     "emitted": 36,
     "tokens": 23839,
     "wasted": 21852.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3021,7 +3236,8 @@
     "emitted": 48,
     "tokens": 47156,
     "wasted": 39297.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3035,7 +3251,8 @@
     "emitted": 15,
     "tokens": 9776,
     "wasted": 9776.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3049,7 +3266,8 @@
     "emitted": 56,
     "tokens": 24291,
     "wasted": 24291.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3063,7 +3281,8 @@
     "emitted": 128,
     "tokens": 48487,
     "wasted": 48487.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3077,7 +3296,8 @@
     "emitted": 6,
     "tokens": 49918,
     "wasted": 41598.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3091,7 +3311,8 @@
     "emitted": 1,
     "tokens": 18992,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3105,7 +3326,8 @@
     "emitted": 1,
     "tokens": 18992,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3119,7 +3341,8 @@
     "emitted": 3,
     "tokens": 46869,
     "wasted": 0.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3133,7 +3356,8 @@
     "emitted": 18,
     "tokens": 9573,
     "wasted": 9041.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3147,7 +3371,8 @@
     "emitted": 66,
     "tokens": 24315,
     "wasted": 23947.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3161,7 +3386,8 @@
     "emitted": 134,
     "tokens": 48568,
     "wasted": 48206.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3173,9 +3399,10 @@
     "precision": 0.056,
     "hits": 1,
     "emitted": 18,
-    "tokens": 9669,
-    "wasted": 9132.0,
-    "stratum": "large (10+)"
+    "tokens": 9692,
+    "wasted": 9154.0,
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3189,7 +3416,8 @@
     "emitted": 54,
     "tokens": 24349,
     "wasted": 23898.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3203,7 +3431,8 @@
     "emitted": 124,
     "tokens": 48782,
     "wasted": 47602.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3217,7 +3446,8 @@
     "emitted": 8,
     "tokens": 49998,
     "wasted": 24999.0,
-    "stratum": "large (10+)"
+    "stratum": "large (10+)",
+    "split": "test"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3231,7 +3461,8 @@
     "emitted": 1,
     "tokens": 16407,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3245,7 +3476,8 @@
     "emitted": 1,
     "tokens": 16407,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3259,7 +3491,8 @@
     "emitted": 9,
     "tokens": 47980,
     "wasted": 0.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3273,7 +3506,8 @@
     "emitted": 23,
     "tokens": 9599,
     "wasted": 9182.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3287,7 +3521,8 @@
     "emitted": 62,
     "tokens": 24206,
     "wasted": 23816.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3301,7 +3536,8 @@
     "emitted": 115,
     "tokens": 48683,
     "wasted": 47836.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3313,9 +3549,10 @@
     "precision": 0.062,
     "hits": 1,
     "emitted": 16,
-    "tokens": 9679,
-    "wasted": 9074.0,
-    "stratum": "medium (4-9)"
+    "tokens": 9622,
+    "wasted": 9021.0,
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3326,10 +3563,11 @@
     "recall": 0.111,
     "precision": 0.019,
     "hits": 1,
-    "emitted": 54,
-    "tokens": 24244,
-    "wasted": 23795.0,
-    "stratum": "medium (4-9)"
+    "emitted": 53,
+    "tokens": 24211,
+    "wasted": 23754.0,
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3338,12 +3576,13 @@
     "budget": 50000,
     "truth": 9,
     "recall": 0.222,
-    "precision": 0.017,
+    "precision": 0.016,
     "hits": 2,
-    "emitted": 121,
-    "tokens": 48607,
-    "wasted": 47804.0,
-    "stratum": "medium (4-9)"
+    "emitted": 123,
+    "tokens": 48765,
+    "wasted": 47972.0,
+    "stratum": "medium (4-9)",
+    "split": "dev"
   },
   {
     "repo": "NewtonsoftJson",
@@ -3357,6 +3596,7 @@
     "emitted": 7,
     "tokens": 49929,
     "wasted": 42796.0,
-    "stratum": "medium (4-9)"
+    "stratum": "medium (4-9)",
+    "split": "dev"
   }
 ]

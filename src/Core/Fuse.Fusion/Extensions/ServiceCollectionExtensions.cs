@@ -77,6 +77,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(sp => new CapabilityRegistry<IDependencyExtractor>(sp.GetServices<IDependencyExtractor>()));
         services.AddSingleton(sp => new CapabilityRegistry<ITypeNameLocator>(sp.GetServices<ITypeNameLocator>()));
 
+        services.AddSingleton<ITokenCostModel, DefaultTokenCostModel>();
         services.AddSingleton<DependencyGraphBuilder>();
         services.AddSingleton<FocusSeedResolver>();
         services.AddSingleton<Enrichment.BoilerplateDeduplicator>();

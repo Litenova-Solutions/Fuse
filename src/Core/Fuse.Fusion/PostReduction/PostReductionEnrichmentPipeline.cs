@@ -78,7 +78,7 @@ public sealed class PostReductionEnrichmentPipeline
 
         string? sessionNote = null;
         if (!string.IsNullOrEmpty(request.Emission.SessionId))
-            (reducedContent, sessionNote) = ApplySessionDelta(reducedContent, request.Emission.SessionId);
+            (reducedContent, sessionNote) = ApplySessionDelta(reducedContent, request.Emission.SessionId, context.TokenCounter);
 
         string? headerPreamble = null;
         if (request.Emission.DeduplicateHeaders)
@@ -228,10 +228,12 @@ public sealed class PostReductionEnrichmentPipeline
 
     private (IReadOnlyList<FusedContent> Kept, string? Note) ApplySessionDelta(
         IReadOnlyList<FusedContent> reducedContent,
-        string sessionId)
+        string sessionId,
+        Fuse.Reduction.Tokenization.ITokenCounter tokenCounter)
     {
         var kept = new List<FusedContent>(reducedContent.Count);
         var omitted = new List<string>();
+        var diffed = new List<string>();
 
         foreach (var entry in reducedContent)
         {
@@ -242,13 +244,32 @@ public sealed class PostReductionEnrichmentPipeline
             }
 
             var hash = XxHash64.HashToUInt64(Encoding.UTF8.GetBytes(entry.Content));
-            if (_sessionTracker.TryClaim(sessionId, entry.NormalizedPath, hash))
-                kept.Add(entry);
-            else
-                omitted.Add(entry.NormalizedPath);
+            var claim = _sessionTracker.Claim(sessionId, entry.NormalizedPath, hash, entry.Content);
+            switch (claim.Status)
+            {
+                case Session.SessionEntryStatus.Unchanged:
+                    omitted.Add(entry.NormalizedPath);
+                    break;
+
+                case Session.SessionEntryStatus.Changed
+                    when claim.PriorContent is { } prior
+                         && Session.UnifiedDiffGenerator.Build(prior, entry.Content) is { } diff:
+                    // The diff is over already-reduced, already-redacted content (both versions were emitted),
+                    // so it reintroduces no secret and needs no re-redaction (unlike a raw-source rewrite). The
+                    // smaller diff replaces the body so packing sees its real, lower token cost.
+                    var marker = $"// fuse:diff {entry.NormalizedPath} (changed since last sent in this session; unified diff, not the whole file)\n";
+                    kept.Add(entry.WithReducedContent(marker + diff, tokenCounter));
+                    diffed.Add(entry.NormalizedPath);
+                    break;
+
+                default:
+                    // New, or changed with no retained prior or a near-total rewrite: send the whole file.
+                    kept.Add(entry);
+                    break;
+            }
         }
 
-        return (kept, Session.SessionDeltaBuilder.BuildNote(sessionId, omitted));
+        return (kept, Session.SessionDeltaBuilder.BuildNote(sessionId, omitted, diffed));
     }
 
     private PatternSummary? DetectPatterns(IReadOnlyList<FusedContent> reducedContent)

@@ -83,7 +83,7 @@ reads.
 | `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
-| `session` | string | null | Session id: omit files already returned under this id earlier in the session |
+| `session` | string | null | Session id: omit files already returned unchanged under this id earlier in the session, and re-send a changed file as a unified diff rather than in full |
 
 A `focus` of the form `Type.Member` scopes the seed file to that member, keeping its body in full and reducing the rest of the file to signatures.
 
@@ -105,7 +105,7 @@ ranked files and their neighborhood, replacing a grep-and-open loop.
 | `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
-| `session` | string | null | Session id: omit files already returned under this id earlier in the session |
+| `session` | string | null | Session id: omit files already returned unchanged under this id earlier in the session, and re-send a changed file as a unified diff rather than in full |
 
 ## fuse_changes
 

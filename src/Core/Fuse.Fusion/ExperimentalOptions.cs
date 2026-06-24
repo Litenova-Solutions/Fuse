@@ -112,6 +112,15 @@ public sealed record ExperimentalOptions
     public bool DistributionalThesaurus { get; init; }
 
     /// <summary>
+    ///     Whether expansion follows low-weight structural proximity edges in addition to type-reference edges
+    ///     (item 7): a file is linked to its test or implementation counterpart and same-stem siblings by path,
+    ///     so expansion reaches a related file the type-reference graph misses when references are incomplete.
+    ///     Proximity neighbours enter at a decayed weight, below a real reference. Off pending an A/B. Overridden
+    ///     by <c>FUSE_PROXIMITY</c> (<c>1</c>, <c>on</c>, or <c>true</c> enables it).
+    /// </summary>
+    public bool ProximityEdges { get; init; }
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -228,6 +237,16 @@ public sealed record ExperimentalOptions
             distributionalThesaurus = true;
         }
 
+        var proximityEdges = resolved.ProximityEdges;
+        var rawProximity = Environment.GetEnvironmentVariable("FUSE_PROXIMITY");
+        if (!string.IsNullOrWhiteSpace(rawProximity) &&
+            (rawProximity.Equals("1", StringComparison.Ordinal) ||
+             rawProximity.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawProximity.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            proximityEdges = true;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -240,6 +259,7 @@ public sealed record ExperimentalOptions
             SketchHugeFiles = sketchHugeFiles,
             DowngradeBeforeDrop = downgradeBeforeDrop,
             DistributionalThesaurus = distributionalThesaurus,
+            ProximityEdges = proximityEdges,
         };
     }
 }

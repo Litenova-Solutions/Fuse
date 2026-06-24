@@ -324,6 +324,19 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Research notes
 
+- **Source:** structural proximity graph edges (item 7): link a file to its test or implementation counterpart
+  and same-stem siblings by path, followed at a weight below a real type reference, to reach a related file the
+  type-reference graph misses. **Fit:** focus and query recall, all graph modes. **Decision:** built behind the
+  `ProximityEdges` knob (env `FUSE_PROXIMITY`) with a tested path-based `ProximityEdgeBuilder` (base-stem
+  grouping with a generic-stem cap) and expander support, then **kept off by default** after a full layer2a
+  A/B showed it exactly neutral at every budget and for every repository (focus 72/88/92, query 46/54/61
+  identical on and off; only mean tokens shifted by a few as a sibling within budget was pulled in). The
+  existing reverse-edge dependents and type references already reach the test and sibling files that share a
+  type, and focus is near its ceiling (92 percent), so the proximity edges are redundant on this corpus rather
+  than additive. The builder, knob, and tests are retained (off by default, default output unchanged) for a
+  repository where the type graph is sparser; the edge-kind weighting half of item 7 (weighting a base-type or
+  constructor-parameter reference above an incidental one) is the more promising remaining part and is left as
+  a follow-on. `FUSE_PROXIMITY=1` reproduces the A/B via layer2a.
 - **Source:** local distributional thesaurus (Q4): mine identifier co-occurrence (PMI between declared symbols
   in the same file) and expand a query term with its top statistically-associated identifiers, to bridge to a
   related vocabulary the pseudo-relevance feedback set never contained, fully lexically. **Fit:** Layer 2A

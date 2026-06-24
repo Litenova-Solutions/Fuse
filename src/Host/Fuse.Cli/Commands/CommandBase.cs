@@ -181,6 +181,7 @@ public abstract class CommandBase
             SketchHugeFiles = resolved.SketchHugeFiles,
             DowngradeBeforeDrop = resolved.DowngradeBeforeDrop,
             DistributionalThesaurus = resolved.DistributionalThesaurus,
+            ProximityEdges = resolved.ProximityEdges,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

@@ -707,6 +707,7 @@ public sealed class FusionOrchestrator
             : new SymbolSliceRequest(seedPaths.ToHashSet(StringComparer.OrdinalIgnoreCase), sliceMember);
 
         var seedScores = seedPaths.ToDictionary(p => p, _ => 1.0, StringComparer.OrdinalIgnoreCase);
+        var (focusProximityEdges, focusProximityWeight) = ResolveProximity(experimental, files);
         // No byte-budget gate on expansion: the reduction-aware packer applies the budget after reduction on
         // the real reduced token cost (see ReductionAwarePacker), so expansion spreads by depth and relevance.
         var options = new ExpansionOptions(
@@ -714,7 +715,9 @@ public sealed class FusionOrchestrator
             FollowReferences: true,
             FollowDependents: true,
             Centrality: GraphCentrality.Compute(graph),
-            CentralityWeight: experimental.CentralityWeight);
+            CentralityWeight: experimental.CentralityWeight,
+            ProximityEdges: focusProximityEdges,
+            ProximityWeight: focusProximityWeight);
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
@@ -926,6 +929,7 @@ public sealed class FusionOrchestrator
         // measured A/B over the pinned corpus confirmed this: enabling reverse hops dropped query recall 51 to
         // 45 percent at the headline budget (Newtonsoft.Json 30 to 13), as common-type dependents displaced
         // the real targets under the token budget.
+        var (queryProximityEdges, queryProximityWeight) = ResolveProximity(experimental, files);
         var options = new ExpansionOptions(
             request.Query.Depth,
             FollowReferences: true,
@@ -933,7 +937,9 @@ public sealed class FusionOrchestrator
             TokenBudget: expansionBudget,
             TokenCosts: expansionCosts,
             Centrality: GraphCentrality.Compute(graph),
-            CentralityWeight: experimental.CentralityWeight);
+            CentralityWeight: experimental.CentralityWeight,
+            ProximityEdges: queryProximityEdges,
+            ProximityWeight: queryProximityWeight);
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
@@ -988,6 +994,22 @@ public sealed class FusionOrchestrator
             .OrderByDescending(r => r.Score)
             .ThenBy(r => r.Path, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    // The factor applied to a structural proximity neighbour's score, so it enters below a real type reference.
+    private const double ProximityExpansionWeight = 0.5;
+
+    // Builds the proximity adjacency for expansion when the proximity-edges experiment is on; otherwise returns
+    // no edges and a zero weight, which disables proximity expansion in the resolver.
+    private static (IReadOnlyDictionary<string, IReadOnlyList<string>>? Edges, double Weight) ResolveProximity(
+        ExperimentalOptions experimental,
+        IReadOnlyList<Fuse.Collection.Models.SourceFile> files)
+    {
+        if (!experimental.ProximityEdges)
+            return (null, 0.0);
+
+        var edges = ProximityEdgeBuilder.Build(files.Select(f => f.NormalizedRelativePath).ToList());
+        return (edges, ProximityExpansionWeight);
     }
 
     // Tokenizes a file's declared symbols into the term set the distributional thesaurus co-occurs over, using

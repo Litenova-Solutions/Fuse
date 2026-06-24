@@ -83,6 +83,13 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Separate candidate, seed, and emit counts for query scoping (architecture enabler A4).** `QueryOptions`
+  now distinguishes `CandidateTopK` (the BM25 pool that pseudo-relevance feedback and member selection operate
+  on, which a reranking stage would reorder) from `SeedTopK` (the top candidates promoted to expansion seeds);
+  the packer already decides the emitted set. Both default to `TopFiles`, so the lexical path is unchanged (the
+  pool equals the seed set as before) and benchmarks do not move. The split gives a future learned reranker a
+  pool wider than the seed set to work on without widening what is expanded from. Tested: `SeedTopK` limits the
+  seed set, and a wider `CandidateTopK` does not change the seed count on the lexical path.
 - **`TokenCostModel` for unified pre-reduce estimate and post-reduce count (architecture enabler A3).** A new
   `ITokenCostModel` (default `DefaultTokenCostModel`) gives a cheap per-file token estimate at a reduction level
   before any file is reduced, and the exact count once content exists, so scoping and packing can reason about

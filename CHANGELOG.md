@@ -251,6 +251,20 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Research notes
 
+- **Source:** change-anchored hybrid retrieval (item 32): when a Git base exists, seed BM25 with the changed
+  files at a boosted prior, then expand along the graph, to keep change mode's recall while pulling in the
+  unchanged interfaces, callers, and tests a diff never shows, and to lift change mode's modest precision.
+  **Fit:** Layer 2A/4 recall and precision when a base is available. **Decision:** **spiked and not built.** A
+  throwaway spike (`tests/benchmarks/harness/spike-hybrid-change-query.ps1`) measured the union of the
+  change-only and query-only emitted sets per PR, the ceiling any change+query merge could reach. The union
+  recall sat at 88 percent against pure change's 88 percent (a +1 point ceiling overall), and 0 points on the
+  small and medium change-set strata where change mode already captures every truth file (small 97, medium
+  100). Only the three large-change PRs showed headroom (change 17 to union 24 percent), and even that ceiling
+  stays poor in absolute terms; a real merge would land below it. A naive union also lowers precision (more
+  files), the opposite of the precision goal. So the recall headroom does not justify the multi-surface
+  complexity (relaxing the changes/query mutual exclusion across the validator, orchestrator dispatch, CLI, and
+  MCP). Revisit only with a precision-targeted merge evaluated on a larger large-change corpus (B2), not as a
+  recall lever. The spike helper is retained.
 - **Source:** Reciprocal Rank Fusion (Cormack et al., SIGIR 2009) and multi-query fusion in code search. **Idea:**
   rank several query variants (the raw query, an identifier-only subset of the compound type tokens, and the
   pseudo-relevance-expanded query) and combine them with RRF so a file several variants agree on outranks one

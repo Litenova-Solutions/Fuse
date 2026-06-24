@@ -35,7 +35,7 @@ Build first, then test with `--no-build`. CI verifies build, test, format, and a
 
 ## MCP Tools
 
-Nine tools: `fuse_toc`, `fuse_skeleton`, `fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_ask`, `fuse_dotnet`, `fuse_generic`, `fuse_reduce`. Plus MCP resources for skeleton, focus, search, and change workflows.
+Ten tools: `fuse_toc`, `fuse_skeleton`, `fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_ask`, `fuse_dotnet`, `fuse_generic`, `fuse_reduce`, `fuse_explain`. Plus MCP resources for skeleton, focus, search, and change workflows.
 
 ## Measured Results (source of truth)
 

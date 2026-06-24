@@ -20,6 +20,7 @@ public sealed class FuseToolsTests
     [InlineData(nameof(FuseTools.FuseDotNetAsync), "fuse_dotnet")]
     [InlineData(nameof(FuseTools.FuseGenericAsync), "fuse_generic")]
     [InlineData(nameof(FuseTools.FuseReduceAsync), "fuse_reduce")]
+    [InlineData(nameof(FuseTools.FuseExplainAsync), "fuse_explain")]
     public void ToolMethods_AreRegisteredWithExpectedNames(string methodName, string expectedToolName)
     {
         var method = typeof(FuseTools).GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
@@ -178,6 +179,30 @@ public sealed class FuseToolsTests
         var full = await FuseTools.FuseDotNetAsync(orchestrator, templates, fixture.ProjectPath, focus: "Seed", depth: 1);
 
         Assert.Equal(EmittedFiles(preset), EmittedFiles(full));
+    }
+
+    [Fact]
+    public async Task FuseExplainAsync_FocusScope_ListsIncludedFilesWithoutBodies()
+    {
+        using var fixture = new TempProject();
+        fixture.AddFile("Seed.cs", "public class Seed { public Dep D { get; set; } }");
+        fixture.AddFile("Dep.cs", "public class Dep { public int Id { get; set; } }");
+        fixture.AddFile("Other.cs", "public class Other { public string Name => \"unique-body-token\"; }");
+
+        var provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
+        var orchestrator = provider.GetRequiredService<FusionOrchestrator>();
+        var templates = provider.GetRequiredService<ProjectTemplateRegistry>();
+        var collection = provider.GetRequiredService<Fuse.Collection.FileCollectionPipeline>();
+
+        var result = await FuseTools.FuseExplainAsync(
+            orchestrator, templates, collection, fixture.ProjectPath, focus: "Seed", depth: 1);
+
+        // The preview names the scoped files and the unrelated one, but emits no file bodies.
+        Assert.Contains("Seed.cs", result);
+        Assert.Contains("Dep.cs", result);
+        Assert.Contains("Other.cs", result); // listed as excluded
+        Assert.DoesNotContain("unique-body-token", result);
+        Assert.DoesNotContain("<file path", result);
     }
 
     private static IReadOnlyList<string> EmittedFiles(string output) =>

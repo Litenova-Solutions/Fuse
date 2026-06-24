@@ -75,7 +75,8 @@ public sealed class McpServeCommand
                     "- fuse_ask: Give a task and token budget; Fuse picks skeleton, focus, or search and packs to budget.\n" +
                     "- fuse_dotnet: Full-control .NET fusion with all options combined.\n" +
                     "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n" +
-                    "- fuse_reduce: Compact a specific set of files (or raw content) you already identified, without collecting a whole directory.\n\n" +
+                    "- fuse_reduce: Compact a specific set of files (or raw content) you already identified, without collecting a whole directory.\n" +
+                    "- fuse_explain: Preview which files a scoped fusion would include and exclude, with a token estimate, before fetching.\n\n" +
                     "CHOOSING A MODE (most accurate first):\n" +
                     "- Branch, PR, or fix work with a git base: prefer fuse_changes with changedSince=\"{base}\". " +
                     "It has by far the highest recall of the files a task touches, because it starts from the diff.\n" +

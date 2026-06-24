@@ -439,6 +439,102 @@ public sealed class FuseTools
             cancellationToken);
 
     /// <summary>
+    ///     Previews which files a scoped .NET fusion would include and exclude, with a per-file token estimate,
+    ///     without returning any file bodies.
+    /// </summary>
+    /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
+    /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
+    /// <param name="collectionPipeline">Collection pipeline used to enumerate candidate files for the excluded set.</param>
+    /// <param name="path">Absolute or relative path to the source directory.</param>
+    /// <param name="focus">A type, file, or path to scope around, or <see langword="null" />.</param>
+    /// <param name="query">A relevance query to scope by, or <see langword="null" />.</param>
+    /// <param name="changedSince">A git ref to scope to changed files, or <see langword="null" />.</param>
+    /// <param name="depth">Dependency traversal depth for focus or query scoping.</param>
+    /// <param name="queryTop">Number of top-ranked files to seed query scoping.</param>
+    /// <param name="level">C# reduction level used for the token estimate.</param>
+    /// <param name="maxTokens">Hard token limit applied to the previewed selection, or <see langword="null" />.</param>
+    /// <param name="excludeDirectories">Directory names to skip, or <see langword="null" />.</param>
+    /// <param name="excludeFiles">File names to exclude, or <see langword="null" />.</param>
+    /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" />.</param>
+    /// <param name="excludeTestProjects">When <see langword="true" />, skip all test project directories.</param>
+    /// <param name="cancellationToken">Token used to cancel collection and the in-memory fusion.</param>
+    /// <returns>The explanation text (scope, included files with token costs, excluded files, estimated total), or an error message.</returns>
+    [McpServerTool(Name = "fuse_explain", ReadOnly = true)]
+    [Description("Preview which files a scoped .NET fusion would include and exclude, with a per-file token estimate, without returning file bodies. Use to check the effect of a focus seed, query, or change range before fetching the context.")]
+    public static async Task<string> FuseExplainAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        Fuse.Collection.FileCollectionPipeline collectionPipeline,
+        [Description("Absolute or relative path to the source directory.")] string path,
+        [Description("A type, file, or path to scope around.")] string? focus = null,
+        [Description("A relevance query to scope by.")] string? query = null,
+        [Description("A git ref (branch, commit, HEAD~N) to scope to changed files.")] string? changedSince = null,
+        [Description("Dependency traversal depth for focus or query scoping.")] int depth = 1,
+        [Description("Number of top-ranked files to seed query scoping.")] int queryTop = 10,
+        [Description("C# reduction level used for the token estimate: none, standard, aggressive, skeleton, publicApi.")] ReductionLevel level = ReductionLevel.Standard,
+        [Description("Hard token limit applied to the previewed selection.")] int? maxTokens = null,
+        [Description("Directory names to skip.")] string[]? excludeDirectories = null,
+        [Description("File names to exclude.")] string[]? excludeFiles = null,
+        [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
+        [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+        CancellationToken cancellationToken = default)
+    {
+        var resolvedPath = Path.GetFullPath(path);
+        if (!Directory.Exists(resolvedPath))
+            return $"Error: Directory not found: {resolvedPath}";
+
+        try
+        {
+            var builder = FuseToolHelpers.CreateDotNetBuilder(templateRegistry, resolvedPath)
+                .WithReductionOptions(new ReductionOptions(level: level, enableRedaction: true))
+                .WithEmissionOptions(new EmissionOptions { MaxTokens = maxTokens, ShowTokenCount = false, IncludeManifest = false });
+
+            if (!string.IsNullOrWhiteSpace(focus))
+                builder.WithFocusOptions(new FocusOptions(focus, depth));
+            else if (!string.IsNullOrWhiteSpace(query))
+                builder.WithQueryOptions(new QueryOptions(query, queryTop, depth));
+            else if (!string.IsNullOrWhiteSpace(changedSince))
+                builder.WithChangeOptions(new ChangeOptions(changedSince, true));
+
+            FuseToolHelpers.ApplyCommonFilters(
+                builder, null, null, null, excludeDirectories, excludeFiles, excludePatterns,
+                excludeTestProjects: excludeTestProjects);
+
+            var request = builder.Build();
+            var collection = await collectionPipeline.CollectAsync(request.Collection, request.Parallelism, cancellationToken);
+            var result = await orchestrator.FuseAsync(request, cancellationToken);
+
+            var lines = Verification.ExplanationBuilder.Build(
+                DescribeExplainScope(request),
+                request.Emission.TokenizerModel,
+                result.EmittedFileTokens,
+                collection.Files.Select(f => f.NormalizedRelativePath));
+
+            return string.Join("\n", lines);
+        }
+        catch (FusionValidationException ex)
+        {
+            return "Error: " + string.Join("; ", ex.Errors);
+        }
+        catch (Exception ex)
+        {
+            return $"Error during explain: {ex.Message}";
+        }
+    }
+
+    // A short description of the active scope for the explanation header.
+    private static string DescribeExplainScope(FusionRequest request)
+    {
+        if (request.Focus is not null)
+            return $"focus '{request.Focus.Seed}' depth {request.Focus.Depth}";
+        if (request.Query is not null)
+            return $"query '{request.Query.Query}' top {request.Query.TopFiles} depth {request.Query.Depth}";
+        if (request.Changes is not null)
+            return $"changed since '{request.Changes.Since}'";
+        return "all collected files";
+    }
+
+    /// <summary>
     ///     Fuses a .NET codebase and returns optimized in-memory context.
     /// </summary>
     /// <remarks>

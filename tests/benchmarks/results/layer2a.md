@@ -14,9 +14,9 @@ Cost-adjusted recall (B11) is mean recall times mean precision.
 | focus | 25000 | 69% | 5% | 22926 | 22164 | 4% | 24 |
 | focus | 50000 | 77% | 5% | 41730 | 40242 | 4% | 24 |
 | grep | 50000 | 38% | 11% | 41452 | 38024 | 4% | 24 |
-| query | 10000 | 35% | 7% | 9843 | 8822 | 2% | 24 |
-| query | 25000 | 44% | 2% | 23769 | 23304 | 1% | 24 |
-| query | 50000 | 55% | 2% | 43318 | 42478 | 1% | 24 |
+| query | 10000 | 33% | 7% | 9843 | 8830 | 2% | 24 |
+| query | 25000 | 44% | 2% | 23716 | 23251 | 1% | 24 |
+| query | 50000 | 57% | 2% | 43147 | 42302 | 1% | 24 |
 
 ## Recall by change-set size (headline budget 50000)
 
@@ -24,14 +24,14 @@ Cost-adjusted recall (B11) is mean recall times mean precision.
 |------|-----:|-----:|-----:|
 | changes | 97% (n=15) | 100% (n=6) | 12% (n=3) |
 | focus | 93% (n=15) | 62% (n=6) | 24% (n=3) |
-| query | 64% (n=15) | 56% (n=6) | 7% (n=3) |
+| query | 68% (n=15) | 56% (n=6) | 7% (n=3) |
 | grep | 48% (n=15) | 29% (n=6) | 7% (n=3) |
 
 ## Per repo (headline budget 50000)
 
 | Repo | changes | focus | query | grep |
 |------|-----:|-----:|-----:|-----:|
-| AutoMapper | 92% | 92% | 38% | 29% |
+| AutoMapper | 92% | 92% | 46% | 29% |
 | FluentValidation | 100% | 88% | 57% | 23% |
 | MediatR | 100% | 100% | 94% | 94% |
 | NewtonsoftJson | 56% | 28% | 32% | 5% |

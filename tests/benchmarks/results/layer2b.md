@@ -6,4 +6,4 @@ Token budget: 20000. Questions: 12. Accuracy = answer file surfaced (exact match
 |------|---------:|-----:|------------:|
 | focus | 42% | 5/12 | 7599 |
 | grep | 58% | 7/12 | 19924 |
-| query | 42% | 5/12 | 18978 |
+| query | 42% | 5/12 | 18935 |

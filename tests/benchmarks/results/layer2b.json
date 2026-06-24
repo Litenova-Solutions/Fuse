@@ -5,7 +5,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 19112
+    "tokens": 19118
   },
   {
     "repo": "MediatR",
@@ -29,7 +29,7 @@
     "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 19401
+    "tokens": 18789
   },
   {
     "repo": "MediatR",
@@ -149,7 +149,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18680
+    "tokens": 18772
   },
   {
     "repo": "AutoMapper",
@@ -173,7 +173,7 @@
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18878
+    "tokens": 18704
   },
   {
     "repo": "AutoMapper",
@@ -221,7 +221,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19137
+    "tokens": 19511
   },
   {
     "repo": "NewtonsoftJson",
@@ -245,7 +245,7 @@
     "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19434
+    "tokens": 19235
   },
   {
     "repo": "NewtonsoftJson",

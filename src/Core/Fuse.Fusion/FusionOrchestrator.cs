@@ -824,6 +824,36 @@ public sealed class FusionOrchestrator
                 ranked = PseudoRelevanceExpander.MergePreservingSeeds(ranked, reranked);
         }
 
+        // Distributional thesaurus (Q4): expand the query with corpus identifiers that co-occur with its terms
+        // (PMI over declared symbols), then re-rank and merge preserving seeds. This bridges to a related
+        // vocabulary the pseudo-relevance feedback set never contained, fully lexically. A no-op when no
+        // association clears the gates, so it cannot lower recall below the pre-expansion result.
+        if (experimental.DistributionalThesaurus)
+        {
+            var queryTerms = RelevanceTokenizer.Tokenize(request.Query.Query);
+            if (queryTerms.Count > 0)
+            {
+                var documentSymbolTerms = documents.Values
+                    .Select(d => (IReadOnlySet<string>)new HashSet<string>(
+                        TokenizeSymbolsForThesaurus(d.Symbols), StringComparer.Ordinal))
+                    .ToList();
+
+                var associates = DistributionalThesaurus.Expand(queryTerms, documentSymbolTerms);
+                if (associates.Count > 0)
+                {
+                    var expanded = new Dictionary<string, double>(StringComparer.Ordinal);
+                    foreach (var term in queryTerms)
+                        expanded[term] = 1.0;
+                    foreach (var (term, weight) in associates)
+                        expanded.TryAdd(term, weight);
+
+                    var thesaurusRanked = relevanceIndex.RankScored(expanded, request.Query.TopFiles);
+                    if (thesaurusRanked.Count > 0)
+                        ranked = PseudoRelevanceExpander.MergePreservingSeeds(ranked, thesaurusRanked);
+                }
+            }
+        }
+
         // Git churn prior (Q6): nudge a recently and frequently changed candidate up, since work clusters where
         // code recently changed. A production-routing lever, off unless GitChurnWeight > 0. The pinned benchmark
         // cannot validate it: its worktrees are historical PR-head checkouts, so churn-from-now is uniformly
@@ -958,6 +988,18 @@ public sealed class FusionOrchestrator
             .OrderByDescending(r => r.Score)
             .ThenBy(r => r.Path, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    // Tokenizes a file's declared symbols into the term set the distributional thesaurus co-occurs over, using
+    // the same tokenizer as the index so the terms match the query terms.
+    private static IEnumerable<string> TokenizeSymbolsForThesaurus(IReadOnlyList<string>? symbols)
+    {
+        if (symbols is null)
+            yield break;
+
+        foreach (var symbol in symbols)
+            foreach (var term in RelevanceTokenizer.Tokenize(symbol))
+                yield return term;
     }
 
     // Builds the text a candidate file is embedded as for dense reranking: its declared symbols first (the

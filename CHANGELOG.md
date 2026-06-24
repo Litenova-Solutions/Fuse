@@ -309,6 +309,19 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Research notes
 
+- **Source:** local distributional thesaurus (Q4): mine identifier co-occurrence (PMI between declared symbols
+  in the same file) and expand a query term with its top statistically-associated identifiers, to bridge to a
+  related vocabulary the pseudo-relevance feedback set never contained, fully lexically. **Fit:** Layer 2A
+  query recall, default path, no model. **Decision:** built behind the `DistributionalThesaurus` knob (env
+  `FUSE_THESAURUS`) with a tested in-memory PMI helper, then **kept off by default** after a measured A/B
+  regressed the headline rather than helping: query recall at 50,000 tokens 61 to 57 percent, driven by
+  AutoMapper 50 to 33 (10,000 and 25,000 token budgets also flat-to-negative overall). Corpus-global PMI
+  associates a query term with broadly co-occurring generic identifiers (in AutoMapper, names like `Map`,
+  `Source`, `Destination`), and merging those into the seed set injects off-target files that displace truth
+  files under the budget; the existing top-documents pseudo-relevance feedback is better targeted because it
+  conditions on the query's own first-pass results. The helper, knob, and tests are retained (off by default,
+  default output unchanged) for a future higher-PMI-gated or seed-restricted variant; do not enable naively.
+  `tests/benchmarks/harness/spike-thesaurus.ps1` reproduces the A/B.
 - **Source:** exact symbol/path boosts (Q3): when a query token is an identifier, boost files that declare that
   exact symbol above files that merely mention the words. **Fit:** Layer 2A query precision and recall. **Decision:**
   **spiked and not built.** A gated exact-declared-symbol boost (multiply a candidate's score by 1.5 when its

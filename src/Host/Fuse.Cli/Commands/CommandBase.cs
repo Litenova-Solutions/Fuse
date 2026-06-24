@@ -180,6 +180,7 @@ public abstract class CommandBase
             GitChurnWeight = resolved.GitChurnWeight,
             SketchHugeFiles = resolved.SketchHugeFiles,
             DowngradeBeforeDrop = resolved.DowngradeBeforeDrop,
+            DistributionalThesaurus = resolved.DistributionalThesaurus,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

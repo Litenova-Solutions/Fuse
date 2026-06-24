@@ -64,6 +64,18 @@ function Get-TokensMulti($paths) {
     return [int]$json.total
 }
 
+# Run one Fuse invocation (the argv after the exe) into a fresh output directory and return its emitted
+# token count and recall against the truth set. Shared by the query, changes, and ask arms.
+function Invoke-FuseArm([string[]]$argv, $outDir, $truth) {
+    if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
+    New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+    $null = Measure-Process $Fuse $argv
+    $emitted = Get-EmittedPaths $outDir
+    $recall = Measure-Recall $emitted $truth
+    $files = @(Get-ChildItem -Path $outDir -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+    return @{ tokens = (Get-TokensMulti $files); recall = $recall }
+}
+
 $repoGroups = $prs | Group-Object repo
 foreach ($g in $repoGroups) {
     $repo = Get-Corpus | Where-Object { $_.name -eq $g.Name }
@@ -152,6 +164,36 @@ foreach ($g in $repoGroups) {
                 input_tokens = $fuseTokens; no_fuse_whole_repo_tokens = $wholeTokens
                 recall = $recall; recall_by_construction = $false
             }
+
+            # fuse-changes arm: the routed arm when a git base is available. One scoped call seeding on the
+            # diff against the PR base, with first-degree dependents. This is the headline routed arm: the
+            # plain --query arm above is the stress floor (a sentence, no base, picked search).
+            $chRes = Invoke-FuseArm @(
+                'dotnet','--directory', $wt, '--output', (Join-Path $ResultsDir ".scope4/$($g.Name)_$($pr.pr)/changes_$b"),
+                '--overwrite','--format','xml','--tokenizer','o200k_base','--no-cache','--no-manifest',
+                '--max-tokens', "$b", '--level','standard',
+                '--changed-since', $pr.base, '--include-dependents'
+            ) (Join-Path $ResultsDir ".scope4/$($g.Name)_$($pr.pr)/changes_$b") $truth
+            $results += [pscustomobject]@{
+                repo = $g.Name; pr = $pr.pr; arm = 'fuse-changes'; budget = $b; truth = $truth.Count
+                round_trips = 1; round_trips_is_lower_bound = $false
+                input_tokens = $chRes.tokens; no_fuse_whole_repo_tokens = $wholeTokens
+                recall = $chRes.recall; recall_by_construction = $false
+            }
+
+            # fuse-ask arm: Fuse routes the task to a strategy and packs to budget. For a PR title this is the
+            # router's honest choice (search, or focus when the title names a type), one call.
+            $askRes = Invoke-FuseArm @(
+                'ask','--directory', $wt, '--output', (Join-Path $ResultsDir ".scope4/$($g.Name)_$($pr.pr)/ask_$b"),
+                '--overwrite','--format','xml','--tokenizer','o200k_base','--no-cache','--no-manifest',
+                '--max-tokens', "$b", '--task', $q
+            ) (Join-Path $ResultsDir ".scope4/$($g.Name)_$($pr.pr)/ask_$b") $truth
+            $results += [pscustomobject]@{
+                repo = $g.Name; pr = $pr.pr; arm = 'fuse-ask'; budget = $b; truth = $truth.Count
+                round_trips = 1; round_trips_is_lower_bound = $false
+                input_tokens = $askRes.tokens; no_fuse_whole_repo_tokens = $wholeTokens
+                recall = $askRes.recall; recall_by_construction = $false
+            }
         }
 
         $rmxShow = if ($null -ne $repomixTokens) { "{0,8}" -f $repomixTokens } else { "  (n/a)" }
@@ -216,6 +258,48 @@ foreach ($name in ($head | Select-Object -ExpandProperty repo -Unique | Sort-Obj
     $fr  = [math]::Round(($rFu | Measure-Object recall -Average).Average, 3)
     $md += ('| {0} | {1} | {2} | {3} | {4} | {5} | {6:P0} |' -f $name, $k, (Fmt $rel), (Fmt $wh), (Fmt $rm), (Fmt $fu), $fr)
 }
+# Routed arms at the headline budget: the change-scoped and ask arms next to the query stress floor.
+function Get-ArmMean($arm, $field) {
+    $rows = $head | Where-Object { $_.arm -eq $arm }
+    if (-not $rows) { return $null }
+    return [math]::Round(($rows | Measure-Object $field -Average).Average, ($(if ($field -eq 'recall') { 3 } else { 0 })))
+}
+
+$md += ''
+$md += '## Routed arms (headline budget)'
+$md += ''
+$md += 'The change-scoped arm is the routed default when a git base is available; the ask arm is what Fuse picks from the task text; the query arm is the stress floor (a sentence, no base, picked search). All are one call.'
+$md += ''
+$md += '| Arm | Recall | Mean tokens |'
+$md += '|-----|-------:|------------:|'
+$md += ('| fuse --changed-since (routed) | {0:P0} | {1} |' -f (Get-ArmMean 'fuse-changes' 'recall'), (Fmt (Get-ArmMean 'fuse-changes' 'input_tokens')))
+$md += ('| fuse ask (routed) | {0:P0} | {1} |' -f (Get-ArmMean 'fuse-ask' 'recall'), (Fmt (Get-ArmMean 'fuse-ask' 'input_tokens')))
+$md += ('| fuse --query (stress floor) | {0:P0} | {1} |' -f (Get-ArmMean 'fuse' 'recall'), (Fmt (Get-ArmMean 'fuse' 'input_tokens')))
+
+# Tokens to reach a target recall: the smallest budget whose mean recall clears the target, with the mean
+# tokens actually spent there. Shows that change scoping reaches high recall at a tighter budget than query.
+$target = 0.80
+$md += ''
+$md += ("Tokens to reach {0:P0} recall (smallest budget whose mean recall clears it):" -f $target)
+$md += ''
+$md += '| Arm | Budget reached | Mean tokens there |'
+$md += '|-----|---------------:|------------------:|'
+foreach ($arm in @('fuse-changes','fuse-ask','fuse')) {
+    $reached = $null; $tokensThere = $null
+    foreach ($b in $Budgets) {
+        $rows = $results | Where-Object { $_.arm -eq $arm -and $_.budget -eq $b }
+        if (-not $rows) { continue }
+        $mr = ($rows | Measure-Object recall -Average).Average
+        if ($mr -ge $target) { $reached = $b; $tokensThere = [math]::Round(($rows | Measure-Object input_tokens -Average).Average, 0); break }
+    }
+    $label = switch ($arm) { 'fuse-changes' { 'fuse --changed-since' } 'fuse-ask' { 'fuse ask' } default { 'fuse --query' } }
+    if ($null -ne $reached) {
+        $md += ('| {0} | {1} | {2} |' -f $label, $reached, (Fmt $tokensThere))
+    } else {
+        $md += ('| {0} | not reached at <= {1} | n/a |' -f $label, ($Budgets[-1]))
+    }
+}
+
 $md -join "`n" | Set-Content (Join-Path $ResultsDir 'layer4-scenario.md')
 
 Write-Host ""

@@ -125,6 +125,17 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   `fuse_explain` this completes item 33 and brings the MCP surface to eleven tools. Covered by a registration
   test and per-mode functional tests (symbol type and member, text with context, path fragment, and the
   empty-query and no-match paths).
+- **Routed arms in the Layer 4 context-acquisition benchmark.** The one-call scenario harness now measures
+  `fuse --changed-since <base>` (the routed default when a Git base is available) and `fuse ask` alongside the
+  existing `fuse --query` arm, and reports a routed-arms table plus a tokens-to-target-recall metric (the
+  smallest budget whose mean recall clears 80 percent). This makes the headline the routed arm the plan calls
+  for: the change-scoped arm reaches 88 percent recall at 26,825 mean tokens (and clears 80 percent recall at
+  the 25,000 token budget, 14,631 mean tokens), against Repomix's 511,574 tokens at the same one call, so with
+  a Git base the story is "the task's files at a fraction of Repomix tokens" rather than fewer tokens at lower
+  recall. The `fuse ask` arm (57 percent) tracks the query floor because Fuse routes most PR titles to search;
+  it is the routing convenience, change scoping is the recall win. The `fuse --query` arm (61 percent, 39,947
+  tokens) stays as the labeled stress floor (a sentence, no base). The two-call `fuse-guided` arm
+  (`fuse_toc` then `fuse_search`) is left as a follow-on.
 - **Held-out dev/test split in the scoping benchmark (B5).** Layer 2A now assigns each PR to a dev or test fold
   by a fixed hash of its PR id (parity), so every repository contributes to both folds, and reports mean recall
   per mode per fold. This is the methodology gate the plan requires before any scalar tuning (item 5): tune on

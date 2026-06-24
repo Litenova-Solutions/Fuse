@@ -164,7 +164,7 @@ The three arms answer one question in three ways:
 
 - **no-fuse** is what an agent pays with no tool: it reads the files the task needs, one at a time. Its round-trip count is the number of files the change touches, which is a structural lower bound, because a blind agent must read each needed file at least once and in practice reads more while exploring to find them. Its recall is 1.00 by construction (it is exactly the needed set). The harness also records the whole-repo token total as the "explore blind" ceiling, what an agent pays if it cannot find the right files and reads broadly.
 - **Repomix** is the generic-packer answer: one dump of the whole repository. One call, recall 1.00 by construction (it contains everything), and the token cost of the entire repository.
-- **Fuse** is one scoped call, `fuse --query "<PR title>" --depth 2 --level standard --max-tokens 50000`. One call, and its recall is the fraction of the changed files the scoped output actually contains. Query is the honest default here because it needs no prior knowledge of the change; the change-scoping mode in Layer 2A, which seeds on a Git base, reaches higher recall when one is available.
+- **Fuse** is one scoped call. The harness runs three Fuse arms: `fuse --query "<PR title>"` (the stress floor: a sentence, no prior knowledge of the change, which routes to search), `fuse --changed-since <base>` (the routed default when a Git base is available, seeding on the diff with first-degree dependents), and `fuse ask --task "<PR title>"` (Fuse picks the strategy from the task text). All are one call, at `--depth 2 --level standard --max-tokens 50000`; recall is the fraction of the changed files the scoped output contains.
 
 Means across the 24 pull requests at the headline budget:
 
@@ -175,7 +175,17 @@ Means across the 24 pull requests at the headline budget:
 | Repomix (one dump) | 1 | 511,574 | 1.00 |
 | Fuse (`--query`) | 1 | 39,947 | 61% |
 
-The round-trip number for no-fuse is a lower bound, not a measured agent: it is the mean count of files the change touched (5.8), and a real agent reads more while discovering them. Recall for no-fuse and Repomix is 1.00 by construction, so this is not a recall contest; the contest is tokens at one call (against Repomix) and round-trips against blind exploration. Always read Fuse's token number together with its recall: 39,947 tokens at 61 percent recall is the honest pairing.
+The round-trip number for no-fuse is a lower bound, not a measured agent: it is the mean count of files the change touched (5.8), and a real agent reads more while discovering them. Recall for no-fuse and Repomix is 1.00 by construction, so this is not a recall contest; the contest is tokens at one call (against Repomix) and round-trips against blind exploration. Always read Fuse's token number together with its recall: 39,947 tokens at 61 percent recall is the honest pairing for the query stress floor.
+
+The table above uses the query arm as a deliberate stress floor: only a PR title, no Git base, so Fuse routes to search. When a Git base is available, the routed default is change scoping, and the story strengthens from "fewer tokens at lower recall" to "the task's files at a fraction of Repomix tokens":
+
+| Arm | Recall | Mean tokens |
+|-----|-------:|------------:|
+| `fuse --changed-since` (routed) | 88% | 26,825 |
+| `fuse ask` (routed) | 57% | 40,506 |
+| `fuse --query` (stress floor) | 61% | 39,947 |
+
+The change-scoped arm reaches 88 percent of the changed files at 26,825 tokens, against Repomix's 511,574 at the same one call, about 19 times fewer at higher useful recall. The ask arm is what Fuse picks from the title alone (search for most of these titles), so it tracks the query floor rather than the change arm; ask is the routing convenience, change scoping is the recall win when a base exists. Reading the budget curve as tokens-to-target-recall makes the gap concrete: change scoping clears 80 percent mean recall at the 25,000 token budget (14,631 mean tokens), while neither query nor ask reaches 80 percent by 50,000 tokens.
 
 Recall varies widely by repository, and the mean hides that. The per-repository view at the headline budget:
 

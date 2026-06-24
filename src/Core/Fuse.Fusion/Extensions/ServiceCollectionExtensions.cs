@@ -12,6 +12,7 @@ using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
 using Fuse.Plugins.Abstractions.Markers;
 using Fuse.Plugins.Abstractions.Outline;
+using Fuse.Plugins.Abstractions.Patterns;
 using Fuse.Plugins.Abstractions.Reducers;
 using Fuse.Plugins.Abstractions.Skeleton;
 using Fuse.Reduction;
@@ -52,6 +53,11 @@ public static class ServiceCollectionExtensions
         services.AddTransient<ContentReductionPipeline>();
         services.AddTransient<EmissionPipeline>();
         services.AddSingleton<PostReductionEnrichmentPipeline>();
+        // Fresh pattern detectors per run: detectors accumulate mutable state during a detection pass, so the
+        // singleton post-reduction pipeline resolves a new transient batch for each run rather than sharing
+        // instances across concurrent runs.
+        services.AddSingleton<Func<IReadOnlyList<PatternDetectorBase>>>(
+            sp => () => sp.GetServices<PatternDetectorBase>().ToArray());
 
         services.AddSingleton<IFileSystem, PhysicalFileSystem>();
         // Per-run content cache: a fresh instance per run keeps the read-once-per-run invariant intact under

@@ -21,35 +21,30 @@ public static class CSharpLanguageServiceCollectionExtensions
     /// <param name="services">The service collection to add the capabilities to.</param>
     /// <returns>The same <paramref name="services" /> instance, to allow call chaining.</returns>
     /// <remarks>
-    ///     Each pattern detector is registered once as its concrete type and then exposed through both the
-    ///     <see cref="IPatternDetector" /> and <see cref="PatternDetectorBase" /> contracts so a single shared
-    ///     instance backs every resolution.
+    ///     Pattern detectors are registered as transient because each detection run mutates per-detector
+    ///     accumulation state. A fresh instance per resolution lets <see cref="PatternDetectorBase" /> consumers
+    ///     run a private batch without racing concurrent runs over shared state (see the detector factory wired
+    ///     into the post-reduction pipeline). Each detector is exposed through both the
+    ///     <see cref="IPatternDetector" /> and <see cref="PatternDetectorBase" /> contracts.
     /// </remarks>
     public static IServiceCollection AddCSharpLanguage(this IServiceCollection services)
     {
         services.AddSingleton<IContentReducer, CSharpReducer>();
         services.AddSingleton<IProjectGraphGenerator, CSharpProjectGraphGenerator>();
 
-        services.AddSingleton<DiRegistrationPatternDetector>();
-        services.AddSingleton<ExceptionHandlingPatternDetector>();
-        services.AddSingleton<LoggingPatternDetector>();
-        services.AddSingleton<AsyncPatternDetector>();
-        services.AddSingleton<CqrsPatternDetector>();
-        services.AddSingleton<RepositoryPatternDetector>();
+        services.AddTransient<IPatternDetector, DiRegistrationPatternDetector>();
+        services.AddTransient<IPatternDetector, ExceptionHandlingPatternDetector>();
+        services.AddTransient<IPatternDetector, LoggingPatternDetector>();
+        services.AddTransient<IPatternDetector, AsyncPatternDetector>();
+        services.AddTransient<IPatternDetector, CqrsPatternDetector>();
+        services.AddTransient<IPatternDetector, RepositoryPatternDetector>();
 
-        services.AddSingleton<IPatternDetector>(sp => sp.GetRequiredService<DiRegistrationPatternDetector>());
-        services.AddSingleton<IPatternDetector>(sp => sp.GetRequiredService<ExceptionHandlingPatternDetector>());
-        services.AddSingleton<IPatternDetector>(sp => sp.GetRequiredService<LoggingPatternDetector>());
-        services.AddSingleton<IPatternDetector>(sp => sp.GetRequiredService<AsyncPatternDetector>());
-        services.AddSingleton<IPatternDetector>(sp => sp.GetRequiredService<CqrsPatternDetector>());
-        services.AddSingleton<IPatternDetector>(sp => sp.GetRequiredService<RepositoryPatternDetector>());
-
-        services.AddSingleton<PatternDetectorBase>(sp => sp.GetRequiredService<DiRegistrationPatternDetector>());
-        services.AddSingleton<PatternDetectorBase>(sp => sp.GetRequiredService<ExceptionHandlingPatternDetector>());
-        services.AddSingleton<PatternDetectorBase>(sp => sp.GetRequiredService<LoggingPatternDetector>());
-        services.AddSingleton<PatternDetectorBase>(sp => sp.GetRequiredService<AsyncPatternDetector>());
-        services.AddSingleton<PatternDetectorBase>(sp => sp.GetRequiredService<CqrsPatternDetector>());
-        services.AddSingleton<PatternDetectorBase>(sp => sp.GetRequiredService<RepositoryPatternDetector>());
+        services.AddTransient<PatternDetectorBase, DiRegistrationPatternDetector>();
+        services.AddTransient<PatternDetectorBase, ExceptionHandlingPatternDetector>();
+        services.AddTransient<PatternDetectorBase, LoggingPatternDetector>();
+        services.AddTransient<PatternDetectorBase, AsyncPatternDetector>();
+        services.AddTransient<PatternDetectorBase, CqrsPatternDetector>();
+        services.AddTransient<PatternDetectorBase, RepositoryPatternDetector>();
 
         return services;
     }

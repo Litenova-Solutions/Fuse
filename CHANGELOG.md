@@ -6,6 +6,15 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- **Concurrency hazards under the MCP server (C3).** The orchestrator is a singleton and the MCP server can run
+  tool calls concurrently against different repositories, which exposed three shared-state races, now fixed.
+  (1) `GitIgnoreFilter` held a mutable pattern set updated per run via `SetPatterns`; concurrent collection runs
+  could apply one repository's ignore rules to another. The filter is now immutable, and the collection pipeline
+  builds a fresh per-run instance carrying that run's patterns. (2) Pattern detectors accumulate mutable state
+  during a detection pass but were registered as singletons and shared across runs; they are now transient and
+  the post-reduction pipeline resolves a fresh detector batch per run through a factory. (3) The collection
+  pipeline no longer mutates any shared filter, so being captured by the singleton orchestrator is safe. Covered
+  by concurrency tests that interleave runs with differing `.gitignore` rules and with the pattern summary on.
 - **Strict total-token accounting for `--max-tokens` / `maxTokens` (C2).** The token budget is now a hard cap
   on the complete payload, not just the file bodies. Two issues are fixed. First, emission charged an entry to
   the budget and only then checked the limit, so the one entry that crossed `MaxTokens` was still written;

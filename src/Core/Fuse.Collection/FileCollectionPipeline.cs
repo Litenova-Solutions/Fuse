@@ -77,10 +77,16 @@ public sealed class FileCollectionPipeline
             ? await _gitIgnoreParser.ParseAsync(options.SourceDirectory, cancellationToken)
             : [];
 
-        foreach (var filter in _filters)
+        // Build a run-local filter list, substituting a fresh GitIgnoreFilter that carries this run's patterns
+        // for the shared placeholder. The pipeline is effectively a singleton (a transient captured by the
+        // singleton orchestrator), so mutating a shared filter's pattern set would let concurrent runs against
+        // different repositories race; every other filter is stateless and is reused as-is.
+        var runFilters = new IFileFilter[_filters.Count];
+        for (var i = 0; i < _filters.Count; i++)
         {
-            if (filter is GitIgnoreFilter gitIgnoreFilter)
-                gitIgnoreFilter.SetPatterns(gitIgnorePatterns);
+            runFilters[i] = _filters[i] is GitIgnoreFilter
+                ? new GitIgnoreFilter(gitIgnorePatterns)
+                : _filters[i];
         }
 
         var filePaths = _fileSystem
@@ -102,7 +108,7 @@ public sealed class FileCollectionPipeline
                 _fileSystem.GetRelativePath(options.SourceDirectory, item.path),
                 _fileSystem.GetFileInfo(item.path));
 
-            if (_filters.All(filter => filter.Include(candidate, options)))
+            if (runFilters.All(filter => filter.Include(candidate, options)))
                 includedFiles.Add((item.index, new SourceFile(candidate)));
 
             return ValueTask.CompletedTask;

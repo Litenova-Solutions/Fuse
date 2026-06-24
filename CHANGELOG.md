@@ -4,6 +4,29 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+### Deferred (blocked on external data, prerequisites, or opt-in scope)
+
+These plan items are not implemented this release because each is blocked on an input that does not exist yet,
+a prerequisite that is not met, or is explicitly opt-in or "as warranted by data". They are recorded here so
+the accounting is complete and auditable.
+
+- **B2 (larger, cleaner corpus):** a data-acquisition task (clone more repositories at pinned commits and build
+  per-PR ground truth). Blocked on that data set; several items below in turn wait on it.
+- **Item 5 (scalar admission tuning):** the plan gates it on B2 plus the held-out split (B5), to tune on dev
+  and publish on test. Tuning the 24-PR corpus now would overfit; blocked on B2.
+- **B1 (task-success eval with round-trips):** needs a programmatic agent harness driving the arms and scoring
+  patches, which is not built. Blocked on that runner.
+- **B12 (title-only vs title-plus-body queries):** `prs.json` records the PR title but not the body, so the
+  title-plus-body arm has no data. Blocked on collecting PR descriptions.
+- **Items 10 and 11 (learned-sparse SPLADE, cross-encoder rerank):** XL opt-in retrieval rewrites the plan
+  marks "as warranted by data"; warranted only after dense rerank (item 9) pays off, which it did not here.
+- **Item 12 (LLM query rewrite / HyDE):** an LLM at query time is opt-in only, since the default path must run
+  with no model and no network; deferred with the other opt-in model levers.
+- **Item 23 (persistent vector cache):** the plan ties it to dense rerank being the default, which it is not
+  (item 9 stayed opt-in), so there are no vectors to cache on the default path.
+- **F1 (SQLite FTS5 BM25 backend):** an architectural swap the plan says to do "only if profiling demands it";
+  the latency layer shows the current postings path is not the bottleneck, so it is not warranted.
+
 ### Changed
 
 - **Reuse the built relevance index across queries on an unchanged tree (item 24).** The BM25 index rebuilt its

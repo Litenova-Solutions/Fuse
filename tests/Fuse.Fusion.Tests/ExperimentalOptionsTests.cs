@@ -22,6 +22,19 @@ public sealed class ExperimentalOptionsTests
         var options = new ExperimentalOptions();
         Assert.False(options.DenseRerank);
         Assert.Equal(0, options.GitChurnWeight);
+        Assert.False(options.SketchHugeFiles);
+        Assert.True(options.DowngradeBeforeDrop);
+    }
+
+    [Fact]
+    public void ResolveFromEnvironment_DowngradeDropOff_Disables()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_DOWNGRADE_DROP", "0"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.False(resolved.DowngradeBeforeDrop);
     }
 
     [Fact]

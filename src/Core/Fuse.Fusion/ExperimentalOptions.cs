@@ -91,6 +91,18 @@ public sealed record ExperimentalOptions
     public bool SketchHugeFiles { get; init; }
 
     /// <summary>
+    ///     Whether the packer downgrades before it drops (P1): when the full reduced set would exceed the token
+    ///     budget, the lower-relevance tail that would otherwise be cut is replaced with a compact structural
+    ///     sketch instead, so a would-be-dropped file stays present as a navigable outline. Recall counts file
+    ///     presence, so this targets the multi-file-truncation failure mode directly. Applies to query and focus
+    ///     under a token budget. On by default: an A/B over the pinned corpus lifted query recall at the tight
+    ///     budgets (10,000 token 39 to 46 percent, 25,000 50 to 54) with no per-repo regression at any budget
+    ///     and the 50,000 headline unchanged, because it only adds sketched files and never displaces a fuller
+    ///     one. Set <c>FUSE_DOWNGRADE_DROP=0</c> (or <c>off</c>/<c>false</c>) to reproduce the drop-only packer.
+    /// </summary>
+    public bool DowngradeBeforeDrop { get; init; } = true;
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -187,6 +199,16 @@ public sealed record ExperimentalOptions
             sketchHugeFiles = true;
         }
 
+        var downgradeBeforeDrop = resolved.DowngradeBeforeDrop;
+        var rawDowngrade = Environment.GetEnvironmentVariable("FUSE_DOWNGRADE_DROP");
+        if (!string.IsNullOrWhiteSpace(rawDowngrade) &&
+            (rawDowngrade.Equals("0", StringComparison.Ordinal) ||
+             rawDowngrade.Equals("off", StringComparison.OrdinalIgnoreCase) ||
+             rawDowngrade.Equals("false", StringComparison.OrdinalIgnoreCase)))
+        {
+            downgradeBeforeDrop = false;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -197,6 +219,7 @@ public sealed record ExperimentalOptions
             DenseRerank = denseRerank,
             GitChurnWeight = gitChurnWeight,
             SketchHugeFiles = sketchHugeFiles,
+            DowngradeBeforeDrop = downgradeBeforeDrop,
         };
     }
 }

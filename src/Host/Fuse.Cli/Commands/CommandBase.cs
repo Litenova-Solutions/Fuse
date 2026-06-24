@@ -179,6 +179,7 @@ public abstract class CommandBase
             DenseRerank = resolved.DenseRerank,
             GitChurnWeight = resolved.GitChurnWeight,
             SketchHugeFiles = resolved.SketchHugeFiles,
+            DowngradeBeforeDrop = resolved.DowngradeBeforeDrop,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

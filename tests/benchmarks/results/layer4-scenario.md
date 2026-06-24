@@ -8,16 +8,16 @@ Means across the PRs at the headline budget. no-fuse round-trips is a structural
 | no-fuse (blind, whole repo) | >= 5.8 | 493,661 | 1.00 |
 | no-fuse (relevant set) | >= 5.8 | 27,473 | 1.00 |
 | Repomix (one dump) | 1 | 511,574 | 1.00 |
-| Fuse (--query) | 1 | 39,947 | 61% |
+| Fuse (--query) | 1 | 38,887 | 61% |
 
 ## Per repo (headline budget)
 
 | Repo | no-fuse K (>=) | no-fuse rel tok | whole-repo tok | Repomix tok | Fuse tok | Fuse recall |
 |------|---------------:|----------------:|---------------:|------------:|---------:|------------:|
-| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 45,331 | 50% |
-| FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 41,118 | 57% |
+| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 43,882 | 50% |
+| FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 40,624 | 57% |
 | MediatR | 2.7 | 3,326 | 79,282 | 84,894 | 32,384 | 94% |
-| NewtonsoftJson | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 40,954 | 42% |
+| NewtonsoftJson | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 38,657 | 42% |
 
 ## Routed arms (headline budget)
 
@@ -26,8 +26,8 @@ The change-scoped arm is the routed default when a git base is available; the as
 | Arm | Recall | Mean tokens |
 |-----|-------:|------------:|
 | fuse --changed-since (routed) | 88% | 26,825 |
-| fuse ask (routed) | 57% | 40,506 |
-| fuse --query (stress floor) | 61% | 39,947 |
+| fuse ask (routed) | 60% | 39,733 |
+| fuse --query (stress floor) | 61% | 38,887 |
 
 Tokens to reach 80% recall (smallest budget whose mean recall clears it):
 

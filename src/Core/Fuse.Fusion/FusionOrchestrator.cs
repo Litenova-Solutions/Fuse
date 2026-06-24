@@ -259,6 +259,19 @@ public sealed class FusionOrchestrator
                 LogStageComplete("sketch", stageTimer.ElapsedMilliseconds, reducedContent.Count);
             }
 
+            // Downgrade-before-drop (P1): under a token budget on query or focus, replace the lower-relevance
+            // tail that would otherwise be cut with a compact sketch, so a would-be-dropped file stays present.
+            // Recall counts file presence, so this targets multi-file truncation directly.
+            if (experimental.DowngradeBeforeDrop &&
+                (request.Query is not null || request.Focus is not null) &&
+                request.Emission.MaxTokens is { } downgradeBudget)
+            {
+                stageTimer.Restart();
+                reducedContent = await ApplyDowngradeBeforeDropAsync(
+                    reducedContent, downgradeBudget, request.Reduction.EnableRedaction, contentProvider, tokenCounter, cancellationToken);
+                LogStageComplete("downgrade-before-drop", stageTimer.ElapsedMilliseconds, reducedContent.Count);
+            }
+
             // Table-of-contents mode replaces body emission with a structural map. It runs after scoping and
             // reduction so the listed files and per-file token costs match what a full fetch would cost.
             if (request.Emission.TableOfContents)
@@ -485,6 +498,82 @@ public sealed class FusionOrchestrator
             }
 
             result.Add(RewriteRedacted(entry, sketch, enableRedaction, tokenCounter));
+        }
+
+        return result;
+    }
+
+    // Downgrade-before-drop (P1). Orders entries by relevance, keeps the head full until the cumulative cost
+    // reaches the budget, and replaces the lower-relevance tail (the entries the packer would otherwise drop)
+    // with a compact sketch, so a would-be-dropped file stays present as a navigable outline. The sketch is a
+    // post-reduction rewrite routed through the redactor (C1). Entries with no outline are left for the packer
+    // to drop as before.
+    private async Task<IReadOnlyList<FusedContent>> ApplyDowngradeBeforeDropAsync(
+        IReadOnlyList<FusedContent> entries,
+        int maxTokens,
+        bool enableRedaction,
+        ISourceContentProvider contentProvider,
+        Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
+        CancellationToken cancellationToken)
+    {
+        var ordered = entries
+            .Select((entry, index) => (entry, index))
+            .OrderByDescending(x => x.entry.RelevanceScore ?? double.NegativeInfinity)
+            .ThenBy(x => x.index)
+            .ToList();
+
+        // Mark the relevance tail that does not fit at full size: keep admitting the head until the budget is
+        // reached, then everything after is a downgrade candidate. Trivial entries are not charged or sketched.
+        var tail = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var used = 0;
+        var budgetReached = false;
+        foreach (var (entry, _) in ordered)
+        {
+            if (entry.IsTrivial)
+                continue;
+
+            var cost = entry.TokenCount + EmissionPipeline.MarkerOverheadTokens;
+            if (!budgetReached && used + cost <= maxTokens)
+            {
+                used += cost;
+            }
+            else
+            {
+                budgetReached = true;
+                tail.Add(entry.NormalizedPath);
+            }
+        }
+
+        if (tail.Count == 0)
+            return entries;
+
+        var result = new List<FusedContent>(entries.Count);
+        foreach (var entry in entries)
+        {
+            if (!tail.Contains(entry.NormalizedPath))
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var extractor = _outlineExtractors.TryResolve(entry.SourceFile.Extension);
+            if (extractor is null)
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var source = await contentProvider.GetContentAsync(entry.SourceFile, cancellationToken);
+            var sketch = FileSketchBuilder.Build(entry.NormalizedPath, extractor.ExtractOutline(source));
+            if (string.IsNullOrEmpty(sketch))
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            // Only downgrade when the sketch is actually smaller, so a tiny tail file is never inflated.
+            var sketched = RewriteRedacted(entry, sketch, enableRedaction, tokenCounter);
+            result.Add(sketched.TokenCount < entry.TokenCount ? sketched : entry);
         }
 
         return result;

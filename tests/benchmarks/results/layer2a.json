@@ -344,8 +344,8 @@
     "recall": 0.25,
     "precision": 0.006,
     "hits": 1,
-    "emitted": 166,
-    "tokens": 48118
+    "emitted": 165,
+    "tokens": 48144
   },
   {
     "repo": "AutoMapper",
@@ -438,10 +438,10 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.016,
+    "precision": 0.017,
     "hits": 1,
-    "emitted": 62,
-    "tokens": 9327
+    "emitted": 59,
+    "tokens": 9343
   },
   {
     "repo": "AutoMapper",
@@ -452,8 +452,8 @@
     "recall": 0.5,
     "precision": 0.009,
     "hits": 1,
-    "emitted": 112,
-    "tokens": 23691
+    "emitted": 113,
+    "tokens": 23826
   },
   {
     "repo": "AutoMapper",
@@ -464,8 +464,8 @@
     "recall": 0.5,
     "precision": 0.006,
     "hits": 1,
-    "emitted": 165,
-    "tokens": 48122
+    "emitted": 169,
+    "tokens": 48192
   },
   {
     "repo": "AutoMapper",
@@ -560,8 +560,8 @@
     "recall": 0.5,
     "precision": 0.016,
     "hits": 1,
-    "emitted": 61,
-    "tokens": 9303
+    "emitted": 62,
+    "tokens": 9350
   },
   {
     "repo": "AutoMapper",
@@ -572,8 +572,8 @@
     "recall": 0.5,
     "precision": 0.009,
     "hits": 1,
-    "emitted": 111,
-    "tokens": 23830
+    "emitted": 114,
+    "tokens": 23627
   },
   {
     "repo": "AutoMapper",
@@ -584,8 +584,8 @@
     "recall": 0.5,
     "precision": 0.006,
     "hits": 1,
-    "emitted": 168,
-    "tokens": 47898
+    "emitted": 169,
+    "tokens": 48134
   },
   {
     "repo": "AutoMapper",
@@ -677,11 +677,11 @@
     "mode": "query",
     "budget": 10000,
     "truth": 2,
-    "recall": 0.5,
-    "precision": 0.018,
-    "hits": 1,
-    "emitted": 57,
-    "tokens": 9329
+    "recall": 0.0,
+    "precision": 0.0,
+    "hits": 0,
+    "emitted": 36,
+    "tokens": 9599
   },
   {
     "repo": "AutoMapper",
@@ -690,10 +690,10 @@
     "budget": 25000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.009,
+    "precision": 0.01,
     "hits": 1,
-    "emitted": 113,
-    "tokens": 23782
+    "emitted": 101,
+    "tokens": 23967
   },
   {
     "repo": "AutoMapper",
@@ -704,8 +704,8 @@
     "recall": 0.5,
     "precision": 0.006,
     "hits": 1,
-    "emitted": 169,
-    "tokens": 48084
+    "emitted": 163,
+    "tokens": 48269
   },
   {
     "repo": "AutoMapper",
@@ -809,11 +809,11 @@
     "mode": "query",
     "budget": 25000,
     "truth": 9,
-    "recall": 0.333,
-    "precision": 0.13,
-    "hits": 3,
+    "recall": 0.444,
+    "precision": 0.174,
+    "hits": 4,
     "emitted": 23,
-    "tokens": 24133
+    "tokens": 24490
   },
   {
     "repo": "FluentValidation",
@@ -821,11 +821,11 @@
     "mode": "query",
     "budget": 50000,
     "truth": 9,
-    "recall": 0.333,
-    "precision": 0.062,
-    "hits": 3,
-    "emitted": 48,
-    "tokens": 48709
+    "recall": 0.556,
+    "precision": 0.109,
+    "hits": 5,
+    "emitted": 46,
+    "tokens": 48707
   },
   {
     "repo": "FluentValidation",
@@ -921,7 +921,7 @@
     "precision": 0.1,
     "hits": 2,
     "emitted": 20,
-    "tokens": 9752
+    "tokens": 9670
   },
   {
     "repo": "FluentValidation",
@@ -930,10 +930,10 @@
     "budget": 25000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.061,
+    "precision": 0.065,
     "hits": 2,
-    "emitted": 33,
-    "tokens": 23947
+    "emitted": 31,
+    "tokens": 24100
   },
   {
     "repo": "FluentValidation",
@@ -1040,8 +1040,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 20,
-    "tokens": 9748
+    "emitted": 22,
+    "tokens": 9532
   },
   {
     "repo": "FluentValidation",
@@ -1052,8 +1052,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 43,
-    "tokens": 24446
+    "emitted": 46,
+    "tokens": 24309
   },
   {
     "repo": "FluentValidation",
@@ -1065,7 +1065,7 @@
     "precision": 0.031,
     "hits": 2,
     "emitted": 65,
-    "tokens": 48919
+    "tokens": 48693
   },
   {
     "repo": "FluentValidation",
@@ -1160,8 +1160,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 24,
-    "tokens": 9656
+    "emitted": 26,
+    "tokens": 9741
   },
   {
     "repo": "FluentValidation",
@@ -1172,8 +1172,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 53,
-    "tokens": 24137
+    "emitted": 54,
+    "tokens": 24177
   },
   {
     "repo": "FluentValidation",
@@ -1185,7 +1185,7 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 88,
-    "tokens": 49021
+    "tokens": 48937
   },
   {
     "repo": "FluentValidation",
@@ -1278,10 +1278,10 @@
     "budget": 10000,
     "truth": 2,
     "recall": 0.5,
-    "precision": 0.036,
+    "precision": 0.037,
     "hits": 1,
-    "emitted": 28,
-    "tokens": 9640
+    "emitted": 27,
+    "tokens": 9547
   },
   {
     "repo": "FluentValidation",
@@ -1289,11 +1289,11 @@
     "mode": "query",
     "budget": 25000,
     "truth": 2,
-    "recall": 1.0,
-    "precision": 0.039,
-    "hits": 2,
-    "emitted": 51,
-    "tokens": 24390
+    "recall": 0.5,
+    "precision": 0.018,
+    "hits": 1,
+    "emitted": 56,
+    "tokens": 24370
   },
   {
     "repo": "FluentValidation",
@@ -1302,10 +1302,10 @@
     "budget": 50000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.024,
+    "precision": 0.023,
     "hits": 2,
-    "emitted": 84,
-    "tokens": 49163
+    "emitted": 88,
+    "tokens": 48960
   },
   {
     "repo": "FluentValidation",
@@ -1401,7 +1401,7 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 25,
-    "tokens": 9655
+    "tokens": 9709
   },
   {
     "repo": "FluentValidation",
@@ -1412,8 +1412,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 52,
-    "tokens": 24250
+    "emitted": 54,
+    "tokens": 24311
   },
   {
     "repo": "FluentValidation",
@@ -1424,8 +1424,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 87,
-    "tokens": 49002
+    "emitted": 89,
+    "tokens": 48984
   },
   {
     "repo": "FluentValidation",
@@ -1637,11 +1637,11 @@
     "mode": "query",
     "budget": 10000,
     "truth": 4,
-    "recall": 1.0,
-    "precision": 0.089,
-    "hits": 4,
-    "emitted": 45,
-    "tokens": 9469
+    "recall": 0.75,
+    "precision": 0.064,
+    "hits": 3,
+    "emitted": 47,
+    "tokens": 9504
   },
   {
     "repo": "MediatR",
@@ -1650,10 +1650,10 @@
     "budget": 25000,
     "truth": 4,
     "recall": 1.0,
-    "precision": 0.052,
+    "precision": 0.053,
     "hits": 4,
-    "emitted": 77,
-    "tokens": 24201
+    "emitted": 76,
+    "tokens": 23912
   },
   {
     "repo": "MediatR",
@@ -1665,7 +1665,7 @@
     "precision": 0.045,
     "hits": 4,
     "emitted": 89,
-    "tokens": 46582
+    "tokens": 46608
   },
   {
     "repo": "MediatR",
@@ -1758,10 +1758,10 @@
     "budget": 10000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.049,
+    "precision": 0.047,
     "hits": 2,
-    "emitted": 41,
-    "tokens": 9483
+    "emitted": 43,
+    "tokens": 9534
   },
   {
     "repo": "MediatR",
@@ -1770,10 +1770,10 @@
     "budget": 25000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.033,
+    "precision": 0.029,
     "hits": 2,
-    "emitted": 60,
-    "tokens": 24025
+    "emitted": 69,
+    "tokens": 23796
   },
   {
     "repo": "MediatR",
@@ -1782,10 +1782,10 @@
     "budget": 50000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.029,
+    "precision": 0.026,
     "hits": 2,
-    "emitted": 69,
-    "tokens": 47136
+    "emitted": 78,
+    "tokens": 47683
   },
   {
     "repo": "MediatR",
@@ -1878,10 +1878,10 @@
     "budget": 10000,
     "truth": 3,
     "recall": 0.333,
-    "precision": 0.02,
+    "precision": 0.019,
     "hits": 1,
-    "emitted": 51,
-    "tokens": 9488
+    "emitted": 52,
+    "tokens": 9097
   },
   {
     "repo": "MediatR",
@@ -1893,7 +1893,7 @@
     "precision": 0.015,
     "hits": 1,
     "emitted": 68,
-    "tokens": 23957
+    "tokens": 23946
   },
   {
     "repo": "MediatR",
@@ -1905,7 +1905,7 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 76,
-    "tokens": 46857
+    "tokens": 46652
   },
   {
     "repo": "MediatR",
@@ -1998,10 +1998,10 @@
     "budget": 10000,
     "truth": 3,
     "recall": 0.333,
-    "precision": 0.022,
+    "precision": 0.021,
     "hits": 1,
-    "emitted": 46,
-    "tokens": 9490
+    "emitted": 47,
+    "tokens": 9521
   },
   {
     "repo": "MediatR",
@@ -2010,10 +2010,10 @@
     "budget": 25000,
     "truth": 3,
     "recall": 1.0,
-    "precision": 0.039,
+    "precision": 0.038,
     "hits": 3,
-    "emitted": 77,
-    "tokens": 23723
+    "emitted": 78,
+    "tokens": 23848
   },
   {
     "repo": "MediatR",
@@ -2022,10 +2022,10 @@
     "budget": 50000,
     "truth": 3,
     "recall": 1.0,
-    "precision": 0.033,
+    "precision": 0.032,
     "hits": 3,
-    "emitted": 92,
-    "tokens": 48543
+    "emitted": 93,
+    "tokens": 47913
   },
   {
     "repo": "MediatR",
@@ -2121,7 +2121,7 @@
     "precision": 0.032,
     "hits": 2,
     "emitted": 62,
-    "tokens": 9316
+    "tokens": 9372
   },
   {
     "repo": "MediatR",
@@ -2132,8 +2132,8 @@
     "recall": 1.0,
     "precision": 0.024,
     "hits": 2,
-    "emitted": 83,
-    "tokens": 23850
+    "emitted": 84,
+    "tokens": 23641
   },
   {
     "repo": "MediatR",
@@ -2144,8 +2144,8 @@
     "recall": 1.0,
     "precision": 0.021,
     "hits": 2,
-    "emitted": 94,
-    "tokens": 43466
+    "emitted": 95,
+    "tokens": 43834
   },
   {
     "repo": "MediatR",
@@ -2240,8 +2240,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 11,
-    "tokens": 9885
+    "emitted": 10,
+    "tokens": 9843
   },
   {
     "repo": "NewtonsoftJson",
@@ -2249,11 +2249,11 @@
     "mode": "query",
     "budget": 25000,
     "truth": 4,
-    "recall": 0.5,
-    "precision": 0.044,
-    "hits": 2,
+    "recall": 0.25,
+    "precision": 0.022,
+    "hits": 1,
     "emitted": 45,
-    "tokens": 24483
+    "tokens": 24527
   },
   {
     "repo": "NewtonsoftJson",
@@ -2262,10 +2262,10 @@
     "budget": 50000,
     "truth": 4,
     "recall": 0.5,
-    "precision": 0.018,
+    "precision": 0.019,
     "hits": 2,
-    "emitted": 110,
-    "tokens": 48742
+    "emitted": 104,
+    "tokens": 48837
   },
   {
     "repo": "NewtonsoftJson",
@@ -2373,7 +2373,7 @@
     "precision": 0.045,
     "hits": 2,
     "emitted": 44,
-    "tokens": 24167
+    "tokens": 24381
   },
   {
     "repo": "NewtonsoftJson",
@@ -2382,10 +2382,10 @@
     "budget": 50000,
     "truth": 2,
     "recall": 1.0,
-    "precision": 0.027,
+    "precision": 0.025,
     "hits": 2,
-    "emitted": 75,
-    "tokens": 49027
+    "emitted": 79,
+    "tokens": 49123
   },
   {
     "repo": "NewtonsoftJson",
@@ -2493,7 +2493,7 @@
     "precision": 0.037,
     "hits": 1,
     "emitted": 27,
-    "tokens": 24710
+    "tokens": 24669
   },
   {
     "repo": "NewtonsoftJson",
@@ -2501,11 +2501,11 @@
     "mode": "query",
     "budget": 50000,
     "truth": 25,
-    "recall": 0.08,
-    "precision": 0.02,
-    "hits": 2,
-    "emitted": 101,
-    "tokens": 49003
+    "recall": 0.12,
+    "precision": 0.03,
+    "hits": 3,
+    "emitted": 99,
+    "tokens": 48853
   },
   {
     "repo": "NewtonsoftJson",
@@ -2612,8 +2612,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 64,
-    "tokens": 24223
+    "emitted": 62,
+    "tokens": 24302
   },
   {
     "repo": "NewtonsoftJson",
@@ -2624,8 +2624,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 129,
-    "tokens": 48615
+    "emitted": 128,
+    "tokens": 48749
   },
   {
     "repo": "NewtonsoftJson",
@@ -2720,8 +2720,8 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 15,
-    "tokens": 9831
+    "emitted": 14,
+    "tokens": 9721
   },
   {
     "repo": "NewtonsoftJson",
@@ -2729,11 +2729,11 @@
     "mode": "query",
     "budget": 25000,
     "truth": 23,
-    "recall": 0.0,
-    "precision": 0.0,
-    "hits": 0,
-    "emitted": 62,
-    "tokens": 24260
+    "recall": 0.043,
+    "precision": 0.019,
+    "hits": 1,
+    "emitted": 53,
+    "tokens": 24445
   },
   {
     "repo": "NewtonsoftJson",
@@ -2744,8 +2744,8 @@
     "recall": 0.043,
     "precision": 0.008,
     "hits": 1,
-    "emitted": 128,
-    "tokens": 48699
+    "emitted": 118,
+    "tokens": 48850
   },
   {
     "repo": "NewtonsoftJson",
@@ -2837,11 +2837,11 @@
     "mode": "query",
     "budget": 10000,
     "truth": 9,
-    "recall": 0.0,
-    "precision": 0.0,
-    "hits": 0,
-    "emitted": 13,
-    "tokens": 9831
+    "recall": 0.111,
+    "precision": 0.059,
+    "hits": 1,
+    "emitted": 17,
+    "tokens": 9691
   },
   {
     "repo": "NewtonsoftJson",
@@ -2849,11 +2849,11 @@
     "mode": "query",
     "budget": 25000,
     "truth": 9,
-    "recall": 0.0,
-    "precision": 0.0,
-    "hits": 0,
-    "emitted": 51,
-    "tokens": 24311
+    "recall": 0.111,
+    "precision": 0.017,
+    "hits": 1,
+    "emitted": 58,
+    "tokens": 24168
   },
   {
     "repo": "NewtonsoftJson",
@@ -2861,11 +2861,11 @@
     "mode": "query",
     "budget": 50000,
     "truth": 9,
-    "recall": 0.0,
-    "precision": 0.0,
-    "hits": 0,
-    "emitted": 120,
-    "tokens": 48742
+    "recall": 0.111,
+    "precision": 0.008,
+    "hits": 1,
+    "emitted": 127,
+    "tokens": 48687
   },
   {
     "repo": "NewtonsoftJson",

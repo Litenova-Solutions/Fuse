@@ -4,6 +4,41 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+### Added
+
+- **Pseudo-relevance feedback query expansion (on by default, fast path).** Query scoping now runs a second
+  BM25F ranking pass seeded with recurring declared-symbol terms harvested from the first pass's top files,
+  so a sparse natural-language query (a PR title, a task sentence) is rewritten in the codebase's own
+  vocabulary before files are selected. The pass is entirely lexical: no model inference and no network, so
+  the default scoping path stays fast. Several guards keep it from the classic feedback failure mode of
+  broadening or drifting away from a weak first pass: candidate terms come only from the high-signal
+  declared-symbol field; a term must recur across at least two feedback files; a term must clear a corpus
+  inverse-document-frequency floor, so boilerplate names shared across most files are dropped; expansion
+  terms are blended in at a low weight (0.2) relative to the original query, so they nudge ranking toward
+  co-occurring concepts without displacing incidental first-pass hits when a query's title is poorly aligned
+  with its change; and the expanded ranking is merged with the first pass rather than replacing it, so a
+  first-pass seed is never dropped. Tunable through `QueryExpansionOptions`; set `FUSE_QUERY_EXPANSION=0` to
+  disable and reproduce the single-pass BM25F ordering exactly.
+
+### Research notes
+
+- **Source:** RM3 / pseudo-relevance feedback (classical IR; recent survey "Query Expansion in the Age of
+  Pre-trained and Large Language Models", arXiv 2509.07794, and "A Systematic Study of Pseudo-Relevance
+  Feedback with LLMs", arXiv 2603.11008). **Idea:** mine top first-pass documents for expansion terms and
+  re-rank. **Fit:** maps to the roadmap's "query expansion from the symbol index" item and Layer 2A/4 query
+  recall; stays on the fast lexical path. **Decision:** adopt, constrained to the declared-symbol field with a
+  multi-document-frequency and corpus-IDF gate, blended at a low weight and merged with (not replacing) the
+  first pass. The literature's headline caveat (PRF degrades recall when the first pass is weak) reproduced in
+  A/B spikes over the pinned corpus: an aggressive symbol-field PRF lifted FluentValidation and Newtonsoft.Json
+  but regressed AutoMapper, entirely on one PR whose title ("Handling lower case") is disconnected from its
+  change (Licensing files), where expansion correctly sharpened toward casing and dropped an incidental hit.
+  **Rejected** a seed-overlap drift guard: measuring overlap on the disagreeing PRs showed the harmful case
+  (overlap 0.50) sits between helpful cases (0.30 and 0.90), so no overlap threshold separates them, and a
+  guard at 0.5 rejected a beneficial low-overlap expansion while keeping the harmful one. **Adopted** instead
+  a low expansion weight (swept per PR: 0.2 preserves the off-topic AutoMapper hit while keeping the
+  FluentValidation and Newtonsoft.Json gains), the IDF gate to drop corpus-wide boilerplate symbols, and a
+  seed-preserving merge so expansion is recall-additive at the seed level.
+
 ### Breaking changes
 
 - **Removed `--rerank` and `--embeddings` CLI flags.** Query scoping is BM25F-only again.

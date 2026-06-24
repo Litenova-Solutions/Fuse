@@ -8,13 +8,13 @@ Means across the PRs at the headline budget. no-fuse round-trips is a structural
 | no-fuse (blind, whole repo) | >= 5.8 | 493,661 | 1.00 |
 | no-fuse (relevant set) | >= 5.8 | 27,473 | 1.00 |
 | Repomix (one dump) | 1 | 511,574 | 1.00 |
-| Fuse (--query) | 1 | 44,632 | 52% |
+| Fuse (--query) | 1 | 44,694 | 53% |
 
 ## Per repo (headline budget)
 
 | Repo | no-fuse K (>=) | no-fuse rel tok | whole-repo tok | Repomix tok | Fuse tok | Fuse recall |
 |------|---------------:|----------------:|---------------:|------------:|---------:|------------:|
-| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 48,048 | 29% |
-| FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 43,519 | 53% |
-| MediatR | 2.7 | 3,326 | 79,282 | 84,894 | 39,339 | 94% |
-| NewtonsoftJson | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 47,623 | 32% |
+| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 47,990 | 29% |
+| FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 43,639 | 55% |
+| MediatR | 2.7 | 3,326 | 79,282 | 84,894 | 39,398 | 94% |
+| NewtonsoftJson | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 47,749 | 34% |

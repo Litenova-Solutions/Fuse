@@ -95,4 +95,35 @@ public sealed class Bm25RelevanceIndexTests
         for (var i = 1; i < ranked.Count; i++)
             Assert.True(ranked[i - 1].Score >= ranked[i].Score);
     }
+
+    [Fact]
+    public void RankScored_WeightedTerms_DownweightedTermContributesLess()
+    {
+        var index = new Bm25RelevanceIndex();
+        index.Index(new Dictionary<string, IndexedDocument>
+        {
+            ["lib/Alpha.cs"] = new IndexedDocument("public class Alpha { }", "lib/Alpha.cs", ["Alpha"]),
+            ["lib/Beta.cs"] = new IndexedDocument("public class Beta { }", "lib/Beta.cs", ["Beta"]),
+        });
+
+        // "alpha" at full weight outranks "beta" at a reduced weight even though each matches one file equally.
+        // The documents are structurally symmetric (same field lengths), so beta's score is exactly 0.4x alpha's.
+        var ranked = index.RankScored(
+            new Dictionary<string, double> { ["alpha"] = 1.0, ["beta"] = 0.4 }, topN: 5);
+
+        Assert.Equal("lib/Alpha.cs", ranked[0].Path);
+        var alpha = ranked.Single(r => r.Path == "lib/Alpha.cs").Score;
+        var beta = ranked.Single(r => r.Path == "lib/Beta.cs").Score;
+        Assert.True(alpha > beta);
+        Assert.Equal(alpha * 0.4, beta, precision: 6);
+    }
+
+    [Fact]
+    public void RankScored_WeightedTerms_EmptyMap_ReturnsEmpty()
+    {
+        var index = new Bm25RelevanceIndex();
+        index.Index(new Dictionary<string, string> { ["a.cs"] = "class A {}" });
+
+        Assert.Empty(index.RankScored(new Dictionary<string, double>(), topN: 5));
+    }
 }

@@ -12,7 +12,8 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   to `fuse_ask`), and the `fuse_changes` description and reference page state that it has by far the highest
   recall (87 percent versus 55 percent for query at the same budget) so PR-shaped work should route there. This
   biases clients (especially Cursor and Copilot, which lean on descriptions) toward the highest-recall mode
-  without changing any behavior.
+  without changing any behavior. The `fuse_focus` and `fuse_search` descriptions also now cross-reference each
+  other (focus when you know the type, search when you do not) and `fuse_changes` for branch or PR work.
 
 ### Fixed
 

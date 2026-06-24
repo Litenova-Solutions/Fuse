@@ -264,7 +264,7 @@ public sealed class FuseTools
     ///     is missing or fusion fails.
     /// </returns>
     [McpServerTool(Name = "fuse_focus", ReadOnly = true)]
-    [Description("Scopes fusion to a type name, filename, or path plus dependency traversal. Use after skeleton review to drill into an area.")]
+    [Description("Scopes fusion to a type name, filename, or path plus dependency traversal. Use when you already know the type, file, or area to explore or edit (after a skeleton survey, or when a task names a type); use fuse_search instead when you do not yet know where a concept lives, and fuse_changes for branch or PR work.")]
     public static Task<string> FuseFocusAsync(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
@@ -330,7 +330,7 @@ public sealed class FuseTools
     ///     is missing or fusion fails.
     /// </returns>
     [McpServerTool(Name = "fuse_search", ReadOnly = true)]
-    [Description("Finds where a feature or concept lives in a .NET codebase: BM25-ranked relevant files plus their dependencies, reduced, in one call. Prefer over grep for concept or feature lookups; use grep only for exact strings or symbol names.")]
+    [Description("Finds where a feature or concept lives in a .NET codebase when you do not yet know which file holds it: BM25-ranked relevant files plus their dependencies, reduced, in one call. Prefer over grep for concept or feature lookups; use grep only for exact strings or symbol names, fuse_focus when you already know the type, and fuse_changes for branch or PR work.")]
     public static Task<string> FuseSearchAsync(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,

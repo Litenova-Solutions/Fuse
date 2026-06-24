@@ -92,6 +92,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **`fuse_explain` MCP tool: preview a scoped selection before fetching it (item 33).** A read-only tool that
+  reports which files a focus, query, or change-scoped fusion would include and which it would exclude, with a
+  per-file token estimate, without returning any file bodies. It mirrors the existing `fuse explain` CLI command
+  and shares the same scoping path, so an agent can check the effect of a seed, query, or change range and its
+  token cost before spending tokens on the real context. The three scoping parameters stay mutually exclusive;
+  with none set it previews the whole collected set. This brings the MCP surface to ten tools. Covered by a
+  registration test and a focus-scope test asserting the preview names included and excluded files but emits no
+  bodies.
 - **Held-out dev/test split in the scoping benchmark (B5).** Layer 2A now assigns each PR to a dev or test fold
   by a fixed hash of its PR id (parity), so every repository contributes to both folds, and reports mean recall
   per mode per fold. This is the methodology gate the plan requires before any scalar tuning (item 5): tune on

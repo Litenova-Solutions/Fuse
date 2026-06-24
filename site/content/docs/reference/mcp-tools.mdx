@@ -1,9 +1,9 @@
 ---
 title: Tools Reference
-description: Parameters and defaults for the nine MCP tools the Fuse server exposes to AI clients.
+description: Parameters and defaults for the ten MCP tools the Fuse server exposes to AI clients.
 ---
 
-The Fuse MCP server exposes nine tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
+The Fuse MCP server exposes ten tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
 
 This page is for engineers writing agent instructions and for experts who need the exact default of each parameter.
 
@@ -196,6 +196,25 @@ Compacts a caller-supplied set of files, or raw content, by running Fuse's reduc
 | `extension` | string | `.cs` | Extension that selects the reducer for `content` |
 | `level` | enum | `standard` | C# reduction level: `none`, `standard`, `aggressive`, `skeleton`, `publicApi` |
 | `maxTokens` | int | 0 | Token ceiling for the output; 0 means unlimited |
+
+## fuse_explain
+
+Preview which files a scoped fusion would include and exclude, with a per-file token estimate, without returning any file bodies. Use it to check the effect of a focus seed, query, or change range before spending tokens on the actual context. The three scoping parameters are mutually exclusive, as in the scoping tools; with none set it previews the whole collected set.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to preview |
+| `focus` | string | null | Type, file, or path to scope around |
+| `query` | string | null | Relevance query to scope by |
+| `changedSince` | string | null | Git ref to scope to changed files |
+| `depth` | int | 1 | Dependency hops for focus or query scoping |
+| `queryTop` | int | 10 | Number of top-ranked files to seed query scoping |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# reduction level used for the token estimate |
+| `maxTokens` | int | null | Hard token limit applied to the previewed selection |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
 
 ## What This Does Not Cover
 

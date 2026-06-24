@@ -205,6 +205,7 @@ public sealed class FusionOrchestrator
                 parallelism,
                 reductionCache,
                 tokenCounter,
+                perFileLevel: null,
                 cancellationToken);
             LogReductionComplete(stageTimer.ElapsedMilliseconds, reducedContent.Count, reductionCache);
 

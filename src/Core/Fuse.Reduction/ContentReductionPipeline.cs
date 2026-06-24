@@ -81,6 +81,7 @@ public sealed class ContentReductionPipeline
             Environment.ProcessorCount,
             null,
             tokenCounterOverride: null,
+            perFileLevel: null,
             cancellationToken);
 
     /// <summary>
@@ -93,6 +94,13 @@ public sealed class ContentReductionPipeline
     /// <param name="parallelism">Maximum number of files reduced concurrently.</param>
     /// <param name="reductionCache">Cache consulted before reducing and populated on a miss; <c>null</c> disables caching.</param>
     /// <param name="tokenCounterOverride">Token counter to use instead of the injected default; <c>null</c> uses the default.</param>
+    /// <param name="perFileLevel">
+    ///     Optional per-file reduction-level selector. When supplied, a file's effective options use the level it
+    ///     returns instead of <paramref name="options" />.<see cref="ReductionOptions.Level" />, so different files
+    ///     in one run reduce at different tiers (for example seeds kept fuller while neighbours are skeletonized)
+    ///     in a single pass. The per-file level is part of the cache key, so tiered and untiered runs do not share
+    ///     cached entries. <c>null</c> reduces every file at the global level.
+    /// </param>
     /// <param name="cancellationToken">Token used to cancel reads and reduction.</param>
     /// <returns>
     ///     The awaited result is the reduced content for each input file, in input order, with files whose
@@ -105,6 +113,7 @@ public sealed class ContentReductionPipeline
         int parallelism,
         IReductionCache? reductionCache,
         ITokenCounter? tokenCounterOverride = null,
+        Func<SourceFile, ReductionLevel>? perFileLevel = null,
         CancellationToken cancellationToken = default)
     {
         var tokenCounter = tokenCounterOverride ?? _tokenCounter;
@@ -121,12 +130,19 @@ public sealed class ContentReductionPipeline
             async (item, ct) =>
             {
                 var rawContent = await contentProvider.GetContentAsync(item.file, ct);
+
+                // Per-file tier: clone the run options with this file's level when a selector is supplied, so one
+                // run can mix tiers (the cache key below already folds in Level, keeping entries distinct).
+                var fileOptions = perFileLevel is null
+                    ? options
+                    : options with { Level = perFileLevel(item.file) };
+
                 string content;
 
                 if (reductionCache is not null)
                 {
                     var contentHash = ReductionHasher.HashContent(rawContent);
-                    var optionsHash = ReductionHasher.HashReductionOptions(item.file.Extension, options);
+                    var optionsHash = ReductionHasher.HashReductionOptions(item.file.Extension, fileOptions);
 
                     if (reductionCache.TryGet(contentHash, optionsHash, out var cachedContent))
                     {
@@ -134,17 +150,17 @@ public sealed class ContentReductionPipeline
                     }
                     else
                     {
-                        content = ReduceContent(rawContent, item.file.Extension, options);
+                        content = ReduceContent(rawContent, item.file.Extension, fileOptions);
                         reductionCache.Set(contentHash, optionsHash, content);
                     }
                 }
                 else
                 {
-                    content = ReduceContent(rawContent, item.file.Extension, options);
+                    content = ReduceContent(rawContent, item.file.Extension, fileOptions);
                 }
 
                 IReadOnlyDictionary<string, int>? redactionCounts = null;
-                if (options.EnableRedaction)
+                if (fileOptions.EnableRedaction)
                 {
                     var isCSharp = string.Equals(item.file.Extension, ".cs", StringComparison.OrdinalIgnoreCase);
                     var redaction = _secretRedactor.Redact(content, classifyCodeLiterals: isCSharp);

@@ -1,0 +1,1006 @@
+﻿<file path="src/MediatR/Licensing/BuildInfo.cs">
+using System;
+using System.Linq;
+using System.Reflection;
+namespace MediatR.Licensing;
+internal static class BuildInfo
+{
+public static DateTimeOffset? BuildDate { get; } = GetBuildDate();
+private static DateTimeOffset? GetBuildDate()
+{
+var assembly = typeof(BuildInfo).Assembly;
+var buildDateAttribute = assembly
+.GetCustomAttributes<AssemblyMetadataAttribute>()
+.FirstOrDefault(a => a.Key == "BuildDateUtc");
+if (buildDateAttribute?.Value != null &&
+DateTimeOffset.TryParse(buildDateAttribute.Value, out var buildDate))
+{
+return buildDate;
+}
+return null;
+}
+}
+</file>
+<file path="src/MediatR/Licensing/LicenseValidator.cs">
+using System;
+using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+namespace MediatR.Licensing;
+internal class LicenseValidator
+{
+private readonly ILogger _logger;
+private readonly DateTimeOffset? _buildDate;
+public LicenseValidator(ILoggerFactory loggerFactory) : this(loggerFactory, BuildInfo.BuildDate)
+{
+}
+public LicenseValidator(ILoggerFactory loggerFactory, DateTimeOffset? buildDate)
+{
+_logger = loggerFactory.CreateLogger("LuckyPennySoftware.MediatR.License");
+_buildDate = buildDate;
+}
+public void Validate(License license)
+{
+var errors = new List<string>();
+if (license is not { IsConfigured: true })
+{
+var message = "You do not have a valid license key for the Lucky Penny software MediatR. " +
+"This is allowed for development and testing scenarios. " +
+"If you are running in production you are required to have a licensed version. " +
+"Please visit https://luckypennysoftware.com to obtain a valid license.";
+_logger.LogWarning(message);
+return;
+}
+_logger.LogDebug("The Lucky Penny license key details: {license}", license);
+var diff = DateTime.UtcNow.Date.Subtract(license.ExpirationDate!.Value.Date).TotalDays;
+if (diff > 0)
+{
+// If perpetual, check if build date is before expiration
+if (license.IsPerpetual && _buildDate.HasValue)
+{
+var buildDateDiff = _buildDate.Value.Date.Subtract(license.ExpirationDate.Value.Date).TotalDays;
+if (buildDateDiff <= 0)
+{
+_logger.LogInformation(
+"Your license for the Lucky Penny software MediatR expired {expiredDaysAgo} days ago, but perpetual licensing is active because the build date ({buildDate:O}) is before the license expiration date ({licenseExpiration:O}).",
+diff, _buildDate, license.ExpirationDate);
+// Don't add to errors - perpetual fallback applies
+}
+else
+{
+errors.Add($"Your license for the Lucky Penny software MediatR expired {diff} days ago.");
+}
+}
+else
+{
+if (license.IsPerpetual)
+{
+_logger.LogWarning(
+"Your license for the Lucky Penny software MediatR has perpetual licensing enabled, but the build date could not be determined. Perpetual licensing cannot be applied. Please ensure the assembly metadata is correctly embedded at build time.");
+}
+errors.Add($"Your license for the Lucky Penny software MediatR expired {diff} days ago.");
+}
+}
+if (license.ProductType!.Value != ProductType.MediatR
+&& license.ProductType.Value != ProductType.Bundle)
+{
+errors.Add("Your Lucky Penny software license does not include MediatR.");
+}
+if (errors.Count > 0)
+{
+foreach (var err in errors)
+{
+_logger.LogError(err);
+}
+_logger.LogError(
+"Please visit https://luckypennysoftware.com to obtain a valid license for the Lucky Penny software MediatR.");
+}
+else
+{
+_logger.LogInformation("You have a valid license key for the Lucky Penny software {type} {edition} edition. The license expires on {licenseExpiration}.",
+license.ProductType,
+license.Edition,
+license.ExpirationDate);
+}
+}
+}
+</file>
+<file path="test/MediatR.Tests/ServiceFactoryTests.cs">
+using System;
+using System.Collections;
+using System.Linq;
+using System.Threading.Tasks;
+using MediatR.Licensing;
+using MediatR.Registration;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+namespace MediatR.Tests;
+[CollectionDefinition(nameof(ServiceFactoryCollectionBehavior), DisableParallelization = true)]
+public class ServiceFactoryCollectionBehavior {}
+[Collection(nameof(ServiceFactoryCollectionBehavior))]
+public class ServiceFactoryTests
+{
+public class Ping : IRequest<Pong>
+{
+}
+public class Pong
+{
+public string? Message { get; set; }
+}
+[Fact]
+public async Task Should_throw_given_no_handler()
+{
+MediatRServiceCollectionExtensions.LicenseChecked = false;
+var serviceCollection = new ServiceCollection();
+ServiceRegistrar.AddRequiredServices(serviceCollection, new MediatRServiceConfiguration());
+serviceCollection.AddFakeLogging();
+var serviceProvider = serviceCollection.BuildServiceProvider();
+var mediator = new Mediator(serviceProvider);
+await Assert.ThrowsAsync<InvalidOperationException>(
+() => mediator.Send(new Ping())
+);
+}
+[Fact]
+public void Should_not_throw_with_manual_registration()
+{
+MediatRServiceCollectionExtensions.LicenseChecked = false;
+var services = new ServiceCollection();
+services.AddFakeLogging();
+services.AddTransient<IMediator, Mediator>();
+var config = new MediatRServiceConfiguration();
+services.AddSingleton(config);
+services.AddSingleton<LicenseAccessor>();
+services.AddSingleton<LicenseValidator>();
+var container = services.BuildServiceProvider();
+Should.NotThrow(() => container.GetRequiredService<IMediator>());
+}
+[Fact]
+public void Should_throw_when_missing_required_configuration()
+{
+MediatRServiceCollectionExtensions.LicenseChecked = false;
+var services = new ServiceCollection();
+services.AddFakeLogging();
+services.AddTransient<IMediator, Mediator>();
+var container = services.BuildServiceProvider();
+Should.Throw<InvalidOperationException>(() => container.GetRequiredService<IMediator>());
+}
+}
+</file>
+<file path="src/MediatR/Registration/ServiceRegistrar.cs">
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using MediatR.Licensing;
+using MediatR.Pipeline;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+namespace MediatR.Registration;
+public static class ServiceRegistrar
+{
+private static int MaxGenericTypeParameters;
+private static int MaxTypesClosing;
+private static int MaxGenericTypeRegistrations;
+private static int RegistrationTimeout;
+public static void SetGenericRequestHandlerRegistrationLimitations(MediatRServiceConfiguration configuration)
+{
+MaxGenericTypeParameters = configuration.MaxGenericTypeParameters;
+MaxTypesClosing = configuration.MaxTypesClosing;
+MaxGenericTypeRegistrations = configuration.MaxGenericTypeRegistrations;
+RegistrationTimeout = configuration.RegistrationTimeout;
+}
+public static void AddMediatRClassesWithTimeout(IServiceCollection services, MediatRServiceConfiguration configuration)
+{
+using(var cts = new CancellationTokenSource(RegistrationTimeout))
+{
+try
+{
+AddMediatRClasses(services, configuration, cts.Token);
+}
+catch (OperationCanceledException)
+{
+throw new TimeoutException("The generic handler registration process timed out.");
+}
+}
+}
+public static void AddMediatRClasses(IServiceCollection services, MediatRServiceConfiguration configuration, CancellationToken cancellationToken = default)
+{
+var assembliesToScan = configuration.AssembliesToRegister.Distinct().ToArray();
+ConnectImplementationsToTypesClosing(typeof(IRequestHandler<,>), services, assembliesToScan, false, configuration, cancellationToken);
+ConnectImplementationsToTypesClosing(typeof(IRequestHandler<>), services, assembliesToScan, false, configuration, cancellationToken);
+ConnectImplementationsToTypesClosing(typeof(INotificationHandler<>), services, assembliesToScan, true, configuration);
+ConnectImplementationsToTypesClosing(typeof(IStreamRequestHandler<,>), services, assembliesToScan, false, configuration);
+ConnectImplementationsToTypesClosing(typeof(IRequestExceptionHandler<,,>), services, assembliesToScan, true, configuration);
+ConnectImplementationsToTypesClosing(typeof(IRequestExceptionAction<,>), services, assembliesToScan, true, configuration);
+if (configuration.AutoRegisterRequestProcessors)
+{
+ConnectImplementationsToTypesClosing(typeof(IRequestPreProcessor<>), services, assembliesToScan, true, configuration);
+ConnectImplementationsToTypesClosing(typeof(IRequestPostProcessor<,>), services, assembliesToScan, true, configuration);
+}
+var multiOpenInterfaces = new List<Type>
+{
+typeof(INotificationHandler<>),
+typeof(IRequestExceptionHandler<,,>),
+typeof(IRequestExceptionAction<,>)
+};
+if (configuration.AutoRegisterRequestProcessors)
+{
+multiOpenInterfaces.Add(typeof(IRequestPreProcessor<>));
+multiOpenInterfaces.Add(typeof(IRequestPostProcessor<,>));
+}
+foreach (var multiOpenInterface in multiOpenInterfaces)
+{
+var arity = multiOpenInterface.GetGenericArguments().Length;
+var concretions = assembliesToScan
+.SelectMany(a => a.GetLoadableDefinedTypes())
+.Where(type => type.FindInterfacesThatClose(multiOpenInterface).Any())
+.Where(type => type.IsConcrete() && type.IsOpenGeneric())
+.Where(type => type.GetGenericArguments().Length == arity)
+.Where(configuration.TypeEvaluator)
+.ToList();
+foreach (var type in concretions)
+{
+services.AddTransient(multiOpenInterface, type);
+}
+}
+}
+private static void ConnectImplementationsToTypesClosing(Type openRequestInterface,
+IServiceCollection services,
+IEnumerable<Assembly> assembliesToScan,
+bool addIfAlreadyExists,
+MediatRServiceConfiguration configuration,
+CancellationToken cancellationToken = default)
+{
+var concretions = new List<Type>();
+var interfaces = new List<Type>();
+var genericConcretions = new List<Type>();
+var genericInterfaces = new List<Type>();
+var types = assembliesToScan
+.SelectMany(a => a.GetLoadableDefinedTypes())
+.Where(t => !t.ContainsGenericParameters || configuration.RegisterGenericHandlers)
+.Where(t => t.IsConcrete() && t.FindInterfacesThatClose(openRequestInterface).Any())
+.Where(configuration.TypeEvaluator)
+.ToList();
+foreach (var type in types)
+{
+var interfaceTypes = type.FindInterfacesThatClose(openRequestInterface).ToArray();
+if (!type.IsOpenGeneric())
+{
+concretions.Add(type);
+foreach (var interfaceType in interfaceTypes)
+{
+interfaces.Fill(interfaceType);
+}
+}
+else
+{
+genericConcretions.Add(type);
+foreach (var interfaceType in interfaceTypes)
+{
+genericInterfaces.Fill(interfaceType);
+}
+}
+}
+foreach (var @interface in interfaces)
+{
+var exactMatches = concretions.Where(x => x.CanBeCastTo(@interface)).ToList();
+if (addIfAlreadyExists)
+{
+foreach (var type in exactMatches)
+{
+services.AddTransient(@interface, type);
+}
+}
+else
+{
+if (exactMatches.Count > 1)
+{
+exactMatches.RemoveAll(m => !IsMatchingWithInterface(m, @interface));
+}
+foreach (var type in exactMatches)
+{
+services.TryAddTransient(@interface, type);
+}
+}
+if (!@interface.IsOpenGeneric())
+{
+AddConcretionsThatCouldBeClosed(@interface, concretions, services);
+}
+}
+foreach (var @interface in genericInterfaces)
+{
+var exactMatches = genericConcretions.Where(x => x.CanBeCastTo(@interface)).ToList();
+AddAllConcretionsThatClose(@interface, exactMatches, services, assembliesToScan, cancellationToken);
+}
+}
+private static bool IsMatchingWithInterface(Type? handlerType, Type handlerInterface)
+{
+if (handlerType == null || handlerInterface == null)
+{
+return false;
+}
+if (handlerType.IsInterface)
+{
+if (handlerType.GenericTypeArguments.SequenceEqual(handlerInterface.GenericTypeArguments))
+{
+return true;
+}
+}
+else
+{
+return IsMatchingWithInterface(handlerType.GetInterface(handlerInterface.Name), handlerInterface);
+}
+return false;
+}
+private static void AddConcretionsThatCouldBeClosed(Type @interface, List<Type> concretions, IServiceCollection services)
+{
+foreach (var type in concretions
+.Where(x => x.IsOpenGeneric() && x.CouldCloseTo(@interface)))
+{
+try
+{
+services.TryAddTransient(@interface, type.MakeGenericType(@interface.GenericTypeArguments));
+}
+catch (Exception)
+{
+}
+}
+}
+private static (Type Service, Type Implementation) GetConcreteRegistrationTypes(Type openRequestHandlerInterface, Type concreteGenericTRequest, Type openRequestHandlerImplementation)
+{
+var closingTypes = concreteGenericTRequest.GetGenericArguments();
+var concreteTResponse = concreteGenericTRequest.GetInterfaces()
+.FirstOrDefault(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IRequest<>))
+?.GetGenericArguments()
+.FirstOrDefault();
+var typeDefinition = openRequestHandlerInterface.GetGenericTypeDefinition();
+var serviceType = concreteTResponse != null ?
+typeDefinition.MakeGenericType(concreteGenericTRequest, concreteTResponse) :
+typeDefinition.MakeGenericType(concreteGenericTRequest);
+return (serviceType, openRequestHandlerImplementation.MakeGenericType(closingTypes));
+}
+private static List<Type>? GetConcreteRequestTypes(Type openRequestHandlerInterface, Type openRequestHandlerImplementation, IEnumerable<Assembly> assembliesToScan, CancellationToken cancellationToken)
+{
+//request generic type constraints
+var constraintsForEachParameter = openRequestHandlerImplementation
+.GetGenericArguments()
+.Select(x => x.GetGenericParameterConstraints())
+.ToList();
+var typesThatCanCloseForEachParameter = constraintsForEachParameter
+.Select(constraints => assembliesToScan
+.SelectMany(assembly => assembly.GetLoadableDefinedTypes())
+.Where(type => type.IsClass && !type.IsAbstract && constraints.All(constraint => constraint.IsAssignableFrom(type))).ToList()
+).ToList();
+var requestType = openRequestHandlerInterface.GenericTypeArguments.First();
+if (requestType.IsGenericParameter)
+return null;
+var requestGenericTypeDefinition = requestType.GetGenericTypeDefinition();
+var combinations = GenerateCombinations(requestType, typesThatCanCloseForEachParameter, 0, cancellationToken);
+return combinations.Select(types => requestGenericTypeDefinition.MakeGenericType(types.ToArray())).ToList();
+}
+// Method to generate combinations recursively
+public static List<List<Type>> GenerateCombinations(Type requestType, List<List<Type>> lists, int depth = 0, CancellationToken cancellationToken = default)
+{
+if (depth == 0)
+{
+// Initial checks
+if (MaxGenericTypeParameters > 0 && lists.Count > MaxGenericTypeParameters)
+throw new ArgumentException($"Error registering the generic type: {requestType.FullName}. The number of generic type parameters exceeds the maximum allowed ({MaxGenericTypeParameters}).");
+foreach (var list in lists)
+{
+if (MaxTypesClosing > 0 && list.Count > MaxTypesClosing)
+throw new ArgumentException($"Error registering the generic type: {requestType.FullName}. One of the generic type parameter's count of types that can close exceeds the maximum length allowed ({MaxTypesClosing}).");
+}
+// Calculate the total number of combinations
+long totalCombinations = 1;
+foreach (var list in lists)
+{
+totalCombinations *= list.Count;
+if (MaxGenericTypeParameters > 0 && totalCombinations > MaxGenericTypeRegistrations)
+throw new ArgumentException($"Error registering the generic type: {requestType.FullName}. The total number of generic type registrations exceeds the maximum allowed ({MaxGenericTypeRegistrations}).");
+}
+}
+if (depth >= lists.Count)
+return new List<List<Type>> { new List<Type>() };
+cancellationToken.ThrowIfCancellationRequested();
+var currentList = lists[depth];
+var childCombinations = GenerateCombinations(requestType, lists, depth + 1, cancellationToken);
+var combinations = new List<List<Type>>();
+foreach (var item in currentList)
+{
+foreach (var childCombination in childCombinations)
+{
+var currentCombination = new List<Type> { item };
+currentCombination.AddRange(childCombination);
+combinations.Add(currentCombination);
+}
+}
+return combinations;
+}
+private static void AddAllConcretionsThatClose(Type openRequestInterface, List<Type> concretions, IServiceCollection services, IEnumerable<Assembly> assembliesToScan, CancellationToken cancellationToken)
+{
+foreach (var concretion in concretions)
+{
+var concreteRequests = GetConcreteRequestTypes(openRequestInterface, concretion, assembliesToScan, cancellationToken);
+if (concreteRequests is null)
+continue;
+var registrationTypes = concreteRequests
+.Select(concreteRequest => GetConcreteRegistrationTypes(openRequestInterface, concreteRequest, concretion));
+foreach (var (Service, Implementation) in registrationTypes)
+{
+cancellationToken.ThrowIfCancellationRequested();
+services.AddTransient(Service, Implementation);
+}
+}
+}
+internal static bool CouldCloseTo(this Type openConcretion, Type closedInterface)
+{
+var openInterface = closedInterface.GetGenericTypeDefinition();
+var arguments = closedInterface.GenericTypeArguments;
+var concreteArguments = openConcretion.GenericTypeArguments;
+return arguments.Length == concreteArguments.Length && openConcretion.CanBeCastTo(openInterface);
+}
+private static bool CanBeCastTo(this Type pluggedType, Type pluginType)
+{
+if (pluggedType == null) return false;
+if (pluggedType == pluginType) return true;
+return pluginType.IsAssignableFrom(pluggedType);
+}
+private static bool IsOpenGeneric(this Type type)
+{
+return type.IsGenericTypeDefinition || type.ContainsGenericParameters;
+}
+internal static IEnumerable<Type> FindInterfacesThatClose(this Type pluggedType, Type templateType)
+{
+return FindInterfacesThatClosesCore(pluggedType, templateType).Distinct();
+}
+private static IEnumerable<Type> FindInterfacesThatClosesCore(Type pluggedType, Type templateType)
+{
+if (pluggedType == null) yield break;
+if (!pluggedType.IsConcrete()) yield break;
+if (templateType.IsInterface)
+{
+foreach (
+var interfaceType in
+pluggedType.GetInterfaces()
+.Where(type => type.IsGenericType && (type.GetGenericTypeDefinition() == templateType)))
+{
+yield return interfaceType;
+}
+}
+else if (pluggedType.BaseType!.IsGenericType &&
+(pluggedType.BaseType!.GetGenericTypeDefinition() == templateType))
+{
+yield return pluggedType.BaseType!;
+}
+if (pluggedType.BaseType == typeof(object)) yield break;
+foreach (var interfaceType in FindInterfacesThatClosesCore(pluggedType.BaseType!, templateType))
+{
+yield return interfaceType;
+}
+}
+private static bool IsConcrete(this Type type)
+{
+return !type.IsAbstract && !type.IsInterface;
+}
+private static void Fill<T>(this IList<T> list, T value)
+{
+if (list.Contains(value)) return;
+list.Add(value);
+}
+private static IEnumerable<Type> GetLoadableDefinedTypes(this Assembly assembly)
+{
+try
+{
+return assembly.DefinedTypes;
+}
+catch (ReflectionTypeLoadException ex)
+{
+return ex.Types.OfType<Type>();
+}
+}
+private static bool HasNestedGenericResponseType(Type openBehaviorType)
+{
+var iface = openBehaviorType.GetInterfaces()
+.FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>));
+if (iface == null) return false;
+return iface.GetGenericArguments()[1].IsGenericType;
+}
+private static bool TryMatchType(Type pattern, Type concrete, Dictionary<Type, Type> bindings)
+{
+if (pattern.IsGenericParameter)
+{
+if (bindings.TryGetValue(pattern, out var existing)) return existing == concrete;
+bindings[pattern] = concrete;
+return true;
+}
+if (pattern.IsGenericType && concrete.IsGenericType)
+{
+if (pattern.GetGenericTypeDefinition() != concrete.GetGenericTypeDefinition()) return false;
+var pArgs = pattern.GetGenericArguments();
+var cArgs = concrete.GetGenericArguments();
+if (pArgs.Length != cArgs.Length) return false;
+return pArgs.Zip(cArgs, (p, c) => TryMatchType(p, c, bindings)).All(x => x);
+}
+return pattern == concrete;
+}
+private static void RegisterClosedBehaviorsFromAssemblies(
+Type openBehaviorType, IServiceCollection services,
+IEnumerable<Assembly> assemblies, ServiceLifetime lifetime)
+{
+var iface = openBehaviorType.GetInterfaces()
+.FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>));
+if (iface == null) return;
+var requestPattern  = iface.GetGenericArguments()[0];
+var responsePattern = iface.GetGenericArguments()[1];
+var behaviorParams  = openBehaviorType.GetGenericArguments();
+var requests = assemblies
+.SelectMany(a => a.GetLoadableDefinedTypes())
+.Where(t => t.IsConcrete() && !t.ContainsGenericParameters)
+.SelectMany(t => t.GetInterfaces()
+.Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>))
+.Select(i => (RequestType: (Type)t, ResponseType: i.GetGenericArguments()[0])));
+foreach (var (requestType, responseType) in requests)
+{
+var bindings = new Dictionary<Type, Type>();
+if (!TryMatchType(requestPattern,  requestType,  bindings)) continue;
+if (!TryMatchType(responsePattern, responseType, bindings)) continue;
+if (!behaviorParams.All(tp => bindings.ContainsKey(tp)))   continue;
+try
+{
+var closingArgs    = behaviorParams.Select(tp => bindings[tp]).ToArray();
+var closedBehavior = openBehaviorType.MakeGenericType(closingArgs);
+var closedService  = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
+services.TryAddEnumerable(new ServiceDescriptor(closedService, closedBehavior, lifetime));
+}
+catch (Exception) { /* ignore invalid type constructions */ }
+}
+}
+public static void AddRequiredServices(IServiceCollection services, MediatRServiceConfiguration serviceConfiguration)
+{
+// Use TryAdd, so any existing ServiceFactory/IMediator registration doesn't get overridden
+services.TryAdd(new ServiceDescriptor(typeof(IMediator), serviceConfiguration.MediatorImplementationType, serviceConfiguration.Lifetime));
+services.TryAdd(new ServiceDescriptor(typeof(ISender), sp => sp.GetRequiredService<IMediator>(), serviceConfiguration.Lifetime));
+services.TryAdd(new ServiceDescriptor(typeof(IPublisher), sp => sp.GetRequiredService<IMediator>(), serviceConfiguration.Lifetime));
+MediatRServiceCollectionExtensions.LicenseChecked = false;
+services.TryAddSingleton(serviceConfiguration);
+services.TryAddSingleton<LicenseAccessor>(static sp =>
+{
+var loggerFactory = sp.GetService<ILoggerFactory>()
+?? throw new InvalidOperationException(
+"MediatR requires ILoggerFactory to be registered. " +
+"Call services.AddLogging() before services.AddMediatR().");
+var config = sp.GetService<MediatRServiceConfiguration>();
+return config != null
+? new LicenseAccessor(config, loggerFactory)
+: new LicenseAccessor(loggerFactory);
+});
+services.TryAddSingleton<LicenseValidator>(static sp =>
+{
+var loggerFactory = sp.GetService<ILoggerFactory>()
+?? throw new InvalidOperationException(
+"MediatR requires ILoggerFactory to be registered. " +
+"Call services.AddLogging() before services.AddMediatR().");
+return new LicenseValidator(loggerFactory);
+});
+var notificationPublisherServiceDescriptor = serviceConfiguration.NotificationPublisherType != null
+? new ServiceDescriptor(typeof(INotificationPublisher), serviceConfiguration.NotificationPublisherType, serviceConfiguration.Lifetime)
+: new ServiceDescriptor(typeof(INotificationPublisher), serviceConfiguration.NotificationPublisher);
+services.TryAdd(notificationPublisherServiceDescriptor);
+// Register pre processors, then post processors, then behaviors
+if (serviceConfiguration.RequestExceptionActionProcessorStrategy == RequestExceptionActionProcessorStrategy.ApplyForUnhandledExceptions)
+{
+RegisterBehaviorIfImplementationsExist(services, typeof(RequestExceptionActionProcessorBehavior<,>), typeof(IRequestExceptionAction<,>));
+RegisterBehaviorIfImplementationsExist(services, typeof(RequestExceptionProcessorBehavior<,>), typeof(IRequestExceptionHandler<,,>));
+}
+else
+{
+RegisterBehaviorIfImplementationsExist(services, typeof(RequestExceptionProcessorBehavior<,>), typeof(IRequestExceptionHandler<,,>));
+RegisterBehaviorIfImplementationsExist(services, typeof(RequestExceptionActionProcessorBehavior<,>), typeof(IRequestExceptionAction<,>));
+}
+if (serviceConfiguration.RequestPreProcessorsToRegister.Any())
+{
+services.TryAddEnumerable(new ServiceDescriptor(typeof(IPipelineBehavior<,>), typeof(RequestPreProcessorBehavior<,>), ServiceLifetime.Transient));
+services.TryAddEnumerable(serviceConfiguration.RequestPreProcessorsToRegister);
+}
+if (serviceConfiguration.RequestPostProcessorsToRegister.Any())
+{
+services.TryAddEnumerable(new ServiceDescriptor(typeof(IPipelineBehavior<,>), typeof(RequestPostProcessorBehavior<,>), ServiceLifetime.Transient));
+services.TryAddEnumerable(serviceConfiguration.RequestPostProcessorsToRegister);
+}
+foreach (var serviceDescriptor in serviceConfiguration.BehaviorsToRegister)
+{
+services.TryAddEnumerable(serviceDescriptor);
+// For open behaviors whose TResponse is a nested generic (e.g. List<T>, Result<T>),
+// the DI container cannot close them correctly via positional mapping.
+// Register explicitly-closed versions by scanning assemblies for matching request types.
+if (serviceDescriptor.ImplementationType != null
+&& serviceDescriptor.ServiceType == typeof(IPipelineBehavior<,>)
+&& serviceDescriptor.ImplementationType.IsOpenGeneric()
+&& HasNestedGenericResponseType(serviceDescriptor.ImplementationType))
+{
+RegisterClosedBehaviorsFromAssemblies(
+serviceDescriptor.ImplementationType,
+services,
+serviceConfiguration.AssembliesToRegister,
+serviceDescriptor.Lifetime);
+}
+}
+foreach (var serviceDescriptor in serviceConfiguration.StreamBehaviorsToRegister)
+{
+services.TryAddEnumerable(serviceDescriptor);
+}
+}
+private static void RegisterBehaviorIfImplementationsExist(IServiceCollection services, Type behaviorType, Type subBehaviorType)
+{
+var hasAnyRegistrationsOfSubBehaviorType = services
+.Where(service => !service.IsKeyedService)
+.Select(service => service.ImplementationType)
+.OfType<Type>()
+.SelectMany(type => type.GetInterfaces())
+.Where(type => type.IsGenericType)
+.Select(type => type.GetGenericTypeDefinition())
+.Any(type => type == subBehaviorType);
+if (hasAnyRegistrationsOfSubBehaviorType)
+{
+services.TryAddEnumerable(new ServiceDescriptor(typeof(IPipelineBehavior<,>), behaviorType, ServiceLifetime.Transient));
+}
+}
+}
+</file>
+<file path="src/MediatR/Licensing/License.cs">
+using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Security.Claims;
+namespace MediatR.Licensing;
+internal class License
+{
+internal License(params Claim[] claims) : this(new ClaimsPrincipal(new ClaimsIdentity(claims)))
+{
+}
+public License(ClaimsPrincipal claims)
+{
+if (Guid.TryParse(claims.FindFirst("account_id")?.Value, out var accountId))
+{
+AccountId = accountId;
+}
+CustomerId = claims.FindFirst("customer_id")?.Value;
+SubscriptionId = claims.FindFirst("sub_id")?.Value;
+if (long.TryParse(claims.FindFirst("iat")?.Value, out var iat))
+{
+var startedAt = DateTimeOffset.FromUnixTimeSeconds(iat);
+StartDate = startedAt;
+}
+if (long.TryParse(claims.FindFirst("exp")?.Value, out var exp))
+{
+var expiredAt = DateTimeOffset.FromUnixTimeSeconds(exp);
+ExpirationDate = expiredAt;
+}
+if (Enum.TryParse<Edition>(claims.FindFirst("edition")?.Value, out var edition))
+{
+Edition = edition;
+}
+if (Enum.TryParse<ProductType>(claims.FindFirst("type")?.Value, out var productType))
+{
+ProductType = productType;
+}
+var perpetualValue = claims.FindFirst("perpetual")?.Value;
+IsPerpetual = perpetualValue?.ToLowerInvariant() is "true" or "1";
+IsConfigured = AccountId != null
+&& CustomerId != null
+&& SubscriptionId != null
+&& StartDate != null
+&& ExpirationDate != null
+&& Edition != null
+&& ProductType != null;
+}
+public Guid? AccountId { get; }
+public string? CustomerId { get; }
+public string? SubscriptionId { get; }
+public DateTimeOffset? StartDate { get; }
+public DateTimeOffset? ExpirationDate { get; }
+public Edition? Edition { get; }
+public ProductType? ProductType { get; }
+public bool IsPerpetual { get; }
+public bool IsConfigured { get; }
+}
+</file>
+<file path="src/MediatR/Licensing/ProductType.cs">
+namespace MediatR.Licensing;
+internal enum ProductType
+{
+AutoMapper = 0,
+MediatR = 1,
+Bundle = 2
+}
+</file>
+<file path="src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs">
+using System;
+using System.Linq;
+using MediatR;
+using MediatR.Licensing;
+using MediatR.Pipeline;
+using MediatR.Registration;
+using Microsoft.Extensions.Logging;
+namespace Microsoft.Extensions.DependencyInjection;
+/// <summary>
+/// Extensions to scan for MediatR handlers and registers them.
+/// - Scans for any handler interface implementations and registers them as <see cref="ServiceLifetime.Transient"/>
+/// - Scans for any <see cref="IRequestPreProcessor{TRequest}"/> and <see cref="IRequestPostProcessor{TRequest,TResponse}"/> implementations and registers them as transient instances
+/// Registers <see cref="IMediator"/> as a transient instance
+/// After calling AddMediatR you can use the container to resolve an <see cref="IMediator"/> instance.
+/// This does not scan for any <see cref="IPipelineBehavior{TRequest,TResponse}"/> instances including <see cref="RequestPreProcessorBehavior{TRequest,TResponse}"/> and <see cref="RequestPreProcessorBehavior{TRequest,TResponse}"/>.
+/// To register behaviors, use the <see cref="ServiceCollectionServiceExtensions.AddTransient(IServiceCollection,Type,Type)"/> with the open generic or closed generic types.
+/// </summary>
+public static class MediatRServiceCollectionExtensions
+{
+/// <summary>
+/// Registers handlers and mediator types from the specified assemblies
+/// </summary>
+/// <param name="services">Service collection</param>
+/// <param name="configuration">The action used to configure the options</param>
+/// <returns>Service collection</returns>
+public static IServiceCollection AddMediatR(this IServiceCollection services,
+Action<MediatRServiceConfiguration> configuration)
+{
+var serviceConfig = new MediatRServiceConfiguration();
+configuration.Invoke(serviceConfig);
+return services.AddMediatR(serviceConfig);
+}
+/// <summary>
+/// Registers handlers and mediator types from the specified assemblies
+/// </summary>
+/// <param name="services">Service collection</param>
+/// <param name="configuration">Configuration options</param>
+/// <returns>Service collection</returns>
+public static IServiceCollection AddMediatR(this IServiceCollection services,
+MediatRServiceConfiguration configuration)
+{
+if (!configuration.AssembliesToRegister.Any())
+{
+throw new ArgumentException("No assemblies found to scan. Supply at least one assembly to scan for handlers.");
+}
+ServiceRegistrar.SetGenericRequestHandlerRegistrationLimitations(configuration);
+ServiceRegistrar.AddMediatRClassesWithTimeout(services, configuration);
+ServiceRegistrar.AddRequiredServices(services, configuration);
+return services;
+}
+internal static void CheckLicense(this IServiceProvider serviceProvider)
+{
+if (LicenseChecked == false)
+{
+var licenseAccessor = serviceProvider.GetRequiredService<LicenseAccessor>();
+var licenseValidator = serviceProvider.GetRequiredService<LicenseValidator>();
+var license = licenseAccessor.Current;
+licenseValidator.Validate(license);
+}
+LicenseChecked = true;
+}
+internal static bool LicenseChecked { get; set; }
+}
+</file>
+<file path="test/MediatR.Tests/Licensing/LicenseValidatorTests.cs">
+using System;
+using System.Security.Claims;
+using MediatR.Licensing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
+using Shouldly;
+using Xunit;
+using License = MediatR.Licensing.License;
+namespace MediatR.Tests.Licensing;
+public class LicenseValidatorTests
+{
+[Fact]
+public void Should_return_invalid_when_no_claims()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var licenseValidator = new LicenseValidator(factory);
+var license = new License();
+license.IsConfigured.ShouldBeFalse();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages
+.ShouldContain(log => log.Level == LogLevel.Warning);
+}
+[Fact]
+public void Should_return_valid_when_community()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var licenseValidator = new LicenseValidator(factory);
+var license = new License(
+new Claim("account_id", Guid.NewGuid().ToString()),
+new Claim("customer_id", Guid.NewGuid().ToString()),
+new Claim("sub_id", Guid.NewGuid().ToString()),
+new Claim("iat", DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds().ToString()),
+new Claim("exp", DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds().ToString()),
+new Claim("edition", nameof(Edition.Community)),
+new Claim("type", nameof(ProductType.Bundle)));
+license.IsConfigured.ShouldBeTrue();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages.ShouldNotContain(log => log.Level == LogLevel.Error
+|| log.Level == LogLevel.Warning
+|| log.Level == LogLevel.Critical);
+}
+[Fact]
+public void Should_return_invalid_when_not_correct_type()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var licenseValidator = new LicenseValidator(factory);
+var license = new License(
+new Claim("account_id", Guid.NewGuid().ToString()),
+new Claim("customer_id", Guid.NewGuid().ToString()),
+new Claim("sub_id", Guid.NewGuid().ToString()),
+new Claim("iat", DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds().ToString()),
+new Claim("exp", DateTimeOffset.UtcNow.AddYears(1).ToUnixTimeSeconds().ToString()),
+new Claim("edition", nameof(Edition.Professional)),
+new Claim("type", nameof(ProductType.AutoMapper)));
+license.IsConfigured.ShouldBeTrue();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages
+.ShouldContain(log => log.Level == LogLevel.Error);
+}
+[Fact]
+public void Should_return_invalid_when_expired()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var licenseValidator = new LicenseValidator(factory);
+var license = new License(
+new Claim("account_id", Guid.NewGuid().ToString()),
+new Claim("customer_id", Guid.NewGuid().ToString()),
+new Claim("sub_id", Guid.NewGuid().ToString()),
+new Claim("iat", DateTimeOffset.UtcNow.AddYears(-1).ToUnixTimeSeconds().ToString()),
+new Claim("exp", DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds().ToString()),
+new Claim("edition", nameof(Edition.Professional)),
+new Claim("type", nameof(ProductType.MediatR)));
+license.IsConfigured.ShouldBeTrue();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages
+.ShouldContain(log => log.Level == LogLevel.Error);
+}
+[Fact]
+public void Should_allow_perpetual_license_when_build_date_before_expiration()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var buildDate = DateTimeOffset.UtcNow.AddDays(-30);
+var licenseValidator = new LicenseValidator(factory, buildDate);
+var license = new License(
+new Claim("account_id", Guid.NewGuid().ToString()),
+new Claim("customer_id", Guid.NewGuid().ToString()),
+new Claim("sub_id", Guid.NewGuid().ToString()),
+new Claim("iat", DateTimeOffset.UtcNow.AddYears(-1).ToUnixTimeSeconds().ToString()),
+new Claim("exp", DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds().ToString()),
+new Claim("edition", nameof(Edition.Professional)),
+new Claim("type", nameof(ProductType.MediatR)),
+new Claim("perpetual", "true"));
+license.IsConfigured.ShouldBeTrue();
+license.IsPerpetual.ShouldBeTrue();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages.ShouldNotContain(log => log.Level == LogLevel.Error);
+logMessages.ShouldContain(log => log.Level == LogLevel.Information &&
+log.Message.Contains("perpetual"));
+}
+[Fact]
+public void Should_reject_perpetual_license_when_build_date_after_expiration()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var buildDate = DateTimeOffset.UtcNow.AddDays(-5); // Build date in past, after expiration
+var licenseValidator = new LicenseValidator(factory, buildDate);
+var license = new License(
+new Claim("account_id", Guid.NewGuid().ToString()),
+new Claim("customer_id", Guid.NewGuid().ToString()),
+new Claim("sub_id", Guid.NewGuid().ToString()),
+new Claim("iat", DateTimeOffset.UtcNow.AddYears(-1).ToUnixTimeSeconds().ToString()),
+new Claim("exp", DateTimeOffset.UtcNow.AddDays(-10).ToUnixTimeSeconds().ToString()),
+new Claim("edition", nameof(Edition.Professional)),
+new Claim("type", nameof(ProductType.MediatR)),
+new Claim("perpetual", "true"));
+license.IsConfigured.ShouldBeTrue();
+license.IsPerpetual.ShouldBeTrue();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages.ShouldContain(log => log.Level == LogLevel.Error &&
+log.Message.Contains("expired"));
+}
+[Fact]
+public void Should_handle_missing_perpetual_claim()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var licenseValidator = new LicenseValidator(factory);
+var license = new License(
+new Claim("account_id", Guid.NewGuid().ToString()),
+new Claim("customer_id", Guid.NewGuid().ToString()),
+new Claim("sub_id", Guid.NewGuid().ToString()),
+new Claim("iat", DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds().ToString()),
+new Claim("exp", DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds().ToString()),
+new Claim("edition", nameof(Edition.Community)),
+new Claim("type", nameof(ProductType.Bundle)));
+license.IsConfigured.ShouldBeTrue();
+license.IsPerpetual.ShouldBeFalse();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages.ShouldNotContain(log => log.Level == LogLevel.Error
+|| log.Level == LogLevel.Warning
+|| log.Level == LogLevel.Critical);
+}
+[Fact]
+public void Should_fall_back_to_expiration_error_when_perpetual_and_build_date_is_null()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var licenseValidator = new LicenseValidator(factory, (DateTimeOffset?)null);
+var license = new License(
+new Claim("account_id", Guid.NewGuid().ToString()),
+new Claim("customer_id", Guid.NewGuid().ToString()),
+new Claim("sub_id", Guid.NewGuid().ToString()),
+new Claim("iat", DateTimeOffset.UtcNow.AddDays(-10).ToUnixTimeSeconds().ToString()),
+new Claim("exp", DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds().ToString()),
+new Claim("edition", nameof(Edition.Community)),
+new Claim("type", nameof(ProductType.Bundle)),
+new Claim("perpetual", "true"));
+license.IsConfigured.ShouldBeTrue();
+license.IsPerpetual.ShouldBeTrue();
+// Validator was created with null buildDate - perpetual licensing cannot be applied.
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages.ShouldContain(log => log.Level == LogLevel.Warning && log.Message.Contains("perpetual"));
+logMessages.ShouldContain(log => log.Level == LogLevel.Error);
+}
+[Fact(Skip = "Needs license")]
+public void Should_return_valid_for_actual_valid_license()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+var config = new MediatRServiceConfiguration
+{
+LicenseKey =
+"<>"
+};
+var licenseAccessor = new LicenseAccessor(config, factory);
+var licenseValidator = new LicenseValidator(factory);
+var license = licenseAccessor.Current;
+license.IsConfigured.ShouldBeTrue();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages
+.ShouldNotContain(log => log.Level == LogLevel.Error);
+}
+[Fact(Skip = "Needs license")]
+public void Should_return_valid_for_actual_valid_license_via_static_property()
+{
+var factory = new LoggerFactory();
+var provider = new FakeLoggerProvider();
+factory.AddProvider(provider);
+Mediator.LicenseKey = "<>";
+var licenseAccessor = new LicenseAccessor(factory);
+var licenseValidator = new LicenseValidator(factory);
+var license = licenseAccessor.Current;
+license.IsConfigured.ShouldBeTrue();
+licenseValidator.Validate(license);
+var logMessages = provider.Collector.GetSnapshot();
+logMessages
+.ShouldNotContain(log => log.Level == LogLevel.Error);
+}
+}
+</file>

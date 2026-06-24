@@ -59,6 +59,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Ranking-quality benchmark layer (B3 / B4).** A new `layer-ranking.ps1` scores the ranked seed-plus-expansion
+  list at a budget large enough that packing never truncates, so the metrics isolate retrieval quality from
+  packing. It reports recall@k for k in {1,3,5,10,20}, mean reciprocal rank, and nDCG@10 per mode, and is wired
+  into `run-all.ps1`. Paired with layer 2A's recall@budget (B4), it separates a ranking loss (the truth file is
+  not ranked high) from a packing loss (it ranks high but the budget drops it). On the pinned corpus: focus
+  reaches recall@5 48 percent at MRR 0.98, query recall@5 39 percent at MRR 0.55, so focus seeds its first hit
+  almost immediately while query's first hit is deeper, and both leave headroom that ranking work (not packing)
+  must close.
 - **Latency benchmark layer (B13).** A new `layer-latency.ps1` measures the end-to-end wall clock of a scoped
   query call per corpus repo, cold (no reduction cache, no persistent index) versus warm (both, after a warmup),
   reporting p50/p95 over repeated samples plus peak working set. It is wired into `run-all.ps1`. This is the

@@ -348,6 +348,19 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Research notes
 
+- **Source:** member-level retrieval (Q5): index member chunks as fielded documents and roll their scores up to
+  a file score, so a query that matches one member buried in a large file ranks that file above what whole-file
+  BM25F gives (length normalization dilutes a single-member match across a long file). **Fit:** large
+  single-file truth sets. **Decision:** **deferred, not built**, on grounded analysis rather than a measured
+  A/B, because building the parallel chunk index it requires is a substantial subsystem and the prediction of
+  neutrality on the current corpus is strong: the documented failure mode here is multi-file truncation (which
+  downgrade-before-drop, P1, addressed by keeping more files present), not large-single-file pack-outs; the
+  declared-symbol field already weights member names above the body; and four lexical-path levers measured this
+  release (the change+query hybrid, the exact-symbol boost, the distributional thesaurus, and proximity edges)
+  all came back neutral or negative, evidence that this corpus's lexical and graph retrieval is saturated.
+  Member-level retrieval should be built and A/B'd when a corpus with large single-file truth sets exists to
+  validate it (B2), where its specific failure mode is actually exercised; building it speculatively now would
+  break the measure-first discipline the rest of this release followed.
 - **Source:** structural proximity graph edges (item 7): link a file to its test or implementation counterpart
   and same-stem siblings by path, followed at a weight below a real type reference, to reach a related file the
   type-reference graph misses. **Fit:** focus and query recall, all graph modes. **Decision:** built behind the

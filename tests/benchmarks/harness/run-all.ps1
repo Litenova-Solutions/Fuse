@@ -11,7 +11,7 @@
 # Prerequisites:
 #   - dotnet SDK 10.0+ and git: required for every Fuse-versus-raw number (runs offline
 #     once the corpus is cloned).
-#   - network: required once to clone the pinned corpus, and for the Repomix arm.
+#   - network: required once to clone the pinned corpus and for the Repomix arm.
 #   - npx (Node): required for the Repomix (generic-packer) arm in layer 1 and layer 4.
 # Without npx, everything still runs and every Fuse-versus-raw number is valid; only the
 # Fuse-versus-generic-packer rows are carried from the committed baseline (layer 1) or

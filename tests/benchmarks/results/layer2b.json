@@ -5,7 +5,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 13640
+    "tokens": 18630
   },
   {
     "repo": "MediatR",
@@ -13,7 +13,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 11640
+    "tokens": 19526
   },
   {
     "repo": "MediatR",
@@ -29,7 +29,7 @@
     "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 13540
+    "tokens": 18994
   },
   {
     "repo": "MediatR",
@@ -53,7 +53,7 @@
     "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 14245
+    "tokens": 19500
   },
   {
     "repo": "MediatR",
@@ -77,7 +77,7 @@
     "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 23599
+    "tokens": 19735
   },
   {
     "repo": "FluentValidation",
@@ -100,8 +100,8 @@
     "question": "Which file defines the abstract base class that user validators inherit from?",
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "query",
-    "hit": 1,
-    "tokens": 16219
+    "hit": 0,
+    "tokens": 19154
   },
   {
     "repo": "FluentValidation",
@@ -109,7 +109,7 @@
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 16515
+    "tokens": 19654
   },
   {
     "repo": "FluentValidation",
@@ -125,7 +125,7 @@
     "answer": "src/FluentValidation/Validators/EmailValidator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 21187
+    "tokens": 19213
   },
   {
     "repo": "FluentValidation",
@@ -149,7 +149,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 15232
+    "tokens": 18888
   },
   {
     "repo": "AutoMapper",
@@ -157,7 +157,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 14236
+    "tokens": 18901
   },
   {
     "repo": "AutoMapper",
@@ -172,8 +172,8 @@
     "question": "Where is the execution plan for a type map compiled into a mapping function?",
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
-    "hit": 1,
-    "tokens": 20573
+    "hit": 0,
+    "tokens": 18885
   },
   {
     "repo": "AutoMapper",
@@ -197,7 +197,7 @@
     "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 15521
+    "tokens": 18825
   },
   {
     "repo": "AutoMapper",
@@ -220,8 +220,8 @@
     "question": "Which file contains the serializer that reads and writes JSON through converters?",
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
-    "hit": 1,
-    "tokens": 21293
+    "hit": 0,
+    "tokens": 19471
   },
   {
     "repo": "NewtonsoftJson",
@@ -229,7 +229,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 13481
+    "tokens": 19289
   },
   {
     "repo": "NewtonsoftJson",
@@ -245,7 +245,7 @@
     "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 21530
+    "tokens": 19427
   },
   {
     "repo": "NewtonsoftJson",
@@ -269,7 +269,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 42356
+    "tokens": 18752
   },
   {
     "repo": "NewtonsoftJson",
@@ -277,7 +277,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 13633
+    "tokens": 19563
   },
   {
     "repo": "NewtonsoftJson",

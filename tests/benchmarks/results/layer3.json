@@ -6,7 +6,7 @@
     "no_fuse_round_trips_is_lower_bound": true,
     "fuse_round_trips": 1,
     "repomix_round_trips": 1,
-    "fuse_recall_mean": 0.514,
+    "fuse_recall_mean": 0.521,
     "note": "A blind agent must read each needed file at least once; Fuse and Repomix acquire the context in one call. This bound is from ground truth, not the illustrative prefill model below."
   },
   "illustrative_prefill_model": [
@@ -18,11 +18,11 @@
       "naive_k": 60,
       "naive_prefill": 554800,
       "guided_k": 2,
-      "guided_prefill": 34224,
-      "toc_tokens": 7572,
-      "search_tokens": 19080,
+      "guided_prefill": 36311,
+      "toc_tokens": 8105,
+      "search_tokens": 20101,
       "ask_k": 1,
-      "ask_prefill": 19080,
+      "ask_prefill": 20101,
       "note": "illustrative model, not a measured agent"
     },
     {
@@ -33,11 +33,11 @@
       "naive_k": 60,
       "naive_prefill": 2848727,
       "guided_k": 2,
-      "guided_prefill": 46823,
-      "toc_tokens": 17849,
-      "search_tokens": 11125,
+      "guided_prefill": 54793,
+      "toc_tokens": 18268,
+      "search_tokens": 18257,
       "ask_k": 1,
-      "ask_prefill": 11125,
+      "ask_prefill": 18257,
       "note": "illustrative model, not a measured agent"
     },
     {
@@ -48,11 +48,11 @@
       "naive_k": 60,
       "naive_prefill": 2758959,
       "guided_k": 2,
-      "guided_prefill": 169608,
-      "toc_tokens": 75084,
-      "search_tokens": 19440,
+      "guided_prefill": 175542,
+      "toc_tokens": 77998,
+      "search_tokens": 19546,
       "ask_k": 1,
-      "ask_prefill": 19440,
+      "ask_prefill": 19546,
       "note": "illustrative model, not a measured agent"
     },
     {
@@ -63,11 +63,11 @@
       "naive_k": 60,
       "naive_prefill": 4141099,
       "guided_k": 2,
-      "guided_prefill": 139743,
-      "toc_tokens": 59755,
-      "search_tokens": 20233,
+      "guided_prefill": 141594,
+      "toc_tokens": 60418,
+      "search_tokens": 20758,
       "ask_k": 1,
-      "ask_prefill": 20233,
+      "ask_prefill": 20758,
       "note": "illustrative model, not a measured agent"
     },
     {
@@ -78,11 +78,11 @@
       "naive_k": 7,
       "naive_prefill": 1645,
       "guided_k": 2,
-      "guided_prefill": 798,
-      "toc_tokens": 187,
-      "search_tokens": 424,
+      "guided_prefill": 828,
+      "toc_tokens": 201,
+      "search_tokens": 426,
       "ask_k": 1,
-      "ask_prefill": 424,
+      "ask_prefill": 426,
       "note": "illustrative model, not a measured agent"
     }
   ],

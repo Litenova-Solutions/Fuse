@@ -47,10 +47,6 @@ across calls in the same task and Fuse omits files it sent earlier (tracked by c
 hash), so multi-turn refinement does not re-pay tokens. See
 [Sessions and deltas](/docs/concepts/sessions-and-deltas).
 
-**Hybrid retrieval.** The opt-in reranking path that combines BM25 keyword scoring with
-local vector embeddings to order scoped results, enabled with `--rerank`. See
-[Roslyn structural analysis vs regex](/docs/concepts/precision-tier).
-
 **Roslyn structural analysis.** The default C# parse-tree path for skeletons, dependency
 edges, type location, outlines, route maps, and semantic markers. Regex still handles
 content reduction, the project graph, and pattern detectors. See

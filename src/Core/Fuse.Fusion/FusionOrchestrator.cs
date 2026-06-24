@@ -47,7 +47,6 @@ public sealed class FusionOrchestrator
     private readonly CapabilityRegistry<ISymbolSliceExtractor> _sliceExtractors;
     private readonly CapabilityRegistry<ISymbolChunkExtractor> _chunkExtractors;
     private readonly Func<IRelevanceIndex> _relevanceIndexFactory;
-    private readonly Retrieval.IEmbeddingModel _embeddingModel;
     private readonly IFuseStoreFactory _fuseStoreFactory;
     private readonly ILogger<FusionOrchestrator> _logger;
 
@@ -86,7 +85,6 @@ public sealed class FusionOrchestrator
     /// <param name="sliceExtractors">Symbol slice extractors by extension.</param>
     /// <param name="chunkExtractors">Symbol chunk extractors by extension.</param>
     /// <param name="relevanceIndexFactory">Per-run relevance index factory.</param>
-    /// <param name="embeddingModel">Query embedding model.</param>
     /// <param name="fuseStoreFactory">Persistent store factory.</param>
     /// <param name="logger">Optional logger.</param>
     public FusionOrchestrator(
@@ -106,7 +104,6 @@ public sealed class FusionOrchestrator
         CapabilityRegistry<ISymbolSliceExtractor> sliceExtractors,
         CapabilityRegistry<ISymbolChunkExtractor> chunkExtractors,
         Func<IRelevanceIndex> relevanceIndexFactory,
-        Retrieval.IEmbeddingModel embeddingModel,
         IFuseStoreFactory fuseStoreFactory,
         ILogger<FusionOrchestrator>? logger = null)
     {
@@ -126,7 +123,6 @@ public sealed class FusionOrchestrator
         _sliceExtractors = sliceExtractors;
         _chunkExtractors = chunkExtractors;
         _relevanceIndexFactory = relevanceIndexFactory;
-        _embeddingModel = embeddingModel;
         _fuseStoreFactory = fuseStoreFactory;
         _logger = logger ?? NullLogger<FusionOrchestrator>.Instance;
     }
@@ -559,11 +555,6 @@ public sealed class FusionOrchestrator
                 $"Query '{request.Query.Query}' matched no collected files.");
         }
 
-        // Hybrid retrieval: rerank the BM25 candidates by embedding-vector similarity. BM25 stays the recall
-        // stage, so a candidate it did not select cannot appear here; vectors only reorder.
-        if (request.Query.Rerank)
-            ranked = RerankCandidates(request, documents, ranked, fuseStore);
-
         var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
 
         // Symbol-level packing (precision only): pick, per matched file, the members the query is about so
@@ -668,39 +659,6 @@ public sealed class FusionOrchestrator
         }
 
         return score;
-    }
-
-    // Reranks the BM25 candidates with embedding-vector cosine similarity. Each candidate is embedded from its
-    // high-signal fields (symbols and path) plus a body prefix; vectors are cached on disk when the persistent
-    // index is enabled.
-    private IReadOnlyList<RankedFile> RerankCandidates(
-        FusionRequest request,
-        IReadOnlyDictionary<string, IndexedDocument> documents,
-        IReadOnlyList<RankedFile> ranked,
-        IKeyValueStore? fuseStore)
-    {
-        Retrieval.IVectorStore? vectorStore = request.UsePersistentIndex && fuseStore is not null
-            ? new Retrieval.SqliteVectorStore(fuseStore, _embeddingModel.Dimensions)
-            : null;
-
-        var candidates = new List<Retrieval.RerankCandidate>(ranked.Count);
-        foreach (var rankedFile in ranked)
-        {
-            if (!documents.TryGetValue(rankedFile.Path, out var document))
-                continue;
-
-            var symbols = document.Symbols is null ? string.Empty : string.Join(' ', document.Symbols);
-            // Body prefix only: the symbol and path fields carry the signal and keep embedding cheap.
-            var bodyPrefix = document.Content.Length > 2000 ? document.Content[..2000] : document.Content;
-            var text = $"{symbols}\n{document.Path}\n{bodyPrefix}";
-
-            var cacheKey = vectorStore is null
-                ? null
-                : Indexing.AnalysisHasher.Key(text, "vec:" + _embeddingModel.Dimensions);
-            candidates.Add(new Retrieval.RerankCandidate(rankedFile, text, cacheKey));
-        }
-
-        return Retrieval.VectorReranker.Rerank(request.Query!.Query, candidates, _embeddingModel, vectorStore);
     }
 
     private async Task<FilteredFileSet?> FilterByChangesAsync(

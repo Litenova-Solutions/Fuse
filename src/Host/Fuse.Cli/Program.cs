@@ -5,12 +5,10 @@ using Fuse.Cli.Extensions;
 using Fuse.Cli.Services;
 using Microsoft.Extensions.DependencyInjection;
 
-var embeddingsChoice = EmbeddingsModeDetector.ExplicitFlag(args);
-
 Cli.Ext.ConfigureServices(services =>
 {
     services.AddSingleton<IConsoleUI, ConsoleUI>();
-    services.AddFuse(embeddingsChoice);
+    services.AddFuse();
 
     services.AddTransient<FuseCliCommand>();
     services.AddTransient<DotNetCommand>();

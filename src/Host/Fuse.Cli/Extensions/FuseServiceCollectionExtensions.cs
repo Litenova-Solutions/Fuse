@@ -1,4 +1,3 @@
-using Fuse.Fusion.Embeddings.Onnx.Extensions;
 using Fuse.Fusion.Extensions;
 using Fuse.Plugins.Formats.Web.Extensions;
 using Fuse.Plugins.Languages.CSharp.Extensions;
@@ -13,28 +12,20 @@ namespace Fuse.Cli.Extensions;
 public static class FuseServiceCollectionExtensions
 {
     /// <summary>
-    ///     Registers core fusion services, C# language and Roslyn structural plugins, format reducers, and
-    ///     optionally the ONNX embedding backend.
+    ///     Registers core fusion services, C# language and Roslyn structural plugins, and format reducers.
     /// </summary>
     /// <param name="services">The service collection to add registrations to.</param>
-    /// <param name="explicitEmbeddingsFlag">
-    ///     The value of an explicit <c>--embeddings</c> flag from the CLI, or <see langword="null" /> when
-    ///     absent. When <see langword="null" />, ONNX embeddings are enabled only when
-    ///     <c>FUSE_EMBEDDINGS</c> is set; the MCP server passes <see langword="null" /> and relies on that
-    ///     environment variable (see <see cref="OnnxEmbeddingsServiceCollectionExtensions.EnableVariable" />).
-    /// </param>
     /// <returns>The same <paramref name="services" /> instance, to allow chaining.</returns>
     /// <remarks>
     ///     This is the single composition root for production hosts. Callers should not register
-    ///     <c>AddFuseCore</c>, <c>AddCSharpRoslyn</c>, or ONNX separately.
+    ///     <c>AddFuseCore</c> or <c>AddCSharpRoslyn</c> separately.
     /// </remarks>
-    public static IServiceCollection AddFuse(this IServiceCollection services, bool? explicitEmbeddingsFlag = null)
+    public static IServiceCollection AddFuse(this IServiceCollection services)
     {
         services.AddFuseCore();
         services.AddCSharpLanguage();
         services.AddCSharpRoslyn();
         services.AddFormatReducers();
-        services.AddFuseOnnxEmbeddings(explicitEmbeddingsFlag);
         return services;
     }
 }

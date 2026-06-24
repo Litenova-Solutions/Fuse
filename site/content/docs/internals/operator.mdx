@@ -46,8 +46,6 @@ These variables apply to the `fuse mcp serve` process (set them in the MCP clien
 | Variable | Effect |
 |----------|--------|
 | `FUSE_USER_DATA` | Directory for machine-wide Fuse data when fusing outside a git repository (default `~/.fuse`). The store file is `{FUSE_USER_DATA}/fuse.db`. Inside a git repo the store stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
-| `FUSE_EMBEDDINGS` | When `fuse_search` or `fuse_dotnet` runs with `rerank=true`, selects the embedding backend if no explicit `--embeddings` flag is set: `1` or `true` uses the semantic ONNX model; `0` or `false` forces the hashing embedding. Unset uses the build default. Falls back to hashing when the model is unavailable. |
-| `FUSE_EMBEDDINGS_MODEL_PATH` | Directory containing a sideloaded model (`model.onnx` and `vocab.txt`). When set, no download is attempted. |
 | `FUSE_CENTRALITY_WEIGHT` | Weight of the graph-centrality prior in focus and query ranking (default `0.15`). Set to `0` to disable. |
 
 Full semantics are in [Configuration Keys](/docs/reference/configuration-keys). Session-delta state (`session` on `fuse_focus` and `fuse_search`) is held in memory inside the running server only; it is not stored in `.fuse/fuse.db` and is lost when the process exits.

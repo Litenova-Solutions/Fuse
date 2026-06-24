@@ -20,14 +20,13 @@ All persistent cache data lives in a single SQLite database file named `fuse.db`
 | Inside a git repo | `{repoRoot}/.fuse/fuse.db` at the directory that contains `.git`, not under the scoped subdirectory or process working directory |
 | Outside a git repo | `~/.fuse/fuse.db` (override the directory with the `FUSE_USER_DATA` environment variable) |
 
-The file uses WAL journal mode and a single `kv` table partitioned by a `store` column. Four logical namespaces share the database:
+The file uses WAL journal mode and a single `kv` table partitioned by a `store` column. Three logical namespaces share the database:
 
 | Store namespace | Purpose |
 |-----------------|---------|
 | `reduction` | Per-file reduced output |
 | `analysis` | Referenced types, declared types, and declared symbols for dependency graph and ranking |
 | `postings` | Tokenized body text for BM25 relevance indexing |
-| `vectors` | Embedding vectors for hybrid query reranking |
 
 The database is created lazily on the first write. A corrupt file is deleted and recreated on open rather than failing the run, because every entry holds only derived data. See [Operator guide](/docs/internals/operator) for reset and purge actions.
 
@@ -59,8 +58,6 @@ The analysis store keys each file by a 32-character hex string combining the con
 
 The postings store keys body tokens by content hash alone. Only the body field is persisted; symbol and path tokenization are cheap, and symbol analysis is already served by the analysis store.
 
-The vectors store keys embedding vectors by a caller-defined string (typically content hash plus model identity) when hybrid reranking and the persistent index are both enabled.
-
 ## Concurrency and Statistics
 
 Within one run, the SQLite store serializes writes through a pending buffer and commits them once via `FlushAsync` at the end of the run. Reads use pooled connections and are safe across parallel reduction and graph-building workers. Read-your-writes semantics apply: entries buffered in memory are visible before flush.
@@ -71,7 +68,7 @@ Across concurrent runs over the same database, safety comes from SQLite WAL mode
 
 Two run-level flags govern the reduction cache. The no-cache control bypasses it entirely for the run, so every file is reduced fresh and nothing is read or written to the `reduction` namespace. The clear-cache control clears the `reduction` namespace before the run begins, then proceeds normally.
 
-The `--index` flag enables the persistent analysis, postings, and vector stores. It is off by default for one-shot CLI runs and enabled automatically in watch mode and the MCP server, where a session makes several calls and the analysis cost is paid once.
+The `--index` flag enables the persistent analysis and postings stores. It is off by default for one-shot CLI runs and enabled automatically in watch mode and the MCP server, where a session makes several calls and the analysis cost is paid once.
 
 ## Distinct from the Single-Read Content Provider
 

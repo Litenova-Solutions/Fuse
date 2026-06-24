@@ -126,6 +126,18 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Session-delta diff overlays for changed files (item 14).** When a file already sent earlier in a session
+  is requested again after it changed, the session path now re-sends a unified diff of the change rather than
+  the whole file, so a long multi-turn MCP session spends tokens only on what moved. Unchanged files are still
+  omitted, as before. The session tracker now retains each emitted file's content (capped at 64 KB per file;
+  larger files keep only their hash and fall back to a whole-file resend), and `ISessionTracker.Claim` reports
+  new, changed, or unchanged plus the prior content. The diff is computed over already-reduced, already-redacted
+  content, so it reintroduces no secret (C1) and needs no re-redaction; a near-total rewrite, an evicted prior,
+  or a file above the diff line cap falls back to the whole file, and the session note tells the agent which
+  files came as diffs so it can re-request full content or reset the session. Covered by a unified-diff
+  generator with its own tests (insert, delete, context, multi-hunk, whole-file fallbacks), tracker tests
+  (new/changed/unchanged, oversized-prior fallback), and an orchestrator test asserting a multi-line change is
+  sent as a diff.
 - **Opt-in deterministic file sketches for over-large files (item 16).** A file still very large after
   reduction (over roughly 6,000 tokens) can be replaced with a compact structural sketch (its declared types
   and member names, no bodies, from the Roslyn outline), so it keeps presence and navigation in the output

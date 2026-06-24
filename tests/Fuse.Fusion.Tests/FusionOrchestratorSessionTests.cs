@@ -64,6 +64,32 @@ public sealed class FusionOrchestratorSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task FuseAsync_ChangedMultiLineFile_IsSentAsDiff()
+    {
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+        var path = Path.Combine(_sourceDirectory, "Multi.cs");
+        File.WriteAllText(path,
+            "public class Multi\n{\n    public int One() => 1;\n    public int Two() => 2;\n    public int Three() => 3;\n    public int Four() => 4;\n}\n");
+
+        await orchestrator.FuseAsync(Request("sd"));
+
+        // Change one line in the middle; the rest is unchanged.
+        File.WriteAllText(path,
+            "public class Multi\n{\n    public int One() => 1;\n    public int Two() => 22;\n    public int Three() => 3;\n    public int Four() => 4;\n}\n");
+
+        var second = await orchestrator.FuseAsync(Request("sd"));
+
+        // Multi.cs is re-sent as a unified diff, not the whole file: the changed line shows as a delete and an
+        // insert (whitespace-tolerant, since reduction normalizes indentation), and the note records the diff.
+        var content = second.InMemoryContent!;
+        Assert.Contains("fuse:diff", content);
+        Assert.Contains("unified diff", content);
+        Assert.Contains("@@ ", content); // a hunk header, so it is a diff
+        Assert.Matches(@"\+\s*public int Two\(\) => 22;", content);
+        Assert.Matches(@"-\s*public int Two\(\) => 2;", content);
+    }
+
+    [Fact]
     public async Task FuseAsync_DifferentSession_SendsEverything()
     {
         var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();

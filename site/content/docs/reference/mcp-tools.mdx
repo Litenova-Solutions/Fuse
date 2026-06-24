@@ -113,6 +113,11 @@ Files changed since a git ref plus optional dependents. With `review` set, one c
 "what changed and what breaks" with diff hunks and the callers of each changed file,
 instead of reading the diff and then chasing callers by hand.
 
+Prefer this tool for branch, PR, or fix work whenever a git base is available. Starting from the
+diff, it has by far the highest recall of the files a task touches (87 percent on the benchmark
+corpus, against 55 percent for query at the same budget), so routing PR-shaped work here rather
+than to a query is the single biggest accuracy lever.
+
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
 | `path` | string | required | Source directory to fuse |

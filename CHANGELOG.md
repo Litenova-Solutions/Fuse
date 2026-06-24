@@ -4,6 +4,16 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+### Changed
+
+- **MCP tool descriptions and server instructions steer mode selection (item 13, routing portion).** The server
+  instruction block now leads with a "choosing a mode" guide (branch/PR/fix work with a git base to
+  `fuse_changes`, a named type to `fuse_focus`, a concept to `fuse_search`, a broad survey to `fuse_toc`, unsure
+  to `fuse_ask`), and the `fuse_changes` description and reference page state that it has by far the highest
+  recall (87 percent versus 55 percent for query at the same budget) so PR-shaped work should route there. This
+  biases clients (especially Cursor and Copilot, which lean on descriptions) toward the highest-recall mode
+  without changing any behavior.
+
 ### Fixed
 
 - **Whole-PEM-block redaction and additional provider key patterns (C6).** The PEM rule matched only the

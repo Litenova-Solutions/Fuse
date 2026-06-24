@@ -396,7 +396,7 @@ public sealed class FuseTools
     ///     is missing or fusion fails.
     /// </returns>
     [McpServerTool(Name = "fuse_changes", ReadOnly = true)]
-    [Description("Change-scoped fusion for a .NET codebase. Returns files changed since a git ref plus optional dependents. Set review=true to prepend diff hunks and direct callers per changed file.")]
+    [Description("Change-scoped fusion for a .NET codebase. Prefer this for branch, PR, or fix work whenever a git base is available: starting from the diff, it has by far the highest recall of the files a task touches. Returns files changed since a git ref plus optional dependents. Set review=true to prepend diff hunks and direct callers per changed file.")]
     public static Task<string> FuseChangesAsync(
         FusionOrchestrator orchestrator,
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,

@@ -17,6 +17,25 @@ public sealed class ExperimentalOptionsTests
     }
 
     [Fact]
+    public void Defaults_DenseRerankOffAndNoChurnPrior()
+    {
+        var options = new ExperimentalOptions();
+        Assert.False(options.DenseRerank);
+        Assert.Equal(0, options.GitChurnWeight);
+    }
+
+    [Fact]
+    public void ResolveFromEnvironment_GitChurnWeight_Parses()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_GIT_CHURN_WEIGHT", "0.2"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.Equal(0.2, resolved.GitChurnWeight);
+    }
+
+    [Fact]
     public void ResolveFromEnvironment_BudgetExpansionOff_Disables()
     {
         var resolved = WithEnvironment(

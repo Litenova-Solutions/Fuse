@@ -37,4 +37,9 @@ public sealed class JsonExperimentalOptionsDto
     ///     unless a model is present and the feature is enabled).
     /// </summary>
     public bool DenseRerank { get; set; }
+
+    /// <summary>
+    ///     The weight of the git churn ranking prior on the query path (<c>0</c> when off).
+    /// </summary>
+    public double GitChurnWeight { get; set; }
 }

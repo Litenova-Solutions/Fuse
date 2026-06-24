@@ -183,6 +183,13 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   `fuse_explain` this completes item 33 and brings the MCP surface to eleven tools. Covered by a registration
   test and per-mode functional tests (symbol type and member, text with context, path fragment, and the
   empty-query and no-match paths).
+- **Bootstrap confidence intervals for the scoping recall (B6).** `tests/benchmarks/harness/bootstrap-ci.ps1`
+  reads the per-PR recall already in `layer2a.json` (no fusions re-run) and reports a deterministic, seeded
+  2,000-sample 95 percent bootstrap interval for each mode's mean recall at the headline budget: changes 87
+  percent (72 to 98), focus 92 (84 to 98), query 61 (42 to 78), grep 38 (22 to 56). With 24 PRs the intervals
+  are wide and query's overlaps grep's, so the benchmarks page now states plainly that a few-point move is
+  within noise and a delta is trustworthy only when it also holds per repository and across budgets (the B9
+  gate). This keeps the headline numbers honest about sampling uncertainty.
 - **Per-repo regression gate for the scoping benchmark (B9).** `tests/benchmarks/harness/check-regressions.ps1`
   recomputes per-repo per-mode mean recall at the 50,000 token headline budget from a fresh `layer2a.json` and
   compares it against a committed baseline (`layer2a-baseline.json`), exiting non-zero if any repository's

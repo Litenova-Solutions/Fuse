@@ -53,6 +53,7 @@ A few behaviors are controlled by environment variables rather than the config f
 | `FUSE_USER_DATA` | `~/.fuse` | Directory for machine-wide Fuse data when fusing outside a git repository. The store file is `{FUSE_USER_DATA}/fuse.db`. Inside a git repo the store stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
 | `FUSE_CENTRALITY_WEIGHT` | `0.15` | Weight of the query-independent graph-centrality prior blended into focus and query ranking, so at equal relevance the more depended-upon file ranks earlier. Set to `0` to disable the prior and reproduce the pre-centrality ordering exactly. |
 | `FUSE_QUERY_EXPANSION` | `1` (on) | Pseudo-relevance feedback query expansion: a second ranking pass seeded with recurring declared-symbol terms from the first pass's top files, rewriting a sparse query in the codebase's vocabulary. Set to `0` (also `off` or `false`) to disable and reproduce the single-pass BM25F ordering exactly. |
+| `FUSE_BUDGET_EXPANSION` | `1` (on) | Budget-aware dependency expansion on the query path: when a token ceiling is set, the graph admits neighbours highest-score first only while their estimated reduced cost fits the budget, instead of admitting the whole neighbourhood and leaving the packer to cut it. The estimate uses the level each file will emit at (skeleton for neighbours when tiered emission is on). Seeds are always admitted, so this is a cost gate that mirrors the packer, not a recall lever. Set to `0` (also `off` or `false`) to disable and reproduce the unbounded expansion. |
 
 ## The Scaffold from `fuse init`
 

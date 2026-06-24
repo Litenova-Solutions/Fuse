@@ -6,6 +6,23 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Changed
 
+- **Budget-aware query-path dependency expansion (item 4).** When a token ceiling is set, query-path
+  expansion now admits neighbours highest-score first only while their estimated reduced cost fits the budget,
+  instead of admitting the whole neighbourhood and leaving the packer to cut it. The per-file estimate comes
+  from the `TokenCostModel` at the level each file will be emitted at (a skeleton for a neighbour when tiered
+  emission is on, the request level otherwise), so a cheap skeletonized neighbour is not rejected as a full
+  body; seeds are always admitted. Stopping the graph from over-admitting a large neighbourhood keeps the
+  budget on the seeds and their closest neighbours, so more truth files survive the cut: Layer 2A query recall
+  rose at every budget (50,000 tokens 57 to 61 percent, 25,000 45 to 49, 10,000 33 to 39), with precision up
+  (50k 3 to 8 percent, wasted tokens 40,886 to 37,118) at fewer mean tokens (41,885 to 40,258). No
+  per-repository regression at the headline budget (AutoMapper 46 to 50, FluentValidation 57 and MediatR 94
+  unchanged, Newtonsoft.Json 32 to 42), and every change-set-size stratum improved (small 68 to 71, medium 56
+  to 61, large 7 to 10). The held-out test fold moved 51 to 48 percent, a two-PR swing on a ten-PR fold; the
+  change fits no scalar to the corpus, so this is fold noise rather than overfitting. On by default; set
+  `FUSE_BUDGET_EXPANSION=0` (or `off`/`false`) to reproduce the unbounded expansion. Covered by orchestrator
+  tests (a tight budget keeps the seed and admits fewer files; an ample budget is neutral) and an
+  environment-override test.
+
 - **Graph-centrality prior uses PageRank instead of raw in-degree (item 7/Q7).** The query-independent
   importance prior blended into seed and expansion scores is now PageRank over the file dependency edges
   (importance flows from a file to the files it depends on), so a type referenced by many already-central files

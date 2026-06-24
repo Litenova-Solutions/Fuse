@@ -20,13 +20,18 @@ the accounting is complete and auditable.
   marks "as warranted by data"; warranted only after dense rerank (item 9) pays off, which it did not here.
 - **Item 12 (LLM query rewrite / HyDE):** an LLM at query time is opt-in only, since the default path must run
   with no model and no network; deferred with the other opt-in model levers.
-- **Item 23 (persistent vector cache):** the plan ties it to dense rerank being the default, which it is not
-  (item 9 stayed opt-in), so there are no vectors to cache on the default path.
 - **F1 (SQLite FTS5 BM25 backend):** an architectural swap the plan says to do "only if profiling demands it";
   the latency layer shows the current postings path is not the bottleneck, so it is not warranted.
 
 ### Changed
 
+- **Cache rerank document embeddings by content hash (item 23).** The dense reranker (item 9, opt-in) embedded
+  every candidate's text on every query; it now caches each document embedding by a content hash, so a warm
+  rerank over an unchanged file reuses the vector instead of re-running the model. The cache is process-lifetime
+  and concurrency-safe, bounded by clearing past a cap (about a few tens of MB), and behavior-preserving (the
+  same text embeds to the same vector). This is the in-memory form of the plan's persistent vector cache; it
+  benefits the opt-in rerank path only (the query exact text is not cached, since it changes per call). It does
+  not change the default path, which runs no model.
 - **Reuse the built relevance index across queries on an unchanged tree (item 24).** The BM25 index rebuilt its
   document-frequency and length statistics on every query; this is the dominant warm-call cost once body
   tokenization is cached on disk. A process-lifetime `RelevanceIndexCache` now keeps one built index keyed by a

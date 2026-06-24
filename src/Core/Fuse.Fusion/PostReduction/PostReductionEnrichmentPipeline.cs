@@ -31,7 +31,7 @@ public sealed class PostReductionEnrichmentPipeline
     private readonly Session.ISessionTracker _sessionTracker;
     private readonly IGitStatsProvider _gitStatsProvider;
     private readonly IFileSystem _fileSystem;
-    private readonly IEnumerable<PatternDetectorBase> _patternDetectors;
+    private readonly Func<IReadOnlyList<PatternDetectorBase>> _patternDetectorFactory;
     private readonly IRouteMapGenerator? _routeMapGenerator;
     private readonly IProjectGraphGenerator? _projectGraphGenerator;
 
@@ -45,7 +45,7 @@ public sealed class PostReductionEnrichmentPipeline
         Session.ISessionTracker sessionTracker,
         IGitStatsProvider gitStatsProvider,
         IFileSystem fileSystem,
-        IEnumerable<PatternDetectorBase> patternDetectors,
+        Func<IReadOnlyList<PatternDetectorBase>> patternDetectorFactory,
         IRouteMapGenerator? routeMapGenerator = null,
         IProjectGraphGenerator? projectGraphGenerator = null)
     {
@@ -55,7 +55,7 @@ public sealed class PostReductionEnrichmentPipeline
         _sessionTracker = sessionTracker;
         _gitStatsProvider = gitStatsProvider;
         _fileSystem = fileSystem;
-        _patternDetectors = patternDetectors;
+        _patternDetectorFactory = patternDetectorFactory;
         _routeMapGenerator = routeMapGenerator;
         _projectGraphGenerator = projectGraphGenerator;
     }
@@ -251,7 +251,9 @@ public sealed class PostReductionEnrichmentPipeline
             .Select(c => new FusedFileSnapshot(c.NormalizedPath, c.Content))
             .ToArray();
 
-        var patterns = PatternDetectionBatch.Run(_patternDetectors, snapshots);
+        // Fresh detector instances per call: detectors accumulate mutable state, so a private batch keeps
+        // concurrent runs (and the two detection passes within one run) from racing over shared instances.
+        var patterns = PatternDetectionBatch.Run(_patternDetectorFactory(), snapshots);
         return patterns.Count == 0 ? null : new PatternSummary(patterns);
     }
 

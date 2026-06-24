@@ -128,6 +128,85 @@ public sealed class FusionConcurrencyTests : IDisposable
         Assert.True(File.Exists(SqliteTestHelpers.FuseDatabasePath(dir)));
     }
 
+    [Fact]
+    public async Task FuseAsync_ConcurrentRunsWithDifferentGitIgnore_DoNotCrossContaminate()
+    {
+        // C3: GitIgnoreFilter patterns must be per-run. One directory gitignores Secret.cs; the other does not.
+        // Interleaving many concurrent runs would, with a shared mutable pattern set, leak one repo's ignore
+        // rules into the other. Each run must honor only its own .gitignore.
+        var ignoreDir = NewDirectory();
+        WriteFile(ignoreDir, ".gitignore", "Secret.cs\n");
+        WriteFile(ignoreDir, "Secret.cs", "public class Secret { public string Widget() => \"s\"; }");
+        WriteFile(ignoreDir, "Public.cs", "public class Public { public string Widget() => \"p\"; }");
+
+        var keepDir = NewDirectory();
+        WriteFile(keepDir, "Secret.cs", "public class Secret { public string Widget() => \"s\"; }");
+        WriteFile(keepDir, "Public.cs", "public class Public { public string Widget() => \"p\"; }");
+
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+
+        var tasks = new List<Task<(bool Ignored, FusionResult Result)>>();
+        for (var i = 0; i < 24; i++)
+        {
+            var useIgnore = i % 2 == 0;
+            var dir = useIgnore ? ignoreDir : keepDir;
+            tasks.Add(Run(dir, useIgnore));
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        foreach (var (ignored, result) in results)
+        {
+            Assert.NotNull(result.InMemoryContent);
+            Assert.Contains("Public.cs", result.InMemoryContent);
+            if (ignored)
+                Assert.DoesNotContain("Secret.cs", result.InMemoryContent);
+            else
+                Assert.Contains("Secret.cs", result.InMemoryContent);
+        }
+
+        async Task<(bool, FusionResult)> Run(string dir, bool ignored)
+        {
+            var result = await orchestrator.FuseAsync(BuildQueryRequest(dir, "Widget"));
+            return (ignored, result);
+        }
+    }
+
+    [Fact]
+    public async Task FuseAsync_ConcurrentRunsWithPatternSummary_ProduceConsistentResults()
+    {
+        // C3: pattern detectors accumulate mutable state, so a shared instance would corrupt the summary under
+        // concurrency. A fresh detector batch per run must yield identical output across simultaneous runs.
+        var dir = NewDirectory();
+        WriteFile(dir, "UserController.cs", """
+            public class UserController
+            {
+                private readonly ILogger _logger;
+                public async Task Handle()
+                {
+                    _logger.LogInformation("handling");
+                    await Task.CompletedTask;
+                }
+            }
+            """);
+
+        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
+
+        var request = new FusionRequest(
+            new CollectionOptions(dir, extensions: [".cs"]),
+            new ReductionOptions(includePatternSummary: true),
+            new EmissionOptions(),
+            inMemory: true);
+
+        var tasks = Enumerable.Range(0, 12).Select(_ => orchestrator.FuseAsync(request)).ToArray();
+        var results = await Task.WhenAll(tasks);
+
+        var first = results[0].InMemoryContent;
+        Assert.NotNull(first);
+        foreach (var result in results)
+            Assert.Equal(first, result.InMemoryContent);
+    }
+
     private static FusionRequest BuildQueryRequest(string dir, string query, bool usePersistentIndex = false) =>
         new(
             new CollectionOptions(dir, extensions: [".cs"]),

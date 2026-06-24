@@ -16,6 +16,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- **Structural maps prepend to the first output part (P2).** Route and project maps are an overview header for
+  the whole output. On multipart disk output they were prepended to the last part, where they trailed the
+  content; they now head the first part (single-part and in-memory output were already correct). Covered by a
+  multipart test asserting the map heads part one and appears exactly once.
 - **Whole-PEM-block redaction and additional provider key patterns (C6).** The PEM rule matched only the
   `-----BEGIN ... PRIVATE KEY-----` header line, so the base64 key body and the `END` line were left in the
   output: the secret survived. It now matches the entire block, header through matching footer, and removes it

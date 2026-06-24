@@ -313,9 +313,12 @@ public sealed class PostReductionEnrichmentPipeline
         var generatedPaths = emissionResult.GeneratedPaths.ToList();
         if (generatedPaths.Count > 0)
         {
-            var lastPath = generatedPaths[^1];
-            var existing = await _fileSystem.ReadAllTextAsync(lastPath);
-            await _fileSystem.WriteAllTextAsync(lastPath, prefix + "\n" + existing);
+            // Prepend to the FIRST part: the route and project maps are an overview header for the whole output,
+            // so a reader meets them before any file body. Multipart output previously prepended them to the
+            // last part, where they trailed the content (P2).
+            var firstPath = generatedPaths[0];
+            var existing = await _fileSystem.ReadAllTextAsync(firstPath);
+            await _fileSystem.WriteAllTextAsync(firstPath, prefix + "\n" + existing);
         }
 
         return new FusionResult(

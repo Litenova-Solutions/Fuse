@@ -53,4 +53,9 @@ public sealed class JsonExperimentalOptionsDto
     ///     dropped (P1).
     /// </summary>
     public bool DowngradeBeforeDrop { get; set; }
+
+    /// <summary>
+    ///     Whether the query was expanded with a local distributional thesaurus of co-occurring identifiers (Q4).
+    /// </summary>
+    public bool DistributionalThesaurus { get; set; }
 }

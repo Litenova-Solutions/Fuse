@@ -103,6 +103,15 @@ public sealed record ExperimentalOptions
     public bool DowngradeBeforeDrop { get; init; } = true;
 
     /// <summary>
+    ///     Whether the query path expands a query identifier with its corpus-statistically-associated identifiers
+    ///     from a distributional thesaurus (pointwise mutual information of declared symbols co-occurring in the
+    ///     same file), so a query term bridges to a related-but-different vocabulary the pseudo-relevance feedback
+    ///     set never contained. Fully lexical, no model. Off pending an A/B. Overridden by <c>FUSE_THESAURUS</c>
+    ///     (<c>1</c>, <c>on</c>, or <c>true</c> enables it).
+    /// </summary>
+    public bool DistributionalThesaurus { get; init; }
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -209,6 +218,16 @@ public sealed record ExperimentalOptions
             downgradeBeforeDrop = false;
         }
 
+        var distributionalThesaurus = resolved.DistributionalThesaurus;
+        var rawThesaurus = Environment.GetEnvironmentVariable("FUSE_THESAURUS");
+        if (!string.IsNullOrWhiteSpace(rawThesaurus) &&
+            (rawThesaurus.Equals("1", StringComparison.Ordinal) ||
+             rawThesaurus.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawThesaurus.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            distributionalThesaurus = true;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -220,6 +239,7 @@ public sealed record ExperimentalOptions
             GitChurnWeight = gitChurnWeight,
             SketchHugeFiles = sketchHugeFiles,
             DowngradeBeforeDrop = downgradeBeforeDrop,
+            DistributionalThesaurus = distributionalThesaurus,
         };
     }
 }

@@ -38,6 +38,17 @@ public sealed class ExperimentalOptionsTests
     }
 
     [Fact]
+    public void ResolveFromEnvironment_ThesaurusOn_Enables()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_THESAURUS", "1"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.True(resolved.DistributionalThesaurus);
+    }
+
+    [Fact]
     public void ResolveFromEnvironment_GitChurnWeight_Parses()
     {
         var resolved = WithEnvironment(

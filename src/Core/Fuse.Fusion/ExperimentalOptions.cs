@@ -121,6 +121,15 @@ public sealed record ExperimentalOptions
     public bool ProximityEdges { get; init; }
 
     /// <summary>
+    ///     Whether the query path adds a member-level retrieval pass (Q5): each declared member is indexed as
+    ///     its own document and the per-member scores are rolled up to a file score (best member wins), then
+    ///     merged with the file-granular ranking without dropping a seed. This surfaces a file whose match is
+    ///     concentrated in one member of an otherwise large file, which whole-file length normalization dilutes.
+    ///     Off pending an A/B. Overridden by <c>FUSE_MEMBER_LEVEL</c> (<c>1</c>, <c>on</c>, or <c>true</c>).
+    /// </summary>
+    public bool MemberLevelRetrieval { get; init; }
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -247,6 +256,16 @@ public sealed record ExperimentalOptions
             proximityEdges = true;
         }
 
+        var memberLevelRetrieval = resolved.MemberLevelRetrieval;
+        var rawMember = Environment.GetEnvironmentVariable("FUSE_MEMBER_LEVEL");
+        if (!string.IsNullOrWhiteSpace(rawMember) &&
+            (rawMember.Equals("1", StringComparison.Ordinal) ||
+             rawMember.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawMember.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            memberLevelRetrieval = true;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -260,6 +279,7 @@ public sealed record ExperimentalOptions
             DowngradeBeforeDrop = downgradeBeforeDrop,
             DistributionalThesaurus = distributionalThesaurus,
             ProximityEdges = proximityEdges,
+            MemberLevelRetrieval = memberLevelRetrieval,
         };
     }
 }

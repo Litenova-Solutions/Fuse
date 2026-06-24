@@ -60,6 +60,17 @@ public sealed class ExperimentalOptionsTests
     }
 
     [Fact]
+    public void ResolveFromEnvironment_MemberLevelOn_Enables()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_MEMBER_LEVEL", "1"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.True(resolved.MemberLevelRetrieval);
+    }
+
+    [Fact]
     public void ResolveFromEnvironment_GitChurnWeight_Parses()
     {
         var resolved = WithEnvironment(

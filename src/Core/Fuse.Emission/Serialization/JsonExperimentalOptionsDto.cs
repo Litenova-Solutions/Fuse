@@ -63,4 +63,9 @@ public sealed class JsonExperimentalOptionsDto
     ///     Whether expansion followed low-weight structural proximity edges in addition to type references (item 7).
     /// </summary>
     public bool ProximityEdges { get; set; }
+
+    /// <summary>
+    ///     Whether the query path added a member-level retrieval pass rolled up to file scores (Q5).
+    /// </summary>
+    public bool MemberLevelRetrieval { get; set; }
 }

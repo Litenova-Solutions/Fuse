@@ -161,6 +161,20 @@ the accounting is complete and auditable.
 
 ### Added
 
+- **Opt-in member-level retrieval (Q5).** A query-path pass that indexes each declared member as its own
+  document and rolls the per-member scores up to a file score (best member wins), then adds any file the member
+  pass surfaces that the file-granular pass missed as an extra seed. This reaches a file whose match is
+  concentrated in one member of an otherwise large file, which whole-file length normalization dilutes.
+  Measured both arms: it lifts query recall at the 50,000 token headline from 61 to 68 percent (AutoMapper 50
+  to 62, FluentValidation 57 to 69, Newtonsoft.Json 42 to 46, MediatR unchanged), with no per-repository
+  regression at the headline, the biggest single query lever this release. It is **off by default** because the
+  warm-call latency cost is steep: indexing member chunks re-parses files every query (the chunk extraction is
+  not yet cached), which roughly doubles to triples warm latency (Newtonsoft.Json warm p50 2178 to 5752 ms,
+  AutoMapper 1333 to 3173). Enable with `FUSE_MEMBER_LEVEL=1`; default-on awaits caching chunk extraction by
+  content hash (the follow-on that would remove the per-query re-parse). Covered by orchestrator tests (a
+  file whose match is diluted across a large file is surfaced when on, not when off) and an environment test.
+  My earlier prediction that Q5 would be neutral was wrong; building and measuring it found a real win, which
+  is why it is shipped (opt-in) rather than deferred.
 - **Session-delta diff overlays for changed files (item 14).** When a file already sent earlier in a session
   is requested again after it changed, the session path now re-sends a unified diff of the change rather than
   the whole file, so a long multi-turn MCP session spends tokens only on what moved. Unchanged files are still
@@ -378,24 +392,13 @@ the accounting is complete and auditable.
   reaches the referenced project's types), which is broader and noisier than the narrow test-to-implementation
   proximity edges of item 7; item 7 was implemented and measured exactly neutral on this corpus, so a coarser,
   noisier project edge is predicted neutral-or-negative here. The corpus repositories are also mostly single
-  assembly (the cross-assembly case the lever targets is barely exercised), and the lexical and graph path is
-  saturated (four measured rejections this release). The compiled-`Compilation` tier is XL and the plan gates
-  it behind the persistent index and an explicit flag. Build the coarse cut and A/B it on a multi-assembly
-  corpus (B2) where cross-assembly edges matter; on the current corpus it would repeat item 7's neutral result
-  at higher cost.
-- **Source:** member-level retrieval (Q5): index member chunks as fielded documents and roll their scores up to
-  a file score, so a query that matches one member buried in a large file ranks that file above what whole-file
-  BM25F gives (length normalization dilutes a single-member match across a long file). **Fit:** large
-  single-file truth sets. **Decision:** **deferred, not built**, on grounded analysis rather than a measured
-  A/B, because building the parallel chunk index it requires is a substantial subsystem and the prediction of
-  neutrality on the current corpus is strong: the documented failure mode here is multi-file truncation (which
-  downgrade-before-drop, P1, addressed by keeping more files present), not large-single-file pack-outs; the
-  declared-symbol field already weights member names above the body; and four lexical-path levers measured this
-  release (the change+query hybrid, the exact-symbol boost, the distributional thesaurus, and proximity edges)
-  all came back neutral or negative, evidence that this corpus's lexical and graph retrieval is saturated.
-  Member-level retrieval should be built and A/B'd when a corpus with large single-file truth sets exists to
-  validate it (B2), where its specific failure mode is actually exercised; building it speculatively now would
-  break the measure-first discipline the rest of this release followed.
+  assembly (the cross-assembly case the lever targets is barely exercised), and the graph-edge levers
+  specifically are exhausted on this corpus (item 7, the change+query hybrid, and the type-graph false-edge
+  work all landed without graph-recall headroom; member-level retrieval found its win on a different axis,
+  retrieval granularity, not graph edges). The compiled-`Compilation` tier is XL and the plan gates it behind
+  the persistent index and an explicit flag. Build the coarse cut and A/B it on a multi-assembly corpus (B2)
+  where cross-assembly edges matter; on the current corpus it would repeat item 7's neutral result at higher
+  cost.
 - **Source:** structural proximity graph edges (item 7): link a file to its test or implementation counterpart
   and same-stem siblings by path, followed at a weight below a real type reference, to reach a related file the
   type-reference graph misses. **Fit:** focus and query recall, all graph modes. **Decision:** built behind the

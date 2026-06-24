@@ -164,6 +164,18 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Research notes
 
+- **Source:** Reciprocal Rank Fusion (Cormack et al., SIGIR 2009) and multi-query fusion in code search. **Idea:**
+  rank several query variants (the raw query, an identifier-only subset of the compound type tokens, and the
+  pseudo-relevance-expanded query) and combine them with RRF so a file several variants agree on outranks one
+  variant's lone top hit. **Fit:** Layer 2A query recall on the fast lexical path; "can subsume the single-pass
+  plus PRF merge." **Decision:** implemented as a tested `Scoping/RankFusion.cs` utility wired behind the
+  `MultiQueryFusion` knob (env `FUSE_QUERY_FUSION`), then **rejected as the default** after a measured A/B over
+  the pinned corpus regressed query recall at every budget: 50k 57 to 53 percent, 25k 44 to 33, 10k 33 to 19,
+  with AutoMapper 46 to 33 and Newtonsoft.Json 32 to 26 at the headline. RRF is rank-only, so it discards the
+  calibrated BM25F score magnitude that separates a strong declared-symbol hit from an incidental mention, and
+  the identifier-only variant injects off-target files at equal fusion weight; the existing seed-preserving PRF
+  merge, which never drops a raw seed, is strictly better here. The utility and gated wiring are retained (off
+  by default, behavior unchanged) for a future score-aware or seed-restricted variant; do not enable naively.
 - **Source:** RM3 / pseudo-relevance feedback (classical IR; recent survey "Query Expansion in the Age of
   Pre-trained and Large Language Models", arXiv 2509.07794, and "A Systematic Study of Pseudo-Relevance
   Feedback with LLMs", arXiv 2603.11008). **Idea:** mine top first-pass documents for expansion terms and

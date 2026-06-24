@@ -174,6 +174,7 @@ public abstract class CommandBase
             CentralityWeight = resolved.CentralityWeight,
             QueryExpansion = resolved.QueryExpansion,
             TieredEmission = resolved.TieredEmission,
+            MultiQueryFusion = resolved.MultiQueryFusion,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

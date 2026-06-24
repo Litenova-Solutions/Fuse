@@ -41,6 +41,14 @@ public sealed record ExperimentalOptions
     public bool TieredEmission { get; init; } = true;
 
     /// <summary>
+    ///     Whether the query path fuses several query variants (the raw query, an identifier-only subset, and
+    ///     the pseudo-relevance-expanded query) with Reciprocal Rank Fusion instead of the single-pass plus
+    ///     seed-preserving PRF merge. Off pending an A/B. Overridden by <c>FUSE_QUERY_FUSION</c> (<c>1</c>,
+    ///     <c>on</c>, or <c>true</c> enables it).
+    /// </summary>
+    public bool MultiQueryFusion { get; init; }
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -88,11 +96,22 @@ public sealed record ExperimentalOptions
             }
         }
 
+        var multiQueryFusion = resolved.MultiQueryFusion;
+        var rawFusion = Environment.GetEnvironmentVariable("FUSE_QUERY_FUSION");
+        if (!string.IsNullOrWhiteSpace(rawFusion) &&
+            (rawFusion.Equals("1", StringComparison.Ordinal) ||
+             rawFusion.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawFusion.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            multiQueryFusion = true;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
             QueryExpansion = queryExpansion,
             TieredEmission = tieredEmission,
+            MultiQueryFusion = multiQueryFusion,
         };
     }
 }

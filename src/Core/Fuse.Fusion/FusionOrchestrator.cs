@@ -596,7 +596,10 @@ public sealed class FusionOrchestrator
         var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
 
         // Query seeds are already content-matched; expand forward to their dependencies for context, but do
-        // not follow dependents, which would broaden the set with files that merely use a matched type.
+        // not follow dependents, which would broaden the set with files that merely use a matched type. A
+        // measured A/B over the pinned corpus confirmed this: enabling reverse hops dropped query recall 51 to
+        // 45 percent at the headline budget (Newtonsoft.Json 30 to 13), as common-type dependents displaced
+        // the real targets under the token budget.
         var options = new ExpansionOptions(
             request.Query.Depth,
             FollowReferences: true,

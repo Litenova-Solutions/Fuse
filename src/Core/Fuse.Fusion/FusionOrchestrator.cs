@@ -185,9 +185,12 @@ public sealed class FusionOrchestrator
                 cancellationToken);
             LogStageComplete("collection", stageTimer.ElapsedMilliseconds, collectionResult.Files.Count);
 
+            // Resolve experimental knobs once: the configured request values with environment overrides applied.
+            var experimental = ExperimentalOptions.ResolveFromEnvironment(request.Experimental);
+
             stageTimer.Restart();
             var filterResult = await FilterFilesAsync(
-                request, collectionResult.Files, parallelism, analysisIndex, fuseStore, contentProvider, cancellationToken);
+                request, collectionResult.Files, parallelism, analysisIndex, fuseStore, contentProvider, experimental, cancellationToken);
             if (filterResult is null)
             {
                 LogStageComplete("scoping", stageTimer.ElapsedMilliseconds, 0, ResolveScopingMode(request));
@@ -197,6 +200,12 @@ public sealed class FusionOrchestrator
             LogAnalysisIndexStats(analysisIndex);
             LogStageComplete("scoping", stageTimer.ElapsedMilliseconds, filterResult.Files.Count, ResolveScopingMode(request));
 
+            // Tiered emission (query and focus only): reduce dependency-expanded neighbours (provenance hop two
+            // or deeper) to signature skeletons so each costs fewer tokens and the budget-aware packer fits more
+            // files. Seeds (chain length one) keep the request's level. Redaction-correct because the skeleton is
+            // produced inside the reduction stage, not by a post-reduction source re-read.
+            var perFileLevel = BuildTieredLevelResolver(request, experimental, filterResult);
+
             stageTimer.Restart();
             var reducedContent = await _reductionPipeline.ReduceAsync(
                 filterResult.Files,
@@ -205,7 +214,7 @@ public sealed class FusionOrchestrator
                 parallelism,
                 reductionCache,
                 tokenCounter,
-                perFileLevel: null,
+                perFileLevel,
                 cancellationToken);
             LogReductionComplete(stageTimer.ElapsedMilliseconds, reducedContent.Count, reductionCache);
 
@@ -431,6 +440,29 @@ public sealed class FusionOrchestrator
         return entry.WithReducedContent(redaction.Content, tokenCounter, counts);
     }
 
+    // Builds the per-file reduction-level selector for tiered emission, or null when it is off, the run is not
+    // query/focus, or no provenance is available. Neighbours (provenance chain length greater than one) reduce
+    // to a signature skeleton; seeds keep the request's level. Changes mode is intentionally excluded: its
+    // recall rests on emitting the changed files in full.
+    private static Func<Fuse.Collection.Models.SourceFile, Fuse.Plugins.Abstractions.Options.ReductionLevel>? BuildTieredLevelResolver(
+        FusionRequest request,
+        ExperimentalOptions experimental,
+        FilteredFileSet filterResult)
+    {
+        if (!experimental.TieredEmission)
+            return null;
+        if (request.Focus is null && request.Query is null)
+            return null;
+        if (filterResult.Provenance is not { } provenance)
+            return null;
+
+        var seedLevel = request.Reduction.Level;
+        return file =>
+            provenance.TryGetValue(file.NormalizedRelativePath, out var chain) && chain.Count > 1
+                ? Fuse.Plugins.Abstractions.Options.ReductionLevel.Skeleton
+                : seedLevel;
+    }
+
     private static FusionResult WithReductionCacheStats(FusionResult result, IReductionCache? cache)
     {
         if (cache is null)
@@ -457,13 +489,9 @@ public sealed class FusionOrchestrator
         Indexing.IAnalysisIndex? index,
         IKeyValueStore? fuseStore,
         ISourceContentProvider contentProvider,
+        ExperimentalOptions experimental,
         CancellationToken cancellationToken)
     {
-        // Resolve once here: the request's configured knobs with any environment overrides applied. The
-        // environment is consulted only at this point, so a run's behavior follows its resolved options rather
-        // than ambient state read deep in the pipeline.
-        var experimental = ExperimentalOptions.ResolveFromEnvironment(request.Experimental);
-
         if (request.Focus is not null)
             return await FilterByFocusAsync(request, files, parallelism, index, contentProvider, experimental, cancellationToken);
 

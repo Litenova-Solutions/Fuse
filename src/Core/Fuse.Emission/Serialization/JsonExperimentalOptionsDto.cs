@@ -15,4 +15,9 @@ public sealed class JsonExperimentalOptionsDto
     ///     Whether pseudo-relevance feedback query expansion ran on the query path.
     /// </summary>
     public bool QueryExpansion { get; set; }
+
+    /// <summary>
+    ///     Whether tiered emission skeletonized dependency-expanded neighbours on the query and focus paths.
+    /// </summary>
+    public bool TieredEmission { get; set; }
 }

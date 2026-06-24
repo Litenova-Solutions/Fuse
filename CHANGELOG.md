@@ -59,6 +59,20 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Tiered emission for query and focus scoping (on by default).** Dependency-expanded neighbour files
+  (provenance hop two or deeper) are now reduced to signature skeletons instead of full bodies, so each costs
+  fewer tokens and the budget-aware packer fits more files under the same budget; because recall counts file
+  presence, fitting more truth files raises recall. Seeds keep the request's level, and change mode is excluded
+  (its recall rests on emitting the changed files in full). Built on the per-file reduction-level mechanism, so
+  the skeletonization happens inside the reduction stage and is redaction-correct, not a post-reduction source
+  re-read. Measured over the pinned corpus at the 50,000 token headline budget, tiered emission lifted query
+  recall from 51 to 55 percent and focus from 71 to 77 percent at fewer tokens (focus 46,543 to 41,505, query
+  46,366 to 43,190), with no per-repository regression: focus rose on AutoMapper (88 to 92), FluentValidation
+  (74 to 88), and Newtonsoft.Json (21 to 28), query on AutoMapper (29 to 38), FluentValidation (51 to 57), and
+  Newtonsoft.Json (30 to 32). The gain concentrates on the medium and large change-set strata where the budget
+  previously truncated truth files. Layer 4 one-call context rose to 55 percent recall at 43,165 tokens (from 53
+  percent at 44,694). Single-turn localization (layer 2B) is unchanged at slightly fewer tokens. Set
+  `FUSE_TIERED_EMISSION=0` to reproduce the untiered ordering. The resolved setting is recorded in the run report.
 - **Per-file reduction levels in the reduction pipeline (tiered-emission enabler).** `ContentReductionPipeline.ReduceAsync`
   accepts an optional per-file level selector, so one run can reduce different files at different tiers in a
   single pass (for example seeds kept full while neighbours are skeletonized) instead of re-reading source after

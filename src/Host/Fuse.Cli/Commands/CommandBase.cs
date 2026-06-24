@@ -72,6 +72,10 @@ public abstract class CommandBase
     /// </summary>
     /// <param name="request">The fusion request to execute.</param>
     /// <param name="cancellationToken">Token used to cancel the run and stop watching.</param>
+    /// <param name="fallbackOnNoMatch">
+    ///     An alternate request to run when <paramref name="request" /> resolves no files (a
+    ///     <see cref="FusionValidationException" />), instead of surfacing the error; <c>null</c> to surface it.
+    /// </param>
     /// <returns>A task that completes when the run finishes, or when watch mode is cancelled.</returns>
     /// <remarks>
     ///     Writes output files (or in-memory content) through the orchestrator and reports progress, results, and
@@ -81,7 +85,10 @@ public abstract class CommandBase
     ///     until cancelled, re-running fusion after edits settle; watch mode is disabled automatically when stdio
     ///     is redirected (MCP).
     /// </remarks>
-    protected async Task ExecuteFusionAsync(FusionRequest request, CancellationToken cancellationToken)
+    protected async Task ExecuteFusionAsync(
+        FusionRequest request,
+        CancellationToken cancellationToken,
+        FusionRequest? fallbackOnNoMatch = null)
     {
         if (Watch && StdioGuard.IsStdioRedirected())
         {
@@ -113,6 +120,14 @@ public abstract class CommandBase
         }
         catch (FusionValidationException ex)
         {
+            // A scoping mode that resolved nothing (for example a focus seed that names no collected type) can
+            // fall back to a broader, still-budgeted mode rather than failing the run. Used by `ask`.
+            if (fallbackOnNoMatch is not null)
+            {
+                await RunFusionOnceAsync(fallbackOnNoMatch, cancellationToken);
+                return;
+            }
+
             foreach (var error in ex.Errors)
             {
                 _consoleUI.WriteError(error);

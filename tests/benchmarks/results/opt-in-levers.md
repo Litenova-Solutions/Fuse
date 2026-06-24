@@ -66,12 +66,63 @@ Decision: kept opt-in (`FUSE_PROJECT_GRAPH=1`). A small clean win (no per-repo r
 query confidence interval, and it adds a `.csproj` disk scan per query. The corpus is mostly two-project, so
 the cross-assembly case is lightly exercised; a multi-assembly corpus is the honest re-test.
 
-## Other opt-in levers
+## Q5: member-level retrieval
 
-These shipped opt-in in earlier work with their measured results recorded in `benchmarks.mdx` Findings and
-`CHANGELOG.md`: member-level retrieval (Q5, `FUSE_MEMBER_LEVEL`, query 61 to 68 at the headline at a latency
-cost), git churn prior (Q6, `FUSE_GIT_CHURN_WEIGHT`, a production-routing lever the pinned PR-head benchmark
-cannot validate), huge-file sketch (`FUSE_SKETCH_HUGE`), structural proximity edges (item 7, `FUSE_PROXIMITY`,
-measured neutral), and the distributional thesaurus (`FUSE_DISTRIBUTIONAL_THESAURUS`). The default-on levers
-(budget-aware expansion, tiered emission, downgrade-before-drop, query expansion) are validated in `layer2a.md`
-and the `benchmarks.mdx` Findings.
+`spike-memberlevel.ps1`. Indexes each declared member as its own document, rolls per-member scores up to a
+file score, and adds a file the member pass surfaces as an extra seed. 50,000 token budget.
+
+| Repo | off | on | delta |
+|------|----:|---:|------:|
+| AutoMapper | 50% | 62% | +12 |
+| FluentValidation | 57% | 69% | +12 |
+| MediatR | 94% | 94% | 0 |
+| NewtonsoftJson | 42% | 46% | +4 |
+| OVERALL | 61% | 68% | +7 |
+
+Decision: kept opt-in (`FUSE_MEMBER_LEVEL=1`). The biggest single query lever this release (61 to 68, no
+per-repo regression), but off by default because it re-parses files for member chunks every query and roughly
+doubles to triples warm latency; default-on awaits caching the chunk extraction.
+
+## Q6: git churn prior
+
+`spike-churn.ps1`. Multiplies each candidate's score by a normalized recent-commit-count prior, computed
+excluding the PR's own commits to avoid the head-checkout leak. 50,000 token budget.
+
+| Repo | off | on | delta |
+|------|----:|---:|------:|
+| AutoMapper | 50% | 50% | 0 |
+| FluentValidation | 57% | 57% | 0 |
+| MediatR | 94% | 94% | 0 |
+| NewtonsoftJson | 42% | 42% | 0 |
+| OVERALL | 61% | 61% | 0 |
+
+Decision: kept opt-in (`FUSE_GIT_CHURN_WEIGHT`). A no-op here by construction: the benchmark worktrees are
+historical PR-head checkouts, so churn-from-now is uniformly empty once the PR's own commits are excluded. It
+is a production-routing lever the pinned benchmark cannot validate, not a benchmark recall lever; the zero
+delta confirms it does not leak.
+
+## Default-on lever validation: query expansion
+
+`spike-query-expansion.ps1`. Pseudo-relevance feedback (a second BM25F pass seeded with the first pass's
+recurring declared-symbol terms). This lever is on by default; the arm shows the contribution folded into the
+published query headline. 50,000 token budget.
+
+| Repo | off | on | delta |
+|------|----:|---:|------:|
+| AutoMapper | 38% | 50% | +13 |
+| FluentValidation | 55% | 57% | +2 |
+| MediatR | 94% | 94% | 0 |
+| NewtonsoftJson | 41% | 42% | +1 |
+| OVERALL | 57% | 61% | +4 |
+
+The "on" column is the default and matches the published query headline (61 percent) in `layer2a.md`. The
+other default-on levers (budget-aware expansion, tiered emission, downgrade-before-drop) are validated in
+`layer2a.md` and the `benchmarks.mdx` Findings.
+
+## Behavior-preserving levers (no recall A/B)
+
+Item 23 (rerank embedding cache by content hash) and the huge-file sketch (`FUSE_SKETCH_HUGE`) do not change
+file selection on this corpus: item 23 only caches embeddings for the opt-in rerank path (a latency win, no
+recall change), and the corpus failure mode is multi-file truncation rather than single-giant-file pack-outs,
+so the sketch lever leaves the default output unchanged. Structural proximity edges (item 7, `FUSE_PROXIMITY`)
+measured neutral and are folded into the same expansion channel as the project-graph above.

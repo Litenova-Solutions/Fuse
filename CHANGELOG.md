@@ -348,6 +348,18 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Research notes
 
+- **Source:** reference graph beyond syntax (item 8): a cheap first cut parsing `.csproj`
+  `ProjectReference`/`PackageReference` for a coarse inter-project assembly graph, then a later Roslyn
+  `Compilation` tier with metadata references. **Fit:** cross-assembly recall on hard repos. **Decision:**
+  **deferred, not built**, on grounded analysis. The coarse cut adds project-level edges (any file in a project
+  reaches the referenced project's types), which is broader and noisier than the narrow test-to-implementation
+  proximity edges of item 7; item 7 was implemented and measured exactly neutral on this corpus, so a coarser,
+  noisier project edge is predicted neutral-or-negative here. The corpus repositories are also mostly single
+  assembly (the cross-assembly case the lever targets is barely exercised), and the lexical and graph path is
+  saturated (four measured rejections this release). The compiled-`Compilation` tier is XL and the plan gates
+  it behind the persistent index and an explicit flag. Build the coarse cut and A/B it on a multi-assembly
+  corpus (B2) where cross-assembly edges matter; on the current corpus it would repeat item 7's neutral result
+  at higher cost.
 - **Source:** member-level retrieval (Q5): index member chunks as fielded documents and roll their scores up to
   a file score, so a query that matches one member buried in a large file ranks that file above what whole-file
   BM25F gives (length normalization dilutes a single-member match across a long file). **Fit:** large

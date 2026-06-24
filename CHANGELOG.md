@@ -4,6 +4,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-06-25
+
+Fuse 3.0 is a retrieval, packing, and benchmarking release built on the IMPROVEMENT-OPPORTUNITIES playbook: a first-class `ContextPlan`, budget-aware expansion and tiered emission, downgrade-before-drop packing, auto-mode MCP routing with session-delta diff overlays, a measured opt-in rerank stack (bi-encoder, cross-encoder, project graph, churn, member-level), and a far more honest benchmark suite (per-repo CI gate, bootstrap intervals, ranking metrics, latency layer, cost-adjusted recall). Default-path scoping stays lexical and offline by construction; every opt-in lever degrades gracefully to that floor. Breaking changes are intentional and listed below.
+
 ### Deferred (blocked on external runtime, a full rebaseline, or unmet plan gates)
 
 These plan items are not implemented this release. Every item that was implementable here was built and

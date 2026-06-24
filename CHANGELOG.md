@@ -445,6 +445,12 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
   are reporting-only additions over the existing per-PR measurements; recall, precision, and token figures are
   unchanged. The large stratum makes the budget wall explicit: at the 50k headline budget, changes recall is 97
   percent on small change sets but 12 percent on large ones.
+- **Adversarial-case reporting (B7).** Layer 2A now tags merge-noise titles (which carry no task vocabulary, so
+  the query falls back to the changed type names) and reports query recall three ways at the headline budget:
+  all PRs, adversarial-only, and excluding adversarial. This keeps the adversarial cases from silently inflating
+  the headline: the two merge-noise PRs recall 100 percent via the type-name fallback, so the all-PRs mean is 61
+  percent while the honest clean-title recall (excluding them) is 57 percent over 22 PRs. Reporting-only; recall
+  computation is unchanged.
 - **Typed experimental options recorded in the run report.** The experimental scoring knobs (graph-centrality
   weight, pseudo-relevance feedback query expansion) are now a typed `ExperimentalOptions` record carried on
   `FusionRequest` rather than ambient process state read deep in the orchestrator. `FUSE_CENTRALITY_WEIGHT` and

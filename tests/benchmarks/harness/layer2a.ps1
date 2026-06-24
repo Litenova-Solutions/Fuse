@@ -85,9 +85,13 @@ foreach ($g in $repoGroups) {
         $seed = [System.IO.Path]::GetFileNameWithoutExtension($seedFile)
 
         # Query: PR title, or (if a merge-noise subject) the changed type names.
+        # B7: a merge-noise title carries no task vocabulary (the query falls back to type names), so it is an
+        # adversarial case for query mode. Tag it so recall can be reported with and without these PRs.
         $q = $pr.title
+        $adversarial = $false
         if ($q -match '(?i)^merge ') {
             $q = (@($truth | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_) }) | Select-Object -Unique) -join ' '
+            $adversarial = $true
         }
 
         $modes = @(
@@ -113,7 +117,7 @@ foreach ($g in $repoGroups) {
                     repo=$g.Name; pr=$pr.pr; mode=$mode.name; budget=$b; truth=$truth.Count
                     recall=$r.recall; precision=$r.precision; hits=$r.hits; emitted=$r.emitted; tokens=$tok
                     wasted=(Get-WastedTokens $tok $r.emitted $r.hits); stratum=(Get-Stratum $truth.Count)
-                    split=(Get-Split $pr.pr)
+                    split=(Get-Split $pr.pr); adversarial=$adversarial
                 }
             }
         }
@@ -148,7 +152,7 @@ foreach ($g in $repoGroups) {
             repo=$g.Name; pr=$pr.pr; mode='grep'; budget=$Budget; truth=$truth.Count
             recall=$gr.recall; precision=$gr.precision; hits=$gr.hits; emitted=$gr.emitted; tokens=$cum
             wasted=(Get-WastedTokens $cum $gr.emitted $gr.hits); stratum=(Get-Stratum $truth.Count)
-            split=(Get-Split $pr.pr)
+            split=(Get-Split $pr.pr); adversarial=$adversarial
         }
 
         # Console summary reports the headline budget only.
@@ -239,6 +243,25 @@ foreach ($m in $modeOrder) {
     }
     $md += ('| {0} | {1} |' -f $m, ($cells -join ' | '))
 }
+
+# B7 adversarial-case reporting at the headline budget: report query-mode recall with all PRs, with only the
+# adversarial (merge-noise) titles, and with them excluded, so the merge-noise cases are never dropped silently
+# and the honest "clean title" number is visible alongside the all-in mean.
+$advAll  = $results | Where-Object { $_.budget -eq $Budget -and $_.mode -eq 'query' }
+$advOnly = $advAll | Where-Object { $_.adversarial }
+$advNon  = $advAll | Where-Object { -not $_.adversarial }
+function Format-MeanRecall($rows) {
+    if (-not $rows -or $rows.Count -eq 0) { return 'n/a' }
+    '{0:P0} (n={1})' -f ([math]::Round(($rows | Measure-Object recall -Average).Average, 3)), $rows.Count
+}
+$md += @('', "## Adversarial-case reporting (B7, query mode, headline budget $Budget)", '',
+         'Merge-noise titles carry no task vocabulary, so they are an adversarial case for query mode. Reported',
+         'with and without them, never dropped silently.', '',
+         '| Set | Mean recall |',
+         '|-----|------------:|',
+         ('| all PRs | {0} |' -f (Format-MeanRecall $advAll)),
+         ('| adversarial only (merge-noise titles) | {0} |' -f (Format-MeanRecall $advOnly)),
+         ('| excluding adversarial | {0} |' -f (Format-MeanRecall $advNon)))
 
 # Per-repo mean recall at the headline budget, so the per-repo table (which the aggregate hides) is visible in
 # the committed results, not just on the benchmarks page. Modes are columns; repos are rows.

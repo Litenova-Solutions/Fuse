@@ -113,8 +113,8 @@ Layer 2A measures whether a scoping mode includes the files a real change touche
 | Mode | Mean recall | Mean precision | Mean tokens |
 |------|------------:|---------------:|------------:|
 | changes | 87% | 50% | 29,607 |
-| focus | 77% | 5% | 41,505 |
-| query | 57% | 3% | 42,386 |
+| focus | 77% | 5% | 41,771 |
+| query | 57% | 3% | 41,885 |
 | grep (baseline) | 38% | 11% | 41,452 |
 
 Recall varies widely by repository, and the aggregate hides that:
@@ -172,9 +172,9 @@ Means across the 24 pull requests at the headline budget:
 | no-fuse (blind, whole repo) | >= 5.8 | 493,661 | 1.00 |
 | no-fuse (relevant set) | >= 5.8 | 27,473 | 1.00 |
 | Repomix (one dump) | 1 | 511,574 | 1.00 |
-| Fuse (`--query`) | 1 | 42,341 | 57% |
+| Fuse (`--query`) | 1 | 41,840 | 57% |
 
-The round-trip number for no-fuse is a lower bound, not a measured agent: it is the mean count of files the change touched (5.8), and a real agent reads more while discovering them. Recall for no-fuse and Repomix is 1.00 by construction, so this is not a recall contest; the contest is tokens at one call (against Repomix) and round-trips against blind exploration. Always read Fuse's token number together with its recall: 42,341 tokens at 57 percent recall is the honest pairing.
+The round-trip number for no-fuse is a lower bound, not a measured agent: it is the mean count of files the change touched (5.8), and a real agent reads more while discovering them. Recall for no-fuse and Repomix is 1.00 by construction, so this is not a recall contest; the contest is tokens at one call (against Repomix) and round-trips against blind exploration. Always read Fuse's token number together with its recall: 41,840 tokens at 57 percent recall is the honest pairing.
 
 Recall varies widely by repository, and the mean hides that. The per-repository view at the headline budget:
 
@@ -182,21 +182,21 @@ Recall varies widely by repository, and the mean hides that. The per-repository 
 |------|-------------------------:|---------------------:|-----------:|--------:|-----:|------------:|
 | MediatR | 2.7 | 3,326 | 79,282 | 84,894 | 32,384 | 94% |
 | FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 41,118 | 57% |
-| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 47,138 | 46% |
+| AutoMapper | 2.3 | 3,342 | 456,599 | 473,904 | 45,207 | 46% |
 | Newtonsoft.Json | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 48,714 | 32% |
 
 Recall rises with the budget, as expected, since a larger budget admits more of the neighborhood:
 
 | Budget | Fuse mean recall | Fuse mean tokens |
 |-------:|-----------------:|-----------------:|
-| 10,000 | 33% | 9,757 |
-| 25,000 | 45% | 23,668 |
-| 50,000 | 57% | 42,341 |
+| 10,000 | 33% | 9,772 |
+| 25,000 | 45% | 23,772 |
+| 50,000 | 57% | 41,840 |
 
 Findings, including the honest boundary:
 
 - One Fuse call replaces many blind round-trips. A blind agent must read at least the files a change touches, a mean of 5.8 and as many as 14.5 on Newtonsoft.Json, before it has the context; Fuse and Repomix each acquire it in one call. Fuse does not beat Repomix on round-trips, it ties it at one call.
-- At that one call, Fuse costs far fewer tokens than the generic packer. Fuse delivers the scoped context in 42,341 tokens on average against Repomix's 511,574, about 12.1 times fewer, and against the 493,661 tokens of reading the whole repository blind. The Fuse number is the reduced, scoped set the task needs, not the whole repository.
+- At that one call, Fuse costs far fewer tokens than the generic packer. Fuse delivers the scoped context in 41,840 tokens on average against Repomix's 511,574, about 12.2 times fewer, and against the 493,661 tokens of reading the whole repository blind. The Fuse number is the reduced, scoped set the task needs, not the whole repository.
 - The token win is paired with partial recall, and that is the trade. Fuse query reaches 57 percent of the changed files at the headline budget, against 1.00 for Repomix and the relevant set, which include everything by construction. Where the query carries real domain words and the repository is not dominated by conditional compilation, recall is high (MediatR 94 percent); on Newtonsoft.Json and on broad changes it is lower. For pull-request review, where a Git base is available, the change-scoping mode in Layer 2A reaches 87 percent recall. The defensible claim is coupled: Fuse reaches recall R of a task's files in one call at far fewer tokens than a generic packer needs for the same one call, while blind exploration needs at least K round-trips.
 
 Reproduce this layer with the full suite or on its own:

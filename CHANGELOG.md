@@ -26,6 +26,15 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- **Dependency graph no longer treats method calls as type references (item 6, false-edge fix).** The Roslyn
+  dependency extractor took every PascalCase identifier in expression position as a type reference, so a bare
+  call `Configure()` created a false edge to any file declaring a type named `Configure`, and a generic method
+  call `mapper.Map<OrderDto>(...)` created one to a type named `Map`. It now excludes the invoked expression of
+  a call (`Foo()`, `Foo<T>()`) and a generic method name on a receiver (`x.Map<T>()`), while still capturing
+  real references: generic types, generic arguments, base types, return types, and constructions. The cleaner
+  graph improved focus recall at the tight 10,000 token budget (54 to 56 percent) with no per-repo regression
+  at the headline budget; it mainly helps method-call-heavy code. Covered by tests for the false-edge cases and
+  the retained real references.
 - **Structural maps prepend to the first output part (P2).** Route and project maps are an overview header for
   the whole output. On multipart disk output they were prepended to the last part, where they trailed the
   content; they now head the first part (single-part and in-memory output were already correct). Covered by a

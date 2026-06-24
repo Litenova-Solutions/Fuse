@@ -38,6 +38,20 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   a low expansion weight (swept per PR: 0.2 preserves the off-topic AutoMapper hit while keeping the
   FluentValidation and Newtonsoft.Json gains), the IDF gate to drop corpus-wide boilerplate symbols, and a
   seed-preserving merge so expansion is recall-additive at the seed level.
+- **Source:** LARGER (Lexically Anchored Repository Graph Exploration and Retrieval, arXiv 2605.16352) and
+  recent SWE-bench localization work, which anchor lexical search into a repository graph and expand to
+  structurally related evidence (callers, tests). **Idea:** follow reverse edges from query seeds to reach the
+  users and tests of a matched concept. **Fit:** Layer 2A/4 query recall on the fast graph path. **Decision:**
+  rejected. A measured A/B over the pinned corpus (query mode, headline budget) dropped mean recall from 51 to
+  45 percent: FluentValidation rose (51 to 55) but MediatR (94 to 89), AutoMapper (29 to 25), and especially
+  Newtonsoft.Json (30 to 13) regressed, because dependents of common types flood the candidate set and displace
+  the real targets under the token budget. The existing forward-only query expansion is retained. A
+  confidence-scored or seed-restricted reverse hop (LARGER-style) might recover the FluentValidation gain
+  without the broad regression and is left for future work.
+- **Source:** BM25 + small code-embedder rerank (multiple 2025 code-search papers report recall lifts to the
+  low 70s percent at small K). **Idea:** rerank BM25 top-K with a learned model. **Fit:** Phase C opt-in
+  hybrid rerank. **Decision:** deferred; remains opt-in only per the design invariant (no mandatory model
+  bundle on the default path).
 
 ### Breaking changes
 

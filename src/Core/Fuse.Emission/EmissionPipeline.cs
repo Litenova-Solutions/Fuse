@@ -92,6 +92,7 @@ public sealed class EmissionPipeline
                 await writer.WritePrefixAsync(manifest, cancellationToken);
         }
 
+        var writtenCount = 0;
         foreach (var entry in orderedEntries)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -104,28 +105,39 @@ public sealed class EmissionPipeline
 
             var entryTokens = entry.TokenCount + MarkerOverheadTokens;
 
-            // Retry after rotating output parts when split is supported; otherwise force the entry through.
-            while (true)
+            // Rotate output parts when split is supported; otherwise force the entry into the current part.
+            var consumeResult = budget.Consume(entryTokens);
+            while (consumeResult == BudgetConsumeResult.Split && writer.SupportsMultiPart)
             {
-                var consumeResult = budget.Consume(entryTokens);
+                await writer.RotatePartAsync(cancellationToken);
+                budget.ResetCurrentPart();
+                consumeResult = budget.Consume(entryTokens);
+            }
 
-                if (consumeResult == BudgetConsumeResult.Split && writer.SupportsMultiPart)
+            if (consumeResult == BudgetConsumeResult.Split)
+            {
+                // Single-part writer cannot rotate, so force the split entry into the current part.
+                budget.ForceConsume(entryTokens);
+                consumeResult = BudgetConsumeResult.Continue;
+            }
+
+            if (consumeResult == BudgetConsumeResult.Halt)
+            {
+                // The hard limit would be breached. Emit the single most-relevant entry unconditionally (it may
+                // alone exceed the budget) so a scoped run never emits nothing; otherwise stop without writing
+                // the over-budget entry.
+                if (writtenCount == 0)
                 {
-                    await writer.RotatePartAsync(cancellationToken);
-                    budget.ResetCurrentPart();
-                    continue;
-                }
-
-                if (consumeResult == BudgetConsumeResult.Split)
                     budget.ForceConsume(entryTokens);
+                    await writer.WriteEntryAsync(entry, cancellationToken);
+                    writtenCount++;
+                }
 
                 break;
             }
 
             await writer.WriteEntryAsync(entry, cancellationToken);
-
-            if (budget.IsExhausted)
-                break;
+            writtenCount++;
         }
 
         var writerResult = await writer.CompleteAsync(cancellationToken);

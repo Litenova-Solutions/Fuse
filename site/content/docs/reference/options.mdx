@@ -48,7 +48,7 @@ Types in the tables use these conventions: `bool` is a switch, `int` is a whole 
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--max-tokens` | int | None | Stop emission when this token count is reached. |
+| `--max-tokens` | int | None | Hard cap on the total payload. For a scoped run (`--query` or `--focus`) the packer reserves room for the manifest, route and project maps, redaction report, pattern summary, and any preamble, so the complete output fits the budget rather than overrunning it by the size of that framing. The single most-relevant file is always emitted, even if it alone exceeds the cap. |
 | `--split-tokens` | int | `800000` | Split output into multiple parts when this per-part token count is exceeded. |
 | `--show-token-count` | bool | `true` | Display the final token count after fusion completes. |
 | `--track-top-token-files` | bool | `false` | Display the top token-consuming files after fusion. |

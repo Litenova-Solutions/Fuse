@@ -152,7 +152,7 @@ Key APIs:
 |--------|-------|
 | Layer 2A query recall at 50k | 51 percent mean (MediatR 94, FluentValidation 51, AutoMapper 29, Newtonsoft.Json 30) |
 | Layer 2A query recall at 10k / 25k | 34 percent / 43 percent |
-| Layer 2A changes recall / precision at 50k | 88 percent / 47 percent |
+| Layer 2A changes recall / precision at 50k | 87 percent / 50 percent (C2 strict budget: emission stops before the entry that would cross the cap) |
 | Layer 2A focus recall at 50k | 71 percent |
 | Layer 2A grep baseline at 50k | 38 percent |
 | Layer 2B localization (20k) | query 42 percent, focus 42 percent, grep 58 percent |

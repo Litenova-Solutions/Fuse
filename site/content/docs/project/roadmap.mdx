@@ -43,7 +43,7 @@ Re-bundling a large ONNX model, full MSBuild compilation graphs, and end-to-end 
 
 ## Scoping Recall and Precision
 
-BM25-only query scoping today reaches about 49% mean recall and 2% mean precision at a 50,000 token budget on the pinned PR corpus; change scoping with a git base reaches 88% recall at 47% precision. The tables below target that gap without returning to a full-repo dump.
+BM25-only query scoping today reaches about 49% mean recall and 2% mean precision at a 50,000 token budget on the pinned PR corpus; change scoping with a git base reaches 87% recall at 50% precision. The tables below target that gap without returning to a full-repo dump.
 
 ### Retrieval and seeds (recall on query mode)
 
@@ -98,7 +98,7 @@ Primary lever: token cost and effective precision (less noise per token) at unch
 
 | Item | Effort | Value | Expected effect |
 |------|--------|-------|-----------------|
-| Task-shaped defaults (PR and branch work steers to change scoping when a git base exists) | S | High | No algorithm change; moves many PR tasks from ~49% query recall to ~88% changes recall on the harness |
+| Task-shaped defaults (PR and branch work steers to change scoping when a git base exists) | S | High | No algorithm change; moves many PR tasks from ~49% query recall to ~87% changes recall on the harness |
 | Guided multi-call flows (TOC or skeleton, then focus or changes on large repos) | S to M | Medium to High | Extra round-trip but better accuracy when single query at 50k is insufficient |
 
 Primary lever: round-trips and accuracy in live agent sessions without requiring 100% single-call recall.

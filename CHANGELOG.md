@@ -6,6 +6,16 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- **Strict total-token accounting for `--max-tokens` / `maxTokens` (C2).** The token budget is now a hard cap
+  on the complete payload, not just the file bodies. Two issues are fixed. First, emission charged an entry to
+  the budget and only then checked the limit, so the one entry that crossed `MaxTokens` was still written;
+  emission now rejects and stops before writing the over-budget entry (the single most-relevant entry is still
+  emitted unconditionally so a scoped run never returns nothing). Second, the manifest, route and project maps,
+  redaction report, pattern summary, and the session, header, and review preambles were appended after packing
+  and never charged, so a scoped payload could overrun the requested budget by the size of its framing. The
+  packer now reserves room for that framing (measured against the packed file set in a tight two-pass scheme),
+  so the full payload an MCP client receives fits the budget. Verified by tests asserting the complete
+  in-memory payload, including the manifest, stays within `MaxTokens`.
 - **Secret redaction now covers post-reduction source rewrites (C1).** The thin-skeleton path (query scoping,
   which keeps the query-matched members verbatim) and the symbol-slice path (a `Type.Member` focus seed)
   rebuild a file's content from raw source after the reduction stage has already run, and secret redaction

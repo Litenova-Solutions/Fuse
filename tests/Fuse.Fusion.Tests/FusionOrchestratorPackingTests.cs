@@ -1,5 +1,6 @@
 using Fuse.Collection.Options;
 using Fuse.Emission.Models;
+using Fuse.Emission.Tokenization;
 using Fuse.Fusion;
 using Fuse.Fusion.Extensions;
 using Fuse.Fusion.Scoping;
@@ -48,11 +49,29 @@ public sealed class FusionOrchestratorPackingTests : IDisposable
     {
         var result = await FuseQueryAsync(maxTokens);
 
-        // The emitted token total lands tightly under the budget: within 85 to 100 percent of MaxTokens.
+        // The file-body token total lands tightly under the budget. With manifest on (default), the bodies
+        // leave room for the framing reserve, so the body total fills most of the remaining body budget.
         Assert.True(result.TotalTokens <= maxTokens,
             $"emitted {result.TotalTokens} exceeded budget {maxTokens}");
-        Assert.True(result.TotalTokens >= 0.85 * maxTokens,
+        Assert.True(result.TotalTokens >= 0.6 * maxTokens,
             $"emitted {result.TotalTokens} under-filled budget {maxTokens}");
+    }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(700)]
+    [InlineData(1000)]
+    public async Task FuseAsync_Query_TotalPayloadFitsBudget(int maxTokens)
+    {
+        // C2 strict accounting: the COMPLETE payload an MCP client receives (manifest plus file bodies, with
+        // the default manifest on) must fit MaxTokens, not just the file bodies.
+        var result = await FuseQueryAsync(maxTokens);
+
+        Assert.NotNull(result.InMemoryContent);
+        var counter = _serviceProvider.GetRequiredService<TokenizerFactory>().GetCounter();
+        var payloadTokens = counter.Count(result.InMemoryContent!);
+        Assert.True(payloadTokens <= maxTokens,
+            $"total payload {payloadTokens} exceeded budget {maxTokens}");
     }
 
     [Fact]

@@ -97,16 +97,11 @@ public sealed class PostReductionEnrichmentPipeline
         if (context.Scores is not null)
             reducedContent = AttachRelevance(reducedContent, context.Scores);
 
-        if ((request.Focus is not null || request.Query is not null) &&
-            request.Emission.MaxTokens is { } maxTokens)
-        {
-            reducedContent = ReductionAwarePacker.Pack(
-                reducedContent, maxTokens, EmissionPipeline.MarkerOverheadTokens);
-        }
-
-        PatternSummary? patternSummary = null;
-        if (request.Reduction.IncludePatternSummary)
-            patternSummary = DetectPatterns(reducedContent);
+        // The structural-map prefix and git stats depend on the collected/candidate set, not on which files
+        // survive packing, so build them once here. They are reused for the framing reserve below and for the
+        // actual emission, avoiding a second pass over the files.
+        var structuralMapPrefix = await BuildStructuralMapPrefixAsync(
+            context.CollectedFiles, request, contentProvider, cancellationToken);
 
         GitStatsResult? gitStats = null;
         if (request.Emission.IncludeGitStats)
@@ -120,6 +115,37 @@ public sealed class PostReductionEnrichmentPipeline
                 paths,
                 cancellationToken);
         }
+
+        // C2 strict total-token accounting: when packing a scoped run to a budget, reserve room for every
+        // output section the emission writer prepends or appends on top of the file bodies (manifest, route and
+        // project maps, redaction report, pattern summary, and the session, header, and review preambles). The
+        // packer then fits the file bodies into the remaining budget, so the complete payload an MCP client
+        // receives fits MaxTokens rather than overrunning it by the size of the framing. The reserve uses the
+        // pre-pack candidate set as an upper bound for sections whose size depends on the emitted files, so the
+        // total never exceeds the budget; it can leave the body budget slightly under-filled, which is the safe
+        // direction for a hard cap.
+        if ((request.Focus is not null || request.Query is not null) &&
+            request.Emission.MaxTokens is { } maxTokens)
+        {
+            // Two passes keep the guarantee tight and provable. Pass one packs the file bodies into the whole
+            // budget; pass two measures the framing of that packed set and re-packs the SAME set into the
+            // remaining budget. Because the second pass can only drop files, its framing can only shrink, so
+            // (bodies of pass two) + (framing of pass two) <= maxTokens holds with no iteration. Measuring the
+            // framing against the packed set rather than the full candidate set avoids reserving for a manifest
+            // that lists far more files than survive the cut.
+            var packed = ReductionAwarePacker.Pack(
+                reducedContent, maxTokens, EmissionPipeline.MarkerOverheadTokens);
+            var reserve = ComputeFramingReserveTokens(
+                context, packed, sessionNote, headerPreamble, structuralMapPrefix, gitStats);
+            reducedContent = reserve <= 0
+                ? packed
+                : ReductionAwarePacker.Pack(
+                    packed, Math.Max(0, maxTokens - reserve), EmissionPipeline.MarkerOverheadTokens);
+        }
+
+        PatternSummary? patternSummary = null;
+        if (request.Reduction.IncludePatternSummary)
+            patternSummary = DetectPatterns(reducedContent);
 
         IOutputWriter writer = request.InMemory
             ? new InMemoryOutputWriter(request.Emission, context.TokenCounter, context.EntryFormatter)
@@ -142,8 +168,8 @@ public sealed class PostReductionEnrichmentPipeline
                 await disposable.DisposeAsync();
         }
 
-        emissionResult = await ApplyStructuralMapsAsync(
-            emissionResult, context.CollectedFiles, request, contentProvider, cancellationToken);
+        if (!string.IsNullOrEmpty(structuralMapPrefix))
+            emissionResult = await ApplyStructuralMapPrefixAsync(emissionResult, structuralMapPrefix);
 
         if (request.Reduction.IncludeRedactReport)
             emissionResult = await ApplyRedactReportAsync(emissionResult, reducedContent);
@@ -229,15 +255,17 @@ public sealed class PostReductionEnrichmentPipeline
         return patterns.Count == 0 ? null : new PatternSummary(patterns);
     }
 
-    private async Task<FusionResult> ApplyStructuralMapsAsync(
-        FusionResult emissionResult,
+    // Builds the route-map and project-graph prefix from the collected files, or null when neither is enabled
+    // or both produce nothing. Separated from prepending so the prefix can be measured for the framing reserve
+    // before packing and then prepended after emission without regenerating it.
+    private async Task<string?> BuildStructuralMapPrefixAsync(
         IReadOnlyList<SourceFile> collectedFiles,
         FusionRequest request,
         ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
         if (!request.Reduction.IncludeRouteMap && !request.Reduction.IncludeProjectGraph)
-            return emissionResult;
+            return null;
 
         var fileContents = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in collectedFiles)
@@ -265,10 +293,11 @@ public sealed class PostReductionEnrichmentPipeline
         if (request.Reduction.IncludeProjectGraph && _projectGraphGenerator is not null)
             prefix += _projectGraphGenerator.Generate(fileContents) + "\n";
 
-        if (string.IsNullOrWhiteSpace(prefix))
-            return emissionResult;
+        return string.IsNullOrWhiteSpace(prefix) ? null : prefix.TrimEnd();
+    }
 
-        prefix = prefix.TrimEnd();
+    private async Task<FusionResult> ApplyStructuralMapPrefixAsync(FusionResult emissionResult, string prefix)
+    {
         var inMemoryContent = emissionResult.InMemoryContent;
         if (!string.IsNullOrEmpty(inMemoryContent))
             inMemoryContent = prefix + "\n" + inMemoryContent;
@@ -295,9 +324,76 @@ public sealed class PostReductionEnrichmentPipeline
             emissionResult.EmittedFileTokens);
     }
 
+    // Estimates the token cost of every output section emission prepends or appends on top of the file bodies,
+    // so the packer can subtract it from MaxTokens and the complete payload fits the budget (C2). Sections
+    // whose size depends on which files survive packing (manifest, redaction report, pattern summary) are
+    // measured against the pre-pack candidate set, which lists at least as many files as the packed subset, so
+    // the reserve is an upper bound and the total can only come in under the cap, never over.
+    private int ComputeFramingReserveTokens(
+        PostReductionContext context,
+        IReadOnlyList<FusedContent> candidateContent,
+        string? sessionNote,
+        string? headerPreamble,
+        string? structuralMapPrefix,
+        GitStatsResult? gitStats)
+    {
+        var request = context.Request;
+        var counter = context.TokenCounter;
+        var reserve = 0;
+
+        if (!string.IsNullOrEmpty(sessionNote))
+            reserve += counter.Count(sessionNote);
+        if (!string.IsNullOrEmpty(headerPreamble))
+            reserve += counter.Count(headerPreamble);
+        if (!string.IsNullOrEmpty(context.ReviewPreamble))
+            reserve += counter.Count(context.ReviewPreamble);
+        if (!string.IsNullOrEmpty(structuralMapPrefix))
+            reserve += counter.Count(structuralMapPrefix);
+
+        // Pattern summary appears inside the manifest when both are on, otherwise as an appended comment.
+        var patterns = request.Reduction.IncludePatternSummary ? DetectPatterns(candidateContent) : null;
+
+        if (request.Emission.IncludeManifest)
+        {
+            var files = candidateContent
+                .Where(c => !c.IsTrivial)
+                .Select(c => new FileTokenInfo(c.NormalizedPath, c.TokenCount))
+                .ToList();
+            var manifest = ManifestBuilder.Build(files, request.Emission.Format, gitStats, patterns);
+            if (!string.IsNullOrEmpty(manifest))
+                reserve += counter.Count(manifest);
+        }
+        else if (patterns is not null)
+        {
+            var comment = patterns.ToComment();
+            if (!string.IsNullOrEmpty(comment))
+                reserve += counter.Count(comment);
+        }
+
+        if (request.Reduction.IncludeRedactReport)
+        {
+            var comment = BuildRedactReportComment(candidateContent);
+            if (!string.IsNullOrEmpty(comment))
+                reserve += counter.Count(comment);
+        }
+
+        return reserve;
+    }
+
     private async Task<FusionResult> ApplyRedactReportAsync(
         FusionResult emissionResult,
         IReadOnlyList<FusedContent> reducedContent)
+    {
+        var comment = BuildRedactReportComment(reducedContent);
+        if (string.IsNullOrEmpty(comment))
+            return emissionResult;
+
+        return await AppendToDiskOrMemoryAsync(emissionResult, comment);
+    }
+
+    // Aggregates per-file redaction counts into the redaction-report comment, or an empty string when nothing
+    // was redacted. Shared by the appended report and the framing-reserve estimate (C2).
+    private static string BuildRedactReportComment(IReadOnlyList<FusedContent> reducedContent)
     {
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in reducedContent)
@@ -314,11 +410,7 @@ public sealed class PostReductionEnrichmentPipeline
 
         var secretTotal = counts.Where(kv => kv.Key != SecretRedactionResult.CodeLiteralKind).Sum(kv => kv.Value);
         var summary = new RedactionSummary(counts, secretTotal);
-        var comment = summary.ToComment();
-        if (string.IsNullOrEmpty(comment))
-            return emissionResult;
-
-        return await AppendToDiskOrMemoryAsync(emissionResult, comment);
+        return summary.ToComment();
     }
 
     private async Task<FusionResult> ApplyPatternSummaryAsync(

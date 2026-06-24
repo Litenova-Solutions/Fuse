@@ -59,6 +59,13 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Per-file reduction levels in the reduction pipeline (tiered-emission enabler).** `ContentReductionPipeline.ReduceAsync`
+  accepts an optional per-file level selector, so one run can reduce different files at different tiers in a
+  single pass (for example seeds kept full while neighbours are skeletonized) instead of re-reading source after
+  reduction. The per-file level folds into the reduction cache key, so tiered and untiered runs do not share
+  entries, and redaction still runs in the reduction stage so a skeletonized neighbour is redaction-correct
+  (unlike the orchestrator-level rewrites C1 had to patch). The selector is the mechanism tiered emission will
+  drive; the default path passes none, so current behavior and benchmarks are unchanged.
 - **Ranking-quality benchmark layer (B3 / B4).** A new `layer-ranking.ps1` scores the ranked seed-plus-expansion
   list at a budget large enough that packing never truncates, so the metrics isolate retrieval quality from
   packing. It reports recall@k for k in {1,3,5,10,20}, mean reciprocal rank, and nDCG@10 per mode, and is wired

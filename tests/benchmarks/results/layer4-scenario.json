@@ -72,7 +72,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23418,
+    "input_tokens": 23411,
     "no_fuse_whole_repo_tokens": 458486,
     "recall": 0.0,
     "recall_by_construction": false
@@ -267,7 +267,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9223,
+    "input_tokens": 9160,
     "no_fuse_whole_repo_tokens": 457365,
     "recall": 0.25,
     "recall_by_construction": false
@@ -306,7 +306,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23478,
+    "input_tokens": 23403,
     "no_fuse_whole_repo_tokens": 457365,
     "recall": 0.25,
     "recall_by_construction": false
@@ -345,7 +345,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 47848,
+    "input_tokens": 47789,
     "no_fuse_whole_repo_tokens": 457365,
     "recall": 0.25,
     "recall_by_construction": false
@@ -501,7 +501,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9039,
+    "input_tokens": 9168,
     "no_fuse_whole_repo_tokens": 455383,
     "recall": 0.5,
     "recall_by_construction": false
@@ -579,7 +579,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 47724,
+    "input_tokens": 47376,
     "no_fuse_whole_repo_tokens": 455383,
     "recall": 1.0,
     "recall_by_construction": false
@@ -618,7 +618,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9507,
+    "input_tokens": 9569,
     "no_fuse_whole_repo_tokens": 455215,
     "recall": 0.0,
     "recall_by_construction": false
@@ -735,7 +735,7 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9666,
+    "input_tokens": 8245,
     "no_fuse_whole_repo_tokens": 257711,
     "recall": 0.111,
     "recall_by_construction": false
@@ -774,9 +774,9 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24186,
+    "input_tokens": 22877,
     "no_fuse_whole_repo_tokens": 257711,
-    "recall": 0.222,
+    "recall": 0.444,
     "recall_by_construction": false
   },
   {
@@ -813,7 +813,7 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 44766,
+    "input_tokens": 33928,
     "no_fuse_whole_repo_tokens": 257711,
     "recall": 0.667,
     "recall_by_construction": false
@@ -969,7 +969,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9593,
+    "input_tokens": 9575,
     "no_fuse_whole_repo_tokens": 249393,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1047,7 +1047,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48847,
+    "input_tokens": 48169,
     "no_fuse_whole_repo_tokens": 249393,
     "recall": 0.75,
     "recall_by_construction": false
@@ -1086,7 +1086,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9741,
+    "input_tokens": 9571,
     "no_fuse_whole_repo_tokens": 248694,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1125,7 +1125,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24290,
+    "input_tokens": 23913,
     "no_fuse_whole_repo_tokens": 248694,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1164,7 +1164,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 47750,
+    "input_tokens": 41508,
     "no_fuse_whole_repo_tokens": 248694,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1203,7 +1203,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9691,
+    "input_tokens": 9586,
     "no_fuse_whole_repo_tokens": 248628,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1242,7 +1242,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24186,
+    "input_tokens": 24168,
     "no_fuse_whole_repo_tokens": 248628,
     "recall": 0.5,
     "recall_by_construction": false
@@ -1320,7 +1320,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9666,
+    "input_tokens": 9602,
     "no_fuse_whole_repo_tokens": 248613,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1359,7 +1359,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24228,
+    "input_tokens": 24105,
     "no_fuse_whole_repo_tokens": 248613,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1398,7 +1398,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48491,
+    "input_tokens": 48863,
     "no_fuse_whole_repo_tokens": 248613,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1593,7 +1593,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23189,
+    "input_tokens": 23916,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1632,7 +1632,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 34286,
+    "input_tokens": 33821,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1671,7 +1671,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9540,
+    "input_tokens": 9538,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1710,7 +1710,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23761,
+    "input_tokens": 24188,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1827,7 +1827,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23721,
+    "input_tokens": 23728,
     "no_fuse_whole_repo_tokens": 78687,
     "recall": 0.667,
     "recall_by_construction": false
@@ -1866,7 +1866,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 33050,
+    "input_tokens": 33057,
     "no_fuse_whole_repo_tokens": 78687,
     "recall": 0.667,
     "recall_by_construction": false
@@ -1905,7 +1905,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9457,
+    "input_tokens": 9436,
     "no_fuse_whole_repo_tokens": 77901,
     "recall": 0.667,
     "recall_by_construction": false
@@ -1944,7 +1944,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23555,
+    "input_tokens": 24048,
     "no_fuse_whole_repo_tokens": 77901,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1983,7 +1983,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 40846,
+    "input_tokens": 40519,
     "no_fuse_whole_repo_tokens": 77901,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2022,7 +2022,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9340,
+    "input_tokens": 9173,
     "no_fuse_whole_repo_tokens": 77893,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2061,7 +2061,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 22682,
+    "input_tokens": 22515,
     "no_fuse_whole_repo_tokens": 77893,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2100,7 +2100,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 34572,
+    "input_tokens": 34405,
     "no_fuse_whole_repo_tokens": 77893,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2217,7 +2217,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48886,
+    "input_tokens": 48861,
     "no_fuse_whole_repo_tokens": 1241884,
     "recall": 0.5,
     "recall_by_construction": false
@@ -2256,7 +2256,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9523,
+    "input_tokens": 9324,
     "no_fuse_whole_repo_tokens": 1241071,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2295,7 +2295,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24177,
+    "input_tokens": 24350,
     "no_fuse_whole_repo_tokens": 1241071,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2334,7 +2334,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48660,
+    "input_tokens": 48728,
     "no_fuse_whole_repo_tokens": 1241071,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2490,7 +2490,7 @@
     "truth": 24,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9804,
+    "input_tokens": 9776,
     "no_fuse_whole_repo_tokens": 1216337,
     "recall": 0.0,
     "recall_by_construction": false
@@ -2568,7 +2568,7 @@
     "truth": 24,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48551,
+    "input_tokens": 48487,
     "no_fuse_whole_repo_tokens": 1216337,
     "recall": 0.0,
     "recall_by_construction": false
@@ -2607,7 +2607,7 @@
     "truth": 23,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9669,
+    "input_tokens": 9692,
     "no_fuse_whole_repo_tokens": 1089101,
     "recall": 0.043,
     "recall_by_construction": false
@@ -2646,7 +2646,7 @@
     "truth": 23,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24499,
+    "input_tokens": 24349,
     "no_fuse_whole_repo_tokens": 1089101,
     "recall": 0.043,
     "recall_by_construction": false
@@ -2724,7 +2724,7 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9679,
+    "input_tokens": 9622,
     "no_fuse_whole_repo_tokens": 1089035,
     "recall": 0.111,
     "recall_by_construction": false
@@ -2763,7 +2763,7 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24344,
+    "input_tokens": 24211,
     "no_fuse_whole_repo_tokens": 1089035,
     "recall": 0.111,
     "recall_by_construction": false
@@ -2802,7 +2802,7 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48678,
+    "input_tokens": 48765,
     "no_fuse_whole_repo_tokens": 1089035,
     "recall": 0.222,
     "recall_by_construction": false

@@ -5,7 +5,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 19118
+    "tokens": 18338
   },
   {
     "repo": "MediatR",
@@ -29,7 +29,7 @@
     "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18789
+    "tokens": 17563
   },
   {
     "repo": "MediatR",
@@ -53,7 +53,7 @@
     "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18113
+    "tokens": 17979
   },
   {
     "repo": "MediatR",
@@ -149,7 +149,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18772
+    "tokens": 18671
   },
   {
     "repo": "AutoMapper",
@@ -173,7 +173,7 @@
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18704
+    "tokens": 18852
   },
   {
     "repo": "AutoMapper",

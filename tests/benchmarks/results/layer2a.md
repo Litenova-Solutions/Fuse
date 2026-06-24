@@ -14,9 +14,9 @@ Cost-adjusted recall (B11) is mean recall times mean precision.
 | focus | 25000 | 69% | 5% | 22957 | 22194 | 4% | 24 |
 | focus | 50000 | 77% | 5% | 41702 | 40215 | 4% | 24 |
 | grep | 50000 | 38% | 11% | 41452 | 38024 | 4% | 24 |
-| query | 10000 | 33% | 7% | 9841 | 8828 | 2% | 24 |
-| query | 25000 | 44% | 2% | 23651 | 23187 | 1% | 24 |
-| query | 50000 | 57% | 2% | 43130 | 42284 | 1% | 24 |
+| query | 10000 | 33% | 7% | 9755 | 8737 | 2% | 24 |
+| query | 25000 | 45% | 3% | 23635 | 23046 | 1% | 24 |
+| query | 50000 | 57% | 3% | 42386 | 41387 | 1% | 24 |
 
 ## Recall by change-set size (headline budget 50000)
 
@@ -26,6 +26,17 @@ Cost-adjusted recall (B11) is mean recall times mean precision.
 | focus | 93% (n=15) | 62% (n=6) | 24% (n=3) |
 | query | 68% (n=15) | 56% (n=6) | 7% (n=3) |
 | grep | 48% (n=15) | 29% (n=6) | 7% (n=3) |
+
+## Recall by held-out split (headline budget 50000)
+
+Split by PR-id parity (fixed). Tune on dev; publish test.
+
+| Mode | dev | test |
+|------|-----:|-----:|
+| changes | 88% (n=14) | 86% (n=10) |
+| focus | 76% (n=14) | 78% (n=10) |
+| query | 62% (n=14) | 51% (n=10) |
+| grep | 43% (n=14) | 30% (n=10) |
 
 ## Per repo (headline budget 50000)
 

@@ -48,6 +48,15 @@ function Get-Stratum($truthCount) {
     return 'large (10+)'
 }
 
+# B5 held-out split: assign each PR to a dev or test fold by the parity of its PR id, a fixed deterministic
+# hash so the split never moves between runs and every repository contributes to both folds. Tune only on dev;
+# publish test-set numbers. With the small 24-PR corpus this is methodology scaffolding, most useful once the
+# corpus grows (B2) and before any scalar tuning (item 5).
+function Get-Split($prId) {
+    if (([int]$prId % 2) -eq 0) { return 'test' }
+    return 'dev'
+}
+
 # B8 wasted tokens: the tokens spent on emitted files that were not in the truth set. Approximated from the
 # emitted-file fractions (the harness counts whole-output tokens, not per-file), so it is a proportional
 # estimate of budget spent off-target, not an exact per-file figure.
@@ -104,6 +113,7 @@ foreach ($g in $repoGroups) {
                     repo=$g.Name; pr=$pr.pr; mode=$mode.name; budget=$b; truth=$truth.Count
                     recall=$r.recall; precision=$r.precision; hits=$r.hits; emitted=$r.emitted; tokens=$tok
                     wasted=(Get-WastedTokens $tok $r.emitted $r.hits); stratum=(Get-Stratum $truth.Count)
+                    split=(Get-Split $pr.pr)
                 }
             }
         }
@@ -138,6 +148,7 @@ foreach ($g in $repoGroups) {
             repo=$g.Name; pr=$pr.pr; mode='grep'; budget=$Budget; truth=$truth.Count
             recall=$gr.recall; precision=$gr.precision; hits=$gr.hits; emitted=$gr.emitted; tokens=$cum
             wasted=(Get-WastedTokens $cum $gr.emitted $gr.hits); stratum=(Get-Stratum $truth.Count)
+            split=(Get-Split $pr.pr)
         }
 
         # Console summary reports the headline budget only.
@@ -201,6 +212,29 @@ $md += @('', "## Recall by change-set size (headline budget $Budget)", '',
 foreach ($m in $modeOrder) {
     $cells = foreach ($s in $strataOrder) {
         $row = $strata | Where-Object { $_.mode -eq $m -and $_.stratum -eq $s } | Select-Object -First 1
+        if ($row) { '{0:P0} (n={1})' -f $row.mean_recall, $row.n } else { 'n/a' }
+    }
+    $md += ('| {0} | {1} |' -f $m, ($cells -join ' | '))
+}
+
+# B5 held-out dev/test split at the headline budget: mean recall per mode per fold. Tune only on the dev fold
+# and report only the test fold, so a tuning gain is not measured on the data it was fit to.
+$splitOrder = @('dev', 'test')
+$splitRecall = $results | Where-Object { $_.budget -eq $Budget } | Group-Object mode, split | ForEach-Object {
+    [pscustomobject]@{
+        mode = $_.Group[0].mode
+        split = $_.Group[0].split
+        mean_recall = [math]::Round(($_.Group | Measure-Object recall -Average).Average, 3)
+        n = $_.Count
+    }
+}
+$md += @('', "## Recall by held-out split (headline budget $Budget)", '',
+         'Split by PR-id parity (fixed). Tune on dev; publish test.', '',
+         ('| Mode | ' + (($splitOrder | ForEach-Object { $_ }) -join ' | ') + ' |'),
+         ('|------|' + (($splitOrder | ForEach-Object { '-----:' }) -join '|') + '|'))
+foreach ($m in $modeOrder) {
+    $cells = foreach ($s in $splitOrder) {
+        $row = $splitRecall | Where-Object { $_.mode -eq $m -and $_.split -eq $s } | Select-Object -First 1
         if ($row) { '{0:P0} (n={1})' -f $row.mean_recall, $row.n } else { 'n/a' }
     }
     $md += ('| {0} | {1} |' -f $m, ($cells -join ' | '))

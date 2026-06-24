@@ -83,13 +83,22 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Held-out dev/test split in the scoping benchmark (B5).** Layer 2A now assigns each PR to a dev or test fold
+  by a fixed hash of its PR id (parity), so every repository contributes to both folds, and reports mean recall
+  per mode per fold. This is the methodology gate the plan requires before any scalar tuning (item 5): tune on
+  dev, publish test, so a tuning gain is never measured on the data it was fit to. With the 24-PR corpus it is
+  scaffolding that pays off once the corpus grows (B2); on the current split, query recall is 62 percent dev /
+  51 percent test at the headline budget.
 - **Separate candidate, seed, and emit counts for query scoping (architecture enabler A4).** `QueryOptions`
   now distinguishes `CandidateTopK` (the BM25 pool that pseudo-relevance feedback and member selection operate
   on, which a reranking stage would reorder) from `SeedTopK` (the top candidates promoted to expansion seeds);
-  the packer already decides the emitted set. Both default to `TopFiles`, so the lexical path is unchanged (the
-  pool equals the seed set as before) and benchmarks do not move. The split gives a future learned reranker a
-  pool wider than the seed set to work on without widening what is expanded from. Tested: `SeedTopK` limits the
-  seed set, and a wider `CandidateTopK` does not change the seed count on the lexical path.
+  the packer already decides the emitted set. Both default to `TopFiles`. This caps the expansion seed set at
+  `TopFiles` even after a pseudo-relevance-feedback merge, which previously could union past `TopFiles` and seed
+  every merged file; capping it is a small, honest improvement on the corpus (query recall at the headline
+  budget steady at 57 percent with no per-repo regression, 25k 44 to 45 percent, precision up and mean tokens
+  down, because the over-seeding at the tail is trimmed). The split also gives a future learned reranker a pool
+  wider than the seed set without widening what is expanded from. Tested: `SeedTopK` limits the seed set, and a
+  wider `CandidateTopK` does not change the seed count on the lexical path.
 - **`TokenCostModel` for unified pre-reduce estimate and post-reduce count (architecture enabler A3).** A new
   `ITokenCostModel` (default `DefaultTokenCostModel`) gives a cheap per-file token estimate at a reduction level
   before any file is reduced, and the exact count once content exists, so scoping and packing can reason about

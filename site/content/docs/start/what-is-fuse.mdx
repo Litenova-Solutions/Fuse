@@ -9,7 +9,7 @@ explore phase into one scoped call: it finds the code a task needs and hands it 
 already reduced, so the agent starts work instead of hunting.
 
 The collapse is measured. Over 24 real merged pull requests, one scoped call acquires a
-change's context in about 43,000 tokens at 55 percent recall, against a blind agent that
+change's context in about 42,000 tokens at 57 percent recall, against a blind agent that
 must read each needed file at least once (a structural lower bound of about six reads)
 and a generic packer that dumps the whole repository at roughly 512,000 tokens. Read the
 token number with its recall; the change-scoping mode reaches 87 percent recall when a

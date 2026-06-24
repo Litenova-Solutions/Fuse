@@ -104,6 +104,66 @@ public class RoslynDependencyExtractorTests
         Assert.DoesNotContain("PhantomType", refs);
         Assert.DoesNotContain("AlsoPhantom", refs);
     }
+
+    [Fact]
+    public void ExtractReferencedTypes_DoesNotTreatBareMethodCallsAsTypes()
+    {
+        // Foo() and Bar<T>() are method calls, not references to types named Foo/Bar (item 6 false edges).
+        const string input = """
+            public class Svc
+            {
+                public void M()
+                {
+                    Configure();
+                    var x = Build<int>();
+                }
+            }
+            """;
+
+        var refs = _extractor.ExtractReferencedTypes(input);
+
+        Assert.DoesNotContain("Configure", refs);
+        Assert.DoesNotContain("Build", refs);
+    }
+
+    [Fact]
+    public void ExtractReferencedTypes_DoesNotTreatGenericMethodCallsOnReceiverAsTypes()
+    {
+        const string input = """
+            public class Svc
+            {
+                public void M(IMapper mapper)
+                {
+                    mapper.Map<OrderDto>(source);
+                }
+            }
+            """;
+
+        var refs = _extractor.ExtractReferencedTypes(input);
+
+        // The generic argument is a real type reference; the generic method name is not.
+        Assert.Contains("OrderDto", refs);
+        Assert.DoesNotContain("Map", refs);
+    }
+
+    [Fact]
+    public void ExtractReferencedTypes_StillCapturesGenericTypesAndConstruction()
+    {
+        const string input = """
+            public class Svc : BaseService
+            {
+                private System.Collections.Generic.List<Order> _orders = new();
+                public Repository Make() { return new Repository(); }
+            }
+            """;
+
+        var refs = _extractor.ExtractReferencedTypes(input);
+
+        Assert.Contains("List", refs);       // generic type
+        Assert.Contains("Order", refs);       // generic argument
+        Assert.Contains("Repository", refs);  // construction and return type
+        Assert.Contains("BaseService", refs); // base type
+    }
 }
 
 public class RoslynTypeNameLocatorTests

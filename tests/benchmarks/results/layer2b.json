@@ -149,7 +149,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18671
+    "tokens": 18567
   },
   {
     "repo": "AutoMapper",
@@ -173,7 +173,7 @@
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18852
+    "tokens": 18701
   },
   {
     "repo": "AutoMapper",
@@ -197,7 +197,7 @@
     "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18797
+    "tokens": 18693
   },
   {
     "repo": "AutoMapper",
@@ -221,7 +221,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19137
+    "tokens": 19162
   },
   {
     "repo": "NewtonsoftJson",
@@ -229,7 +229,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19641
+    "tokens": 19652
   },
   {
     "repo": "NewtonsoftJson",
@@ -269,7 +269,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19256
+    "tokens": 19533
   },
   {
     "repo": "NewtonsoftJson",
@@ -277,7 +277,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19552
+    "tokens": 19548
   },
   {
     "repo": "NewtonsoftJson",

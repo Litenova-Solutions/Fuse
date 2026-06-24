@@ -602,7 +602,11 @@ public sealed class FusionOrchestrator
             ? new Indexing.SqliteRelevancePostingsStore(fuseStore)
             : null;
         relevanceIndex.Index(documents, postingsStore);
-        var ranked = relevanceIndex.RankScored(request.Query!.Query, request.Query.TopFiles);
+        // Rank a candidate pool (A4): wider than the seed set so a reranking stage has room to reorder. The
+        // lexical default keeps the pool equal to the seed count, so behavior is unchanged.
+        var candidateTopK = request.Query!.ResolvedCandidateTopK;
+        var seedTopK = request.Query.ResolvedSeedTopK;
+        var ranked = relevanceIndex.RankScored(request.Query.Query, candidateTopK);
 
         if (ranked.Count == 0)
         {
@@ -654,7 +658,10 @@ public sealed class FusionOrchestrator
                 ranked = PseudoRelevanceExpander.MergePreservingSeeds(ranked, reranked);
         }
 
-        var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
+        // Promote the top seedTopK of the (possibly reranked) candidate pool to expansion seeds. With the
+        // lexical default the pool and seed count are equal, so every candidate is a seed as before.
+        var seedRanked = ranked.Count > seedTopK ? ranked.Take(seedTopK).ToList() : ranked;
+        var seedScores = seedRanked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
 
         // Symbol-level packing (precision only): pick, per matched file, the members the query is about so
         // emission can keep them in full and collapse the rest to signatures. This never changes file

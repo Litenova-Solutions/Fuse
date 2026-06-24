@@ -52,6 +52,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   low 70s percent at small K). **Idea:** rerank BM25 top-K with a learned model. **Fit:** Phase C opt-in
   hybrid rerank. **Decision:** deferred; remains opt-in only per the design invariant (no mandatory model
   bundle on the default path).
+- **Planned (Phase A, scoped): tiered emission.** Emit expansion-neighbor files (provenance hop >= 1, the
+  non-seed context) as skeletons rather than fully reduced, so each costs fewer tokens and the
+  relevance-per-token packer (`ReductionAwarePacker`) fits more files under a fixed budget. Expected to lift
+  recall most on large change sets where the budget currently truncates truth files (for example
+  Newtonsoft.Json PR sets of 20+ files). Approach: thread seed-vs-neighbor provenance into a per-file
+  reduction level (the pipeline currently applies one global `ReductionOptions`) or reuse the post-reduction
+  thin-skeleton path that query member selection already uses. Needs golden-output coverage and a full
+  Layer 2A/4 regeneration; left for a focused iteration.
 
 ### Breaking changes
 

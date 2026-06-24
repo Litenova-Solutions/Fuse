@@ -130,6 +130,16 @@ public sealed record ExperimentalOptions
     public bool MemberLevelRetrieval { get; init; }
 
     /// <summary>
+    ///     Whether expansion follows coarse project-reference edges (item 8): each candidate is linked to the
+    ///     files in the projects its owning <c>.csproj</c> references or is referenced by, so a seed reaches a
+    ///     related file across an assembly boundary that the intra-project type-reference graph misses (for
+    ///     example a changed library file and an integration test in the test project that does not name its
+    ///     type). Cross-project neighbours enter at the same decayed proximity weight, below a real reference.
+    ///     Off pending an A/B. Overridden by <c>FUSE_PROJECT_GRAPH</c> (<c>1</c>, <c>on</c>, or <c>true</c>).
+    /// </summary>
+    public bool ProjectGraph { get; init; }
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -266,6 +276,16 @@ public sealed record ExperimentalOptions
             memberLevelRetrieval = true;
         }
 
+        var projectGraph = resolved.ProjectGraph;
+        var rawProjectGraph = Environment.GetEnvironmentVariable("FUSE_PROJECT_GRAPH");
+        if (!string.IsNullOrWhiteSpace(rawProjectGraph) &&
+            (rawProjectGraph.Equals("1", StringComparison.Ordinal) ||
+             rawProjectGraph.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawProjectGraph.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            projectGraph = true;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -280,6 +300,7 @@ public sealed record ExperimentalOptions
             DistributionalThesaurus = distributionalThesaurus,
             ProximityEdges = proximityEdges,
             MemberLevelRetrieval = memberLevelRetrieval,
+            ProjectGraph = projectGraph,
         };
     }
 }

@@ -207,6 +207,17 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
   large file falls outside the window. It ships opt-in and documented because it is the per-pair-accurate
   reranker family and may help on other corpora or once member-level chunks (Q5) feed it shorter inputs.
   Covered by reranker fallback tests and model-locator/downloader tests; see the research note.
+- **Opt-in coarse project-reference graph expansion (item 8), `FUSE_PROJECT_GRAPH`.** A `ProjectGraphEdgeBuilder`
+  parses `.csproj` `ProjectReference` elements (regex, no MSBuild on the hot path) into a coarse inter-project
+  graph and links each candidate to the files in the projects its owning project references or is referenced by,
+  bounded per file. These cross-project edges feed the same decayed expansion channel as the item 7 proximity
+  edges, so a seed can reach a related file across an assembly boundary (for example a changed library file and
+  an integration test that does not name its type) that the intra-project type-reference graph misses. Measured
+  rather than predicted (I had expected it to repeat item 7's neutral result): an A/B at the 50,000 token
+  headline lifted query recall 61 to 62 percent overall, concentrated on FluentValidation (57 to 61), with no
+  per-repository regression. Off by default because the lift is within the query confidence interval and it adds
+  a `.csproj` disk scan per query; enable with `FUSE_PROJECT_GRAPH=1`. Covered by `ProjectGraphEdgeBuilder` unit
+  tests and the `spike-projectgraph.ps1` harness; see the research note for the open multi-assembly re-test.
 - **Session-delta diff overlays for changed files (item 14).** When a file already sent earlier in a session
   is requested again after it changed, the session path now re-sends a unified diff of the change rather than
   the whole file, so a long multi-turn MCP session spends tokens only on what moved. Unchanged files are still
@@ -440,19 +451,21 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
   feed it the shorter member-level chunks (Q5) rather than whole truncated files; that re-test is the open
   follow-up, and the bar to default it remains ~60 percent on the hard repos with no per-repo 50k regression.
 - **Source:** reference graph beyond syntax (item 8): a cheap first cut parsing `.csproj`
-  `ProjectReference`/`PackageReference` for a coarse inter-project assembly graph, then a later Roslyn
-  `Compilation` tier with metadata references. **Fit:** cross-assembly recall on hard repos. **Decision:**
-  **deferred, not built**, on grounded analysis. The coarse cut adds project-level edges (any file in a project
-  reaches the referenced project's types), which is broader and noisier than the narrow test-to-implementation
-  proximity edges of item 7; item 7 was implemented and measured exactly neutral on this corpus, so a coarser,
-  noisier project edge is predicted neutral-or-negative here. The corpus repositories are also mostly single
-  assembly (the cross-assembly case the lever targets is barely exercised), and the graph-edge levers
-  specifically are exhausted on this corpus (item 7, the change+query hybrid, and the type-graph false-edge
-  work all landed without graph-recall headroom; member-level retrieval found its win on a different axis,
-  retrieval granularity, not graph edges). The compiled-`Compilation` tier is XL and the plan gates it behind
-  the persistent index and an explicit flag. Build the coarse cut and A/B it on a multi-assembly corpus (B2)
-  where cross-assembly edges matter; on the current corpus it would repeat item 7's neutral result at higher
-  cost.
+  `ProjectReference` for a coarse inter-project assembly graph, then a later Roslyn `Compilation` tier with
+  metadata references. **Fit:** cross-assembly recall on hard repos. **Decision:** **built and measured, kept
+  opt-in.** I had predicted this would repeat item 7's neutral result; measuring it proved that wrong. A coarse
+  project-reference edge builder (`ProjectGraphEdgeBuilder`) links each candidate to the files in the projects
+  its owning `.csproj` references or is referenced by, bounded per file and fed into the same decayed expansion
+  channel as the item 7 proximity edges. An A/B at the 50,000 token headline (`spike-projectgraph.ps1`, query
+  mode) lifted overall query recall 61 to 62 percent, concentrated on FluentValidation (57 to 61), with no
+  per-repository regression (AutoMapper, MediatR, Newtonsoft.Json unchanged): a small but clean win, where the
+  reference edge reaches a changed test or sibling across the library/test project boundary that the title's
+  lexical match missed. It ships opt-in (`FUSE_PROJECT_GRAPH`) rather than default because the lift is within
+  the wide query confidence interval (it holds per-repo but is one point on the mean), it adds a `.csproj` disk
+  scan per query, and the corpus is mostly two-project so the cross-assembly case is lightly exercised; the
+  deeper compiled-`Compilation` tier remains XL and gated behind the persistent index. The honest next step is
+  to re-measure it on a multi-assembly corpus (B2), where the staged Serilog repo already adds a fifth project
+  set.
 - **Source:** structural proximity graph edges (item 7): link a file to its test or implementation counterpart
   and same-stem siblings by path, followed at a weight below a real type reference, to reach a related file the
   type-reference graph misses. **Fit:** focus and query recall, all graph modes. **Decision:** built behind the

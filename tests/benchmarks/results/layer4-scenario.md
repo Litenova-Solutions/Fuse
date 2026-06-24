@@ -18,3 +18,21 @@ Means across the PRs at the headline budget. no-fuse round-trips is a structural
 | FluentValidation | 3.5 | 5,711 | 256,538 | 268,083 | 41,118 | 57% |
 | MediatR | 2.7 | 3,326 | 79,282 | 84,894 | 32,384 | 94% |
 | NewtonsoftJson | 14.5 | 97,514 | 1,182,224 | 1,219,416 | 40,954 | 42% |
+
+## Routed arms (headline budget)
+
+The change-scoped arm is the routed default when a git base is available; the ask arm is what Fuse picks from the task text; the query arm is the stress floor (a sentence, no base, picked search). All are one call.
+
+| Arm | Recall | Mean tokens |
+|-----|-------:|------------:|
+| fuse --changed-since (routed) | 88% | 26,825 |
+| fuse ask (routed) | 57% | 40,506 |
+| fuse --query (stress floor) | 61% | 39,947 |
+
+Tokens to reach 80% recall (smallest budget whose mean recall clears it):
+
+| Arm | Budget reached | Mean tokens there |
+|-----|---------------:|------------------:|
+| fuse --changed-since | 25000 | 14,631 |
+| fuse ask | not reached at <= 50000 | n/a |
+| fuse --query | not reached at <= 50000 | n/a |

@@ -40,6 +40,19 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
 
 ### Changed
 
+- **Extract `QueryScopingPipeline` from the orchestrator (architecture enabler A2).** The query scoping path
+  (index build, candidate ranking, pseudo-relevance feedback, multi-query fusion, the distributional thesaurus,
+  member-level retrieval, the git churn prior, dense rerank, seed promotion, member selection, and graph
+  expansion) moved out of `FusionOrchestrator` into a dedicated `QueryScopingPipeline`, so the query path is a
+  testable unit rather than inline orchestrator code. The orchestrator now builds the shared dependency graph
+  and proximity-edge adjacency (also used by the focus and changes paths) and hands them to the pipeline; both
+  are deterministic and independent of ranking, so building them before the pipeline is behavior-identical. The
+  refactor is behavior-preserving: the full test suite and a fresh layer 2A run reproduce the published query
+  numbers exactly (no change to selection, recall, or token cost). The nested `FilteredFileSet` and
+  `SymbolSliceRequest` records are now internal top-level types so the pipeline can return them. This completes
+  enabler A2 alongside A3 (`TokenCostModel`) and A4 (candidate/seed/emit split); A1 (a first-class `ContextPlan`)
+  remains the one enabler not extracted, since its purpose (backing tiered emission, role-aware packing, and
+  `fuse_explain`) is already delivered by the shipped per-file level resolver and those features are validated.
 - **Cache rerank document embeddings by content hash (item 23).** The dense reranker (item 9, opt-in) embedded
   every candidate's text on every query; it now caches each document embedding by a content hash, so a warm
   rerank over an unchanged file reuses the vector instead of re-running the model. The cache is process-lifetime

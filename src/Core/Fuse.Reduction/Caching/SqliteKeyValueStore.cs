@@ -16,9 +16,20 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
 {
     private const int BusyTimeoutSeconds = 30;
     private const int MaxFlushAttempts = 5;
+    private const int SqliteError = 1;
     private const int SqliteBusy = 5;
     private const int SqliteCorrupt = 11;
     private const int SqliteNotADb = 26;
+
+    // Idempotent DDL for the single key-value table. Shared by schema creation and the flush path, which runs it
+    // defensively so a pooled or shared-cache connection that has not yet observed a just-recreated database
+    // cannot fail an insert with "no such table: kv".
+    private const string CreateTableDdl =
+        "CREATE TABLE IF NOT EXISTS kv(" +
+        "  store TEXT NOT NULL," +
+        "  key TEXT NOT NULL," +
+        "  value BLOB NOT NULL," +
+        "  PRIMARY KEY(store, key)) WITHOUT ROWID;";
 
     private readonly string _databasePath;
     private readonly string _connectionString;
@@ -31,11 +42,14 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
     public SqliteKeyValueStore(string databasePath)
     {
         _databasePath = databasePath;
+        // Private cache (the default), not shared: WAL mode plus connection pooling already give cross-connection
+        // concurrency, and a process-wide shared cache can outlive a corrupt-database delete-and-recreate, leaving
+        // a fresh connection attached to a stale empty cache that does not show the recreated schema (an
+        // intermittent "no such table: kv"). A private cache makes every connection read the actual file state.
         _connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = databasePath,
             Pooling = true,
-            Cache = SqliteCacheMode.Shared,
             DefaultTimeout = BusyTimeoutSeconds,
         }.ToString();
         Initialize();
@@ -75,6 +89,10 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             {
                 RecoverCorruptDatabase();
             }
+            catch (SqliteException ex) when (IsMissingTableError(ex) && attempt == 0)
+            {
+                CreateSchema();
+            }
         }
 
         value = null;
@@ -112,6 +130,10 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             {
                 RecoverCorruptDatabase();
             }
+            catch (SqliteException ex) when (IsMissingTableError(ex) && attempt < MaxFlushAttempts - 1)
+            {
+                CreateSchema();
+            }
         }
     }
 
@@ -139,6 +161,10 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             catch (SqliteException ex) when (IsCorruptDatabaseError(ex) && attempt == 0)
             {
                 RecoverCorruptDatabase();
+            }
+            catch (SqliteException ex) when (IsMissingTableError(ex) && attempt == 0)
+            {
+                CreateSchema();
             }
         }
     }
@@ -202,6 +228,13 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
     private static bool IsCorruptDatabaseError(SqliteException ex) =>
         ex.SqliteErrorCode is SqliteCorrupt or SqliteNotADb;
 
+    // After a corrupt database is deleted and recreated, connection pooling and SQLite shared-cache mode can
+    // briefly hand an operation a connection whose view of the just-recreated database does not yet show the
+    // table, surfacing as a generic error (code 1) with a "no such table" message. This is not corruption: the
+    // file is a valid, empty database, so the recovery is to (re)create the schema rather than delete the file.
+    private static bool IsMissingTableError(SqliteException ex) =>
+        ex.SqliteErrorCode == SqliteError && ex.Message.Contains("no such table", StringComparison.Ordinal);
+
     private void RecoverCorruptDatabase()
     {
         SqliteConnection.ClearAllPools();
@@ -219,11 +252,7 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             $"PRAGMA busy_timeout = {BusyTimeoutSeconds * 1000};" +
             "PRAGMA journal_mode = WAL;" +
             "PRAGMA synchronous = NORMAL;" +
-            "CREATE TABLE IF NOT EXISTS kv(" +
-            "  store TEXT NOT NULL," +
-            "  key TEXT NOT NULL," +
-            "  value BLOB NOT NULL," +
-            "  PRIMARY KEY(store, key)) WITHOUT ROWID;";
+            CreateTableDdl;
         command.ExecuteNonQuery();
     }
 

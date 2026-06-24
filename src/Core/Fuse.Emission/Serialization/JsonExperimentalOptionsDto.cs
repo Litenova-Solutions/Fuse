@@ -31,4 +31,10 @@ public sealed class JsonExperimentalOptionsDto
     ///     against the token ceiling rather than admitting the whole neighbourhood for the packer to cut).
     /// </summary>
     public bool BudgetAwareExpansion { get; set; }
+
+    /// <summary>
+    ///     Whether the query path reranked its BM25 candidate pool with a dense embedding model (opt-in; off
+    ///     unless a model is present and the feature is enabled).
+    /// </summary>
+    public bool DenseRerank { get; set; }
 }

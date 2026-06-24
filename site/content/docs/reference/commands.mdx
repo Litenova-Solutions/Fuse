@@ -25,6 +25,7 @@ This page covers the command surface: names, descriptions, and one example invoc
 | `fuse mcp install` | Nothing; registers Fuse with MCP clients | Not applicable | Not applicable | `--client`, `--scope`, `--rules`, `--command` |
 | `fuse mcp serve` | Nothing; starts the MCP server | Not applicable | Not applicable | None |
 | `fuse reduce` | A named set of files, or stdin content (to stdout) | C# reduction by `--level` | None | `--files`, `--stdin`, `--ext`, `--level`, `--max-tokens` |
+| `fuse models` | Nothing; manages optional models for opt-in features | Not applicable | Not applicable | `status`, `download`, `remove` |
 
 ## fuse
 
@@ -152,6 +153,22 @@ Use `--files` for a list of paths (absolute or relative to `--directory`), or `-
 read content from standard input with `--ext` selecting the reducer. The two are mutually
 exclusive. `--level` sets the C# reduction level and `--max-tokens` caps the output. The
 result goes to stdout so the command composes in a pipeline.
+
+## fuse models
+
+This command manages the optional on-disk models that back opt-in features. Today that is the dense rerank
+embedder (all-MiniLM-L6-v2), used when `FUSE_RERANK=1` is set. Downloading is always explicit; scoping never
+fetches a model mid-run, and absent a model the query path stays on the lexical BM25F path.
+
+```bash
+fuse models status     # whether the model is cached, and where
+fuse models download   # fetch it (about 23 MB to ~/.fuse/models), verified by SHA-256
+fuse models remove     # delete the cached model
+```
+
+Dense rerank is off by default and is not the MCP default, because it did not beat the lexical path on the
+benchmark corpus (see [Benchmarks](/docs/project/benchmarks)). The cache location follows `FUSE_USER_DATA`
+(default `~/.fuse`).
 
 ## What This Does Not Cover
 

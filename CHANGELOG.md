@@ -59,6 +59,12 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **`fuse ask` CLI command (item 31).** The deterministic task routing that the `fuse_ask` MCP tool uses
+  (skeleton for a broad question, focus for a single named type, search otherwise, with a focus-to-search
+  fallback when the type does not resolve) is now a CLI command: `fuse ask --task "..." --max-tokens N
+  --directory ...`. It exposes the routed agent surface to the benchmark harness and CI without an MCP client,
+  the enabler for a routed Layer 3/4 arm. No model is called; the routing is heuristic and reuses the existing
+  focus, search, and skeleton paths, so retrieval behavior and benchmarks are unchanged.
 - **Agentic next-best-action breadcrumb for tiered emission (item 30).** When tiered emission skeletonizes a
   dependency-expanded neighbour, the output now ends with a machine-readable `<!-- fuse:next ... -->` comment
   that names each skeletonized file and the `fuse_focus "Type"` call that expands its body, so the budget wall

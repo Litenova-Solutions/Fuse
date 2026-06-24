@@ -6,6 +6,18 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Changed
 
+- **Reuse the built relevance index across queries on an unchanged tree (item 24).** The BM25 index rebuilt its
+  document-frequency and length statistics on every query; this is the dominant warm-call cost once body
+  tokenization is cached on disk. A process-lifetime `RelevanceIndexCache` now keeps one built index keyed by a
+  content signature of the indexed files (path plus content of every file), so a repeated scoped query against
+  an unchanged tree reuses the index instead of rebuilding it. A built index is read-only (ranking only reads
+  its tables), so the cached instance is shared safely across the MCP server's concurrent queries; the build
+  runs outside the lock, so a first-time build never serializes unrelated queries. Behavior-preserving: the
+  index is a pure function of the document content the signature covers, so scoping results are identical (the
+  full suite and the per-repo gate confirm it). The payoff is in the long-lived MCP server, where one process
+  serves many queries; the per-process latency layer spawns a fresh process per sample and so does not capture
+  this in-process reuse. Covered by cache unit tests (same signature builds once and returns the same instance,
+  a different signature rebuilds, the single entry evicts).
 - **Downgrade-before-drop packing (P1), on by default.** When the reduced set exceeds the token budget, the
   lower-relevance tail the packer would otherwise drop is now replaced with a compact structural sketch (type
   and member names, no bodies, from the Roslyn outline) instead of being cut, so a would-be-dropped file stays

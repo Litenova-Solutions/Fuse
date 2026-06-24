@@ -873,6 +873,39 @@ public sealed class FusionOrchestrator
             }
         }
 
+        // Member-level retrieval (Q5): index each declared member as its own document, roll the per-member
+        // scores up to a file score (best member wins), and add any file the member pass surfaces that the
+        // file-granular pass missed, as an extra seed. This reaches a file whose match is concentrated in one
+        // member of an otherwise large file, which whole-file length normalization dilutes. Member-rollup
+        // scores come from a separate index on a different scale, so the additions are placed below the
+        // file-granular floor rather than interleaved by raw score, and the seed count is widened to admit them,
+        // so the pass only adds files and never drops a first-pass seed.
+        if (experimental.MemberLevelRetrieval)
+        {
+            // Rank a wider member pool than the seed count, so a file the member pass surfaces is captured even
+            // when higher-density members of already-seeded files rank above it; then admit at most TopFiles of
+            // the files not already present, so the extra seeds stay bounded.
+            var memberRanked = RankByMembers(request.Query.Query, files, fileContents, request.Query.TopFiles * 4);
+            var present = new HashSet<string>(ranked.Select(r => r.Path), StringComparer.OrdinalIgnoreCase);
+            var additions = memberRanked
+                .Where(r => !present.Contains(r.Path))
+                .Take(request.Query.TopFiles)
+                .ToList();
+            if (additions.Count > 0)
+            {
+                var floor = ranked.Count > 0 ? ranked.Min(r => r.Score) : 1.0;
+                var combined = ranked.ToList();
+                foreach (var addition in additions)
+                {
+                    floor *= 0.999; // strictly below the file-granular floor, preserving member order
+                    combined.Add(addition with { Score = floor });
+                }
+
+                ranked = combined;
+                seedTopK += additions.Count; // admit the surfaced files as extra seeds
+            }
+        }
+
         // Git churn prior (Q6): nudge a recently and frequently changed candidate up, since work clusters where
         // code recently changed. A production-routing lever, off unless GitChurnWeight > 0. The pinned benchmark
         // cannot validate it: its worktrees are historical PR-head checkouts, so churn-from-now is uniformly
@@ -1026,6 +1059,57 @@ public sealed class FusionOrchestrator
 
         var edges = ProximityEdgeBuilder.Build(files.Select(f => f.NormalizedRelativePath).ToList());
         return (edges, ProximityExpansionWeight);
+    }
+
+    // Member-level retrieval (Q5). Indexes each declared member of each file as its own document, ranks the
+    // query over members, and rolls the per-member scores up to a file score (the file's best member). Returns
+    // the top files by member score, to be merged with the file-granular ranking. A fresh per-call index over
+    // member chunks; empty when no file has a chunk extractor or no member matches.
+    private IReadOnlyList<RankedFile> RankByMembers(
+        string query,
+        IReadOnlyList<Fuse.Collection.Models.SourceFile> files,
+        IReadOnlyDictionary<string, string> fileContents,
+        int topFiles)
+    {
+        var chunkDocuments = new Dictionary<string, IndexedDocument>(StringComparer.Ordinal);
+        var chunkToFile = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var file in files)
+        {
+            var extractor = _chunkExtractors.TryResolve(file.Extension);
+            if (extractor is null || !fileContents.TryGetValue(file.NormalizedRelativePath, out var content))
+                continue;
+
+            var chunks = extractor.ExtractChunks(content);
+            for (var i = 0; i < chunks.Count; i++)
+            {
+                var key = $"{file.NormalizedRelativePath}{i}";
+                chunkDocuments[key] = new IndexedDocument(chunks[i].Content, key, [chunks[i].SymbolName]);
+                chunkToFile[key] = file.NormalizedRelativePath;
+            }
+        }
+
+        if (chunkDocuments.Count == 0)
+            return [];
+
+        var chunkIndex = _relevanceIndexFactory();
+        chunkIndex.Index(chunkDocuments);
+        var chunkRanked = chunkIndex.RankScored(query, chunkDocuments.Count);
+
+        // Roll up: each file takes its best-scoring member.
+        var fileScores = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var chunk in chunkRanked)
+        {
+            var path = chunkToFile[chunk.Path];
+            if (!fileScores.TryGetValue(path, out var best) || chunk.Score > best)
+                fileScores[path] = chunk.Score;
+        }
+
+        return fileScores
+            .OrderByDescending(kv => kv.Value)
+            .ThenBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
+            .Take(topFiles)
+            .Select(kv => new RankedFile(kv.Key, kv.Value))
+            .ToList();
     }
 
     // Folds one file's path and content into the running index signature with an FNV-style mix over their

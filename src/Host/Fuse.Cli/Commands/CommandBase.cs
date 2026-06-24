@@ -182,6 +182,7 @@ public abstract class CommandBase
             DowngradeBeforeDrop = resolved.DowngradeBeforeDrop,
             DistributionalThesaurus = resolved.DistributionalThesaurus,
             ProximityEdges = resolved.ProximityEdges,
+            MemberLevelRetrieval = resolved.MemberLevelRetrieval,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

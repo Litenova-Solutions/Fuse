@@ -2,7 +2,9 @@ using System.Diagnostics;
 using System.Reflection;
 using Fuse.Cli.Mcp;
 using Fuse.Collection.Templates;
+using Fuse.Emission.Models;
 using Fuse.Fusion;
+using Fuse.Fusion.Scoping;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
@@ -113,6 +115,71 @@ public sealed class FuseHostService
         _logger.LogInformation("Indexed {Root}: {Count} files in {Ms} ms.",
             resolved, result.TotalFileCount, (long)result.Duration.TotalMilliseconds);
         return new IndexResultDto("Warm", result.TotalFileCount, (long)result.Duration.TotalMilliseconds);
+    }
+
+    /// <summary>
+    ///     Runs a scoped fusion through the shared orchestrator and returns the emitted file plan plus a path to
+    ///     the written payload, so the extension can populate the scope-result panel and open the payload
+    ///     read-only. The same orchestrator path the MCP agent uses, so the UI and the agent see identical scopes.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="mode">The scoping mode: <c>focus</c>, <c>changes</c>, or anything else for <c>search</c>.</param>
+    /// <param name="seed">The focus seed (type or file) when <paramref name="mode" /> is <c>focus</c>.</param>
+    /// <param name="query">The search query when <paramref name="mode" /> is <c>search</c>.</param>
+    /// <param name="since">The git base when <paramref name="mode" /> is <c>changes</c>.</param>
+    /// <param name="maxTokens">The token budget for the emitted payload, or <c>0</c> for unbounded.</param>
+    /// <returns>The emitted files with token costs, the total tokens, and the payload file path.</returns>
+    [JsonRpcMethod("fuse/scope")]
+    public async Task<ScopeResultDto> ScopeAsync(
+        string root, string mode, string? seed, string? query, string? since, int maxTokens)
+    {
+        var resolved = Path.GetFullPath(root);
+        var normalizedMode = (mode ?? "search").Trim().ToLowerInvariant();
+        if (!Directory.Exists(resolved))
+            return new ScopeResultDto(normalizedMode, [], 0, null);
+
+        var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
+        builder.WithEmissionOptions(new EmissionOptions
+        {
+            MaxTokens = maxTokens > 0 ? maxTokens : null,
+            ShowTokenCount = false,
+            IncludeManifest = true,
+        });
+
+        switch (normalizedMode)
+        {
+            case "focus" when !string.IsNullOrWhiteSpace(seed):
+                builder.WithFocusOptions(new FocusOptions(seed, Depth: 2));
+                break;
+            case "changes" when !string.IsNullOrWhiteSpace(since):
+                builder.WithChangeOptions(new ChangeOptions(since));
+                break;
+            default:
+                normalizedMode = "search";
+                builder.WithQueryOptions(new QueryOptions(query ?? string.Empty, TopFiles: 10, Depth: 2));
+                break;
+        }
+
+        var result = await _orchestrator.FuseAsync(builder.Build());
+
+        string? payloadPath = null;
+        if (!string.IsNullOrEmpty(result.InMemoryContent))
+        {
+            // Write the payload to a per-root temp file the extension opens read-only. Reused across scopes so
+            // the host does not accumulate temp files; the extension reads it immediately after the response.
+            var dir = Path.Combine(Path.GetTempPath(), "fuse-host-payloads");
+            Directory.CreateDirectory(dir);
+            payloadPath = Path.Combine(dir, HostEndpoint.PipeName(resolved) + "-" + normalizedMode + ".fuse.xml");
+            await File.WriteAllTextAsync(payloadPath, result.InMemoryContent);
+        }
+
+        var files = result.EmittedFileTokens
+            .Select(f => new ScopeFileDto(f.Path, (int)f.Count))
+            .ToList();
+
+        _logger.LogInformation("Scope {Mode} on {Root}: {Files} files, {Tokens} tokens.",
+            normalizedMode, resolved, files.Count, result.TotalTokens);
+        return new ScopeResultDto(normalizedMode, files, result.TotalTokens, payloadPath);
     }
 
     /// <summary>

@@ -13,8 +13,11 @@ deviation from the playbook.
       Verified end to end by `FuseHostServiceRpcTests` over an in-memory duplex pipe.
 - [x] `fuse/index`: warms the engine (collect plus analysis index plus graph through the shared orchestrator)
       and returns the index state and file count. Integration-tested against a fixture (warm and missing-dir).
-- [ ] Engine-data methods: `fuse/graph`, `fuse/scope`, `fuse/explain`, `fuse/diagnostics` (DTOs and protocol.ts
-      entries are in place; the projections are the next increments).
+- [x] `fuse/scope`: runs a focus/search/changes fusion through the shared orchestrator, returns the emitted
+      file plan with token costs, and writes the payload to a temp file the extension opens read-only.
+      Integration-tested (search surfaces the matched file and writes a readable payload).
+- [ ] Engine-data methods: `fuse/graph`, `fuse/explain`, `fuse/diagnostics` (DTOs/protocol partly staged; the
+      projections are the next increments).
 - [ ] Warm-index lifecycle (pooled repo-root store, resident analysis index, incremental invalidation).
 - [ ] Concurrency test (simultaneous fuse/graph and fuse/scope against one root).
 - [ ] Host-publish CI matrix per RID.

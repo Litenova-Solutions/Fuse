@@ -1,0 +1,25 @@
+{
+  "_comment": "Per-repo per-mode mean recall at the 50000-token headline budget. The B9 gate (check-regressions.ps1) fails if a fresh layer2a run drops any cell below these minus the tolerance. Update deliberately, with the commit that intentionally moves a number, never to paper over a regression.",
+  "budget": 50000,
+  "tolerance": 0.02,
+  "recall": {
+    "changes": {
+      "AutoMapper": 0.917,
+      "FluentValidation": 1.0,
+      "MediatR": 1.0,
+      "NewtonsoftJson": 0.562
+    },
+    "focus": {
+      "AutoMapper": 0.917,
+      "FluentValidation": 1.0,
+      "MediatR": 1.0,
+      "NewtonsoftJson": 0.745
+    },
+    "query": {
+      "AutoMapper": 0.5,
+      "FluentValidation": 0.57,
+      "MediatR": 0.945,
+      "NewtonsoftJson": 0.419
+    }
+  }
+}

@@ -1,9 +1,9 @@
 ---
 title: Tools Reference
-description: Parameters and defaults for the ten MCP tools the Fuse server exposes to AI clients.
+description: Parameters and defaults for the eleven MCP tools the Fuse server exposes to AI clients.
 ---
 
-The Fuse MCP server exposes ten tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
+The Fuse MCP server exposes eleven tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
 
 This page is for engineers writing agent instructions and for experts who need the exact default of each parameter.
 
@@ -215,6 +215,25 @@ Preview which files a scoped fusion would include and exclude, with a per-file t
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
+
+## fuse_find
+
+A cheap, Fuse-native exact lookup over a codebase: one coherent interface in place of a broad grep. It returns locations, not fused context. Three modes: `symbol` finds a declared type or member by its exact simple name; `text` finds an exact substring and shows context lines around each match; `path` finds files whose path contains the query.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to search |
+| `query` | string | required | The symbol name, exact text, or path fragment to find |
+| `mode` | symbol \| text \| path | symbol | Which lookup to run |
+| `ignoreCase` | bool | false | Match case-insensitively |
+| `maxMatches` | int | 50 | Largest number of matches to return; the rest are summarized as a count |
+| `contextLines` | int | 2 | Lines of context on each side of a `text`-mode match |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+
+In `symbol` mode the match is on the exact simple name (a member match is reported as `member {name} in {Type}`); `text` and `path` modes match substrings.
 
 ## What This Does Not Cover
 

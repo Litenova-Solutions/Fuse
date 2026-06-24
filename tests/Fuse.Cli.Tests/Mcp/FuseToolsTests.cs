@@ -21,6 +21,7 @@ public sealed class FuseToolsTests
     [InlineData(nameof(FuseTools.FuseGenericAsync), "fuse_generic")]
     [InlineData(nameof(FuseTools.FuseReduceAsync), "fuse_reduce")]
     [InlineData(nameof(FuseTools.FuseExplainAsync), "fuse_explain")]
+    [InlineData(nameof(FuseTools.FuseFindAsync), "fuse_find")]
     public void ToolMethods_AreRegisteredWithExpectedNames(string methodName, string expectedToolName)
     {
         var method = typeof(FuseTools).GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
@@ -204,6 +205,103 @@ public sealed class FuseToolsTests
         Assert.DoesNotContain("unique-body-token", result);
         Assert.DoesNotContain("<file path", result);
     }
+
+    [Fact]
+    public async Task FuseFindAsync_SymbolMode_FindsTypeAndMemberDeclarations()
+    {
+        using var fixture = new TempProject();
+        fixture.AddFile("Services/OrderService.cs", """
+            public class OrderService
+            {
+                public void PlaceOrder() { }
+            }
+            """);
+        fixture.AddFile("Other.cs", "public class Other { public void PlaceOrder() { } }");
+
+        var (provider, templates, collection) = BuildFindServices();
+
+        var typeHit = await FuseTools.FuseFindAsync(
+            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "OrderService", FindMode.Symbol);
+        Assert.Contains("OrderService.cs: class OrderService", typeHit);
+
+        // A member name resolves in every declaring file and is reported with its owning type.
+        var memberHit = await FuseTools.FuseFindAsync(
+            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "PlaceOrder", FindMode.Symbol);
+        Assert.Contains("member PlaceOrder in OrderService", memberHit);
+        Assert.Contains("member PlaceOrder in Other", memberHit);
+    }
+
+    [Fact]
+    public async Task FuseFindAsync_TextMode_ReturnsMatchWithContextAndLineNumber()
+    {
+        using var fixture = new TempProject();
+        fixture.AddFile("Sample.cs", """
+            public class Sample
+            {
+                public int Magic() => 8675309;
+            }
+            """);
+
+        var (provider, templates, collection) = BuildFindServices();
+        var result = await FuseTools.FuseFindAsync(
+            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "8675309", FindMode.Text);
+
+        Assert.Contains("Sample.cs:3", result);
+        Assert.Contains("8675309", result);
+    }
+
+    [Fact]
+    public async Task FuseFindAsync_PathMode_MatchesPathFragment()
+    {
+        using var fixture = new TempProject();
+        fixture.AddFile("Services/OrderService.cs", "public class OrderService { }");
+        fixture.AddFile("Models/Order.cs", "public class Order { }");
+
+        var (provider, templates, collection) = BuildFindServices();
+        var result = await FuseTools.FuseFindAsync(
+            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "Services/", FindMode.Path);
+
+        Assert.Contains("Services/OrderService.cs", result);
+        Assert.DoesNotContain("Models/Order.cs", result);
+    }
+
+    [Fact]
+    public async Task FuseFindAsync_EmptyQuery_ReturnsError()
+    {
+        var (provider, templates, collection) = BuildFindServices();
+        var result = await FuseTools.FuseFindAsync(
+            templates, collection, provider, OutlineRegistry(), Path.GetTempPath(), "  ");
+        Assert.StartsWith("Error", result);
+    }
+
+    [Fact]
+    public async Task FuseFindAsync_NoMatch_ReportsNoneFound()
+    {
+        using var fixture = new TempProject();
+        fixture.AddFile("Sample.cs", "public class Sample { }");
+
+        var (provider, templates, collection) = BuildFindServices();
+        var result = await FuseTools.FuseFindAsync(
+            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "DoesNotExist", FindMode.Symbol);
+
+        Assert.Contains("No symbol named 'DoesNotExist'", result);
+    }
+
+    private static (
+        Func<Fuse.Collection.FileSystem.ISourceContentProvider>,
+        ProjectTemplateRegistry,
+        Fuse.Collection.FileCollectionPipeline) BuildFindServices()
+    {
+        var provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
+        return (
+            provider.GetRequiredService<Func<Fuse.Collection.FileSystem.ISourceContentProvider>>(),
+            provider.GetRequiredService<ProjectTemplateRegistry>(),
+            provider.GetRequiredService<Fuse.Collection.FileCollectionPipeline>());
+    }
+
+    private static Plugins.Abstractions.CapabilityRegistry<Plugins.Abstractions.Outline.ISymbolOutlineExtractor> OutlineRegistry() =>
+        new ServiceCollection().AddFuseForTests().BuildServiceProvider()
+            .GetRequiredService<Plugins.Abstractions.CapabilityRegistry<Plugins.Abstractions.Outline.ISymbolOutlineExtractor>>();
 
     private static IReadOnlyList<string> EmittedFiles(string output) =>
         System.Text.RegularExpressions.Regex.Matches(output, "<file path=\"([^\"]+)\"")

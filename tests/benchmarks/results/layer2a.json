@@ -9,7 +9,9 @@
     "precision": 0.667,
     "hits": 2,
     "emitted": 3,
-    "tokens": 7047
+    "tokens": 7047,
+    "wasted": 2349.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -21,7 +23,9 @@
     "precision": 0.667,
     "hits": 2,
     "emitted": 3,
-    "tokens": 7047
+    "tokens": 7047,
+    "wasted": 2349.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -33,7 +37,9 @@
     "precision": 0.667,
     "hits": 2,
     "emitted": 3,
-    "tokens": 7047
+    "tokens": 7047,
+    "wasted": 2349.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -45,7 +51,9 @@
     "precision": 0.01,
     "hits": 1,
     "emitted": 99,
-    "tokens": 9253
+    "tokens": 9253,
+    "wasted": 9160.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -57,7 +65,9 @@
     "precision": 0.005,
     "hits": 1,
     "emitted": 183,
-    "tokens": 23363
+    "tokens": 23363,
+    "wasted": 23235.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -69,7 +79,9 @@
     "precision": 0.007,
     "hits": 2,
     "emitted": 270,
-    "tokens": 47570
+    "tokens": 47570,
+    "wasted": 47218.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -81,7 +93,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 50,
-    "tokens": 9400
+    "tokens": 9400,
+    "wasted": 9400.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -93,7 +107,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 104,
-    "tokens": 23829
+    "tokens": 23829,
+    "wasted": 23829.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -105,7 +121,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 161,
-    "tokens": 48183
+    "tokens": 48183,
+    "wasted": 48183.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -117,7 +135,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 8,
-    "tokens": 49987
+    "tokens": 49987,
+    "wasted": 49987.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -129,7 +149,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 8699
+    "tokens": 8699,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -141,7 +163,9 @@
     "precision": 0.5,
     "hits": 1,
     "emitted": 2,
-    "tokens": 22322
+    "tokens": 22322,
+    "wasted": 11161.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -153,7 +177,9 @@
     "precision": 0.143,
     "hits": 1,
     "emitted": 7,
-    "tokens": 48765
+    "tokens": 48765,
+    "wasted": 41799.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -165,7 +191,9 @@
     "precision": 0.03,
     "hits": 1,
     "emitted": 33,
-    "tokens": 9633
+    "tokens": 9633,
+    "wasted": 9341.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -177,7 +205,9 @@
     "precision": 0.01,
     "hits": 1,
     "emitted": 104,
-    "tokens": 23874
+    "tokens": 23874,
+    "wasted": 23644.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -189,7 +219,9 @@
     "precision": 0.006,
     "hits": 1,
     "emitted": 173,
-    "tokens": 48003
+    "tokens": 48003,
+    "wasted": 47726.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -201,7 +233,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 49,
-    "tokens": 9310
+    "tokens": 9310,
+    "wasted": 9310.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -213,7 +247,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 100,
-    "tokens": 23697
+    "tokens": 23697,
+    "wasted": 23697.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -225,7 +261,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 155,
-    "tokens": 47972
+    "tokens": 47972,
+    "wasted": 47972.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -237,7 +275,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 26,
-    "tokens": 25084
+    "tokens": 25084,
+    "wasted": 25084.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -249,7 +289,9 @@
     "precision": 0.667,
     "hits": 4,
     "emitted": 6,
-    "tokens": 8834
+    "tokens": 8834,
+    "wasted": 2945.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -261,7 +303,9 @@
     "precision": 0.667,
     "hits": 4,
     "emitted": 6,
-    "tokens": 8834
+    "tokens": 8834,
+    "wasted": 2945.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -273,7 +317,9 @@
     "precision": 0.667,
     "hits": 4,
     "emitted": 6,
-    "tokens": 8834
+    "tokens": 8834,
+    "wasted": 2945.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -285,7 +331,9 @@
     "precision": 0.053,
     "hits": 2,
     "emitted": 38,
-    "tokens": 9372
+    "tokens": 9372,
+    "wasted": 8879.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -297,7 +345,9 @@
     "precision": 0.045,
     "hits": 3,
     "emitted": 66,
-    "tokens": 23924
+    "tokens": 23924,
+    "wasted": 22837.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -309,7 +359,9 @@
     "precision": 0.033,
     "hits": 3,
     "emitted": 92,
-    "tokens": 48000
+    "tokens": 48000,
+    "wasted": 46435.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -321,7 +373,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 61,
-    "tokens": 9341
+    "tokens": 9341,
+    "wasted": 9341.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -333,7 +387,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 112,
-    "tokens": 23770
+    "tokens": 23770,
+    "wasted": 23770.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -345,7 +401,9 @@
     "precision": 0.006,
     "hits": 1,
     "emitted": 165,
-    "tokens": 48140
+    "tokens": 48140,
+    "wasted": 47848.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -357,7 +415,9 @@
     "precision": 0.036,
     "hits": 1,
     "emitted": 28,
-    "tokens": 49995
+    "tokens": 49995,
+    "wasted": 48209.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "AutoMapper",
@@ -369,7 +429,9 @@
     "precision": 1.0,
     "hits": 2,
     "emitted": 2,
-    "tokens": 2802
+    "tokens": 2802,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -381,7 +443,9 @@
     "precision": 0.5,
     "hits": 2,
     "emitted": 4,
-    "tokens": 24397
+    "tokens": 24397,
+    "wasted": 12198.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -393,7 +457,9 @@
     "precision": 0.222,
     "hits": 2,
     "emitted": 9,
-    "tokens": 48642
+    "tokens": 48642,
+    "wasted": 37833.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -405,7 +471,9 @@
     "precision": 0.021,
     "hits": 1,
     "emitted": 48,
-    "tokens": 9441
+    "tokens": 9441,
+    "wasted": 9244.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -417,7 +485,9 @@
     "precision": 0.009,
     "hits": 1,
     "emitted": 115,
-    "tokens": 23776
+    "tokens": 23776,
+    "wasted": 23569.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -429,7 +499,9 @@
     "precision": 0.011,
     "hits": 2,
     "emitted": 186,
-    "tokens": 47989
+    "tokens": 47989,
+    "wasted": 47473.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -441,7 +513,9 @@
     "precision": 0.017,
     "hits": 1,
     "emitted": 59,
-    "tokens": 9343
+    "tokens": 9343,
+    "wasted": 9185.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -453,7 +527,9 @@
     "precision": 0.009,
     "hits": 1,
     "emitted": 113,
-    "tokens": 23826
+    "tokens": 23826,
+    "wasted": 23615.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -465,7 +541,9 @@
     "precision": 0.006,
     "hits": 1,
     "emitted": 169,
-    "tokens": 48192
+    "tokens": 48192,
+    "wasted": 47907.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -477,7 +555,9 @@
     "precision": 0.091,
     "hits": 2,
     "emitted": 22,
-    "tokens": 49934
+    "tokens": 49934,
+    "wasted": 45395.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -489,7 +569,9 @@
     "precision": 1.0,
     "hits": 2,
     "emitted": 2,
-    "tokens": 1344
+    "tokens": 1344,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -501,7 +583,9 @@
     "precision": 1.0,
     "hits": 2,
     "emitted": 2,
-    "tokens": 1344
+    "tokens": 1344,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -513,7 +597,9 @@
     "precision": 0.5,
     "hits": 2,
     "emitted": 4,
-    "tokens": 42126
+    "tokens": 42126,
+    "wasted": 21063.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -525,7 +611,9 @@
     "precision": 0.017,
     "hits": 1,
     "emitted": 58,
-    "tokens": 9310
+    "tokens": 9310,
+    "wasted": 9149.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -537,7 +625,9 @@
     "precision": 0.009,
     "hits": 1,
     "emitted": 110,
-    "tokens": 23666
+    "tokens": 23666,
+    "wasted": 23451.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -549,7 +639,9 @@
     "precision": 0.013,
     "hits": 2,
     "emitted": 159,
-    "tokens": 48196
+    "tokens": 48196,
+    "wasted": 47590.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -561,7 +653,9 @@
     "precision": 0.016,
     "hits": 1,
     "emitted": 62,
-    "tokens": 9350
+    "tokens": 9350,
+    "wasted": 9199.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -573,7 +667,9 @@
     "precision": 0.009,
     "hits": 1,
     "emitted": 114,
-    "tokens": 23627
+    "tokens": 23627,
+    "wasted": 23420.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -585,7 +681,9 @@
     "precision": 0.006,
     "hits": 1,
     "emitted": 169,
-    "tokens": 48134
+    "tokens": 48134,
+    "wasted": 47849.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -597,7 +695,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 17,
-    "tokens": 49902
+    "tokens": 49902,
+    "wasted": 49902.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -609,7 +709,9 @@
     "precision": 0.667,
     "hits": 2,
     "emitted": 3,
-    "tokens": 8640
+    "tokens": 8640,
+    "wasted": 2880.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -621,7 +723,9 @@
     "precision": 0.222,
     "hits": 2,
     "emitted": 9,
-    "tokens": 24193
+    "tokens": 24193,
+    "wasted": 18817.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -633,7 +737,9 @@
     "precision": 0.105,
     "hits": 2,
     "emitted": 19,
-    "tokens": 28685
+    "tokens": 28685,
+    "wasted": 25666.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -645,7 +751,9 @@
     "precision": 0.024,
     "hits": 1,
     "emitted": 41,
-    "tokens": 9569
+    "tokens": 9569,
+    "wasted": 9336.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -657,7 +765,9 @@
     "precision": 0.009,
     "hits": 1,
     "emitted": 112,
-    "tokens": 23702
+    "tokens": 23702,
+    "wasted": 23490.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -669,7 +779,9 @@
     "precision": 0.011,
     "hits": 2,
     "emitted": 185,
-    "tokens": 48116
+    "tokens": 48116,
+    "wasted": 47596.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -681,7 +793,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 36,
-    "tokens": 9599
+    "tokens": 9599,
+    "wasted": 9599.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -693,7 +807,9 @@
     "precision": 0.01,
     "hits": 1,
     "emitted": 101,
-    "tokens": 23967
+    "tokens": 23967,
+    "wasted": 23730.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -705,7 +821,9 @@
     "precision": 0.006,
     "hits": 1,
     "emitted": 161,
-    "tokens": 48288
+    "tokens": 48288,
+    "wasted": 47988.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "AutoMapper",
@@ -717,7 +835,9 @@
     "precision": 0.056,
     "hits": 1,
     "emitted": 18,
-    "tokens": 49926
+    "tokens": 49926,
+    "wasted": 47152.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -729,7 +849,9 @@
     "precision": 1.0,
     "hits": 3,
     "emitted": 3,
-    "tokens": 9737
+    "tokens": 9737,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -741,7 +863,9 @@
     "precision": 1.0,
     "hits": 9,
     "emitted": 9,
-    "tokens": 14118
+    "tokens": 14118,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -753,7 +877,9 @@
     "precision": 0.692,
     "hits": 9,
     "emitted": 13,
-    "tokens": 49084
+    "tokens": 49084,
+    "wasted": 15103.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -765,7 +891,9 @@
     "precision": 0.071,
     "hits": 1,
     "emitted": 14,
-    "tokens": 9580
+    "tokens": 9580,
+    "wasted": 8896.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -777,7 +905,9 @@
     "precision": 0.102,
     "hits": 5,
     "emitted": 49,
-    "tokens": 24106
+    "tokens": 24106,
+    "wasted": 21646.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -789,7 +919,9 @@
     "precision": 0.072,
     "hits": 6,
     "emitted": 83,
-    "tokens": 49084
+    "tokens": 49084,
+    "wasted": 45536.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -801,7 +933,9 @@
     "precision": 0.083,
     "hits": 1,
     "emitted": 12,
-    "tokens": 9656
+    "tokens": 9656,
+    "wasted": 8851.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -813,7 +947,9 @@
     "precision": 0.174,
     "hits": 4,
     "emitted": 23,
-    "tokens": 24438
+    "tokens": 24438,
+    "wasted": 20188.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -825,7 +961,9 @@
     "precision": 0.109,
     "hits": 5,
     "emitted": 46,
-    "tokens": 48655
+    "tokens": 48655,
+    "wasted": 43366.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -837,7 +975,9 @@
     "precision": 0.1,
     "hits": 1,
     "emitted": 10,
-    "tokens": 49991
+    "tokens": 49991,
+    "wasted": 44992.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -849,7 +989,9 @@
     "precision": 1.0,
     "hits": 2,
     "emitted": 2,
-    "tokens": 710
+    "tokens": 710,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -861,7 +1003,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 18478
+    "tokens": 18478,
+    "wasted": 11087.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -873,7 +1017,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 18478
+    "tokens": 18478,
+    "wasted": 11087.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -885,7 +1031,9 @@
     "precision": 0.077,
     "hits": 2,
     "emitted": 26,
-    "tokens": 9596
+    "tokens": 9596,
+    "wasted": 8858.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -897,7 +1045,9 @@
     "precision": 0.041,
     "hits": 2,
     "emitted": 49,
-    "tokens": 23876
+    "tokens": 23876,
+    "wasted": 22901.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -909,7 +1059,9 @@
     "precision": 0.03,
     "hits": 2,
     "emitted": 66,
-    "tokens": 48272
+    "tokens": 48272,
+    "wasted": 46809.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -921,7 +1073,9 @@
     "precision": 0.1,
     "hits": 2,
     "emitted": 20,
-    "tokens": 9670
+    "tokens": 9670,
+    "wasted": 8703.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -933,7 +1087,9 @@
     "precision": 0.065,
     "hits": 2,
     "emitted": 31,
-    "tokens": 24100
+    "tokens": 24100,
+    "wasted": 22545.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -945,7 +1101,9 @@
     "precision": 0.057,
     "hits": 2,
     "emitted": 35,
-    "tokens": 28538
+    "tokens": 28538,
+    "wasted": 26907.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -957,7 +1115,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 20,
-    "tokens": 49922
+    "tokens": 49922,
+    "wasted": 49922.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -969,7 +1129,9 @@
     "precision": 1.0,
     "hits": 4,
     "emitted": 4,
-    "tokens": 8844
+    "tokens": 8844,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -981,7 +1143,9 @@
     "precision": 0.444,
     "hits": 4,
     "emitted": 9,
-    "tokens": 24067
+    "tokens": 24067,
+    "wasted": 13371.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -993,7 +1157,9 @@
     "precision": 0.091,
     "hits": 4,
     "emitted": 44,
-    "tokens": 49528
+    "tokens": 49528,
+    "wasted": 45025.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -1005,7 +1171,9 @@
     "precision": 0.034,
     "hits": 1,
     "emitted": 29,
-    "tokens": 9678
+    "tokens": 9678,
+    "wasted": 9344.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -1017,7 +1185,9 @@
     "precision": 0.016,
     "hits": 1,
     "emitted": 62,
-    "tokens": 24360
+    "tokens": 24360,
+    "wasted": 23967.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -1029,7 +1199,9 @@
     "precision": 0.01,
     "hits": 1,
     "emitted": 97,
-    "tokens": 48588
+    "tokens": 48588,
+    "wasted": 48087.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -1041,7 +1213,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 22,
-    "tokens": 9532
+    "tokens": 9532,
+    "wasted": 9532.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -1053,7 +1227,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 46,
-    "tokens": 24309
+    "tokens": 24309,
+    "wasted": 24309.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -1065,7 +1241,9 @@
     "precision": 0.031,
     "hits": 2,
     "emitted": 65,
-    "tokens": 48666
+    "tokens": 48666,
+    "wasted": 47169.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -1077,7 +1255,9 @@
     "precision": 0.056,
     "hits": 1,
     "emitted": 18,
-    "tokens": 50000
+    "tokens": 50000,
+    "wasted": 47222.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "FluentValidation",
@@ -1089,7 +1269,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 5061
+    "tokens": 5061,
+    "wasted": 3037.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1101,7 +1283,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 5061
+    "tokens": 5061,
+    "wasted": 3037.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1113,7 +1297,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 5061
+    "tokens": 5061,
+    "wasted": 3037.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1125,7 +1311,9 @@
     "precision": 0.095,
     "hits": 2,
     "emitted": 21,
-    "tokens": 9717
+    "tokens": 9717,
+    "wasted": 8792.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1137,7 +1325,9 @@
     "precision": 0.056,
     "hits": 2,
     "emitted": 36,
-    "tokens": 23587
+    "tokens": 23587,
+    "wasted": 22277.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1149,7 +1339,9 @@
     "precision": 0.043,
     "hits": 2,
     "emitted": 46,
-    "tokens": 48684
+    "tokens": 48684,
+    "wasted": 46567.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1161,7 +1353,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 26,
-    "tokens": 9741
+    "tokens": 9741,
+    "wasted": 9741.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1173,7 +1367,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 54,
-    "tokens": 24177
+    "tokens": 24177,
+    "wasted": 24177.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1185,7 +1381,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 88,
-    "tokens": 48937
+    "tokens": 48937,
+    "wasted": 48937.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1197,7 +1395,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 13,
-    "tokens": 49859
+    "tokens": 49859,
+    "wasted": 49859.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1209,7 +1409,9 @@
     "precision": 0.5,
     "hits": 2,
     "emitted": 4,
-    "tokens": 7674
+    "tokens": 7674,
+    "wasted": 3837.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1221,7 +1423,9 @@
     "precision": 0.154,
     "hits": 2,
     "emitted": 13,
-    "tokens": 23834
+    "tokens": 23834,
+    "wasted": 20167.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1233,7 +1437,9 @@
     "precision": 0.054,
     "hits": 2,
     "emitted": 37,
-    "tokens": 49504
+    "tokens": 49504,
+    "wasted": 46828.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1245,7 +1451,9 @@
     "precision": 0.036,
     "hits": 1,
     "emitted": 28,
-    "tokens": 9608
+    "tokens": 9608,
+    "wasted": 9265.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1257,7 +1465,9 @@
     "precision": 0.019,
     "hits": 1,
     "emitted": 52,
-    "tokens": 23975
+    "tokens": 23975,
+    "wasted": 23514.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1269,7 +1479,9 @@
     "precision": 0.024,
     "hits": 2,
     "emitted": 83,
-    "tokens": 48998
+    "tokens": 48998,
+    "wasted": 47817.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1281,7 +1493,9 @@
     "precision": 0.037,
     "hits": 1,
     "emitted": 27,
-    "tokens": 9547
+    "tokens": 9547,
+    "wasted": 9193.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1293,7 +1507,9 @@
     "precision": 0.018,
     "hits": 1,
     "emitted": 56,
-    "tokens": 24370
+    "tokens": 24370,
+    "wasted": 23935.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1305,7 +1521,9 @@
     "precision": 0.023,
     "hits": 2,
     "emitted": 88,
-    "tokens": 48960
+    "tokens": 48960,
+    "wasted": 47847.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1317,7 +1535,9 @@
     "precision": 0.25,
     "hits": 2,
     "emitted": 8,
-    "tokens": 10817
+    "tokens": 10817,
+    "wasted": 8113.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1329,7 +1549,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 8006
+    "tokens": 8006,
+    "wasted": 4804.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1341,7 +1563,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 8006
+    "tokens": 8006,
+    "wasted": 4804.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1353,7 +1577,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 8006
+    "tokens": 8006,
+    "wasted": 4804.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1365,7 +1591,9 @@
     "precision": 0.042,
     "hits": 1,
     "emitted": 24,
-    "tokens": 9702
+    "tokens": 9702,
+    "wasted": 9298.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1377,7 +1605,9 @@
     "precision": 0.02,
     "hits": 1,
     "emitted": 49,
-    "tokens": 23890
+    "tokens": 23890,
+    "wasted": 23402.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1389,7 +1619,9 @@
     "precision": 0.013,
     "hits": 1,
     "emitted": 76,
-    "tokens": 48632
+    "tokens": 48632,
+    "wasted": 47992.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1401,7 +1633,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 25,
-    "tokens": 9709
+    "tokens": 9709,
+    "wasted": 9709.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1413,7 +1647,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 54,
-    "tokens": 24311
+    "tokens": 24311,
+    "wasted": 24311.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1425,7 +1661,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 89,
-    "tokens": 48984
+    "tokens": 48984,
+    "wasted": 48984.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "FluentValidation",
@@ -1437,7 +1675,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 13,
-    "tokens": 49903
+    "tokens": 49903,
+    "wasted": 49903.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1449,7 +1689,9 @@
     "precision": 0.333,
     "hits": 2,
     "emitted": 6,
-    "tokens": 7874
+    "tokens": 7874,
+    "wasted": 5249.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1461,7 +1703,9 @@
     "precision": 0.333,
     "hits": 2,
     "emitted": 6,
-    "tokens": 7874
+    "tokens": 7874,
+    "wasted": 5249.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1473,7 +1717,9 @@
     "precision": 0.333,
     "hits": 2,
     "emitted": 6,
-    "tokens": 7874
+    "tokens": 7874,
+    "wasted": 5249.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1485,7 +1731,9 @@
     "precision": 0.037,
     "hits": 2,
     "emitted": 54,
-    "tokens": 9333
+    "tokens": 9333,
+    "wasted": 8987.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1497,7 +1745,9 @@
     "precision": 0.025,
     "hits": 2,
     "emitted": 80,
-    "tokens": 23794
+    "tokens": 23794,
+    "wasted": 23199.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1509,7 +1759,9 @@
     "precision": 0.022,
     "hits": 2,
     "emitted": 93,
-    "tokens": 48947
+    "tokens": 48947,
+    "wasted": 47894.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1521,7 +1773,9 @@
     "precision": 0.054,
     "hits": 2,
     "emitted": 37,
-    "tokens": 9557
+    "tokens": 9557,
+    "wasted": 9040.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1533,7 +1787,9 @@
     "precision": 0.049,
     "hits": 2,
     "emitted": 41,
-    "tokens": 18879
+    "tokens": 18879,
+    "wasted": 17958.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1545,7 +1801,9 @@
     "precision": 0.048,
     "hits": 2,
     "emitted": 42,
-    "tokens": 26139
+    "tokens": 26139,
+    "wasted": 24894.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1557,7 +1815,9 @@
     "precision": 0.167,
     "hits": 2,
     "emitted": 12,
-    "tokens": 17895
+    "tokens": 17895,
+    "wasted": 14912.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1569,7 +1829,9 @@
     "precision": 0.8,
     "hits": 4,
     "emitted": 5,
-    "tokens": 9490
+    "tokens": 9490,
+    "wasted": 1898.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1581,7 +1843,9 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 10979
+    "tokens": 10979,
+    "wasted": 5490.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1593,7 +1857,9 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 10979
+    "tokens": 10979,
+    "wasted": 5490.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1605,7 +1871,9 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 8359
+    "tokens": 8359,
+    "wasted": 4180.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1617,7 +1885,9 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 8359
+    "tokens": 8359,
+    "wasted": 4180.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1629,7 +1899,9 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 8359
+    "tokens": 8359,
+    "wasted": 4180.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1641,7 +1913,9 @@
     "precision": 0.064,
     "hits": 3,
     "emitted": 47,
-    "tokens": 9504
+    "tokens": 9504,
+    "wasted": 8897.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1653,7 +1927,9 @@
     "precision": 0.053,
     "hits": 4,
     "emitted": 76,
-    "tokens": 23912
+    "tokens": 23912,
+    "wasted": 22653.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1665,7 +1941,9 @@
     "precision": 0.045,
     "hits": 4,
     "emitted": 89,
-    "tokens": 46608
+    "tokens": 46608,
+    "wasted": 44513.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1677,7 +1955,9 @@
     "precision": 0.4,
     "hits": 4,
     "emitted": 10,
-    "tokens": 16989
+    "tokens": 16989,
+    "wasted": 10193.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "MediatR",
@@ -1689,7 +1969,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 7721
+    "tokens": 7721,
+    "wasted": 4633.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1701,7 +1983,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 7721
+    "tokens": 7721,
+    "wasted": 4633.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1713,7 +1997,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 7721
+    "tokens": 7721,
+    "wasted": 4633.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1725,7 +2011,9 @@
     "precision": 0.02,
     "hits": 1,
     "emitted": 50,
-    "tokens": 9537
+    "tokens": 9537,
+    "wasted": 9346.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1737,7 +2025,9 @@
     "precision": 0.014,
     "hits": 1,
     "emitted": 72,
-    "tokens": 23456
+    "tokens": 23456,
+    "wasted": 23130.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1749,7 +2039,9 @@
     "precision": 0.024,
     "hits": 2,
     "emitted": 83,
-    "tokens": 46311
+    "tokens": 46311,
+    "wasted": 45195.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1761,7 +2053,9 @@
     "precision": 0.047,
     "hits": 2,
     "emitted": 43,
-    "tokens": 9534
+    "tokens": 9534,
+    "wasted": 9091.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1773,7 +2067,9 @@
     "precision": 0.029,
     "hits": 2,
     "emitted": 69,
-    "tokens": 23796
+    "tokens": 23796,
+    "wasted": 23106.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1785,7 +2081,9 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 78,
-    "tokens": 47683
+    "tokens": 47683,
+    "wasted": 46460.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1797,7 +2095,9 @@
     "precision": 0.4,
     "hits": 2,
     "emitted": 5,
-    "tokens": 8614
+    "tokens": 8614,
+    "wasted": 5168.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1809,7 +2109,9 @@
     "precision": 0.429,
     "hits": 3,
     "emitted": 7,
-    "tokens": 7752
+    "tokens": 7752,
+    "wasted": 4430.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1821,7 +2123,9 @@
     "precision": 0.429,
     "hits": 3,
     "emitted": 7,
-    "tokens": 7752
+    "tokens": 7752,
+    "wasted": 4430.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1833,7 +2137,9 @@
     "precision": 0.429,
     "hits": 3,
     "emitted": 7,
-    "tokens": 7752
+    "tokens": 7752,
+    "wasted": 4430.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1845,7 +2151,9 @@
     "precision": 0.021,
     "hits": 1,
     "emitted": 48,
-    "tokens": 9541
+    "tokens": 9541,
+    "wasted": 9342.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1857,7 +2165,9 @@
     "precision": 0.021,
     "hits": 2,
     "emitted": 94,
-    "tokens": 23677
+    "tokens": 23677,
+    "wasted": 23173.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1869,7 +2179,9 @@
     "precision": 0.025,
     "hits": 3,
     "emitted": 119,
-    "tokens": 48649
+    "tokens": 48649,
+    "wasted": 47423.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1881,7 +2193,9 @@
     "precision": 0.019,
     "hits": 1,
     "emitted": 52,
-    "tokens": 9097
+    "tokens": 9097,
+    "wasted": 8922.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1893,7 +2207,9 @@
     "precision": 0.015,
     "hits": 1,
     "emitted": 68,
-    "tokens": 23893
+    "tokens": 23893,
+    "wasted": 23542.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1905,7 +2221,9 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 76,
-    "tokens": 46599
+    "tokens": 46599,
+    "wasted": 45373.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1917,7 +2235,9 @@
     "precision": 0.058,
     "hits": 3,
     "emitted": 52,
-    "tokens": 49983
+    "tokens": 49983,
+    "wasted": 47099.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1929,7 +2249,9 @@
     "precision": 1.0,
     "hits": 3,
     "emitted": 3,
-    "tokens": 5059
+    "tokens": 5059,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1941,7 +2263,9 @@
     "precision": 0.3,
     "hits": 3,
     "emitted": 10,
-    "tokens": 24841
+    "tokens": 24841,
+    "wasted": 17389.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1953,7 +2277,9 @@
     "precision": 0.054,
     "hits": 3,
     "emitted": 56,
-    "tokens": 43427
+    "tokens": 43427,
+    "wasted": 41101.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1965,7 +2291,9 @@
     "precision": 0.041,
     "hits": 2,
     "emitted": 49,
-    "tokens": 9250
+    "tokens": 9250,
+    "wasted": 8872.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1977,7 +2305,9 @@
     "precision": 0.027,
     "hits": 2,
     "emitted": 73,
-    "tokens": 23861
+    "tokens": 23861,
+    "wasted": 23207.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -1989,7 +2319,9 @@
     "precision": 0.036,
     "hits": 3,
     "emitted": 84,
-    "tokens": 47605
+    "tokens": 47605,
+    "wasted": 45905.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2001,7 +2333,9 @@
     "precision": 0.021,
     "hits": 1,
     "emitted": 47,
-    "tokens": 9521
+    "tokens": 9521,
+    "wasted": 9318.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2013,7 +2347,9 @@
     "precision": 0.038,
     "hits": 3,
     "emitted": 78,
-    "tokens": 23813
+    "tokens": 23813,
+    "wasted": 22897.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2025,7 +2361,9 @@
     "precision": 0.032,
     "hits": 3,
     "emitted": 93,
-    "tokens": 47709
+    "tokens": 47709,
+    "wasted": 46170.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2037,7 +2375,9 @@
     "precision": 0.143,
     "hits": 2,
     "emitted": 14,
-    "tokens": 28067
+    "tokens": 28067,
+    "wasted": 24057.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2049,7 +2389,9 @@
     "precision": 0.667,
     "hits": 2,
     "emitted": 3,
-    "tokens": 8266
+    "tokens": 8266,
+    "wasted": 2755.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2061,7 +2403,9 @@
     "precision": 0.2,
     "hits": 2,
     "emitted": 10,
-    "tokens": 24833
+    "tokens": 24833,
+    "wasted": 19866.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2073,7 +2417,9 @@
     "precision": 0.036,
     "hits": 2,
     "emitted": 55,
-    "tokens": 43287
+    "tokens": 43287,
+    "wasted": 41713.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2085,7 +2431,9 @@
     "precision": 0.041,
     "hits": 2,
     "emitted": 49,
-    "tokens": 9250
+    "tokens": 9250,
+    "wasted": 8872.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2097,7 +2445,9 @@
     "precision": 0.027,
     "hits": 2,
     "emitted": 73,
-    "tokens": 23861
+    "tokens": 23861,
+    "wasted": 23207.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2109,7 +2459,9 @@
     "precision": 0.024,
     "hits": 2,
     "emitted": 84,
-    "tokens": 47597
+    "tokens": 47597,
+    "wasted": 46464.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2121,7 +2473,9 @@
     "precision": 0.032,
     "hits": 2,
     "emitted": 62,
-    "tokens": 9372
+    "tokens": 9372,
+    "wasted": 9070.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2133,7 +2487,9 @@
     "precision": 0.024,
     "hits": 2,
     "emitted": 85,
-    "tokens": 23777
+    "tokens": 23777,
+    "wasted": 23218.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2145,7 +2501,9 @@
     "precision": 0.021,
     "hits": 2,
     "emitted": 95,
-    "tokens": 43447
+    "tokens": 43447,
+    "wasted": 42532.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "MediatR",
@@ -2157,7 +2515,9 @@
     "precision": 0.056,
     "hits": 2,
     "emitted": 36,
-    "tokens": 38228
+    "tokens": 38228,
+    "wasted": 36104.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2169,7 +2529,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 14242
+    "tokens": 14242,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2181,7 +2543,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 14242
+    "tokens": 14242,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2193,7 +2557,9 @@
     "precision": 1.0,
     "hits": 4,
     "emitted": 4,
-    "tokens": 32443
+    "tokens": 32443,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2205,7 +2571,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 14242
+    "tokens": 14242,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2217,7 +2585,9 @@
     "precision": 0.029,
     "hits": 1,
     "emitted": 35,
-    "tokens": 24663
+    "tokens": 24663,
+    "wasted": 23958.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2229,7 +2599,9 @@
     "precision": 0.009,
     "hits": 1,
     "emitted": 111,
-    "tokens": 48735
+    "tokens": 48735,
+    "wasted": 48296.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2241,7 +2613,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 10,
-    "tokens": 9843
+    "tokens": 9843,
+    "wasted": 9843.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2253,7 +2627,9 @@
     "precision": 0.022,
     "hits": 1,
     "emitted": 45,
-    "tokens": 24527
+    "tokens": 24527,
+    "wasted": 23982.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2265,7 +2641,9 @@
     "precision": 0.019,
     "hits": 2,
     "emitted": 104,
-    "tokens": 48762
+    "tokens": 48762,
+    "wasted": 47824.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2277,7 +2655,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 6,
-    "tokens": 49983
+    "tokens": 49983,
+    "wasted": 49983.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2289,7 +2669,9 @@
     "precision": 1.0,
     "hits": 2,
     "emitted": 2,
-    "tokens": 2149
+    "tokens": 2149,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2301,7 +2683,9 @@
     "precision": 1.0,
     "hits": 2,
     "emitted": 2,
-    "tokens": 2149
+    "tokens": 2149,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2313,7 +2697,9 @@
     "precision": 1.0,
     "hits": 2,
     "emitted": 2,
-    "tokens": 2149
+    "tokens": 2149,
+    "wasted": 0.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2325,7 +2711,9 @@
     "precision": 0.037,
     "hits": 1,
     "emitted": 27,
-    "tokens": 9606
+    "tokens": 9606,
+    "wasted": 9250.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2337,7 +2725,9 @@
     "precision": 0.015,
     "hits": 1,
     "emitted": 65,
-    "tokens": 24181
+    "tokens": 24181,
+    "wasted": 23809.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2349,7 +2739,9 @@
     "precision": 0.009,
     "hits": 1,
     "emitted": 111,
-    "tokens": 48793
+    "tokens": 48793,
+    "wasted": 48353.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2361,7 +2753,9 @@
     "precision": 0.095,
     "hits": 2,
     "emitted": 21,
-    "tokens": 9737
+    "tokens": 9737,
+    "wasted": 8810.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2373,7 +2767,9 @@
     "precision": 0.045,
     "hits": 2,
     "emitted": 44,
-    "tokens": 24365
+    "tokens": 24365,
+    "wasted": 23258.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2385,7 +2781,9 @@
     "precision": 0.025,
     "hits": 2,
     "emitted": 79,
-    "tokens": 49107
+    "tokens": 49107,
+    "wasted": 47864.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2397,7 +2795,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 7,
-    "tokens": 49990
+    "tokens": 49990,
+    "wasted": 49990.0,
+    "stratum": "small (1-3)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2409,7 +2809,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 18992
+    "tokens": 18992,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2421,7 +2823,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 18992
+    "tokens": 18992,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2433,7 +2837,9 @@
     "precision": 1.0,
     "hits": 3,
     "emitted": 3,
-    "tokens": 48160
+    "tokens": 48160,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2445,7 +2851,9 @@
     "precision": 0.133,
     "hits": 2,
     "emitted": 15,
-    "tokens": 9432
+    "tokens": 9432,
+    "wasted": 8174.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2457,7 +2865,9 @@
     "precision": 0.2,
     "hits": 5,
     "emitted": 25,
-    "tokens": 23607
+    "tokens": 23607,
+    "wasted": 18886.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2469,7 +2879,9 @@
     "precision": 0.152,
     "hits": 5,
     "emitted": 33,
-    "tokens": 47429
+    "tokens": 47429,
+    "wasted": 40243.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2481,7 +2893,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 18059
+    "tokens": 18059,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2493,7 +2907,9 @@
     "precision": 0.037,
     "hits": 1,
     "emitted": 27,
-    "tokens": 24657
+    "tokens": 24657,
+    "wasted": 23744.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2505,7 +2921,9 @@
     "precision": 0.03,
     "hits": 3,
     "emitted": 99,
-    "tokens": 48841
+    "tokens": 48841,
+    "wasted": 47361.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2517,7 +2935,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 6,
-    "tokens": 49932
+    "tokens": 49932,
+    "wasted": 49932.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2529,7 +2949,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 18992
+    "tokens": 18992,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2541,7 +2963,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 18992
+    "tokens": 18992,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2553,7 +2977,9 @@
     "precision": 1.0,
     "hits": 3,
     "emitted": 3,
-    "tokens": 48162
+    "tokens": 48162,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2565,7 +2991,9 @@
     "precision": 0.133,
     "hits": 2,
     "emitted": 15,
-    "tokens": 9432
+    "tokens": 9432,
+    "wasted": 8174.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2577,7 +3005,9 @@
     "precision": 0.16,
     "hits": 4,
     "emitted": 25,
-    "tokens": 23629
+    "tokens": 23629,
+    "wasted": 19848.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2589,7 +3019,9 @@
     "precision": 0.121,
     "hits": 4,
     "emitted": 33,
-    "tokens": 47451
+    "tokens": 47451,
+    "wasted": 41699.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2601,7 +3033,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 16,
-    "tokens": 9819
+    "tokens": 9819,
+    "wasted": 9819.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2613,7 +3047,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 62,
-    "tokens": 24302
+    "tokens": 24302,
+    "wasted": 24302.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2625,7 +3061,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 128,
-    "tokens": 48749
+    "tokens": 48749,
+    "wasted": 48749.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2637,7 +3075,9 @@
     "precision": 0.167,
     "hits": 1,
     "emitted": 6,
-    "tokens": 49918
+    "tokens": 49918,
+    "wasted": 41598.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2649,7 +3089,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 18992
+    "tokens": 18992,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2661,7 +3103,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 18992
+    "tokens": 18992,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2673,7 +3117,9 @@
     "precision": 1.0,
     "hits": 3,
     "emitted": 3,
-    "tokens": 46869
+    "tokens": 46869,
+    "wasted": 0.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2685,7 +3131,9 @@
     "precision": 0.05,
     "hits": 1,
     "emitted": 20,
-    "tokens": 9583
+    "tokens": 9583,
+    "wasted": 9104.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2697,7 +3145,9 @@
     "precision": 0.015,
     "hits": 1,
     "emitted": 66,
-    "tokens": 24100
+    "tokens": 24100,
+    "wasted": 23735.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2709,7 +3159,9 @@
     "precision": 0.008,
     "hits": 1,
     "emitted": 127,
-    "tokens": 48601
+    "tokens": 48601,
+    "wasted": 48218.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2721,7 +3173,9 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 14,
-    "tokens": 9721
+    "tokens": 9721,
+    "wasted": 9721.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2733,7 +3187,9 @@
     "precision": 0.019,
     "hits": 1,
     "emitted": 53,
-    "tokens": 24445
+    "tokens": 24445,
+    "wasted": 23984.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2745,7 +3201,9 @@
     "precision": 0.008,
     "hits": 1,
     "emitted": 118,
-    "tokens": 48850
+    "tokens": 48850,
+    "wasted": 48436.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2757,7 +3215,9 @@
     "precision": 0.5,
     "hits": 4,
     "emitted": 8,
-    "tokens": 49998
+    "tokens": 49998,
+    "wasted": 24999.0,
+    "stratum": "large (10+)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2769,7 +3229,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 16407
+    "tokens": 16407,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2781,7 +3243,9 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 16407
+    "tokens": 16407,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2793,7 +3257,9 @@
     "precision": 1.0,
     "hits": 9,
     "emitted": 9,
-    "tokens": 47980
+    "tokens": 47980,
+    "wasted": 0.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2805,7 +3271,9 @@
     "precision": 0.04,
     "hits": 1,
     "emitted": 25,
-    "tokens": 9419
+    "tokens": 9419,
+    "wasted": 9042.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2817,7 +3285,9 @@
     "precision": 0.017,
     "hits": 1,
     "emitted": 59,
-    "tokens": 24199
+    "tokens": 24199,
+    "wasted": 23789.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2829,7 +3299,9 @@
     "precision": 0.01,
     "hits": 1,
     "emitted": 105,
-    "tokens": 48430
+    "tokens": 48430,
+    "wasted": 47969.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2841,7 +3313,9 @@
     "precision": 0.059,
     "hits": 1,
     "emitted": 17,
-    "tokens": 9639
+    "tokens": 9639,
+    "wasted": 9072.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2853,7 +3327,9 @@
     "precision": 0.017,
     "hits": 1,
     "emitted": 58,
-    "tokens": 24116
+    "tokens": 24116,
+    "wasted": 23700.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2865,7 +3341,9 @@
     "precision": 0.008,
     "hits": 1,
     "emitted": 127,
-    "tokens": 48635
+    "tokens": 48635,
+    "wasted": 48252.0,
+    "stratum": "medium (4-9)"
   },
   {
     "repo": "NewtonsoftJson",
@@ -2877,6 +3355,8 @@
     "precision": 0.143,
     "hits": 1,
     "emitted": 7,
-    "tokens": 49929
+    "tokens": 49929,
+    "wasted": 42796.0,
+    "stratum": "medium (4-9)"
   }
 ]

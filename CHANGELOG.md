@@ -59,6 +59,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Layer 2A benchmark diagnostics: wasted tokens, change-set-size strata, and cost-adjusted recall.** The
+  scoping benchmark now reports, alongside recall@budget, the budget spent on emitted files outside the truth
+  set (B8, a proportional estimate), recall broken out by change-set size (B10: small 1-3, medium 4-9, large
+  10-plus, where the token budget truncates large change sets the mean hides), and a cost-adjusted recall equal
+  to mean recall times mean precision (B11, which punishes buying recall with a wide low-precision set). These
+  are reporting-only additions over the existing per-PR measurements; recall, precision, and token figures are
+  unchanged. The large stratum makes the budget wall explicit: at the 50k headline budget, changes recall is 97
+  percent on small change sets but 12 percent on large ones.
 - **Typed experimental options recorded in the run report.** The experimental scoring knobs (graph-centrality
   weight, pseudo-relevance feedback query expansion) are now a typed `ExperimentalOptions` record carried on
   `FusionRequest` rather than ambient process state read deep in the orchestrator. `FUSE_CENTRALITY_WEIGHT` and

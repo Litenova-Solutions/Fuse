@@ -11,8 +11,10 @@ deviation from the playbook.
       `src/host/protocol.ts`, pinned by `FuseHostContractTests`.
 - [x] Lifecycle methods: `fuse/handshake` (version match), `fuse/stats` (process health), `fuse/shutdown`.
       Verified end to end by `FuseHostServiceRpcTests` over an in-memory duplex pipe.
-- [ ] Engine-data methods: `fuse/index`, `fuse/graph`, `fuse/scope`, `fuse/explain`, `fuse/diagnostics` (DTOs
-      and protocol.ts entries are in place; the engine projections are the next commit).
+- [x] `fuse/index`: warms the engine (collect plus analysis index plus graph through the shared orchestrator)
+      and returns the index state and file count. Integration-tested against a fixture (warm and missing-dir).
+- [ ] Engine-data methods: `fuse/graph`, `fuse/scope`, `fuse/explain`, `fuse/diagnostics` (DTOs and protocol.ts
+      entries are in place; the projections are the next increments).
 - [ ] Warm-index lifecycle (pooled repo-root store, resident analysis index, incremental invalidation).
 - [ ] Concurrency test (simultaneous fuse/graph and fuse/scope against one root).
 - [ ] Host-publish CI matrix per RID.

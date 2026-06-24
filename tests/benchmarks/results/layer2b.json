@@ -5,7 +5,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18654
+    "tokens": 19112
   },
   {
     "repo": "MediatR",
@@ -13,7 +13,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 13051
+    "tokens": 13533
   },
   {
     "repo": "MediatR",
@@ -29,7 +29,7 @@
     "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18939
+    "tokens": 19401
   },
   {
     "repo": "MediatR",
@@ -53,7 +53,7 @@
     "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 17635
+    "tokens": 18113
   },
   {
     "repo": "MediatR",
@@ -77,7 +77,7 @@
     "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 19523
+    "tokens": 19564
   },
   {
     "repo": "FluentValidation",
@@ -101,7 +101,7 @@
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19475
+    "tokens": 17973
   },
   {
     "repo": "FluentValidation",
@@ -109,7 +109,7 @@
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 18941
+    "tokens": 19430
   },
   {
     "repo": "FluentValidation",
@@ -125,7 +125,7 @@
     "answer": "src/FluentValidation/Validators/EmailValidator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 19498
+    "tokens": 19387
   },
   {
     "repo": "FluentValidation",
@@ -149,7 +149,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18731
+    "tokens": 18680
   },
   {
     "repo": "AutoMapper",
@@ -157,7 +157,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 18883
+    "tokens": 19033
   },
   {
     "repo": "AutoMapper",
@@ -173,7 +173,7 @@
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18811
+    "tokens": 18878
   },
   {
     "repo": "AutoMapper",
@@ -197,7 +197,7 @@
     "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18670
+    "tokens": 18797
   },
   {
     "repo": "AutoMapper",
@@ -221,7 +221,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19408
+    "tokens": 19137
   },
   {
     "repo": "NewtonsoftJson",
@@ -229,7 +229,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19488
+    "tokens": 19641
   },
   {
     "repo": "NewtonsoftJson",
@@ -245,7 +245,7 @@
     "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19324
+    "tokens": 19434
   },
   {
     "repo": "NewtonsoftJson",
@@ -269,7 +269,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18775
+    "tokens": 19256
   },
   {
     "repo": "NewtonsoftJson",
@@ -277,7 +277,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19723
+    "tokens": 19548
   },
   {
     "repo": "NewtonsoftJson",

@@ -155,6 +155,27 @@ $md = @('# Layer 2A results (scoping recall@budget)','',
 foreach ($a in ($agg | Sort-Object mode, budget)) {
     $md += ('| {0} | {1} | {2:P0} | {3:P0} | {4} | {5} |' -f $a.mode, $a.budget, $a.mean_recall, $a.mean_precision, $a.mean_tokens, $a.n)
 }
+
+# Per-repo mean recall at the headline budget, so the per-repo table (which the aggregate hides) is visible in
+# the committed results, not just on the benchmarks page. Modes are columns; repos are rows.
+$modeOrder = @('changes','focus','query','grep')
+$repoRecall = $results | Where-Object { $_.budget -eq $Budget } | Group-Object repo, mode | ForEach-Object {
+    [pscustomobject]@{
+        repo = $_.Group[0].repo
+        mode = $_.Group[0].mode
+        recall = [math]::Round(($_.Group | Measure-Object recall -Average).Average, 3)
+    }
+}
+$md += @('', "## Per repo (headline budget $Budget)", '',
+         ('| Repo | ' + (($modeOrder | ForEach-Object { $_ }) -join ' | ') + ' |'),
+         ('|------|' + (($modeOrder | ForEach-Object { '-----:' }) -join '|') + '|'))
+foreach ($repo in ($repoRecall.repo | Select-Object -Unique | Sort-Object)) {
+    $cells = foreach ($m in $modeOrder) {
+        $row = $repoRecall | Where-Object { $_.repo -eq $repo -and $_.mode -eq $m } | Select-Object -First 1
+        if ($row) { '{0:P0}' -f $row.recall } else { 'n/a' }
+    }
+    $md += ('| {0} | {1} |' -f $repo, ($cells -join ' | '))
+}
 $md -join "`n" | Set-Content (Join-Path $ResultsDir 'layer2a.md')
 $agg | Format-Table | Out-String | Write-Host
 Write-Host "Layer 2A complete -> results/layer2a.{json,md}"

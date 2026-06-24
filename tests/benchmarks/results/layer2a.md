@@ -38,6 +38,17 @@ Split by PR-id parity (fixed). Tune on dev; publish test.
 | query | 70% (n=14) | 48% (n=10) |
 | grep | 43% (n=14) | 30% (n=10) |
 
+## Adversarial-case reporting (B7, query mode, headline budget 50000)
+
+Merge-noise titles carry no task vocabulary, so they are an adversarial case for query mode. Reported
+with and without them, never dropped silently.
+
+| Set | Mean recall |
+|-----|------------:|
+| all PRs | 61% (n=24) |
+| adversarial only (merge-noise titles) | 100% (n=2) |
+| excluding adversarial | 57% (n=22) |
+
 ## Per repo (headline budget 50000)
 
 | Repo | changes | focus | query | grep |

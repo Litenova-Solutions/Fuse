@@ -4,14 +4,20 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
-### Deferred (blocked on external data, prerequisites, or opt-in scope)
+### Deferred (blocked on external runtime, a full rebaseline, or unmet plan gates)
 
-These plan items are not implemented this release because each is blocked on an input that does not exist yet,
-a prerequisite that is not met, or is explicitly opt-in or "as warranted by data". They are recorded here so
-the accounting is complete and auditable.
+These plan items are not implemented this release. Every item that was implementable here was built and
+measured rather than predicted: Q5 (member-level retrieval, found a real win, shipped opt-in), B12 (title
+versus title-plus-body, measured via the GitHub API), and item 23 (rerank embedding cache) all moved out of
+this list once attempted. The items below remain because each is blocked on a runtime absent from this
+environment, is a full benchmark rebaseline that the never-weaken-a-number invariant says to do deliberately,
+or has an unmet plan gate. They are recorded so the accounting is complete and auditable.
 
-- **B2 (larger, cleaner corpus):** a data-acquisition task (clone more repositories at pinned commits and build
-  per-PR ground truth). Blocked on that data set; several items below in turn wait on it.
+- **B2 (larger, cleaner corpus):** feasible here (clone more repositories and build per-PR ground truth via the
+  GitHub API), but it is a full rebaseline: adding repositories changes every published mean, per-repo cell,
+  and budget-curve number across benchmarks.mdx, AGENTS.md, and the B9 baseline. Doing that accurately is the
+  point of the "never fabricate or weaken a benchmark number" invariant, so it is a deliberate fresh-context
+  task rather than a tail-of-session rush where a mis-synced number could slip in. Several items below wait on it.
 - **Item 5 (scalar admission tuning):** the plan gates it on B2 plus the held-out split (B5), to tune on dev
   and publish on test. Tuning the 24-PR corpus now would overfit; blocked on B2.
 - **B1 (task-success eval with round-trips):** needs a programmatic agent harness driving the arms and scoring

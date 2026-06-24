@@ -97,9 +97,17 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   per-file token estimate, without returning any file bodies. It mirrors the existing `fuse explain` CLI command
   and shares the same scoping path, so an agent can check the effect of a seed, query, or change range and its
   token cost before spending tokens on the real context. The three scoping parameters stay mutually exclusive;
-  with none set it previews the whole collected set. This brings the MCP surface to ten tools. Covered by a
-  registration test and a focus-scope test asserting the preview names included and excluded files but emits no
-  bodies.
+  with none set it previews the whole collected set. Covered by a registration test and a focus-scope test
+  asserting the preview names included and excluded files but emits no bodies.
+- **`fuse_find` MCP tool: a cheap Fuse-native exact lookup (item 33).** A read-only tool with three modes:
+  `symbol` finds a declared type or member by its exact simple name (using the same Roslyn outline that powers
+  the table of contents, so a member hit is reported as `member {name} in {Type}`), `text` finds an exact
+  substring and shows context lines around each match, and `path` finds files whose path contains the query. It
+  gives an agent one coherent interface for exact lookups in place of a broad grep, returning locations rather
+  than fused context; `maxMatches` caps the output and summarizes the remainder as a count. Together with
+  `fuse_explain` this completes item 33 and brings the MCP surface to eleven tools. Covered by a registration
+  test and per-mode functional tests (symbol type and member, text with context, path fragment, and the
+  empty-query and no-match paths).
 - **Held-out dev/test split in the scoping benchmark (B5).** Layer 2A now assigns each PR to a dev or test fold
   by a fixed hash of its PR id (parity), so every repository contributes to both folds, and reports mean recall
   per mode per fold. This is the methodology gate the plan requires before any scalar tuning (item 5): tune on

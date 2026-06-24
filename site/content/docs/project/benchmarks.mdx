@@ -117,6 +117,8 @@ Layer 2A measures whether a scoping mode includes the files a real change touche
 | query | 61% | 7% | 39,189 |
 | grep (baseline) | 38% | 11% | 41,452 |
 
+The corpus is 24 pull requests, so these means carry real sampling uncertainty. A 2,000-sample bootstrap 95 percent confidence interval for the mean recall at the headline budget is: changes 87 percent (72 to 98), focus 92 percent (84 to 98), query 61 percent (42 to 78), grep 38 percent (22 to 56). The intervals are wide and query's overlaps grep's, so a few-point move between releases is within noise; a delta is only trustworthy when it also holds per repository and across budgets, which the per-repo tables below and the regression gate (`check-regressions.ps1`) enforce. Reproduce the intervals with `tests/benchmarks/harness/bootstrap-ci.ps1`.
+
 Recall varies widely by repository, and the aggregate hides that:
 
 | Repo | changes | focus | query | grep |

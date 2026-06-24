@@ -69,6 +69,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Identifier-aware tokenization for relevance ranking (item 3).** The shared relevance tokenizer now splits
+  identifiers on digit boundaries and around all-caps acronym runs in addition to camelCase and snake_case, so
+  `OAuth2Token` yields `auth`, `2`, `token`, `HTTPClientFactory` yields `http`, `client`, `factory`, and
+  `base64Url` yields `base`, `64`, `url`, while the whole token is still kept for exact matches. The same
+  normalization applies to the index and the query, so a query that uses only part of a compound name now
+  bridges to it. Measured over the pinned corpus this lifted query recall at the 50,000 token headline budget
+  from 55 to 57 percent, concentrated on AutoMapper (38 to 46 percent), with no per-repository regression at
+  the headline budget (the tight 10,000 token budget dips two points as the extra sub-words shift ranking).
 - **`fuse ask` CLI command (item 31).** The deterministic task routing that the `fuse_ask` MCP tool uses
   (skeleton for a broad question, focus for a single named type, search otherwise, with a focus-to-search
   fallback when the type does not resolve) is now a CLI command: `fuse ask --task "..." --max-tokens N

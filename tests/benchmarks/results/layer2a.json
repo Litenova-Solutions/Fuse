@@ -93,8 +93,8 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 63,
-    "tokens": 9234,
-    "wasted": 9234.0,
+    "tokens": 9207,
+    "wasted": 9207.0,
     "stratum": "small (1-3)"
   },
   {
@@ -107,8 +107,8 @@
     "precision": 0.0,
     "hits": 0,
     "emitted": 130,
-    "tokens": 23357,
-    "wasted": 23357.0,
+    "tokens": 23418,
+    "wasted": 23418.0,
     "stratum": "small (1-3)"
   },
   {
@@ -117,12 +117,12 @@
     "mode": "query",
     "budget": 50000,
     "truth": 2,
-    "recall": 0.0,
-    "precision": 0.0,
-    "hits": 0,
-    "emitted": 199,
-    "tokens": 47729,
-    "wasted": 47729.0,
+    "recall": 0.5,
+    "precision": 0.005,
+    "hits": 1,
+    "emitted": 201,
+    "tokens": 47701,
+    "wasted": 47464.0,
     "stratum": "small (1-3)"
   },
   {
@@ -232,9 +232,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 59,
-    "tokens": 9275,
-    "wasted": 9275.0,
+    "emitted": 84,
+    "tokens": 9304,
+    "wasted": 9304.0,
     "stratum": "small (1-3)"
   },
   {
@@ -246,9 +246,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 128,
-    "tokens": 23547,
-    "wasted": 23547.0,
+    "emitted": 124,
+    "tokens": 22099,
+    "wasted": 22099.0,
     "stratum": "small (1-3)"
   },
   {
@@ -260,9 +260,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 192,
-    "tokens": 47809,
-    "wasted": 47809.0,
+    "emitted": 138,
+    "tokens": 44536,
+    "wasted": 44536.0,
     "stratum": "small (1-3)"
   },
   {
@@ -401,8 +401,8 @@
     "precision": 0.005,
     "hits": 1,
     "emitted": 202,
-    "tokens": 47472,
-    "wasted": 47237.0,
+    "tokens": 47500,
+    "wasted": 47265.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -653,8 +653,8 @@
     "precision": 0.014,
     "hits": 1,
     "emitted": 73,
-    "tokens": 9119,
-    "wasted": 8994.0,
+    "tokens": 9039,
+    "wasted": 8915.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2066,9 +2066,9 @@
     "recall": 1.0,
     "precision": 0.027,
     "hits": 2,
-    "emitted": 74,
-    "tokens": 23840,
-    "wasted": 23196.0,
+    "emitted": 75,
+    "tokens": 23898,
+    "wasted": 23261.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2081,8 +2081,8 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 78,
-    "tokens": 32976,
-    "wasted": 32130.0,
+    "tokens": 31975,
+    "wasted": 31155.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2189,12 +2189,12 @@
     "mode": "query",
     "budget": 10000,
     "truth": 3,
-    "recall": 0.333,
-    "precision": 0.019,
-    "hits": 1,
-    "emitted": 53,
-    "tokens": 9378,
-    "wasted": 9201.0,
+    "recall": 0.0,
+    "precision": 0.0,
+    "hits": 0,
+    "emitted": 47,
+    "tokens": 9453,
+    "wasted": 9453.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2207,8 +2207,8 @@
     "precision": 0.027,
     "hits": 2,
     "emitted": 73,
-    "tokens": 23948,
-    "wasted": 23292.0,
+    "tokens": 23721,
+    "wasted": 23071.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2221,8 +2221,8 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 76,
-    "tokens": 32938,
-    "wasted": 32071.0,
+    "tokens": 33050,
+    "wasted": 32180.0,
     "stratum": "small (1-3)"
   },
   {
@@ -2626,9 +2626,9 @@
     "recall": 0.0,
     "precision": 0.0,
     "hits": 0,
-    "emitted": 49,
-    "tokens": 24276,
-    "wasted": 24276.0,
+    "emitted": 50,
+    "tokens": 24401,
+    "wasted": 24401.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -2640,9 +2640,9 @@
     "recall": 0.5,
     "precision": 0.02,
     "hits": 2,
-    "emitted": 100,
-    "tokens": 48956,
-    "wasted": 47977.0,
+    "emitted": 101,
+    "tokens": 48886,
+    "wasted": 47918.0,
     "stratum": "medium (4-9)"
   },
   {
@@ -2921,8 +2921,8 @@
     "precision": 0.02,
     "hits": 2,
     "emitted": 102,
-    "tokens": 48695,
-    "wasted": 47740.0,
+    "tokens": 48725,
+    "wasted": 47770.0,
     "stratum": "large (10+)"
   },
   {
@@ -3184,11 +3184,11 @@
     "budget": 25000,
     "truth": 23,
     "recall": 0.043,
-    "precision": 0.018,
+    "precision": 0.019,
     "hits": 1,
-    "emitted": 55,
-    "tokens": 24350,
-    "wasted": 23907.0,
+    "emitted": 54,
+    "tokens": 24499,
+    "wasted": 24045.0,
     "stratum": "large (10+)"
   },
   {
@@ -3198,11 +3198,11 @@
     "budget": 50000,
     "truth": 23,
     "recall": 0.13,
-    "precision": 0.026,
+    "precision": 0.024,
     "hits": 3,
-    "emitted": 116,
-    "tokens": 48682,
-    "wasted": 47423.0,
+    "emitted": 124,
+    "tokens": 48782,
+    "wasted": 47602.0,
     "stratum": "large (10+)"
   },
   {

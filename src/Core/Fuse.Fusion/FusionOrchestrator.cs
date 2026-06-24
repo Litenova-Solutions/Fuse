@@ -248,6 +248,17 @@ public sealed class FusionOrchestrator
                 LogStageComplete("symbol-packing", stageTimer.ElapsedMilliseconds, reducedContent.Count);
             }
 
+            // Deterministic sketches (item 16): a file still very large after reduction is replaced with its
+            // structural outline (type and member names only), so it keeps presence and navigation instead of
+            // consuming the budget that several smaller files need, or being dropped outright. Opt-in, so the
+            // default output is unchanged.
+            if (experimental.SketchHugeFiles)
+            {
+                stageTimer.Restart();
+                reducedContent = await ApplySketchAsync(reducedContent, request.Reduction.EnableRedaction, contentProvider, tokenCounter, cancellationToken);
+                LogStageComplete("sketch", stageTimer.ElapsedMilliseconds, reducedContent.Count);
+            }
+
             // Table-of-contents mode replaces body emission with a structural map. It runs after scoping and
             // reduction so the listed files and per-file token costs match what a full fetch would cost.
             if (request.Emission.TableOfContents)
@@ -428,6 +439,52 @@ public sealed class FusionOrchestrator
             // kept member bodies before emission (C1 invariant).
             var skeleton = ThinSkeletonAssembler.Assemble(source, chunks, members);
             result.Add(RewriteRedacted(entry, skeleton, enableRedaction, tokenCounter));
+        }
+
+        return result;
+    }
+
+    // A reduced entry larger than this many tokens is a candidate for the sketch fallback (item 16). A file
+    // this large, even reduced, would consume a large share of a typical budget; its outline gives presence and
+    // navigation at a fraction of the cost.
+    private const int SketchTokenThreshold = 6000;
+
+    // Replaces an over-large reduced entry with its structural outline (item 16). Files under the threshold,
+    // and files with no outline extractor or no declared types, are left untouched. The sketch is assembled
+    // from raw source after the reduction-stage redaction ran, so it is routed back through the redactor (C1).
+    private async Task<IReadOnlyList<FusedContent>> ApplySketchAsync(
+        IReadOnlyList<FusedContent> entries,
+        bool enableRedaction,
+        ISourceContentProvider contentProvider,
+        Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<FusedContent>(entries.Count);
+        foreach (var entry in entries)
+        {
+            if (entry.TokenCount <= SketchTokenThreshold)
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var extractor = _outlineExtractors.TryResolve(entry.SourceFile.Extension);
+            if (extractor is null)
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            var source = await contentProvider.GetContentAsync(entry.SourceFile, cancellationToken);
+            var outline = extractor.ExtractOutline(source);
+            var sketch = FileSketchBuilder.Build(entry.NormalizedPath, outline);
+            if (string.IsNullOrEmpty(sketch))
+            {
+                result.Add(entry);
+                continue;
+            }
+
+            result.Add(RewriteRedacted(entry, sketch, enableRedaction, tokenCounter));
         }
 
         return result;

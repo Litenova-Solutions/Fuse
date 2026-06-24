@@ -109,6 +109,15 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Opt-in deterministic file sketches for over-large files (item 16).** A file still very large after
+  reduction (over roughly 6,000 tokens) can be replaced with a compact structural sketch (its declared types
+  and member names, no bodies, from the Roslyn outline), so it keeps presence and navigation in the output
+  instead of consuming the budget several smaller files need, or being dropped. The sketch is a post-reduction
+  rewrite routed through the redactor (C1), so it cannot reintroduce a secret. Off by default
+  (`FUSE_SKETCH_HUGE=1` to enable) and leaves the default output unchanged: the corpus failure mode is
+  multi-file truncation rather than single-giant-file pack-outs, so this is opt-in for the codebases where one
+  huge file dominates. Covered by builder unit tests (outline rendering, member cap, empty outline) and an
+  orchestrator test (a huge file emits as an outline with no body when on, full body when off).
 - **Opt-in git churn ranking prior on the query path (Q6).** A new `FUSE_GIT_CHURN_WEIGHT` multiplies each
   candidate's score by `1 + weight * normalized recent commit count`, so a recently and frequently changed file
   ranks a little higher; work clusters where code recently changed. It reuses `IGitStatsProvider`, widens the

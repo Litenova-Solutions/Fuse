@@ -16,8 +16,6 @@ the accounting is complete and auditable.
   and publish on test. Tuning the 24-PR corpus now would overfit; blocked on B2.
 - **B1 (task-success eval with round-trips):** needs a programmatic agent harness driving the arms and scoring
   patches, which is not built. Blocked on that runner.
-- **B12 (title-only vs title-plus-body queries):** `prs.json` records the PR title but not the body, so the
-  title-plus-body arm has no data. Blocked on collecting PR descriptions.
 - **Items 10 and 11 (learned-sparse SPLADE, cross-encoder rerank):** XL opt-in retrieval rewrites the plan
   marks "as warranted by data"; warranted only after dense rerank (item 9) pays off, which it did not here.
 - **Item 12 (LLM query rewrite / HyDE):** an LLM at query time is opt-in only, since the default path must run
@@ -244,6 +242,15 @@ the accounting is complete and auditable.
   `fuse_explain` this completes item 33 and brings the MCP surface to eleven tools. Covered by a registration
   test and per-mode functional tests (symbol type and member, text with context, path fragment, and the
   empty-query and no-match paths).
+- **Title-only versus title-plus-body query measurement (B12).** `tests/benchmarks/harness/spike-b12.ps1`
+  fetches each PR's description from the GitHub API (into the spike, not the transcript) and compares query
+  recall from the title alone against the title plus body at the headline budget. Over the 22 non-merge PRs the
+  body lifts mean recall from 57 to 66 percent, but the signal is not clean: 4 of the 22 bodies name a changed
+  file outright (a direct answer leak), and on some PRs the body's off-topic prose hurts (Newtonsoft.Json
+  #1153 drops 16 to 0 as added terms pull in wrong files). So a richer query helps on average, but the gain
+  here conflates answer leakage with legitimately richer vocabulary, and the terse title remains the honest,
+  leak-free benchmark query. A clean richer-query test needs task descriptions written before the fix (issue
+  text), which is a corpus-construction concern for B2, not the merged PR body.
 - **Bootstrap confidence intervals for the scoping recall (B6).** `tests/benchmarks/harness/bootstrap-ci.ps1`
   reads the per-PR recall already in `layer2a.json` (no fusions re-run) and reports a deterministic, seeded
   2,000-sample 95 percent bootstrap interval for each mode's mean recall at the headline budget: changes 87

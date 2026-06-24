@@ -251,6 +251,19 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Research notes
 
+- **Source:** exact symbol/path boosts (Q3): when a query token is an identifier, boost files that declare that
+  exact symbol above files that merely mention the words. **Fit:** Layer 2A query precision and recall. **Decision:**
+  **spiked and not built.** A gated exact-declared-symbol boost (multiply a candidate's score by 1.5 when its
+  declared types or members contain a compound identifier the query names exactly) was implemented and A/B'd
+  with `tests/benchmarks/harness/spike-exact-symbol.ps1`: recall was identical to three decimals at every budget
+  and for every repository (10k/25k/50k overall 39/50/61 percent on and off). The shipped fielded BM25F symbol
+  field (5x weight) plus the identifier-aware tokenizer (which keeps the whole identifier token, item 3) already
+  rank the declaring file at the top of the candidate pool, so a further multiplicative boost does not change the
+  seed or emitted set. The PR-title benchmark also does not exercise bare type-name queries (a query that IS a
+  symbol), Q3's strongest case, so the corpus cannot confirm value there either. Reverted rather than ship a
+  dead-neutral code path and flag; the spike helper is retained. Revisit only if a symbol-name-query benchmark
+  (an agent calling `fuse_search "OrderService"`) is added, where an exact-match prior is theory-grounded but
+  unmeasured here.
 - **Source:** change-anchored hybrid retrieval (item 32): when a Git base exists, seed BM25 with the changed
   files at a boosted prior, then expand along the graph, to keep change mode's recall while pulling in the
   unchanged interfaces, callers, and tests a diff never shows, and to lift change mode's modest precision.

@@ -72,6 +72,16 @@ public sealed record ExperimentalOptions
     public bool DenseRerank { get; init; }
 
     /// <summary>
+    ///     The weight of a git churn and recency prior blended as a multiplier into the query candidate scores,
+    ///     so a recently and frequently changed file ranks a little higher. <c>0</c> (the default) disables it.
+    ///     Overridden by <c>FUSE_GIT_CHURN_WEIGHT</c>. This is a production-routing lever: the pinned benchmark
+    ///     corpus checks out historical PR-head commits, where recent-churn-from-now is uniformly empty and a
+    ///     commit-date-relative churn would leak (the changed files are the most recently changed by
+    ///     construction), so the benchmark cannot validate it and it stays off by default.
+    /// </summary>
+    public double GitChurnWeight { get; init; }
+
+    /// <summary>
     ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
     ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
     ///     record is the single source of truth for the run.
@@ -149,6 +159,15 @@ public sealed record ExperimentalOptions
             denseRerank = true;
         }
 
+        var gitChurnWeight = resolved.GitChurnWeight;
+        var rawChurn = Environment.GetEnvironmentVariable("FUSE_GIT_CHURN_WEIGHT");
+        if (!string.IsNullOrWhiteSpace(rawChurn) &&
+            double.TryParse(rawChurn, NumberStyles.Float, CultureInfo.InvariantCulture, out var churnWeight) &&
+            churnWeight >= 0)
+        {
+            gitChurnWeight = churnWeight;
+        }
+
         return resolved with
         {
             CentralityWeight = centrality,
@@ -157,6 +176,7 @@ public sealed record ExperimentalOptions
             MultiQueryFusion = multiQueryFusion,
             BudgetAwareExpansion = budgetAwareExpansion,
             DenseRerank = denseRerank,
+            GitChurnWeight = gitChurnWeight,
         };
     }
 }

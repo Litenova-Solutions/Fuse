@@ -177,6 +177,7 @@ public abstract class CommandBase
             MultiQueryFusion = resolved.MultiQueryFusion,
             BudgetAwareExpansion = resolved.BudgetAwareExpansion,
             DenseRerank = resolved.DenseRerank,
+            GitChurnWeight = resolved.GitChurnWeight,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

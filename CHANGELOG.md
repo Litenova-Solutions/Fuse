@@ -109,6 +109,19 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Opt-in git churn ranking prior on the query path (Q6).** A new `FUSE_GIT_CHURN_WEIGHT` multiplies each
+  candidate's score by `1 + weight * normalized recent commit count`, so a recently and frequently changed file
+  ranks a little higher; work clusters where code recently changed. It reuses `IGitStatsProvider`, widens the
+  candidate pool (like dense rerank) so the prior can promote a file the lexical pass ranked just outside the
+  seeds, and is **off by default** (`weight 0`). It is a production-routing lever, not a benchmark lever, and is
+  honest about why: the pinned corpus checks out historical PR-head commits, so churn-from-now is uniformly
+  empty (the multiplier is a no-op), and a commit-date-relative churn would leak because the changed files are
+  the most recently changed by construction. A measured A/B at the headline budget (`spike-churn.ps1`, both
+  arms) is therefore not a real test of the prior: query recall moved 61 to 60 percent overall (FluentValidation
+  57 to 53, the other repos flat), and that 1 point is the candidate-pool widening perturbing the
+  pseudo-relevance pass on an empty churn signal, not churn doing anything. So the prior cannot be validated by
+  this benchmark and stays off by default; its mechanism is covered by unit tests with a stub stats provider
+  (a high-churn candidate is promoted to the seed when on; off breaks the lexical tie by path).
 - **Opt-in dense rerank of the query candidate pool (item 9), plus `fuse models` and the `Fuse.Plugins.Rerank.Onnx`
   assembly.** An optional `IReranker` reorders the BM25 candidate pool by blending the lexical score with a
   dense query-to-document similarity from an in-process all-MiniLM-L6-v2 ONNX embedder (no Python, no HTTP at

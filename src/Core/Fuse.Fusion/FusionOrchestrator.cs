@@ -52,6 +52,7 @@ public sealed class FusionOrchestrator
     private readonly ISecretRedactor _secretRedactor;
     private readonly ITokenCostModel _tokenCostModel;
     private readonly IReranker? _reranker;
+    private readonly Enrichment.IGitStatsProvider _gitStatsProvider;
     private readonly ILogger<FusionOrchestrator> _logger;
 
     /// <summary>
@@ -76,6 +77,7 @@ public sealed class FusionOrchestrator
     /// <param name="fuseStoreFactory">Persistent store factory.</param>
     /// <param name="secretRedactor">Redactor re-applied to content rewritten after reduction (thin skeleton, symbol slice, tiered emission), so a post-reduction rewrite cannot reintroduce a secret the reduction-stage redaction already removed.</param>
     /// <param name="tokenCostModel">Per-file token cost estimator used to make query-path dependency expansion budget-aware.</param>
+    /// <param name="gitStatsProvider">Provides per-file git churn used by the optional churn ranking prior.</param>
     /// <param name="reranker">Optional dense reranker for the query candidate pool; <see langword="null" /> keeps the lexical BM25F ordering (the no-model floor).</param>
     /// <param name="logger">Optional logger.</param>
     public FusionOrchestrator(
@@ -98,6 +100,7 @@ public sealed class FusionOrchestrator
         IFuseStoreFactory fuseStoreFactory,
         ISecretRedactor secretRedactor,
         ITokenCostModel tokenCostModel,
+        Enrichment.IGitStatsProvider gitStatsProvider,
         IReranker? reranker = null,
         ILogger<FusionOrchestrator>? logger = null)
     {
@@ -121,6 +124,7 @@ public sealed class FusionOrchestrator
         _secretRedactor = secretRedactor;
         _tokenCostModel = tokenCostModel;
         _reranker = reranker;
+        _gitStatsProvider = gitStatsProvider;
         _logger = logger ?? NullLogger<FusionOrchestrator>.Instance;
     }
 
@@ -614,11 +618,14 @@ public sealed class FusionOrchestrator
         // lexical default keeps the pool equal to the seed count, so behavior is unchanged.
         var candidateTopK = request.Query!.ResolvedCandidateTopK;
         var seedTopK = request.Query.ResolvedSeedTopK;
-        // Dense rerank only changes the seed set when the candidate pool is wider than the seed count, since it
-        // chooses which candidates become seeds. Widen the pool to several times the seed count when reranking,
-        // so the model can promote a vocabulary-mismatched file the lexical pass ranked just outside the seeds.
-        if (experimental.DenseRerank && _reranker is { IsAvailable: true })
-            candidateTopK = Math.Max(candidateTopK, seedTopK * RerankCandidatePoolFactor);
+        // A candidate-pool prior (dense rerank or the git churn prior) only changes the seed set when the pool
+        // is wider than the seed count, since it chooses which candidates become seeds. Widen the pool to
+        // several times the seed count when one is active, so the prior can promote a file the lexical pass
+        // ranked just outside the seeds.
+        var poolPriorActive = (experimental.DenseRerank && _reranker is { IsAvailable: true })
+                              || experimental.GitChurnWeight > 0;
+        if (poolPriorActive)
+            candidateTopK = Math.Max(candidateTopK, seedTopK * CandidatePoolWideningFactor);
         var ranked = relevanceIndex.RankScored(request.Query.Query, candidateTopK);
 
         if (ranked.Count == 0)
@@ -669,6 +676,17 @@ public sealed class FusionOrchestrator
             // seed, so a misfiring expansion cannot lower recall below the single-pass result.
             if (reranked.Count > 0)
                 ranked = PseudoRelevanceExpander.MergePreservingSeeds(ranked, reranked);
+        }
+
+        // Git churn prior (Q6): nudge a recently and frequently changed candidate up, since work clusters where
+        // code recently changed. A production-routing lever, off unless GitChurnWeight > 0. The pinned benchmark
+        // cannot validate it: its worktrees are historical PR-head checkouts, so churn-from-now is uniformly
+        // empty (a no-op), and a commit-date-relative churn would leak (the changed files are the most recently
+        // changed by construction). It therefore stays off by default and is not a benchmark lever.
+        if (experimental.GitChurnWeight > 0)
+        {
+            ranked = await ApplyGitChurnPriorAsync(
+                ranked, request.Collection.SourceDirectory, experimental.GitChurnWeight, cancellationToken);
         }
 
         // Dense rerank (item 9): reorder the candidate pool by blending the lexical score with a model's
@@ -758,9 +776,43 @@ public sealed class FusionOrchestrator
     // truncates to its own window regardless.
     private const int RerankSketchChars = 2000;
 
-    // When dense reranking, the BM25 candidate pool is widened to this multiple of the seed count so the
-    // reranker selects the seeds from a pool several times larger than it will keep.
-    private const int RerankCandidatePoolFactor = 4;
+    // When a candidate-pool prior is active (dense rerank or the git churn prior), the BM25 candidate pool is
+    // widened to this multiple of the seed count so the prior selects the seeds from a pool several times
+    // larger than it will keep.
+    private const int CandidatePoolWideningFactor = 4;
+
+    // Git churn prior (Q6). Multiplies each candidate's score by (1 + weight * normalized recent commit count),
+    // so a frequently and recently changed file ranks slightly higher. Normalized by the pool's maximum churn
+    // and held to a conservative weight, so it tilts ties rather than overruling a strong lexical match. A
+    // no-op when git is unavailable or no candidate has recent churn (for example a historical checkout, which
+    // is why the pinned benchmark cannot measure this).
+    private async Task<IReadOnlyList<RankedFile>> ApplyGitChurnPriorAsync(
+        IReadOnlyList<RankedFile> ranked,
+        string sourceDirectory,
+        double weight,
+        CancellationToken cancellationToken)
+    {
+        var paths = ranked.Select(r => r.Path).ToList();
+        var stats = await _gitStatsProvider.GetStatsAsync(sourceDirectory, paths, cancellationToken);
+        if (!stats.IsAvailable || stats.StatsByPath.Count == 0)
+            return ranked;
+
+        var maxChurn = stats.StatsByPath.Values.Max(s => s.CommitCount);
+        if (maxChurn <= 0)
+            return ranked;
+
+        var boosted = ranked.Select(r =>
+        {
+            var churn = stats.StatsByPath.TryGetValue(r.Path, out var s) ? s.CommitCount : 0;
+            var churnNorm = (double)churn / maxChurn;
+            return r with { Score = r.Score * (1 + weight * churnNorm) };
+        });
+
+        return boosted
+            .OrderByDescending(r => r.Score)
+            .ThenBy(r => r.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
 
     // Builds the text a candidate file is embedded as for dense reranking: its declared symbols first (the
     // strongest concept signal), then its path, then a short content sketch.

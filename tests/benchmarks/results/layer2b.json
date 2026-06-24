@@ -157,7 +157,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19033
+    "tokens": 18974
   },
   {
     "repo": "AutoMapper",
@@ -221,7 +221,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19511
+    "tokens": 19137
   },
   {
     "repo": "NewtonsoftJson",
@@ -277,7 +277,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 19548
+    "tokens": 19552
   },
   {
     "repo": "NewtonsoftJson",

@@ -6,6 +6,15 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Changed
 
+- **Graph-centrality prior uses PageRank instead of raw in-degree (item 7/Q7).** The query-independent
+  importance prior blended into seed and expansion scores is now PageRank over the file dependency edges
+  (importance flows from a file to the files it depends on), so a type referenced by many already-central files
+  inherits more weight than a count of distinct referrers gives it. Computed once per run by a few power
+  iterations over the already-built graph, so it adds no file reads. Measured recall is unchanged at every
+  budget on the pinned corpus (query 57 percent, focus 77 percent, no per-repo change), as expected: the prior
+  enters at the small default centrality weight (0.15), so this is a more principled prior and the foundation
+  for personalized-PageRank-from-seeds (the higher-value follow-on), not a recall lever on its own. layer4 is
+  recall-neutral and was not re-run.
 - **MCP tool descriptions and server instructions steer mode selection (item 13, routing portion).** The server
   instruction block now leads with a "choosing a mode" guide (branch/PR/fix work with a git base to
   `fuse_changes`, a named type to `fuse_focus`, a concept to `fuse_search`, a broad survey to `fuse_toc`, unsure

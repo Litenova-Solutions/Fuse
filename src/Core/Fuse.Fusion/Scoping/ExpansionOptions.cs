@@ -34,6 +34,15 @@ namespace Fuse.Fusion.Scoping;
 ///     <c>0</c> (the default) reproduces the prior ordering exactly. The blend is additive and never affects
 ///     the score propagated to neighbours, so it cannot compound across hops.
 /// </param>
+/// <param name="ProximityEdges">
+///     Optional low-weight structural edges followed in addition to type-reference edges: a path mapped to the
+///     paths it is structurally near (a test or implementation counterpart, a same-stem sibling). <c>null</c>
+///     disables them. Ignored when <paramref name="ProximityWeight" /> is <c>0</c>.
+/// </param>
+/// <param name="ProximityWeight">
+///     The factor applied to a proximity neighbour's propagated score, below a real reference (which uses
+///     <paramref name="HopDecay" />). <c>0</c> (the default) disables proximity expansion entirely.
+/// </param>
 public sealed record ExpansionOptions(
     int Depth,
     bool FollowReferences = true,
@@ -42,4 +51,6 @@ public sealed record ExpansionOptions(
     int? TokenBudget = null,
     IReadOnlyDictionary<string, int>? TokenCosts = null,
     IReadOnlyDictionary<string, double>? Centrality = null,
-    double CentralityWeight = 0.0);
+    double CentralityWeight = 0.0,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? ProximityEdges = null,
+    double ProximityWeight = 0.0);

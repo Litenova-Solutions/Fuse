@@ -49,6 +49,17 @@ public sealed class ExperimentalOptionsTests
     }
 
     [Fact]
+    public void ResolveFromEnvironment_ProximityOn_Enables()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_PROXIMITY", "1"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.True(resolved.ProximityEdges);
+    }
+
+    [Fact]
     public void ResolveFromEnvironment_GitChurnWeight_Parses()
     {
         var resolved = WithEnvironment(

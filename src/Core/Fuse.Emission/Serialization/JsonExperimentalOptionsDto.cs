@@ -58,4 +58,9 @@ public sealed class JsonExperimentalOptionsDto
     ///     Whether the query was expanded with a local distributional thesaurus of co-occurring identifiers (Q4).
     /// </summary>
     public bool DistributionalThesaurus { get; set; }
+
+    /// <summary>
+    ///     Whether expansion followed low-weight structural proximity edges in addition to type references (item 7).
+    /// </summary>
+    public bool ProximityEdges { get; set; }
 }

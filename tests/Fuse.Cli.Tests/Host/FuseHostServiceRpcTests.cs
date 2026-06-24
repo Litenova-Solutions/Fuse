@@ -1,7 +1,12 @@
 using System.IO.Pipelines;
 using Fuse.Cli.Rpc;
+using Fuse.Collection;
+using Fuse.Collection.FileSystem;
 using Fuse.Collection.Templates;
 using Fuse.Fusion;
+using Fuse.Fusion.Scoping;
+using Fuse.Plugins.Abstractions;
+using Fuse.Plugins.Abstractions.Dependencies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using StreamJsonRpc;
@@ -18,6 +23,11 @@ public sealed class FuseHostServiceRpcTests : IDisposable
     private FuseHostService NewService() => new(
         _provider.GetRequiredService<FusionOrchestrator>(),
         _provider.GetRequiredService<ProjectTemplateRegistry>(),
+        _provider.GetRequiredService<FileCollectionPipeline>(),
+        _provider.GetRequiredService<DependencyGraphBuilder>(),
+        _provider.GetRequiredService<Func<ISourceContentProvider>>(),
+        _provider.GetRequiredService<CapabilityRegistry<IDependencyExtractor>>(),
+        _provider.GetRequiredService<CapabilityRegistry<ITypeNameLocator>>(),
         NullLogger<FuseHostService>.Instance);
 
     [Fact]
@@ -102,6 +112,57 @@ public sealed class FuseHostServiceRpcTests : IDisposable
             Assert.NotNull(result.PayloadPath);
             Assert.True(File.Exists(result.PayloadPath));
             Assert.Contains("PaymentService", await File.ReadAllTextAsync(result.PayloadPath!));
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Graph_Files_ReturnsNodesAndAReferenceEdge()
+    {
+        var source = Path.Combine(Path.GetTempPath(), "fuse-host-graph", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(source);
+        // Consumer references Service's type, so the graph must carry a Consumer -> Service edge.
+        File.WriteAllText(Path.Combine(source, "Service.cs"), "public class Service { public int Value() => 1; }");
+        File.WriteAllText(Path.Combine(source, "Consumer.cs"),
+            "public class Consumer { private Service _s = new Service(); public int Use() => _s.Value(); }");
+
+        try
+        {
+            var graph = await NewService().GraphAsync(source, "Files");
+
+            Assert.Equal("Files", graph.Detail);
+            Assert.Contains(graph.Nodes, n => n.Path.Contains("Service", StringComparison.Ordinal));
+            Assert.Contains(graph.Nodes, n => n.Path.Contains("Consumer", StringComparison.Ordinal));
+            Assert.Contains(graph.Edges, e =>
+                e.From.Contains("Consumer", StringComparison.Ordinal) && e.To.Contains("Service", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Graph_Directories_FoldsFilesIntoDirectorySupernodes()
+    {
+        var source = Path.Combine(Path.GetTempPath(), "fuse-host-graphdir", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(source, "Core"));
+        Directory.CreateDirectory(Path.Combine(source, "App"));
+        File.WriteAllText(Path.Combine(source, "Core", "Service.cs"), "public class Service { public int V() => 1; }");
+        File.WriteAllText(Path.Combine(source, "App", "Consumer.cs"),
+            "public class Consumer { private Service _s = new Service(); }");
+
+        try
+        {
+            var graph = await NewService().GraphAsync(source, "Directories");
+
+            Assert.Equal("Directories", graph.Detail);
+            // Directory nodes, not file nodes: at most one node per directory, far fewer than the file count.
+            Assert.Contains(graph.Nodes, n => n.Path is "Core" or "App");
+            Assert.All(graph.Nodes, n => Assert.DoesNotContain(".cs", n.Path));
         }
         finally
         {

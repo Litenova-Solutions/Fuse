@@ -1,10 +1,14 @@
 using System.Diagnostics;
 using System.Reflection;
 using Fuse.Cli.Mcp;
+using Fuse.Collection;
+using Fuse.Collection.FileSystem;
 using Fuse.Collection.Templates;
 using Fuse.Emission.Models;
 using Fuse.Fusion;
 using Fuse.Fusion.Scoping;
+using Fuse.Plugins.Abstractions;
+using Fuse.Plugins.Abstractions.Dependencies;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
@@ -33,6 +37,11 @@ public sealed class FuseHostService
     private readonly ILogger<FuseHostService> _logger;
     private readonly FusionOrchestrator _orchestrator;
     private readonly ProjectTemplateRegistry _templateRegistry;
+    private readonly FileCollectionPipeline _collectionPipeline;
+    private readonly DependencyGraphBuilder _graphBuilder;
+    private readonly Func<ISourceContentProvider> _contentProviderFactory;
+    private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
+    private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
     private readonly long _startTimestamp;
     private readonly TaskCompletionSource _shutdownRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -41,14 +50,29 @@ public sealed class FuseHostService
     /// </summary>
     /// <param name="orchestrator">The fusion orchestrator, shared with the MCP server and the CLI.</param>
     /// <param name="templateRegistry">The project-template registry that supplies the .NET fusion defaults.</param>
+    /// <param name="collectionPipeline">The file collection pipeline used to enumerate the source tree for the graph.</param>
+    /// <param name="graphBuilder">The dependency-graph builder, shared with the engine.</param>
+    /// <param name="contentProviderFactory">Factory for a per-call source content provider.</param>
+    /// <param name="dependencyExtractors">Per-extension referenced-type extractors.</param>
+    /// <param name="typeNameLocators">Per-extension declared-type locators.</param>
     /// <param name="logger">The logger for host-side diagnostics, routed away from the transport stream.</param>
     public FuseHostService(
         FusionOrchestrator orchestrator,
         ProjectTemplateRegistry templateRegistry,
+        FileCollectionPipeline collectionPipeline,
+        DependencyGraphBuilder graphBuilder,
+        Func<ISourceContentProvider> contentProviderFactory,
+        CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
+        CapabilityRegistry<ITypeNameLocator> typeNameLocators,
         ILogger<FuseHostService> logger)
     {
         _orchestrator = orchestrator;
         _templateRegistry = templateRegistry;
+        _collectionPipeline = collectionPipeline;
+        _graphBuilder = graphBuilder;
+        _contentProviderFactory = contentProviderFactory;
+        _dependencyExtractors = dependencyExtractors;
+        _typeNameLocators = typeNameLocators;
         _logger = logger;
         _startTimestamp = Stopwatch.GetTimestamp();
     }
@@ -115,6 +139,96 @@ public sealed class FuseHostService
         _logger.LogInformation("Indexed {Root}: {Count} files in {Ms} ms.",
             resolved, result.TotalFileCount, (long)result.Duration.TotalMilliseconds);
         return new IndexResultDto("Warm", result.TotalFileCount, (long)result.Duration.TotalMilliseconds);
+    }
+
+    /// <summary>
+    ///     Projects the dependency graph for a repository root: nodes are files (or directories at the coarser
+    ///     level of detail) with PageRank centrality and an estimated token cost, and edges are file-to-file
+    ///     references. The webview sizes nodes by centrality, colors them by token cost, and styles edges by kind.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="detail">
+    ///     <c>Files</c> for a node per file, or <c>Directories</c> for directory supernodes (file nodes folded
+    ///     into their directory and edges aggregated), so a large repository does not ship its whole file graph.
+    /// </param>
+    /// <returns>The graph nodes and edges at the requested level of detail.</returns>
+    /// <remarks>
+    ///     The token cost is a cheap size-based estimate (bytes divided by four), sufficient for relative node
+    ///     coloring; it is not the exact o200k count the emission path reports. Uses the same collection pipeline
+    ///     and dependency-graph builder as the engine, so the projection matches what scoping traverses.
+    /// </remarks>
+    [JsonRpcMethod("fuse/graph")]
+    public async Task<GraphDto> GraphAsync(string root, string detail)
+    {
+        var resolved = Path.GetFullPath(root);
+        var directories = string.Equals(detail, "Directories", StringComparison.OrdinalIgnoreCase);
+        if (!Directory.Exists(resolved))
+            return new GraphDto([], [], directories ? "Directories" : "Files");
+
+        var request = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved).Build();
+        var collection = await _collectionPipeline.CollectAsync(request.Collection);
+        var graph = await _graphBuilder.BuildAsync(
+            collection.Files, _contentProviderFactory(), _dependencyExtractors, _typeNameLocators);
+        var centrality = GraphCentrality.Compute(graph);
+
+        // Estimate per-file token cost from byte length (bytes / 4), a cheap relative signal for node coloring.
+        var tokenByPath = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in collection.Files)
+            tokenByPath[file.NormalizedRelativePath] = (int)(file.FileInfo.Length / 4);
+
+        var fileNodes = new List<GraphNodeDto>(graph.DeclaredTypes.Count);
+        foreach (var (path, types) in graph.DeclaredTypes)
+        {
+            fileNodes.Add(new GraphNodeDto(
+                path,
+                types,
+                centrality.TryGetValue(path, out var c) ? Math.Round(c, 4) : 0.0,
+                tokenByPath.GetValueOrDefault(path),
+                null));
+        }
+
+        var fileEdges = new List<GraphEdgeDto>();
+        foreach (var (from, targets) in graph.FileReferences)
+            foreach (var to in targets)
+                fileEdges.Add(new GraphEdgeDto(from, to, 1.0, "reference"));
+
+        if (!directories)
+            return new GraphDto(fileNodes, fileEdges, "Files");
+
+        return AggregateToDirectories(fileNodes, fileEdges);
+    }
+
+    // Folds the file graph into directory supernodes: a node per directory (token cost summed, centrality summed
+    // for relative sizing) and one edge per distinct cross-directory reference, so a large repository ships a
+    // small graph that the webview expands on demand. Mirrors the engine's directory-level table of contents.
+    private static GraphDto AggregateToDirectories(IReadOnlyList<GraphNodeDto> fileNodes, IReadOnlyList<GraphEdgeDto> fileEdges)
+    {
+        static string DirectoryOf(string path)
+        {
+            var slash = path.LastIndexOf('/');
+            return slash <= 0 ? "." : path[..slash];
+        }
+
+        var byDir = new Dictionary<string, (double Centrality, int Tokens, int Files)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var node in fileNodes)
+        {
+            var dir = DirectoryOf(node.Path);
+            var acc = byDir.GetValueOrDefault(dir);
+            byDir[dir] = (acc.Centrality + node.Centrality, acc.Tokens + node.TokenCost, acc.Files + 1);
+        }
+
+        var dirNodes = byDir
+            .Select(kv => new GraphNodeDto(kv.Key, [$"{kv.Value.Files} files"], Math.Round(kv.Value.Centrality, 4), kv.Value.Tokens, null))
+            .ToList();
+
+        var dirEdges = fileEdges
+            .Select(e => (From: DirectoryOf(e.From), To: DirectoryOf(e.To)))
+            .Where(e => !string.Equals(e.From, e.To, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(e => (e.From, e.To))
+            .Select(g => new GraphEdgeDto(g.Key.From, g.Key.To, g.Count(), "reference"))
+            .ToList();
+
+        return new GraphDto(dirNodes, dirEdges, "Directories");
     }
 
     /// <summary>

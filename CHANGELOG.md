@@ -6,6 +6,13 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- **Whole-PEM-block redaction and additional provider key patterns (C6).** The PEM rule matched only the
+  `-----BEGIN ... PRIVATE KEY-----` header line, so the base64 key body and the `END` line were left in the
+  output: the secret survived. It now matches the entire block, header through matching footer, and removes it
+  as one unit (RSA, EC, DSA, OPENSSH, ENCRYPTED, PGP, and plain variants). Added redaction patterns for GitHub
+  tokens (`ghp_`/`gho_`/`ghu_`/`ghs_`/`ghr_` and fine-grained `github_pat_`), Google API keys (`AIza...`),
+  Slack tokens (`xox[baprs]-...`), and Stripe live keys (`sk_live_`/`rk_live_`). These matter more now that
+  skeleton and slice output is redaction-correct (C1) and goes straight to an agent.
 - **Collision-free symbol identity for member operations (C5).** `SymbolChunk` exposed only a `QualifiedName`
   (`ParentType.SymbolName`), which collides for overloads, nested types that share a simple parent name, the
   same member name across namespaces, and partial-class members. Operations keyed on it could conflate

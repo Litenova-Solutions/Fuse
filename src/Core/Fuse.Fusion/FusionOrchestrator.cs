@@ -228,11 +228,16 @@ public sealed class FusionOrchestrator
             LogAnalysisIndexStats(analysisIndex);
             LogStageComplete("scoping", stageTimer.ElapsedMilliseconds, filterResult.Files.Count, ResolveScopingMode(request));
 
-            // Tiered emission (query and focus only): reduce dependency-expanded neighbours (provenance hop two
-            // or deeper) to signature skeletons so each costs fewer tokens and the budget-aware packer fits more
-            // files. Seeds (chain length one) keep the request's level. Redaction-correct because the skeleton is
-            // produced inside the reduction stage, not by a post-reduction source re-read.
-            var perFileLevel = BuildTieredLevelResolver(request, experimental, filterResult);
+            // Build the explicit context plan (A1): assign each selected file a role and reduction tier once,
+            // instead of inferring seed versus neighbour from the provenance chain length downstream. The plan
+            // drives the per-file reduction tier below. Tiered emission (query and focus only) reduces
+            // dependency-expanded neighbours to signature skeletons so each costs fewer tokens and the
+            // budget-aware packer fits more files; seeds keep the request's level. Redaction-correct because the
+            // skeleton is produced inside the reduction stage, not by a post-reduction source re-read.
+            var contextPlan = ContextPlanBuilder.Build(request, experimental, filterResult);
+            var perFileLevel = contextPlan.AppliesTieredEmission
+                ? contextPlan.TierFor
+                : (Func<Fuse.Collection.Models.SourceFile, Fuse.Plugins.Abstractions.Options.ReductionLevel>?)null;
 
             stageTimer.Restart();
             var reducedContent = await _reductionPipeline.ReduceAsync(
@@ -613,29 +618,6 @@ public sealed class FusionOrchestrator
         var redaction = _secretRedactor.Redact(rewritten, classifyCodeLiterals: isCSharp);
         var counts = redaction.CountsByKind.Count > 0 ? redaction.CountsByKind : null;
         return entry.WithReducedContent(redaction.Content, tokenCounter, counts);
-    }
-
-    // Builds the per-file reduction-level selector for tiered emission, or null when it is off, the run is not
-    // query/focus, or no provenance is available. Neighbours (provenance chain length greater than one) reduce
-    // to a signature skeleton; seeds keep the request's level. Changes mode is intentionally excluded: its
-    // recall rests on emitting the changed files in full.
-    private static Func<Fuse.Collection.Models.SourceFile, Fuse.Plugins.Abstractions.Options.ReductionLevel>? BuildTieredLevelResolver(
-        FusionRequest request,
-        ExperimentalOptions experimental,
-        FilteredFileSet filterResult)
-    {
-        if (!experimental.TieredEmission)
-            return null;
-        if (request.Focus is null && request.Query is null)
-            return null;
-        if (filterResult.Provenance is not { } provenance)
-            return null;
-
-        var seedLevel = request.Reduction.Level;
-        return file =>
-            provenance.TryGetValue(file.NormalizedRelativePath, out var chain) && chain.Count > 1
-                ? Fuse.Plugins.Abstractions.Options.ReductionLevel.Skeleton
-                : seedLevel;
     }
 
     private static FusionResult WithReductionCacheStats(FusionResult result, IReductionCache? cache)

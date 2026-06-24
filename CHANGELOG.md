@@ -183,6 +183,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   `fuse_explain` this completes item 33 and brings the MCP surface to eleven tools. Covered by a registration
   test and per-mode functional tests (symbol type and member, text with context, path fragment, and the
   empty-query and no-match paths).
+- **Per-repo regression gate for the scoping benchmark (B9).** `tests/benchmarks/harness/check-regressions.ps1`
+  recomputes per-repo per-mode mean recall at the 50,000 token headline budget from a fresh `layer2a.json` and
+  compares it against a committed baseline (`layer2a-baseline.json`), exiting non-zero if any repository's
+  recall drops below the baseline minus a tolerance. This enforces the standing invariant "no per-repo
+  regression at the 50k budget" mechanically instead of by eye, across all three scoping modes and four
+  repositories. A deliberate, measured improvement updates the baseline in the same commit; the gate never
+  relaxes silently to hide a regression. The baseline records the current numbers (changes, focus 92 percent,
+  query) after the budget-aware expansion and downgrade-before-drop work landed.
 - **Routed arms in the Layer 4 context-acquisition benchmark.** The one-call scenario harness now measures
   `fuse --changed-since <base>` (the routed default when a Git base is available) and `fuse ask` alongside the
   existing `fuse --query` arm, and reports a routed-arms table plus a tokens-to-target-recall metric (the

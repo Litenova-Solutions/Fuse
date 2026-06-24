@@ -4,6 +4,17 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+### Fixed
+
+- **Secret redaction now covers post-reduction source rewrites (C1).** The thin-skeleton path (query scoping,
+  which keeps the query-matched members verbatim) and the symbol-slice path (a `Type.Member` focus seed)
+  rebuild a file's content from raw source after the reduction stage has already run, and secret redaction
+  runs inside the reduction stage. A secret in a kept member body, field initializer, attribute argument, or
+  const literal therefore bypassed the redactor and could reach an agent in clear text. Both rewrites now
+  re-run the redactor on the assembled content before emission, and the reported per-kind redaction counts
+  describe what was actually emitted. The invariant (any content rebuilt from source after reduction must
+  pass the redactor) is enforced in code and covered by tests on both paths.
+
 ### Added
 
 - **Pseudo-relevance feedback query expansion (on by default, fast path).** Query scoping now runs a second

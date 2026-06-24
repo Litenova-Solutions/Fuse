@@ -16,6 +16,7 @@ using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Reduction.Models;
+using Fuse.Reduction.Security;
 using Fuse.Reduction.Tokenization;
 
 namespace Fuse.Fusion;
@@ -48,6 +49,7 @@ public sealed class FusionOrchestrator
     private readonly CapabilityRegistry<ISymbolChunkExtractor> _chunkExtractors;
     private readonly Func<IRelevanceIndex> _relevanceIndexFactory;
     private readonly IFuseStoreFactory _fuseStoreFactory;
+    private readonly ISecretRedactor _secretRedactor;
     private readonly ILogger<FusionOrchestrator> _logger;
 
     // Weight blended into seed/expansion scores from the query-independent graph-centrality prior, so at equal
@@ -103,6 +105,7 @@ public sealed class FusionOrchestrator
     /// <param name="chunkExtractors">Symbol chunk extractors by extension.</param>
     /// <param name="relevanceIndexFactory">Per-run relevance index factory.</param>
     /// <param name="fuseStoreFactory">Persistent store factory.</param>
+    /// <param name="secretRedactor">Redactor re-applied to content rewritten after reduction (thin skeleton, symbol slice, tiered emission), so a post-reduction rewrite cannot reintroduce a secret the reduction-stage redaction already removed.</param>
     /// <param name="logger">Optional logger.</param>
     public FusionOrchestrator(
         FusionValidator validator,
@@ -122,6 +125,7 @@ public sealed class FusionOrchestrator
         CapabilityRegistry<ISymbolChunkExtractor> chunkExtractors,
         Func<IRelevanceIndex> relevanceIndexFactory,
         IFuseStoreFactory fuseStoreFactory,
+        ISecretRedactor secretRedactor,
         ILogger<FusionOrchestrator>? logger = null)
     {
         _validator = validator;
@@ -141,6 +145,7 @@ public sealed class FusionOrchestrator
         _chunkExtractors = chunkExtractors;
         _relevanceIndexFactory = relevanceIndexFactory;
         _fuseStoreFactory = fuseStoreFactory;
+        _secretRedactor = secretRedactor;
         _logger = logger ?? NullLogger<FusionOrchestrator>.Instance;
     }
 
@@ -241,7 +246,7 @@ public sealed class FusionOrchestrator
             if (filterResult.Slice is not null)
             {
                 stageTimer.Restart();
-                reducedContent = await ApplySymbolSliceAsync(reducedContent, filterResult.Slice, contentProvider, tokenCounter, cancellationToken);
+                reducedContent = await ApplySymbolSliceAsync(reducedContent, filterResult.Slice, request.Reduction.EnableRedaction, contentProvider, tokenCounter, cancellationToken);
                 LogStageComplete("symbol-slice", stageTimer.ElapsedMilliseconds, reducedContent.Count);
             }
 
@@ -250,7 +255,7 @@ public sealed class FusionOrchestrator
             if (filterResult.SelectedMembers is { Count: > 0 })
             {
                 stageTimer.Restart();
-                reducedContent = await ApplyThinSkeletonAsync(reducedContent, filterResult.SelectedMembers, contentProvider, tokenCounter, cancellationToken);
+                reducedContent = await ApplyThinSkeletonAsync(reducedContent, filterResult.SelectedMembers, request.Reduction.EnableRedaction, contentProvider, tokenCounter, cancellationToken);
                 LogStageComplete("symbol-packing", stageTimer.ElapsedMilliseconds, reducedContent.Count);
             }
 
@@ -352,9 +357,15 @@ public sealed class FusionOrchestrator
     // Replaces each seed file's content with a slice that keeps only the requested member in full and reduces
     // the rest of the file to signatures. Falls back to the original entry when no slice extractor handles the
     // extension or the member is not found.
+    //
+    // The slice is assembled from raw source (see ExtractSlice), AFTER ContentReductionPipeline.ReduceAsync has
+    // already run redaction, so a kept member body could carry a secret the normal path would have removed.
+    // Redaction is therefore re-run here (C1 invariant): any content rewritten from source after reduction must
+    // pass the redactor before WithReducedContent.
     private async Task<IReadOnlyList<FusedContent>> ApplySymbolSliceAsync(
         IReadOnlyList<FusedContent> reducedContent,
         SymbolSliceRequest slice,
+        bool enableRedaction,
         ISourceContentProvider contentProvider,
         Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
         CancellationToken cancellationToken)
@@ -377,7 +388,7 @@ public sealed class FusionOrchestrator
 
             var source = await contentProvider.GetContentAsync(entry.SourceFile, cancellationToken);
             var sliced = extractor.ExtractSlice(source, slice.Member);
-            result.Add(sliced is null ? entry : entry.WithReducedContent(sliced, tokenCounter));
+            result.Add(sliced is null ? entry : RewriteRedacted(entry, sliced, enableRedaction, tokenCounter));
         }
 
         return result;
@@ -394,6 +405,7 @@ public sealed class FusionOrchestrator
     private async Task<IReadOnlyList<FusedContent>> ApplyThinSkeletonAsync(
         IReadOnlyList<FusedContent> reducedContent,
         IReadOnlyDictionary<string, IReadOnlySet<string>> selectedMembers,
+        bool enableRedaction,
         ISourceContentProvider contentProvider,
         Fuse.Reduction.Tokenization.ITokenCounter tokenCounter,
         CancellationToken cancellationToken)
@@ -422,11 +434,33 @@ public sealed class FusionOrchestrator
                 continue;
             }
 
+            // Assembled from raw source after redaction already ran in ReduceAsync, so re-run redaction on the
+            // kept member bodies before emission (C1 invariant).
             var skeleton = ThinSkeletonAssembler.Assemble(source, chunks, members);
-            result.Add(entry.WithReducedContent(skeleton, tokenCounter));
+            result.Add(RewriteRedacted(entry, skeleton, enableRedaction, tokenCounter));
         }
 
         return result;
+    }
+
+    // Re-runs secret redaction on content that was rebuilt from raw source after the reduction stage (thin
+    // skeleton, symbol slice). Redaction normally runs inside ContentReductionPipeline.ReduceAsync, so any
+    // content assembled from source afterward bypasses it and could reintroduce a secret a kept member body
+    // carries. This restores the invariant that nothing emitted skips the redactor. When redaction is disabled
+    // the content is rewritten verbatim with the original counts preserved.
+    private FusedContent RewriteRedacted(
+        FusedContent entry,
+        string rewritten,
+        bool enableRedaction,
+        Fuse.Reduction.Tokenization.ITokenCounter tokenCounter)
+    {
+        if (!enableRedaction)
+            return entry.WithReducedContent(rewritten, tokenCounter);
+
+        var isCSharp = string.Equals(entry.SourceFile.Extension, ".cs", StringComparison.OrdinalIgnoreCase);
+        var redaction = _secretRedactor.Redact(rewritten, classifyCodeLiterals: isCSharp);
+        var counts = redaction.CountsByKind.Count > 0 ? redaction.CountsByKind : null;
+        return entry.WithReducedContent(redaction.Content, tokenCounter, counts);
     }
 
     private static FusionResult WithReductionCacheStats(FusionResult result, IReductionCache? cache)

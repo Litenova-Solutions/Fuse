@@ -76,11 +76,18 @@ public sealed class McpServeCommand
                     "- fuse_dotnet: Full-control .NET fusion with all options combined.\n" +
                     "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n" +
                     "- fuse_reduce: Compact a specific set of files (or raw content) you already identified, without collecting a whole directory.\n\n" +
+                    "CHOOSING A MODE (most accurate first):\n" +
+                    "- Branch, PR, or fix work with a git base: prefer fuse_changes with changedSince=\"{base}\". " +
+                    "It has by far the highest recall of the files a task touches, because it starts from the diff.\n" +
+                    "- Exploring or editing a specific type: fuse_focus with focus=\"{TypeName}\".\n" +
+                    "- Finding where a concept or feature lives: fuse_search with query=\"{topic}\".\n" +
+                    "- Broad survey first: fuse_toc, then a scoped fetch.\n" +
+                    "- Unsure: fuse_ask with the task and tokenBudget, and Fuse routes for you.\n\n" +
                     "RECOMMENDED WORKFLOW:\n" +
                     "1. Call fuse_toc (or fuse_skeleton) to survey the codebase at low token cost.\n" +
                     "2. Identify the relevant area from the tree and per-file token costs.\n" +
                     "3. Call fuse_focus with focus=\"{TypeName}\" or fuse_search with query=\"{topic}\".\n" +
-                    "4. For PR review, call fuse_changes with changedSince=\"{baseBranch}\".\n" +
+                    "4. For branch, PR, or fix work, call fuse_changes with changedSince=\"{baseBranch}\" (highest recall).\n" +
                     "5. Or call fuse_ask with a task and tokenBudget to let Fuse choose and pack the context.\n\n" +
                     "RESOURCES:\n" +
                     "- fuse://skeleton/{path}, fuse://focus/{path}/{seed}, fuse://search/{path}/{query}, fuse://changes/{path}/{since}\n" +

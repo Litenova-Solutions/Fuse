@@ -14,3 +14,12 @@ Budgets: 10000, 25000, 50000. Headline budget: 50000. Focus/query depth: 2. PRs:
 | query | 10000 | 34% | 7% | 9890 | 24 |
 | query | 25000 | 43% | 3% | 23884 | 24 |
 | query | 50000 | 51% | 2% | 46411 | 24 |
+
+## Per repo (headline budget 50000)
+
+| Repo | changes | focus | query | grep |
+|------|-----:|-----:|-----:|-----:|
+| AutoMapper | 92% | 88% | 29% | 29% |
+| FluentValidation | 100% | 74% | 51% | 23% |
+| MediatR | 100% | 100% | 94% | 94% |
+| NewtonsoftJson | 58% | 21% | 30% | 5% |

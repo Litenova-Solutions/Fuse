@@ -52,39 +52,6 @@ public sealed class FusionOrchestrator
     private readonly ISecretRedactor _secretRedactor;
     private readonly ILogger<FusionOrchestrator> _logger;
 
-    // Weight blended into seed/expansion scores from the query-independent graph-centrality prior, so at equal
-    // relevance the more depended-upon file ranks earlier. Conservative default; FUSE_CENTRALITY_WEIGHT=0
-    // disables it and reproduces the pre-centrality ordering exactly.
-    private static readonly double CentralityWeight = ResolveCentralityWeight();
-
-    private static double ResolveCentralityWeight()
-    {
-        var raw = Environment.GetEnvironmentVariable("FUSE_CENTRALITY_WEIGHT");
-        if (!string.IsNullOrWhiteSpace(raw) &&
-            double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var w) &&
-            w >= 0)
-            return w;
-
-        return 0.15;
-    }
-
-    // Pseudo-relevance feedback expansion for the query path: a second lexical ranking pass seeded with
-    // recurring declared-symbol terms from the first pass's top files. On by default; FUSE_QUERY_EXPANSION=0
-    // disables it and reproduces the single-pass BM25F ordering exactly.
-    private static readonly QueryExpansionOptions QueryExpansion = ResolveQueryExpansion();
-
-    private static QueryExpansionOptions ResolveQueryExpansion()
-    {
-        var raw = Environment.GetEnvironmentVariable("FUSE_QUERY_EXPANSION");
-        if (!string.IsNullOrWhiteSpace(raw) &&
-            (raw.Equals("0", StringComparison.Ordinal) ||
-             raw.Equals("off", StringComparison.OrdinalIgnoreCase) ||
-             raw.Equals("false", StringComparison.OrdinalIgnoreCase)))
-            return QueryExpansionOptions.Disabled;
-
-        return new QueryExpansionOptions();
-    }
-
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionOrchestrator" /> class.
     /// </summary>
@@ -491,14 +458,19 @@ public sealed class FusionOrchestrator
         ISourceContentProvider contentProvider,
         CancellationToken cancellationToken)
     {
+        // Resolve once here: the request's configured knobs with any environment overrides applied. The
+        // environment is consulted only at this point, so a run's behavior follows its resolved options rather
+        // than ambient state read deep in the pipeline.
+        var experimental = ExperimentalOptions.ResolveFromEnvironment(request.Experimental);
+
         if (request.Focus is not null)
-            return await FilterByFocusAsync(request, files, parallelism, index, contentProvider, cancellationToken);
+            return await FilterByFocusAsync(request, files, parallelism, index, contentProvider, experimental, cancellationToken);
 
         if (request.Changes is not null)
             return await FilterByChangesAsync(request, files, parallelism, index, contentProvider, cancellationToken);
 
         if (request.Query is not null)
-            return await FilterByQueryAsync(request, files, parallelism, index, fuseStore, contentProvider, cancellationToken);
+            return await FilterByQueryAsync(request, files, parallelism, index, fuseStore, contentProvider, experimental, cancellationToken);
 
         return new FilteredFileSet(files, null, null);
     }
@@ -509,6 +481,7 @@ public sealed class FusionOrchestrator
         int parallelism,
         Indexing.IAnalysisIndex? index,
         ISourceContentProvider contentProvider,
+        ExperimentalOptions experimental,
         CancellationToken cancellationToken)
     {
         var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
@@ -553,7 +526,7 @@ public sealed class FusionOrchestrator
             FollowReferences: true,
             FollowDependents: true,
             Centrality: GraphCentrality.Compute(graph),
-            CentralityWeight: CentralityWeight);
+            CentralityWeight: experimental.CentralityWeight);
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
@@ -567,6 +540,7 @@ public sealed class FusionOrchestrator
         Indexing.IAnalysisIndex? index,
         IKeyValueStore? fuseStore,
         ISourceContentProvider contentProvider,
+        ExperimentalOptions experimental,
         CancellationToken cancellationToken)
     {
         // File selection ranks at FILE granularity (whole-file BM25F), which preserves recall: a query term
@@ -610,10 +584,11 @@ public sealed class FusionOrchestrator
         // recurring declared-symbol terms from the first pass's top files, then re-rank. Conservative by
         // construction (symbol field only, multi-doc terms only, reduced weight); a no-op when disabled or
         // when no term qualifies, so the seed set then equals the single-pass ordering.
-        if (QueryExpansion.Enabled)
+        if (experimental.QueryExpansion)
         {
+            var expansionOptions = new QueryExpansionOptions();
             var expandedQuery = PseudoRelevanceExpander.Expand(
-                request.Query.Query, ranked, documents, QueryExpansion, relevanceIndex.InverseDocumentFrequency);
+                request.Query.Query, ranked, documents, expansionOptions, relevanceIndex.InverseDocumentFrequency);
             var reranked = relevanceIndex.RankScored(expandedQuery, request.Query.TopFiles);
             // Merge rather than replace: expansion adds the files it surfaces but never drops a first-pass
             // seed, so a misfiring expansion cannot lower recall below the single-pass result.
@@ -639,7 +614,7 @@ public sealed class FusionOrchestrator
             FollowReferences: true,
             FollowDependents: false,
             Centrality: GraphCentrality.Compute(graph),
-            CentralityWeight: CentralityWeight);
+            CentralityWeight: experimental.CentralityWeight);
 
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();

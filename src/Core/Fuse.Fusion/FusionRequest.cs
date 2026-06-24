@@ -24,7 +24,8 @@ public sealed class FusionRequest
         int parallelism = 0,
         bool useReductionCache = true,
         bool clearReductionCache = false,
-        bool usePersistentIndex = false)
+        bool usePersistentIndex = false,
+        ExperimentalOptions? experimental = null)
     {
         Collection = collection;
         Reduction = reduction;
@@ -37,6 +38,7 @@ public sealed class FusionRequest
         UseReductionCache = useReductionCache;
         ClearReductionCache = clearReductionCache;
         UsePersistentIndex = usePersistentIndex;
+        Experimental = experimental ?? new ExperimentalOptions();
     }
 
     /// <summary>
@@ -104,4 +106,12 @@ public sealed class FusionRequest
     ///     <c>~/.fuse/fuse.db</c> (override with <c>FUSE_USER_DATA</c>) otherwise.
     /// </remarks>
     public bool UsePersistentIndex { get; }
+
+    /// <summary>
+    ///     Gets the experimental scoring knobs (graph-centrality weight, query expansion) for this run.
+    ///     Defaults to <see cref="ExperimentalOptions" /> defaults; environment variables override the
+    ///     configured values when the orchestrator resolves them, and the resolved values are recorded in the
+    ///     run report so a measurement is reproducible.
+    /// </summary>
+    public ExperimentalOptions Experimental { get; }
 }

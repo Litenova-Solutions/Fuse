@@ -59,6 +59,15 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Typed experimental options recorded in the run report.** The experimental scoring knobs (graph-centrality
+  weight, pseudo-relevance feedback query expansion) are now a typed `ExperimentalOptions` record carried on
+  `FusionRequest` rather than ambient process state read deep in the orchestrator. `FUSE_CENTRALITY_WEIGHT` and
+  `FUSE_QUERY_EXPANSION` are still honored, but only as an override applied when the orchestrator resolves the
+  request's configured values, and the environment is consulted at exactly one point. The resolved knobs are
+  written into the machine-readable run report (`--report`) under an `experimental` object, so a committed
+  measurement names the configuration that produced it instead of depending on invisible environment state.
+  Defaults are unchanged (centrality weight 0.15, query expansion on), so scoping behavior and benchmark
+  numbers are identical.
 - **Pseudo-relevance feedback query expansion (on by default, fast path).** Query scoping now runs a second
   BM25F ranking pass seeded with recurring declared-symbol terms harvested from the first pass's top files,
   so a sparse natural-language query (a PR title, a task sentence) is rewritten in the codebase's own

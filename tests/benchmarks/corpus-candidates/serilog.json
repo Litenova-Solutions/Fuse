@@ -1,0 +1,100 @@
+{
+  "$comment": "Pre-curated, git-verified ground truth for adding Serilog as a fifth corpus repository (plan item B2). This file is intentionally NOT wired into corpus.json or prs.json yet: adding a repo is a full benchmark rebaseline, not an additive append (see the B2 research note in CHANGELOG.md). The base/head/merge SHAs and changed_cs sets below were derived locally from the repository's merge history and the PR titles fetched from the GitHub API, so a future rebaseline can drop these straight into corpus.json and prs.json without re-curating. Verified against serilog/serilog: each head commit checks out cleanly and each changed_cs path exists at that head. A layer2a run over the resulting 30-PR corpus moved the headline means (query 61 to 64, focus 92 to 90, changes 87 to 89, grep 38 to 37 percent), which is why the rebaseline must re-measure every layer and every per-feature A/B delta before publishing.",
+  "corpus_entry": {
+    "name": "Serilog",
+    "size": "small-mid",
+    "url": "https://github.com/serilog/serilog.git",
+    "commit": "6d9fc0b84e004418f2677b5961b9c8970349d0be",
+    "committed": "2026-06-15",
+    "cs_files": 216
+  },
+  "prs": [
+    {
+      "repo": "Serilog",
+      "pr": 1452,
+      "merge": "33f1fd59307838f280579f89f07cc809bec348e1",
+      "base": "d98fca51063cf6d3345a3171dda28048e0469748",
+      "head": "94d9e1ab332808f6c48592dfed6c222324c868e5",
+      "title": "Record stringified property as \"\" when ToString() returns null in JsonFormatters",
+      "changed_cs": [
+        "src/Serilog/Formatting/Json/JsonFormatter.cs",
+        "src/Serilog/Formatting/Json/JsonValueFormatter.cs",
+        "test/Serilog.Tests/Formatting/Json/JsonFormatterTests.cs",
+        "test/Serilog.Tests/Formatting/Json/JsonValueFormatterTests.cs"
+      ]
+    },
+    {
+      "repo": "Serilog",
+      "pr": 1472,
+      "merge": "308208e12f722ad6c48394586965ea957aa37c02",
+      "base": "c10e3a81dbd555f2ab89730a9b106e5d91cddff7",
+      "head": "89ec7f326b20ede2d14f61379102795335393605",
+      "title": "Don't inherit parent Minimum Level for inline sublogger configuration",
+      "changed_cs": [
+        "src/Serilog/Configuration/LoggerAuditSinkConfiguration.cs",
+        "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+        "src/Serilog/LoggerConfiguration.cs",
+        "test/Serilog.Tests/Context/LogContextTests.cs",
+        "test/Serilog.Tests/Core/ChildLoggerTests.cs"
+      ]
+    },
+    {
+      "repo": "Serilog",
+      "pr": 1467,
+      "merge": "c10e3a81dbd555f2ab89730a9b106e5d91cddff7",
+      "base": "94a934ddbe71bf028813b6fd122cfcc67266ca30",
+      "head": "ae7dd3543a45be7c8f62aead3ab79447f123e188",
+      "title": "A null result from ToString() stringifies as an empty string instead of null",
+      "changed_cs": [
+        "src/Serilog/Capturing/PropertyValueConverter.cs",
+        "src/Serilog/Events/ScalarValue.cs",
+        "test/Serilog.Tests/Core/MessageTemplateTests.cs"
+      ]
+    },
+    {
+      "repo": "Serilog",
+      "pr": 1442,
+      "merge": "9b4b1d8c2d6583ac8ad67833014fdc3105c0d5e3",
+      "base": "22271f2e2b31e8dcd47128bde8db4287e8425557",
+      "head": "770f888b919187cc0bc4f7226ce5a2b93270613e",
+      "title": "Source context matching optimize",
+      "changed_cs": [
+        "src/Serilog/Core/LevelOverrideMap.cs",
+        "src/Serilog/Filters/Matching.cs",
+        "test/Serilog.PerformanceTests/Harness.cs",
+        "test/Serilog.PerformanceTests/SourceContextMatchBenchmark.cs",
+        "test/Serilog.Tests/Filters/MatchingTests.cs"
+      ]
+    },
+    {
+      "repo": "Serilog",
+      "pr": 1435,
+      "merge": "8f2263cb9e97146d9e180783dba601d9902eeeaf",
+      "base": "5e2164756efb6023a548b4eb91a71ed7edc3d9e1",
+      "head": "194ce557c8eec69ba969e50f9f963ae41fc31319",
+      "title": "Default ILogger implementations (netstandard 2.1)",
+      "changed_cs": [
+        "src/Serilog/Core/CustomDefaultMethodImplementationAttribute.cs",
+        "src/Serilog/ILogger.cs",
+        "test/Serilog.PerformanceTests/Harness.cs",
+        "test/Serilog.Tests/Core/LoggerTests.cs",
+        "test/Serilog.Tests/LoggerConfigurationTests.cs",
+        "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+        "test/Serilog.Tests/Support/DelegatingLogger.cs",
+        "test/TestDummies/Properties/AssemblyInfo.cs"
+      ]
+    },
+    {
+      "repo": "Serilog",
+      "pr": 1427,
+      "merge": "645c173197cdae3e38e825ebd013b7fe97ea27c1",
+      "base": "2c7dbbfad6c607adad6a57f86e8cd680ddf620a1",
+      "head": "40857b626975186ce4f9179a343ef3bcbf2b4004",
+      "title": "Record stringified property as null when ToString() returns null",
+      "changed_cs": [
+        "src/Serilog/Capturing/PropertyValueConverter.cs",
+        "test/Serilog.Tests/Core/MessageTemplateTests.cs"
+      ]
+    }
+  ]
+}

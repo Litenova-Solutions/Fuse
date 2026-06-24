@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.IO.Hashing;
+using System.Text;
 using Fuse.Fusion.Scoping;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,10 +26,19 @@ public sealed class OnnxDenseReranker : IReranker, IDisposable
     // vocabulary-mismatched file.
     private const double LexicalWeight = 0.5;
 
+    // Above this many cached document embeddings the cache is cleared, bounding memory across a long session.
+    // 384 floats per entry is about 1.5 KB, so the cap is a few tens of MB.
+    private const int MaxCachedEmbeddings = 20_000;
+
     private readonly string _onnxModelPath;
     private readonly string _vocabPath;
     private readonly ILogger<OnnxDenseReranker> _logger;
     private readonly object _loadGate = new();
+
+    // Document embeddings cached by content hash (item 23): a candidate's text embeds to the same vector every
+    // time, so a warm rerank over an unchanged file skips re-running the model. The query is not cached (it
+    // changes per call). Concurrency-safe; bounded by clearing when it grows past the cap.
+    private readonly ConcurrentDictionary<ulong, float[]> _embeddingCache = new();
 
     private MiniLmEmbedder? _embedder;
     private bool _loadFailed;
@@ -83,7 +95,7 @@ public sealed class OnnxDenseReranker : IReranker, IDisposable
             {
                 lexical[i] = candidates[i].Score;
                 var text = documentText.TryGetValue(candidates[i].Path, out var t) ? t : string.Empty;
-                var vector = embedder.Embed(text);
+                var vector = EmbedDocumentCached(embedder, text);
                 cosine[i] = Dot(queryVector, vector);
             }
         }
@@ -141,6 +153,24 @@ public sealed class OnnxDenseReranker : IReranker, IDisposable
                 return null;
             }
         }
+    }
+
+    // Embeds a document's text, caching the result by content hash so a warm rerank over an unchanged file
+    // does not re-run the model (item 23). Empty text is not cached (it is a cheap, degenerate case).
+    private float[] EmbedDocumentCached(MiniLmEmbedder embedder, string text)
+    {
+        if (text.Length == 0)
+            return embedder.Embed(text);
+
+        var hash = XxHash64.HashToUInt64(Encoding.UTF8.GetBytes(text));
+        if (_embeddingCache.TryGetValue(hash, out var cached))
+            return cached;
+
+        var vector = embedder.Embed(text);
+        if (_embeddingCache.Count >= MaxCachedEmbeddings)
+            _embeddingCache.Clear();
+        _embeddingCache[hash] = vector;
+        return vector;
     }
 
     private static double Dot(float[] a, float[] b)

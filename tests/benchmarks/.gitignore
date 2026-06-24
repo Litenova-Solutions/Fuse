@@ -14,6 +14,9 @@ results/.smoke/
 results/.rank/
 results/.wt-rank/
 results/.latency/
+results/.spike/
+results/.spike*/
+results/.pgf/
 results/*.raw.cs.txt
 
 # Keep the committed summaries: results/*.json, results/*.csv, results/*.md

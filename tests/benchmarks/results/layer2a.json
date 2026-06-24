@@ -345,7 +345,7 @@
     "precision": 0.006,
     "hits": 1,
     "emitted": 165,
-    "tokens": 48144
+    "tokens": 48140
   },
   {
     "repo": "AutoMapper",
@@ -704,8 +704,8 @@
     "recall": 0.5,
     "precision": 0.006,
     "hits": 1,
-    "emitted": 163,
-    "tokens": 48269
+    "emitted": 161,
+    "tokens": 48288
   },
   {
     "repo": "AutoMapper",
@@ -813,7 +813,7 @@
     "precision": 0.174,
     "hits": 4,
     "emitted": 23,
-    "tokens": 24490
+    "tokens": 24438
   },
   {
     "repo": "FluentValidation",
@@ -825,7 +825,7 @@
     "precision": 0.109,
     "hits": 5,
     "emitted": 46,
-    "tokens": 48707
+    "tokens": 48655
   },
   {
     "repo": "FluentValidation",
@@ -1065,7 +1065,7 @@
     "precision": 0.031,
     "hits": 2,
     "emitted": 65,
-    "tokens": 48693
+    "tokens": 48666
   },
   {
     "repo": "FluentValidation",
@@ -1893,7 +1893,7 @@
     "precision": 0.015,
     "hits": 1,
     "emitted": 68,
-    "tokens": 23946
+    "tokens": 23893
   },
   {
     "repo": "MediatR",
@@ -1905,7 +1905,7 @@
     "precision": 0.026,
     "hits": 2,
     "emitted": 76,
-    "tokens": 46652
+    "tokens": 46599
   },
   {
     "repo": "MediatR",
@@ -2013,7 +2013,7 @@
     "precision": 0.038,
     "hits": 3,
     "emitted": 78,
-    "tokens": 23848
+    "tokens": 23813
   },
   {
     "repo": "MediatR",
@@ -2025,7 +2025,7 @@
     "precision": 0.032,
     "hits": 3,
     "emitted": 93,
-    "tokens": 47913
+    "tokens": 47709
   },
   {
     "repo": "MediatR",
@@ -2132,8 +2132,8 @@
     "recall": 1.0,
     "precision": 0.024,
     "hits": 2,
-    "emitted": 84,
-    "tokens": 23641
+    "emitted": 85,
+    "tokens": 23777
   },
   {
     "repo": "MediatR",
@@ -2145,7 +2145,7 @@
     "precision": 0.021,
     "hits": 2,
     "emitted": 95,
-    "tokens": 43834
+    "tokens": 43447
   },
   {
     "repo": "MediatR",
@@ -2265,7 +2265,7 @@
     "precision": 0.019,
     "hits": 2,
     "emitted": 104,
-    "tokens": 48837
+    "tokens": 48762
   },
   {
     "repo": "NewtonsoftJson",
@@ -2373,7 +2373,7 @@
     "precision": 0.045,
     "hits": 2,
     "emitted": 44,
-    "tokens": 24381
+    "tokens": 24365
   },
   {
     "repo": "NewtonsoftJson",
@@ -2385,7 +2385,7 @@
     "precision": 0.025,
     "hits": 2,
     "emitted": 79,
-    "tokens": 49123
+    "tokens": 49107
   },
   {
     "repo": "NewtonsoftJson",
@@ -2481,7 +2481,7 @@
     "precision": 1.0,
     "hits": 1,
     "emitted": 1,
-    "tokens": 18071
+    "tokens": 18059
   },
   {
     "repo": "NewtonsoftJson",
@@ -2493,7 +2493,7 @@
     "precision": 0.037,
     "hits": 1,
     "emitted": 27,
-    "tokens": 24669
+    "tokens": 24657
   },
   {
     "repo": "NewtonsoftJson",
@@ -2505,7 +2505,7 @@
     "precision": 0.03,
     "hits": 3,
     "emitted": 99,
-    "tokens": 48853
+    "tokens": 48841
   },
   {
     "repo": "NewtonsoftJson",
@@ -2841,7 +2841,7 @@
     "precision": 0.059,
     "hits": 1,
     "emitted": 17,
-    "tokens": 9691
+    "tokens": 9639
   },
   {
     "repo": "NewtonsoftJson",
@@ -2853,7 +2853,7 @@
     "precision": 0.017,
     "hits": 1,
     "emitted": 58,
-    "tokens": 24168
+    "tokens": 24116
   },
   {
     "repo": "NewtonsoftJson",
@@ -2865,7 +2865,7 @@
     "precision": 0.008,
     "hits": 1,
     "emitted": 127,
-    "tokens": 48687
+    "tokens": 48635
   },
   {
     "repo": "NewtonsoftJson",

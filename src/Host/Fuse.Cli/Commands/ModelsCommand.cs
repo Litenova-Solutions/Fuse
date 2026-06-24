@@ -41,22 +41,36 @@ public sealed class ModelsCommand
     public string Action { get; set; } = "status";
 
     /// <summary>
+    ///     Gets or sets the rerank model to act on: <c>bi</c> (the default bi-encoder) or <c>cross</c> (the
+    ///     cross-encoder used when <c>FUSE_RERANK_MODEL=cross</c>).
+    /// </summary>
+    [CliOption(Description = "Rerank model: bi (default bi-encoder) or cross (cross-encoder).")]
+    public string Model { get; set; } = "bi";
+
+    /// <summary>
     ///     Runs the selected model action.
     /// </summary>
     /// <param name="context">The CLI invocation context supplying the cancellation token.</param>
     /// <returns>A task that completes when the action finishes.</returns>
     public async Task RunAsync(CliContext context)
     {
+        var modelId = ResolveModelId();
+        if (modelId is null)
+        {
+            _consoleUI.WriteError($"Unknown model '{Model}'. Use bi or cross.");
+            return;
+        }
+
         switch (Action.Trim().ToLowerInvariant())
         {
             case "status":
-                ReportStatus();
+                ReportStatus(modelId);
                 break;
             case "download":
-                await DownloadAsync(context.CancellationToken);
+                await DownloadAsync(modelId, context.CancellationToken);
                 break;
             case "remove":
-                Remove();
+                Remove(modelId);
                 break;
             default:
                 _consoleUI.WriteError($"Unknown action '{Action}'. Use status, download, or remove.");
@@ -64,33 +78,46 @@ public sealed class ModelsCommand
         }
     }
 
-    private void ReportStatus()
+    // Maps the user-facing bi/cross alias to a cache model id, or null for an unknown alias.
+    private string? ResolveModelId() => Model.Trim().ToLowerInvariant() switch
     {
-        var present = RerankModelLocator.IsModelPresent();
+        "bi" or "" => RerankModelLocator.ModelId,
+        "cross" => RerankModelLocator.CrossEncoderModelId,
+        _ => null,
+    };
+
+    private void ReportStatus(string modelId)
+    {
+        var present = RerankModelLocator.IsModelPresent(modelId);
+        var sizeMb = RerankModelDownloader.FilesFor(modelId).Sum(f => f.Bytes) / 1_000_000;
         _consoleUI.WriteResult(
-            $"Dense rerank model ({RerankModelLocator.ModelId}): {(present ? "present" : "not downloaded")}");
-        _consoleUI.WriteStep($"Cache directory: {RerankModelLocator.ModelDirectory()}");
+            $"Rerank model ({modelId}): {(present ? "present" : "not downloaded")}");
+        _consoleUI.WriteStep($"Cache directory: {RerankModelLocator.ModelDirectory(modelId)}");
         if (!present)
         {
+            var enableHint = modelId == RerankModelLocator.CrossEncoderModelId
+                ? "then set FUSE_RERANK=1 and FUSE_RERANK_MODEL=cross to enable cross-encoder reranking."
+                : "then set FUSE_RERANK=1 to enable dense reranking on the query path.";
             _consoleUI.WriteStep(
-                $"Run 'fuse models download' to fetch it (~{RerankModelDownloader.TotalBytes / 1_000_000} MB), "
-                + "then set FUSE_RERANK=1 to enable dense reranking on the query path.");
+                $"Run 'fuse models download --model {Model}' to fetch it (~{sizeMb} MB), {enableHint}");
         }
     }
 
-    private async Task DownloadAsync(CancellationToken cancellationToken)
+    private async Task DownloadAsync(string modelId, CancellationToken cancellationToken)
     {
+        var sizeMb = RerankModelDownloader.FilesFor(modelId).Sum(f => f.Bytes) / 1_000_000;
         _consoleUI.WriteStep(
-            $"Downloading {RerankModelLocator.ModelId} (~{RerankModelDownloader.TotalBytes / 1_000_000} MB) "
-            + $"to {RerankModelLocator.ModelDirectory()}");
+            $"Downloading {modelId} (~{sizeMb} MB) to {RerankModelLocator.ModelDirectory(modelId)}");
 
         try
         {
             var progress = new Progress<string>(line => _consoleUI.WriteStep(line));
-            await RerankModelDownloader.DownloadAsync(progress, cancellationToken);
+            await RerankModelDownloader.DownloadAsync(progress, cancellationToken, modelId);
+            var enableHint = modelId == RerankModelLocator.CrossEncoderModelId
+                ? "Set FUSE_RERANK=1 and FUSE_RERANK_MODEL=cross to enable cross-encoder reranking "
+                : "Set FUSE_RERANK=1 to enable reranking on the query path ";
             _consoleUI.WriteSuccess(
-                "Dense rerank model ready. Set FUSE_RERANK=1 to enable reranking on the query path "
-                + "(opt-in; the lexical path remains the default).");
+                $"Rerank model ready. {enableHint}(opt-in; the lexical path remains the default).");
         }
         catch (Exception ex)
         {
@@ -98,11 +125,11 @@ public sealed class ModelsCommand
         }
     }
 
-    private void Remove()
+    private void Remove(string modelId)
     {
         _consoleUI.WriteResult(
-            RerankModelDownloader.Remove()
-                ? $"Removed the dense rerank model from {RerankModelLocator.ModelDirectory()}."
-                : "No dense rerank model is cached.");
+            RerankModelDownloader.Remove(modelId)
+                ? $"Removed the rerank model from {RerankModelLocator.ModelDirectory(modelId)}."
+                : "No matching rerank model is cached.");
     }
 }

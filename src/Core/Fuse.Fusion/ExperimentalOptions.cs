@@ -1,0 +1,64 @@
+using System.Globalization;
+
+namespace Fuse.Fusion;
+
+/// <summary>
+///     Tunable, experimental scoring knobs whose defaults may change between releases. Carried explicitly on a
+///     <see cref="FusionRequest" /> so a run's configuration is part of the request rather than ambient process
+///     state, and recorded in the machine-readable run report so a committed measurement is self-describing.
+/// </summary>
+/// <remarks>
+///     Environment variables override the configured values (see <see cref="ResolveFromEnvironment" />) so an
+///     operator can A/B a knob without rebuilding, but the override is applied on top of the request's values
+///     rather than read from ambient state at the point of use. This keeps a result reproducible: the resolved
+///     options describe exactly what produced it.
+/// </remarks>
+public sealed record ExperimentalOptions
+{
+    /// <summary>
+    ///     The query-independent graph-centrality weight blended into seed and expansion scores, so at equal
+    ///     relevance the more depended-upon file ranks earlier. <c>0</c> disables the prior. Overridden by
+    ///     <c>FUSE_CENTRALITY_WEIGHT</c>.
+    /// </summary>
+    public double CentralityWeight { get; init; } = 0.15;
+
+    /// <summary>
+    ///     Whether pseudo-relevance feedback query expansion runs on the query path (a second lexical ranking
+    ///     pass seeded with recurring declared-symbol terms from the first pass). Overridden by
+    ///     <c>FUSE_QUERY_EXPANSION</c> (<c>0</c>, <c>off</c>, or <c>false</c> disables it).
+    /// </summary>
+    public bool QueryExpansion { get; init; } = true;
+
+    /// <summary>
+    ///     Returns a copy of <paramref name="configured" /> (or the defaults when <c>null</c>) with any
+    ///     environment-variable overrides applied. The environment is consulted only here, so the resolved
+    ///     record is the single source of truth for the run.
+    /// </summary>
+    /// <param name="configured">The request's configured options, or <c>null</c> to start from the defaults.</param>
+    /// <returns>The resolved options with <c>FUSE_CENTRALITY_WEIGHT</c> and <c>FUSE_QUERY_EXPANSION</c> applied.</returns>
+    public static ExperimentalOptions ResolveFromEnvironment(ExperimentalOptions? configured = null)
+    {
+        var resolved = configured ?? new ExperimentalOptions();
+
+        var centrality = resolved.CentralityWeight;
+        var rawWeight = Environment.GetEnvironmentVariable("FUSE_CENTRALITY_WEIGHT");
+        if (!string.IsNullOrWhiteSpace(rawWeight) &&
+            double.TryParse(rawWeight, NumberStyles.Float, CultureInfo.InvariantCulture, out var weight) &&
+            weight >= 0)
+        {
+            centrality = weight;
+        }
+
+        var queryExpansion = resolved.QueryExpansion;
+        var rawExpansion = Environment.GetEnvironmentVariable("FUSE_QUERY_EXPANSION");
+        if (!string.IsNullOrWhiteSpace(rawExpansion) &&
+            (rawExpansion.Equals("0", StringComparison.Ordinal) ||
+             rawExpansion.Equals("off", StringComparison.OrdinalIgnoreCase) ||
+             rawExpansion.Equals("false", StringComparison.OrdinalIgnoreCase)))
+        {
+            queryExpansion = false;
+        }
+
+        return resolved with { CentralityWeight = centrality, QueryExpansion = queryExpansion };
+    }
+}

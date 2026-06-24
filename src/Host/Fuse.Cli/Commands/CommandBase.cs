@@ -143,15 +143,24 @@ public abstract class CommandBase
             return;
 
         DisplayResults(result, request.Emission);
-        WriteRunReport(result, request.Emission);
+        WriteRunReport(result, request);
     }
 
-    private void WriteRunReport(FusionResult result, EmissionOptions emissionOptions)
+    private void WriteRunReport(FusionResult result, FusionRequest request)
     {
         if (string.IsNullOrWhiteSpace(Report))
             return;
 
-        var json = RunReportBuilder.Build(result, emissionOptions);
+        // Record the same resolved experimental options the orchestrator used (configured values with
+        // environment overrides applied), so the report names exactly what produced the run.
+        var resolved = Fuse.Fusion.ExperimentalOptions.ResolveFromEnvironment(request.Experimental);
+        var experimental = new Fuse.Emission.Serialization.JsonExperimentalOptionsDto
+        {
+            CentralityWeight = resolved.CentralityWeight,
+            QueryExpansion = resolved.QueryExpansion,
+        };
+
+        var json = RunReportBuilder.Build(result, request.Emission, experimental);
 
         if (Report == "-")
         {

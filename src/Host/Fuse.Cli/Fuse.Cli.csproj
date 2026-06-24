@@ -30,6 +30,12 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting" />
         <PackageReference Include="ModelContextProtocol" />
+        <!-- StreamJsonRpc powers the UI host transport. Exclude its analyzers (Microsoft.VisualStudio.Threading
+             .Analyzers), which otherwise flag pre-existing synchronous console writes elsewhere in this project;
+             VSTHRD103 is also suppressed below as a belt-and-braces, since the analyzer flows transitively. -->
+        <PackageReference Include="StreamJsonRpc">
+            <ExcludeAssets>analyzers</ExcludeAssets>
+        </PackageReference>
         <PackageReference Include="DotMake.CommandLine" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />

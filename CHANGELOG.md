@@ -6,6 +6,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- **Collision-free symbol identity for member operations (C5).** `SymbolChunk` exposed only a `QualifiedName`
+  (`ParentType.SymbolName`), which collides for overloads, nested types that share a simple parent name, the
+  same member name across namespaces, and partial-class members. Operations keyed on it could conflate
+  distinct members: body deduplication, for instance, could collapse a sibling overload's unique body when
+  another overload was a duplicate, because both shared the same display name. Each chunk now carries a
+  collision-free `StableId` (namespace, full containing-type chain with generic arity, member name, and for
+  methods and constructors the generic arity and parameter type list), and member selection, thin-skeleton
+  assembly, and body deduplication key on it. `QualifiedName` is retained for display (provenance, markers).
 - **SQLite pending-write race in the cache flush (C4).** `SqliteKeyValueStore.FlushAsync` snapshotted the
   buffered writes, committed them, then removed the flushed keys by key alone. A `Set` on a snapshot key while
   the commit was in flight was therefore dropped: the just-flushed (older) value's key was removed, discarding

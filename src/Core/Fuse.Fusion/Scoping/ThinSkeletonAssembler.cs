@@ -12,11 +12,14 @@ internal static class ThinSkeletonAssembler
 {
     /// <summary>
     ///     Assembles the thin skeleton of <paramref name="content" /> given its member chunks and the set of
-    ///     qualified member names to keep in full.
+    ///     member identities to keep in full.
     /// </summary>
     /// <param name="content">The (already reduced) file content to slice.</param>
     /// <param name="chunks">The member chunks extracted from <paramref name="content" />, in any order.</param>
-    /// <param name="selectedQualifiedNames">The <c>Type.Member</c> names to keep verbatim.</param>
+    /// <param name="selectedIdentities">
+    ///     The <see cref="SymbolChunk.Identity" /> values to keep verbatim. Keying on the collision-free identity
+    ///     rather than the display name keeps a selected overload from dragging in its siblings.
+    /// </param>
     /// <returns>
     ///     The skeleton text, or the original content unchanged when there are no chunks to collapse. Selected
     ///     members are emitted byte-for-byte so they stay independently parseable.
@@ -24,7 +27,7 @@ internal static class ThinSkeletonAssembler
     public static string Assemble(
         string content,
         IReadOnlyList<SymbolChunk> chunks,
-        IReadOnlySet<string> selectedQualifiedNames)
+        IReadOnlySet<string> selectedIdentities)
     {
         if (chunks.Count == 0)
             return content;
@@ -44,7 +47,7 @@ internal static class ThinSkeletonAssembler
             for (var l = cursor; l < chunk.StartLine; l++)
                 AppendLine(sb, lines[l - 1]);
 
-            var keepFull = selectedQualifiedNames.Contains(chunk.QualifiedName)
+            var keepFull = selectedIdentities.Contains(chunk.Identity)
                 || chunk.SymbolKind is "field" or "enum-member";
 
             if (keepFull)

@@ -689,7 +689,7 @@ public sealed class FusionOrchestrator
                 var score = MemberQueryScore(chunk, queryTerms);
                 if (score > 0)
                 {
-                    scores.Add((chunk.QualifiedName, score));
+                    scores.Add((chunk.Identity, score));
                     if (score > best)
                         best = score;
                 }

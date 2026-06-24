@@ -20,6 +20,14 @@ namespace Fuse.Plugins.Abstractions.Outline;
 /// </param>
 /// <param name="StartLine">The 1-based line at which the member begins, inclusive.</param>
 /// <param name="EndLine">The 1-based line at which the member ends, inclusive.</param>
+/// <param name="StableId">
+///     A collision-free identity for the member: namespace, the full containing-type chain (with generic
+///     arity), the member name, and for methods and constructors the generic arity and parameter type list.
+///     Unlike <see cref="QualifiedName" /> it distinguishes overloads, nested types that share a simple parent
+///     name, the same member name across namespaces, and members of partial classes, so member operations
+///     (selection, thin-skeleton assembly, body deduplication, slicing) key on it rather than on the
+///     display name. When an extractor cannot compute the components it falls back to <see cref="QualifiedName" />.
+/// </param>
 /// <remarks>
 ///     A precise (semantic) extractor resolves member boundaries from a parse tree; a regex extractor produces
 ///     coarser but coherent boundaries by brace-depth scanning and may merge members it cannot separate. Both
@@ -32,11 +40,19 @@ public sealed record SymbolChunk(
     string? ParentType,
     string Content,
     int StartLine,
-    int EndLine)
+    int EndLine,
+    string? StableId = null)
 {
     /// <summary>
     ///     The fully qualified member name (<c>ParentType.SymbolName</c>), or the simple name when the member
-    ///     has no parent type. Used as a stable chunk identifier within a file.
+    ///     has no parent type. Intended for display (provenance, markers); use <see cref="Identity" /> to key
+    ///     member operations, since <see cref="QualifiedName" /> collides for overloads and like-named members.
     /// </summary>
     public string QualifiedName => ParentType is null ? SymbolName : $"{ParentType}.{SymbolName}";
+
+    /// <summary>
+    ///     The collision-free identity used to key member operations: <see cref="StableId" /> when the extractor
+    ///     computed one, otherwise <see cref="QualifiedName" />.
+    /// </summary>
+    public string Identity => StableId ?? QualifiedName;
 }

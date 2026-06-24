@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
+using Fuse.Cli.Mcp;
+using Fuse.Collection.Templates;
+using Fuse.Fusion;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
@@ -26,15 +29,24 @@ public sealed class FuseHostService
     public const int ProtocolVersion = 1;
 
     private readonly ILogger<FuseHostService> _logger;
+    private readonly FusionOrchestrator _orchestrator;
+    private readonly ProjectTemplateRegistry _templateRegistry;
     private readonly long _startTimestamp;
     private readonly TaskCompletionSource _shutdownRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FuseHostService" /> class.
     /// </summary>
+    /// <param name="orchestrator">The fusion orchestrator, shared with the MCP server and the CLI.</param>
+    /// <param name="templateRegistry">The project-template registry that supplies the .NET fusion defaults.</param>
     /// <param name="logger">The logger for host-side diagnostics, routed away from the transport stream.</param>
-    public FuseHostService(ILogger<FuseHostService> logger)
+    public FuseHostService(
+        FusionOrchestrator orchestrator,
+        ProjectTemplateRegistry templateRegistry,
+        ILogger<FuseHostService> logger)
     {
+        _orchestrator = orchestrator;
+        _templateRegistry = templateRegistry;
         _logger = logger;
         _startTimestamp = Stopwatch.GetTimestamp();
     }
@@ -72,6 +84,35 @@ public sealed class FuseHostService
         var uptimeMs = (long)Stopwatch.GetElapsedTime(_startTimestamp).TotalMilliseconds;
         using var process = Process.GetCurrentProcess();
         return new FuseHostStats(HostVersion, Environment.ProcessId, uptimeMs, process.WorkingSet64);
+    }
+
+    /// <summary>
+    ///     Warms the engine for a repository root: collects the source tree and builds the analysis index and
+    ///     dependency graph once through the shared orchestrator, so subsequent scoping calls pay only ranking
+    ///     and emission. Returns the resulting index state and file count.
+    /// </summary>
+    /// <param name="root">The absolute repository root to index.</param>
+    /// <returns>The warm-index state, the number of files considered, and the wall-clock build time.</returns>
+    /// <remarks>
+    ///     This runs the same in-memory .NET fusion path the MCP server uses (persistent index on), so the warm
+    ///     state it builds is shared with the agent surface. A missing directory returns the
+    ///     <c>NotIndexed</c> state rather than throwing across the wire.
+    /// </remarks>
+    [JsonRpcMethod("fuse/index")]
+    public async Task<IndexResultDto> IndexAsync(string root)
+    {
+        var resolved = Path.GetFullPath(root);
+        if (!Directory.Exists(resolved))
+        {
+            _logger.LogWarning("Index requested for missing directory {Root}.", resolved);
+            return new IndexResultDto("NotIndexed", 0, 0);
+        }
+
+        var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
+        var result = await _orchestrator.FuseAsync(builder.Build());
+        _logger.LogInformation("Indexed {Root}: {Count} files in {Ms} ms.",
+            resolved, result.TotalFileCount, (long)result.Duration.TotalMilliseconds);
+        return new IndexResultDto("Warm", result.TotalFileCount, (long)result.Duration.TotalMilliseconds);
     }
 
     /// <summary>

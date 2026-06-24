@@ -13,11 +13,19 @@ this list once attempted. The items below remain because each is blocked on a ru
 environment, is a full benchmark rebaseline that the never-weaken-a-number invariant says to do deliberately,
 or has an unmet plan gate. They are recorded so the accounting is complete and auditable.
 
-- **B2 (larger, cleaner corpus):** feasible here (clone more repositories and build per-PR ground truth via the
-  GitHub API), but it is a full rebaseline: adding repositories changes every published mean, per-repo cell,
-  and budget-curve number across benchmarks.mdx, AGENTS.md, and the B9 baseline. Doing that accurately is the
-  point of the "never fabricate or weaken a benchmark number" invariant, so it is a deliberate fresh-context
-  task rather than a tail-of-session rush where a mis-synced number could slip in. Several items below wait on it.
+- **B2 (larger, cleaner corpus):** explored end to end and found to be a full rebaseline, not an additive
+  append. The data work is done and staged: `tests/benchmarks/corpus-candidates/serilog.json` holds a fifth
+  repository (serilog/serilog, pinned) with six git-verified PRs and changed-file ground truth, ready to wire
+  in. Running layer 2A over the resulting 30-PR corpus moved every headline mean (query 61 to 64, focus 92 to
+  90, changes 87 to 89, grep 38 to 37 percent), as expected. The blocker is not the data but the benchmarks
+  page: its Findings section states roughly fifteen per-feature A/B deltas (for example "query 57 to 61",
+  "focus 71 to 77") each measured over the pinned 24-PR corpus at the time that feature landed, so a 30-PR
+  corpus invalidates all of them at once. Publishing the new headline tables without re-measuring those deltas
+  would leave the page's prose contradicting its tables, which weakens published numbers and violates the
+  "never fabricate or weaken a benchmark number" invariant. The honest rebaseline therefore re-runs every layer
+  (1, 2A, 2B, 4) and re-measures every per-feature spike over the new corpus, then rewrites the Findings prose,
+  AGENTS.md headline, and the B9 baseline atomically. That is dedicated work; the staged file removes the
+  curation cost so it can start from verified ground truth. Several items below wait on it.
 - **Item 5 (scalar admission tuning):** the plan gates it on B2 plus the held-out split (B5), to tune on dev
   and publish on test. Tuning the 24-PR corpus now would overfit; blocked on B2.
 - **B1 (task-success eval with round-trips):** needs a programmatic agent harness driving the arms and scoring

@@ -1,0 +1,38 @@
+[
+  {
+    "repo": "MediatR",
+    "cold_p50": 1191,
+    "cold_p95": 1293,
+    "warm_p50": 784,
+    "warm_p95": 824,
+    "warm_peak_mb": 130.6,
+    "samples": 7
+  },
+  {
+    "repo": "FluentValidation",
+    "cold_p50": 1746,
+    "cold_p95": 2198,
+    "warm_p50": 862,
+    "warm_p95": 898,
+    "warm_peak_mb": 156.0,
+    "samples": 7
+  },
+  {
+    "repo": "AutoMapper",
+    "cold_p50": 3373,
+    "cold_p95": 3757,
+    "warm_p50": 1333,
+    "warm_p95": 1352,
+    "warm_peak_mb": 174.3,
+    "samples": 7
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "cold_p50": 6348,
+    "cold_p95": 8180,
+    "warm_p50": 2178,
+    "warm_p95": 2202,
+    "warm_peak_mb": 339.7,
+    "samples": 7
+  }
+]

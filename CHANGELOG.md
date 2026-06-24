@@ -59,6 +59,13 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Latency benchmark layer (B13).** A new `layer-latency.ps1` measures the end-to-end wall clock of a scoped
+  query call per corpus repo, cold (no reduction cache, no persistent index) versus warm (both, after a warmup),
+  reporting p50/p95 over repeated samples plus peak working set. It is wired into `run-all.ps1`. This is the
+  latency an agent waits on; absolute times are machine-dependent, so the committed figures are a reference and
+  the warm-versus-cold ratio is the portable signal (warm runs land at roughly 0.3 to 0.7 of cold on the pinned
+  corpus, consistent with the persistent index amortizing the Roslyn parse). Per-stage timing (for example
+  reduction time) is a follow-on once the pipeline surfaces it.
 - **Layer 2A benchmark diagnostics: wasted tokens, change-set-size strata, and cost-adjusted recall.** The
   scoping benchmark now reports, alongside recall@budget, the budget spent on emitted files outside the truth
   set (B8, a proportional estimate), recall broken out by change-set size (B10: small 1-3, medium 4-9, large

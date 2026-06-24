@@ -82,5 +82,32 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         Assert.Equal(0, result.FileCount);
     }
 
+    [Fact]
+    public async Task Scope_Search_EmitsTheMatchedFileAndWritesPayload()
+    {
+        var source = Path.Combine(Path.GetTempPath(), "fuse-host-scope", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "PaymentService.cs"),
+            "public class PaymentService { public void ProcessPayment() { } }");
+        File.WriteAllText(Path.Combine(source, "CatalogService.cs"),
+            "public class CatalogService { public void ListProducts() { } }");
+
+        try
+        {
+            var result = await NewService().ScopeAsync(source, "search", null, "process payment", null, 20000);
+
+            Assert.Equal("search", result.Mode);
+            Assert.NotEmpty(result.Files);
+            Assert.Contains(result.Files, f => f.Path.Contains("PaymentService", StringComparison.Ordinal));
+            Assert.NotNull(result.PayloadPath);
+            Assert.True(File.Exists(result.PayloadPath));
+            Assert.Contains("PaymentService", await File.ReadAllTextAsync(result.PayloadPath!));
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
     public void Dispose() => _provider.Dispose();
 }

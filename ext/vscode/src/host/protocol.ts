@@ -51,11 +51,26 @@ export interface IndexResultDto {
   elapsedMs: number;
 }
 
+/** One emitted file in a scope result: the included path and its token cost. */
+export interface ScopeFileDto {
+  path: string;
+  tokenCost: number;
+}
+
+/** Result of `fuse/scope`: the files a scoped fusion included, the total tokens, and the payload file path. */
+export interface ScopeResultDto {
+  mode: string;
+  files: ScopeFileDto[];
+  totalTokens: number;
+  payloadPath?: string;
+}
+
 /** RPC method names exposed by the host (the `fuse/` namespace). */
 export const Methods = {
   handshake: "fuse/handshake",
   stats: "fuse/stats",
   index: "fuse/index",
   graph: "fuse/graph",
+  scope: "fuse/scope",
   shutdown: "fuse/shutdown",
 } as const;

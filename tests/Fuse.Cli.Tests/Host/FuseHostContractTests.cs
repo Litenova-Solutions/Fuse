@@ -56,4 +56,27 @@ public sealed class FuseHostContractTests
 
         Assert.DoesNotContain("role", json);
     }
+
+    [Fact]
+    public void ScopeResult_SerializesFilesAndTotalsCamelCase()
+    {
+        var scope = new ScopeResultDto(
+            "search", [new ScopeFileDto("a/B.cs", 480)], 480, "/tmp/x.fuse.xml");
+
+        var json = JsonSerializer.Serialize(scope, FuseHostJsonContext.Default.ScopeResultDto);
+
+        Assert.Contains("\"mode\":\"search\"", json);
+        Assert.Contains("\"tokenCost\":480", json);
+        Assert.Contains("\"totalTokens\":480", json);
+        Assert.Contains("\"payloadPath\":\"/tmp/x.fuse.xml\"", json);
+    }
+
+    [Fact]
+    public void ScopeResult_OmitsNullPayloadPath()
+    {
+        var json = JsonSerializer.Serialize(
+            new ScopeResultDto("search", [], 0, null), FuseHostJsonContext.Default.ScopeResultDto);
+
+        Assert.DoesNotContain("payloadPath", json);
+    }
 }

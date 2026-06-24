@@ -66,6 +66,23 @@ public sealed class FusionOrchestrator
         return 0.15;
     }
 
+    // Pseudo-relevance feedback expansion for the query path: a second lexical ranking pass seeded with
+    // recurring declared-symbol terms from the first pass's top files. On by default; FUSE_QUERY_EXPANSION=0
+    // disables it and reproduces the single-pass BM25F ordering exactly.
+    private static readonly QueryExpansionOptions QueryExpansion = ResolveQueryExpansion();
+
+    private static QueryExpansionOptions ResolveQueryExpansion()
+    {
+        var raw = Environment.GetEnvironmentVariable("FUSE_QUERY_EXPANSION");
+        if (!string.IsNullOrWhiteSpace(raw) &&
+            (raw.Equals("0", StringComparison.Ordinal) ||
+             raw.Equals("off", StringComparison.OrdinalIgnoreCase) ||
+             raw.Equals("false", StringComparison.OrdinalIgnoreCase)))
+            return QueryExpansionOptions.Disabled;
+
+        return new QueryExpansionOptions();
+    }
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionOrchestrator" /> class.
     /// </summary>
@@ -553,6 +570,21 @@ public sealed class FusionOrchestrator
         {
             throw new FusionValidationException(
                 $"Query '{request.Query.Query}' matched no collected files.");
+        }
+
+        // Pseudo-relevance feedback: rewrite a sparse query in the codebase's own vocabulary by blending in
+        // recurring declared-symbol terms from the first pass's top files, then re-rank. Conservative by
+        // construction (symbol field only, multi-doc terms only, reduced weight); a no-op when disabled or
+        // when no term qualifies, so the seed set then equals the single-pass ordering.
+        if (QueryExpansion.Enabled)
+        {
+            var expandedQuery = PseudoRelevanceExpander.Expand(
+                request.Query.Query, ranked, documents, QueryExpansion, relevanceIndex.InverseDocumentFrequency);
+            var reranked = relevanceIndex.RankScored(expandedQuery, request.Query.TopFiles);
+            // Merge rather than replace: expansion adds the files it surfaces but never drops a first-pass
+            // seed, so a misfiring expansion cannot lower recall below the single-pass result.
+            if (reranked.Count > 0)
+                ranked = PseudoRelevanceExpander.MergePreservingSeeds(ranked, reranked);
         }
 
         var seedScores = ranked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);

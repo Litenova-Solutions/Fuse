@@ -267,7 +267,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9283,
+    "input_tokens": 9238,
     "no_fuse_whole_repo_tokens": 457365,
     "recall": 0.0,
     "recall_by_construction": false
@@ -345,7 +345,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48230,
+    "input_tokens": 48031,
     "no_fuse_whole_repo_tokens": 457365,
     "recall": 0.25,
     "recall_by_construction": false
@@ -384,7 +384,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9282,
+    "input_tokens": 9341,
     "no_fuse_whole_repo_tokens": 455773,
     "recall": 0.5,
     "recall_by_construction": false
@@ -423,7 +423,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23681,
+    "input_tokens": 23615,
     "no_fuse_whole_repo_tokens": 455773,
     "recall": 0.5,
     "recall_by_construction": false
@@ -462,7 +462,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48157,
+    "input_tokens": 48022,
     "no_fuse_whole_repo_tokens": 455773,
     "recall": 0.5,
     "recall_by_construction": false
@@ -501,7 +501,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9312,
+    "input_tokens": 9273,
     "no_fuse_whole_repo_tokens": 455383,
     "recall": 0.5,
     "recall_by_construction": false
@@ -540,7 +540,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23666,
+    "input_tokens": 23661,
     "no_fuse_whole_repo_tokens": 455383,
     "recall": 0.5,
     "recall_by_construction": false
@@ -579,7 +579,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48047,
+    "input_tokens": 47960,
     "no_fuse_whole_repo_tokens": 455383,
     "recall": 0.5,
     "recall_by_construction": false
@@ -618,9 +618,9 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9322,
+    "input_tokens": 9508,
     "no_fuse_whole_repo_tokens": 455215,
-    "recall": 0.5,
+    "recall": 0.0,
     "recall_by_construction": false
   },
   {
@@ -657,7 +657,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23780,
+    "input_tokens": 23925,
     "no_fuse_whole_repo_tokens": 455215,
     "recall": 0.5,
     "recall_by_construction": false
@@ -696,7 +696,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48160,
+    "input_tokens": 48231,
     "no_fuse_whole_repo_tokens": 455215,
     "recall": 0.5,
     "recall_by_construction": false
@@ -774,9 +774,9 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24145,
+    "input_tokens": 24360,
     "no_fuse_whole_repo_tokens": 257711,
-    "recall": 0.444,
+    "recall": 0.556,
     "recall_by_construction": false
   },
   {
@@ -813,9 +813,9 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48859,
+    "input_tokens": 49311,
     "no_fuse_whole_repo_tokens": 257711,
-    "recall": 0.444,
+    "recall": 0.556,
     "recall_by_construction": false
   },
   {
@@ -969,7 +969,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9408,
+    "input_tokens": 9374,
     "no_fuse_whole_repo_tokens": 249393,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1008,7 +1008,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24257,
+    "input_tokens": 24037,
     "no_fuse_whole_repo_tokens": 249393,
     "recall": 0.25,
     "recall_by_construction": false
@@ -1047,7 +1047,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48692,
+    "input_tokens": 48509,
     "no_fuse_whole_repo_tokens": 249393,
     "recall": 0.75,
     "recall_by_construction": false
@@ -1086,7 +1086,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9434,
+    "input_tokens": 9549,
     "no_fuse_whole_repo_tokens": 248694,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1125,7 +1125,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24051,
+    "input_tokens": 24127,
     "no_fuse_whole_repo_tokens": 248694,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1164,7 +1164,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48291,
+    "input_tokens": 48802,
     "no_fuse_whole_repo_tokens": 248694,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1203,7 +1203,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9520,
+    "input_tokens": 9482,
     "no_fuse_whole_repo_tokens": 248628,
     "recall": 0.5,
     "recall_by_construction": false
@@ -1242,7 +1242,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24215,
+    "input_tokens": 24121,
     "no_fuse_whole_repo_tokens": 248628,
     "recall": 0.5,
     "recall_by_construction": false
@@ -1281,7 +1281,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48572,
+    "input_tokens": 48541,
     "no_fuse_whole_repo_tokens": 248628,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1320,7 +1320,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9421,
+    "input_tokens": 9466,
     "no_fuse_whole_repo_tokens": 248613,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1359,7 +1359,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24199,
+    "input_tokens": 24109,
     "no_fuse_whole_repo_tokens": 248613,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1398,7 +1398,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48760,
+    "input_tokens": 48730,
     "no_fuse_whole_repo_tokens": 248613,
     "recall": 0.0,
     "recall_by_construction": false
@@ -1554,9 +1554,9 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9260,
+    "input_tokens": 9334,
     "no_fuse_whole_repo_tokens": 80288,
-    "recall": 1.0,
+    "recall": 0.75,
     "recall_by_construction": false
   },
   {
@@ -1593,7 +1593,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24106,
+    "input_tokens": 24154,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1632,7 +1632,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48246,
+    "input_tokens": 48294,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1671,7 +1671,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9428,
+    "input_tokens": 9108,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1710,7 +1710,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23177,
+    "input_tokens": 23808,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1749,7 +1749,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 39632,
+    "input_tokens": 40276,
     "no_fuse_whole_repo_tokens": 80288,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1788,7 +1788,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9092,
+    "input_tokens": 9218,
     "no_fuse_whole_repo_tokens": 78687,
     "recall": 0.333,
     "recall_by_construction": false
@@ -1827,7 +1827,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 22897,
+    "input_tokens": 23326,
     "no_fuse_whole_repo_tokens": 78687,
     "recall": 0.333,
     "recall_by_construction": false
@@ -1866,7 +1866,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 39201,
+    "input_tokens": 39056,
     "no_fuse_whole_repo_tokens": 78687,
     "recall": 0.667,
     "recall_by_construction": false
@@ -1905,9 +1905,9 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9392,
+    "input_tokens": 9382,
     "no_fuse_whole_repo_tokens": 77901,
-    "recall": 0.333,
+    "recall": 0.667,
     "recall_by_construction": false
   },
   {
@@ -1944,7 +1944,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24124,
+    "input_tokens": 23274,
     "no_fuse_whole_repo_tokens": 77901,
     "recall": 1.0,
     "recall_by_construction": false
@@ -1983,7 +1983,7 @@
     "truth": 3,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 45420,
+    "input_tokens": 44858,
     "no_fuse_whole_repo_tokens": 77901,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2022,7 +2022,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9232,
+    "input_tokens": 9195,
     "no_fuse_whole_repo_tokens": 77893,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2061,7 +2061,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23742,
+    "input_tokens": 23910,
     "no_fuse_whole_repo_tokens": 77893,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2100,7 +2100,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 42816,
+    "input_tokens": 43184,
     "no_fuse_whole_repo_tokens": 77893,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2139,7 +2139,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9623,
+    "input_tokens": 9645,
     "no_fuse_whole_repo_tokens": 1241884,
     "recall": 0.0,
     "recall_by_construction": false
@@ -2178,7 +2178,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23347,
+    "input_tokens": 23382,
     "no_fuse_whole_repo_tokens": 1241884,
     "recall": 0.0,
     "recall_by_construction": false
@@ -2217,7 +2217,7 @@
     "truth": 4,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 47618,
+    "input_tokens": 47654,
     "no_fuse_whole_repo_tokens": 1241884,
     "recall": 0.5,
     "recall_by_construction": false
@@ -2256,9 +2256,9 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9260,
+    "input_tokens": 9322,
     "no_fuse_whole_repo_tokens": 1241071,
-    "recall": 0.5,
+    "recall": 1.0,
     "recall_by_construction": false
   },
   {
@@ -2295,7 +2295,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 24030,
+    "input_tokens": 24119,
     "no_fuse_whole_repo_tokens": 1241071,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2334,7 +2334,7 @@
     "truth": 2,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 48428,
+    "input_tokens": 48641,
     "no_fuse_whole_repo_tokens": 1241071,
     "recall": 1.0,
     "recall_by_construction": false
@@ -2412,7 +2412,7 @@
     "truth": 25,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23898,
+    "input_tokens": 23912,
     "no_fuse_whole_repo_tokens": 1215918,
     "recall": 0.04,
     "recall_by_construction": false
@@ -2451,7 +2451,7 @@
     "truth": 25,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 47611,
+    "input_tokens": 47554,
     "no_fuse_whole_repo_tokens": 1215918,
     "recall": 0.12,
     "recall_by_construction": false
@@ -2490,7 +2490,7 @@
     "truth": 24,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9240,
+    "input_tokens": 9241,
     "no_fuse_whole_repo_tokens": 1216337,
     "recall": 0.0,
     "recall_by_construction": false
@@ -2568,7 +2568,7 @@
     "truth": 24,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 47357,
+    "input_tokens": 47458,
     "no_fuse_whole_repo_tokens": 1216337,
     "recall": 0.042,
     "recall_by_construction": false
@@ -2607,7 +2607,7 @@
     "truth": 23,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9393,
+    "input_tokens": 9378,
     "no_fuse_whole_repo_tokens": 1089101,
     "recall": 0.0,
     "recall_by_construction": false
@@ -2646,9 +2646,9 @@
     "truth": 23,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 23119,
+    "input_tokens": 23293,
     "no_fuse_whole_repo_tokens": 1089101,
-    "recall": 0.0,
+    "recall": 0.043,
     "recall_by_construction": false
   },
   {
@@ -2685,9 +2685,9 @@
     "truth": 23,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 47314,
+    "input_tokens": 47675,
     "no_fuse_whole_repo_tokens": 1089101,
-    "recall": 0.13,
+    "recall": 0.174,
     "recall_by_construction": false
   },
   {
@@ -2724,87 +2724,87 @@
     "truth": 9,
     "round_trips": 1,
     "round_trips_is_lower_bound": false,
-    "input_tokens": 9147,
-    "no_fuse_whole_repo_tokens": 1089035,
-    "recall": 0.0,
-    "recall_by_construction": false
-  },
-  {
-    "repo": "NewtonsoftJson",
-    "pr": 1131,
-    "arm": "no-fuse",
-    "budget": 25000,
-    "truth": 9,
-    "round_trips": 9,
-    "round_trips_is_lower_bound": true,
-    "input_tokens": 54267,
-    "no_fuse_whole_repo_tokens": 1089035,
-    "recall": 1.0,
-    "recall_by_construction": true
-  },
-  {
-    "repo": "NewtonsoftJson",
-    "pr": 1131,
-    "arm": "repomix",
-    "budget": 25000,
-    "truth": 9,
-    "round_trips": 1,
-    "round_trips_is_lower_bound": false,
-    "input_tokens": 1125720,
-    "no_fuse_whole_repo_tokens": 1089035,
-    "recall": 1.0,
-    "recall_by_construction": true
-  },
-  {
-    "repo": "NewtonsoftJson",
-    "pr": 1131,
-    "arm": "fuse",
-    "budget": 25000,
-    "truth": 9,
-    "round_trips": 1,
-    "round_trips_is_lower_bound": false,
-    "input_tokens": 23104,
-    "no_fuse_whole_repo_tokens": 1089035,
-    "recall": 0.0,
-    "recall_by_construction": false
-  },
-  {
-    "repo": "NewtonsoftJson",
-    "pr": 1131,
-    "arm": "no-fuse",
-    "budget": 50000,
-    "truth": 9,
-    "round_trips": 9,
-    "round_trips_is_lower_bound": true,
-    "input_tokens": 54267,
-    "no_fuse_whole_repo_tokens": 1089035,
-    "recall": 1.0,
-    "recall_by_construction": true
-  },
-  {
-    "repo": "NewtonsoftJson",
-    "pr": 1131,
-    "arm": "repomix",
-    "budget": 50000,
-    "truth": 9,
-    "round_trips": 1,
-    "round_trips_is_lower_bound": false,
-    "input_tokens": 1125720,
-    "no_fuse_whole_repo_tokens": 1089035,
-    "recall": 1.0,
-    "recall_by_construction": true
-  },
-  {
-    "repo": "NewtonsoftJson",
-    "pr": 1131,
-    "arm": "fuse",
-    "budget": 50000,
-    "truth": 9,
-    "round_trips": 1,
-    "round_trips_is_lower_bound": false,
-    "input_tokens": 47410,
+    "input_tokens": 8999,
     "no_fuse_whole_repo_tokens": 1089035,
     "recall": 0.111,
+    "recall_by_construction": false
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1131,
+    "arm": "no-fuse",
+    "budget": 25000,
+    "truth": 9,
+    "round_trips": 9,
+    "round_trips_is_lower_bound": true,
+    "input_tokens": 54267,
+    "no_fuse_whole_repo_tokens": 1089035,
+    "recall": 1.0,
+    "recall_by_construction": true
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1131,
+    "arm": "repomix",
+    "budget": 25000,
+    "truth": 9,
+    "round_trips": 1,
+    "round_trips_is_lower_bound": false,
+    "input_tokens": 1125720,
+    "no_fuse_whole_repo_tokens": 1089035,
+    "recall": 1.0,
+    "recall_by_construction": true
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1131,
+    "arm": "fuse",
+    "budget": 25000,
+    "truth": 9,
+    "round_trips": 1,
+    "round_trips_is_lower_bound": false,
+    "input_tokens": 23145,
+    "no_fuse_whole_repo_tokens": 1089035,
+    "recall": 0.111,
+    "recall_by_construction": false
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1131,
+    "arm": "no-fuse",
+    "budget": 50000,
+    "truth": 9,
+    "round_trips": 9,
+    "round_trips_is_lower_bound": true,
+    "input_tokens": 54267,
+    "no_fuse_whole_repo_tokens": 1089035,
+    "recall": 1.0,
+    "recall_by_construction": true
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1131,
+    "arm": "repomix",
+    "budget": 50000,
+    "truth": 9,
+    "round_trips": 1,
+    "round_trips_is_lower_bound": false,
+    "input_tokens": 1125720,
+    "no_fuse_whole_repo_tokens": 1089035,
+    "recall": 1.0,
+    "recall_by_construction": true
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1131,
+    "arm": "fuse",
+    "budget": 50000,
+    "truth": 9,
+    "round_trips": 1,
+    "round_trips_is_lower_bound": false,
+    "input_tokens": 47514,
+    "no_fuse_whole_repo_tokens": 1089035,
+    "recall": 0.222,
     "recall_by_construction": false
   }
 ]

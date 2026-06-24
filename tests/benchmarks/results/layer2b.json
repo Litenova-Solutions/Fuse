@@ -5,7 +5,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18630
+    "tokens": 19099
   },
   {
     "repo": "MediatR",
@@ -29,7 +29,7 @@
     "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 18994
+    "tokens": 19275
   },
   {
     "repo": "MediatR",
@@ -53,7 +53,7 @@
     "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19500
+    "tokens": 19283
   },
   {
     "repo": "MediatR",
@@ -125,7 +125,7 @@
     "answer": "src/FluentValidation/Validators/EmailValidator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 19213
+    "tokens": 19512
   },
   {
     "repo": "FluentValidation",
@@ -149,7 +149,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18888
+    "tokens": 18992
   },
   {
     "repo": "AutoMapper",
@@ -173,7 +173,7 @@
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 18885
+    "tokens": 19011
   },
   {
     "repo": "AutoMapper",
@@ -221,7 +221,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19471
+    "tokens": 19349
   },
   {
     "repo": "NewtonsoftJson",
@@ -245,7 +245,7 @@
     "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 19427
+    "tokens": 19448
   },
   {
     "repo": "NewtonsoftJson",

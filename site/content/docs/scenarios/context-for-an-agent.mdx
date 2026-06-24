@@ -13,7 +13,7 @@ acquired a task's context in about 40,000 tokens against roughly 512,000 for a g
 packer dump at the same single call, while a blind agent must read each needed file at
 least once (a lower bound of about six round-trips over the 24 pull requests tested).
 Read that token number with its recall: one scoped query call reaches 51 percent of
-the changed files, and the change-scoping mode reaches 88 percent when a git base is
+the changed files, and the change-scoping mode reaches 87 percent when a git base is
 available.
 
 ## The Sequence

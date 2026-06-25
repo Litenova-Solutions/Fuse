@@ -84,7 +84,12 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
       off). Build, typecheck, lint green.
 - [x] Hover provider: hovering a `.cs` file shows a Fuse card (token cost, centrality) with a "Focus here"
       action link, reading the same graph metrics as the lens. Build, typecheck, lint green.
-- [ ] Explainer panel (fuse/explain) over the same client; optional churn lens.
+- [x] Explainer panel: "Fuse: Explain Scope" calls fuse/explain and shows each planned file with its role,
+      tier, and score in an Explain tree, so an agent or developer sees why a file is in and at what fidelity
+      before fetching. Build, typecheck, lint green; VSIX repackages (230.74 KB).
+
+Phase 5 is complete (scoping commands, scope-result panel, token lens, hover, explainer panel). The optional
+git-churn lens is the only remaining nice-to-have.
 
 ## Phase 6: packaging and distribution
 

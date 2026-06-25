@@ -40,6 +40,10 @@
         {
           "id": "fuse.scopeResult",
           "name": "Scope Result"
+        },
+        {
+          "id": "fuse.explainer",
+          "name": "Explain"
         }
       ]
     },
@@ -67,6 +71,10 @@
       {
         "command": "fuse.showGraph",
         "title": "Fuse: Show Dependency Graph"
+      },
+      {
+        "command": "fuse.explainScope",
+        "title": "Fuse: Explain Scope"
       }
     ],
     "menus": {

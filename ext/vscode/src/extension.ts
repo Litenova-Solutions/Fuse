@@ -6,6 +6,7 @@ import { FuseHoverProvider } from "./hover/fuseHover";
 import { FileMetric, TokenLensProvider } from "./lenses/tokenLens";
 import { FuseStatusBar } from "./statusBar";
 import { Hotspot, HotspotsProvider } from "./views/hotspots";
+import { ExplainerProvider } from "./views/explainer";
 import { IndexStatusProvider, StatusRow } from "./views/indexStatus";
 import { ScopeResultProvider } from "./views/scopeResult";
 
@@ -28,6 +29,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const indexStatus = new IndexStatusProvider();
   const hotspots = new HotspotsProvider(root);
   const scopeResult = new ScopeResultProvider(root);
+  const explainer = new ExplainerProvider(root);
   const secrets = new SecretDiagnostics(root);
   const graphView = new GraphView(context, root);
   const relativePathOf = (uri: vscode.Uri): string => vscode.workspace.asRelativePath(uri, false);
@@ -41,6 +43,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("fuse.indexStatus", indexStatus),
     vscode.window.registerTreeDataProvider("fuse.hotspots", hotspots),
     vscode.window.registerTreeDataProvider("fuse.scopeResult", scopeResult),
+    vscode.window.registerTreeDataProvider("fuse.explainer", explainer),
     vscode.languages.registerCodeLensProvider({ scheme: "file", pattern: "**/*.cs" }, tokenLens),
     vscode.languages.registerHoverProvider({ scheme: "file", pattern: "**/*.cs" }, hover),
   );
@@ -106,6 +109,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await graphView.show(client);
       } catch (err) {
         output.appendLine(`Fuse graph failed: ${String(err)}`);
+        void vscode.window.showWarningMessage(`Fuse: ${String(err)}`);
+      }
+    }),
+    vscode.commands.registerCommand("fuse.explainScope", async () => {
+      if (!supervisor) {
+        return;
+      }
+      const query = await vscode.window.showInputBox({ prompt: "Fuse: explain the scope for which query?", placeHolder: "what to find" });
+      if (!query) {
+        return;
+      }
+      try {
+        const client = supervisor.connected ?? (await supervisor.start());
+        const result = await client.explain(root, "search", null, query, null);
+        explainer.update(result.mode, result.files);
+      } catch (err) {
+        output.appendLine(`Fuse explain failed: ${String(err)}`);
         void vscode.window.showWarningMessage(`Fuse: ${String(err)}`);
       }
     }),

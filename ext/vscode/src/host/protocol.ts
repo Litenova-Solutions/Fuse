@@ -75,9 +75,17 @@ export interface SecretDiagnosticDto {
   endColumn: number;
 }
 
-/** Result of `fuse/diagnostics`: context diagnostics for the repository (secrets, with hotspots/gaps to come). */
+/** One token hotspot: a budget-heavy file and its estimated token cost. */
+export interface HotspotDiagnosticDto {
+  path: string;
+  tokenCost: number;
+}
+
+/** Result of `fuse/diagnostics`: secrets (with ranges), token hotspots, and unconnected-file graph gaps. */
 export interface DiagnosticsDto {
   secrets: SecretDiagnosticDto[];
+  hotspots: HotspotDiagnosticDto[];
+  graphGaps: string[];
 }
 
 /** One planned file in an explain result: why it was included (role), at what fidelity (tier), and its score. */

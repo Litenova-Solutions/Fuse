@@ -21,6 +21,7 @@ namespace Fuse.Cli.Rpc;
 [JsonSerializable(typeof(ScopeFileDto))]
 [JsonSerializable(typeof(DiagnosticsDto))]
 [JsonSerializable(typeof(SecretDiagnosticDto))]
+[JsonSerializable(typeof(HotspotDiagnosticDto))]
 [JsonSerializable(typeof(ExplainResultDto))]
 [JsonSerializable(typeof(ExplainFileDto))]
 public sealed partial class FuseHostJsonContext : JsonSerializerContext;

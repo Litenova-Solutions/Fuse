@@ -18,6 +18,13 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   and the redaction output and counts are byte-identical (all redaction tests unchanged). Each host method is
   integration-tested over the real engine; the wire DTOs are mirrored in `protocol.ts` and pinned by contract
   tests.
+- **Token-hotspot and graph-gap diagnostics on `fuse/diagnostics`, and a scope-payload concurrency fix.**
+  `fuse/diagnostics` now also returns the most token-expensive files (hotspots) and the files the dependency
+  graph leaves unconnected (no inbound or outbound type reference, often dead or reflection-only code), which
+  the extension surfaces as informational and hint diagnostics alongside the secret warnings. The host
+  concurrency test surfaced a real bug: `fuse/scope` wrote its payload to a file named only by root and mode,
+  so two concurrent same-mode scopes collided on one file; payload file names are now unique per call. Both
+  fixes are covered by host tests.
 - **`fuse/explain` and a read-only `FusionResult.Plan` projection.** The host now serves `fuse/explain`, which
   returns the scoped result's context plan (each planned file's role, reduction tier, and relevance score)
   without writing a payload, so the extension can show why a file is included and at what fidelity before

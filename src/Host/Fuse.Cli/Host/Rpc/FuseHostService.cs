@@ -284,11 +284,13 @@ public sealed class FuseHostService
         string? payloadPath = null;
         if (!string.IsNullOrEmpty(result.InMemoryContent))
         {
-            // Write the payload to a per-root temp file the extension opens read-only. Reused across scopes so
-            // the host does not accumulate temp files; the extension reads it immediately after the response.
+            // Write the payload to a temp file the extension opens read-only. The name is unique per call (a
+            // GUID) so concurrent scopes on the same root and mode do not contend on one file; the extension
+            // reads it immediately after the response. The OS temp directory reclaims these.
             var dir = Path.Combine(Path.GetTempPath(), "fuse-host-payloads");
             Directory.CreateDirectory(dir);
-            payloadPath = Path.Combine(dir, HostEndpoint.PipeName(resolved) + "-" + normalizedMode + ".fuse.xml");
+            payloadPath = Path.Combine(
+                dir, $"{HostEndpoint.PipeName(resolved)}-{normalizedMode}-{Guid.NewGuid():N}.fuse.xml");
             await File.WriteAllTextAsync(payloadPath, result.InMemoryContent);
         }
 
@@ -314,7 +316,7 @@ public sealed class FuseHostService
     {
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
-            return new DiagnosticsDto([]);
+            return new DiagnosticsDto([], [], []);
 
         var request = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved).Build();
         var collection = await _collectionPipeline.CollectAsync(request.Collection);
@@ -340,8 +342,32 @@ public sealed class FuseHostService
             }
         }
 
-        _logger.LogInformation("Diagnostics on {Root}: {Secrets} secret findings.", resolved, secrets.Count);
-        return new DiagnosticsDto(secrets);
+        // Token hotspots and graph gaps from the dependency graph: hotspots are the most token-expensive files
+        // (the budget pressure), gaps are files with no inbound or outbound type reference (often dead or
+        // reflection-only code the syntax graph cannot see).
+        var graph = await _graphBuilder.BuildAsync(collection.Files, contentProvider, _dependencyExtractors, _typeNameLocators);
+        var hotspots = collection.Files
+            .Select(f => new HotspotDiagnosticDto(f.NormalizedRelativePath, (int)(f.FileInfo.Length / 4)))
+            .OrderByDescending(h => h.TokenCost)
+            .Take(20)
+            .ToList();
+
+        var connected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (from, targets) in graph.FileReferences)
+        {
+            if (targets.Count > 0)
+                connected.Add(from);
+            foreach (var to in targets)
+                connected.Add(to);
+        }
+        var graphGaps = graph.DeclaredTypes.Keys
+            .Where(p => !connected.Contains(p))
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _logger.LogInformation("Diagnostics on {Root}: {Secrets} secrets, {Hotspots} hotspots, {Gaps} gaps.",
+            resolved, secrets.Count, hotspots.Count, graphGaps.Count);
+        return new DiagnosticsDto(secrets, hotspots, graphGaps);
     }
 
     // The character offset at which each line starts, so an offset maps to a line by binary search.

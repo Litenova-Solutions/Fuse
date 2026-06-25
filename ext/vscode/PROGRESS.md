@@ -112,8 +112,12 @@ git-churn lens is the only remaining nice-to-have.
       produces `fuse-vscode-3.0.0.vsix` at 229.92 KB. A `.vscodeignore` ships only `dist/`, `media/`, the
       manifest, and the README; a README documents the host model and the offline story. Size recorded in
       DECISIONS.md.
-- [ ] Bundle a self-contained host per RID via platform-specific extensions (or download-on-first-run), and the
-      per-RID host-publish CI matrix. The base VSIX relies on the `fuse` global tool / `fuse.host.path` for now.
+- [x] Per-RID host-publish CI matrix: publish profiles now exist for all six RIDs (win-x64, win-arm64,
+      linux-x64, linux-arm64, osx-x64, osx-arm64; the three arm64 ones added), and the CI runtime job publishes
+      each on its matching OS (native-arch RIDs also smoke-test; cross-arch ones publish only). win-arm64
+      cross-publish verified locally.
+- [ ] Bundle those per-RID hosts into the VSIX via platform-specific extensions (or download-on-first-run).
+      The base VSIX relies on the `fuse` global tool / `fuse.host.path` for now; this is the last packaging step.
 
 ## Notes and deviations
 

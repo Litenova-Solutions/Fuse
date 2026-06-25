@@ -6,6 +6,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Per-RID host publish profiles and CI matrix.** Publish profiles now cover all six runtime identifiers
+  (win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64); the CI runtime job publishes each on its
+  matching OS, smoke-testing the native-arch builds and publish-only for the cross-arch ones. This produces the
+  per-platform self-contained hosts the VS Code extension will bundle. (win-arm64 cross-publish verified.)
 - **Host engine-data RPC methods and a read-only secret-span API (extension Phase 1, continued).** The host now
   serves `fuse/index` (warms the shared engine, returns state and file count), `fuse/scope` (runs a
   focus/search/changes fusion through the shared orchestrator, returns the emitted file plan with token costs,

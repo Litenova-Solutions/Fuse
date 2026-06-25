@@ -111,6 +111,44 @@ public sealed class GitStatsProviderTests
         }
     }
 
+    [Fact]
+    public async Task GetStatsAsync_ManyTrackedPaths_ReturnsStatsForEach()
+    {
+        var repoDirectory = Path.Combine(Path.GetTempPath(), "fuse-git-stats-many", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(repoDirectory);
+        try
+        {
+            InitializeGitRepo(repoDirectory);
+
+            var paths = new List<string>();
+            for (var i = 0; i < 30; i++)
+            {
+                var fileName = $"File{i:D3}.cs";
+                paths.Add(fileName);
+                File.WriteAllText(Path.Combine(repoDirectory, fileName), $"public class File{i} {{ }}");
+            }
+
+            RunGit(repoDirectory, "add", ".");
+            RunGit(repoDirectory, "commit", "-m", "seed many files");
+
+            var provider = new GitStatsProvider();
+            var result = await provider.GetStatsAsync(repoDirectory, paths);
+
+            Assert.True(result.IsAvailable);
+            Assert.Equal(paths.Count, result.StatsByPath.Count);
+            foreach (var path in paths)
+            {
+                Assert.True(result.StatsByPath.ContainsKey(path));
+                Assert.True(result.StatsByPath[path].CommitCount >= 1);
+                Assert.NotNull(result.StatsByPath[path].LastModified);
+            }
+        }
+        finally
+        {
+            TryDeleteDirectory(repoDirectory);
+        }
+    }
+
     private static void InitializeGitRepo(string repoDirectory)
     {
         RunGit(repoDirectory, "init");

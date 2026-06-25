@@ -91,6 +91,9 @@ public sealed class FileCollectionPipeline
 
         var rootDirectory = Path.GetFullPath(options.SourceDirectory);
 
+        // Skip file reparse points (symlinks) during enumeration; one extra stat per candidate. Directory
+        // junctions are not reparse points on the files reached through them, so paths under a junctioned
+        // directory can still pass IsPathUnderRoot. That partial mitigation is accepted for the hot path.
         var filePaths = _fileSystem
             .EnumerateFiles(options.SourceDirectory, "*.*", searchOption)
             .Select(Path.GetFullPath)
@@ -172,6 +175,7 @@ public sealed class FileCollectionPipeline
     }
 
     // Directory enumeration can follow junctions and symlinks; skip reparse-point entries themselves.
+    // See the comment on the enumeration query for the junction limitation.
     private static bool HasReparsePointAttribute(FileInfo fileInfo) =>
         fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
 }

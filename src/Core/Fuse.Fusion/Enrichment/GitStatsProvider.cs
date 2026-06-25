@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using Fuse.Emission.Models;
 
 namespace Fuse.Fusion.Enrichment;
@@ -8,14 +9,18 @@ namespace Fuse.Fusion.Enrichment;
 ///     Collects per-file git churn and last-modified data via git subprocess calls.
 /// </summary>
 /// <remarks>
-///     Issues two batched <c>git log</c> calls for the full path set (one within the lookback window for churn
-///     counts, one for all-time last-modified dates) instead of per-file subprocess fan-out. Enrichment is
-///     best-effort: a missing git executable, a non-repository directory, or any failing git command yields an
-///     unavailable result or zeroed values rather than throwing.
+///     Issues two batched <c>git log</c> passes for the path set (one within the lookback window for churn counts,
+///     one for all-time last-modified dates) instead of per-file subprocess fan-out. Paths are chunked so the
+///     quoted pathspec list stays under the OS command-line limit. Enrichment is best-effort: a missing git
+///     executable, a non-repository directory, or any failing git command yields an unavailable result or zeroed
+///     values rather than throwing.
 /// </remarks>
 /// <seealso cref="IGitStatsProvider" />
 public sealed class GitStatsProvider : IGitStatsProvider
 {
+    // Leave headroom under the Windows CreateProcess limit (~8191 on older builds, ~32 KB on recent ones).
+    private const int MaxPathArgumentChars = 7000;
+
     /// <summary>
     ///     Default lookback window for commit churn counts.
     /// </summary>
@@ -37,34 +42,31 @@ public sealed class GitStatsProvider : IGitStatsProvider
         if (!await IsInsideWorkTreeAsync(gitPath, sourceDirectory, cancellationToken))
             return Unavailable();
 
-        var pathArguments = BuildPathArguments(relativePaths);
+        var pathBatches = BuildPathArgumentBatches(relativePaths);
         var sinceArg = $"--since=\"{DefaultLookback.TotalDays:F0} days ago\"";
         var pathLookup = BuildPathLookup(relativePaths);
 
         var commitCounts = InitializeCounts(relativePaths);
         var lastModified = InitializeLastModified(relativePaths);
 
-        var churnLogTask = RunGitAsync(
+        var churnLogTask = RunBatchedGitLogAsync(
             gitPath,
             sourceDirectory,
-            $"log {sinceArg} --name-only --format=%cI HEAD -- {pathArguments}",
+            sinceArg,
+            pathBatches,
             cancellationToken);
 
-        var lastModifiedLogTask = RunGitAsync(
+        var lastModifiedLogTask = RunBatchedGitLogAsync(
             gitPath,
             sourceDirectory,
-            $"log --name-only --format=%cI HEAD -- {pathArguments}",
+            sinceArg: null,
+            pathBatches,
             cancellationToken);
 
         await Task.WhenAll(churnLogTask, lastModifiedLogTask);
 
-        var churnLog = await churnLogTask;
-        if (churnLog.ExitCode == 0)
-            ApplyCommitCountsFromLog(churnLog.Stdout, pathLookup, commitCounts);
-
-        var lastModifiedLog = await lastModifiedLogTask;
-        if (lastModifiedLog.ExitCode == 0)
-            ApplyLastModifiedFromLog(lastModifiedLog.Stdout, pathLookup, lastModified);
+        ApplyCommitCountsFromLog(await churnLogTask, pathLookup, commitCounts);
+        ApplyLastModifiedFromLog(await lastModifiedLogTask, pathLookup, lastModified);
 
         var stats = new Dictionary<string, GitFileStats>(StringComparer.OrdinalIgnoreCase);
         foreach (var relativePath in relativePaths)
@@ -109,18 +111,62 @@ public sealed class GitStatsProvider : IGitStatsProvider
         return lookup;
     }
 
-    private static string BuildPathArguments(IReadOnlyList<string> relativePaths)
+    private static IReadOnlyList<string> BuildPathArgumentBatches(IReadOnlyList<string> relativePaths)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var quoted = new List<string>(relativePaths.Count);
+        var batches = new List<string>();
+        var current = new StringBuilder();
 
         foreach (var path in relativePaths)
         {
-            if (seen.Add(path))
-                quoted.Add(QuoteGitPath(path));
+            if (!seen.Add(path))
+                continue;
+
+            var quoted = QuoteGitPath(path);
+            var addition = current.Length == 0 ? quoted : " " + quoted;
+            if (current.Length > 0 && current.Length + addition.Length > MaxPathArgumentChars)
+            {
+                batches.Add(current.ToString());
+                current.Clear();
+                addition = quoted;
+            }
+
+            current.Append(addition);
         }
 
-        return string.Join(' ', quoted);
+        if (current.Length > 0)
+            batches.Add(current.ToString());
+
+        return batches;
+    }
+
+    private static async Task<string> RunBatchedGitLogAsync(
+        string gitPath,
+        string workingDirectory,
+        string? sinceArg,
+        IReadOnlyList<string> pathBatches,
+        CancellationToken cancellationToken)
+    {
+        if (pathBatches.Count == 0)
+            return string.Empty;
+
+        var combined = new StringBuilder();
+        foreach (var pathArguments in pathBatches)
+        {
+            var arguments = new StringBuilder("-c core.quotepath=false log ");
+            if (!string.IsNullOrEmpty(sinceArg))
+                arguments.Append(sinceArg).Append(' ');
+
+            arguments.Append("--name-only --format=%cI HEAD -- ").Append(pathArguments);
+
+            var result = await RunGitAsync(gitPath, workingDirectory, arguments.ToString(), cancellationToken);
+            if (result.ExitCode != 0)
+                continue;
+
+            combined.Append(result.Stdout);
+        }
+
+        return combined.ToString();
     }
 
     private static void ApplyCommitCountsFromLog(
@@ -177,6 +223,8 @@ public sealed class GitStatsProvider : IGitStatsProvider
         }
     }
 
+    // Commit dates are emitted via --format=%cI; path lines follow. A path that parses as ISO-8601 (for example
+    // a directory named 2024-01-01) would be misclassified; that edge case is negligible for typical repos.
     private static bool IsCommitDateLine(string line) => TryParseCommitDate(line, out _);
 
     private static bool TryParseCommitDate(string line, out DateTimeOffset commitDate) =>

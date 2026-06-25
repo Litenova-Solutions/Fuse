@@ -1,6 +1,6 @@
 {
   "_comment": "Canonical camelCase wire shapes for the host RPC DTOs. The .NET FuseHostContractTests pin that the source-generated serializer emits exactly these keys; the TypeScript contract test (contract.test.mjs) pins that protocol.ts parses them. Keep this file in lockstep with both sides: a DTO change must update the .NET DTO, protocol.ts, and this fixture together.",
-  "handshake": { "hostVersion": "3.0.0", "protocolVersion": 1 },
+  "handshake": { "hostVersion": "3.0.0", "protocolVersion": 2, "sessionToken": "abc123token" },
   "stats": { "hostVersion": "3.0.0", "processId": 4242, "uptimeMs": 1500, "workingSetBytes": 123456789 },
   "graph": {
     "nodes": [{ "path": "a/B.cs", "declaredTypes": ["B"], "centrality": 0.5, "tokenCost": 1200, "role": "Seed" }],
@@ -23,5 +23,15 @@
   "explain": {
     "mode": "focus",
     "files": [{ "path": "a/B.cs", "role": "Seed", "tier": "Standard", "score": 3.14 }]
+  },
+  "rpcParams": {
+    "fuse/handshake": [],
+    "fuse/stats": ["sessionToken"],
+    "fuse/index": ["sessionToken", "root"],
+    "fuse/graph": ["sessionToken", "root", "detail", "scopeMode", "seed", "query", "since", "directory"],
+    "fuse/scope": ["sessionToken", "root", "mode", "seed", "query", "since", "maxTokens"],
+    "fuse/diagnostics": ["sessionToken", "root"],
+    "fuse/explain": ["sessionToken", "root", "mode", "seed", "query", "since"],
+    "fuse/shutdown": ["sessionToken"]
   }
 }

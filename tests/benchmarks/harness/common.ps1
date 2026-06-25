@@ -125,3 +125,58 @@ function New-CsMirror($repoPath, $name) {
     }
     return $mirror
 }
+
+# Run the `claude` CLI headlessly with a wall-clock backstop and a clean process-TREE teardown. Shared by the
+# model-dependent layers (Layer 5 agent, Layer 6 peers) and the Layer 5 spike. Returns $true if claude exited
+# on its own within $timeoutSec, $false if it had to be killed (wedged or timed out); stdout is written to
+# $outFile (stderr to "$outFile.err").
+#
+# Why .NET Process and not Start-Process: Start-Process -ArgumentList re-quotes an array and splits a multi-word
+# argument (it truncated the -p prompt to its first word in testing). ProcessStartInfo.ArgumentList builds the
+# command line with correct per-argument quoting. Why Kill($true): claude spawns the MCP server (fuse mcp serve
+# / codegraph / serena) as a child; killing claude alone would orphan it, and a live orphaned server holds the
+# worktree's SQLite WAL lock so the next cold run blocks on it -- the exact leak that wedged the prior run.
+# Stdin is redirected and closed so `claude -p` does not stall waiting on inherited console stdin.
+function Invoke-ClaudeBounded([string[]]$argv, [string]$outFile, [string]$workingDir, [int]$timeoutSec) {
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = 'claude'
+    foreach ($a in $argv) { [void]$psi.ArgumentList.Add($a) }
+    $psi.WorkingDirectory = $workingDir
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.RedirectStandardInput = $true
+
+    $proc = [System.Diagnostics.Process]::new()
+    $proc.StartInfo = $psi
+    $outSb = [System.Text.StringBuilder]::new()
+    $errSb = [System.Text.StringBuilder]::new()
+    # Async reads so a large transcript cannot fill the OS pipe buffer and deadlock while we WaitForExit.
+    $outEvt = Register-ObjectEvent -InputObject $proc -EventName OutputDataReceived -MessageData $outSb -Action {
+        if ($null -ne $EventArgs.Data) { [void]$Event.MessageData.AppendLine($EventArgs.Data) } }
+    $errEvt = Register-ObjectEvent -InputObject $proc -EventName ErrorDataReceived -MessageData $errSb -Action {
+        if ($null -ne $EventArgs.Data) { [void]$Event.MessageData.AppendLine($EventArgs.Data) } }
+    try {
+        [void]$proc.Start()
+        $proc.BeginOutputReadLine()
+        $proc.BeginErrorReadLine()
+        $proc.StandardInput.Close()   # EOF on stdin so claude -p proceeds immediately
+
+        $exited = $proc.WaitForExit($timeoutSec * 1000)
+        if (-not $exited) {
+            Write-Warning ("    claude exceeded {0}s wall clock; killing tree (pid {1}) and omitting." -f $timeoutSec, $proc.Id)
+            try { $proc.Kill($true) } catch { }
+            [void]$proc.WaitForExit(5000)
+        } else {
+            [void]$proc.WaitForExit()  # flush any async output buffered after the timed wait returned
+        }
+    }
+    finally {
+        Unregister-Event -SourceIdentifier $outEvt.Name -ErrorAction SilentlyContinue
+        Unregister-Event -SourceIdentifier $errEvt.Name -ErrorAction SilentlyContinue
+    }
+    $outSb.ToString() | Set-Content $outFile
+    if ($errSb.Length) { $errSb.ToString() | Set-Content "$outFile.err" }
+    $proc.Dispose()
+    return $exited
+}

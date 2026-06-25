@@ -4,6 +4,16 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+### Changed
+
+- **Parallel query-path document indexing (Q1).** The query scoping pipeline now reads each file, derives its
+  declared symbols, and extracts its comment field in parallel rather than in a sequential loop, since the files
+  are independent and the analysis index and content provider already tolerate the concurrent access the
+  dependency-graph build performs. The per-file results are folded into the index and its process-lifetime cache
+  signature in the original file order, so the built index and its cache key are byte-identical to the
+  sequential build: a latency optimization, not a behavior change. All scoping unit tests are unchanged and the
+  B9 per-repo recall gate passes (no per-repo regression at the 50k budget).
+
 ### Added
 
 - **Per-RID host publish profiles and CI matrix.** Publish profiles now cover all six runtime identifiers

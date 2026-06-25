@@ -65,7 +65,11 @@ param(
     [int]$Pr = 0,
     [ValidateSet('native','fuse')]
     [string]$Arm = 'native',
-    [switch]$KeepWorktree
+    [switch]$KeepWorktree,
+    # Per MCP tool-call timeout (s). The CLI default (~28h) lets a wedged fuse mcp serve hang the spike forever.
+    [int]$McpToolTimeoutSec = 120,
+    # Wall-clock backstop (s) for the whole claude run; on overrun the process tree is killed (no orphaned server).
+    [int]$RolloutTimeoutSec = 600
 )
 
 . "$PSScriptRoot/common.ps1"
@@ -74,6 +78,10 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     Write-Warning "claude CLI not found; Layer 5 spike cannot run. (omit, never stub)"
     return
 }
+
+# Bound MCP tool calls and server startup so a hung server cannot wedge the spike. Units are milliseconds.
+$env:MCP_TOOL_TIMEOUT = "$($McpToolTimeoutSec * 1000)"
+$env:MCP_TIMEOUT = '30000'
 
 $prs = Get-Content (Join-Path $BenchRoot 'prs.json') -Raw | ConvertFrom-Json
 if ($Pr -gt 0) {
@@ -112,7 +120,7 @@ if ($Arm -eq 'native') {
 } elseif ($Arm -eq 'fuse') {
     $cfg = Join-Path $ResultsDir ".wt5spike/fuse.mcp.json"
     $fuseAbs = (Resolve-Path $Fuse).Path -replace '\\','/'
-    @{ mcpServers = @{ fuse = @{ command = $fuseAbs; args = @('mcp','serve') } } } |
+    @{ mcpServers = @{ fuse = @{ command = $fuseAbs; args = @('mcp','serve'); timeout = ($McpToolTimeoutSec * 1000) } } } |
         ConvertTo-Json -Depth 5 | Set-Content $cfg
     $mcpConfigArg = @('--mcp-config', $cfg, '--strict-mcp-config')
     # Allow the fuse_* tools plus a minimal Read to inspect what Fuse returned.
@@ -122,14 +130,16 @@ if ($Arm -eq 'native') {
 
 $streamFile = Join-Path $ResultsDir ".wt5spike/$($Repo)_$($prItem.pr).$Arm.jsonl"
 
-Push-Location $wtFull
-try {
-    $argv = @('-p', $prompt, '--output-format','stream-json','--verbose',
-              '--permission-mode','default','--allowedTools') + $allowed + $mcpConfigArg
-    Write-Host "claude $($argv -join ' ')" -ForegroundColor DarkGray
-    & claude @argv 2>$null | Set-Content $streamFile
-} finally {
-    Pop-Location
+$argv = @('-p', $prompt, '--output-format','stream-json','--verbose',
+          '--permission-mode','default','--allowedTools') + $allowed + $mcpConfigArg
+Write-Host "claude $($argv -join ' ')" -ForegroundColor DarkGray
+# Bounded launch (worktree as cwd) via the shared helper: a hung MCP call is cut by MCP_TOOL_TIMEOUT, and a
+# wedged claude is cut by the wall-clock backstop, which kills the tree so the fuse mcp serve child cannot orphan.
+$completed = Invoke-ClaudeBounded $argv $streamFile $wtFull $RolloutTimeoutSec
+if (-not $completed) {
+    Write-Warning "claude wedged past ${RolloutTimeoutSec}s; tree killed. Spike inconclusive."
+    if (-not $KeepWorktree) { git -C $repoPath worktree remove --force $wt 2>$null; Remove-Item -Recurse -Force $wt -ErrorAction SilentlyContinue }
+    return
 }
 
 # --- Parse the stream ---

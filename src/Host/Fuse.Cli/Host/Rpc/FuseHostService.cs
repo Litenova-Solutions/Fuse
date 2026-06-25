@@ -157,6 +157,14 @@ public sealed class FuseHostService
     ///     <c>Files</c> for a node per file, or <c>Directories</c> for directory supernodes (file nodes folded
     ///     into their directory and edges aggregated), so a large repository does not ship its whole file graph.
     /// </param>
+    /// <param name="scopeMode">
+    ///     Optional scoping mode (<c>focus</c>, <c>search</c>, or <c>changes</c>) to project a subgraph around a
+    ///     seed, query, or change set instead of the whole repository; <c>null</c> projects the full graph.
+    /// </param>
+    /// <param name="seed">The focus seed (a type name, file, or path) when <paramref name="scopeMode" /> is <c>focus</c>.</param>
+    /// <param name="query">The search query when <paramref name="scopeMode" /> is <c>search</c>.</param>
+    /// <param name="since">The Git base ref when <paramref name="scopeMode" /> is <c>changes</c>.</param>
+    /// <param name="directory">Optional subdirectory under <paramref name="root" /> to restrict the projection to.</param>
     /// <returns>The graph nodes and edges at the requested level of detail.</returns>
     /// <remarks>
     ///     The token cost is a cheap size-based estimate (bytes divided by four), sufficient for relative node

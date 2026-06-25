@@ -239,6 +239,53 @@ pwsh -File tests/benchmarks/harness/layer4-scenario.ps1
 
 Results land in `results/layer4-scenario.{json,csv,md}`, one row per pull request, arm, and budget, so the curve and the per-repository view are reconstructable. The Repomix arm needs `npx`; when it is unavailable that arm is omitted (never stubbed), and every Fuse-versus-no-fuse number still stands.
 
+## Layer 5: Agent Context Sufficiency (Fuse VS Bare Tools)
+
+Layer 4 bounds the explore phase structurally: a blind agent must read each needed file at least once. Layer 5 replaces that lower bound with a real agent. The same model drives every arm and only the toolbox changes, so any difference is attributable to the tools, not the model. The layer measures the cost to acquire sufficient context (tool calls and cumulative input tokens across the whole trajectory) and the quality of what was acquired (recall and precision of the gathered file set against the pull request's C# change set, plus a model-scored sufficiency verdict).
+
+This layer is model-dependent and not byte-reproducible. Unlike Layers 1, 2, and 4, the numbers depend on the model, its sampling, and the day; read them as a distribution over rollouts, not a fixed measurement. The honesty contract for this tier pins the model id, the run date, and the rollout count, reports a distribution rather than a point estimate, always reads recall together with tokens, and shows losses and per-repo variance.
+
+The design is four arms under one driver: **native** (filesystem read tools only: Read, Grep, Glob), **fuse** (the `fuse_*` MCP tools), **codegraph** (the CodeGraph MCP tool), and **serena** (the Serena symbol toolkit). This run measured the two arms whose tools are installed in this environment, native and fuse; codegraph and serena are omitted (never stubbed) and remain to be run. The driver is the `claude` CLI in headless mode, pinned to `claude-haiku-4-5-20251001`, run on 2026-06-25, two rollouts per (pull request, arm) over a deterministic 10-PR sample (two PRs per repository). Each rollout is bounded by a per-MCP-call timeout and a wall-clock backstop, so a wedged or slow MCP call cannot stall the layer; a rollout that exceeds the budget is omitted rather than recorded as a zero.
+
+Per arm, median and inter-quartile range over all rollouts:
+
+| Arm | Tool calls (median, IQR) | Cumulative input tokens (median, IQR) | Mean recall | Mean precision | Sufficiency rate |
+|-----|--------------------------|---------------------------------------|------------:|---------------:|-----------------:|
+| native | 12 (6-14) | 440,085 (186,224-539,000) | 46% | 35% | 0.35 |
+| fuse | 12.5 (4.8-16.8) | 324,348 (216,252-564,769) | 46% | 38% | 0.42 |
+
+Both arms reach the same mean recall (46 percent), so this is read as cost-to-sufficiency at equal recall: the fuse arm's median trajectory cost 324,348 input tokens against native's 440,085, with a higher model-scored sufficiency rate (0.42 against 0.35) and slightly higher precision. The inter-quartile ranges are wide, which is the expected model-dependent variance and the reason the layer runs rollouts rather than a single point.
+
+Per repository, the mean hides real wins and losses:
+
+| Repo | Arm | Mean recall | Mean tokens | Rollouts |
+|------|-----|------------:|------------:|---------:|
+| AutoMapper | native | 0% | 360,595 | 4 |
+| AutoMapper | fuse | 0% | 437,592 | 4 |
+| FluentValidation | native | 64% | 492,596 | 4 |
+| FluentValidation | fuse | 56% | 421,003 | 4 |
+| MediatR | native | 79% | 483,873 | 4 |
+| MediatR | fuse | 100% | 424,164 | 4 |
+| NewtonsoftJson | native | 50% | 510,205 | 4 |
+| NewtonsoftJson | fuse | 50% | 398,226 | 4 |
+| Serilog | native | 35% | 197,530 | 4 |
+| Serilog | fuse | 26% | 199,979 | 4 |
+
+Findings, including the losses:
+
+- At equal mean recall, the fuse arm acquired sufficient context at a lower median token cost on this sample. The clearest wins are MediatR (fuse 100 percent recall against native 79 percent, at fewer mean tokens) and Newtonsoft.Json (equal 50 percent recall at about 398,000 tokens against 510,000).
+- Fuse loses on FluentValidation (56 against 64 percent recall) and Serilog (26 against 35 percent). These are reported, not hidden; on a 10-PR, two-rollout sample with a small model, per-repo variance is large.
+- Both AutoMapper pull requests score 0 percent on both arms. Their titles, a CI change and a dependency bump, are unrelated to the C# files the pull request actually changed (licensing and execution code), so the task signal points nowhere near the ground-truth files. This is a property of the sample, not a tool difference, and it drags both arms equally.
+- Sufficiency is a model-scored 0/1 verdict and is labeled as such; the recall and precision against the change set are the objective measures. The driver is Haiku, a small model, so absolute numbers will shift under a larger model. The codegraph and serena head-to-heads, the comparisons that matter most because both advertise large tool-call or token savings, are not yet run.
+
+Reproduce this layer (it requires the `claude` CLI and is not in the default `run-all.ps1` path; if the CLI is absent the layer is skipped, never stubbed):
+
+```bash
+pwsh -File tests/benchmarks/harness/layer5-agent.ps1 -PerRepo 2 -Rollouts 2 -Arms native,fuse
+```
+
+Results land in `results/layer5-agent.{json,csv,md}`, one row per pull request, arm, and rollout, so the distribution and the per-repository view are reconstructable.
+
 ## Retrieval and Output Changes: Before and After
 
 This section records the effect of the retrieval work and the output and trust work against the pinned corpus. All token counts use `o200k_base`. The default and `--level aggressive` keep 99 to 100 percent of public types and methods, so the reduction cut was not bought by dropping API; the skeleton level now runs on the Roslyn extractor and keeps every signature (the move that retired the regex skeleton's Newtonsoft.Json collapse is in the Roslyn structural analysis result below).
@@ -319,7 +366,7 @@ Layer 2 is the honest boundary. Change scoping is reliable because it rests on G
 
 ## Blocked and Out of Scope
 
-- Layer 3, task resolution. A SWE-bench-style harness that drives a programmatic agent across arms and scores patches with a test oracle is not built here. It needs provisioned model credentials and compute, and it is confounded and scaffold-specific. It remains aspirational, as the roadmap states.
+- Task resolution with a test oracle. Agent context *sufficiency* is now measured (Layer 5: did a real agent gather the files the task needs, and at what cost). Full task *resolution*, a SWE-bench-style harness that drives an agent across arms and scores its patch with a test oracle, is still not built here. It needs provisioned model credentials and compute, and it is confounded and scaffold-specific. It remains aspirational, as the roadmap states.
 - Cross-machine timing. Wall-clock and memory were captured on one Windows machine. They are directional. Token counts and fidelity are machine-independent.
 - Tokenizer scope. All counts use `o200k_base`. Absolute counts differ under other encodings; the ratios are what transfer.
 

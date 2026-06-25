@@ -60,8 +60,12 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
 - [x] Secret diagnostics: a dedicated "Fuse: context" `DiagnosticCollection` (never mixed with compiler
       problems) populated from `fuse/diagnostics`, underlining each secret literal at the host-reported range
       with the kind in the message. Refreshed on index/warm. Build, typecheck, and lint green.
-- [ ] Token-hotspot and generated-code diagnostics; refresh on `fuse/invalidated` per changed file (needs the
-      watcher lifecycle).
+- [x] Token-hotspot (Information) and graph-gap (Hint) diagnostics: `fuse/diagnostics` now also returns the
+      most token-expensive files and the files with no dependency edge; the extension surfaces them in the same
+      "Fuse: context" collection. The concurrency test caught and fixed a real bug (concurrent same-mode scopes
+      collided on one payload temp file; payload names are now unique per call). Host and extension gates green.
+- [ ] Generated-code diagnostics and refresh on `fuse/invalidated` per changed file (needs the watcher
+      lifecycle, a host server-push feature).
 
 ## Phase 4: graph webview with level-of-detail
 

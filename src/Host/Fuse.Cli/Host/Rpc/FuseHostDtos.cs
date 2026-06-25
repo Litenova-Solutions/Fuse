@@ -107,11 +107,25 @@ public sealed record SecretDiagnosticDto(
     int EndColumn);
 
 /// <summary>
-///     The result of the <c>fuse/diagnostics</c> method: the context diagnostics for a repository root. Secret
-///     findings carry precise spans; hotspots and graph gaps are layered on in later increments.
+///     One token hotspot: a file whose estimated token cost is high enough to flag as an informational
+///     diagnostic, so the budget pressure is visible in the editor as well as the hotspots tree.
+/// </summary>
+/// <param name="Path">The normalized repository-relative file path.</param>
+/// <param name="TokenCost">The estimated token cost of including the file.</param>
+public sealed record HotspotDiagnosticDto(string Path, int TokenCost);
+
+/// <summary>
+///     The result of the <c>fuse/diagnostics</c> method: the context diagnostics for a repository root. Secrets
+///     carry precise spans; hotspots flag budget-heavy files; graph gaps name files the dependency graph leaves
+///     unconnected (no inbound or outbound type reference), which often indicates dead or reflection-only code.
 /// </summary>
 /// <param name="Secrets">The detected secrets with their precise editor ranges.</param>
-public sealed record DiagnosticsDto(IReadOnlyList<SecretDiagnosticDto> Secrets);
+/// <param name="Hotspots">The most token-expensive files, most expensive first.</param>
+/// <param name="GraphGaps">Files with no inbound or outbound dependency edge.</param>
+public sealed record DiagnosticsDto(
+    IReadOnlyList<SecretDiagnosticDto> Secrets,
+    IReadOnlyList<HotspotDiagnosticDto> Hotspots,
+    IReadOnlyList<string> GraphGaps);
 
 /// <summary>
 ///     One planned file in an explain result: why a file was included (role), at what fidelity (tier), and its

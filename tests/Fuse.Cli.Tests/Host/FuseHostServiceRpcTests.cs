@@ -180,6 +180,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         // A second line carrying an AWS access key (a synthetic example), so the diagnostic must land on line 1.
         var secretLine = "    var key = \"AKIAIOSFODNN7EXAMPLE\";";
         File.WriteAllText(Path.Combine(source, "Config.cs"), "public class Config\n" + secretLine + "\n");
+        // An isolated class with no inbound or outbound type reference must surface as a graph gap.
+        File.WriteAllText(Path.Combine(source, "Orphan.cs"), "public class Orphan { public int N() => 1; }");
 
         try
         {
@@ -190,6 +192,9 @@ public sealed class FuseHostServiceRpcTests : IDisposable
             Assert.Contains("Config.cs", finding.Path);
             Assert.Equal(1, finding.StartLine); // zero-based: the secret is on the second line
             Assert.Equal(secretLine.IndexOf("AKIA", StringComparison.Ordinal), finding.StartColumn);
+
+            Assert.NotEmpty(diagnostics.Hotspots);
+            Assert.Contains(diagnostics.GraphGaps, g => g.Contains("Orphan", StringComparison.Ordinal));
         }
         finally
         {

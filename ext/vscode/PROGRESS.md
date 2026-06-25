@@ -83,7 +83,12 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
 
 ## Phase 6: packaging and distribution
 
-- [ ] Not started.
+- [x] VSIX packaging: `npm run package` (vsce, `--no-dependencies` since esbuild bundles the runtime deps)
+      produces `fuse-vscode-3.0.0.vsix` at 229.92 KB. A `.vscodeignore` ships only `dist/`, `media/`, the
+      manifest, and the README; a README documents the host model and the offline story. Size recorded in
+      DECISIONS.md.
+- [ ] Bundle a self-contained host per RID via platform-specific extensions (or download-on-first-run), and the
+      per-RID host-publish CI matrix. The base VSIX relies on the `fuse` global tool / `fuse.host.path` for now.
 
 ## Notes and deviations
 

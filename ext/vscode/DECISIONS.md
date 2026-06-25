@@ -15,8 +15,13 @@ made without pausing for input, with the reasoning, so a later session can audit
 - **JSON.** All host JSON goes through a source-generated `FuseHostJsonContext` (hard invariant: no reflection
   serialization). `protocol.ts` mirrors the DTOs and is pinned by a contract test.
 - **Graph renderer.** Cytoscape.js bundled into the VSIX, no CDN (offline invariant).
-- **Host distribution.** Self-contained per-RID, bundled via VS Code platform-specific extensions. Defer the
-  download-on-first-run model unless VSIX size forces it; the resolved size will be recorded here at packaging.
+- **Host distribution.** Resolved at first packaging: the VSIX does NOT bundle the host binary. It is
+  `fuse-vscode-3.0.0.vsix` at 229.92 KB (dist/extension.js 138 KB plus the offline Cytoscape webview bundle
+  dist/webview.js 998 KB compress to that). The supervisor resolves the host from `fuse.host.path` or the
+  `fuse` global tool on PATH, so the extension stays tiny and offline. Bundling a self-contained host per RID
+  via VS Code platform-specific extensions would add tens of MB per platform; that is deferred to a dedicated
+  packaging pass (or a download-on-first-run model) rather than shipped in the base VSIX. Recorded per the
+  playbook's instruction to capture the resolved size here.
 - **NativeAOT.** Attempt for the host; fall back to self-contained trimmed if Roslyn, Microsoft.Data.Sqlite,
   or ONNX are not AOT-compatible, and record why here.
 - **Deep index (compiled reference graph, ONNX reranker).** Never default warm state; explicit user-triggered

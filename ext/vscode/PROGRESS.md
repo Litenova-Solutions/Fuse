@@ -116,8 +116,12 @@ git-churn lens is the only remaining nice-to-have.
       linux-x64, linux-arm64, osx-x64, osx-arm64; the three arm64 ones added), and the CI runtime job publishes
       each on its matching OS (native-arch RIDs also smoke-test; cross-arch ones publish only). win-arm64
       cross-publish verified locally.
-- [ ] Bundle those per-RID hosts into the VSIX via platform-specific extensions (or download-on-first-run).
-      The base VSIX relies on the `fuse` global tool / `fuse.host.path` for now; this is the last packaging step.
+- [x] Extension-side bundled-host resolution: the supervisor's host path resolves to an explicit
+      `fuse.host.path` setting first, then a host bundled at `host/<rid>/fuse[.exe]` (shipped by a
+      platform-specific VSIX), then the `fuse` global tool on PATH. The extension is now bundling-ready.
+- [ ] The release step that copies each per-RID published host into `host/<rid>/` and runs
+      `vsce package --target <platform>` to produce the six platform VSIXes (a CI/release task needing the
+      published binaries; the base no-host VSIX and PATH fallback work today).
 
 ## Notes and deviations
 

@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as vscode from "vscode";
 import { SecretDiagnostics } from "./diagnostics/secrets";
 import { GraphView } from "./graph/webview";
@@ -48,7 +50,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.languages.registerHoverProvider({ scheme: "file", pattern: "**/*.cs" }, hover),
   );
 
-  const hostPath = vscode.workspace.getConfiguration("fuse").get<string>("host.path", "");
+  const configuredHostPath = vscode.workspace.getConfiguration("fuse").get<string>("host.path", "");
+  const hostPath = resolveHostPath(context, configuredHostPath);
   // Re-project the warm engine into all surfaces. Used for the initial warm, the commands, and (via the
   // supervisor) the host's fuse/invalidated push when the workspace changes.
   const refresh = (): void => {
@@ -195,6 +198,32 @@ async function warmAndProject(
     output.appendLine(`Fuse indexing failed: ${String(err)}`);
     void vscode.window.showWarningMessage(`Fuse: ${String(err)}`);
   }
+}
+
+// Resolves the host executable: an explicit setting wins; otherwise a host bundled in the VSIX for this
+// platform (host/<rid>/fuse[.exe], shipped by the platform-specific package) is preferred; otherwise the
+// supervisor falls back to the `fuse` global tool on PATH. This keeps the base VSIX tiny and offline while
+// letting a platform-specific build run without any global install.
+function resolveHostPath(context: vscode.ExtensionContext, configured: string): string {
+  if (configured) {
+    return configured;
+  }
+  const rid = currentRid();
+  if (rid) {
+    const binary = process.platform === "win32" ? "fuse.exe" : "fuse";
+    const bundled = path.join(context.extensionUri.fsPath, "host", rid, binary);
+    if (fs.existsSync(bundled)) {
+      return bundled;
+    }
+  }
+  return ""; // empty -> supervisor uses `fuse` on PATH
+}
+
+// Maps the current platform and architecture to a Fuse runtime identifier, or undefined when unsupported.
+function currentRid(): string | undefined {
+  const os = process.platform === "win32" ? "win" : process.platform === "darwin" ? "osx" : process.platform === "linux" ? "linux" : undefined;
+  const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : undefined;
+  return os && arch ? `${os}-${arch}` : undefined;
 }
 
 export function deactivate(): void {

@@ -341,6 +341,8 @@ function Quartile($xs, [double]$q) {
 }
 
 $runModel = ($rows | Select-Object -ExpandProperty model -Unique) -join ', '
+# Run date pins WHEN this model-dependent layer was measured (honesty contract: pin model, version, and date).
+$runDate = (Get-Date).ToString('yyyy-MM-dd')
 $md = @()
 $md += '# Layer 5 results (agent-in-the-loop context sufficiency)'
 $md += ''
@@ -348,6 +350,7 @@ $md += '> MODEL-DEPENDENT LAYER. These numbers are NOT byte-reproducible. They d
 $md += '> sampling, and the day. Read them as a distribution over rollouts, not a fixed measurement.'
 $md += ''
 $md += "- Model (pinned): $runModel"
+$md += "- Run date: $runDate"
 $md += "- Rollouts per (PR, arm): $Rollouts"
 $md += "- PRs sampled ($($sampled.Count)): $((@($sampled | ForEach-Object { "$($_.repo)#$($_.pr)" })) -join ', ')"
 $md += "- Arms: $($armsToRun -join ', ')"

@@ -100,24 +100,42 @@ internal sealed class QueryScopingPipeline
         // Seed the signature with the comment-field flag so a warm cache built with one setting is not reused by
         // the other (the index is otherwise a pure function of path and content; this flag changes its fields).
         var indexSignature = experimental.FieldedComments ? 1UL : 0UL;
+
+        // Q1: build the per-file documents in parallel (read content, derive declared symbols, extract comments),
+        // since each file is independent and the analysis index and content provider are safe for the concurrent
+        // access the dependency-graph build already performs. The results are then folded into the dictionaries
+        // and the cache signature in the original file order, so the index and its cache key stay byte-identical
+        // to the sequential build (the parallelism is a latency win, not a behavior change).
+        var built = new System.Collections.Concurrent.ConcurrentDictionary<string, BuiltDocument>(StringComparer.OrdinalIgnoreCase);
+        await Parallel.ForEachAsync(
+            files,
+            new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = Environment.ProcessorCount },
+            async (file, ct) =>
+            {
+                var content = await contentProvider.GetContentAsync(file, ct);
+                var locator = _typeNameLocators.TryResolve(file.Extension);
+                var extractor = _dependencyExtractors.TryResolve(file.Extension);
+
+                // Reuse the persistent index for the symbol field so the graph build later in this run also hits.
+                var symbols = extractor is not null
+                    ? DependencyGraphBuilder.Analyze(content, extractor, locator, index).DeclaredSymbols
+                    : locator?.ExtractDefinedSymbols(content);
+
+                // Q2: index comments as their own weighted field only when the lever is on, so the default
+                // ranking is byte-identical. Comment extraction is lexical and cheap (a single regex pass).
+                var comments = experimental.FieldedComments ? CommentExtractor.Extract(content) : null;
+
+                built[file.NormalizedRelativePath] = new BuiltDocument(content, symbols, comments);
+            });
+
         foreach (var file in files)
         {
-            var content = await contentProvider.GetContentAsync(file, cancellationToken);
-            var locator = _typeNameLocators.TryResolve(file.Extension);
-            var extractor = _dependencyExtractors.TryResolve(file.Extension);
+            if (!built.TryGetValue(file.NormalizedRelativePath, out var doc))
+                continue;
 
-            // Reuse the persistent index for the symbol field so the graph build later in this run also hits.
-            var symbols = extractor is not null
-                ? DependencyGraphBuilder.Analyze(content, extractor, locator, index).DeclaredSymbols
-                : locator?.ExtractDefinedSymbols(content);
-
-            // Q2: index comments as their own weighted field only when the lever is on, so the default ranking
-            // is byte-identical. Comment extraction is lexical and cheap (a single regex pass over the source).
-            var comments = experimental.FieldedComments ? CommentExtractor.Extract(content) : null;
-
-            documents[file.NormalizedRelativePath] = new IndexedDocument(content, file.NormalizedRelativePath, symbols, comments);
-            fileContents[file.NormalizedRelativePath] = content;
-            indexSignature = MixSignature(indexSignature, file.NormalizedRelativePath, content);
+            documents[file.NormalizedRelativePath] = new IndexedDocument(doc.Content, file.NormalizedRelativePath, doc.Symbols, doc.Comments);
+            fileContents[file.NormalizedRelativePath] = doc.Content;
+            indexSignature = MixSignature(indexSignature, file.NormalizedRelativePath, doc.Content);
         }
 
         // Reuse a built index across queries on an unchanged tree (item 24): the index rebuilds its
@@ -399,6 +417,9 @@ internal sealed class QueryScopingPipeline
             .Select(kv => new RankedFile(kv.Key, kv.Value))
             .ToList();
     }
+
+    // One file's parallel-built relevance inputs (Q1), folded into the index in stable file order afterward.
+    private readonly record struct BuiltDocument(string Content, IReadOnlyList<string>? Symbols, string? Comments);
 
     // Folds one file's path and content into the running index signature with an FNV-style mix over their
     // 64-bit hashes. Order-dependent, but files are collected in a stable order, so the signature is

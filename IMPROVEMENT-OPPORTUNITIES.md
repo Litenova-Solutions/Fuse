@@ -865,19 +865,24 @@ Gated by the plan's own conditions:
 - **item 10, learned-sparse (SPLADE):** an XL opt-in rewrite the plan gates on dense rerank (item 9)
   paying off, which it did not on this corpus.
 
+Completed since this report was first written (all measured, gated, or behavior-neutral as noted):
+
+- **Q1, single-pass parallel document indexing:** the query pipeline now reads content, derives symbols, and
+  extracts the comment field in parallel, folding results into the index in stable file order so the built
+  index and its cache key are byte-identical (a latency optimization). All scoping tests unchanged; B9 passes.
+- **Q2, fielded comments and doc-comments:** built as an opt-in BM25F comment field (`FUSE_FIELDED_COMMENTS`),
+  measured neutral on the corpus (no headline gain), so kept off by default with a research note.
+- **B7, adversarial-case reporting:** Layer 2A now reports query recall all-PRs, adversarial-only, and
+  excluding the merge-noise titles (61, 100, 57 percent), so the adversarial cases cannot silently inflate.
+
 Genuinely not started (implementable here, no blocker):
 
-- **Q1, single-pass parallel document indexing:** a warm-latency optimization (build the graph once and
-  parallelize the document loop). The query pipeline still indexes documents in a sequential loop.
-- **Q2, fielded comments and doc-comments:** the BM25F index still has only body, symbols, and path
-  fields; promoting comments to their own weighted field could lift recall on prose titles.
-- **B7, adversarial-case reporting:** report the mean both including and excluding merge-noise and
-  adversarial titles. Depends on the B2 tags to be fully meaningful.
 - **Reading-set ground truth:** label, per PR, the files an agent must read but not edit (interfaces,
-  callers, tests), distinct from the editing set, so recall is scored against what is genuinely needed.
+  callers, tests), distinct from the editing set, so recall is scored against what is genuinely needed. This
+  is a benchmark-honesty curation task; it pairs naturally with the B2 rebaseline.
 
 ### Suggested next order for the remaining unblocked work
 
-Q2 (prose-title recall, default path) and Q1 (warm latency) first, since they are self-contained and
-measurable on the existing harness; then B7 and the reading-set labeling (benchmark honesty), which pair
-naturally with B2 when that rebaseline is taken on in a fresh session.
+The reading-set labeling is the last unblocked default-path item; it pairs with the B2 rebaseline (both are
+benchmark-honesty curation, best done together in a fresh session). The remaining items beyond it are the
+runtime-blocked (B1, item 12) and gated (item 5, F1, item 10) ones above, plus the B2 rebaseline.

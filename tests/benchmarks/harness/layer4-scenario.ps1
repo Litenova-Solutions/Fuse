@@ -12,9 +12,12 @@
 #             also records no_fuse_whole_repo_tokens = exact tokens of every .cs file in the
 #                            repo, the "explore blind" ceiling an agent pays if it cannot find
 #                            the right files.
-#   repomix : one dump of the whole repo at the PR head. input_tokens = tokens of the dump.
-#             round_trips = 1. recall = 1.0 by construction (it contains everything). Omitted
-#             for a PR when Repomix is unavailable (no npx / sub-floor stub), never stubbed.
+#   repomix : the cost-of-not-scoping baseline. A generic full-dump packer that never scopes:
+#             one dump of the whole repo at the PR head. input_tokens = tokens of the dump.
+#             round_trips = 1. recall = 1.0 by construction (it contains everything), so its role
+#             is to show what blind packing costs in tokens, not to contest scoping (it cannot lose
+#             on scoping because it never scopes). Omitted for a PR when Repomix is unavailable
+#             (no npx / sub-floor stub), never stubbed.
 #   fuse    : one scoped call, fuse --query "<PR title>" --depth 2 --level standard --max-tokens
 #             <budget>. input_tokens = exact tokens of the emitted output. round_trips = 1.
 #             recall = fraction of changed_cs present in the output.
@@ -229,7 +232,7 @@ $md = @()
 $md += '# Layer 4 results (context acquisition: Fuse vs no Fuse vs Repomix)'
 $md += ''
 $md += "Tokenizer o200k_base. Budgets $($Budgets -join ', '); headline budget $Budget. PRs: $($prs.Count). Fuse query depth $Depth."
-$md += 'Means across the PRs at the headline budget. no-fuse round-trips is a structural lower bound (a blind agent reads each needed file at least once, and more while exploring), not a measured agent. no-fuse and Repomix have recall 1.00 by construction.'
+$md += 'Means across the PRs at the headline budget. no-fuse round-trips is a structural lower bound (a blind agent reads each needed file at least once, and more while exploring), not a measured agent. Repomix is the cost-of-not-scoping baseline: a generic full-dump packer that never scopes, so its recall is 1.00 by construction and its role is to show what blind packing costs in tokens, not to contest scoping. no-fuse and Repomix both have recall 1.00 by construction.'
 $md += ''
 $md += '| Arm | Round-trips | Input tokens | Recall of needed files |'
 $md += '|-----|------------:|-------------:|-----------------------:|'

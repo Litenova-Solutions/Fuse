@@ -95,6 +95,11 @@
           "type": "string",
           "default": "",
           "description": "Path to the fuse host executable. Empty uses the bundled or PATH-resolved 'fuse'."
+        },
+        "fuse.showTokenLens": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a CodeLens at the top of each file with its Fuse token cost and graph centrality."
         }
       }
     }

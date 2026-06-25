@@ -79,7 +79,10 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
       explorer context menu, workspace-relative seed), and "Fuse: Changes Since Branch" (git base input). Each
       runs a scoped fusion on the host, opens the payload read-only, and populates the Scope Result tree (mode,
       included files, token costs). Build, typecheck, and lint green.
-- [ ] Hover provider, token and churn code lenses, and the explainer panel (fuse/explain) over the same client.
+- [x] Token CodeLens: a lens at the top of each `.cs` file showing its Fuse token cost and graph centrality,
+      fed from the graph the extension already fetched and toggled by the `fuse.showTokenLens` setting (default
+      off). Build, typecheck, lint green.
+- [ ] Hover provider and the explainer panel (fuse/explain) over the same client; optional churn lens.
 
 ## Phase 6: packaging and distribution
 

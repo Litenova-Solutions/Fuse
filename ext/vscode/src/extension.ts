@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { SecretDiagnostics } from "./diagnostics/secrets";
 import { GraphView } from "./graph/webview";
 import { HostSupervisor } from "./host/supervisor";
+import { FileMetric, TokenLensProvider } from "./lenses/tokenLens";
 import { FuseStatusBar } from "./statusBar";
 import { Hotspot, HotspotsProvider } from "./views/hotspots";
 import { IndexStatusProvider, StatusRow } from "./views/indexStatus";
@@ -28,6 +29,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const scopeResult = new ScopeResultProvider(root);
   const secrets = new SecretDiagnostics(root);
   const graphView = new GraphView(context, root);
+  const tokenLens = new TokenLensProvider((uri) => vscode.workspace.asRelativePath(uri, false));
 
   context.subscriptions.push(
     output,
@@ -36,17 +38,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("fuse.indexStatus", indexStatus),
     vscode.window.registerTreeDataProvider("fuse.hotspots", hotspots),
     vscode.window.registerTreeDataProvider("fuse.scopeResult", scopeResult),
+    vscode.languages.registerCodeLensProvider({ scheme: "file", pattern: "**/*.cs" }, tokenLens),
   );
 
   const hostPath = vscode.workspace.getConfiguration("fuse").get<string>("host.path", "");
   supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m));
   context.subscriptions.push({ dispose: () => supervisor?.dispose() });
 
-  const indexCommand = vscode.commands.registerCommand("fuse.index", () => warmAndProject(root, statusBar, indexStatus, hotspots, secrets, output));
+  const indexCommand = vscode.commands.registerCommand("fuse.index", () => warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, output));
   const restartCommand = vscode.commands.registerCommand("fuse.restartHost", async () => {
     supervisor?.dispose();
     supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m));
-    await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, output);
+    await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, output);
   });
   context.subscriptions.push(indexCommand, restartCommand);
 
@@ -104,7 +107,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, output);
+  await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, output);
 }
 
 // Starts (or reuses) the host, indexes the root, and projects the results into the status bar and trees.
@@ -114,6 +117,7 @@ async function warmAndProject(
   indexStatus: IndexStatusProvider,
   hotspots: HotspotsProvider,
   secrets: SecretDiagnostics,
+  tokenLens: TokenLensProvider,
   output: vscode.OutputChannel,
 ): Promise<void> {
   if (!supervisor) {
@@ -141,6 +145,13 @@ async function warmAndProject(
       .slice(0, 50)
       .map((n) => new Hotspot(n.path, n.tokenCost));
     hotspots.update(top);
+
+    // Feed the same graph metrics to the token CodeLens (per-file cost and centrality).
+    const metrics = new Map<string, FileMetric>();
+    for (const node of graph.nodes) {
+      metrics.set(node.path, { tokenCost: node.tokenCost, centrality: node.centrality });
+    }
+    tokenLens.update(metrics);
 
     // Surface secret findings as editor diagnostics (the C1 fix made visible).
     await secrets.refresh(client);

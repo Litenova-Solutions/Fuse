@@ -120,6 +120,10 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
     public void Set(string store, string key, byte[] value) => _pending[(store, key)] = value;
 
     /// <inheritdoc />
+    /// <remarks>
+    ///     After all retry attempts are exhausted, the method returns without throwing; pending entries remain
+    ///     buffered in memory. Derived cache data: callers can continue, but unflushed entries are lost on process exit.
+    /// </remarks>
     public async Task FlushAsync(CancellationToken cancellationToken = default)
     {
         if (_pending.IsEmpty)

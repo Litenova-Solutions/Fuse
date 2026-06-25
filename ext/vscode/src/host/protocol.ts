@@ -4,7 +4,7 @@
 // parses the same fixtures, so any drift on either side fails a test. Keep this file in lockstep with the DTOs.
 
 /** Wire protocol version; must equal FuseHostService.ProtocolVersion on the host. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 /** Result of `fuse/handshake`: host package version, the wire protocol version to match, and the session token for later RPC calls. */
 export interface FuseHostHandshake {

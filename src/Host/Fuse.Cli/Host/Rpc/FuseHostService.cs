@@ -35,7 +35,7 @@ public sealed class FuseHostService : IDisposable
     ///     The wire protocol version. Bumped on any breaking change to a DTO or method shape so a stale extension
     ///     and a newer host detect the mismatch at handshake instead of failing later on a serialization error.
     /// </summary>
-    public const int ProtocolVersion = 1;
+    public const int ProtocolVersion = 2;
 
     private readonly ILogger<FuseHostService> _logger;
     private readonly FusionOrchestrator _orchestrator;

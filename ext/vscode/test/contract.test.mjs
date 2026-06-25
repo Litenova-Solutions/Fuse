@@ -17,8 +17,10 @@ function assertKeys(obj, keys, label) {
 }
 
 test("handshake shape", () => {
-  assertKeys(fixtures.handshake, ["hostVersion", "protocolVersion"], "handshake");
+  assertKeys(fixtures.handshake, ["hostVersion", "protocolVersion", "sessionToken"], "handshake");
   assert.equal(typeof fixtures.handshake.protocolVersion, "number");
+  assert.equal(typeof fixtures.handshake.sessionToken, "string");
+  assert.ok(fixtures.handshake.sessionToken.length > 0);
 });
 
 test("stats shape", () => {
@@ -54,4 +56,20 @@ test("diagnostics shape", () => {
 test("explain shape", () => {
   assertKeys(fixtures.explain, ["mode", "files"], "explain");
   assertKeys(fixtures.explain.files[0], ["path", "role", "tier", "score"], "explain file");
+});
+
+test("authenticated RPC methods pass sessionToken first", () => {
+  const authenticated = [
+    "fuse/stats",
+    "fuse/index",
+    "fuse/graph",
+    "fuse/scope",
+    "fuse/diagnostics",
+    "fuse/explain",
+    "fuse/shutdown",
+  ];
+  for (const method of authenticated) {
+    assert.equal(fixtures.rpcParams[method][0], "sessionToken", `${method} first param`);
+  }
+  assert.deepEqual(fixtures.rpcParams["fuse/handshake"], []);
 });

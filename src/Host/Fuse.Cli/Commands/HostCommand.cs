@@ -21,7 +21,8 @@ namespace Fuse.Cli.Commands;
 ///     The endpoint address is derived from the repository root (see <see cref="HostEndpoint" />), so a second
 ///     editor window for the same repository connects to the already-running host and two repositories stay on
 ///     distinct endpoints. Logging goes to stderr, never the transport. The host serves connections until a
-///     client calls <c>fuse/shutdown</c> or the process is cancelled.
+///     client calls <c>fuse/shutdown</c> or the process is cancelled. At start the host generates a random
+///     session token and returns it from <c>fuse/handshake</c>; every other RPC method requires that token.
 /// </remarks>
 [CliCommand(
     Name = "host",

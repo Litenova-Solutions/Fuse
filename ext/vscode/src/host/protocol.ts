@@ -6,10 +6,11 @@
 /** Wire protocol version; must equal FuseHostService.ProtocolVersion on the host. */
 export const PROTOCOL_VERSION = 1;
 
-/** Result of `fuse/handshake`: host package version and the wire protocol version to match. */
+/** Result of `fuse/handshake`: host package version, the wire protocol version to match, and the session token for later RPC calls. */
 export interface FuseHostHandshake {
   hostVersion: string;
   protocolVersion: number;
+  sessionToken: string;
 }
 
 /** Result of `fuse/stats`: cheap process-level health for the status bar and index panel. */

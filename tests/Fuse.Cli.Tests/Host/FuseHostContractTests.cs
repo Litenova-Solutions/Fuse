@@ -12,11 +12,12 @@ public sealed class FuseHostContractTests
     public void Handshake_SerializesCamelCaseThroughSourceGenContext()
     {
         var json = JsonSerializer.Serialize(
-            new FuseHostHandshake("3.0.0", FuseHostService.ProtocolVersion),
+            new FuseHostHandshake("3.0.0", FuseHostService.ProtocolVersion, "abc123token"),
             FuseHostJsonContext.Default.FuseHostHandshake);
 
         Assert.Contains("\"hostVersion\":\"3.0.0\"", json);
         Assert.Contains("\"protocolVersion\":", json);
+        Assert.Contains("\"sessionToken\":\"abc123token\"", json);
     }
 
     [Fact]

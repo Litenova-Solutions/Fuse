@@ -768,7 +768,7 @@ public sealed class FusionOrchestrator
         var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
         var proximity = ResolveProximity(experimental, files, request.Collection.SourceDirectory);
         return await _queryScopingPipeline.ScopeAsync(
-            request, files, index, fuseStore, contentProvider, experimental, graph, proximity, cancellationToken);
+            request, files, parallelism, index, fuseStore, contentProvider, experimental, graph, proximity, cancellationToken);
     }
 
     // The factor applied to a structural proximity neighbour's score, so it enters below a real type reference.

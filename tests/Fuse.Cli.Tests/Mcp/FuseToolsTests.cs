@@ -3,6 +3,7 @@ using Fuse.Cli.Mcp;
 using Fuse.Collection.Templates;
 using Fuse.Fusion;
 using Fuse.Plugins.Abstractions.Options;
+using Fuse.Reduction.Security;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
 
@@ -218,15 +219,15 @@ public sealed class FuseToolsTests
             """);
         fixture.AddFile("Other.cs", "public class Other { public void PlaceOrder() { } }");
 
-        var (provider, templates, collection) = BuildFindServices();
+        var (provider, templates, collection, redactor) = BuildFindServices();
 
         var typeHit = await FuseTools.FuseFindAsync(
-            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "OrderService", FindMode.Symbol);
+            templates, collection, provider, redactor, OutlineRegistry(), fixture.ProjectPath, "OrderService", FindMode.Symbol);
         Assert.Contains("OrderService.cs: class OrderService", typeHit);
 
         // A member name resolves in every declaring file and is reported with its owning type.
         var memberHit = await FuseTools.FuseFindAsync(
-            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "PlaceOrder", FindMode.Symbol);
+            templates, collection, provider, redactor, OutlineRegistry(), fixture.ProjectPath, "PlaceOrder", FindMode.Symbol);
         Assert.Contains("member PlaceOrder in OrderService", memberHit);
         Assert.Contains("member PlaceOrder in Other", memberHit);
     }
@@ -242,12 +243,34 @@ public sealed class FuseToolsTests
             }
             """);
 
-        var (provider, templates, collection) = BuildFindServices();
+        var (provider, templates, collection, redactor) = BuildFindServices();
         var result = await FuseTools.FuseFindAsync(
-            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "8675309", FindMode.Text);
+            templates, collection, provider, redactor, OutlineRegistry(), fixture.ProjectPath, "8675309", FindMode.Text);
 
         Assert.Contains("Sample.cs:3", result);
         Assert.Contains("8675309", result);
+    }
+
+    [Fact]
+    public async Task FuseFindAsync_TextMode_RedactsSecretsInSnippets()
+    {
+        using var fixture = new TempProject();
+        const string marker = "FUSE_FIND_SECRET_MARKER";
+        fixture.AddFile("Config.cs", $$"""
+            public class Config
+            {
+                public string ApiKey = "AKIAIOSFODNN7EXAMPLE";
+                public string Label = "{{marker}}";
+            }
+            """);
+
+        var (provider, templates, collection, redactor) = BuildFindServices();
+        var result = await FuseTools.FuseFindAsync(
+            templates, collection, provider, redactor, OutlineRegistry(), fixture.ProjectPath, marker, FindMode.Text);
+
+        Assert.Contains(marker, result);
+        Assert.Contains("[REDACTED:", result);
+        Assert.DoesNotContain("AKIAIOSFODNN7EXAMPLE", result);
     }
 
     [Fact]
@@ -257,9 +280,9 @@ public sealed class FuseToolsTests
         fixture.AddFile("Services/OrderService.cs", "public class OrderService { }");
         fixture.AddFile("Models/Order.cs", "public class Order { }");
 
-        var (provider, templates, collection) = BuildFindServices();
+        var (provider, templates, collection, redactor) = BuildFindServices();
         var result = await FuseTools.FuseFindAsync(
-            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "Services/", FindMode.Path);
+            templates, collection, provider, redactor, OutlineRegistry(), fixture.ProjectPath, "Services/", FindMode.Path);
 
         Assert.Contains("Services/OrderService.cs", result);
         Assert.DoesNotContain("Models/Order.cs", result);
@@ -268,9 +291,9 @@ public sealed class FuseToolsTests
     [Fact]
     public async Task FuseFindAsync_EmptyQuery_ReturnsError()
     {
-        var (provider, templates, collection) = BuildFindServices();
+        var (provider, templates, collection, redactor) = BuildFindServices();
         var result = await FuseTools.FuseFindAsync(
-            templates, collection, provider, OutlineRegistry(), Path.GetTempPath(), "  ");
+            templates, collection, provider, redactor, OutlineRegistry(), Path.GetTempPath(), "  ");
         Assert.StartsWith("Error", result);
     }
 
@@ -280,9 +303,9 @@ public sealed class FuseToolsTests
         using var fixture = new TempProject();
         fixture.AddFile("Sample.cs", "public class Sample { }");
 
-        var (provider, templates, collection) = BuildFindServices();
+        var (provider, templates, collection, redactor) = BuildFindServices();
         var result = await FuseTools.FuseFindAsync(
-            templates, collection, provider, OutlineRegistry(), fixture.ProjectPath, "DoesNotExist", FindMode.Symbol);
+            templates, collection, provider, redactor, OutlineRegistry(), fixture.ProjectPath, "DoesNotExist", FindMode.Symbol);
 
         Assert.Contains("No symbol named 'DoesNotExist'", result);
     }
@@ -290,13 +313,15 @@ public sealed class FuseToolsTests
     private static (
         Func<Fuse.Collection.FileSystem.ISourceContentProvider>,
         ProjectTemplateRegistry,
-        Fuse.Collection.FileCollectionPipeline) BuildFindServices()
+        Fuse.Collection.FileCollectionPipeline,
+        ISecretRedactor) BuildFindServices()
     {
         var provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
         return (
             provider.GetRequiredService<Func<Fuse.Collection.FileSystem.ISourceContentProvider>>(),
             provider.GetRequiredService<ProjectTemplateRegistry>(),
-            provider.GetRequiredService<Fuse.Collection.FileCollectionPipeline>());
+            provider.GetRequiredService<Fuse.Collection.FileCollectionPipeline>(),
+            provider.GetRequiredService<ISecretRedactor>());
     }
 
     private static Plugins.Abstractions.CapabilityRegistry<Plugins.Abstractions.Outline.ISymbolOutlineExtractor> OutlineRegistry() =>

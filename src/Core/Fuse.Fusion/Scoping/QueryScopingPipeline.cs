@@ -79,6 +79,7 @@ internal sealed class QueryScopingPipeline
     public async Task<FilteredFileSet> ScopeAsync(
         FusionRequest request,
         IReadOnlyList<SourceFile> files,
+        int parallelism,
         Indexing.IAnalysisIndex? index,
         IKeyValueStore? fuseStore,
         ISourceContentProvider contentProvider,
@@ -109,7 +110,7 @@ internal sealed class QueryScopingPipeline
         var built = new System.Collections.Concurrent.ConcurrentDictionary<string, BuiltDocument>(StringComparer.OrdinalIgnoreCase);
         await Parallel.ForEachAsync(
             files,
-            new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = Environment.ProcessorCount },
+            new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = parallelism },
             async (file, ct) =>
             {
                 var content = await contentProvider.GetContentAsync(file, ct);

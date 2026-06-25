@@ -4,6 +4,7 @@ using Fuse.Collection.Models;
 using Fuse.Emission.Models;
 using Fuse.Fusion;
 using Fuse.Plugins.Abstractions.Options;
+using Fuse.Reduction.Security;
 using ModelContextProtocol.Server;
 
 namespace Fuse.Cli.Mcp;
@@ -541,6 +542,7 @@ public sealed class FuseTools
     /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
     /// <param name="collectionPipeline">Collection pipeline used to enumerate the files to search.</param>
     /// <param name="contentProviderFactory">Factory for a per-run content provider used to read file bodies.</param>
+    /// <param name="secretRedactor">Redactor applied to text-mode snippet output before it is returned.</param>
     /// <param name="outlineExtractors">Outline extractors, resolved by extension, used to enumerate declarations in symbol mode.</param>
     /// <param name="path">Absolute or relative path to the source directory.</param>
     /// <param name="query">The symbol name, exact text, or path fragment to find.</param>
@@ -560,6 +562,7 @@ public sealed class FuseTools
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
         Fuse.Collection.FileCollectionPipeline collectionPipeline,
         Func<Fuse.Collection.FileSystem.ISourceContentProvider> contentProviderFactory,
+        ISecretRedactor secretRedactor,
         Fuse.Plugins.Abstractions.CapabilityRegistry<Fuse.Plugins.Abstractions.Outline.ISymbolOutlineExtractor> outlineExtractors,
         [Description("Absolute or relative path to the source directory.")] string path,
         [Description("The symbol name, exact text, or path fragment to find.")] string query,
@@ -598,7 +601,7 @@ public sealed class FuseTools
                 FindMode.Symbol => await FindBySymbolAsync(
                     collection.Files, query, ignoreCase, maxMatches, outlineExtractors, contentProviderFactory(), cancellationToken),
                 FindMode.Text => await FindByTextAsync(
-                    collection.Files, query, ignoreCase, maxMatches, Math.Max(0, contextLines), contentProviderFactory(), cancellationToken),
+                    collection.Files, query, ignoreCase, maxMatches, Math.Max(0, contextLines), contentProviderFactory(), secretRedactor, cancellationToken),
                 _ => $"Error: unknown mode '{mode}'."
             };
         }
@@ -690,6 +693,7 @@ public sealed class FuseTools
         int maxMatches,
         int contextLines,
         Fuse.Collection.FileSystem.ISourceContentProvider contentProvider,
+        ISecretRedactor secretRedactor,
         CancellationToken cancellationToken)
     {
         var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -720,7 +724,7 @@ public sealed class FuseTools
                 snippet.Append($"{file.NormalizedRelativePath}:{i + 1}");
                 for (var l = start; l <= end; l++)
                     snippet.Append($"\n{l + 1,6}{(l == i ? " > " : "   ")}{lines[l]}");
-                blocks.Add(snippet.ToString());
+                blocks.Add(secretRedactor.Redact(snippet.ToString()).Content);
             }
         }
 

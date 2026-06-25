@@ -68,7 +68,7 @@ the API surface alone.
 
 The level is the single dial for C# structural reduction. A set of other options are
 separate and orthogonal: they are not folded into the level and apply at any level. They
-include secret redaction (`--no-redact`, `--redact-report`), generated-code collapse
+include best-effort secret redaction (`--no-redact`, `--redact-report`; regex and entropy heuristics), generated-code collapse
 (`--collapse-generated`), the structural annotations (`--semantic-markers`), the pattern
 summary (`--pattern-summary`), the route map (`--route-map`), the project graph
 (`--project-graph`), XML and HTML/Razor minification (`--minify-xml-files`,

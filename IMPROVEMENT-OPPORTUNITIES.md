@@ -875,11 +875,14 @@ Completed since this report was first written (all measured, gated, or behavior-
 - **B7, adversarial-case reporting:** Layer 2A now reports query recall all-PRs, adversarial-only, and
   excluding the merge-noise titles (61, 100, 57 percent), so the adversarial cases cannot silently inflate.
 
-Genuinely not started (implementable here, no blocker):
+Partly done (infrastructure in place; labels are deliberate curation):
 
-- **Reading-set ground truth:** label, per PR, the files an agent must read but not edit (interfaces,
-  callers, tests), distinct from the editing set, so recall is scored against what is genuinely needed. This
-  is a benchmark-honesty curation task; it pairs naturally with the B2 rebaseline.
+- **Reading-set ground truth:** the Layer 2A harness now scores recall against an optional per-PR
+  `reading_set` (the files an agent must read but not edit) unioned with the editing set, falling back to the
+  editing set when no label exists, so the current corpus is unchanged. The remaining work is the labels
+  themselves: hand-curating per-PR reading sets is a benchmark-honesty task that shifts the published numbers,
+  so it pairs with the B2 rebaseline and is done deliberately, not fabricated at the tail of a session (bad
+  labels would weaken the benchmark, the opposite of the item's intent).
 
 ### Suggested next order for the remaining unblocked work
 

@@ -6,6 +6,12 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Changed
 
+- **Reading-set ground-truth support in Layer 2A.** The scoping benchmark now scores recall against an optional
+  per-PR `reading_set` (the files a task must read but not edit, such as interfaces, callers, and tests) unioned
+  with the editing set, instead of only the files the PR changed, when a PR is labeled. Absent a label the
+  truth is the editing set, so the pinned 24-PR corpus and every published number are unchanged. The labels
+  themselves are deliberate curation that shifts the numbers, so they are added with the larger-corpus
+  rebaseline (B2) rather than fabricated; this lands the harness support that honors them.
 - **Parallel query-path document indexing (Q1).** The query scoping pipeline now reads each file, derives its
   declared symbols, and extracts its comment field in parallel rather than in a sequential loop, since the files
   are independent and the analysis index and content provider already tolerate the concurrent access the

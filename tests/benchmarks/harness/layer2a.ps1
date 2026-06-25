@@ -77,7 +77,16 @@ foreach ($g in $repoGroups) {
         git -C $repoPath worktree add --detach --force $wt $pr.head 2>$null | Out-Null
         if (-not (Test-Path $wt)) { Write-Warning "  PR#$($pr.pr): worktree failed"; continue }
 
+        # Reading-set ground truth: the files a task genuinely needs in context, which is the editing set (the
+        # files the PR changed) plus an optional, hand-labeled reading_set of files an agent must read but not
+        # edit (interfaces, callers, tests). Scoring recall against this set, when labeled, measures retrieval
+        # against what is needed rather than only what was edited. Absent a reading_set the truth is the editing
+        # set, so the current corpus (no labels yet) is unchanged; labeling a PR is deliberate curation that
+        # pairs with the larger-corpus rebaseline (B2), since it shifts the published numbers.
         $truth = @($pr.changed_cs)
+        if ($pr.PSObject.Properties.Name -contains 'reading_set' -and $pr.reading_set) {
+            $truth = @($truth + @($pr.reading_set)) | Where-Object { $_ } | Select-Object -Unique
+        }
 
         # Seed for focus: a non-test changed file's base name.
         $srcChanged = @($truth | Where-Object { $_ -notmatch '(?i)test' })

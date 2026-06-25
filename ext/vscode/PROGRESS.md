@@ -81,8 +81,9 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
 - [x] Scoped role overlay: `fuse/graph` takes an optional scope (mode/seed/query/since) and tags each node with
       the role the context plan assigned (Seed, Changed, Dependency); the webview recolors by role when a scope
       is active. "Show Dependency Graph" overlays the most recent scope automatically. Host test covers it.
-- [ ] Directory-supernode expand-on-click (the host already serves directory-level detail; expand-to-files is
-      the remaining interaction).
+- [x] Directory-supernode expand-on-click: `fuse/graph` takes an optional directory filter that returns just
+      that subtree's file-level subgraph; tapping a directory node in the webview expands it into its files,
+      tapping a file node opens it. Host test covers the filter. Phase 4 is complete.
 
 ## Phase 5: scoping commands, hover, lenses, panels
 

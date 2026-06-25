@@ -2,8 +2,8 @@
 #   pwsh -File tests/benchmarks/harness/run-all.ps1
 #   pwsh -File tests/benchmarks/harness/run-all.ps1 -Compare results/baseline.layer1.json
 # Steps: build the CLI and the measurement tools, clone the pinned corpus,
-# regenerate the PR ground truth, then run layers 1, 2A, 2B, the context-acquisition
-# scenario layer (layer 4), and the illustrative layer 3 round-trip model. Results land
+# regenerate the PR ground truth, then run layers 1, 2A, 2B, and the context-acquisition
+# scenario layer (layer 4). Results land
 # in tests/benchmarks/results. With -Compare, the fresh layer-1 result is diffed against
 # the given baseline and the run fails on any reduction, fidelity, or body-integrity
 # regression beyond tolerance.
@@ -35,7 +35,6 @@ dotnet build (Join-Path $RepoRoot 'tests/benchmarks/tools/BodyIntegrity/BodyInte
 & "$PSScriptRoot/layer2a.ps1"
 & "$PSScriptRoot/layer4-scenario.ps1"
 & "$PSScriptRoot/layer2b.ps1"
-& "$PSScriptRoot/layer3.ps1"
 & "$PSScriptRoot/layer-ranking.ps1"
 & "$PSScriptRoot/layer-latency.ps1"
 

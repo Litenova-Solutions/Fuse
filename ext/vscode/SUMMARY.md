@@ -24,20 +24,24 @@ extension, `npm run build`, `tsc --noEmit` (both tsconfigs), and `npm run lint` 
 - **Phase 6 (packaging): VSIX done.** `npm run package` produces `fuse-vscode-3.0.0.vsix` (229.92 KB), offline,
   host resolved from `fuse.host.path` or the `fuse` global tool on PATH (size recorded in DECISIONS.md).
 
-## Remaining (next-session order)
+Since: Phase 3 is now complete (secrets, hotspots, graph gaps, generated code, and live refresh via the
+`fuse/invalidated` watcher push); Phase 4 added the scoped role overlay; Phase 5 added the token lens, hover
+card, and explainer panel. A real concurrency bug the host test caught (concurrent same-mode scopes colliding
+on one payload file) is fixed. Host tests: 19.
 
-1. Phase 5 finish: the hover provider, token and churn code lenses, and the explainer panel over `fuse/explain`.
-2. Phase 3 finish: hotspot and generated-code diagnostics, and the warm-index watcher lifecycle pushing
-   `fuse/invalidated` so diagnostics and trees refresh per changed file.
-3. Phase 4 finish: the scoped role/tier overlay and directory-supernode expand-on-click.
-4. Phase 6 finish: bundle a self-contained host per RID via platform-specific extensions (or download-on-first
-   -run), and stand up the per-RID host-publish CI matrix.
-5. Tests: the `@vscode/test-electron` integration test and a TS-side contract test (need an Electron download
-   and a display, so they run in a headful or specially-configured CI runner; quarantine if the runner cannot
-   launch VS Code).
+## Remaining (all marginal, packaging, or runtime-blocked)
+
+1. Phase 4 polish: directory-supernode expand-on-click in the webview (a webview interaction; the host already
+   serves directory-level detail, and clicking a directory could fetch just its files).
+2. Phase 6 packaging: bundle a self-contained host per RID via platform-specific extensions (or
+   download-on-first-run), and the per-RID host-publish CI matrix. The base VSIX works today via the `fuse`
+   global tool on PATH / `fuse.host.path`.
+3. Tests: the `@vscode/test-electron` integration test and a TS-side contract test, which need an Electron
+   download and a display, so they belong on a headful or specially-configured runner (quarantine if the runner
+   cannot launch VS Code). Optional: a git-churn code lens.
 
 ## Blockers
 
 None hit. The `@vscode/test-electron` harness needs an Electron download and a display, so it is deferred to a
-headful runner rather than committed red here; the enforceable extension gate this session was build, dual
-typecheck, and lint.
+headful runner rather than committed red here; the enforceable extension gate is build, dual typecheck, and
+lint, all green.

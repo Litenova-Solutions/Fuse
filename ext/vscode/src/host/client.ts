@@ -13,6 +13,7 @@ import {
   GraphDto,
   IndexResultDto,
   Methods,
+  Notifications,
   ScopeResultDto,
 } from "./protocol";
 
@@ -85,6 +86,11 @@ export class HostClient {
 
   diagnostics(root: string): Promise<DiagnosticsDto> {
     return this.connection.sendRequest(Methods.diagnostics, root);
+  }
+
+  /** Registers a handler for the host's `fuse/invalidated` notification (the workspace changed). */
+  onInvalidated(handler: () => void): void {
+    this.connection.onNotification(Notifications.invalidated, handler);
   }
 
   /** Asks the host to shut down (a notification: the host exits without a response). */

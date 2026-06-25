@@ -114,3 +114,8 @@ export const Methods = {
   explain: "fuse/explain",
   shutdown: "fuse/shutdown",
 } as const;
+
+/** Server-to-client notification: the workspace changed and the extension should refresh. */
+export const Notifications = {
+  invalidated: "fuse/invalidated",
+} as const;

@@ -20,6 +20,7 @@ export class HostSupervisor {
     private readonly root: string,
     private readonly hostPath: string,
     private readonly log: LogSink,
+    private readonly onInvalidated?: () => void,
   ) {}
 
   /** The connected client, or undefined until {@link start} resolves. */
@@ -44,6 +45,11 @@ export class HostSupervisor {
       throw new Error(
         `Fuse host protocol mismatch: host ${handshake.protocolVersion}, extension ${PROTOCOL_VERSION}. Update the Fuse host or extension.`,
       );
+    }
+
+    // Subscribe the fresh client to workspace-change notifications, so a restart re-establishes live refresh.
+    if (this.onInvalidated) {
+      client.onInvalidated(this.onInvalidated);
     }
 
     this.log(`Connected to Fuse host ${handshake.hostVersion} (protocol ${handshake.protocolVersion}).`);

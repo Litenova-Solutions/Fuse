@@ -259,6 +259,34 @@ public sealed class FuseHostServiceRpcTests : IDisposable
     }
 
     [Fact]
+    public async Task Notifier_BroadcastsInvalidatedToConnectedClients()
+    {
+        // The host pushes fuse/invalidated to every connected editor when the watcher fires. Wire a client over
+        // an in-memory pipe, register a notification handler, broadcast through the notifier, and assert receipt.
+        var clientToServer = new Pipe();
+        var serverToClient = new Pipe();
+        var notifier = new HostNotifier();
+
+        using var serverRpc = FuseHostConnection.Attach(clientToServer.Reader, serverToClient.Writer, NewService(), notifier);
+
+        var clientFormatter = new SystemTextJsonFormatter();
+        clientFormatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        using var clientRpc = new JsonRpc(
+            new HeaderDelimitedMessageHandler(clientToServer.Writer, serverToClient.Reader, clientFormatter));
+        var invalidated = new TaskCompletionSource();
+        clientRpc.AddLocalRpcMethod("fuse/invalidated", () => invalidated.TrySetResult());
+        clientRpc.StartListening();
+
+        // Let the connection register before broadcasting.
+        await Task.Delay(50);
+        Assert.Equal(1, notifier.ConnectionCount);
+        await notifier.BroadcastAsync("fuse/invalidated");
+
+        await invalidated.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(invalidated.Task.IsCompletedSuccessfully);
+    }
+
+    [Fact]
     public async Task ConcurrentGraphAndScope_AgainstOneRoot_BothSucceed()
     {
         // The playbook's concurrency check: simultaneous fuse/graph and fuse/scope against one root exercise the

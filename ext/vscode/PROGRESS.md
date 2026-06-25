@@ -66,8 +66,10 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
       collided on one payload temp file; payload names are now unique per call). Host and extension gates green.
 - [x] Generated-code diagnostics: `fuse/diagnostics` flags EF Core migrations and model snapshots (the engine's
       `GeneratedCodeCollapser.IsGenerated`), surfaced as hints. Host test covers it.
-- [ ] Live refresh on `fuse/invalidated` per changed file (needs the watcher lifecycle, a host server-push
-      feature). This is the one remaining diagnostics item.
+- [x] Live refresh: the host runs a `DebouncedFileWatcher` on the root and pushes a `fuse/invalidated`
+      notification to every connected editor when files change (server-to-client push via a `HostNotifier`
+      connection registry). The extension subscribes through the supervisor and re-projects all surfaces on
+      receipt; a restart re-establishes the subscription. Host test covers the broadcast. Phase 3 is complete.
 
 ## Phase 4: graph webview with level-of-detail
 

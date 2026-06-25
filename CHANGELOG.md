@@ -18,6 +18,12 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   and the redaction output and counts are byte-identical (all redaction tests unchanged). Each host method is
   integration-tested over the real engine; the wire DTOs are mirrored in `protocol.ts` and pinned by contract
   tests.
+- **Live workspace-change push (`fuse/invalidated`) and the warm-index watcher lifecycle.** The host now runs a
+  debounced file watcher on the served root and pushes a `fuse/invalidated` notification to every connected
+  editor when files change (server-to-client push through a `HostNotifier` connection registry that registers
+  on attach and drops on disconnect). The extension subscribes through its supervisor and re-projects the index,
+  diagnostics, hotspots, and graph on receipt; a host restart re-establishes the subscription. Covered by a host
+  broadcast test.
 - **Scoped role overlay on `fuse/graph`.** The graph method takes an optional scope (mode, seed, query, since)
   and tags each node with the role the context plan assigned that file (Seed, Changed, Dependency), so the
   extension's webview recolors by role to show exactly what a fusion would include. The scope routing is now a

@@ -49,13 +49,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   const hostPath = vscode.workspace.getConfiguration("fuse").get<string>("host.path", "");
-  supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m));
+  // Re-project the warm engine into all surfaces. Used for the initial warm, the commands, and (via the
+  // supervisor) the host's fuse/invalidated push when the workspace changes.
+  const refresh = (): void => {
+    void warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output);
+  };
+  supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m), refresh);
   context.subscriptions.push({ dispose: () => supervisor?.dispose() });
 
-  const indexCommand = vscode.commands.registerCommand("fuse.index", () => warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output));
+  const indexCommand = vscode.commands.registerCommand("fuse.index", refresh);
   const restartCommand = vscode.commands.registerCommand("fuse.restartHost", async () => {
     supervisor?.dispose();
-    supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m));
+    supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m), refresh);
     await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output);
   });
   context.subscriptions.push(indexCommand, restartCommand);

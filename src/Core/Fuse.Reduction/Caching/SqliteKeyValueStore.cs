@@ -37,6 +37,8 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
     private readonly int _busyTimeoutSeconds;
     private readonly ILogger<SqliteKeyValueStore>? _logger;
     private readonly ConcurrentDictionary<(string Store, string Key), byte[]> _pending = new();
+    private readonly Lock _recoveryLock = new();
+    private bool _recovered;
 
     /// <summary>
     ///     Opens or creates the database, recovering by recreating a corrupt file.
@@ -247,13 +249,28 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         try
         {
             CreateSchema();
+            // Force corruption detection here, on the single construction thread, before the store is shared
+            // across the parallel index-read fan-out. A garbage file can pass CreateSchema yet fail the first
+            // real read, so detecting it now means concurrent readers never trigger (and race) recovery.
+            EnsureReadable();
         }
         catch (SqliteException ex)
         {
-            _logger?.LogDebug(ex, "SQLite cache schema creation failed; recreating database at {DatabasePath}.", _databasePath);
+            _logger?.LogDebug(ex, "SQLite cache initialization failed; recreating database at {DatabasePath}.", _databasePath);
             // A malformed database is derived data; delete and recreate rather than fail the run.
             RecoverCorruptDatabase();
         }
+    }
+
+    // Probes the kv table the way TryGet reads it, so a corrupt file that slips past CreateSchema surfaces at
+    // construction rather than on a concurrent read path where recovery would race.
+    private void EnsureReadable()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT count(*) FROM kv;";
+        command.ExecuteScalar();
     }
 
     private static bool IsCorruptDatabaseError(SqliteException ex) =>
@@ -268,9 +285,24 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
 
     private void RecoverCorruptDatabase()
     {
-        SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
-        DeleteDatabaseFiles();
-        CreateSchema();
+        // Serialize recovery and run it once per store instance. Index lookups run in parallel
+        // (DependencyGraphBuilder uses Parallel.ForEachAsync), so many readers can hit the same corrupt file at
+        // once. Without this guard each one independently deletes and recreates the database, and one thread's
+        // delete lands inside another thread's post-recovery read, surfacing as a fresh "file is not a database".
+        // The first caller rebuilds the file and latches; the rest return immediately, so no reader ever races a
+        // delete. A corrupt file is a one-time episode for a store instance; a fresh crash mid-process is rare and
+        // is recovered by the next process open via Initialize.
+        lock (_recoveryLock)
+        {
+            if (_recovered)
+                return;
+
+            SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
+            DeleteDatabaseFiles();
+            CreateSchema();
+            SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
+            _recovered = true;
+        }
     }
 
     private void CreateSchema()

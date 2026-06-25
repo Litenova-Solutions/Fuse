@@ -64,7 +64,7 @@ public sealed class FusionScopingStage
     /// <returns>
     ///     The filtered file set, or <see langword="null" /> when change scoping matches no files.
     /// </returns>
-    public Task<FilteredFileSet?> FilterAsync(
+    public async Task<FilteredFileSet?> FilterAsync(
         FusionRequest request,
         IReadOnlyList<SourceFile> files,
         int parallelism,
@@ -75,15 +75,15 @@ public sealed class FusionScopingStage
         CancellationToken cancellationToken = default)
     {
         if (request.Focus is not null)
-            return FilterByFocusAsync(request, files, parallelism, index, contentProvider, experimental, cancellationToken);
+            return await FilterByFocusAsync(request, files, parallelism, index, contentProvider, experimental, cancellationToken);
 
         if (request.Changes is not null)
-            return FilterByChangesAsync(request, files, parallelism, index, contentProvider, cancellationToken);
+            return await FilterByChangesAsync(request, files, parallelism, index, contentProvider, cancellationToken);
 
         if (request.Query is not null)
-            return FilterByQueryAsync(request, files, parallelism, index, fuseStore, contentProvider, experimental, cancellationToken);
+            return await FilterByQueryAsync(request, files, parallelism, index, fuseStore, contentProvider, experimental, cancellationToken);
 
-        return Task.FromResult<FilteredFileSet?>(new FilteredFileSet(files, null, null));
+        return new FilteredFileSet(files, null, null);
     }
 
     private async Task<FilteredFileSet> FilterByFocusAsync(

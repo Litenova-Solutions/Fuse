@@ -28,23 +28,23 @@ loop has three costs that compound on a big codebase:
 
 ## The Measured Cost
 
-The [Layer 4 benchmark](/docs/project/benchmarks) puts numbers on the loop over 24 real
+The [Layer 4 benchmark](/docs/project/benchmarks) puts numbers on the loop over 90 real
 merged pull requests, at a 50,000-token budget, counted with the `o200k_base` tokenizer.
 
 A blind agent must read each file a change touches at least once before it has the
-context. That is a structural lower bound, not a measured agent: a mean of 5.8 files per
-change, from 2.3 on AutoMapper to 14.5 on Newtonsoft.Json. Reading the repository blind to
-find them averages about 493,661 tokens; the files that actually matter are about 27,473
+context. That is a structural lower bound, not a measured agent: a mean of 6.9 files per
+change, from 4.7 on FluentValidation to 11.9 on Newtonsoft.Json. Reading the repository blind to
+find them averages about 409,154 tokens; the files that actually matter are about 25,809
 tokens of that.
 
 ## The Collapse: One Scoped Call
 
 Fuse acquires that context in one call. Read its token number with its recall: one scoped
-`fuse --query` call delivers about 40,000 tokens at 61 percent recall of the changed
-files, and the change-scoping mode reaches 87 percent recall when a git base is available.
+`fuse --query` call delivers about 37,000 tokens at 49 percent recall of the changed
+files, and the change-scoping mode reaches 89 percent recall when a git base is available.
 
 Against a generic packer (Repomix), which dumps the whole repository in one call of about
-511,574 tokens, Fuse ties on round-trips and wins on tokens, roughly 12.8 times fewer,
+424,511 tokens, Fuse ties on round-trips and wins on tokens, roughly 11 times fewer,
 because Fuse scopes and the packer dumps. Fuse does not make fewer round-trips than a
 packer; both are one call. The win against a packer is tokens; the win against no tool is
 the round-trip collapse.

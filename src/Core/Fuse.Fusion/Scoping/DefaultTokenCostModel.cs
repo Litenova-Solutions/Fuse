@@ -8,11 +8,15 @@ namespace Fuse.Fusion.Scoping;
 ///     calibrated from the Layer 1 benchmark reduction ratios over the pinned corpus.
 /// </summary>
 /// <remarks>
-///     C# structural reduction removes roughly 7 to 10 percent at the default and standard levels, 21 to 40
-///     percent aggressive, and 66 to 93 percent for a skeleton; the retention factors below are the rough
-///     midpoints of those ranges. Non-C# files only get whitespace normalization, so they retain almost all
-///     their tokens at every level. The estimate is intentionally cheap (one token count plus a multiply); the
-///     real count from <see cref="CountTokens" /> is used wherever exact accounting is required.
+///     C# structural reduction removes roughly 7 to 10 percent at the default and standard levels and 21 to 46
+///     percent aggressive; the retention factors for those levels are the rough midpoints of the measured
+///     ranges. The skeleton factor (0.15) is a deliberately conservative pre-Roslyn estimate: the Roslyn
+///     skeleton keeps every signature and so removes only 39 to 56 percent in practice, so this factor
+///     under-counts skeleton cost. It is left conservative on purpose (a low estimate admits more neighbours
+///     for the budget-aware packer to trim) and any recalibration must be re-measured against Layer 2A. Non-C#
+///     files only get whitespace normalization, so they retain almost all their tokens at every level. The
+///     estimate is intentionally cheap (one token count plus a multiply); the real count from
+///     <see cref="CountTokens" /> is used wherever exact accounting is required.
 /// </remarks>
 public sealed class DefaultTokenCostModel : ITokenCostModel
 {

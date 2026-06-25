@@ -39,7 +39,7 @@ A .NET codebase context optimizer. It collects source files, reduces them for to
 emits one structured payload. Scoping modes that matter here:
 - `--query "<text>"`: BM25F lexical ranking of files, expanded along the dependency graph. Most items
   below improve this mode.
-- `--changed-since <ref>`: git-diff scoping (already strong, 88 percent recall).
+- `--changed-since <ref>`: git-diff scoping (already strong, 89 percent recall).
 - `--focus <type|file>`: dependency neighbourhood of a named seed.
 
 ### Repository layout
@@ -71,11 +71,11 @@ pwsh -File tests/benchmarks/harness/layer2a.ps1          # scoping recall@budget
 pwsh -File tests/benchmarks/harness/layer2b.ps1          # single-turn localization (no network)
 pwsh -File tests/benchmarks/harness/layer4-scenario.ps1  # one-call context vs no-fuse/Repomix (needs npx)
 pwsh -File tests/benchmarks/harness/run-all.ps1          # everything (layer1 fidelity, etc.)
-# Fast query-mode A/B (24 PRs, query only, ~5 min):
+# Fast query-mode A/B (90 PRs, query only):
 pwsh -File tests/benchmarks/harness/spike-query-expansion.ps1
 ```
 
-Corpus: `tests/benchmarks/.corpus` with `tests/benchmarks/prs.json` (24 PRs; ground truth is the .cs
+Corpus: `tests/benchmarks/.corpus` with `tests/benchmarks/prs.json` (90 PRs; ground truth is the .cs
 files each PR changed) and `tests/benchmarks/corpus.json`. Layer 2A and 4 reconstruct each PR head in a
 git worktree and measure recall at budgets 10k, 25k, 50k (50k is the headline).
 
@@ -152,12 +152,13 @@ Key APIs:
 |--------|-------|
 | Layer 2A query recall at 50k | 51 percent mean (MediatR 94, FluentValidation 51, AutoMapper 29, Newtonsoft.Json 30) |
 | Layer 2A query recall at 10k / 25k | 34 percent / 43 percent |
-| Layer 2A changes recall / precision at 50k | 87 percent / 50 percent (C2 strict budget: emission stops before the entry that would cross the cap) |
-| Layer 2A focus recall at 50k | 71 percent |
-| Layer 2A grep baseline at 50k | 38 percent |
-| Layer 2B localization (20k) | query 42 percent, focus 42 percent, grep 58 percent |
-| Layer 4 one-call context | Fuse 53 percent recall at about 44,700 tokens; no-fuse and Repomix 100 percent by construction at about 494,000 to 512,000 tokens |
-| Layer 1 reduction at full API fidelity | default 7 to 10 percent, aggressive 21 to 40 percent, skeleton 66 to 93 percent; 99 to 100 percent of public types and methods kept |
+| Layer 2A changes recall / precision at 50k (90-PR corpus) | 89 percent / 54 percent (C2 strict budget: emission stops before the entry that would cross the cap) |
+| Layer 2A focus recall at 50k | 78 percent |
+| Layer 2A query recall at 50k | 48 percent |
+| Layer 2A grep baseline at 50k | 34 percent |
+| Layer 2B localization (20k) | query 75 percent, focus 42 percent, grep 58 percent |
+| Layer 4 one-call context (90 PRs) | Fuse query 49 percent recall at about 37,000 tokens, change-scoped 91 percent at about 29,500; no-fuse and Repomix 100 percent by construction at about 409,000 and 425,000 tokens |
+| Layer 1 reduction at full API fidelity | default 7 to 10 percent, aggressive 21 to 46 percent, Roslyn skeleton 39 to 56 percent; 99 to 100 percent of public types and methods kept |
 
 Stretch targets: query at 50k 60 to 68 percent-plus; Layer 4 58 to 65 percent-plus at 38k tokens or
 fewer; changes 90 to 94 percent at 55 percent-plus precision; Layer 2B query at least 58 percent; hard
@@ -544,7 +545,7 @@ overstates what `fuse_ask` delivers today.
 ### Item 13: Auto-mode routing
 
 Extend `AskStrategySelector` (and `fuse_ask` in `Mcp/FuseTools.cs`) with a `Changes` mode. Heuristic:
-(1) if `git diff` against the base yields changed `.cs` files, route to Changes mode (88 percent
+(1) if `git diff` against the base yields changed `.cs` files, route to Changes mode (89 percent
 recall); (2) else if the prompt contains PascalCase tokens that resolve in the analysis index to known
 types or files, route to Focus; (3) else Query. Add a low-confidence retry: if the chosen strategy
 returns few or no files, fall back to the next. Wire the same intent into `fuse_dotnet` and CLI
@@ -591,7 +592,7 @@ Add arms beyond the current `fuse-query`: `fuse-changes` (`--changed-since pr.ba
 item 31 exists), and `fuse-guided` (`fuse_toc` then `fuse_search`, two calls). Make the headline the
 routed arm (ask, or changes when a base exists); keep `fuse-query` as a labeled stress floor ("only a
 sentence, picked search"). Add a tokens-to-target-recall metric (tokens to reach, say, 80 percent
-recall): query may need 50k for 51 percent while changes hits 88 percent at 25k. If the headline moves
+recall): query may need 50k for 48 percent while changes hits 80 percent at 25k. If the headline moves
 to change mode, the story strengthens from "Fuse beats Repomix on tokens at lower recall" to "with git,
 Fuse matches the task files at a fraction of Repomix tokens".
 
@@ -676,7 +677,7 @@ FTS5 only if profiling shows the in-memory index is the real bottleneck at scale
 
 ## 10. Better and more honest benchmarking
 
-The current headline (recall at a token budget over 24 PRs) is useful but conflates ranking with
+The current headline (recall at a token budget over 90 PRs) is useful but conflates ranking with
 packing and is noisy on a small, partly-adversarial corpus. These live under
 `tests/benchmarks/harness` and write to `tests/benchmarks/results`. Never fabricate; regenerate and
 sync the docs.
@@ -741,7 +742,7 @@ report per-repo, never just the mean.
 - With dense rerank (item 9) as the MCP default: 60 to 68 percent-plus is plausible per the literature,
   concentrated on the hard repos. This becomes the MCP query headline, with the lexical number as the
   CLI cold-start and offline floor. Combined with the reference graph (item 8) it could go further.
-- Product framing: when a git base exists, change mode already reaches 88 percent. Query mode is the
+- Product framing: when a git base exists, change mode already reaches 89 percent. Query mode is the
   cold-start fallback and the hardest case; routing tasks to the right mode (item 13), supporting an
   interactive loop (items 14, 30, 33), and the MCP-default reranker (item 9) together buy more
   real-world value than squeezing the lexical query path alone.
@@ -857,19 +858,18 @@ Runtime- or data-blocked (cannot be completed in the current environment):
   What remains is purely (a) the data the plan calls for, 80 to 150 PRs across more repositories and at least
   one more language (one fifth repository, Serilog with six git-verified PRs, is staged in
   `tests/benchmarks/corpus-candidates/serilog.json`), and (b) the atomic rebaseline of every published number.
-  A trial run was executed at the full 80-150 target: Serilog was wired in and `gen-prs.ps1` regenerated
-  `prs.json` to 90 PRs across five repositories (18 per repo), then Layer 2A and 2B were regenerated. The
-  measured 50,000-token headline means moved to changes 89 percent, focus 79, query 49, grep 34 (per repo,
-  query AutoMapper 35, FluentValidation 42, MediatR 83, Newtonsoft.Json 30, Serilog 55), confirming the 24-PR
-  sample was favorable for query and focus while change scoping holds. The trial was reverted, not published,
-  because a faithful B2 must also regenerate Layer 4 (its Repomix arm over 90 PRs is a long run) and every
-  per-feature A/B spike and rewrite all coupled prose in one consistent pass; a partial publish would leave the
-  page's prose contradicting its tables, the exact "never weaken a benchmark number" invariant. The full
-  measured trial is recorded in the CHANGELOG research notes. The tooling is in place (`gen-prs.ps1` takes a
-  per-repo count and regenerates the corpus in one command), so the rebaseline is mechanical once run end to
-  end; it remains a dedicated effort because of the long Layer 4 run and the all-at-once prose resync, not
-  because the code is missing. The "at least one more language" goal additionally needs the harness's `.cs`
-  ground-truth assumption generalized.
+  **Done.** Serilog was wired into the corpus and `gen-prs.ps1` regenerated `prs.json` to 90 PRs across five
+  repositories (18 per repo, all commit-pinned and git-derived), then Layer 1 (now five repositories, plus a
+  Serilog reduction row), Layer 2A, Layer 4 (with the live Repomix arm over `npx`), and the bootstrap intervals
+  were regenerated end to end and published atomically: the B9 baseline, benchmarks.mdx (every table and the
+  coupled prose), AGENTS.md, README.md and its figure, and the user docs were all resynced in one pass so no
+  published number is left at a 24-PR value. The 50,000-token headline means moved to changes 89 percent at 54
+  precision, focus 78, query 48, grep 34 (per repo, query AutoMapper 35, FluentValidation 42, MediatR 83,
+  Newtonsoft.Json 26, Serilog 55), confirming the original 24-PR sample was favorable for query and focus while
+  change scoping holds at about 89 percent. The per-feature A/B lift figures from earlier releases are kept as
+  the historical record over the original 24-PR corpus, explicitly labeled. The "at least one more language"
+  goal still needs the harness's `.cs` ground-truth assumption generalized, and the 80-150 PR target can be
+  pushed higher by raising `gen-prs.ps1`'s per-repo count; both are follow-ons, not blockers.
 
 Gated by the plan's own conditions:
 

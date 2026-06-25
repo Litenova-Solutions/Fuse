@@ -8,11 +8,11 @@ searching, opening file after file to find the few that matter. Fuse collapses t
 explore phase into one scoped call: it finds the code a task needs and hands it over
 already reduced, so the agent starts work instead of hunting.
 
-The collapse is measured. Over 24 real merged pull requests, one scoped call acquires a
-change's context in about 40,000 tokens at 61 percent recall, against a blind agent that
-must read each needed file at least once (a structural lower bound of about six reads)
-and a generic packer that dumps the whole repository at roughly 512,000 tokens. Read the
-token number with its recall; the change-scoping mode reaches 87 percent recall when a
+The collapse is measured. Over 90 real merged pull requests, one scoped call acquires a
+change's context in about 37,000 tokens at 49 percent recall, against a blind agent that
+must read each needed file at least once (a structural lower bound of about seven reads)
+and a generic packer that dumps the whole repository at roughly 425,000 tokens. Read the
+token number with its recall; the change-scoping mode reaches 89 percent recall when a
 git base is available. See [The explore phase](/docs/concepts/the-explore-phase) and the
 [Layer 4 benchmark](/docs/project/benchmarks).
 
@@ -74,7 +74,7 @@ reductions cut 7 to 40 percent of tokens while keeping 99 to 100 percent of publ
 types and methods. Skeleton mode, which keeps signatures and drops bodies, cuts 66
 to 93 percent for an architecture-level survey.
 
-![Fuse benchmark results across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with Roslyn structural analysis, one scoped call replacing at least six grep-and-open round-trips, and that call delivering a task's context in about 13 times fewer tokens than a generic packer.](/fuse-benchmarks.png)
+![Fuse benchmark results across MediatR, FluentValidation, AutoMapper, Newtonsoft.Json, and Serilog: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with Roslyn structural analysis, one scoped call replacing at least seven grep-and-open round-trips, and that call delivering a task's context in about 11 times fewer tokens than a generic packer.](/fuse-benchmarks.png)
 
 Every number comes from a harness anyone can rerun against the same pinned commits.
 See [Benchmarks](/docs/project/benchmarks) for the method and the full results,

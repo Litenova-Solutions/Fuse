@@ -6,7 +6,7 @@
 
 . "$PSScriptRoot/common.ps1"
 
-$perRepo = 6
+$perRepo = 18
 $all = @()
 
 foreach ($repo in Get-Corpus) {

@@ -86,3 +86,29 @@ public sealed record ScopeResultDto(
     IReadOnlyList<ScopeFileDto> Files,
     long TotalTokens,
     string? PayloadPath);
+
+/// <summary>
+///     One secret diagnostic: a detected secret's kind and its zero-based line and character range in a file, so
+///     the extension can underline the exact literal in the editor and the Problems panel. The value is shown
+///     redacted in any emitted payload; this diagnostic only points at where it lives in the source.
+/// </summary>
+/// <param name="Path">The normalized repository-relative file path.</param>
+/// <param name="Kind">The secret kind (for example <c>github-token</c>).</param>
+/// <param name="StartLine">Zero-based start line.</param>
+/// <param name="StartColumn">Zero-based start character.</param>
+/// <param name="EndLine">Zero-based end line.</param>
+/// <param name="EndColumn">Zero-based end character (exclusive).</param>
+public sealed record SecretDiagnosticDto(
+    string Path,
+    string Kind,
+    int StartLine,
+    int StartColumn,
+    int EndLine,
+    int EndColumn);
+
+/// <summary>
+///     The result of the <c>fuse/diagnostics</c> method: the context diagnostics for a repository root. Secret
+///     findings carry precise spans; hotspots and graph gaps are layered on in later increments.
+/// </summary>
+/// <param name="Secrets">The detected secrets with their precise editor ranges.</param>
+public sealed record DiagnosticsDto(IReadOnlyList<SecretDiagnosticDto> Secrets);

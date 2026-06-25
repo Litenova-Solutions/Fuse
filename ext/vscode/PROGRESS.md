@@ -20,7 +20,11 @@ deviation from the playbook.
       estimated token cost; reference edges) at `Files` or `Directories` level of detail (directory supernodes
       fold files and aggregate cross-directory edges). Integration-tested (a reference edge appears at file
       level; directories fold files into supernodes).
-- [ ] Engine-data methods: `fuse/explain`, `fuse/diagnostics` (the projections are the next increments).
+- [x] `fuse/diagnostics`: returns secret findings with precise zero-based editor ranges, computed read-only
+      with the same redactor the reduction path uses (new additive `ISecretRedactor.FindSecretSpans`, which
+      never changes redaction output). Integration-tested (a secret lands at the exact line and column).
+      Hotspots and graph gaps layer onto this method next.
+- [ ] Engine-data method: `fuse/explain` (needs a read-only `ContextPlan` projection from the orchestrator).
 - [ ] Warm-index lifecycle (pooled repo-root store, resident analysis index, incremental invalidation).
 - [ ] Concurrency test (simultaneous fuse/graph and fuse/scope against one root).
 - [ ] Host-publish CI matrix per RID.

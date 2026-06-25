@@ -92,4 +92,17 @@ public sealed class FuseHostContractTests
         Assert.Contains("\"startLine\":12", json);
         Assert.Contains("\"endColumn\":44", json);
     }
+
+    [Fact]
+    public void ExplainResult_SerializesPlanCamelCase()
+    {
+        var explain = new ExplainResultDto(
+            "focus", [new ExplainFileDto("a/B.cs", "Seed", "Standard", 3.14)]);
+
+        var json = JsonSerializer.Serialize(explain, FuseHostJsonContext.Default.ExplainResultDto);
+
+        Assert.Contains("\"mode\":\"focus\"", json);
+        Assert.Contains("\"role\":\"Seed\"", json);
+        Assert.Contains("\"tier\":\"Standard\"", json);
+    }
 }

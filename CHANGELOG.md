@@ -17,7 +17,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   original content (the same approach the existing code-literal classification uses), so it is purely additive
   and the redaction output and counts are byte-identical (all redaction tests unchanged). Each host method is
   integration-tested over the real engine; the wire DTOs are mirrored in `protocol.ts` and pinned by contract
-  tests. `fuse/explain` remains, pending a read-only `ContextPlan` projection from the orchestrator.
+  tests.
+- **`fuse/explain` and a read-only `FusionResult.Plan` projection.** The host now serves `fuse/explain`, which
+  returns the scoped result's context plan (each planned file's role, reduction tier, and relevance score)
+  without writing a payload, so the extension can show why a file is included and at what fidelity before
+  fetching. This surfaces the previously `internal` context plan as a public, additive `FusionResult.Plan`
+  (a list of `PlannedFileInfo`), projected once by the orchestrator at the result return; it defaults to empty
+  for unscoped runs, so it changes no existing output, recall, or token number (the full suite and golden
+  tests are unchanged). All eight Phase 1 host RPC methods now work end to end with 16 host tests.
 - **`fuse host`: a JSON-RPC endpoint for the VS Code extension (extension Phase 1).** A new long-lived host
   command serves the warm engine to the editor over a named pipe (Windows) or Unix domain socket (elsewhere),
   sharing the same `AddFuse` dependency graph as `fuse mcp serve`, so the agent (over MCP) and the developer

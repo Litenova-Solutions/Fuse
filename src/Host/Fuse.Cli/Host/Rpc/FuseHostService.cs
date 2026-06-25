@@ -365,6 +365,50 @@ public sealed class FuseHostService
     }
 
     /// <summary>
+    ///     Explains what a scoped fusion would include without writing a payload: returns the context plan
+    ///     (each planned file's role, reduction tier, and relevance score) the same orchestrator builds for a
+    ///     real scope, so the extension's scope-result and explainer panels can show why a file is in and at what
+    ///     fidelity before fetching anything.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="mode">The scoping mode: <c>focus</c>, <c>changes</c>, or anything else for <c>search</c>.</param>
+    /// <param name="seed">The focus seed when <paramref name="mode" /> is <c>focus</c>.</param>
+    /// <param name="query">The search query when <paramref name="mode" /> is <c>search</c>.</param>
+    /// <param name="since">The git base when <paramref name="mode" /> is <c>changes</c>.</param>
+    /// <returns>The scoping mode and the planned files with their roles, tiers, and scores.</returns>
+    [JsonRpcMethod("fuse/explain")]
+    public async Task<ExplainResultDto> ExplainAsync(string root, string mode, string? seed, string? query, string? since)
+    {
+        var resolved = Path.GetFullPath(root);
+        var normalizedMode = (mode ?? "search").Trim().ToLowerInvariant();
+        if (!Directory.Exists(resolved))
+            return new ExplainResultDto(normalizedMode, []);
+
+        var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
+        switch (normalizedMode)
+        {
+            case "focus" when !string.IsNullOrWhiteSpace(seed):
+                builder.WithFocusOptions(new FocusOptions(seed, Depth: 2));
+                break;
+            case "changes" when !string.IsNullOrWhiteSpace(since):
+                builder.WithChangeOptions(new ChangeOptions(since));
+                break;
+            default:
+                normalizedMode = "search";
+                builder.WithQueryOptions(new QueryOptions(query ?? string.Empty, TopFiles: 10, Depth: 2));
+                break;
+        }
+
+        var result = await _orchestrator.FuseAsync(builder.Build());
+        var files = result.Plan
+            .Select(p => new ExplainFileDto(p.Path, p.Role, p.Tier, p.Score))
+            .ToList();
+
+        _logger.LogInformation("Explain {Mode} on {Root}: {Files} planned files.", normalizedMode, resolved, files.Count);
+        return new ExplainResultDto(normalizedMode, files);
+    }
+
+    /// <summary>
     ///     Signals the host to flush and exit. The transport completes the in-flight response before the host
     ///     stops serving.
     /// </summary>

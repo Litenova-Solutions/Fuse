@@ -3,30 +3,42 @@ name: Benchmark honesty overhaul (agent layer, peers, reframing)
 overview: "Additive overhaul of the Fuse benchmark suite: reframe Repomix as the cost-of-not-scoping baseline (not a ranking competitor), add a real agent-in-the-loop context-sufficiency layer (Layer 5) that pits Claude with bare tools against Claude with Fuse, CodeGraph, and Serena, add a static peer-scoper comparison against CodeGraph (graph) and coa-codesearch-mcp (.NET lexical) in Layer 6, expand the corpus with one ASP.NET application codebase, and retire the illustrative quadratic round-trip model (Layer 3). All peers are offline and keyless. Keeps the suite in PowerShell with its current structure; layers 1, 2A, 2B, and 4 are unchanged except for prose reframing."
 todos:
   - id: bench-a-reframe
-    content: "Phase A: Reframe Repomix as the cost-of-not-scoping baseline in benchmarks.mdx and the layer4 script header/captions; no number changes"
-    status: pending
+    content: "Phase A: Reframe Repomix as the cost-of-not-scoping baseline in benchmarks.mdx and the layer4 script header/captions; no number changes. DONE (commit ebfa93c)"
+    status: completed
   - id: bench-c-corpus
-    content: "Phase C: Add one ASP.NET application repo to the corpus (candidate eShopOnWeb), regenerate PR ground truth, rerun layers 1/2A/4, commit updated results"
+    content: "Phase C: Add one ASP.NET application repo to the corpus (candidate eShopOnWeb), regenerate PR ground truth, rerun layers 1/2A/4, commit updated results. Also filter PRs whose title does not relate to their C# diff (the AutoMapper#4634/#4616 mismatch surfaced by Layer 5)"
     status: pending
   - id: bench-d1-spike
-    content: "Phase D1: Spike the claude CLI headless harness (JSON output, MCP config for fuse + codegraph + serena, tool restriction) to validate Layer 5 is buildable before committing to it"
-    status: pending
+    content: "Phase D1: Spike the claude CLI headless harness (JSON output, MCP config for fuse + codegraph + serena, tool restriction) to validate Layer 5 is buildable. DONE (commit 03027c0)"
+    status: completed
   - id: bench-d2-layer5
-    content: "Phase D2: Build Layer 5 (layer5-agent.ps1): four arms (native, fuse MCP, codegraph MCP, serena MCP) under one Claude driver, N rollouts, recall/precision of gathered files, sufficiency judge, model-dependent honesty contract"
-    status: pending
+    content: "Phase D2: Build Layer 5 (layer5-agent.ps1). DONE: native + fuse arms, measured (10 PRs x 2 rollouts, claude-haiku-4-5) and documented (commits b3f4439, fcadfb5, 1c271bf); per-call MCP timeout + wall-clock + process-tree kill added (Invoke-ClaudeBounded in common.ps1). REMAINING: run the codegraph and serena arms (tools not installed yet), and scale to 15-20 PRs / 3 rollouts on a stronger model"
+    status: in_progress
   - id: bench-e-layer6
-    content: "Phase E: Build Layer 6 (layer6-peers.ps1): Fuse vs CodeGraph (graph) and coa-codesearch-mcp (.NET lexical) on Layer 2A ground truth, env-gated, offline/local-only peer rule, .NET-scoped framing"
+    content: "Phase E: Build Layer 6 (layer6-peers.ps1): Fuse vs CodeGraph (graph) and coa-codesearch-mcp (.NET lexical) on Layer 2A ground truth, env-gated, offline/local-only peer rule, .NET-scoped framing. Script exists but is UNTRACKED and UNVERIFIED; needs a per-peer spike and a verification run"
     status: pending
   - id: bench-b-retire-layer3
-    content: "Phase B: Retire the Layer 3 quadratic prefill model (remove from run-all, archive script, drop from docs) once Layer 5 is green"
+    content: "Phase B: Retire the Layer 3 quadratic prefill model (remove from run-all, archive script, drop from docs). Unblocked: Layer 5 is green for native+fuse"
     status: pending
   - id: bench-f-docs
-    content: "Phase F: Update benchmarks.mdx (new layers, corpus, Blocked section), AGENTS.md measured results, README; numbers from committed results only"
+    content: "Phase F: Update benchmarks.mdx, AGENTS.md, README. DONE: Layer 5 section + AGENTS.md line + Blocked section (commit 1c271bf). REMAINING: Layer 6 section, corpus tables for the app repo, refreshed Layer 5 numbers from the scaled run"
+    status: in_progress
+  - id: bench-g-figure
+    content: "Phase G (new): regenerate the benchmark figure assets/fuse-benchmarks.png + .svg from committed results via the chart script in assets/, leading with the strongest defensible story (change-scoping 91% recall at ~29.5k tokens vs Repomix ~425k; Layer 5 token win at equal recall; peer head-to-heads). ASCII labels only, numbers from results/ only"
     status: pending
 isProject: false
 ---
 
 # Benchmark honesty overhaul: agent layer, peer comparison, reframing
+
+## Current status (updated 2026-06-25, branch feature/roslyn-mandatory-sqlite-cache)
+
+Done and committed:
+- Phase A reframe (ebfa93c).
+- Phase D1 spike (03027c0).
+- Phase D2 Layer 5 build for the native and fuse arms, plus the MCP-hang fix: every claude launch now goes through `Invoke-ClaudeBounded` in [common.ps1](tests/benchmarks/harness/common.ps1) (per-MCP-call timeout via MCP_TOOL_TIMEOUT, a wall-clock backstop, and a process-tree kill so no `fuse mcp serve` child orphans). Root cause of the original hang: the claude CLI MCP_TOOL_TIMEOUT defaults to ~28h, and the harness left orphaned servers holding the worktree SQLite WAL lock; the focus pipeline itself does not deadlock. Commits b3f4439 (harness), fcadfb5 (results: 10 PRs x 2 rollouts, claude-haiku-4-5; native and fuse reach equal 46% mean recall, fuse at lower median tokens 324k vs 440k and higher sufficiency), 1c271bf (Layer 5 docs).
+
+Remaining (see the goal prompt and the todos above): Phase B (retire Layer 3), Phase C (app repo + title/diff-mismatch filter), Phase E (Layer 6, script unverified), finish Phase D2 (codegraph + serena arms, scale-up), Phase F (Layer 6 + corpus docs), Phase G (regenerate the figure). Peer tools (CodeGraph, Serena, coa-codesearch-mcp) are NOT installed yet; the codegraph/serena Layer 5 arms and all of Layer 6 are blocked on installing them (offline, keyless).
 
 ## Why this plan exists
 
@@ -259,6 +271,21 @@ Two peers, two methodologies, both offline and keyless. Each gets a short "confi
 **Criteria:** every quoted number traces to a committed results file; ASCII only; model-dependent results clearly labeled; losses retained in the prose.
 
 **Gate:** site builds; ASCII check; a reviewer can trace each number to `results/`.
+
+---
+
+## Phase G: Regenerate the benchmark figure
+
+**Goal:** Refresh `assets/fuse-benchmarks.png` and `.svg` so the published figure reflects the expanded corpus and the new layers, leading with the strongest defensible story rather than the stress floor.
+
+**Steps:**
+1. Use the chart-generating script already in `assets/` (do not hand-draw). Source every value from committed `results/` files; never type a number into the chart.
+2. Lead with the most defensible strong framing: change scoping at 91 percent recall and about 29,500 tokens against Repomix's about 425,000 at the same one call; the Layer 5 token win at equal recall; and, once installed, the peer head-to-heads (Fuse vs CodeGraph vs coa-codesearch on recall and tokens). Recall is always paired with tokens in the figure.
+3. Keep the existing clean style; ASCII labels only.
+
+**Criteria:** every bar and label traces to a committed results file; the figure does not overstate (the query stress floor and any loss are still representable); regenerated, not hand-edited.
+
+**Gate:** the script runs and emits both `.png` and `.svg`; a reviewer can map each value to `results/`.
 
 ---
 

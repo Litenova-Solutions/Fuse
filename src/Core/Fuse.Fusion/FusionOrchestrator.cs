@@ -239,6 +239,13 @@ public sealed class FusionOrchestrator
                 ? contextPlan.TierFor
                 : (Func<Fuse.Collection.Models.SourceFile, Fuse.Plugins.Abstractions.Options.ReductionLevel>?)null;
 
+            // Project the internal plan to the public read-only view carried on the result, so explain surfaces
+            // (the VS Code extension) can show each file's role, tier, and score without re-running scoping.
+            var planProjection = contextPlan.Files
+                .Select(p => new PlannedFileInfo(
+                    p.File.NormalizedRelativePath, p.Role.ToString(), p.Tier.ToString(), p.Score))
+                .ToList();
+
             stageTimer.Restart();
             var reducedContent = await _reductionPipeline.ReduceAsync(
                 filterResult.Files,
@@ -300,7 +307,7 @@ public sealed class FusionOrchestrator
                 stageTimer.Restart();
                 var tocResult = await EmitTableOfContentsAsync(reducedContent, request, contentProvider, tokenCounter, cancellationToken);
                 LogStageComplete("table-of-contents", stageTimer.ElapsedMilliseconds, tocResult.ProcessedFileCount);
-                return WithReductionCacheStats(tocResult, reductionCache);
+                return WithPlan(WithReductionCacheStats(tocResult, reductionCache), planProjection);
             }
 
             stageTimer.Restart();
@@ -321,13 +328,35 @@ public sealed class FusionOrchestrator
                 cancellationToken);
             LogStageComplete("post-reduction", stageTimer.ElapsedMilliseconds, emissionResult.ProcessedFileCount);
 
-            return WithReductionCacheStats(emissionResult, reductionCache);
+            return WithPlan(WithReductionCacheStats(emissionResult, reductionCache), planProjection);
         }
         finally
         {
             if (fuseStore is not null)
                 await fuseStore.DisposeAsync();
         }
+    }
+
+    // Attaches the context-plan projection to a result, copying the other fields (FusionResult is immutable).
+    // The plan is the same for every emission path of a run, so it is applied once at the return.
+    private static FusionResult WithPlan(FusionResult result, IReadOnlyList<PlannedFileInfo> plan)
+    {
+        if (plan.Count == 0)
+            return result;
+
+        return new FusionResult(
+            result.GeneratedPaths,
+            result.InMemoryContent,
+            result.TotalTokens,
+            result.ProcessedFileCount,
+            result.TotalFileCount,
+            result.Duration,
+            result.TopTokenFiles,
+            result.PatternSummary,
+            result.ReductionCacheHits,
+            result.ReductionCacheMisses,
+            result.EmittedFileTokens,
+            plan);
     }
 
     private static string ResolveScopingMode(FusionRequest request)

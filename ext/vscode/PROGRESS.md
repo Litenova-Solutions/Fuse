@@ -24,7 +24,10 @@ deviation from the playbook.
       with the same redactor the reduction path uses (new additive `ISecretRedactor.FindSecretSpans`, which
       never changes redaction output). Integration-tested (a secret lands at the exact line and column).
       Hotspots and graph gaps layer onto this method next.
-- [ ] Engine-data method: `fuse/explain` (needs a read-only `ContextPlan` projection from the orchestrator).
+- [x] `fuse/explain`: returns the scoped result's context plan (each planned file's role, reduction tier, and
+      score) without writing a payload, via a new additive read-only `FusionResult.Plan` projection from the
+      orchestrator. Integration-tested (the matched file appears with a role and tier). All eight Phase 1 RPC
+      methods now work end to end (16 host tests).
 - [ ] Warm-index lifecycle (pooled repo-root store, resident analysis index, incremental invalidation).
 - [ ] Concurrency test (simultaneous fuse/graph and fuse/scope against one root).
 - [ ] Host-publish CI matrix per RID.

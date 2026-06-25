@@ -197,5 +197,32 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task Explain_Search_ReturnsAPlanWithSeedRolesAndTiers()
+    {
+        var source = Path.Combine(Path.GetTempPath(), "fuse-host-explain", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "PaymentService.cs"),
+            "public class PaymentService { public void ProcessPayment() { } }");
+        File.WriteAllText(Path.Combine(source, "CatalogService.cs"),
+            "public class CatalogService { public void ListProducts() { } }");
+
+        try
+        {
+            var explain = await NewService().ExplainAsync(source, "search", null, "process payment", null);
+
+            Assert.Equal("search", explain.Mode);
+            Assert.NotEmpty(explain.Files);
+            // The plan names the matched file and assigns it a role and a tier (the explainer's whole purpose).
+            var matched = Assert.Single(explain.Files, f => f.Path.Contains("PaymentService", StringComparison.Ordinal));
+            Assert.False(string.IsNullOrWhiteSpace(matched.Role));
+            Assert.False(string.IsNullOrWhiteSpace(matched.Tier));
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
     public void Dispose() => _provider.Dispose();
 }

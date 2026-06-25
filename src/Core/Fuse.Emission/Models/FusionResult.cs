@@ -22,6 +22,7 @@ public sealed class FusionResult
     /// <param name="emittedFileTokens">
     ///     Per-file token counts for all emitted entries, or <c>null</c> to default to an empty list.
     /// </param>
+    /// <param name="plan">The scoped result's context plan, or <c>null</c> to default to an empty list.</param>
     public FusionResult(
         IReadOnlyList<string> generatedPaths,
         string? inMemoryContent,
@@ -33,7 +34,8 @@ public sealed class FusionResult
         PatternSummary? patternSummary = null,
         int reductionCacheHits = 0,
         int reductionCacheMisses = 0,
-        IReadOnlyList<FileTokenInfo>? emittedFileTokens = null)
+        IReadOnlyList<FileTokenInfo>? emittedFileTokens = null,
+        IReadOnlyList<PlannedFileInfo>? plan = null)
     {
         GeneratedPaths = generatedPaths;
         InMemoryContent = inMemoryContent;
@@ -46,6 +48,7 @@ public sealed class FusionResult
         ReductionCacheHits = reductionCacheHits;
         ReductionCacheMisses = reductionCacheMisses;
         EmittedFileTokens = emittedFileTokens ?? Array.Empty<FileTokenInfo>();
+        Plan = plan ?? Array.Empty<PlannedFileInfo>();
     }
 
     /// <summary>
@@ -102,4 +105,11 @@ public sealed class FusionResult
     ///     Per-file token counts for all emitted entries.
     /// </summary>
     public IReadOnlyList<FileTokenInfo> EmittedFileTokens { get; }
+
+    /// <summary>
+    ///     The scoped result's context plan: one entry per planned file with its role, reduction tier, and score.
+    ///     Empty for unscoped runs and for paths that do not build a plan. Surfaced for explain surfaces (the
+    ///     VS Code extension) so an agent or developer can see why each file was included and at what fidelity.
+    /// </summary>
+    public IReadOnlyList<PlannedFileInfo> Plan { get; }
 }

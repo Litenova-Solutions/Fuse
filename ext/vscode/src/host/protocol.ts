@@ -80,6 +80,20 @@ export interface DiagnosticsDto {
   secrets: SecretDiagnosticDto[];
 }
 
+/** One planned file in an explain result: why it was included (role), at what fidelity (tier), and its score. */
+export interface ExplainFileDto {
+  path: string;
+  role: string;
+  tier: string;
+  score: number;
+}
+
+/** Result of `fuse/explain`: the scoped result's context plan, computed without writing a payload. */
+export interface ExplainResultDto {
+  mode: string;
+  files: ExplainFileDto[];
+}
+
 /** RPC method names exposed by the host (the `fuse/` namespace). */
 export const Methods = {
   handshake: "fuse/handshake",
@@ -88,5 +102,6 @@ export const Methods = {
   graph: "fuse/graph",
   scope: "fuse/scope",
   diagnostics: "fuse/diagnostics",
+  explain: "fuse/explain",
   shutdown: "fuse/shutdown",
 } as const;

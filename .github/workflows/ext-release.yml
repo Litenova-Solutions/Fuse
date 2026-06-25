@@ -1,0 +1,72 @@
+name: Extension release (platform VSIXes)
+
+# Produces a platform-specific VSIX per OS/arch with a self-contained Fuse host bundled in (so the extension
+# runs with no global install). Manually dispatched or on an ext-v* tag. Each platform builds on its matching
+# OS so the host publishes natively; the six VSIXes are uploaded as artifacts for a maintainer to publish.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['ext-v*']
+
+jobs:
+  package:
+    name: Package ${{ matrix.vsceTarget }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            vsceTarget: win32-x64
+          - os: windows-latest
+            rid: win-arm64
+            vsceTarget: win32-arm64
+          - os: ubuntu-latest
+            rid: linux-x64
+            vsceTarget: linux-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
+            vsceTarget: linux-arm64
+          - os: macos-latest
+            rid: osx-arm64
+            vsceTarget: darwin-arm64
+          - os: macos-latest
+            rid: osx-x64
+            vsceTarget: darwin-x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ext/vscode/package-lock.json
+
+      - name: Install Linux publish prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev
+
+      - name: Install extension dependencies
+        working-directory: ext/vscode
+        run: npm ci
+
+      - name: Package platform VSIX (host bundled)
+        working-directory: ext/vscode
+        run: node scripts/package-platform.mjs ${{ matrix.rid }} ${{ matrix.vsceTarget }}
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuse-vscode-${{ matrix.vsceTarget }}
+          path: ext/vscode/*.vsix

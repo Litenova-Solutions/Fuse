@@ -1,0 +1,46 @@
+name: Extension (VS Code)
+
+# Gates the VS Code extension under ext/vscode: install, bundle, typecheck both tsconfigs, lint, and package the
+# VSIX. Runs only when the extension changes, isolated from the engine CI. The @vscode/test-electron integration
+# test is not run here (it needs an Electron download and a display); it belongs on a headful runner.
+on:
+  pull_request:
+    branches: [main, master]
+    paths: ['ext/vscode/**']
+  push:
+    branches: [main, master]
+    paths: ['ext/vscode/**']
+
+jobs:
+  extension:
+    name: Build, Typecheck, Lint, Package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ext/vscode
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ext/vscode/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build (extension and webview bundles)
+        run: npm run build
+
+      - name: Typecheck (node and webview tsconfigs)
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Package VSIX
+        run: npx vsce package --no-dependencies --allow-missing-repository

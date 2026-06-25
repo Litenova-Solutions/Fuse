@@ -29,19 +29,24 @@ Since: Phase 3 is now complete (secrets, hotspots, graph gaps, generated code, a
 card, and explainer panel. A real concurrency bug the host test caught (concurrent same-mode scopes colliding
 on one payload file) is fixed. Host tests: 19.
 
-## Remaining (all marginal, packaging, or runtime-blocked)
+All six phases are now functionally complete. Since the lines above: Phase 4 gained directory expand-on-click;
+Phase 2 gained the TS-side contract test (headless, in CI); Phase 6 gained per-RID publish profiles and CI for
+all six RIDs plus extension-side bundled-host resolution (prefer `fuse.host.path`, then a bundled
+`host/<rid>/fuse`, then PATH).
 
-1. Phase 4 polish: directory-supernode expand-on-click in the webview (a webview interaction; the host already
-   serves directory-level detail, and clicking a directory could fetch just its files).
-2. Phase 6 packaging: bundle a self-contained host per RID via platform-specific extensions (or
-   download-on-first-run), and the per-RID host-publish CI matrix. The base VSIX works today via the `fuse`
-   global tool on PATH / `fuse.host.path`.
-3. Tests: the `@vscode/test-electron` integration test and a TS-side contract test, which need an Electron
-   download and a display, so they belong on a headful or specially-configured runner (quarantine if the runner
-   cannot launch VS Code). Optional: a git-churn code lens.
+## Remaining (CI/release production or runtime-blocked only)
+
+1. The release job that copies each per-RID published host into `host/<rid>/` and runs
+   `vsce package --target <platform>` to emit the six platform VSIXes. The extension, profiles, and CI matrix
+   are ready for it; producing and uploading the binaries is a release/CI task. The base no-host VSIX and the
+   PATH fallback work today.
+2. The `@vscode/test-electron` integration test: needs an Electron download and a display, so it belongs on a
+   headful or specially-configured runner (quarantine if the runner cannot launch VS Code). The host RPC
+   surface and the wire contract are already covered by 19 .NET host tests and the headless TS contract test.
+3. Optional: a git-churn code lens (a further host method over `IGitStatsProvider`).
 
 ## Blockers
 
-None hit. The `@vscode/test-electron` harness needs an Electron download and a display, so it is deferred to a
-headful runner rather than committed red here; the enforceable extension gate is build, dual typecheck, and
-lint, all green.
+None hit. The `@vscode/test-electron` harness needs an Electron download and a display, so it is the one item
+deferred to a headful runner rather than committed red here; the enforceable extension gate (build, dual
+typecheck, lint, contract test) is green, and a VSIX packages.

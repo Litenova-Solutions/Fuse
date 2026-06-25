@@ -57,7 +57,11 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
 
 ## Phase 3: context diagnostics
 
-- [ ] Not started.
+- [x] Secret diagnostics: a dedicated "Fuse: context" `DiagnosticCollection` (never mixed with compiler
+      problems) populated from `fuse/diagnostics`, underlining each secret literal at the host-reported range
+      with the kind in the message. Refreshed on index/warm. Build, typecheck, and lint green.
+- [ ] Token-hotspot and generated-code diagnostics; refresh on `fuse/invalidated` per changed file (needs the
+      watcher lifecycle).
 
 ## Phase 4: graph webview with level-of-detail
 

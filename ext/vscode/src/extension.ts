@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { SecretDiagnostics } from "./diagnostics/secrets";
 import { HostSupervisor } from "./host/supervisor";
 import { FuseStatusBar } from "./statusBar";
 import { Hotspot, HotspotsProvider } from "./views/hotspots";
@@ -22,10 +23,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const statusBar = new FuseStatusBar();
   const indexStatus = new IndexStatusProvider();
   const hotspots = new HotspotsProvider(root);
+  const secrets = new SecretDiagnostics(root);
 
   context.subscriptions.push(
     output,
     statusBar,
+    secrets,
     vscode.window.registerTreeDataProvider("fuse.indexStatus", indexStatus),
     vscode.window.registerTreeDataProvider("fuse.hotspots", hotspots),
   );
@@ -34,15 +37,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m));
   context.subscriptions.push({ dispose: () => supervisor?.dispose() });
 
-  const indexCommand = vscode.commands.registerCommand("fuse.index", () => warmAndProject(root, statusBar, indexStatus, hotspots, output));
+  const indexCommand = vscode.commands.registerCommand("fuse.index", () => warmAndProject(root, statusBar, indexStatus, hotspots, secrets, output));
   const restartCommand = vscode.commands.registerCommand("fuse.restartHost", async () => {
     supervisor?.dispose();
     supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m));
-    await warmAndProject(root, statusBar, indexStatus, hotspots, output);
+    await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, output);
   });
   context.subscriptions.push(indexCommand, restartCommand);
 
-  await warmAndProject(root, statusBar, indexStatus, hotspots, output);
+  await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, output);
 }
 
 // Starts (or reuses) the host, indexes the root, and projects the results into the status bar and trees.
@@ -51,6 +54,7 @@ async function warmAndProject(
   statusBar: FuseStatusBar,
   indexStatus: IndexStatusProvider,
   hotspots: HotspotsProvider,
+  secrets: SecretDiagnostics,
   output: vscode.OutputChannel,
 ): Promise<void> {
   if (!supervisor) {
@@ -78,6 +82,9 @@ async function warmAndProject(
       .slice(0, 50)
       .map((n) => new Hotspot(n.path, n.tokenCost));
     hotspots.update(top);
+
+    // Surface secret findings as editor diagnostics (the C1 fix made visible).
+    await secrets.refresh(client);
   } catch (err) {
     statusBar.setState("not indexed");
     output.appendLine(`Fuse indexing failed: ${String(err)}`);

@@ -1,57 +1,43 @@
 # Fuse VS Code extension: session summary
 
-## Completed so far (committed, gate green at each commit)
+All six phases of the playbook are touched and the extension packages into an installable VSIX. Every commit
+held the gate: `dotnet build Fuse.slnx -c Release` 0 warnings, full .NET suite green, `dotnet format
+--verify-no-changes` clean, the B9 benchmark gate passing, and engine/benchmark numbers unchanged; on the
+extension, `npm run build`, `tsc --noEmit` (both tsconfigs), and `npm run lint` green.
 
-Phase 1, the `fuse host` JSON-RPC endpoint, transport plus five working methods:
+## Completed
 
-- `fuse host` command serving the warm engine over a named pipe (Windows) or Unix domain socket (elsewhere),
-  sharing the same `AddFuse` DI graph as `fuse mcp serve`. Address derived from the repository root; accept loop
-  serves multiple connections until `fuse/shutdown`.
-- Wire contract: source-generated `FuseHostJsonContext` over the RPC DTOs, mirrored by `src/host/protocol.ts`,
-  pinned by `FuseHostContractTests`. `FuseHostConnection` centralizes the StreamJsonRpc setup.
-- Methods, all tested: `fuse/handshake` (version match), `fuse/stats` (process health, host RSS),
-  `fuse/index` (warms the shared engine, returns state and file count), `fuse/scope` (runs a focus/search/
-  changes fusion through the shared orchestrator, returns the emitted file plan with token costs, and writes
-  the payload to a temp file the extension opens read-only), `fuse/shutdown`. Verified by
-  `FuseHostServiceRpcTests` over an in-memory duplex pipe and the real `AddFuseForTests` provider (10 host tests).
+- **Phase 1 (host): complete.** All eight RPC methods (handshake, stats, index, scope, graph, diagnostics,
+  explain, shutdown) over a named pipe (Windows) or Unix socket (elsewhere), sharing the MCP `AddFuse` DI graph.
+  17 host tests including a concurrency test. The wire contract is source-generated (`FuseHostJsonContext`),
+  mirrored in `src/host/protocol.ts`, and pinned by contract tests. `fuse/explain` surfaces a read-only,
+  additive `FusionResult.Plan` projection; `fuse/diagnostics` adds `ISecretRedactor.FindSecretSpans`, which
+  leaves redaction output byte-identical.
+- **Phase 2 (thin extension): complete.** Manifest, supervisor (spawn, backoff connect, version handshake,
+  restart with capped backoff), typed `vscode-jsonrpc` client, status bar, index-status tree, token-hotspot tree.
+- **Phase 3 (diagnostics): secrets done.** Secret findings as precise editor diagnostics in a dedicated
+  "Fuse: context" collection, validating the C1 fix.
+- **Phase 4 (graph webview): done.** Offline Cytoscape webview (esbuild inlines it, strict CSP, no CDN); nodes
+  sized by centrality, colored by token cost, click to open; directory level of detail.
+- **Phase 5 (scoping): commands done.** Search, Focus Here (editor and explorer menus), and Changes Since
+  Branch run a scoped fusion, open the payload read-only, and fill the Scope Result panel.
+- **Phase 6 (packaging): VSIX done.** `npm run package` produces `fuse-vscode-3.0.0.vsix` (229.92 KB), offline,
+  host resolved from `fuse.host.path` or the `fuse` global tool on PATH (size recorded in DECISIONS.md).
 
-Gate at each commit: `dotnet build Fuse.slnx -c Release` 0 warnings, all tests pass, `dotnet format
---verify-no-changes` clean. Engine behavior and every benchmark number unchanged.
+## Remaining (next-session order)
 
-## Phase 1 RPC surface: 7 of 8 methods done
-
-Working and tested end to end (14 host tests): `fuse/handshake`, `fuse/stats`, `fuse/index`, `fuse/scope`,
-`fuse/graph` (file and directory level of detail), `fuse/diagnostics` (secret findings with precise editor
-ranges, via the new read-only `ISecretRedactor.FindSecretSpans` that leaves redaction output byte-identical),
-and `fuse/shutdown`.
-
-## Remaining (recommended next-session order)
-
-1. Finish Phase 1:
-   - `fuse/explain`: surface a read-only projection of the `ContextPlan` (ranked seeds, neighbours, scores,
-     provenance, planned tier, omitted-and-why). The plan is built in the orchestrator (`ContextPlanBuilder
-     .Build`) but is `internal` and constructed well before, and separately from, the `FusionResult`. The clean
-     change is a public `PlannedFileInfo` projection added as an additive, defaulted field on `FusionResult`,
-     populated at the main success-path construction; verify it is in scope there (the result is built in a
-     helper) and add a host test asserting roles and tiers. A core-flow change, so its own careful commit.
-   - Then add hotspots (`TopTokenFiles`) and graph gaps (unconnected files) to `fuse/diagnostics` (no engine
-     change needed), the warm-index lifecycle (pooled repo-root store, resident index, watcher invalidation
-     pushing `fuse/invalidated`), the concurrency test (simultaneous `fuse/graph` and `fuse/scope`), and the
-     per-RID host-publish CI matrix.
-2. Phase 2: the thin read-only extension (`package.json` manifest, supervisor with spawn/health/restart and
-   version handshake, status bar, index-status tree, token-hotspot tree), plus the extension test harness
-   (`@vscode/test-electron`) and the TS-side contract test that parses the same fixtures as the .NET one.
-3. Phases 3-6 as in the playbook: context diagnostics, the Cytoscape graph webview with directory-level
-   detail, scoping commands and the scope/explain panels, then packaging (NativeAOT vs self-contained per RID,
-   offline install, VSIX size recorded in DECISIONS.md).
+1. Phase 5 finish: the hover provider, token and churn code lenses, and the explainer panel over `fuse/explain`.
+2. Phase 3 finish: hotspot and generated-code diagnostics, and the warm-index watcher lifecycle pushing
+   `fuse/invalidated` so diagnostics and trees refresh per changed file.
+3. Phase 4 finish: the scoped role/tier overlay and directory-supernode expand-on-click.
+4. Phase 6 finish: bundle a self-contained host per RID via platform-specific extensions (or download-on-first
+   -run), and stand up the per-RID host-publish CI matrix.
+5. Tests: the `@vscode/test-electron` integration test and a TS-side contract test (need an Electron download
+   and a display, so they run in a headful or specially-configured CI runner; quarantine if the runner cannot
+   launch VS Code).
 
 ## Blockers
 
-None hit this session. The TS toolchain (npm, esbuild, `@vscode/test-electron`) is a Node dependency that
-Phase 2 will introduce under `ext/vscode`; no `BLOCKED.md` was needed.
-
-## Notes
-
-- The whole effort is the size the playbook anticipates ("overnight run", six phases). This session delivered
-  the contract-gating foundation (the playbook's recommended first artifact) end to end with tests; every later
-  UI surface is a typed projection over the RPC methods extended from here.
+None hit. The `@vscode/test-electron` harness needs an Electron download and a display, so it is deferred to a
+headful runner rather than committed red here; the enforceable extension gate this session was build, dual
+typecheck, and lint.

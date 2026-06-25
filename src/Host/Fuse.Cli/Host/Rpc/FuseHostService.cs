@@ -9,6 +9,7 @@ using Fuse.Fusion;
 using Fuse.Fusion.Scoping;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
+using Fuse.Reduction.Security;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
@@ -42,6 +43,7 @@ public sealed class FuseHostService
     private readonly Func<ISourceContentProvider> _contentProviderFactory;
     private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
     private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
+    private readonly ISecretRedactor _redactor;
     private readonly long _startTimestamp;
     private readonly TaskCompletionSource _shutdownRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -55,6 +57,7 @@ public sealed class FuseHostService
     /// <param name="contentProviderFactory">Factory for a per-call source content provider.</param>
     /// <param name="dependencyExtractors">Per-extension referenced-type extractors.</param>
     /// <param name="typeNameLocators">Per-extension declared-type locators.</param>
+    /// <param name="redactor">The secret redactor, used read-only to locate secret spans for diagnostics.</param>
     /// <param name="logger">The logger for host-side diagnostics, routed away from the transport stream.</param>
     public FuseHostService(
         FusionOrchestrator orchestrator,
@@ -64,6 +67,7 @@ public sealed class FuseHostService
         Func<ISourceContentProvider> contentProviderFactory,
         CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
         CapabilityRegistry<ITypeNameLocator> typeNameLocators,
+        ISecretRedactor redactor,
         ILogger<FuseHostService> logger)
     {
         _orchestrator = orchestrator;
@@ -73,6 +77,7 @@ public sealed class FuseHostService
         _contentProviderFactory = contentProviderFactory;
         _dependencyExtractors = dependencyExtractors;
         _typeNameLocators = typeNameLocators;
+        _redactor = redactor;
         _logger = logger;
         _startTimestamp = Stopwatch.GetTimestamp();
     }
@@ -294,6 +299,69 @@ public sealed class FuseHostService
         _logger.LogInformation("Scope {Mode} on {Root}: {Files} files, {Tokens} tokens.",
             normalizedMode, resolved, files.Count, result.TotalTokens);
         return new ScopeResultDto(normalizedMode, files, result.TotalTokens, payloadPath);
+    }
+
+    /// <summary>
+    ///     Scans the repository for context diagnostics. Currently returns secret findings with precise editor
+    ///     ranges, computed read-only with the same redactor the reduction path uses, so the editor underlines
+    ///     exactly the literal that emitted output would redact. Hotspot and graph-gap diagnostics are layered on
+    ///     this method in later increments.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <returns>The detected secrets with their precise line and character ranges.</returns>
+    [JsonRpcMethod("fuse/diagnostics")]
+    public async Task<DiagnosticsDto> DiagnosticsAsync(string root)
+    {
+        var resolved = Path.GetFullPath(root);
+        if (!Directory.Exists(resolved))
+            return new DiagnosticsDto([]);
+
+        var request = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved).Build();
+        var collection = await _collectionPipeline.CollectAsync(request.Collection);
+        var contentProvider = _contentProviderFactory();
+
+        var secrets = new List<SecretDiagnosticDto>();
+        foreach (var file in collection.Files)
+        {
+            var content = await contentProvider.GetContentAsync(file);
+            var spans = _redactor.FindSecretSpans(content);
+            if (spans.Count == 0)
+                continue;
+
+            // Convert each character span to a zero-based line and column range once per file, walking the
+            // content's newline offsets so a multi-line file maps spans without rescanning from the start.
+            var lineStarts = ComputeLineStarts(content);
+            foreach (var span in spans)
+            {
+                var (startLine, startCol) = OffsetToLineColumn(lineStarts, span.Start);
+                var (endLine, endCol) = OffsetToLineColumn(lineStarts, span.Start + span.Length);
+                secrets.Add(new SecretDiagnosticDto(
+                    file.NormalizedRelativePath, span.Kind, startLine, startCol, endLine, endCol));
+            }
+        }
+
+        _logger.LogInformation("Diagnostics on {Root}: {Secrets} secret findings.", resolved, secrets.Count);
+        return new DiagnosticsDto(secrets);
+    }
+
+    // The character offset at which each line starts, so an offset maps to a line by binary search.
+    private static int[] ComputeLineStarts(string content)
+    {
+        var starts = new List<int> { 0 };
+        for (var i = 0; i < content.Length; i++)
+            if (content[i] == '\n')
+                starts.Add(i + 1);
+        return [.. starts];
+    }
+
+    // Maps a character offset to a zero-based (line, column) using the precomputed line-start table.
+    private static (int Line, int Column) OffsetToLineColumn(int[] lineStarts, int offset)
+    {
+        var line = Array.BinarySearch(lineStarts, offset);
+        if (line < 0)
+            line = ~line - 1; // the insertion point minus one is the line whose start is at or before the offset
+        line = Math.Clamp(line, 0, lineStarts.Length - 1);
+        return (line, offset - lineStarts[line]);
     }
 
     /// <summary>

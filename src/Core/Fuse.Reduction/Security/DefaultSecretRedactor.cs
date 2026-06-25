@@ -78,6 +78,34 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
         return new SecretRedactionResult(content, counts);
     }
 
+    /// <inheritdoc />
+    public IReadOnlyList<SecretFinding> FindSecretSpans(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return [];
+
+        // Mirror the redaction decisions on the ORIGINAL content (named patterns always match-redact;
+        // connection-string and high-entropy apply their predicates), recording each match's kind and span.
+        // This enumerates the same patterns Redact uses but never replaces, so it is a pure read-only view that
+        // cannot affect emitted output. Spans are offsets into the original content for in-place highlighting.
+        var findings = new List<SecretFinding>();
+
+        foreach (var (kind, pattern) in Patterns)
+            foreach (Match match in pattern.Matches(content))
+                findings.Add(new SecretFinding(kind, match.Index, match.Length));
+
+        foreach (Match match in ConnectionStringLiteralRegex().Matches(content))
+            if (LooksLikeConnectionString(match.Groups["value"].Value))
+                findings.Add(new SecretFinding("connection-string", match.Index, match.Length));
+
+        foreach (Match match in HighEntropyLiteralRegex().Matches(content))
+            if (IsHighEntropy(match.Groups["value"].Value))
+                findings.Add(new SecretFinding("high-entropy", match.Index, match.Length));
+
+        findings.Sort((a, b) => a.Start.CompareTo(b.Start));
+        return findings;
+    }
+
     // Counts, on the original content, the secret matches that fall inside a C# string literal. This is an
     // additive diagnostic computed independently of the replacement chain (whose offsets shift), so it never
     // affects redaction output. It mirrors the redaction decisions: named patterns always redact on match;

@@ -19,6 +19,26 @@ public sealed class SecretRedactorTests
     }
 
     [Fact]
+    public void FindSecretSpans_ReturnsTheKindAndExactSpanOfTheSecret()
+    {
+        const string secret = "AKIAIOSFODNN7EXAMPLE";
+        var input = $"var key = \"{secret}\";";
+
+        var spans = _redactor.FindSecretSpans(input);
+
+        var finding = Assert.Single(spans, f => f.Kind == "aws-access-key");
+        // The span must cover exactly the secret literal in the original content.
+        Assert.Equal(secret, input.Substring(finding.Start, finding.Length));
+    }
+
+    [Fact]
+    public void FindSecretSpans_NoSecret_ReturnsEmpty()
+    {
+        Assert.Empty(_redactor.FindSecretSpans("public class C { public void M() { } }"));
+        Assert.Empty(_redactor.FindSecretSpans(string.Empty));
+    }
+
+    [Fact]
     public void Redact_Jwt_ReplacesToken()
     {
         const string input =

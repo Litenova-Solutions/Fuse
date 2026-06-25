@@ -7,6 +7,7 @@ using Fuse.Fusion;
 using Fuse.Fusion.Scoping;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
+using Fuse.Reduction.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using StreamJsonRpc;
@@ -28,6 +29,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         _provider.GetRequiredService<Func<ISourceContentProvider>>(),
         _provider.GetRequiredService<CapabilityRegistry<IDependencyExtractor>>(),
         _provider.GetRequiredService<CapabilityRegistry<ITypeNameLocator>>(),
+        _provider.GetRequiredService<ISecretRedactor>(),
         NullLogger<FuseHostService>.Instance);
 
     [Fact]
@@ -163,6 +165,31 @@ public sealed class FuseHostServiceRpcTests : IDisposable
             // Directory nodes, not file nodes: at most one node per directory, far fewer than the file count.
             Assert.Contains(graph.Nodes, n => n.Path is "Core" or "App");
             Assert.All(graph.Nodes, n => Assert.DoesNotContain(".cs", n.Path));
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Diagnostics_ReportsASecretAtItsPreciseRange()
+    {
+        var source = Path.Combine(Path.GetTempPath(), "fuse-host-diag", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(source);
+        // A second line carrying an AWS access key (a synthetic example), so the diagnostic must land on line 1.
+        var secretLine = "    var key = \"AKIAIOSFODNN7EXAMPLE\";";
+        File.WriteAllText(Path.Combine(source, "Config.cs"), "public class Config\n" + secretLine + "\n");
+
+        try
+        {
+            var diagnostics = await NewService().DiagnosticsAsync(source);
+
+            var finding = Assert.Single(diagnostics.Secrets);
+            Assert.Equal("aws-access-key", finding.Kind);
+            Assert.Contains("Config.cs", finding.Path);
+            Assert.Equal(1, finding.StartLine); // zero-based: the secret is on the second line
+            Assert.Equal(secretLine.IndexOf("AKIA", StringComparison.Ordinal), finding.StartColumn);
         }
         finally
         {

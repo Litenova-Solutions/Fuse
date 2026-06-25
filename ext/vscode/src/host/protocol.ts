@@ -65,6 +65,21 @@ export interface ScopeResultDto {
   payloadPath?: string;
 }
 
+/** One detected secret with a zero-based editor range, for an in-place diagnostic. */
+export interface SecretDiagnosticDto {
+  path: string;
+  kind: string;
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+}
+
+/** Result of `fuse/diagnostics`: context diagnostics for the repository (secrets, with hotspots/gaps to come). */
+export interface DiagnosticsDto {
+  secrets: SecretDiagnosticDto[];
+}
+
 /** RPC method names exposed by the host (the `fuse/` namespace). */
 export const Methods = {
   handshake: "fuse/handshake",
@@ -72,5 +87,6 @@ export const Methods = {
   index: "fuse/index",
   graph: "fuse/graph",
   scope: "fuse/scope",
+  diagnostics: "fuse/diagnostics",
   shutdown: "fuse/shutdown",
 } as const;

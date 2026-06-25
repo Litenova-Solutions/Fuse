@@ -6,6 +6,18 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Host engine-data RPC methods and a read-only secret-span API (extension Phase 1, continued).** The host now
+  serves `fuse/index` (warms the shared engine, returns state and file count), `fuse/scope` (runs a
+  focus/search/changes fusion through the shared orchestrator, returns the emitted file plan with token costs,
+  and writes the payload to a temp file the extension opens read-only), `fuse/graph` (projects the dependency
+  graph with PageRank centrality and an estimated token cost, at file or directory level of detail with
+  directory supernodes), and `fuse/diagnostics` (secret findings with precise zero-based editor ranges). The
+  last adds `ISecretRedactor.FindSecretSpans`, a read-only method that locates detected secrets and their
+  character spans in the original content without redacting; it mirrors the redaction match logic on the
+  original content (the same approach the existing code-literal classification uses), so it is purely additive
+  and the redaction output and counts are byte-identical (all redaction tests unchanged). Each host method is
+  integration-tested over the real engine; the wire DTOs are mirrored in `protocol.ts` and pinned by contract
+  tests. `fuse/explain` remains, pending a read-only `ContextPlan` projection from the orchestrator.
 - **`fuse host`: a JSON-RPC endpoint for the VS Code extension (extension Phase 1).** A new long-lived host
   command serves the warm engine to the editor over a named pipe (Windows) or Unix domain socket (elsewhere),
   sharing the same `AddFuse` dependency graph as `fuse mcp serve`, so the agent (over MCP) and the developer

@@ -79,4 +79,17 @@ public sealed class FuseHostContractTests
 
         Assert.DoesNotContain("payloadPath", json);
     }
+
+    [Fact]
+    public void Diagnostics_SerializesSecretRangesCamelCase()
+    {
+        var diagnostics = new DiagnosticsDto(
+            [new SecretDiagnosticDto("a/Config.cs", "github-token", 12, 4, 12, 44)]);
+
+        var json = JsonSerializer.Serialize(diagnostics, FuseHostJsonContext.Default.DiagnosticsDto);
+
+        Assert.Contains("\"kind\":\"github-token\"", json);
+        Assert.Contains("\"startLine\":12", json);
+        Assert.Contains("\"endColumn\":44", json);
+    }
 }

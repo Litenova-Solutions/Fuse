@@ -118,7 +118,7 @@
     "lint": "eslint src --ext ts",
     "pretest": "npm run build && tsc -p ./ --noEmit && tsc -p tsconfig.webview.json --noEmit",
     "typecheck": "tsc -p ./ --noEmit && tsc -p tsconfig.webview.json --noEmit",
-    "test:contract": "node --test \"test/**/*.test.mjs\"",
+    "test:contract": "node --test test/*.test.mjs",
     "test": "node ./dist/test/runTest.js",
     "package": "vsce package --no-dependencies"
   },

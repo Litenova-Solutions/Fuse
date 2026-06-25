@@ -26,6 +26,10 @@ jobs:
       - name: Check vulnerable packages (shipped)
         shell: pwsh
         run: |
+          # Keep in sync with NuGetAuditSuppress entries in Directory.Build.props.
+          $suppressedAdvisories = @(
+            'https://github.com/advisories/GHSA-hv8m-jj95-wg3x'
+          )
           $failed = $false
           Get-ChildItem -Path src -Recurse -Filter *.csproj | ForEach-Object {
             $project = $_.FullName
@@ -45,6 +49,7 @@ jobs:
                 foreach ($package in $packages) {
                   if (-not $package.vulnerabilities) { continue }
                   foreach ($advisory in $package.vulnerabilities) {
+                    if ($suppressedAdvisories -contains $advisory.advisoryurl) { continue }
                     if ($advisory.severity -eq 'High' -or $advisory.severity -eq 'Critical') {
                       Write-Host "::error::$($package.id) $($package.resolvedVersion) [$($advisory.severity)] $($advisory.advisoryurl)"
                       $failed = $true

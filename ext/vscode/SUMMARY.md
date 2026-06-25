@@ -18,27 +18,26 @@ Phase 1, the `fuse host` JSON-RPC endpoint, transport plus five working methods:
 Gate at each commit: `dotnet build Fuse.slnx -c Release` 0 warnings, all tests pass, `dotnet format
 --verify-no-changes` clean. Engine behavior and every benchmark number unchanged.
 
-## Methods landed since: fuse/index, fuse/scope, fuse/graph
+## Phase 1 RPC surface: 7 of 8 methods done
 
-`fuse/graph` ships at both levels of detail (file nodes with PageRank centrality and an estimated token cost;
-directory supernodes that fold files and aggregate edges). Six RPC methods now work end to end with 12 tests.
+Working and tested end to end (14 host tests): `fuse/handshake`, `fuse/stats`, `fuse/index`, `fuse/scope`,
+`fuse/graph` (file and directory level of detail), `fuse/diagnostics` (secret findings with precise editor
+ranges, via the new read-only `ISecretRedactor.FindSecretSpans` that leaves redaction output byte-identical),
+and `fuse/shutdown`.
 
 ## Remaining (recommended next-session order)
 
-1. Finish Phase 1. The two remaining engine methods each need a small, deliberate engine-surface addition to a
-   load-bearing or internal component, so they are their own commits rather than wiring:
-   - `fuse/explain`: the `ContextPlan` (ranked seeds, neighbours, scores, provenance, planned tier, token
-     estimate, omitted-and-why) is `internal` and not surfaced on `FusionResult`. Expose a read-only plan
-     projection from the orchestrator (a public DTO, not the internal type), then project it. No behavior change.
-   - `fuse/diagnostics`: secret findings need precise spans, but `SecretRedactionResult` currently carries only
-     the redacted content and per-kind counts, not per-finding ranges. Add a finding list (kind, start, end) to
-     the redactor result and thread it through, with tests that the spans match the redacted output (the
-     redaction component is load-bearing and a hard invariant, so this is a careful, dedicated change, not a
-     tail-of-session edit). Hotspots (`TopTokenFiles`) and graph gaps (unconnected files in the graph) need no
-     engine change and can land in the same method once the secret spans are in.
-   Then add the warm-index lifecycle (pooled repo-root store, resident index, watcher invalidation pushing
-   `fuse/invalidated`), the concurrency test (simultaneous `fuse/graph` and `fuse/scope`), and the per-RID
-   host-publish CI matrix.
+1. Finish Phase 1:
+   - `fuse/explain`: surface a read-only projection of the `ContextPlan` (ranked seeds, neighbours, scores,
+     provenance, planned tier, omitted-and-why). The plan is built in the orchestrator (`ContextPlanBuilder
+     .Build`) but is `internal` and constructed well before, and separately from, the `FusionResult`. The clean
+     change is a public `PlannedFileInfo` projection added as an additive, defaulted field on `FusionResult`,
+     populated at the main success-path construction; verify it is in scope there (the result is built in a
+     helper) and add a host test asserting roles and tiers. A core-flow change, so its own careful commit.
+   - Then add hotspots (`TopTokenFiles`) and graph gaps (unconnected files) to `fuse/diagnostics` (no engine
+     change needed), the warm-index lifecycle (pooled repo-root store, resident index, watcher invalidation
+     pushing `fuse/invalidated`), the concurrency test (simultaneous `fuse/graph` and `fuse/scope`), and the
+     per-RID host-publish CI matrix.
 2. Phase 2: the thin read-only extension (`package.json` manifest, supervisor with spawn/health/restart and
    version handshake, status bar, index-status tree, token-hotspot tree), plus the extension test harness
    (`@vscode/test-electron`) and the TS-side contract test that parses the same fixtures as the .NET one.

@@ -14,8 +14,11 @@ export class GraphView {
     private readonly workspaceRoot: string,
   ) {}
 
-  /** Opens (or reveals) the graph panel and loads the graph from the host. */
-  async show(client: HostClient): Promise<void> {
+  /** Opens (or reveals) the graph panel and loads the graph from the host, optionally overlaid with a scope. */
+  async show(
+    client: HostClient,
+    scope?: { mode: string; seed: string | null; query: string | null; since: string | null },
+  ): Promise<void> {
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel("fuse.graph", "Fuse: Dependency Graph", vscode.ViewColumn.Active, {
         enableScripts: true,
@@ -31,7 +34,10 @@ export class GraphView {
     }
 
     this.panel.reveal();
-    const graph = await client.graph(this.workspaceRoot, "Directories");
+    // A scoped overlay needs file-level nodes to carry roles; an unscoped view starts at the directory level.
+    const graph = scope
+      ? await client.graph(this.workspaceRoot, "Files", scope)
+      : await client.graph(this.workspaceRoot, "Directories");
     await this.panel.webview.postMessage({ type: "graph", graph });
   }
 

@@ -148,6 +148,30 @@ public sealed class FuseHostServiceRpcTests : IDisposable
     }
 
     [Fact]
+    public async Task Graph_WithScopeOverlay_TagsMatchedNodesWithARole()
+    {
+        var source = Path.Combine(Path.GetTempPath(), "fuse-host-graphscope", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "PaymentService.cs"),
+            "public class PaymentService { public void ProcessPayment() { } }");
+        File.WriteAllText(Path.Combine(source, "CatalogService.cs"),
+            "public class CatalogService { public void ListProducts() { } }");
+
+        try
+        {
+            var graph = await NewService().GraphAsync(source, "Files", "search", null, "process payment", null);
+
+            // The scope overlay tags the matched file's node with a role (the whole point of the overlay).
+            var matched = Assert.Single(graph.Nodes, n => n.Path.Contains("PaymentService", StringComparison.Ordinal));
+            Assert.False(string.IsNullOrWhiteSpace(matched.Role));
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Graph_Directories_FoldsFilesIntoDirectorySupernodes()
     {
         var source = Path.Combine(Path.GetTempPath(), "fuse-host-graphdir", Guid.NewGuid().ToString("N"));

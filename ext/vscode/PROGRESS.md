@@ -74,8 +74,11 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
       level of detail and posts it; nodes are sized by centrality and colored by token cost, edges show
       references, and clicking a node opens the file. "Fuse: Show Dependency Graph" command. The webview has its
       own DOM-aware `tsconfig.webview.json`; both tsconfigs typecheck clean alongside the build and lint.
-- [ ] Scoped role/tier overlay and the directory-supernode expand-on-click interaction (the host already
-      serves directory-level detail; expand-to-files is the next interaction).
+- [x] Scoped role overlay: `fuse/graph` takes an optional scope (mode/seed/query/since) and tags each node with
+      the role the context plan assigned (Seed, Changed, Dependency); the webview recolors by role when a scope
+      is active. "Show Dependency Graph" overlays the most recent scope automatically. Host test covers it.
+- [ ] Directory-supernode expand-on-click (the host already serves directory-level detail; expand-to-files is
+      the remaining interaction).
 
 ## Phase 5: scoping commands, hover, lenses, panels
 

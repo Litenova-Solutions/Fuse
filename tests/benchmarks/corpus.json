@@ -44,6 +44,16 @@
       "cs_files": 216
     },
     {
+      "name": "eShopOnWeb",
+      "size": "mid (application)",
+      "url": "https://github.com/dotnet-architecture/eShopOnWeb.git",
+      "commit": "4da8212117e87d808d4bbc7da6286fd2147ce606",
+      "committed": "2025-01-13",
+      "cs_files": 254,
+      "license": "MIT",
+      "note": "ASP.NET Core reference application (MVC, Razor Pages, Blazor admin, EF Core, DI wiring). The only application in the corpus; every other repo is a library. Included to test external validity beyond clean public-API libraries."
+    },
+    {
       "name": "SampleShop",
       "size": "micro (in-repo)",
       "local": "tests/fixtures/SampleShop",

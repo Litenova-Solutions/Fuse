@@ -72,7 +72,7 @@ The supported tokenizer names are listed in the [Tokenizers reference](/docs/ref
 | `--no-redact` | bool | `false` | Disable secret redaction. Redaction is on by default. |
 | `--redact-report` | bool | `false` | Append a redaction count summary to the output. |
 
-The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds reference](/docs/reference/secret-redaction-kinds).
+The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds reference](/docs/reference/secret-redaction-kinds). Redaction is best-effort pattern and entropy matching; it lowers accidental exposure but does not guarantee every secret is removed. Do not rely on it for compliance or secret scanning.
 
 ## Exclusion Options
 

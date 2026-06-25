@@ -160,7 +160,7 @@ A fusion is a four-stage pipeline:
 
 1. **Collection** - scan the source directory and apply filters (extensions, `.gitignore`, binary detection, test projects, globs).
 2. **Filtering** - optional scoping: focus, git changes, or BM25 query with dependency expansion.
-3. **Reduction** - normalize whitespace, run language and format reducers, apply skeleton, markers, and secret redaction.
+3. **Reduction** - normalize whitespace, run language and format reducers, apply skeleton, markers, and best-effort secret redaction (regex and entropy heuristics).
 4. **Emission** - count tokens, build the manifest, apply the output format, and write within a token budget.
 
 The concept in plain terms is at [How Fuse works](https://fuse.codes/docs/concepts/how-fuse-works); the internals are at [The pipeline](https://fuse.codes/docs/internals/pipeline).

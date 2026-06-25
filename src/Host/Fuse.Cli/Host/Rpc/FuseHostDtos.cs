@@ -1,13 +1,15 @@
 namespace Fuse.Cli.Rpc;
 
 /// <summary>
-///     The result of the <c>fuse/handshake</c> method: the host's package version and the wire protocol version
-///     the UI client must match. A protocol mismatch is surfaced to the user as a clear notification rather than
-///     failing later with an opaque serialization error.
+///     The result of the <c>fuse/handshake</c> method: the host's package version, the wire protocol version
+///     the UI client must match, and the session token required on every subsequent RPC call. A protocol
+///     mismatch is surfaced to the user as a clear notification rather than failing later with an opaque
+///     serialization error.
 /// </summary>
 /// <param name="HostVersion">The host package version (for example <c>3.0.0</c>).</param>
 /// <param name="ProtocolVersion">The RPC protocol version; the client compares it to its own.</param>
-public sealed record FuseHostHandshake(string HostVersion, int ProtocolVersion);
+/// <param name="SessionToken">The session token the client must pass on all RPC methods except handshake.</param>
+public sealed record FuseHostHandshake(string HostVersion, int ProtocolVersion, string SessionToken);
 
 /// <summary>
 ///     The result of the <c>fuse/stats</c> method: cheap process-level health for the status bar and index

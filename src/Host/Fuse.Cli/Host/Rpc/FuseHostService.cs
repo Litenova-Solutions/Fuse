@@ -25,10 +25,11 @@ namespace Fuse.Cli.Rpc;
 /// </summary>
 /// <remarks>
 ///     Method names use the <c>fuse/</c> namespace to match the wire protocol the extension's <c>protocol.ts</c>
-///     mirrors. The service never throws across the wire for an expected condition; it returns a typed DTO so the
+///     mirrors. A random session token is generated at host start, returned from <c>fuse/handshake</c>, and
+///     required on every other RPC method. The service never throws across the wire for an expected condition; it returns a typed DTO so the
 ///     client can render a clear state rather than parse an error.
 /// </remarks>
-public sealed class FuseHostService
+public sealed class FuseHostService : IDisposable
 {
     /// <summary>
     ///     The wire protocol version. Bumped on any breaking change to a DTO or method shape so a stale extension
@@ -45,8 +46,11 @@ public sealed class FuseHostService
     private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
     private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
     private readonly ISecretRedactor _redactor;
+    private readonly string _sessionToken;
     private readonly long _startTimestamp;
     private readonly TaskCompletionSource _shutdownRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly object _payloadLock = new();
+    private readonly HashSet<string> _payloadPaths = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FuseHostService" /> class.
@@ -80,6 +84,7 @@ public sealed class FuseHostService
         _typeNameLocators = typeNameLocators;
         _redactor = redactor;
         _logger = logger;
+        _sessionToken = FuseHostSessionToken.Generate();
         _startTimestamp = Stopwatch.GetTimestamp();
     }
 
@@ -102,17 +107,20 @@ public sealed class FuseHostService
     public FuseHostHandshake Handshake()
     {
         _logger.LogInformation("Handshake: host {HostVersion}, protocol {ProtocolVersion}.", HostVersion, ProtocolVersion);
-        return new FuseHostHandshake(HostVersion, ProtocolVersion);
+        return new FuseHostHandshake(HostVersion, ProtocolVersion, _sessionToken);
     }
 
     /// <summary>
     ///     Returns cheap process-level health for the status bar and index panel (host version, process id,
     ///     uptime, and working-set size shown as host RSS).
     /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <returns>The host process statistics.</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/stats")]
-    public FuseHostStats Stats()
+    public FuseHostStats Stats(string sessionToken)
     {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         var uptimeMs = (long)Stopwatch.GetElapsedTime(_startTimestamp).TotalMilliseconds;
         using var process = Process.GetCurrentProcess();
         return new FuseHostStats(HostVersion, Environment.ProcessId, uptimeMs, process.WorkingSet64);
@@ -123,6 +131,7 @@ public sealed class FuseHostService
     ///     dependency graph once through the shared orchestrator, so subsequent scoping calls pay only ranking
     ///     and emission. Returns the resulting index state and file count.
     /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root to index.</param>
     /// <returns>The warm-index state, the number of files considered, and the wall-clock build time.</returns>
     /// <remarks>
@@ -130,9 +139,11 @@ public sealed class FuseHostService
     ///     state it builds is shared with the agent surface. A missing directory returns the
     ///     <c>NotIndexed</c> state rather than throwing across the wire.
     /// </remarks>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/index")]
-    public async Task<IndexResultDto> IndexAsync(string root)
+    public async Task<IndexResultDto> IndexAsync(string sessionToken, string root)
     {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
         {
@@ -152,6 +163,7 @@ public sealed class FuseHostService
     ///     level of detail) with PageRank centrality and an estimated token cost, and edges are file-to-file
     ///     references. The webview sizes nodes by centrality, colors them by token cost, and styles edges by kind.
     /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root.</param>
     /// <param name="detail">
     ///     <c>Files</c> for a node per file, or <c>Directories</c> for directory supernodes (file nodes folded
@@ -171,11 +183,13 @@ public sealed class FuseHostService
     ///     coloring; it is not the exact o200k count the emission path reports. Uses the same collection pipeline
     ///     and dependency-graph builder as the engine, so the projection matches what scoping traverses.
     /// </remarks>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/graph")]
     public async Task<GraphDto> GraphAsync(
-        string root, string detail, string? scopeMode = null, string? seed = null, string? query = null,
+        string sessionToken, string root, string detail, string? scopeMode = null, string? seed = null, string? query = null,
         string? since = null, string? directory = null)
     {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         var resolved = Path.GetFullPath(root);
         // A directory filter expands one supernode: it forces file-level nodes restricted to that subtree, so a
         // large repository ships its directory graph first and a directory's files only when the user expands it.
@@ -303,6 +317,7 @@ public sealed class FuseHostService
     ///     the written payload, so the extension can populate the scope-result panel and open the payload
     ///     read-only. The same orchestrator path the MCP agent uses, so the UI and the agent see identical scopes.
     /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root.</param>
     /// <param name="mode">The scoping mode: <c>focus</c>, <c>changes</c>, or anything else for <c>search</c>.</param>
     /// <param name="seed">The focus seed (type or file) when <paramref name="mode" /> is <c>focus</c>.</param>
@@ -310,10 +325,12 @@ public sealed class FuseHostService
     /// <param name="since">The git base when <paramref name="mode" /> is <c>changes</c>.</param>
     /// <param name="maxTokens">The token budget for the emitted payload, or <c>0</c> for unbounded.</param>
     /// <returns>The emitted files with token costs, the total tokens, and the payload file path.</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/scope")]
     public async Task<ScopeResultDto> ScopeAsync(
-        string root, string mode, string? seed, string? query, string? since, int maxTokens)
+        string sessionToken, string root, string mode, string? seed, string? query, string? since, int maxTokens)
     {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
             return new ScopeResultDto((mode ?? "search").Trim().ToLowerInvariant(), [], 0, null);
@@ -332,14 +349,17 @@ public sealed class FuseHostService
         string? payloadPath = null;
         if (!string.IsNullOrEmpty(result.InMemoryContent))
         {
-            // Write the payload to a temp file the extension opens read-only. The name is unique per call (a
-            // GUID) so concurrent scopes on the same root and mode do not contend on one file; the extension
-            // reads it immediately after the response. The OS temp directory reclaims these.
-            var dir = Path.Combine(Path.GetTempPath(), "fuse-host-payloads");
+            // Write the payload to a user-private file the extension opens read-only. The name is unique per
+            // call (a GUID) so concurrent scopes on the same root and mode do not contend on one file; tracked
+            // paths are deleted on shutdown and dispose.
+            var dir = PayloadDirectory;
             Directory.CreateDirectory(dir);
             payloadPath = Path.Combine(
                 dir, $"{HostEndpoint.PipeName(resolved)}-{normalizedMode}-{Guid.NewGuid():N}.fuse.xml");
             await File.WriteAllTextAsync(payloadPath, result.InMemoryContent);
+            RestrictPayloadPermissions(payloadPath);
+            lock (_payloadLock)
+                _payloadPaths.Add(payloadPath);
         }
 
         var files = result.EmittedFileTokens
@@ -357,11 +377,14 @@ public sealed class FuseHostService
     ///     exactly the literal that emitted output would redact. Hotspot and graph-gap diagnostics are layered on
     ///     this method in later increments.
     /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root.</param>
     /// <returns>The detected secrets with their precise line and character ranges.</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/diagnostics")]
-    public async Task<DiagnosticsDto> DiagnosticsAsync(string root)
+    public async Task<DiagnosticsDto> DiagnosticsAsync(string sessionToken, string root)
     {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
             return new DiagnosticsDto([], [], [], []);
@@ -450,15 +473,19 @@ public sealed class FuseHostService
     ///     real scope, so the extension's scope-result and explainer panels can show why a file is in and at what
     ///     fidelity before fetching anything.
     /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root.</param>
     /// <param name="mode">The scoping mode: <c>focus</c>, <c>changes</c>, or anything else for <c>search</c>.</param>
     /// <param name="seed">The focus seed when <paramref name="mode" /> is <c>focus</c>.</param>
     /// <param name="query">The search query when <paramref name="mode" /> is <c>search</c>.</param>
     /// <param name="since">The git base when <paramref name="mode" /> is <c>changes</c>.</param>
     /// <returns>The scoping mode and the planned files with their roles, tiers, and scores.</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/explain")]
-    public async Task<ExplainResultDto> ExplainAsync(string root, string mode, string? seed, string? query, string? since)
+    public async Task<ExplainResultDto> ExplainAsync(
+        string sessionToken, string root, string mode, string? seed, string? query, string? since)
     {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
             return new ExplainResultDto((mode ?? "search").Trim().ToLowerInvariant(), []);
@@ -478,10 +505,56 @@ public sealed class FuseHostService
     ///     Signals the host to flush and exit. The transport completes the in-flight response before the host
     ///     stops serving.
     /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/shutdown")]
-    public void Shutdown()
+    public void Shutdown(string sessionToken)
     {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         _logger.LogInformation("Shutdown requested by client.");
+        DeleteTrackedPayloads();
         _shutdownRequested.TrySetResult();
+    }
+
+    /// <summary>
+    ///     Deletes any scope payload files written during this host session. Called from <c>fuse/shutdown</c> and
+    ///     when the host service is disposed.
+    /// </summary>
+    public void Dispose() => DeleteTrackedPayloads();
+
+    private static string PayloadDirectory =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Fuse",
+            "host-payloads");
+
+    // On Unix, scope payloads may contain source excerpts; restrict to owner read/write only.
+    private static void RestrictPayloadPermissions(string path)
+    {
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    }
+
+    private void DeleteTrackedPayloads()
+    {
+        string[] paths;
+        lock (_payloadLock)
+        {
+            paths = [.. _payloadPaths];
+            _payloadPaths.Clear();
+        }
+
+        foreach (var path in paths)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete payload file {Path}.", path);
+            }
+        }
     }
 }

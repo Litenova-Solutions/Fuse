@@ -22,6 +22,8 @@ import {
  * One client per repository root; it connects to the address the host derives from that root.
  */
 export class HostClient {
+  private sessionToken: string | undefined;
+
   private constructor(private readonly connection: MessageConnection, private readonly socket: net.Socket) {}
 
   /** Connects to the host at the given transport address and starts listening. */
@@ -42,15 +44,18 @@ export class HostClient {
   }
 
   handshake(): Promise<FuseHostHandshake> {
-    return this.connection.sendRequest(Methods.handshake);
+    return this.connection.sendRequest<FuseHostHandshake>(Methods.handshake).then((result) => {
+      this.sessionToken = result.sessionToken;
+      return result;
+    });
   }
 
   stats(): Promise<FuseHostStats> {
-    return this.connection.sendRequest(Methods.stats);
+    return this.connection.sendRequest(Methods.stats, this.requireToken());
   }
 
   index(root: string): Promise<IndexResultDto> {
-    return this.connection.sendRequest(Methods.index, root);
+    return this.connection.sendRequest(Methods.index, this.requireToken(), root);
   }
 
   graph(
@@ -61,6 +66,7 @@ export class HostClient {
   ): Promise<GraphDto> {
     return this.connection.sendRequest(
       Methods.graph,
+      this.requireToken(),
       root,
       detail,
       scope?.mode ?? null,
@@ -79,15 +85,15 @@ export class HostClient {
     since: string | null,
     maxTokens: number,
   ): Promise<ScopeResultDto> {
-    return this.connection.sendRequest(Methods.scope, root, mode, seed, query, since, maxTokens);
+    return this.connection.sendRequest(Methods.scope, this.requireToken(), root, mode, seed, query, since, maxTokens);
   }
 
   explain(root: string, mode: string, seed: string | null, query: string | null, since: string | null): Promise<ExplainResultDto> {
-    return this.connection.sendRequest(Methods.explain, root, mode, seed, query, since);
+    return this.connection.sendRequest(Methods.explain, this.requireToken(), root, mode, seed, query, since);
   }
 
   diagnostics(root: string): Promise<DiagnosticsDto> {
-    return this.connection.sendRequest(Methods.diagnostics, root);
+    return this.connection.sendRequest(Methods.diagnostics, this.requireToken(), root);
   }
 
   /** Registers a handler for the host's `fuse/invalidated` notification (the workspace changed). */
@@ -97,7 +103,10 @@ export class HostClient {
 
   /** Asks the host to shut down (a notification: the host exits without a response). */
   shutdown(): void {
-    void this.connection.sendNotification(Methods.shutdown);
+    if (!this.sessionToken) {
+      return;
+    }
+    void this.connection.sendNotification(Methods.shutdown, this.sessionToken);
   }
 
   /** Whether the underlying socket is still connected. */
@@ -108,5 +117,12 @@ export class HostClient {
   dispose(): void {
     this.connection.dispose();
     this.socket.destroy();
+  }
+
+  private requireToken(): string {
+    if (!this.sessionToken) {
+      throw new Error("Fuse host session not established; call handshake first.");
+    }
+    return this.sessionToken;
   }
 }

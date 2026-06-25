@@ -89,8 +89,13 @@ public sealed class FileCollectionPipeline
                 : _filters[i];
         }
 
+        var rootDirectory = Path.GetFullPath(options.SourceDirectory);
+
         var filePaths = _fileSystem
             .EnumerateFiles(options.SourceDirectory, "*.*", searchOption)
+            .Select(Path.GetFullPath)
+            .Where(path => IsPathUnderRoot(rootDirectory, path))
+            .Where(path => !HasReparsePointAttribute(_fileSystem.GetFileInfo(path)))
             .Select((path, index) => (path, index))
             .ToArray();
 
@@ -165,4 +170,8 @@ public sealed class FileCollectionPipeline
         return !relativePath.StartsWith("..", StringComparison.Ordinal)
             && !Path.IsPathRooted(relativePath);
     }
+
+    // Directory enumeration can follow junctions and symlinks; skip reparse-point entries themselves.
+    private static bool HasReparsePointAttribute(FileInfo fileInfo) =>
+        fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
 }

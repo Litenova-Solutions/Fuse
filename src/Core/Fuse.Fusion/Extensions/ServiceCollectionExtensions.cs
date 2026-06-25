@@ -20,6 +20,7 @@ using Fuse.Reduction.Caching;
 using Fuse.Reduction.Security;
 using Fuse.Reduction.Tokenization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fuse.Fusion.Extensions;
 
@@ -90,7 +91,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Session.ISessionTracker, Session.InMemorySessionTracker>();
         services.AddSingleton<IChangeDetector, GitChangeDetector>();
         services.AddSingleton<IGitStatsProvider, GitStatsProvider>();
-        services.AddSingleton<IFuseStoreFactory, FuseStoreFactory>();
+        services.AddSingleton<IFuseStoreFactory>(sp =>
+            new FuseStoreFactory(sp.GetService<ILogger<SqliteKeyValueStore>>()));
 
         RegisterFileFilters(services);
         RegisterProjectTemplates(services);

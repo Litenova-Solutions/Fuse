@@ -1,5 +1,6 @@
 using Fuse.Reduction.Caching;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Fuse.Reduction.Tests.Caching;
 
@@ -188,6 +189,70 @@ public sealed class SqliteKeyValueStoreTests : IDisposable
         await using var reader = new SqliteKeyValueStore(_databasePath);
         Assert.True(reader.TryGet("contention", "entry", out var value));
         Assert.Equal([5, 6], value);
+    }
+
+    [Fact(Timeout = 15000)]
+    public async Task FlushAsync_WhenFlushRetriesExhausted_LogsWarningAndDoesNotThrow()
+    {
+        await using (var initializer = new SqliteKeyValueStore(_databasePath))
+        {
+        }
+
+        var logger = new CapturingLogger();
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = _databasePath,
+            Pooling = false,
+        }.ToString();
+
+        await using (var store = new SqliteKeyValueStore(_databasePath, logger, busyTimeoutSeconds: 1))
+        {
+            await using var blocker = new SqliteConnection(connectionString);
+            await blocker.OpenAsync();
+            await using (var beginCommand = blocker.CreateCommand())
+            {
+                beginCommand.CommandText = "BEGIN IMMEDIATE";
+                await beginCommand.ExecuteNonQueryAsync();
+            }
+
+            store.Set("exhausted", "entry", [1, 2, 3]);
+
+            await store.FlushAsync();
+
+            Assert.Equal(LogLevel.Warning, logger.LastLevel);
+            Assert.NotNull(logger.LastMessage);
+            Assert.Contains("1 pending entries", logger.LastMessage, StringComparison.Ordinal);
+            Assert.Contains(_databasePath, logger.LastMessage, StringComparison.Ordinal);
+            Assert.True(store.TryGet("exhausted", "entry", out _));
+
+            await using (var rollbackCommand = blocker.CreateCommand())
+            {
+                rollbackCommand.CommandText = "ROLLBACK";
+                await rollbackCommand.ExecuteNonQueryAsync();
+            }
+        }
+    }
+
+    private sealed class CapturingLogger : ILogger<SqliteKeyValueStore>
+    {
+        public LogLevel? LastLevel { get; private set; }
+
+        public string? LastMessage { get; private set; }
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            LastLevel = logLevel;
+            LastMessage = formatter(state, exception);
+        }
     }
 
     public void Dispose()

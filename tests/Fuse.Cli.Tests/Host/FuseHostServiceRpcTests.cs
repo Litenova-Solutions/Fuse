@@ -32,6 +32,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         _provider.GetRequiredService<ISecretRedactor>(),
         NullLogger<FuseHostService>.Instance);
 
+    private static string SessionToken(FuseHostService service) => service.Handshake().SessionToken;
+
     [Fact]
     public async Task Client_CallsHandshakeStatsAndShutdown_OverTheWire()
     {
@@ -51,15 +53,58 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         var handshake = await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
         Assert.Equal(FuseHostService.ProtocolVersion, handshake.ProtocolVersion);
         Assert.False(string.IsNullOrWhiteSpace(handshake.HostVersion));
+        Assert.False(string.IsNullOrWhiteSpace(handshake.SessionToken));
 
-        var stats = await clientRpc.InvokeAsync<FuseHostStats>("fuse/stats");
+        var stats = await clientRpc.InvokeAsync<FuseHostStats>("fuse/stats", handshake.SessionToken);
         Assert.Equal(Environment.ProcessId, stats.ProcessId);
         Assert.True(stats.WorkingSetBytes > 0);
 
         Assert.False(service.ShutdownRequested.IsCompleted);
-        await clientRpc.NotifyAsync("fuse/shutdown");
+        await clientRpc.NotifyAsync("fuse/shutdown", handshake.SessionToken);
         await service.ShutdownRequested.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(service.ShutdownRequested.IsCompleted);
+    }
+
+    [Fact]
+    public async Task Stats_WithoutSessionToken_RejectsOverTheWire()
+    {
+        var clientToServer = new Pipe();
+        var serverToClient = new Pipe();
+
+        using var serverRpc = FuseHostConnection.Attach(clientToServer.Reader, serverToClient.Writer, NewService());
+
+        var clientFormatter = new SystemTextJsonFormatter();
+        clientFormatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        using var clientRpc = new JsonRpc(
+            new HeaderDelimitedMessageHandler(clientToServer.Writer, serverToClient.Reader, clientFormatter));
+        clientRpc.StartListening();
+
+        await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
+
+        var ex = await Assert.ThrowsAnyAsync<RemoteRpcException>(() =>
+            clientRpc.InvokeAsync<FuseHostStats>("fuse/stats", string.Empty));
+        Assert.Contains("session token", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Stats_WithWrongSessionToken_RejectsOverTheWire()
+    {
+        var clientToServer = new Pipe();
+        var serverToClient = new Pipe();
+
+        using var serverRpc = FuseHostConnection.Attach(clientToServer.Reader, serverToClient.Writer, NewService());
+
+        var clientFormatter = new SystemTextJsonFormatter();
+        clientFormatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        using var clientRpc = new JsonRpc(
+            new HeaderDelimitedMessageHandler(clientToServer.Writer, serverToClient.Reader, clientFormatter));
+        clientRpc.StartListening();
+
+        await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
+
+        var ex = await Assert.ThrowsAnyAsync<RemoteRpcException>(() =>
+            clientRpc.InvokeAsync<FuseHostStats>("fuse/stats", "not-the-session-token"));
+        Assert.Contains("session token", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -72,7 +117,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         try
         {
-            var result = await NewService().IndexAsync(source);
+            var service = NewService();
+            var result = await service.IndexAsync(SessionToken(service), source);
 
             Assert.Equal("Warm", result.IndexState);
             Assert.True(result.FileCount >= 2, $"expected at least 2 files, got {result.FileCount}");
@@ -88,7 +134,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
     {
         var missing = Path.Combine(Path.GetTempPath(), "fuse-host-missing", Guid.NewGuid().ToString("N"));
 
-        var result = await NewService().IndexAsync(missing);
+        var service = NewService();
+        var result = await service.IndexAsync(SessionToken(service), missing);
 
         Assert.Equal("NotIndexed", result.IndexState);
         Assert.Equal(0, result.FileCount);
@@ -106,14 +153,49 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         try
         {
-            var result = await NewService().ScopeAsync(source, "search", null, "process payment", null, 20000);
+            var service = NewService();
+            var token = SessionToken(service);
+            var result = await service.ScopeAsync(token, source, "search", null, "process payment", null, 20000);
 
             Assert.Equal("search", result.Mode);
             Assert.NotEmpty(result.Files);
             Assert.Contains(result.Files, f => f.Path.Contains("PaymentService", StringComparison.Ordinal));
             Assert.NotNull(result.PayloadPath);
             Assert.True(File.Exists(result.PayloadPath));
+            var payloadDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Fuse",
+                "host-payloads");
+            Assert.StartsWith(payloadDir, result.PayloadPath!, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("PaymentService", await File.ReadAllTextAsync(result.PayloadPath!));
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Scope_ThenShutdown_DeletesPayload()
+    {
+        var source = Path.Combine(Path.GetTempPath(), "fuse-host-scope-cleanup", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "PaymentService.cs"),
+            "public class PaymentService { public void ProcessPayment() { } }");
+
+        try
+        {
+            var service = NewService();
+            var token = SessionToken(service);
+            var result = await service.ScopeAsync(token, source, "search", null, "process payment", null, 20000);
+
+            Assert.NotNull(result.PayloadPath);
+            Assert.True(File.Exists(result.PayloadPath));
+
+            service.Shutdown(token);
+            await service.ShutdownRequested.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.False(File.Exists(result.PayloadPath!));
         }
         finally
         {
@@ -133,7 +215,9 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         try
         {
-            var graph = await NewService().GraphAsync(source, "Files");
+            var service = NewService();
+            var token = SessionToken(service);
+            var graph = await service.GraphAsync(token, source, "Files");
 
             Assert.Equal("Files", graph.Detail);
             Assert.Contains(graph.Nodes, n => n.Path.Contains("Service", StringComparison.Ordinal));
@@ -159,7 +243,9 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         try
         {
-            var graph = await NewService().GraphAsync(source, "Files", "search", null, "process payment", null);
+            var service = NewService();
+            var token = SessionToken(service);
+            var graph = await service.GraphAsync(token, source, "Files", "search", null, "process payment", null);
 
             // The scope overlay tags the matched file's node with a role (the whole point of the overlay).
             var matched = Assert.Single(graph.Nodes, n => n.Path.Contains("PaymentService", StringComparison.Ordinal));
@@ -183,7 +269,9 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         try
         {
-            var graph = await NewService().GraphAsync(source, "Directories");
+            var service = NewService();
+            var token = SessionToken(service);
+            var graph = await service.GraphAsync(token, source, "Directories");
 
             Assert.Equal("Directories", graph.Detail);
             // Directory nodes, not file nodes: at most one node per directory, far fewer than the file count.
@@ -191,7 +279,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
             Assert.All(graph.Nodes, n => Assert.DoesNotContain(".cs", n.Path));
 
             // Expanding one directory returns only that directory's file nodes (the expand-on-click subgraph).
-            var expanded = await NewService().GraphAsync(source, "Directories", null, null, null, null, "Core");
+            var expanded = await service.GraphAsync(token, source, "Directories", null, null, null, null, "Core");
             Assert.Equal("Files", expanded.Detail);
             Assert.NotEmpty(expanded.Nodes);
             Assert.All(expanded.Nodes, n => Assert.StartsWith("Core/", n.Path));
@@ -219,7 +307,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         try
         {
-            var diagnostics = await NewService().DiagnosticsAsync(source);
+            var service = NewService();
+            var diagnostics = await service.DiagnosticsAsync(SessionToken(service), source);
 
             var finding = Assert.Single(diagnostics.Secrets);
             Assert.Equal("aws-access-key", finding.Kind);
@@ -249,7 +338,9 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         try
         {
-            var explain = await NewService().ExplainAsync(source, "search", null, "process payment", null);
+            var service = NewService();
+            var token = SessionToken(service);
+            var explain = await service.ExplainAsync(token, source, "search", null, "process payment", null);
 
             Assert.Equal("search", explain.Mode);
             Assert.NotEmpty(explain.Files);
@@ -306,9 +397,10 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         try
         {
             var service = NewService();
+            var token = SessionToken(service);
             // Fire several graph and scope calls at once on one root; none may throw and each must return data.
-            var graphTasks = Enumerable.Range(0, 4).Select(_ => service.GraphAsync(source, "Files"));
-            var scopeTasks = Enumerable.Range(0, 4).Select(_ => service.ScopeAsync(source, "search", null, "service", null, 20000));
+            var graphTasks = Enumerable.Range(0, 4).Select(_ => service.GraphAsync(token, source, "Files"));
+            var scopeTasks = Enumerable.Range(0, 4).Select(_ => service.ScopeAsync(token, source, "search", null, "service", null, 20000));
 
             var graphs = await Task.WhenAll(graphTasks);
             var scopes = await Task.WhenAll(scopeTasks);

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Fuse.Reduction.Caching;
 
@@ -33,15 +34,31 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
 
     private readonly string _databasePath;
     private readonly string _connectionString;
+    private readonly int _busyTimeoutSeconds;
+    private readonly ILogger<SqliteKeyValueStore>? _logger;
     private readonly ConcurrentDictionary<(string Store, string Key), byte[]> _pending = new();
 
     /// <summary>
     ///     Opens or creates the database, recovering by recreating a corrupt file.
     /// </summary>
     /// <param name="databasePath">The absolute path to the SQLite database file.</param>
-    public SqliteKeyValueStore(string databasePath)
+    /// <param name="logger">Optional logger for flush exhaustion warnings.</param>
+    public SqliteKeyValueStore(string databasePath, ILogger<SqliteKeyValueStore>? logger = null)
+        : this(databasePath, logger, BusyTimeoutSeconds)
+    {
+    }
+
+    /// <summary>
+    ///     Test-only constructor with a configurable busy timeout so flush-retry tests finish quickly.
+    /// </summary>
+    /// <param name="databasePath">The absolute path to the SQLite database file.</param>
+    /// <param name="logger">Optional logger for flush exhaustion warnings.</param>
+    /// <param name="busyTimeoutSeconds">SQLite busy timeout passed to new connections.</param>
+    internal SqliteKeyValueStore(string databasePath, ILogger<SqliteKeyValueStore>? logger, int busyTimeoutSeconds)
     {
         _databasePath = databasePath;
+        _logger = logger;
+        _busyTimeoutSeconds = busyTimeoutSeconds;
         // Private cache (the default), not shared: WAL mode plus connection pooling already give cross-connection
         // concurrency, and a process-wide shared cache can outlive a corrupt-database delete-and-recreate, leaving
         // a fresh connection attached to a stale empty cache that does not show the recreated schema (an
@@ -50,7 +67,7 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         {
             DataSource = databasePath,
             Pooling = true,
-            DefaultTimeout = BusyTimeoutSeconds,
+            DefaultTimeout = busyTimeoutSeconds,
         }.ToString();
         Initialize();
     }
@@ -122,19 +139,28 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
                     ((ICollection<KeyValuePair<(string Store, string Key), byte[]>>)_pending).Remove(entry);
                 return;
             }
-            catch (SqliteException ex) when (ex.SqliteErrorCode == SqliteBusy && attempt < MaxFlushAttempts - 1)
+            catch (SqliteException ex) when (ex.SqliteErrorCode == SqliteBusy)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(50 * (attempt + 1)), cancellationToken);
+                if (attempt < MaxFlushAttempts - 1)
+                    await Task.Delay(TimeSpan.FromMilliseconds(50 * (attempt + 1)), cancellationToken);
             }
-            catch (SqliteException ex) when (IsCorruptDatabaseError(ex) && attempt < MaxFlushAttempts - 1)
+            catch (SqliteException ex) when (IsCorruptDatabaseError(ex))
             {
-                RecoverCorruptDatabase();
+                if (attempt < MaxFlushAttempts - 1)
+                    RecoverCorruptDatabase();
             }
-            catch (SqliteException ex) when (IsMissingTableError(ex) && attempt < MaxFlushAttempts - 1)
+            catch (SqliteException ex) when (IsMissingTableError(ex))
             {
-                CreateSchema();
+                if (attempt < MaxFlushAttempts - 1)
+                    CreateSchema();
             }
         }
+
+        _logger?.LogWarning(
+            "SQLite cache flush exhausted after {AttemptCount} attempts; {PendingCount} pending entries remain at {DatabasePath}.",
+            MaxFlushAttempts,
+            _pending.Count,
+            _databasePath);
     }
 
     /// <inheritdoc />
@@ -237,7 +263,7 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
 
     private void RecoverCorruptDatabase()
     {
-        SqliteConnection.ClearAllPools();
+        SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
         DeleteDatabaseFiles();
         CreateSchema();
     }
@@ -249,7 +275,7 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText =
-            $"PRAGMA busy_timeout = {BusyTimeoutSeconds * 1000};" +
+            $"PRAGMA busy_timeout = {_busyTimeoutSeconds * 1000};" +
             "PRAGMA journal_mode = WAL;" +
             "PRAGMA synchronous = NORMAL;" +
             CreateTableDdl;

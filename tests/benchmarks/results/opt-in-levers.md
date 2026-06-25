@@ -1,8 +1,9 @@
 # Opt-in retrieval lever A/B results
 
 Recorded measurements for the opt-in retrieval levers (default off), kept as a durable artifact alongside the
-layer results. Each is a query-mode A/B over the same 24 pull requests layer 2A uses, on the pinned corpus,
-counted with `o200k_base`, at the headline 50,000 token budget unless a budget column is shown. "off" is the
+layer results. Each is a query-mode A/B over the original 24-PR, four-library corpus (the corpus at the time
+these levers were evaluated; layer 2A now publishes over the expanded 90-PR, five-library corpus), on the
+pinned corpus, counted with `o200k_base`, at the headline 50,000 token budget unless a budget column is shown. "off" is the
 lexical BM25F floor; "on" enables the lever. Regenerate any row with the named spike (rebuild
 `src/Host/Fuse.Cli` first); these are A/B probes, not the published default-path headline, which stays on the
 lexical floor in `layer2a.md`.

@@ -260,7 +260,7 @@ A dedicated "Fuse: context" collection, never mixed with compiler problems. Secr
 
 ## 6. Scoping commands
 
-"Fuse: Focus here" (type at cursor or file), "Fuse: Search workspace", "Fuse: Changes since branch" (routes the developer to the engine's strongest mode, 87 to 88 percent recall), "Fuse: Copy context for agent" (runs the routed `ask` selector, engine item 31, copies the payload). Each goes through the same `FusionOrchestrator` as MCP, so UI and agent behavior are identical, and C2 strict token accounting guarantees the opened payload fits the requested budget.
+"Fuse: Focus here" (type at cursor or file), "Fuse: Search workspace", "Fuse: Changes since branch" (routes the developer to the engine's strongest mode, 89 percent recall), "Fuse: Copy context for agent" (runs the routed `ask` selector, engine item 31, copies the payload). Each goes through the same `FusionOrchestrator` as MCP, so UI and agent behavior are identical, and C2 strict token accounting guarantees the opened payload fits the requested budget.
 
 ---
 

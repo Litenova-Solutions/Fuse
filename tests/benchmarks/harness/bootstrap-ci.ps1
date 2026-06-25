@@ -1,6 +1,6 @@
 # B6: bootstrap confidence intervals for the scoping recall numbers. Reads the per-PR recall already recorded
 # in layer2a.json (no fusions are re-run) and reports a 95 percent bootstrap confidence interval for each
-# mode's mean recall at the headline budget. With only 24 PRs the intervals are wide, which is the point: it
+# mode's mean recall at the headline budget. With a small PR corpus the intervals are wide, which is the point: it
 # keeps the headline deltas honest about sampling uncertainty rather than reading a few-point move as settled.
 # Deterministic: the resampling RNG is seeded, so the reported interval is reproducible.
 #   pwsh -File tests/benchmarks/harness/bootstrap-ci.ps1
@@ -41,5 +41,6 @@ foreach ($mode in $modes) {
     Write-Host ("  {0,-10} {1,6:P0}  [{2,4:P0}, {3,4:P0}]  {4}" -f $mode, $mean, $lo, $hi, $vals.Count)
 }
 Write-Host ""
-Write-Host "Note: n=24 PRs, so the intervals are wide. A few-point move between releases is within noise;"
+$prCount = @($rows | Where-Object { $_.budget -eq $Budget } | ForEach-Object { "$($_.repo)#$($_.pr)" } | Select-Object -Unique).Count
+Write-Host "Note: n=$prCount PRs, so the intervals are wide. A few-point move between releases is within noise;"
 Write-Host "trust a delta only when it holds per-repo and across budgets, which the per-repo gate (B9) checks."

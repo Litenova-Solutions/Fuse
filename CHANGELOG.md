@@ -9,9 +9,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 - **Reading-set ground-truth support in Layer 2A.** The scoping benchmark now scores recall against an optional
   per-PR `reading_set` (the files a task must read but not edit, such as interfaces, callers, and tests) unioned
   with the editing set, instead of only the files the PR changed, when a PR is labeled. Absent a label the
-  truth is the editing set, so the pinned 24-PR corpus and every published number are unchanged. The labels
-  themselves are deliberate curation that shifts the numbers, so they are added with the larger-corpus
-  rebaseline (B2) rather than fabricated; this lands the harness support that honors them.
+  truth is the editing set, so this support does not by itself move any published number. The labels
+  themselves are deliberate curation that would shift the numbers, so they are deferred to a dedicated curation
+  pass rather than fabricated alongside the B2 larger-corpus rebaseline; this lands the harness support that
+  honors them once they exist.
 - **Parallel query-path document indexing (Q1).** The query scoping pipeline now reads each file, derives its
   declared symbols, and extracts its comment field in parallel rather than in a sequential loop, since the files
   are independent and the analysis index and content provider already tolerate the concurrent access the
@@ -562,20 +563,26 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
 
 ### Research notes
 
-- **Source:** larger corpus trial (B2): expand the benchmark from 24 PRs over four repositories to 90 PRs over
-  five (adding Serilog, 18 PRs per repository via `gen-prs.ps1`, all commit-pinned and git-derived). **Fit:** a
-  larger, less favorable corpus to test whether the 24-PR headline holds. **Decision:** **executed as a trial
-  and measured, not published.** Regenerating Layer 2A over the 90-PR corpus moved the 50,000-token headline
-  means to changes 89 percent (from 87), focus 79 (from 92), query 49 (from 61), grep 34 (from 38); per repo,
-  query was AutoMapper 35, FluentValidation 42, MediatR 83, Newtonsoft.Json 30, Serilog 55, and the
-  adversarial-excluded query mean was 45 percent. The honest reading: the original 24-PR sample was favorable
-  for query and focus, while change scoping is robust (holds at about 89 percent) and remains the strong
-  default when a git base exists. The trial was reverted rather than published because a faithful B2 must
-  regenerate every layer (2A, 2B, 4) and every per-feature A/B spike and rewrite all coupled prose in one
-  consistent pass; Layer 4's Repomix arm over 90 PRs alone is a long run, so the full atomic rebaseline is a
-  dedicated effort. The tooling is ready: `gen-prs.ps1` takes a per-repo count and regenerates `prs.json` from
-  the pinned clones in one command, so the rebaseline is mechanical once run end to end. The published numbers
-  remain the consistent 24-PR set; this note records the measured larger-corpus signal.
+- **Source:** larger corpus rebaseline (B2): expand the benchmark from 24 PRs over four repositories to 90 PRs
+  over five (adding Serilog, 18 PRs per repository via `gen-prs.ps1`, all commit-pinned and git-derived).
+  **Fit:** a larger, less favorable corpus to test whether the 24-PR headline holds. **Decision:** **executed
+  and published as the new headline.** Layer 1 (now five repositories, plus a Serilog reduction row; the
+  published Layer 1 skeleton table and prose were also resynced to the Roslyn extractor that `layer1.md`
+  already reflected, where benchmarks.mdx still carried stale regex-era skeleton numbers), Layer 2A,
+  Layer 4 (with the live Repomix arm over `npx`), and the bootstrap intervals were regenerated end to end over
+  the 90-PR corpus, and every coupled surface (benchmarks.mdx, AGENTS.md, README.md, the user docs, the B9
+  baseline) was resynced in one pass so no published number is left at a 24-PR value. The 50,000-token headline
+  means moved to changes 89 percent (from 87) at 54 percent precision, focus 78 (from 92), query 48 (from 61),
+  grep 34 (from 38); per repo, query was AutoMapper 35, FluentValidation 42, MediatR 83, Newtonsoft.Json 26,
+  Serilog 55, and the adversarial-excluded query mean was 45 percent over 81 PRs. Layer 4 over 90 PRs: blind
+  whole-repo about 409,000 tokens, Repomix about 425,000, one scoped `--query` call about 37,000 tokens at 49
+  percent recall, and the routed change-scoped arm 91 percent at about 29,500 tokens. The honest reading: the
+  original 24-PR sample was favorable for query and focus, while change scoping is robust (holds at about 89
+  percent) and remains the strong default when a git base exists. The per-feature A/B lift figures recorded in
+  earlier release notes and in `opt-in-levers.md` were measured over the original 24-PR corpus and are kept as
+  the historical record of why each lever was adopted, explicitly labeled as such; the headline tables are the
+  current 90-PR measurement. The B9 per-repo gate (`layer2a-baseline.json`) was updated to the new per-repo
+  cells, so a future regression below them still fails the gate.
 - **Source:** rules-based query rewrite (item 12): emphasize the compound PascalCase identifiers in a query so
   a query that names a type leans toward the file that declares it. **Fit:** the prose-to-identifier gap on the
   query path, the no-model half of item 12. **Decision:** **built and measured, kept opt-in.** A query-mode

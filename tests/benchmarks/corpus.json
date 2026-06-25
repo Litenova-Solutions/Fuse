@@ -36,6 +36,14 @@
       "cs_files": 945
     },
     {
+      "name": "Serilog",
+      "size": "small-mid",
+      "url": "https://github.com/serilog/serilog.git",
+      "commit": "6d9fc0b84e004418f2677b5961b9c8970349d0be",
+      "committed": "2026-06-15",
+      "cs_files": 216
+    },
+    {
       "name": "SampleShop",
       "size": "micro (in-repo)",
       "local": "tests/fixtures/SampleShop",

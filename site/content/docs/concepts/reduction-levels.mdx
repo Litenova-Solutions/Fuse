@@ -48,15 +48,15 @@ attributes such as `DebuggerDisplay` and `MethodImpl`, removes the `this.` prefi
 rewrites auto-properties to a compact form, and collapses whitespace around delimiters.
 It preserves string-literal contents, but the output is no longer guaranteed to compile.
 Use it when the reader is a model that needs the logic, not a compiler. On the benchmark
-corpus it removes 21 to 40 percent of tokens at 99 to 100 percent type and method
+corpus it removes 21 to 46 percent of tokens at 99 to 100 percent type and method
 fidelity, which makes it the dependable cut.
 
 ### skeleton
 
 `--level skeleton` drops method bodies entirely and emits class, interface, and method
-signatures only. It is the deepest cut, 66 to 93 percent on the corpus, and it is an
+signatures only. It is a deep cut, 39 to 56 percent on the corpus, and it is an
 architecture map, not a substitute for the source. On the benchmark corpus it removes
-66 to 93 percent of tokens and keeps method signatures via Roslyn syntax analysis.
+39 to 56 percent of tokens and keeps every method signature via Roslyn syntax analysis.
 
 ### publicApi
 

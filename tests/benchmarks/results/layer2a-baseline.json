@@ -1,25 +1,28 @@
 {
-  "_comment": "Per-repo per-mode mean recall at the 50000-token headline budget. The B9 gate (check-regressions.ps1) fails if a fresh layer2a run drops any cell below these minus the tolerance. Update deliberately, with the commit that intentionally moves a number, never to paper over a regression.",
+  "_comment": "Per-repo per-mode mean recall at the 50000-token headline budget. The B9 gate (check-regressions.ps1) fails if a fresh layer2a run drops any cell below these minus the tolerance. Update deliberately, with the commit that intentionally moves a number, never to paper over a regression. Baseline reflects the 90-PR / 5-library corpus (18 PRs per repo).",
   "budget": 50000,
   "tolerance": 0.02,
   "recall": {
     "changes": {
-      "AutoMapper": 0.917,
-      "FluentValidation": 1.0,
-      "MediatR": 1.0,
-      "NewtonsoftJson": 0.562
+      "AutoMapper": 0.972,
+      "FluentValidation": 0.996,
+      "MediatR": 0.992,
+      "NewtonsoftJson": 0.493,
+      "Serilog": 0.97
     },
     "focus": {
-      "AutoMapper": 0.917,
-      "FluentValidation": 1.0,
-      "MediatR": 1.0,
-      "NewtonsoftJson": 0.745
+      "AutoMapper": 0.706,
+      "FluentValidation": 0.833,
+      "MediatR": 0.92,
+      "NewtonsoftJson": 0.739,
+      "Serilog": 0.716
     },
     "query": {
-      "AutoMapper": 0.5,
-      "FluentValidation": 0.57,
-      "MediatR": 0.945,
-      "NewtonsoftJson": 0.419
+      "AutoMapper": 0.355,
+      "FluentValidation": 0.422,
+      "MediatR": 0.826,
+      "NewtonsoftJson": 0.262,
+      "Serilog": 0.546
     }
   }
 }

@@ -130,6 +130,15 @@ public sealed record ExperimentalOptions
     public bool MemberLevelRetrieval { get; init; }
 
     /// <summary>
+    ///     Whether a rules-based (no-model) query rewrite runs on the query path (item 12): compound PascalCase
+    ///     identifiers in the query are emphasized as the strongest code signal, so a query that names a type is
+    ///     weighted toward the file that declares it. This is the default-safe half of item 12; the LLM-backed
+    ///     rewrite stays opt-in and out of the no-model path. Off pending an A/B. Overridden by
+    ///     <c>FUSE_QUERY_REWRITE</c> (<c>1</c>, <c>on</c>, or <c>true</c> enables it).
+    /// </summary>
+    public bool HeuristicQueryRewrite { get; init; }
+
+    /// <summary>
     ///     Whether comments and documentation comments are indexed as their own weighted BM25F field (Q2). They
     ///     carry the natural-language vocabulary a prose query matches, which is otherwise diluted in the body
     ///     field. When on, a query term found in a file's comments contributes an extra, deliberately weighted
@@ -296,6 +305,16 @@ public sealed record ExperimentalOptions
             projectGraph = true;
         }
 
+        var heuristicQueryRewrite = resolved.HeuristicQueryRewrite;
+        var rawRewrite = Environment.GetEnvironmentVariable("FUSE_QUERY_REWRITE");
+        if (!string.IsNullOrWhiteSpace(rawRewrite) &&
+            (rawRewrite.Equals("1", StringComparison.Ordinal) ||
+             rawRewrite.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+             rawRewrite.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
+            heuristicQueryRewrite = true;
+        }
+
         var fieldedComments = resolved.FieldedComments;
         var rawComments = Environment.GetEnvironmentVariable("FUSE_FIELDED_COMMENTS");
         if (!string.IsNullOrWhiteSpace(rawComments) &&
@@ -322,6 +341,7 @@ public sealed record ExperimentalOptions
             MemberLevelRetrieval = memberLevelRetrieval,
             ProjectGraph = projectGraph,
             FieldedComments = fieldedComments,
+            HeuristicQueryRewrite = heuristicQueryRewrite,
         };
     }
 }

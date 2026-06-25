@@ -29,7 +29,10 @@ deviation from the playbook.
       orchestrator. Integration-tested (the matched file appears with a role and tier). All eight Phase 1 RPC
       methods now work end to end (16 host tests).
 - [ ] Warm-index lifecycle (pooled repo-root store, resident analysis index, incremental invalidation).
-- [ ] Concurrency test (simultaneous fuse/graph and fuse/scope against one root).
+- [x] Concurrency test: simultaneous fuse/graph and fuse/scope against one root both succeed (exercises the
+      shared orchestrator and pooled store under concurrent calls, C3 DI concurrency under the new transport).
+- [ ] Warm-index lifecycle (pooled repo-root store, resident analysis index, watcher invalidation pushing
+      fuse/invalidated). Note: fuse/index already warms the shared index via the persistent-index path.
 - [ ] Host-publish CI matrix per RID.
 
 Build note: adding StreamJsonRpc pulled in the VS Threading analyzers (VSTHRD103, suppressed via NoWarn since it

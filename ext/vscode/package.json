@@ -20,29 +20,67 @@
   "contributes": {
     "viewsContainers": {
       "activitybar": [
-        { "id": "fuse", "title": "Fuse", "icon": "media/fuse.svg" }
+        {
+          "id": "fuse",
+          "title": "Fuse",
+          "icon": "media/fuse.svg"
+        }
       ]
     },
     "views": {
       "fuse": [
-        { "id": "fuse.indexStatus", "name": "Index" },
-        { "id": "fuse.hotspots", "name": "Token Hotspots" },
-        { "id": "fuse.scopeResult", "name": "Scope Result" }
+        {
+          "id": "fuse.indexStatus",
+          "name": "Index"
+        },
+        {
+          "id": "fuse.hotspots",
+          "name": "Token Hotspots"
+        },
+        {
+          "id": "fuse.scopeResult",
+          "name": "Scope Result"
+        }
       ]
     },
     "commands": [
-      { "command": "fuse.index", "title": "Fuse: Index Workspace" },
-      { "command": "fuse.restartHost", "title": "Fuse: Restart Host" },
-      { "command": "fuse.search", "title": "Fuse: Search" },
-      { "command": "fuse.focusHere", "title": "Fuse: Focus Here" },
-      { "command": "fuse.changesSince", "title": "Fuse: Changes Since Branch" }
+      {
+        "command": "fuse.index",
+        "title": "Fuse: Index Workspace"
+      },
+      {
+        "command": "fuse.restartHost",
+        "title": "Fuse: Restart Host"
+      },
+      {
+        "command": "fuse.search",
+        "title": "Fuse: Search"
+      },
+      {
+        "command": "fuse.focusHere",
+        "title": "Fuse: Focus Here"
+      },
+      {
+        "command": "fuse.changesSince",
+        "title": "Fuse: Changes Since Branch"
+      },
+      {
+        "command": "fuse.showGraph",
+        "title": "Fuse: Show Dependency Graph"
+      }
     ],
     "menus": {
       "editor/context": [
-        { "command": "fuse.focusHere", "group": "fuse" }
+        {
+          "command": "fuse.focusHere",
+          "group": "fuse"
+        }
       ],
       "explorer/context": [
-        { "command": "fuse.focusHere", "group": "fuse" }
+        {
+          "command": "fuse.focusHere",
+          "group": "fuse"
+        }
       ]
     },
     "configuration": {
@@ -65,11 +103,13 @@
     "build": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "lint": "eslint src --ext ts",
-    "pretest": "npm run build && tsc -p ./ --noEmit",
+    "pretest": "npm run build && tsc -p ./ --noEmit && tsc -p tsconfig.webview.json --noEmit",
+    "typecheck": "tsc -p ./ --noEmit && tsc -p tsconfig.webview.json --noEmit",
     "test": "node ./dist/test/runTest.js",
     "package": "vsce package --no-dependencies"
   },
   "devDependencies": {
+    "@types/cytoscape": "^3.21.9",
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
@@ -79,6 +119,7 @@
     "typescript": "^5.6.0"
   },
   "dependencies": {
+    "cytoscape": "^3.34.0",
     "vscode-jsonrpc": "^8.2.0"
   }
 }

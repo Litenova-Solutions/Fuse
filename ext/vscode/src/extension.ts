@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { SecretDiagnostics } from "./diagnostics/secrets";
+import { GraphView } from "./graph/webview";
 import { HostSupervisor } from "./host/supervisor";
 import { FuseStatusBar } from "./statusBar";
 import { Hotspot, HotspotsProvider } from "./views/hotspots";
@@ -26,6 +27,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const hotspots = new HotspotsProvider(root);
   const scopeResult = new ScopeResultProvider(root);
   const secrets = new SecretDiagnostics(root);
+  const graphView = new GraphView(context, root);
 
   context.subscriptions.push(
     output,
@@ -86,6 +88,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const base = await vscode.window.showInputBox({ prompt: "Fuse: changes since which git base?", value: "main" });
       if (base) {
         await runScope("changes", null, null, base);
+      }
+    }),
+    vscode.commands.registerCommand("fuse.showGraph", async () => {
+      if (!supervisor) {
+        return;
+      }
+      try {
+        const client = supervisor.connected ?? (await supervisor.start());
+        await graphView.show(client);
+      } catch (err) {
+        output.appendLine(`Fuse graph failed: ${String(err)}`);
+        void vscode.window.showWarningMessage(`Fuse: ${String(err)}`);
       }
     }),
   );

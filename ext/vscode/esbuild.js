@@ -4,7 +4,9 @@ const esbuild = require("esbuild");
 
 const watch = process.argv.includes("--watch");
 
-const options = {
+// The extension host bundle (Node) and the graph webview bundle (browser, Cytoscape inlined). Both are fully
+// self-contained: the webview bundle vendors Cytoscape so the panel needs no CDN and works offline.
+const extensionOptions = {
   entryPoints: ["src/extension.ts"],
   bundle: true,
   outfile: "dist/extension.js",
@@ -16,12 +18,24 @@ const options = {
   logLevel: "info",
 };
 
+const webviewOptions = {
+  entryPoints: ["src/webview/graph.ts"],
+  bundle: true,
+  outfile: "dist/webview.js",
+  platform: "browser",
+  format: "iife",
+  target: "es2020",
+  sourcemap: true,
+  logLevel: "info",
+};
+
 async function main() {
   if (watch) {
-    const ctx = await esbuild.context(options);
-    await ctx.watch();
+    const ext = await esbuild.context(extensionOptions);
+    const web = await esbuild.context(webviewOptions);
+    await Promise.all([ext.watch(), web.watch()]);
   } else {
-    await esbuild.build(options);
+    await Promise.all([esbuild.build(extensionOptions), esbuild.build(webviewOptions)]);
   }
 }
 

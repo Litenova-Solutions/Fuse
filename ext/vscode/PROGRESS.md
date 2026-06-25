@@ -65,7 +65,13 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
 
 ## Phase 4: graph webview with level-of-detail
 
-- [ ] Not started.
+- [x] Cytoscape graph webview, bundled offline (esbuild inlines Cytoscape into `dist/webview.js`, no CDN),
+      under a strict CSP (nonce script, no external sources). The host fetches `fuse/graph` at the Directories
+      level of detail and posts it; nodes are sized by centrality and colored by token cost, edges show
+      references, and clicking a node opens the file. "Fuse: Show Dependency Graph" command. The webview has its
+      own DOM-aware `tsconfig.webview.json`; both tsconfigs typecheck clean alongside the build and lint.
+- [ ] Scoped role/tier overlay and the directory-supernode expand-on-click interaction (the host already
+      serves directory-level detail; expand-to-files is the next interaction).
 
 ## Phase 5: scoping commands, hover, lenses, panels
 

@@ -857,12 +857,19 @@ Runtime- or data-blocked (cannot be completed in the current environment):
   What remains is purely (a) the data the plan calls for, 80 to 150 PRs across more repositories and at least
   one more language (one fifth repository, Serilog with six git-verified PRs, is staged in
   `tests/benchmarks/corpus-candidates/serilog.json`), and (b) the atomic rebaseline of every published number.
-  A trial wiring of just Serilog moved every headline mean (query 61 to 64, focus 92 to 90, changes 87 to 89,
-  grep 38 to 37) and the benchmarks page carries about fifteen per-feature A/B deltas each measured over the
-  pinned 24-PR corpus, so a faithful B2 re-runs every layer and every feature spike and rewrites all coupled
-  prose in one consistent pass. Doing that hurriedly or partially would leave the page's prose contradicting its
-  tables, which is exactly the "never weaken a benchmark number" invariant; so the rebaseline is deliberate
-  work, not the tooling. The tooling to perform it is in place.
+  A trial run was executed at the full 80-150 target: Serilog was wired in and `gen-prs.ps1` regenerated
+  `prs.json` to 90 PRs across five repositories (18 per repo), then Layer 2A and 2B were regenerated. The
+  measured 50,000-token headline means moved to changes 89 percent, focus 79, query 49, grep 34 (per repo,
+  query AutoMapper 35, FluentValidation 42, MediatR 83, Newtonsoft.Json 30, Serilog 55), confirming the 24-PR
+  sample was favorable for query and focus while change scoping holds. The trial was reverted, not published,
+  because a faithful B2 must also regenerate Layer 4 (its Repomix arm over 90 PRs is a long run) and every
+  per-feature A/B spike and rewrite all coupled prose in one consistent pass; a partial publish would leave the
+  page's prose contradicting its tables, the exact "never weaken a benchmark number" invariant. The full
+  measured trial is recorded in the CHANGELOG research notes. The tooling is in place (`gen-prs.ps1` takes a
+  per-repo count and regenerates the corpus in one command), so the rebaseline is mechanical once run end to
+  end; it remains a dedicated effort because of the long Layer 4 run and the all-at-once prose resync, not
+  because the code is missing. The "at least one more language" goal additionally needs the harness's `.cs`
+  ground-truth assumption generalized.
 
 Gated by the plan's own conditions:
 

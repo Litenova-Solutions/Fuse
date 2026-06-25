@@ -562,6 +562,20 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
 
 ### Research notes
 
+- **Source:** larger corpus trial (B2): expand the benchmark from 24 PRs over four repositories to 90 PRs over
+  five (adding Serilog, 18 PRs per repository via `gen-prs.ps1`, all commit-pinned and git-derived). **Fit:** a
+  larger, less favorable corpus to test whether the 24-PR headline holds. **Decision:** **executed as a trial
+  and measured, not published.** Regenerating Layer 2A over the 90-PR corpus moved the 50,000-token headline
+  means to changes 89 percent (from 87), focus 79 (from 92), query 49 (from 61), grep 34 (from 38); per repo,
+  query was AutoMapper 35, FluentValidation 42, MediatR 83, Newtonsoft.Json 30, Serilog 55, and the
+  adversarial-excluded query mean was 45 percent. The honest reading: the original 24-PR sample was favorable
+  for query and focus, while change scoping is robust (holds at about 89 percent) and remains the strong
+  default when a git base exists. The trial was reverted rather than published because a faithful B2 must
+  regenerate every layer (2A, 2B, 4) and every per-feature A/B spike and rewrite all coupled prose in one
+  consistent pass; Layer 4's Repomix arm over 90 PRs alone is a long run, so the full atomic rebaseline is a
+  dedicated effort. The tooling is ready: `gen-prs.ps1` takes a per-repo count and regenerates `prs.json` from
+  the pinned clones in one command, so the rebaseline is mechanical once run end to end. The published numbers
+  remain the consistent 24-PR set; this note records the measured larger-corpus signal.
 - **Source:** rules-based query rewrite (item 12): emphasize the compound PascalCase identifiers in a query so
   a query that names a type leans toward the file that declares it. **Fit:** the prose-to-identifier gap on the
   query path, the no-model half of item 12. **Decision:** **built and measured, kept opt-in.** A query-mode

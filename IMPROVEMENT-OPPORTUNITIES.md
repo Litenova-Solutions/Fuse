@@ -848,13 +848,19 @@ Runtime- or data-blocked (cannot be completed in the current environment):
   scores patches. No such runtime is present.
 - **item 12, LLM query rewrite / HyDE:** needs a language model at query time; the hard invariant bars a
   model and network from the default path, so this is opt-in only and the runtime is absent.
-- **B2, larger and cleaner corpus:** the data work is done and staged
-  (`tests/benchmarks/corpus-candidates/serilog.json`: a fifth repository with six git-verified PRs), but
-  wiring it in is a full rebaseline. A trial run over the resulting 30-PR corpus moved every headline
-  mean (query 61 to 64, focus 92 to 90, changes 87 to 89, grep 38 to 37), and the benchmarks page states
-  about fifteen per-feature A/B deltas each measured over the pinned 24-PR corpus, so a faithful B2
-  re-runs every layer and every feature spike and rewrites all coupled prose at once. Left as deliberate
-  fresh-context work to avoid a mis-synced (weakened) number.
+- **B2, larger and cleaner corpus:** the code and harness for B2 are already complete: `gen-prs.ps1`
+  reproducibly curates per-PR ground truth (base/head/merge SHAs and changed `.cs` files) from a pinned clone's
+  merge history, `setup-corpus.ps1` clones each repo at its pinned commit, the layer harnesses iterate
+  `prs.json` over whatever repos it lists, and Layer 2A already scores recall against an optional reading set.
+  What remains is purely (a) the data the plan calls for, 80 to 150 PRs across more repositories and at least
+  one more language (one fifth repository, Serilog with six git-verified PRs, is staged in
+  `tests/benchmarks/corpus-candidates/serilog.json`), and (b) the atomic rebaseline of every published number.
+  A trial wiring of just Serilog moved every headline mean (query 61 to 64, focus 92 to 90, changes 87 to 89,
+  grep 38 to 37) and the benchmarks page carries about fifteen per-feature A/B deltas each measured over the
+  pinned 24-PR corpus, so a faithful B2 re-runs every layer and every feature spike and rewrites all coupled
+  prose in one consistent pass. Doing that hurriedly or partially would leave the page's prose contradicting its
+  tables, which is exactly the "never weaken a benchmark number" invariant; so the rebaseline is deliberate
+  work, not the tooling. The tooling to perform it is in place.
 
 Gated by the plan's own conditions:
 

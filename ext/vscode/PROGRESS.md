@@ -53,7 +53,10 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
       token-hotspot tree (top files by the graph's token-cost estimate, click to open).
 - [ ] `@vscode/test-electron` integration test (needs an Electron download and a display; to be added with a
       headless-capable harness, quarantined if the runner cannot launch VS Code).
-- [ ] TS-side contract test parsing the same fixtures as the .NET `FuseHostContractTests`.
+- [x] TS-side contract test: `test/contract.test.mjs` (runs headless with `node --test`, wired into CI) loads
+      the shared `test/fixtures.json` and asserts each DTO carries exactly the keys `protocol.ts` declares. The
+      .NET `FuseHostContractTests` pin the same camelCase keys on the serializer side, so drift on either side
+      fails a test. 7 contract assertions pass.
 
 ## Phase 3: context diagnostics
 

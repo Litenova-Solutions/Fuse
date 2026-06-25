@@ -53,19 +53,30 @@ public sealed class HostCommand
         using var app = builder.Build();
         var service = app.Services.GetRequiredService<FuseHostService>();
         var logger = app.Services.GetRequiredService<ILogger<HostCommand>>();
+        var notifier = new HostNotifier();
 
         // Stop accepting when the client asks the host to shut down or the process is cancelled.
         using var stopCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
         _ = service.ShutdownRequested.ContinueWith(_ => stopCts.Cancel(), TaskScheduler.Default);
+
+        // Watch the source tree and push a fuse/invalidated notification to every connected editor when files
+        // change, so the extension refreshes its index, diagnostics, and graph without polling. The .fuse cache
+        // directory is ignored by the watcher, so the host's own writes do not retrigger.
+        using var watcher = new Services.DebouncedFileWatcher(root, recursive: true);
+        watcher.Changed += async _ =>
+        {
+            logger.LogInformation("Workspace changed; broadcasting fuse/invalidated to {Count} clients.", notifier.ConnectionCount);
+            await notifier.BroadcastAsync("fuse/invalidated");
+        };
 
         logger.LogInformation("Fuse host {Version} serving {Root}", FuseHostService.HostVersion, root);
 
         try
         {
             if (OperatingSystem.IsWindows())
-                await ServeNamedPipeAsync(HostEndpoint.PipeName(root), service, logger, stopCts.Token);
+                await ServeNamedPipeAsync(HostEndpoint.PipeName(root), service, notifier, logger, stopCts.Token);
             else
-                await ServeUnixSocketAsync(HostEndpoint.SocketPath(root), service, logger, stopCts.Token);
+                await ServeUnixSocketAsync(HostEndpoint.SocketPath(root), service, notifier, logger, stopCts.Token);
         }
         catch (OperationCanceledException)
         {
@@ -78,7 +89,7 @@ public sealed class HostCommand
     // Accept loop for Windows named pipes. Each accepted connection is served on its own task so a second editor
     // window can connect while the first is active; the loop keeps offering new pipe instances until cancelled.
     private static async Task ServeNamedPipeAsync(
-        string pipeName, FuseHostService service, ILogger logger, CancellationToken cancellationToken)
+        string pipeName, FuseHostService service, HostNotifier notifier, ILogger logger, CancellationToken cancellationToken)
     {
         var connections = new List<Task>();
         while (!cancellationToken.IsCancellationRequested)
@@ -97,7 +108,7 @@ public sealed class HostCommand
                 break;
             }
 
-            connections.Add(ServeConnectionAsync(server, server, service, logger, cancellationToken));
+            connections.Add(ServeConnectionAsync(server, server, service, notifier, logger, cancellationToken));
             connections.RemoveAll(t => t.IsCompleted);
         }
 
@@ -106,7 +117,7 @@ public sealed class HostCommand
 
     // Accept loop for Unix domain sockets, mirroring the named-pipe loop.
     private static async Task ServeUnixSocketAsync(
-        string socketPath, FuseHostService service, ILogger logger, CancellationToken cancellationToken)
+        string socketPath, FuseHostService service, HostNotifier notifier, ILogger logger, CancellationToken cancellationToken)
     {
         if (File.Exists(socketPath))
             File.Delete(socketPath); // A stale socket file from a crashed host would block the bind.
@@ -131,7 +142,7 @@ public sealed class HostCommand
                 }
 
                 var stream = new NetworkStream(accepted, ownsSocket: true);
-                connections.Add(ServeConnectionAsync(stream, stream, service, logger, cancellationToken));
+                connections.Add(ServeConnectionAsync(stream, stream, service, notifier, logger, cancellationToken));
                 connections.RemoveAll(t => t.IsCompleted);
             }
 
@@ -146,13 +157,13 @@ public sealed class HostCommand
     // Serves one connection's RPC traffic until the client disconnects or the host is cancelled, then disposes
     // the transport. A faulted connection is logged and swallowed so one client cannot take the host down.
     private static async Task ServeConnectionAsync(
-        Stream readStream, Stream writeStream, FuseHostService service, ILogger logger, CancellationToken cancellationToken)
+        Stream readStream, Stream writeStream, FuseHostService service, HostNotifier notifier, ILogger logger, CancellationToken cancellationToken)
     {
         await using var disposable = readStream as IAsyncDisposable ?? new NoopAsyncDisposable();
         try
         {
             using var rpc = FuseHostConnection.Attach(
-                PipeReader.Create(readStream), PipeWriter.Create(writeStream), service);
+                PipeReader.Create(readStream), PipeWriter.Create(writeStream), service, notifier);
             await rpc.Completion.WaitAsync(cancellationToken);
         }
         catch (OperationCanceledException)

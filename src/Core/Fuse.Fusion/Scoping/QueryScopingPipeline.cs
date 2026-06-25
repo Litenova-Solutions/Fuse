@@ -164,7 +164,11 @@ internal sealed class QueryScopingPipeline
                               || experimental.GitChurnWeight > 0;
         if (poolPriorActive)
             candidateTopK = Math.Max(candidateTopK, seedTopK * CandidatePoolWideningFactor);
-        var ranked = relevanceIndex.RankScored(request.Query.Query, candidateTopK);
+        // Item 12 (rules-based, no model): when on, emphasize the query's compound PascalCase identifiers via
+        // the weighted-terms ranking; otherwise rank the raw query unchanged (the default no-op floor).
+        var ranked = experimental.HeuristicQueryRewrite
+            ? relevanceIndex.RankScored(HeuristicQueryRewriter.Rewrite(request.Query.Query), candidateTopK)
+            : relevanceIndex.RankScored(request.Query.Query, candidateTopK);
 
         if (ranked.Count == 0)
         {

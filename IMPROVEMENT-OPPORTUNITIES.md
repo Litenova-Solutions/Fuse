@@ -846,8 +846,10 @@ Runtime- or data-blocked (cannot be completed in the current environment):
 
 - **B1, task-success eval with round-trips:** needs a programmatic agent runner that drives the arms and
   scores patches. No such runtime is present.
-- **item 12, LLM query rewrite / HyDE:** needs a language model at query time; the hard invariant bars a
-  model and network from the default path, so this is opt-in only and the runtime is absent.
+- **item 12, query rewrite / HyDE:** the rules-based, no-model half is now built and measured (an opt-in
+  PascalCase-emphasis query rewrite, `FUSE_QUERY_REWRITE`; neutral on the corpus, kept opt-in with a research
+  note). The LLM-backed half needs a language model at query time; the hard invariant bars a model and network
+  from the default path, so it stays opt-in and its runtime is absent here.
 - **B2, larger and cleaner corpus:** the code and harness for B2 are already complete: `gen-prs.ps1`
   reproducibly curates per-PR ground truth (base/head/merge SHAs and changed `.cs` files) from a pinned clone's
   merge history, `setup-corpus.ps1` clones each repo at its pinned commit, the layer harnesses iterate

@@ -22,6 +22,12 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Opt-in rules-based query rewrite (item 12, the no-model half).** A query-path rewrite that emphasizes the
+  compound PascalCase identifiers in a query (the strongest signal that the query names a type) via weighted-term
+  ranking, fully lexical with no model. Enable with `FUSE_QUERY_REWRITE=1`. A measured A/B
+  (`spike-query-rewrite.ps1`) was neutral at the 50,000 token headline (61 percent on and off, a 2-point
+  FluentValidation dip at 25,000), so it is off by default; see the research note. The LLM-backed rewrite stays
+  a separate opt-in and never touches the no-model path. Covered by `HeuristicQueryRewriterTests`.
 - **Platform VSIX release pipeline with a bundled host.** `ext/vscode/scripts/package-platform.mjs` publishes
   the self-contained host for a runtime identifier, stages it under `host/<rid>/` (which the extension prefers
   over the PATH fallback), and runs `vsce package --target` to produce a platform-specific VSIX; the
@@ -556,6 +562,16 @@ or has an unmet plan gate. They are recorded so the accounting is complete and a
 
 ### Research notes
 
+- **Source:** rules-based query rewrite (item 12): emphasize the compound PascalCase identifiers in a query so
+  a query that names a type leans toward the file that declares it. **Fit:** the prose-to-identifier gap on the
+  query path, the no-model half of item 12. **Decision:** **built and measured, kept opt-in.** A query-mode
+  A/B over the 24-PR corpus (`spike-query-rewrite.ps1`) was neutral at the 50,000 token headline (61 percent on
+  and off; Newtonsoft +1, a 2-point FluentValidation dip at 25,000), so it does not clear the bar to change the
+  default. The cause is structural on this corpus: the PR titles are already identifier-rich, and BM25F weights
+  the declared-symbol field 5x, so re-emphasizing the query's identifiers is largely redundant with the field
+  boost. It ships opt-in (`FUSE_QUERY_REWRITE=1`) because a deployment with genuinely prose queries is the case
+  it targets; the LLM-backed rewrite (the other half of item 12) stays a separate opt-in and off the no-model
+  path. The open follow-up is to re-test against a prose-query benchmark rather than identifier-like PR titles.
 - **Source:** fielded comments (Q2): index comments and doc-comments as their own weighted BM25F field so
   prose queries match their natural-language vocabulary. **Fit:** the vocabulary wall on prose titles.
   **Decision:** **built and measured, kept opt-in.** A query-mode A/B over the 24-PR corpus

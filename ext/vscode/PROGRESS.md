@@ -42,7 +42,18 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
 
 ## Phase 2: thin read-only extension
 
-- [ ] Not started.
+- [x] Build tooling: `package.json` (manifest with the Fuse activity-bar container, index and hotspot views,
+      index/restart commands, and settings), `tsconfig`, esbuild bundle (no CDN, vscode-jsonrpc bundled),
+      eslint. `npm run build`, `tsc --noEmit`, and `npm run lint` all green.
+- [x] Supervisor: spawns `fuse host --directory <root>`, connects over the pipe/socket with linear backoff,
+      verifies the protocol version at handshake, and restarts with capped backoff on host exit.
+- [x] Typed client: `vscode-jsonrpc` over the transport, one method per host RPC; endpoint address mirrors the
+      .NET `HostEndpoint` hash so the extension finds the host.
+- [x] Status bar (state plus host RSS tooltip), index-status tree (state, file count, index time, RSS), and
+      token-hotspot tree (top files by the graph's token-cost estimate, click to open).
+- [ ] `@vscode/test-electron` integration test (needs an Electron download and a display; to be added with a
+      headless-capable harness, quarantined if the runner cannot launch VS Code).
+- [ ] TS-side contract test parsing the same fixtures as the .NET `FuseHostContractTests`.
 
 ## Phase 3: context diagnostics
 

@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { SecretDiagnostics } from "./diagnostics/secrets";
 import { GraphView } from "./graph/webview";
 import { HostSupervisor } from "./host/supervisor";
+import { FuseHoverProvider } from "./hover/fuseHover";
 import { FileMetric, TokenLensProvider } from "./lenses/tokenLens";
 import { FuseStatusBar } from "./statusBar";
 import { Hotspot, HotspotsProvider } from "./views/hotspots";
@@ -29,7 +30,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const scopeResult = new ScopeResultProvider(root);
   const secrets = new SecretDiagnostics(root);
   const graphView = new GraphView(context, root);
-  const tokenLens = new TokenLensProvider((uri) => vscode.workspace.asRelativePath(uri, false));
+  const relativePathOf = (uri: vscode.Uri): string => vscode.workspace.asRelativePath(uri, false);
+  const tokenLens = new TokenLensProvider(relativePathOf);
+  const hover = new FuseHoverProvider(relativePathOf);
 
   context.subscriptions.push(
     output,
@@ -39,17 +42,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("fuse.hotspots", hotspots),
     vscode.window.registerTreeDataProvider("fuse.scopeResult", scopeResult),
     vscode.languages.registerCodeLensProvider({ scheme: "file", pattern: "**/*.cs" }, tokenLens),
+    vscode.languages.registerHoverProvider({ scheme: "file", pattern: "**/*.cs" }, hover),
   );
 
   const hostPath = vscode.workspace.getConfiguration("fuse").get<string>("host.path", "");
   supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m));
   context.subscriptions.push({ dispose: () => supervisor?.dispose() });
 
-  const indexCommand = vscode.commands.registerCommand("fuse.index", () => warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, output));
+  const indexCommand = vscode.commands.registerCommand("fuse.index", () => warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output));
   const restartCommand = vscode.commands.registerCommand("fuse.restartHost", async () => {
     supervisor?.dispose();
     supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m));
-    await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, output);
+    await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output);
   });
   context.subscriptions.push(indexCommand, restartCommand);
 
@@ -107,7 +111,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, output);
+  await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output);
 }
 
 // Starts (or reuses) the host, indexes the root, and projects the results into the status bar and trees.
@@ -118,6 +122,7 @@ async function warmAndProject(
   hotspots: HotspotsProvider,
   secrets: SecretDiagnostics,
   tokenLens: TokenLensProvider,
+  hover: FuseHoverProvider,
   output: vscode.OutputChannel,
 ): Promise<void> {
   if (!supervisor) {
@@ -152,6 +157,7 @@ async function warmAndProject(
       metrics.set(node.path, { tokenCost: node.tokenCost, centrality: node.centrality });
     }
     tokenLens.update(metrics);
+    hover.update(metrics);
 
     // Surface secret findings as editor diagnostics (the C1 fix made visible).
     await secrets.refresh(client);

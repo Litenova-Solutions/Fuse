@@ -82,7 +82,9 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
 - [x] Token CodeLens: a lens at the top of each `.cs` file showing its Fuse token cost and graph centrality,
       fed from the graph the extension already fetched and toggled by the `fuse.showTokenLens` setting (default
       off). Build, typecheck, lint green.
-- [ ] Hover provider and the explainer panel (fuse/explain) over the same client; optional churn lens.
+- [x] Hover provider: hovering a `.cs` file shows a Fuse card (token cost, centrality) with a "Focus here"
+      action link, reading the same graph metrics as the lens. Build, typecheck, lint green.
+- [ ] Explainer panel (fuse/explain) over the same client; optional churn lens.
 
 ## Phase 6: packaging and distribution
 

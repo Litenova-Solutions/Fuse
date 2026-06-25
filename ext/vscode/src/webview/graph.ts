@@ -18,8 +18,11 @@ function render(graph: GraphDto): void {
         id: node.path,
         label: node.declaredTypes[0] ?? node.path,
         size: 20 + Math.round(node.centrality * 60),
-        // Map token cost to a hue from green (cheap) to red (expensive) for at-a-glance budget reading.
-        color: `hsl(${Math.round(120 - (120 * node.tokenCost) / maxTokens)}, 70%, 45%)`,
+        // When a scope is active, color by role so the user sees what a fusion includes; otherwise map token
+        // cost to a hue from green (cheap) to red (expensive) for at-a-glance budget reading.
+        color: node.role
+          ? roleColor(node.role)
+          : `hsl(${Math.round(120 - (120 * node.tokenCost) / maxTokens)}, 70%, 45%)`,
       },
     });
   }
@@ -53,6 +56,19 @@ function render(graph: GraphDto): void {
   cy.on("tap", "node", (event) => {
     vscodeApi.postMessage({ type: "open", path: event.target.id() });
   });
+}
+
+// Role colors for the scope overlay: a seed is the anchor, a changed file is the diff target, a dependency is
+// pulled in by the graph. Distinct hues so the included set reads at a glance.
+function roleColor(role: string): string {
+  switch (role) {
+    case "Seed":
+      return "#4080ff";
+    case "Changed":
+      return "#e0852f";
+    default:
+      return "#9aa0a6";
+  }
 }
 
 window.addEventListener("message", (event: MessageEvent) => {

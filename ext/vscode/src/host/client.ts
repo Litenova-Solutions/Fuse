@@ -52,8 +52,20 @@ export class HostClient {
     return this.connection.sendRequest(Methods.index, root);
   }
 
-  graph(root: string, detail: "Files" | "Directories"): Promise<GraphDto> {
-    return this.connection.sendRequest(Methods.graph, root, detail);
+  graph(
+    root: string,
+    detail: "Files" | "Directories",
+    scope?: { mode: string; seed: string | null; query: string | null; since: string | null },
+  ): Promise<GraphDto> {
+    return this.connection.sendRequest(
+      Methods.graph,
+      root,
+      detail,
+      scope?.mode ?? null,
+      scope?.seed ?? null,
+      scope?.query ?? null,
+      scope?.since ?? null,
+    );
   }
 
   scope(

@@ -60,6 +60,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   context.subscriptions.push(indexCommand, restartCommand);
 
+  // The most recent scope, so "Show Dependency Graph" can overlay roles for what the last fusion included.
+  let lastScope: { mode: string; seed: string | null; query: string | null; since: string | null } | undefined;
+
   // Scoping commands close the interactive loop: each runs a scoped fusion on the host, opens the payload
   // read-only, and populates the scope-result panel. They share one helper over the warm client.
   const runScope = async (mode: string, seed: string | null, query: string | null, since: string | null): Promise<void> => {
@@ -69,6 +72,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     try {
       const client = supervisor.connected ?? (await supervisor.start());
       const result = await client.scope(root, mode, seed, query, since, 50000);
+      lastScope = { mode, seed, query, since };
       scopeResult.update(result.mode, result.files);
       if (result.payloadPath) {
         const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(result.payloadPath));
@@ -106,7 +110,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       try {
         const client = supervisor.connected ?? (await supervisor.start());
-        await graphView.show(client);
+        await graphView.show(client, lastScope);
       } catch (err) {
         output.appendLine(`Fuse graph failed: ${String(err)}`);
         void vscode.window.showWarningMessage(`Fuse: ${String(err)}`);

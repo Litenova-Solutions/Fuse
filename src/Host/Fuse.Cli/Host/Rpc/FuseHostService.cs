@@ -163,7 +163,8 @@ public sealed class FuseHostService
     ///     and dependency-graph builder as the engine, so the projection matches what scoping traverses.
     /// </remarks>
     [JsonRpcMethod("fuse/graph")]
-    public async Task<GraphDto> GraphAsync(string root, string detail)
+    public async Task<GraphDto> GraphAsync(
+        string root, string detail, string? scopeMode = null, string? seed = null, string? query = null, string? since = null)
     {
         var resolved = Path.GetFullPath(root);
         var directories = string.Equals(detail, "Directories", StringComparison.OrdinalIgnoreCase);
@@ -181,6 +182,19 @@ public sealed class FuseHostService
         foreach (var file in collection.Files)
             tokenByPath[file.NormalizedRelativePath] = (int)(file.FileInfo.Length / 4);
 
+        // Optional scope overlay: when a scope is supplied, run it and tag each node with the role the context
+        // plan gave that file (Seed, Dependency, Changed), so the webview can recolor by role to show exactly
+        // what a fusion would include. The roles apply at file granularity (they do not aggregate to directories).
+        var roleByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(scopeMode))
+        {
+            var scopeBuilder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
+            ApplyScopeMode(scopeBuilder, scopeMode, seed, query, since);
+            var scoped = await _orchestrator.FuseAsync(scopeBuilder.Build());
+            foreach (var planned in scoped.Plan)
+                roleByPath[planned.Path] = planned.Role;
+        }
+
         var fileNodes = new List<GraphNodeDto>(graph.DeclaredTypes.Count);
         foreach (var (path, types) in graph.DeclaredTypes)
         {
@@ -189,7 +203,7 @@ public sealed class FuseHostService
                 types,
                 centrality.TryGetValue(path, out var c) ? Math.Round(c, 4) : 0.0,
                 tokenByPath.GetValueOrDefault(path),
-                null));
+                roleByPath.GetValueOrDefault(path)));
         }
 
         var fileEdges = new List<GraphEdgeDto>();
@@ -201,6 +215,29 @@ public sealed class FuseHostService
             return new GraphDto(fileNodes, fileEdges, "Files");
 
         return AggregateToDirectories(fileNodes, fileEdges);
+    }
+
+    // Applies the requested scoping mode to a request builder and returns the normalized mode. Shared by scope,
+    // explain, and the graph role overlay so the focus/changes/search routing is defined once. Falls back to
+    // search when a focus seed or git base is absent.
+    private static string ApplyScopeMode(FusionRequestBuilder builder, string? mode, string? seed, string? query, string? since)
+    {
+        var normalized = (mode ?? "search").Trim().ToLowerInvariant();
+        switch (normalized)
+        {
+            case "focus" when !string.IsNullOrWhiteSpace(seed):
+                builder.WithFocusOptions(new FocusOptions(seed, Depth: 2));
+                break;
+            case "changes" when !string.IsNullOrWhiteSpace(since):
+                builder.WithChangeOptions(new ChangeOptions(since));
+                break;
+            default:
+                normalized = "search";
+                builder.WithQueryOptions(new QueryOptions(query ?? string.Empty, TopFiles: 10, Depth: 2));
+                break;
+        }
+
+        return normalized;
     }
 
     // Folds the file graph into directory supernodes: a node per directory (token cost summed, centrality summed
@@ -253,9 +290,8 @@ public sealed class FuseHostService
         string root, string mode, string? seed, string? query, string? since, int maxTokens)
     {
         var resolved = Path.GetFullPath(root);
-        var normalizedMode = (mode ?? "search").Trim().ToLowerInvariant();
         if (!Directory.Exists(resolved))
-            return new ScopeResultDto(normalizedMode, [], 0, null);
+            return new ScopeResultDto((mode ?? "search").Trim().ToLowerInvariant(), [], 0, null);
 
         var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
         builder.WithEmissionOptions(new EmissionOptions
@@ -265,20 +301,7 @@ public sealed class FuseHostService
             IncludeManifest = true,
         });
 
-        switch (normalizedMode)
-        {
-            case "focus" when !string.IsNullOrWhiteSpace(seed):
-                builder.WithFocusOptions(new FocusOptions(seed, Depth: 2));
-                break;
-            case "changes" when !string.IsNullOrWhiteSpace(since):
-                builder.WithChangeOptions(new ChangeOptions(since));
-                break;
-            default:
-                normalizedMode = "search";
-                builder.WithQueryOptions(new QueryOptions(query ?? string.Empty, TopFiles: 10, Depth: 2));
-                break;
-        }
-
+        var normalizedMode = ApplyScopeMode(builder, mode, seed, query, since);
         var result = await _orchestrator.FuseAsync(builder.Build());
 
         string? payloadPath = null;
@@ -406,25 +429,11 @@ public sealed class FuseHostService
     public async Task<ExplainResultDto> ExplainAsync(string root, string mode, string? seed, string? query, string? since)
     {
         var resolved = Path.GetFullPath(root);
-        var normalizedMode = (mode ?? "search").Trim().ToLowerInvariant();
         if (!Directory.Exists(resolved))
-            return new ExplainResultDto(normalizedMode, []);
+            return new ExplainResultDto((mode ?? "search").Trim().ToLowerInvariant(), []);
 
         var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
-        switch (normalizedMode)
-        {
-            case "focus" when !string.IsNullOrWhiteSpace(seed):
-                builder.WithFocusOptions(new FocusOptions(seed, Depth: 2));
-                break;
-            case "changes" when !string.IsNullOrWhiteSpace(since):
-                builder.WithChangeOptions(new ChangeOptions(since));
-                break;
-            default:
-                normalizedMode = "search";
-                builder.WithQueryOptions(new QueryOptions(query ?? string.Empty, TopFiles: 10, Depth: 2));
-                break;
-        }
-
+        var normalizedMode = ApplyScopeMode(builder, mode, seed, query, since);
         var result = await _orchestrator.FuseAsync(builder.Build());
         var files = result.Plan
             .Select(p => new ExplainFileDto(p.Path, p.Role, p.Tier, p.Score))

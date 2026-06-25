@@ -18,6 +18,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   and the redaction output and counts are byte-identical (all redaction tests unchanged). Each host method is
   integration-tested over the real engine; the wire DTOs are mirrored in `protocol.ts` and pinned by contract
   tests.
+- **Scoped role overlay on `fuse/graph`.** The graph method takes an optional scope (mode, seed, query, since)
+  and tags each node with the role the context plan assigned that file (Seed, Changed, Dependency), so the
+  extension's webview recolors by role to show exactly what a fusion would include. The scope routing is now a
+  shared `ApplyScopeMode` helper used by scope, explain, and the graph overlay. Covered by a host test.
 - **Token-hotspot and graph-gap diagnostics on `fuse/diagnostics`, and a scope-payload concurrency fix.**
   `fuse/diagnostics` now also returns the most token-expensive files (hotspots) and the files the dependency
   graph leaves unconnected (no inbound or outbound type reference, often dead or reflection-only code), which

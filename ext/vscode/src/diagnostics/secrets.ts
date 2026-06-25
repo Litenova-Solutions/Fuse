@@ -51,6 +51,13 @@ export class SecretDiagnostics {
         vscode.DiagnosticSeverity.Hint,
       ));
     }
+    for (const file of result.generated) {
+      add(file, new vscode.Diagnostic(
+        header,
+        "Fuse: detected as generated code (EF migration or model snapshot); usually not worth reading or editing.",
+        vscode.DiagnosticSeverity.Hint,
+      ));
+    }
 
     this.collection.clear();
     for (const [path, diagnostics] of byPath) {

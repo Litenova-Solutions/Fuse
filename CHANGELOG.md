@@ -28,7 +28,8 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
   the extension surfaces as informational and hint diagnostics alongside the secret warnings. The host
   concurrency test surfaced a real bug: `fuse/scope` wrote its payload to a file named only by root and mode,
   so two concurrent same-mode scopes collided on one file; payload file names are now unique per call. Both
-  fixes are covered by host tests.
+  fixes are covered by host tests. `fuse/diagnostics` also flags generated code (EF Core migrations and model
+  snapshots, via the engine's `GeneratedCodeCollapser.IsGenerated`) as editor hints.
 - **`fuse/explain` and a read-only `FusionResult.Plan` projection.** The host now serves `fuse/explain`, which
   returns the scoped result's context plan (each planned file's role, reduction tier, and relevance score)
   without writing a payload, so the extension can show why a file is included and at what fidelity before

@@ -1,3 +1,10 @@
+# ARCHIVED (retired from the published suite, kept for reference only).
+# This illustrative prefill-growth model used to run as "layer 3". It is no longer wired into
+# run-all.ps1 and is not part of the published benchmarks. The round-trip story now rests on the
+# Layer 4 structural lower bound (a blind agent must read each needed file at least once) plus the
+# Layer 5 measured agent (real tool-call and token cost to sufficiency). This script is kept so the
+# old model stays reproducible from git history; do not cite its output as a benchmark.
+#
 # Layer 3: the illustrative prefill-growth model, subordinate to the layer-4 bound.
 #
 # The measured round-trip claim is layer 4's ground-truth bound: a blind agent must read

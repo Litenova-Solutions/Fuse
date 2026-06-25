@@ -195,7 +195,7 @@ internal sealed class QueryScopingPipeline
             if (experimental.QueryExpansion)
             {
                 var expandedQuery = PseudoRelevanceExpander.Expand(
-                    request.Query.Query, ranked, documents, new QueryExpansionOptions(), relevanceIndex.InverseDocumentFrequency);
+                    request.Query.Query, ranked, documents, new QueryExpansionOptions(ExpansionWeight: experimental.ExpansionWeight), relevanceIndex.InverseDocumentFrequency);
                 var prfRanked = relevanceIndex.RankScored(expandedQuery, request.Query.TopFiles);
                 if (prfRanked.Count > 0)
                     variants.Add(prfRanked);
@@ -212,7 +212,7 @@ internal sealed class QueryScopingPipeline
             // construction (symbol field only, multi-doc terms only, reduced weight); a no-op when disabled or
             // when no term qualifies, so the seed set then equals the single-pass ordering.
             var expandedQuery = PseudoRelevanceExpander.Expand(
-                request.Query.Query, ranked, documents, new QueryExpansionOptions(), relevanceIndex.InverseDocumentFrequency);
+                request.Query.Query, ranked, documents, new QueryExpansionOptions(ExpansionWeight: experimental.ExpansionWeight), relevanceIndex.InverseDocumentFrequency);
             var reranked = relevanceIndex.RankScored(expandedQuery, request.Query.TopFiles);
             // Merge rather than replace: expansion adds the files it surfaces but never drops a first-pass
             // seed, so a misfiring expansion cannot lower recall below the single-pass result.
@@ -358,6 +358,7 @@ internal sealed class QueryScopingPipeline
             request.Query.Depth,
             FollowReferences: true,
             FollowDependents: false,
+            HopDecay: experimental.HopDecay,
             TokenBudget: expansionBudget,
             TokenCosts: expansionCosts,
             Centrality: GraphCentrality.Compute(graph),

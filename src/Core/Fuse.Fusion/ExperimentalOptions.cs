@@ -23,6 +23,22 @@ public sealed record ExperimentalOptions
     public double CentralityWeight { get; init; } = 0.15;
 
     /// <summary>
+    ///     The factor by which a dependency-expanded neighbour's score decays per hop from its seed, in the
+    ///     range (0, 1]. Lower values rank distant files further below the seeds, so a token budget drops them
+    ///     first; higher values keep more of the neighbourhood. One of the scalars swept by item 5 admission
+    ///     tuning. Overridden by <c>FUSE_HOP_DECAY</c>.
+    /// </summary>
+    public double HopDecay { get; init; } = 0.5;
+
+    /// <summary>
+    ///     The per-term weight of a pseudo-relevance-feedback expansion term relative to an original query term
+    ///     (weight <c>1.0</c>), applied when <see cref="QueryExpansion" /> is on. Kept low so expansion nudges
+    ///     ranking toward co-occurring concepts without overriding the original intent. One of the scalars swept
+    ///     by item 5 admission tuning. Overridden by <c>FUSE_EXPANSION_WEIGHT</c>.
+    /// </summary>
+    public double ExpansionWeight { get; init; } = 0.2;
+
+    /// <summary>
     ///     Whether pseudo-relevance feedback query expansion runs on the query path (a second lexical ranking
     ///     pass seeded with recurring declared-symbol terms from the first pass). Overridden by
     ///     <c>FUSE_QUERY_EXPANSION</c> (<c>0</c>, <c>off</c>, or <c>false</c> disables it).
@@ -164,7 +180,7 @@ public sealed record ExperimentalOptions
     ///     record is the single source of truth for the run.
     /// </summary>
     /// <param name="configured">The request's configured options, or <c>null</c> to start from the defaults.</param>
-    /// <returns>The resolved options with <c>FUSE_CENTRALITY_WEIGHT</c> and <c>FUSE_QUERY_EXPANSION</c> applied.</returns>
+    /// <returns>The resolved options with every recognized <c>FUSE_*</c> override applied on top of the configured values.</returns>
     public static ExperimentalOptions ResolveFromEnvironment(ExperimentalOptions? configured = null)
     {
         var resolved = configured ?? new ExperimentalOptions();
@@ -176,6 +192,24 @@ public sealed record ExperimentalOptions
             weight >= 0)
         {
             centrality = weight;
+        }
+
+        var hopDecay = resolved.HopDecay;
+        var rawHopDecay = Environment.GetEnvironmentVariable("FUSE_HOP_DECAY");
+        if (!string.IsNullOrWhiteSpace(rawHopDecay) &&
+            double.TryParse(rawHopDecay, NumberStyles.Float, CultureInfo.InvariantCulture, out var hop) &&
+            hop > 0 && hop <= 1)
+        {
+            hopDecay = hop;
+        }
+
+        var expansionWeight = resolved.ExpansionWeight;
+        var rawExpansionWeight = Environment.GetEnvironmentVariable("FUSE_EXPANSION_WEIGHT");
+        if (!string.IsNullOrWhiteSpace(rawExpansionWeight) &&
+            double.TryParse(rawExpansionWeight, NumberStyles.Float, CultureInfo.InvariantCulture, out var expW) &&
+            expW >= 0)
+        {
+            expansionWeight = expW;
         }
 
         var queryExpansion = resolved.QueryExpansion;
@@ -328,6 +362,8 @@ public sealed record ExperimentalOptions
         return resolved with
         {
             CentralityWeight = centrality,
+            HopDecay = hopDecay,
+            ExpansionWeight = expansionWeight,
             QueryExpansion = queryExpansion,
             TieredEmission = tieredEmission,
             MultiQueryFusion = multiQueryFusion,

@@ -6,6 +6,16 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Changed
 
+- **Scalar admission tuning swept and defaults kept (item 5).** With B2 (the 90-PR corpus) and B5 (the
+  dev/test split) both in place, the four ranking scalars the plan names are now sweepable without a rebuild:
+  `HopDecay` and the PRF `ExpansionWeight` join `CentralityWeight` and `--query-top` with `FUSE_HOP_DECAY` and
+  `FUSE_EXPANSION_WEIGHT` environment overrides, threaded through the query pipeline and recorded in the run
+  report so a measurement names its configuration. `spike-scalar-tuning.ps1` sweeps each scalar one-at-a-time
+  (plus an admit-more combo), tunes on the dev fold, and reads the held-out test fold with a per-repo
+  no-regression check. Result over the 90-PR corpus: no arm clears the baseline on test (the dev-best arm,
+  `cw=0.0`, drops test 45 to 44 percent and regresses AutoMapper 28 to 23), so the shipped defaults are kept,
+  confirming the plan's overfit-risk prediction. The full table is in `tests/benchmarks/results/opt-in-levers.md`.
+  The knobs remain available so a deployment with a different corpus can retune and validate the same way.
 - **Reading-set ground-truth support in Layer 2A.** The scoping benchmark now scores recall against an optional
   per-PR `reading_set` (the files a task must read but not edit, such as interfaces, callers, and tests) unioned
   with the editing set, instead of only the files the PR changed, when a PR is labeled. Absent a label the

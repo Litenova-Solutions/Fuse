@@ -12,8 +12,52 @@ public sealed class ExperimentalOptionsTests
         var options = new ExperimentalOptions();
 
         Assert.Equal(0.15, options.CentralityWeight);
+        Assert.Equal(0.5, options.HopDecay);
+        Assert.Equal(0.2, options.ExpansionWeight);
         Assert.True(options.QueryExpansion);
         Assert.True(options.BudgetAwareExpansion);
+    }
+
+    [Fact]
+    public void ResolveFromEnvironment_HopDecay_ParsesWithinRange()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_HOP_DECAY", "0.6"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.Equal(0.6, resolved.HopDecay);
+    }
+
+    [Fact]
+    public void ResolveFromEnvironment_HopDecayOutOfRange_KeepsConfigured()
+    {
+        // The decay factor must be in (0, 1]; an out-of-range value is ignored so a bad override cannot
+        // silently invert the ranking (a value above 1 would amplify distant neighbours over seeds).
+        var configured = new ExperimentalOptions { HopDecay = 0.5 };
+
+        var resolvedHigh = WithEnvironment(
+            ("FUSE_HOP_DECAY", "1.5"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment(configured));
+        var resolvedZero = WithEnvironment(
+            ("FUSE_HOP_DECAY", "0"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment(configured));
+
+        Assert.Equal(0.5, resolvedHigh.HopDecay);
+        Assert.Equal(0.5, resolvedZero.HopDecay);
+    }
+
+    [Fact]
+    public void ResolveFromEnvironment_ExpansionWeight_Parses()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_EXPANSION_WEIGHT", "0.35"),
+            ("FUSE_CENTRALITY_WEIGHT", null),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.Equal(0.35, resolved.ExpansionWeight);
     }
 
     [Fact]

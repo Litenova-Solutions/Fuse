@@ -120,6 +120,35 @@ The "on" column is the default and matches the published query headline (61 perc
 other default-on levers (budget-aware expansion, tiered emission, downgrade-before-drop) are validated in
 `layer2a.md` and the `benchmarks.mdx` Findings.
 
+## Scalar admission tuning (item 5), over the 90-PR corpus
+
+Item 5 sweeps the four ranking scalars the plan names (`CentralityWeight`, `HopDecay`, query-top, and the
+PRF `ExpansionWeight`) one-at-a-time around the defaults, plus an "admit a wider neighbourhood" combo. The
+plan gates this on B2 and B5 existing, because tuning a small corpus overfits; both now exist, so the sweep
+tunes on the dev fold (odd PR id) and reads the held-out test fold (even PR id), and rejects any arm that
+regresses a per-repo test cell. Query mode, headline 50,000-token budget. Reproduce with
+`spike-scalar-tuning.ps1`.
+
+| Arm | dev recall | test recall |
+|-----|-----------:|------------:|
+| baseline (cw 0.15, hd 0.5, ew 0.2, top 10) | 53% | 45% |
+| cw=0.0 | 54% | 44% |
+| cw=0.30 | 53% | 45% |
+| hd=0.4 | 53% | 45% |
+| hd=0.6 | 53% | 45% |
+| ew=0.1 | 53% | 45% |
+| ew=0.35 | 53% | 45% |
+| top=8 | 52% | 42% |
+| top=12 | 53% | 46% |
+| admit-more (cw 0.30, hd 0.6, top 12) | 53% | 46% |
+
+**Decision: keep the defaults.** The dev-best arm (cw=0.0, dev 54 percent) does not clear the baseline on the
+held-out test fold (44 versus 45 percent) and regresses AutoMapper per-repo (test 28 to 23 percent). Every
+other arm sits within a point of the baseline on test, inside the bootstrap noise band. This confirms the
+plan's overfit-risk prediction: there is no robust held-out win, so the shipped scalars stay as they are. The
+four scalars are now env-overridable (`FUSE_CENTRALITY_WEIGHT`, `FUSE_HOP_DECAY`, `FUSE_EXPANSION_WEIGHT`, and
+`--query-top`) so a deployment with a different corpus can retune and validate the same way.
+
 ## Behavior-preserving levers (no recall A/B)
 
 Item 23 (rerank embedding cache by content hash) and the huge-file sketch (`FUSE_SKETCH_HUGE`) do not change

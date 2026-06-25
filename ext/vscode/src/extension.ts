@@ -4,6 +4,7 @@ import { HostSupervisor } from "./host/supervisor";
 import { FuseStatusBar } from "./statusBar";
 import { Hotspot, HotspotsProvider } from "./views/hotspots";
 import { IndexStatusProvider, StatusRow } from "./views/indexStatus";
+import { ScopeResultProvider } from "./views/scopeResult";
 
 let supervisor: HostSupervisor | undefined;
 
@@ -23,6 +24,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const statusBar = new FuseStatusBar();
   const indexStatus = new IndexStatusProvider();
   const hotspots = new HotspotsProvider(root);
+  const scopeResult = new ScopeResultProvider(root);
   const secrets = new SecretDiagnostics(root);
 
   context.subscriptions.push(
@@ -31,6 +33,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     secrets,
     vscode.window.registerTreeDataProvider("fuse.indexStatus", indexStatus),
     vscode.window.registerTreeDataProvider("fuse.hotspots", hotspots),
+    vscode.window.registerTreeDataProvider("fuse.scopeResult", scopeResult),
   );
 
   const hostPath = vscode.workspace.getConfiguration("fuse").get<string>("host.path", "");
@@ -44,6 +47,48 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, output);
   });
   context.subscriptions.push(indexCommand, restartCommand);
+
+  // Scoping commands close the interactive loop: each runs a scoped fusion on the host, opens the payload
+  // read-only, and populates the scope-result panel. They share one helper over the warm client.
+  const runScope = async (mode: string, seed: string | null, query: string | null, since: string | null): Promise<void> => {
+    if (!supervisor) {
+      return;
+    }
+    try {
+      const client = supervisor.connected ?? (await supervisor.start());
+      const result = await client.scope(root, mode, seed, query, since, 50000);
+      scopeResult.update(result.mode, result.files);
+      if (result.payloadPath) {
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(result.payloadPath));
+        await vscode.window.showTextDocument(doc, { preview: true });
+      }
+    } catch (err) {
+      output.appendLine(`Fuse scope failed: ${String(err)}`);
+      void vscode.window.showWarningMessage(`Fuse: ${String(err)}`);
+    }
+  };
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("fuse.search", async () => {
+      const query = await vscode.window.showInputBox({ prompt: "Fuse: search the workspace", placeHolder: "what to find" });
+      if (query) {
+        await runScope("search", null, query, null);
+      }
+    }),
+    vscode.commands.registerCommand("fuse.focusHere", async (resource?: vscode.Uri) => {
+      const target = resource ?? vscode.window.activeTextEditor?.document.uri;
+      if (target) {
+        // The focus seed resolver matches a type name or file; the workspace-relative path resolves a file seed.
+        await runScope("focus", vscode.workspace.asRelativePath(target), null, null);
+      }
+    }),
+    vscode.commands.registerCommand("fuse.changesSince", async () => {
+      const base = await vscode.window.showInputBox({ prompt: "Fuse: changes since which git base?", value: "main" });
+      if (base) {
+        await runScope("changes", null, null, base);
+      }
+    }),
+  );
 
   await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, output);
 }

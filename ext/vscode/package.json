@@ -26,13 +26,25 @@
     "views": {
       "fuse": [
         { "id": "fuse.indexStatus", "name": "Index" },
-        { "id": "fuse.hotspots", "name": "Token Hotspots" }
+        { "id": "fuse.hotspots", "name": "Token Hotspots" },
+        { "id": "fuse.scopeResult", "name": "Scope Result" }
       ]
     },
     "commands": [
       { "command": "fuse.index", "title": "Fuse: Index Workspace" },
-      { "command": "fuse.restartHost", "title": "Fuse: Restart Host" }
+      { "command": "fuse.restartHost", "title": "Fuse: Restart Host" },
+      { "command": "fuse.search", "title": "Fuse: Search" },
+      { "command": "fuse.focusHere", "title": "Fuse: Focus Here" },
+      { "command": "fuse.changesSince", "title": "Fuse: Changes Since Branch" }
     ],
+    "menus": {
+      "editor/context": [
+        { "command": "fuse.focusHere", "group": "fuse" }
+      ],
+      "explorer/context": [
+        { "command": "fuse.focusHere", "group": "fuse" }
+      ]
+    },
     "configuration": {
       "title": "Fuse",
       "properties": {

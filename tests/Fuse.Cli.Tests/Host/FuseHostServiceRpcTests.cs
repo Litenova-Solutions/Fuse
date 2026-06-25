@@ -7,6 +7,7 @@ using Fuse.Fusion;
 using Fuse.Fusion.Scoping;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
+using Fuse.Plugins.Abstractions.Reducers;
 using Fuse.Reduction.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,6 +24,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
     private FuseHostService NewService() => new(
         _provider.GetRequiredService<FusionOrchestrator>(),
+        _provider.GetRequiredService<IExplainService>(),
         _provider.GetRequiredService<ProjectTemplateRegistry>(),
         _provider.GetRequiredService<FileCollectionPipeline>(),
         _provider.GetRequiredService<DependencyGraphBuilder>(),
@@ -30,6 +32,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         _provider.GetRequiredService<CapabilityRegistry<IDependencyExtractor>>(),
         _provider.GetRequiredService<CapabilityRegistry<ITypeNameLocator>>(),
         _provider.GetRequiredService<ISecretRedactor>(),
+        _provider.GetRequiredService<IGeneratedCodeDetector>(),
         NullLogger<FuseHostService>.Instance);
 
     private static string SessionToken(FuseHostService service) => service.Handshake().SessionToken;

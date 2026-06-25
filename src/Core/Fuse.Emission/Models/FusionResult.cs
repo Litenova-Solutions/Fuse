@@ -4,10 +4,10 @@ namespace Fuse.Emission.Models;
 /// <summary>
 ///     Represents the result of a fusion emission operation.
 /// </summary>
-public sealed class FusionResult
+public sealed record FusionResult
 {
     /// <summary>
-    ///     Initializes a new instance of the <see cref="FusionResult" /> class.
+    ///     Initializes a new instance of the <see cref="FusionResult" /> record.
     /// </summary>
     /// <param name="generatedPaths">The output file paths produced by disk emission.</param>
     /// <param name="inMemoryContent">The fused content produced by in-memory emission, or <c>null</c> for disk-only emission.</param>
@@ -19,9 +19,7 @@ public sealed class FusionResult
     /// <param name="patternSummary">The detected pattern summary, or <c>null</c> when pattern detection was not requested.</param>
     /// <param name="reductionCacheHits">The number of reduction cache hits for the fusion run.</param>
     /// <param name="reductionCacheMisses">The number of reduction cache misses for the fusion run.</param>
-    /// <param name="emittedFileTokens">
-    ///     Per-file token counts for all emitted entries, or <c>null</c> to default to an empty list.
-    /// </param>
+    /// <param name="emittedFileTokens">Per-file token counts for all emitted entries, or <c>null</c> to default to an empty list.</param>
     /// <param name="plan">The scoped result's context plan, or <c>null</c> to default to an empty list.</param>
     public FusionResult(
         IReadOnlyList<string> generatedPaths,
@@ -54,62 +52,62 @@ public sealed class FusionResult
     /// <summary>
     ///     The output file paths produced by disk emission. Empty for in-memory emission.
     /// </summary>
-    public IReadOnlyList<string> GeneratedPaths { get; }
+    public IReadOnlyList<string> GeneratedPaths { get; init; }
 
     /// <summary>
     ///     The fused content produced by in-memory emission, or <c>null</c> for disk-only emission.
     /// </summary>
-    public string? InMemoryContent { get; }
+    public string? InMemoryContent { get; init; }
 
     /// <summary>
     ///     The total number of tokens across all emitted content.
     /// </summary>
-    public long TotalTokens { get; }
+    public long TotalTokens { get; init; }
 
     /// <summary>
     ///     The number of files successfully emitted.
     /// </summary>
-    public int ProcessedFileCount { get; }
+    public int ProcessedFileCount { get; init; }
 
     /// <summary>
     ///     The total number of files considered for emission.
     /// </summary>
-    public int TotalFileCount { get; }
+    public int TotalFileCount { get; init; }
 
     /// <summary>
     ///     The wall-clock duration of the emission operation.
     /// </summary>
-    public TimeSpan Duration { get; }
+    public TimeSpan Duration { get; init; }
 
     /// <summary>
     ///     The files consuming the most tokens, ordered by descending token count.
     /// </summary>
-    public IReadOnlyList<FileTokenInfo> TopTokenFiles { get; }
+    public IReadOnlyList<FileTokenInfo> TopTokenFiles { get; init; }
 
     /// <summary>
     ///     The detected pattern summary, or <c>null</c> when pattern detection was not requested.
     /// </summary>
-    public PatternSummary? PatternSummary { get; }
+    public PatternSummary? PatternSummary { get; init; }
 
     /// <summary>
     ///     The number of reduction cache hits for the fusion run.
     /// </summary>
-    public int ReductionCacheHits { get; }
+    public int ReductionCacheHits { get; init; }
 
     /// <summary>
     ///     The number of reduction cache misses for the fusion run.
     /// </summary>
-    public int ReductionCacheMisses { get; }
+    public int ReductionCacheMisses { get; init; }
 
     /// <summary>
     ///     Per-file token counts for all emitted entries.
     /// </summary>
-    public IReadOnlyList<FileTokenInfo> EmittedFileTokens { get; }
+    public IReadOnlyList<FileTokenInfo> EmittedFileTokens { get; init; }
 
     /// <summary>
     ///     The scoped result's context plan: one entry per planned file with its role, reduction tier, and score.
     ///     Empty for unscoped runs and for paths that do not build a plan. Surfaced for explain surfaces (the
     ///     VS Code extension) so an agent or developer can see why each file was included and at what fidelity.
     /// </summary>
-    public IReadOnlyList<PlannedFileInfo> Plan { get; }
+    public IReadOnlyList<PlannedFileInfo> Plan { get; init; }
 }

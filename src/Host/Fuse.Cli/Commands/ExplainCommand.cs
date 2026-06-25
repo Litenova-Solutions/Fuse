@@ -1,6 +1,5 @@
 using DotMake.CommandLine;
 using Fuse.Cli.Services;
-using Fuse.Collection;
 using Fuse.Collection.Models;
 using Fuse.Collection.Templates;
 using Fuse.Fusion;
@@ -23,14 +22,14 @@ namespace Fuse.Cli.Commands;
 [CliCommand(Name = "explain", Description = "Preview which files a .NET fusion would include and exclude, with a token estimate. Writes nothing.", Parent = typeof(FuseCliCommand))]
 public sealed class ExplainCommand : CommandBase
 {
-    private readonly FileCollectionPipeline _collectionPipeline;
+    private readonly IExplainService _explainService;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="ExplainCommand" /> class for CLI option binding only.
     /// </summary>
     public ExplainCommand() : base(null!, null!, null!, null!)
     {
-        _collectionPipeline = null!;
+        _explainService = null!;
     }
 
     /// <summary>
@@ -40,16 +39,16 @@ public sealed class ExplainCommand : CommandBase
     /// <param name="templateRegistry">The project template registry.</param>
     /// <param name="consoleUI">The console UI for status output.</param>
     /// <param name="skeletonExtractors">Skeleton extractors resolved by file extension.</param>
-    /// <param name="collectionPipeline">The collection pipeline used to enumerate candidate files.</param>
+    /// <param name="explainService">The unified explain service.</param>
     public ExplainCommand(
         FusionOrchestrator orchestrator,
         ProjectTemplateRegistry templateRegistry,
         IConsoleUI consoleUI,
         CapabilityRegistry<ISkeletonExtractor> skeletonExtractors,
-        FileCollectionPipeline collectionPipeline)
+        IExplainService explainService)
         : base(orchestrator, templateRegistry, skeletonExtractors, consoleUI)
     {
-        _collectionPipeline = collectionPipeline;
+        _explainService = explainService;
     }
 
     /// <summary>
@@ -78,14 +77,13 @@ public sealed class ExplainCommand : CommandBase
 
         try
         {
-            var collection = await _collectionPipeline.CollectAsync(request.Collection, request.Parallelism, context.CancellationToken);
-            var result = await _orchestrator.FuseAsync(request, context.CancellationToken);
+            var preview = await _explainService.PreviewAsync(request, context.CancellationToken);
 
             var lines = Verification.ExplanationBuilder.Build(
-                DescribeScope(request),
+                preview.ScopeDescription,
                 request.Emission.TokenizerModel,
-                result.EmittedFileTokens,
-                collection.Files.Select(f => f.NormalizedRelativePath));
+                preview.FusionResult.EmittedFileTokens ?? [],
+                preview.CollectedPaths);
 
             foreach (var line in lines)
                 _consoleUI.WriteResult(line);
@@ -99,17 +97,6 @@ public sealed class ExplainCommand : CommandBase
         {
             _consoleUI.WriteError($"Error: {ex.Message}");
         }
-    }
-
-    private static string DescribeScope(FusionRequest request)
-    {
-        if (request.Focus is not null)
-            return $"focus '{request.Focus.Seed}' depth {request.Focus.Depth}";
-        if (request.Query is not null)
-            return $"query '{request.Query.Query}' top {request.Query.TopFiles} depth {request.Query.Depth}";
-        if (request.Changes is not null)
-            return $"changed since '{request.Changes.Since}'";
-        return "all collected files";
     }
 
     /// <summary>

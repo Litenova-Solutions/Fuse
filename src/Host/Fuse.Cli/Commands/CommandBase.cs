@@ -108,7 +108,8 @@ public abstract class CommandBase
 
             using var watcher = new DebouncedFileWatcher(
                 request.Collection.SourceDirectory,
-                request.Collection.Recursive);
+                request.Collection.Recursive,
+                cancellationToken: cancellationToken);
 
             watcher.Changed += async _ =>
             {

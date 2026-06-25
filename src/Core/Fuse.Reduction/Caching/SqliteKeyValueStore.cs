@@ -206,9 +206,9 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         {
             await FlushAsync();
         }
-        catch (SqliteException)
+        catch (SqliteException ex)
         {
-            // Derived cache data; flush on dispose is best-effort.
+            _logger?.LogDebug(ex, "SQLite cache flush on dispose failed for {DatabasePath}.", _databasePath);
         }
         finally
         {
@@ -248,8 +248,9 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         {
             CreateSchema();
         }
-        catch (SqliteException)
+        catch (SqliteException ex)
         {
+            _logger?.LogDebug(ex, "SQLite cache schema creation failed; recreating database at {DatabasePath}.", _databasePath);
             // A malformed database is derived data; delete and recreate rather than fail the run.
             RecoverCorruptDatabase();
         }
@@ -296,11 +297,13 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
                 if (File.Exists(path))
                     File.Delete(path);
             }
-            catch (IOException)
+            catch (IOException ex)
             {
+                _logger?.LogDebug(ex, "Failed to delete SQLite cache file {Path}.", path);
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
+                _logger?.LogDebug(ex, "Access denied deleting SQLite cache file {Path}.", path);
             }
         }
     }

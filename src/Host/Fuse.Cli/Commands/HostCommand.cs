@@ -63,7 +63,7 @@ public sealed class HostCommand
         // Watch the source tree and push a fuse/invalidated notification to every connected editor when files
         // change, so the extension refreshes its index, diagnostics, and graph without polling. The .fuse cache
         // directory is ignored by the watcher, so the host's own writes do not retrigger.
-        using var watcher = new Services.DebouncedFileWatcher(root, recursive: true);
+        using var watcher = new Services.DebouncedFileWatcher(root, recursive: true, cancellationToken: stopCts.Token);
         watcher.Changed += async _ =>
         {
             logger.LogInformation("Workspace changed; broadcasting fuse/invalidated to {Count} clients.", notifier.ConnectionCount);

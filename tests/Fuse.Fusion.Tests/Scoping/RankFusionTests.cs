@@ -1,4 +1,5 @@
 using Fuse.Fusion.Scoping;
+using Fuse.Plugins.Abstractions.Scoping;
 
 namespace Fuse.Fusion.Tests.Scoping;
 

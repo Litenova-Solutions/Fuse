@@ -3,6 +3,7 @@ using Fuse.Emission.Models;
 using Fuse.Fusion;
 using Fuse.Fusion.Extensions;
 using Fuse.Fusion.Scoping;
+using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Plugins.Abstractions.Options;
 using Microsoft.Extensions.DependencyInjection;
 

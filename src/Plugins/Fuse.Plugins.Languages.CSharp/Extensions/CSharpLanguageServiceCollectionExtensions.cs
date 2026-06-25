@@ -24,20 +24,15 @@ public static class CSharpLanguageServiceCollectionExtensions
     ///     Pattern detectors are registered as transient because each detection run mutates per-detector
     ///     accumulation state. A fresh instance per resolution lets <see cref="PatternDetectorBase" /> consumers
     ///     run a private batch without racing concurrent runs over shared state (see the detector factory wired
-    ///     into the post-reduction pipeline). Each detector is exposed through both the
-    ///     <see cref="IPatternDetector" /> and <see cref="PatternDetectorBase" /> contracts.
+    ///     into the post-reduction pipeline). Each detector is registered as
+    ///     <see cref="PatternDetectorBase" />; consumers resolve via
+    ///     <c>GetServices&lt;PatternDetectorBase&gt;()</c>.
     /// </remarks>
     public static IServiceCollection AddCSharpLanguage(this IServiceCollection services)
     {
         services.AddSingleton<IContentReducer, CSharpReducer>();
+        services.AddSingleton<IGeneratedCodeDetector, GeneratedCodeDetector>();
         services.AddSingleton<IProjectGraphGenerator, CSharpProjectGraphGenerator>();
-
-        services.AddTransient<IPatternDetector, DiRegistrationPatternDetector>();
-        services.AddTransient<IPatternDetector, ExceptionHandlingPatternDetector>();
-        services.AddTransient<IPatternDetector, LoggingPatternDetector>();
-        services.AddTransient<IPatternDetector, AsyncPatternDetector>();
-        services.AddTransient<IPatternDetector, CqrsPatternDetector>();
-        services.AddTransient<IPatternDetector, RepositoryPatternDetector>();
 
         services.AddTransient<PatternDetectorBase, DiRegistrationPatternDetector>();
         services.AddTransient<PatternDetectorBase, ExceptionHandlingPatternDetector>();

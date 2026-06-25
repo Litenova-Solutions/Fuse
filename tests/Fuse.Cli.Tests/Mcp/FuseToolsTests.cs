@@ -192,12 +192,11 @@ public sealed class FuseToolsTests
         fixture.AddFile("Other.cs", "public class Other { public string Name => \"unique-body-token\"; }");
 
         var provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
-        var orchestrator = provider.GetRequiredService<FusionOrchestrator>();
+        var explainService = provider.GetRequiredService<IExplainService>();
         var templates = provider.GetRequiredService<ProjectTemplateRegistry>();
-        var collection = provider.GetRequiredService<Fuse.Collection.FileCollectionPipeline>();
 
         var result = await FuseTools.FuseExplainAsync(
-            orchestrator, templates, collection, fixture.ProjectPath, focus: "Seed", depth: 1);
+            explainService, templates, fixture.ProjectPath, focus: "Seed", depth: 1);
 
         // The preview names the scoped files and the unrelated one, but emits no file bodies.
         Assert.Contains("Seed.cs", result);
@@ -310,6 +309,67 @@ public sealed class FuseToolsTests
         Assert.Contains("No symbol named 'DoesNotExist'", result);
     }
 
+    [Fact]
+    public async Task FuseSkeletonAsync_DropsMethodBodies_KeepsSignatures()
+    {
+        using var fixture = new TempProject();
+        fixture.AddFile("Order.cs", """
+            public class Order
+            {
+                public void Place() { var bodyToken = 8675309; }
+            }
+            """);
+
+        var (orchestrator, templates) = BuildServices();
+        var result = await FuseTools.FuseSkeletonAsync(orchestrator, templates, fixture.ProjectPath);
+
+        Assert.Contains("Order.cs", result);
+        Assert.Contains("Place", result);
+        Assert.DoesNotContain("8675309", result);
+        Assert.DoesNotContain("bodyToken", result);
+    }
+
+    [Fact]
+    public async Task FuseSearchAsync_QueryRanksMatchingFile()
+    {
+        using var fixture = new TempProject();
+        fixture.AddFile("Services/OrderService.cs", """
+            public class OrderService
+            {
+                public void PlaceOrder() { }
+            }
+            """);
+        fixture.AddFile("Other/Unrelated.cs", """
+            public class Unrelated
+            {
+                public void DoWork() { }
+            }
+            """);
+
+        var (orchestrator, templates) = BuildServices();
+        var result = await FuseTools.FuseSearchAsync(
+            orchestrator, templates, fixture.ProjectPath, query: "OrderService PlaceOrder");
+
+        Assert.Contains("OrderService.cs", result);
+        Assert.DoesNotContain("Unrelated.cs", result);
+    }
+
+    [Fact]
+    public async Task FuseChangesAsync_GitRepo_EmitsOnlyChangedFiles()
+    {
+        using var fixture = new FuseToolsTestHost.TempGitProject();
+        fixture.AddCommittedFile("Tracked.cs", "public class Tracked { }");
+        fixture.AddCommittedFile("Other.cs", "public class Other { }");
+        fixture.OverwriteFile("Tracked.cs", "public class Tracked { public int Id; }");
+
+        var (orchestrator, templates) = BuildServices();
+        var result = await FuseTools.FuseChangesAsync(
+            orchestrator, templates, fixture.ProjectPath, changedSince: "HEAD", includeDependents: false);
+
+        Assert.Contains("Tracked.cs", result);
+        Assert.DoesNotContain("Other.cs", result);
+    }
+
     private static (
         Func<Fuse.Collection.FileSystem.ISourceContentProvider>,
         ProjectTemplateRegistry,
@@ -364,6 +424,21 @@ internal static class FuseToolsTestHost
         throw new InvalidOperationException("Could not locate repository root (Fuse.slnx).");
     }
 
+    internal static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
     internal class TempProject : IDisposable
     {
         public string ProjectPath { get; } =
@@ -382,6 +457,53 @@ internal static class FuseToolsTestHost
         {
             if (Directory.Exists(ProjectPath))
                 Directory.Delete(ProjectPath, recursive: true);
+        }
+    }
+
+    internal sealed class TempGitProject : IDisposable
+    {
+        public string ProjectPath { get; } =
+            Path.Combine(Path.GetTempPath(), "fuse-mcp-git-tests", Guid.NewGuid().ToString("N"));
+
+        public TempGitProject()
+        {
+            Directory.CreateDirectory(ProjectPath);
+            RunGit("init");
+            RunGit("config", "user.email", "test@test.com");
+            RunGit("config", "user.name", "Test");
+        }
+
+        public void AddCommittedFile(string relativePath, string content)
+        {
+            var fullPath = Path.Combine(ProjectPath, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            File.WriteAllText(fullPath, content);
+            RunGit("add", relativePath);
+            RunGit("commit", "-m", $"add {relativePath}");
+        }
+
+        public void OverwriteFile(string relativePath, string content) =>
+            File.WriteAllText(Path.Combine(ProjectPath, relativePath), content);
+
+        public void Dispose() => TryDeleteDirectory(ProjectPath);
+
+        private void RunGit(params string[] args)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("git")
+            {
+                WorkingDirectory = ProjectPath,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (var arg in args)
+                psi.ArgumentList.Add(arg);
+
+            using var process = System.Diagnostics.Process.Start(psi)!;
+            process.WaitForExit();
+            if (process.ExitCode != 0)
+                throw new InvalidOperationException(process.StandardError.ReadToEnd());
         }
     }
 }

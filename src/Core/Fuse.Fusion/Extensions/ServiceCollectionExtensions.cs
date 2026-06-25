@@ -1,6 +1,7 @@
 using Fuse.Fusion.Scoping;
 using Fuse.Fusion.Enrichment;
 using Fuse.Fusion.PostReduction;
+using Fuse.Fusion.Stages;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Filters;
@@ -14,6 +15,7 @@ using Fuse.Plugins.Abstractions.Markers;
 using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Plugins.Abstractions.Patterns;
 using Fuse.Plugins.Abstractions.Reducers;
+using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Plugins.Abstractions.Skeleton;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
@@ -45,6 +47,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITokenCounter>(sp => sp.GetRequiredService<TokenizerFactory>().GetCounter());
         services.AddSingleton<FusionValidator>();
         services.AddSingleton<FusionOrchestrator>();
+        services.AddSingleton<IExplainService, ExplainService>();
+        services.AddSingleton<FusionCollectionStage>();
+        services.AddSingleton<FusionScopingStage>();
+        services.AddSingleton<FusionReductionStage>();
+        services.AddSingleton<QueryScopingPipeline>();
         services.AddSingleton<ISecretRedactor, DefaultSecretRedactor>();
         // Per-run relevance index: the BM25 index rebuilds all of its state per query and shares nothing, so a
         // factory hands each fusion run a fresh instance instead of a serialized singleton.

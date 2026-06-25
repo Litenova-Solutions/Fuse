@@ -1,4 +1,4 @@
-using Fuse.Fusion.Scoping;
+using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Plugins.Rerank.Onnx;
 
 namespace Fuse.Plugins.Rerank.Onnx.Tests;

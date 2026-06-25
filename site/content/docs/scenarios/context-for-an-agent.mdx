@@ -13,8 +13,10 @@ acquired a task's context in about 37,000 tokens against roughly 425,000 for a g
 packer dump at the same single call, while a blind agent must read each needed file at
 least once (a lower bound of about seven round-trips over the 90 pull requests tested).
 Read that token number with its recall: one scoped query call reaches 49 percent of
-the changed files, and the change-scoping mode reaches 89 percent when a git base is
-available.
+the changed files, and the change-scoping mode reaches 91 percent in the
+[Layer 4 one-call scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
+when a git base is available (89 percent in the
+[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests)).
 
 ## The Sequence
 

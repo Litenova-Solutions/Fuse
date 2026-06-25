@@ -28,6 +28,9 @@ internal static class NamespacedKvCodec
         try
         {
             var lines = Encoding.UTF8.GetString(bytes).Split('\n');
+            if (lines.Length != 3)
+                return null;
+
             return new FileAnalysis(SplitTabLine(lines, 0), SplitTabLine(lines, 1), SplitTabLine(lines, 2));
         }
         catch (DecoderFallbackException)

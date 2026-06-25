@@ -41,7 +41,8 @@ tokens of that.
 
 Fuse acquires that context in one call. Read its token number with its recall: one scoped
 `fuse --query` call delivers about 37,000 tokens at 49 percent recall of the changed
-files, and the change-scoping mode reaches 89 percent recall when a git base is available.
+files, and the change-scoping mode reaches 91 percent recall when a git base is available
+(89 percent in the Layer 2A recall task).
 
 Against a generic packer (Repomix), which dumps the whole repository in one call of about
 424,511 tokens, Fuse ties on round-trips and wins on tokens, roughly 11 times fewer,

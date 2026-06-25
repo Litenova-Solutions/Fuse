@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Fuse.Plugins.Abstractions.Maps;
 
 namespace Fuse.Plugins.Languages.CSharp.Maps;
 
@@ -16,10 +17,6 @@ public sealed class CSharpProjectGraphGenerator : Fuse.Plugins.Abstractions.Maps
 {
     private static readonly Regex SolutionProjectRegex = new(
         @"Project\(""\{[A-F0-9-]+\}""\)\s*=\s*""(?<name>[^""]+)"",\s*""(?<path>[^""]+)""",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-    private static readonly Regex ProjectReferenceRegex = new(
-        @"<ProjectReference\s+Include=""(?<path>[^""]+)""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <inheritdoc />
@@ -48,9 +45,8 @@ public sealed class CSharpProjectGraphGenerator : Fuse.Plugins.Abstractions.Maps
                 continue;
 
             var projectName = Path.GetFileNameWithoutExtension(path);
-            foreach (Match match in ProjectReferenceRegex.Matches(content))
+            foreach (var referencePath in CsprojProjectReferenceParser.EnumerateIncludePaths(content))
             {
-                var referencePath = match.Groups["path"].Value.Replace('\\', '/');
                 var referenceName = Path.GetFileNameWithoutExtension(referencePath);
                 edges.Add($"{projectName} -> {referenceName}");
             }

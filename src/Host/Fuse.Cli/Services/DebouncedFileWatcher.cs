@@ -16,6 +16,7 @@ public sealed class DebouncedFileWatcher : IDisposable
 
     private readonly FileSystemWatcher _watcher;
     private readonly int _debounceMilliseconds;
+    private readonly CancellationToken _cancellationToken;
     private CancellationTokenSource? _debounceCts;
     private bool _disposed;
 
@@ -25,9 +26,15 @@ public sealed class DebouncedFileWatcher : IDisposable
     /// <param name="rootDirectory">The directory to watch.</param>
     /// <param name="recursive">Whether to include subdirectories.</param>
     /// <param name="debounceMilliseconds">Debounce delay after the last filesystem event.</param>
-    public DebouncedFileWatcher(string rootDirectory, bool recursive, int debounceMilliseconds = DefaultDebounceMilliseconds)
+    /// <param name="cancellationToken">Token that cancels pending debounce work and is passed to <see cref="Changed" /> handlers.</param>
+    public DebouncedFileWatcher(
+        string rootDirectory,
+        bool recursive,
+        int debounceMilliseconds = DefaultDebounceMilliseconds,
+        CancellationToken cancellationToken = default)
     {
         _debounceMilliseconds = debounceMilliseconds;
+        _cancellationToken = cancellationToken;
         _watcher = new FileSystemWatcher(Path.GetFullPath(rootDirectory))
         {
             IncludeSubdirectories = recursive,
@@ -89,13 +96,16 @@ public sealed class DebouncedFileWatcher : IDisposable
             try
             {
                 await Task.Delay(_debounceMilliseconds, cts.Token);
+                if (_cancellationToken.IsCancellationRequested)
+                    return;
+
                 if (Changed is not null)
-                    await Changed(CancellationToken.None);
+                    await Changed(_cancellationToken);
             }
             catch (OperationCanceledException)
             {
             }
-        }, CancellationToken.None);
+        }, _cancellationToken);
     }
 
     private void CancelDebounce()

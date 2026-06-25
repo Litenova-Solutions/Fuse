@@ -66,6 +66,64 @@ public class GitChangeDetectorTests
         }
     }
 
+    [Fact]
+    public async Task GetChangedRelativePaths_GitMissingFromPath_ThrowsChangeDetectionException()
+    {
+        var repoDirectory = Path.Combine(Path.GetTempPath(), "fuse-git-missing-path", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(repoDirectory);
+        var originalPath = Environment.GetEnvironmentVariable("PATH");
+        try
+        {
+            Environment.SetEnvironmentVariable("PATH", string.Empty);
+
+            var detector = new GitChangeDetector();
+            var exception = await Assert.ThrowsAsync<ChangeDetectionException>(() =>
+                detector.GetChangedRelativePathsAsync(repoDirectory, "HEAD"));
+
+            Assert.Contains("not available on PATH", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PATH", originalPath);
+            TryDeleteDirectory(repoDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task GetDiffsAsync_CancellationDuringDiff_ThrowsOperationCanceledException()
+    {
+        var repoDirectory = Path.Combine(Path.GetTempPath(), "fuse-git-cancel", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(repoDirectory);
+        try
+        {
+            RunGit(repoDirectory, "init");
+            RunGit(repoDirectory, "config user.email test@test.com");
+            RunGit(repoDirectory, "config user.name Test");
+
+            var baselineContent = new string('x', 1024 * 1024);
+            File.WriteAllText(Path.Combine(repoDirectory, "Large.cs"), baselineContent);
+            RunGit(repoDirectory, "add .");
+            RunGit(repoDirectory, "commit -m baseline");
+
+            File.WriteAllText(Path.Combine(repoDirectory, "Large.cs"), new string('y', 1024 * 1024));
+            RunGit(repoDirectory, "add .");
+            RunGit(repoDirectory, "commit -m changed");
+
+            using var cts = new CancellationTokenSource();
+            var detector = new GitChangeDetector();
+            var detectTask = detector.GetDiffsAsync(repoDirectory, "HEAD~1", cts.Token);
+
+            await Task.Delay(50);
+            cts.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => detectTask);
+        }
+        finally
+        {
+            TryDeleteDirectory(repoDirectory);
+        }
+    }
+
     private static void RunGit(string workingDirectory, string args)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("git", args)

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using Fuse.Emission.Models;
+using Fuse.Fusion.Scoping;
 
 namespace Fuse.Fusion.Enrichment;
 
@@ -35,7 +36,7 @@ public sealed class GitStatsProvider : IGitStatsProvider
         if (relativePaths.Count == 0)
             return new GitStatsResult(false, new Dictionary<string, GitFileStats>());
 
-        var gitPath = FindGitExecutable();
+        var gitPath = GitExecutableLocator.Find();
         if (gitPath is null)
             return Unavailable();
 
@@ -290,27 +291,4 @@ public sealed class GitStatsProvider : IGitStatsProvider
 
     private static string QuoteGitPath(string relativePath) =>
         $"\"{relativePath.Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
-
-    private static string? FindGitExecutable()
-    {
-        var pathEnv = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrEmpty(pathEnv))
-            return null;
-
-        var extensions = OperatingSystem.IsWindows()
-            ? new[] { ".exe", ".cmd", "" }
-            : new[] { "" };
-
-        foreach (var dir in pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            foreach (var ext in extensions)
-            {
-                var candidate = Path.Combine(dir, "git" + ext);
-                if (File.Exists(candidate))
-                    return candidate;
-            }
-        }
-
-        return null;
-    }
 }

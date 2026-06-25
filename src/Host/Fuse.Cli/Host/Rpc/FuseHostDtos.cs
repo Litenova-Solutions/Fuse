@@ -122,10 +122,12 @@ public sealed record HotspotDiagnosticDto(string Path, int TokenCost);
 /// <param name="Secrets">The detected secrets with their precise editor ranges.</param>
 /// <param name="Hotspots">The most token-expensive files, most expensive first.</param>
 /// <param name="GraphGaps">Files with no inbound or outbound dependency edge.</param>
+/// <param name="Generated">Files detected as generated code (EF Core migrations and model snapshots).</param>
 public sealed record DiagnosticsDto(
     IReadOnlyList<SecretDiagnosticDto> Secrets,
     IReadOnlyList<HotspotDiagnosticDto> Hotspots,
-    IReadOnlyList<string> GraphGaps);
+    IReadOnlyList<string> GraphGaps,
+    IReadOnlyList<string> Generated);
 
 /// <summary>
 ///     One planned file in an explain result: why a file was included (role), at what fidelity (tier), and its

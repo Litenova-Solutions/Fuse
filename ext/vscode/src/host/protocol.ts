@@ -81,11 +81,12 @@ export interface HotspotDiagnosticDto {
   tokenCost: number;
 }
 
-/** Result of `fuse/diagnostics`: secrets (with ranges), token hotspots, and unconnected-file graph gaps. */
+/** Result of `fuse/diagnostics`: secrets (with ranges), token hotspots, graph gaps, and generated files. */
 export interface DiagnosticsDto {
   secrets: SecretDiagnosticDto[];
   hotspots: HotspotDiagnosticDto[];
   graphGaps: string[];
+  generated: string[];
 }
 
 /** One planned file in an explain result: why it was included (role), at what fidelity (tier), and its score. */

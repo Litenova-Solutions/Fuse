@@ -86,7 +86,8 @@ public sealed class FuseHostContractTests
         var diagnostics = new DiagnosticsDto(
             [new SecretDiagnosticDto("a/Config.cs", "github-token", 12, 4, 12, 44)],
             [new HotspotDiagnosticDto("a/Big.cs", 4800)],
-            ["a/Orphan.cs"]);
+            ["a/Orphan.cs"],
+            ["a/Generated.g.cs"]);
 
         var json = JsonSerializer.Serialize(diagnostics, FuseHostJsonContext.Default.DiagnosticsDto);
 
@@ -95,6 +96,7 @@ public sealed class FuseHostContractTests
         Assert.Contains("\"endColumn\":44", json);
         Assert.Contains("\"hotspots\":[{\"path\":\"a/Big.cs\",\"tokenCost\":4800}]", json);
         Assert.Contains("\"graphGaps\":[\"a/Orphan.cs\"]", json);
+        Assert.Contains("\"generated\":[\"a/Generated.g.cs\"]", json);
     }
 
     [Fact]

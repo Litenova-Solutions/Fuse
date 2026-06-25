@@ -9,6 +9,7 @@ using Fuse.Fusion;
 using Fuse.Fusion.Scoping;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
+using Fuse.Plugins.Languages.CSharp.Reducers;
 using Fuse.Reduction.Security;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
@@ -339,16 +340,22 @@ public sealed class FuseHostService
     {
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
-            return new DiagnosticsDto([], [], []);
+            return new DiagnosticsDto([], [], [], []);
 
         var request = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved).Build();
         var collection = await _collectionPipeline.CollectAsync(request.Collection);
         var contentProvider = _contentProviderFactory();
 
         var secrets = new List<SecretDiagnosticDto>();
+        var generated = new List<string>();
         foreach (var file in collection.Files)
         {
             var content = await contentProvider.GetContentAsync(file);
+
+            // Flag generated C# (EF Core migrations and model snapshots, rarely worth reading) for an editor hint.
+            if (file.IsCSharp && GeneratedCodeCollapser.IsGenerated(content))
+                generated.Add(file.NormalizedRelativePath);
+
             var spans = _redactor.FindSecretSpans(content);
             if (spans.Count == 0)
                 continue;
@@ -388,9 +395,9 @@ public sealed class FuseHostService
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        _logger.LogInformation("Diagnostics on {Root}: {Secrets} secrets, {Hotspots} hotspots, {Gaps} gaps.",
-            resolved, secrets.Count, hotspots.Count, graphGaps.Count);
-        return new DiagnosticsDto(secrets, hotspots, graphGaps);
+        _logger.LogInformation("Diagnostics on {Root}: {Secrets} secrets, {Hotspots} hotspots, {Gaps} gaps, {Generated} generated.",
+            resolved, secrets.Count, hotspots.Count, graphGaps.Count, generated.Count);
+        return new DiagnosticsDto(secrets, hotspots, graphGaps, generated);
     }
 
     // The character offset at which each line starts, so an offset maps to a line by binary search.

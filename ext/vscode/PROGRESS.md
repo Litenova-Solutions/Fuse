@@ -64,8 +64,10 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
       most token-expensive files and the files with no dependency edge; the extension surfaces them in the same
       "Fuse: context" collection. The concurrency test caught and fixed a real bug (concurrent same-mode scopes
       collided on one payload temp file; payload names are now unique per call). Host and extension gates green.
-- [ ] Generated-code diagnostics and refresh on `fuse/invalidated` per changed file (needs the watcher
-      lifecycle, a host server-push feature).
+- [x] Generated-code diagnostics: `fuse/diagnostics` flags EF Core migrations and model snapshots (the engine's
+      `GeneratedCodeCollapser.IsGenerated`), surfaced as hints. Host test covers it.
+- [ ] Live refresh on `fuse/invalidated` per changed file (needs the watcher lifecycle, a host server-push
+      feature). This is the one remaining diagnostics item.
 
 ## Phase 4: graph webview with level-of-detail
 

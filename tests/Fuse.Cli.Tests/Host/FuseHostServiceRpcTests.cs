@@ -206,6 +206,10 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         File.WriteAllText(Path.Combine(source, "Config.cs"), "public class Config\n" + secretLine + "\n");
         // An isolated class with no inbound or outbound type reference must surface as a graph gap.
         File.WriteAllText(Path.Combine(source, "Orphan.cs"), "public class Orphan { public int N() => 1; }");
+        // An EF Core migration (the generated-code shape the engine's detector recognizes) must surface as
+        // generated, even with an ordinary file name.
+        File.WriteAllText(Path.Combine(source, "InitialCreate.cs"),
+            "public partial class InitialCreate : Migration { protected override void Up(MigrationBuilder b) { } }");
 
         try
         {
@@ -219,6 +223,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
             Assert.NotEmpty(diagnostics.Hotspots);
             Assert.Contains(diagnostics.GraphGaps, g => g.Contains("Orphan", StringComparison.Ordinal));
+            Assert.Contains(diagnostics.Generated, g => g.Contains("InitialCreate.cs", StringComparison.Ordinal));
         }
         finally
         {

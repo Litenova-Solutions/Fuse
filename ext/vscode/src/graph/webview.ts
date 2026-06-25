@@ -8,6 +8,8 @@ import { HostClient } from "../host/client";
  */
 export class GraphView {
   private panel: vscode.WebviewPanel | undefined;
+  private client: HostClient | undefined;
+  private scope: { mode: string; seed: string | null; query: string | null; since: string | null } | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -19,6 +21,8 @@ export class GraphView {
     client: HostClient,
     scope?: { mode: string; seed: string | null; query: string | null; since: string | null },
   ): Promise<void> {
+    this.client = client;
+    this.scope = scope;
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel("fuse.graph", "Fuse: Dependency Graph", vscode.ViewColumn.Active, {
         enableScripts: true,
@@ -28,6 +32,8 @@ export class GraphView {
       this.panel.webview.onDidReceiveMessage((message: { type: string; path?: string }) => {
         if (message.type === "open" && message.path) {
           void vscode.window.showTextDocument(vscode.Uri.file(`${this.workspaceRoot}/${message.path}`));
+        } else if (message.type === "expand" && message.path) {
+          void this.expand(message.path);
         }
       });
       this.panel.webview.html = this.html(this.panel.webview);
@@ -38,6 +44,15 @@ export class GraphView {
     const graph = scope
       ? await client.graph(this.workspaceRoot, "Files", scope)
       : await client.graph(this.workspaceRoot, "Directories");
+    await this.panel.webview.postMessage({ type: "graph", graph });
+  }
+
+  // Expands one directory supernode into its file-level subgraph and posts it back to the webview.
+  private async expand(directory: string): Promise<void> {
+    if (!this.client || !this.panel) {
+      return;
+    }
+    const graph = await this.client.graph(this.workspaceRoot, "Directories", this.scope, directory);
     await this.panel.webview.postMessage({ type: "graph", graph });
   }
 

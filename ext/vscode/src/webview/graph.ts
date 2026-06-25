@@ -9,7 +9,10 @@ declare function acquireVsCodeApi(): { postMessage(message: unknown): void };
 
 const vscodeApi = acquireVsCodeApi();
 
+let currentDetail: GraphDto["detail"] = "Directories";
+
 function render(graph: GraphDto): void {
+  currentDetail = graph.detail;
   const maxTokens = Math.max(1, ...graph.nodes.map((n) => n.tokenCost));
   const elements: cytoscape.ElementDefinition[] = [];
   for (const node of graph.nodes) {
@@ -54,7 +57,9 @@ function render(graph: GraphDto): void {
   });
 
   cy.on("tap", "node", (event) => {
-    vscodeApi.postMessage({ type: "open", path: event.target.id() });
+    // At the directory level a tap expands the supernode into its files; at the file level it opens the file.
+    const type = currentDetail === "Directories" ? "expand" : "open";
+    vscodeApi.postMessage({ type, path: event.target.id() });
   });
 }
 

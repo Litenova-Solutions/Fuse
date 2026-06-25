@@ -189,6 +189,12 @@ public sealed class FuseHostServiceRpcTests : IDisposable
             // Directory nodes, not file nodes: at most one node per directory, far fewer than the file count.
             Assert.Contains(graph.Nodes, n => n.Path is "Core" or "App");
             Assert.All(graph.Nodes, n => Assert.DoesNotContain(".cs", n.Path));
+
+            // Expanding one directory returns only that directory's file nodes (the expand-on-click subgraph).
+            var expanded = await NewService().GraphAsync(source, "Directories", null, null, null, null, "Core");
+            Assert.Equal("Files", expanded.Detail);
+            Assert.NotEmpty(expanded.Nodes);
+            Assert.All(expanded.Nodes, n => Assert.StartsWith("Core/", n.Path));
         }
         finally
         {

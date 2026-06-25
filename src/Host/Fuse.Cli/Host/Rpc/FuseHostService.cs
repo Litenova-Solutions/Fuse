@@ -165,10 +165,14 @@ public sealed class FuseHostService
     /// </remarks>
     [JsonRpcMethod("fuse/graph")]
     public async Task<GraphDto> GraphAsync(
-        string root, string detail, string? scopeMode = null, string? seed = null, string? query = null, string? since = null)
+        string root, string detail, string? scopeMode = null, string? seed = null, string? query = null,
+        string? since = null, string? directory = null)
     {
         var resolved = Path.GetFullPath(root);
-        var directories = string.Equals(detail, "Directories", StringComparison.OrdinalIgnoreCase);
+        // A directory filter expands one supernode: it forces file-level nodes restricted to that subtree, so a
+        // large repository ships its directory graph first and a directory's files only when the user expands it.
+        var expandDirectory = !string.IsNullOrWhiteSpace(directory);
+        var directories = !expandDirectory && string.Equals(detail, "Directories", StringComparison.OrdinalIgnoreCase);
         if (!Directory.Exists(resolved))
             return new GraphDto([], [], directories ? "Directories" : "Files");
 
@@ -211,6 +215,18 @@ public sealed class FuseHostService
         foreach (var (from, targets) in graph.FileReferences)
             foreach (var to in targets)
                 fileEdges.Add(new GraphEdgeDto(from, to, 1.0, "reference"));
+
+        if (expandDirectory)
+        {
+            // Restrict to the requested directory subtree (the supernode the user expanded) and the edges among
+            // its files, so an expand ships one directory's file graph rather than the whole repository.
+            var prefix = directory!.Replace('\\', '/').TrimEnd('/') + "/";
+            bool Under(string p) => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+            var subNodes = fileNodes.Where(n => Under(n.Path)).ToList();
+            var subPaths = new HashSet<string>(subNodes.Select(n => n.Path), StringComparer.OrdinalIgnoreCase);
+            var subEdges = fileEdges.Where(e => subPaths.Contains(e.From) && subPaths.Contains(e.To)).ToList();
+            return new GraphDto(subNodes, subEdges, "Files");
+        }
 
         if (!directories)
             return new GraphDto(fileNodes, fileEdges, "Files");

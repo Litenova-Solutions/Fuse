@@ -8,6 +8,7 @@
 
 $perRepo = 18
 $all = @()
+$droppedMismatch = @()
 
 foreach ($repo in Get-Corpus) {
     if ($repo.local) { continue }
@@ -36,6 +37,15 @@ foreach ($repo in Get-Corpus) {
         # Title from the PR head commit subject (more descriptive than the merge subject).
         $title = (git -C $path log -1 '--pretty=format:%s' $head).Trim()
 
+        # Drop title/diff-mismatch PRs: a misleading maintenance title (a CI tweak, a dependency or
+        # version bump) over a real C# diff. The title is the scope signal for the query arm, so a title
+        # that points at infrastructure cannot locate its own change set, and unlike a bare "Merge branch"
+        # subject there is no fallback. Logged loudly so the drop is never silent. (See Test-PrTitleRelevant.)
+        if (-not (Test-PrTitleRelevant $title)) {
+            $droppedMismatch += "$($repo.name)#${pr}: $title"
+            continue
+        }
+
         $all += [pscustomobject]@{
             repo        = $repo.name
             pr          = $pr
@@ -52,3 +62,7 @@ foreach ($repo in Get-Corpus) {
 
 $all | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $BenchRoot 'prs.json')
 Write-Host "Wrote prs.json with $($all.Count) PR change sets."
+if ($droppedMismatch.Count) {
+    Write-Host "Dropped $($droppedMismatch.Count) title/diff-mismatch PR(s) (misleading maintenance title over a C# diff):" -ForegroundColor Yellow
+    $droppedMismatch | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+}

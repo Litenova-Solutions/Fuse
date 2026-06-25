@@ -42,5 +42,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Contract test (wire shapes)
+        run: npm run test:contract
+
       - name: Package VSIX
         run: npx vsce package --no-dependencies --allow-missing-repository

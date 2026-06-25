@@ -47,6 +47,8 @@ These variables apply to the `fuse mcp serve` process (set them in the MCP clien
 |----------|--------|
 | `FUSE_USER_DATA` | Directory for machine-wide Fuse data when fusing outside a git repository (default `~/.fuse`). The store file is `{FUSE_USER_DATA}/fuse.db`. Inside a git repo the store stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
 | `FUSE_CENTRALITY_WEIGHT` | Weight of the graph-centrality prior in focus and query ranking (default `0.15`). Set to `0` to disable. |
+| `FUSE_HOP_DECAY` | Per-hop score decay for dependency-expanded neighbours, in (0, 1] (default `0.5`); lower drops distant files first under a budget. An item 5 tuning scalar. |
+| `FUSE_EXPANSION_WEIGHT` | Per-term weight of pseudo-relevance-feedback expansion terms relative to original query terms (default `0.2`). An item 5 tuning scalar. |
 | `FUSE_QUERY_EXPANSION` | Pseudo-relevance feedback query expansion in query ranking (default on). Set to `0` to disable and reproduce the single-pass BM25F ordering. |
 | `FUSE_BUDGET_EXPANSION` | Budget-aware query-path dependency expansion (default on): when a token ceiling is set, the graph admits neighbours by estimated cost rather than admitting the whole neighbourhood for the packer to cut. Set to `0` to disable and reproduce the unbounded expansion. |
 | `FUSE_RERANK` | Dense rerank of the query candidate pool with an in-process embedding model (default off, opt-in). Requires `fuse models download`; absent a model or offline the query path stays lexical. Set to `1` to enable. Not the default because it did not beat the lexical path on the benchmark corpus. |

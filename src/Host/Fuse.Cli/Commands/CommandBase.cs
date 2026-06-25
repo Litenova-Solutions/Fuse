@@ -172,6 +172,8 @@ public abstract class CommandBase
         var experimental = new Fuse.Emission.Serialization.JsonExperimentalOptionsDto
         {
             CentralityWeight = resolved.CentralityWeight,
+            HopDecay = resolved.HopDecay,
+            ExpansionWeight = resolved.ExpansionWeight,
             QueryExpansion = resolved.QueryExpansion,
             TieredEmission = resolved.TieredEmission,
             MultiQueryFusion = resolved.MultiQueryFusion,

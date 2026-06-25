@@ -12,6 +12,16 @@ public sealed class JsonExperimentalOptionsDto
     public double CentralityWeight { get; set; }
 
     /// <summary>
+    ///     The resolved per-hop score decay applied to dependency-expanded neighbours (item 5 tuning scalar).
+    /// </summary>
+    public double HopDecay { get; set; }
+
+    /// <summary>
+    ///     The resolved per-term weight of pseudo-relevance-feedback expansion terms (item 5 tuning scalar).
+    /// </summary>
+    public double ExpansionWeight { get; set; }
+
+    /// <summary>
     ///     Whether pseudo-relevance feedback query expansion ran on the query path.
     /// </summary>
     public bool QueryExpansion { get; set; }

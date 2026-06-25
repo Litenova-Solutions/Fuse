@@ -873,8 +873,12 @@ Runtime- or data-blocked (cannot be completed in the current environment):
 
 Gated by the plan's own conditions:
 
-- **item 5, scalar admission tuning:** the plan forbids tuning until B2 and B5 exist (it overfits the 24
-  PRs otherwise). Blocked on B2.
+- **item 5, scalar admission tuning: done, defaults kept.** With B2 and B5 in place this was swept
+  (`spike-scalar-tuning.ps1`): `HopDecay`, `CentralityWeight`, query-top, and the PRF `ExpansionWeight`, tuned
+  on the dev fold and read on the held-out test fold. No arm cleared the baseline on test (the dev-best,
+  `cw=0.0`, dropped test 45 to 44 percent and regressed AutoMapper), confirming the plan's overfit-risk
+  prediction, so the shipped scalars are kept. `HopDecay` and `ExpansionWeight` gained `FUSE_*` overrides so a
+  different corpus can retune; the measured table is in `opt-in-levers.md`.
 - **F1, SQLite FTS5 backend:** the plan says "only if profiling demands it"; the B13 latency layer shows
   the in-memory index is not the bottleneck, so it is not warranted.
 - **item 10, learned-sparse (SPLADE):** an XL opt-in rewrite the plan gates on dense rerank (item 9)
@@ -888,7 +892,8 @@ Completed since this report was first written (all measured, gated, or behavior-
 - **Q2, fielded comments and doc-comments:** built as an opt-in BM25F comment field (`FUSE_FIELDED_COMMENTS`),
   measured neutral on the corpus (no headline gain), so kept off by default with a research note.
 - **B7, adversarial-case reporting:** Layer 2A now reports query recall all-PRs, adversarial-only, and
-  excluding the merge-noise titles (61, 100, 57 percent), so the adversarial cases cannot silently inflate.
+  excluding the merge-noise titles (48, 87, 45 percent on the 90-PR corpus), so the adversarial cases cannot
+  silently inflate.
 
 Partly done (infrastructure in place; labels are deliberate curation):
 
@@ -901,6 +906,9 @@ Partly done (infrastructure in place; labels are deliberate curation):
 
 ### Suggested next order for the remaining unblocked work
 
-The reading-set labeling is the last unblocked default-path item; it pairs with the B2 rebaseline (both are
-benchmark-honesty curation, best done together in a fresh session). The remaining items beyond it are the
-runtime-blocked (B1, item 12) and gated (item 5, F1, item 10) ones above, plus the B2 rebaseline.
+B2 (the 90-PR rebaseline) and item 5 (scalar admission tuning, swept and kept at defaults) are now done. The
+reading-set labeling is the last unblocked default-path item; it is benchmark-honesty curation (hand-labeling
+per-PR reading sets) best done deliberately in a focused session. Adding a non-C# language to the corpus is
+the other unblocked item, and it first needs the harness's `.cs`-only ground-truth assumption generalized.
+The remaining items beyond those are runtime-blocked (B1 agent eval, the LLM-backed half of item 12) or gated
+and unwarranted (F1 SQLite FTS5 by the B13 latency result, item 10 SPLADE by dense rerank not paying off).

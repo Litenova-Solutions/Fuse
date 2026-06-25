@@ -69,7 +69,11 @@ uses the System.Text.Json formatter). Both recorded in DECISIONS.md rationale an
 
 ## Phase 5: scoping commands, hover, lenses, panels
 
-- [ ] Not started.
+- [x] Scoping commands close the interactive loop: "Fuse: Search" (input box), "Fuse: Focus Here" (editor and
+      explorer context menu, workspace-relative seed), and "Fuse: Changes Since Branch" (git base input). Each
+      runs a scoped fusion on the host, opens the payload read-only, and populates the Scope Result tree (mode,
+      included files, token costs). Build, typecheck, and lint green.
+- [ ] Hover provider, token and churn code lenses, and the explainer panel (fuse/explain) over the same client.
 
 ## Phase 6: packaging and distribution
 

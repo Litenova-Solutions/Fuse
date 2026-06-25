@@ -22,6 +22,13 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- **Platform VSIX release pipeline with a bundled host.** `ext/vscode/scripts/package-platform.mjs` publishes
+  the self-contained host for a runtime identifier, stages it under `host/<rid>/` (which the extension prefers
+  over the PATH fallback), and runs `vsce package --target` to produce a platform-specific VSIX; the
+  `ext-release.yml` workflow runs it across all six OS/arch pairs and uploads the VSIXes. Verified locally for
+  win32-x64: a 62.65 MB VSIX with the host bundled (the ~141 MB host compresses well). The base no-host VSIX
+  (about 230 KB, host resolved from PATH) remains for a lightweight install. This completes the extension's
+  packaging phase.
 - **Per-RID host publish profiles and CI matrix.** Publish profiles now cover all six runtime identifiers
   (win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64); the CI runtime job publishes each on its
   matching OS, smoke-testing the native-arch builds and publish-only for the cross-arch ones. This produces the

@@ -119,9 +119,11 @@ git-churn lens is the only remaining nice-to-have.
 - [x] Extension-side bundled-host resolution: the supervisor's host path resolves to an explicit
       `fuse.host.path` setting first, then a host bundled at `host/<rid>/fuse[.exe]` (shipped by a
       platform-specific VSIX), then the `fuse` global tool on PATH. The extension is now bundling-ready.
-- [ ] The release step that copies each per-RID published host into `host/<rid>/` and runs
-      `vsce package --target <platform>` to produce the six platform VSIXes (a CI/release task needing the
-      published binaries; the base no-host VSIX and PATH fallback work today).
+- [x] The release step that bundles a per-RID host and produces the platform VSIXes:
+      `scripts/package-platform.mjs` publishes the host for a RID, stages it under `host/<rid>/`, and runs
+      `vsce package --target`; the `ext-release.yml` workflow runs it for all six OS/arch pairs and uploads the
+      VSIXes. Verified locally for win32-x64 (62.65 MB VSIX with the host bundled). The `host/` staging dir and
+      the platform VSIXes are gitignored (build artifacts). Phase 6 is complete.
 
 ## Notes and deviations
 

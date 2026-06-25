@@ -22,6 +22,13 @@ made without pausing for input, with the reasoning, so a later session can audit
   via VS Code platform-specific extensions would add tens of MB per platform; that is deferred to a dedicated
   packaging pass (or a download-on-first-run model) rather than shipped in the base VSIX. Recorded per the
   playbook's instruction to capture the resolved size here.
+- **Platform VSIX size (resolved).** `scripts/package-platform.mjs` plus the `ext-release.yml` workflow now
+  produce a per-platform VSIX with the self-contained host bundled. Measured for win32-x64: the host publishes
+  to about 141 MB and the resulting VSIX is 62.65 MB (the native libraries compress well). That is a large but
+  acceptable per-user download for a zero-install, fully-offline tool, and only one platform's VSIX is fetched
+  per user. If that size proves too high, the download-on-first-run fallback is the alternative (the extension
+  already resolves a bundled host first, then PATH, so switching is an extension-side change, not a protocol
+  one). The base no-host VSIX (about 230 KB) remains available for the PATH-based install.
 - **NativeAOT.** Attempt for the host; fall back to self-contained trimmed if Roslyn, Microsoft.Data.Sqlite,
   or ONNX are not AOT-compatible, and record why here.
 - **Deep index (compiled reference graph, ONNX reranker).** Never default warm state; explicit user-triggered

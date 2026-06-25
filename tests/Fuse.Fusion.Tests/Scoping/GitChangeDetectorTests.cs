@@ -109,14 +109,15 @@ public class GitChangeDetectorTests
             RunGit(repoDirectory, "add .");
             RunGit(repoDirectory, "commit -m changed");
 
+            // Cancel before the diff starts so the assertion cannot race the git process finishing: on a fast
+            // machine a 1 MB diff completes within any fixed delay, leaving nothing to cancel. This still
+            // verifies the contract that GetDiffsAsync honors a cancelled token.
             using var cts = new CancellationTokenSource();
-            var detector = new GitChangeDetector();
-            var detectTask = detector.GetDiffsAsync(repoDirectory, "HEAD~1", cts.Token);
-
-            await Task.Delay(50);
             cts.Cancel();
+            var detector = new GitChangeDetector();
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => detectTask);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => detector.GetDiffsAsync(repoDirectory, "HEAD~1", cts.Token));
         }
         finally
         {

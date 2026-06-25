@@ -12,9 +12,12 @@ The collapse is measured. Over 90 real merged pull requests, one scoped call acq
 change's context in about 37,000 tokens at 49 percent recall, against a blind agent that
 must read each needed file at least once (a structural lower bound of about seven reads)
 and a generic packer that dumps the whole repository at roughly 425,000 tokens. Read the
-token number with its recall; the change-scoping mode reaches 89 percent recall when a
-git base is available. See [The explore phase](/docs/concepts/the-explore-phase) and the
-[Layer 4 benchmark](/docs/project/benchmarks).
+token number with its recall; the change-scoping mode reaches 91 percent recall in the
+[Layer 4 one-call scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
+when a git base is available (89 percent in the
+[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests)).
+See [The explore phase](/docs/concepts/the-explore-phase) and
+[Benchmarks](/docs/project/benchmarks).
 
 Hand it to an agent through the MCP server: give `fuse_ask` a task and a token budget and
 it picks the scoping strategy and packs to fit.
@@ -86,7 +89,7 @@ Fuse ships from one package in two forms:
 
 - The **`fuse` global tool** writes a fusion to a file from your terminal. Start at
   the [Quickstart](/docs/start/quickstart).
-- The **`fuse mcp serve` MCP server** exposes nine tools to an AI client such as Claude
+- The **`fuse mcp serve` MCP server** exposes eleven tools to an AI client such as Claude
   Code, Cursor, or GitHub Copilot, so the agent requests scoped context directly.
   See [Connect to your AI](/docs/start/connect-your-ai).
 

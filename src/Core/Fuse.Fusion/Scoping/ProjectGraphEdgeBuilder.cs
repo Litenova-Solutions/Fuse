@@ -1,4 +1,5 @@
-using System.Text.RegularExpressions;
+using Fuse.Plugins.Abstractions.Maps;
+using Microsoft.Extensions.Logging;
 
 namespace Fuse.Fusion.Scoping;
 
@@ -16,10 +17,6 @@ namespace Fuse.Fusion.Scoping;
 /// </remarks>
 public static class ProjectGraphEdgeBuilder
 {
-    private static readonly Regex ProjectReferenceRegex = new(
-        @"<ProjectReference\s+Include=""(?<path>[^""]+)""",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
     // Cap on cross-project neighbours linked to one file. A seed in a small project that references a large one
     // would otherwise pull the entire referenced project into expansion; the cap keeps the coarse edge a nudge
     // rather than a flood, and the budget-aware packer still decides what fits.
@@ -30,13 +27,15 @@ public static class ProjectGraphEdgeBuilder
     /// </summary>
     /// <param name="sourceRoot">The absolute source root that the candidate paths are relative to.</param>
     /// <param name="candidateRelativePaths">Normalized (forward-slash) candidate paths relative to the root.</param>
+    /// <param name="logger">Optional logger for non-fatal I/O failures while scanning projects.</param>
     /// <returns>
     ///     A map from a candidate path to the candidate paths reachable across a one-hop project-reference link;
     ///     empty when no <c>.csproj</c> files or no cross-project links are found.
     /// </returns>
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> Build(
         string sourceRoot,
-        IReadOnlyList<string> candidateRelativePaths)
+        IReadOnlyList<string> candidateRelativePaths,
+        ILogger? logger = null)
     {
         if (string.IsNullOrEmpty(sourceRoot) || !Directory.Exists(sourceRoot) || candidateRelativePaths.Count == 0)
             return EmptyEdges;
@@ -51,12 +50,14 @@ public static class ProjectGraphEdgeBuilder
         {
             csprojFiles = Directory.GetFiles(sourceRoot, "*.csproj", SearchOption.AllDirectories);
         }
-        catch (IOException)
+        catch (IOException ex)
         {
+            logger?.LogDebug(ex, "Failed to enumerate .csproj files under {SourceRoot}.", sourceRoot);
             return EmptyEdges;
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
+            logger?.LogDebug(ex, "Access denied enumerating .csproj files under {SourceRoot}.", sourceRoot);
             return EmptyEdges;
         }
 
@@ -72,14 +73,14 @@ public static class ProjectGraphEdgeBuilder
             {
                 content = File.ReadAllText(csproj);
             }
-            catch (IOException)
+            catch (IOException ex)
             {
+                logger?.LogDebug(ex, "Failed to read project file {ProjectPath}.", csproj);
                 continue;
             }
 
-            foreach (Match match in ProjectReferenceRegex.Matches(content))
+            foreach (var rel in CsprojProjectReferenceParser.EnumerateIncludePaths(content))
             {
-                var rel = match.Groups["path"].Value.Replace('\\', '/');
                 var referencedProject = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(csproj)!, rel));
                 var referencedDir = NormalizeDir(Path.GetDirectoryName(referencedProject)!);
                 AddLink(links, dir, referencedDir);

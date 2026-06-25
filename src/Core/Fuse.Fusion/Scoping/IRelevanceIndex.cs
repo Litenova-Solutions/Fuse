@@ -1,5 +1,7 @@
 namespace Fuse.Fusion.Scoping;
 
+using Fuse.Plugins.Abstractions.Scoping;
+
 /// <summary>
 ///     Builds an in-memory relevance index and ranks files against a query.
 /// </summary>

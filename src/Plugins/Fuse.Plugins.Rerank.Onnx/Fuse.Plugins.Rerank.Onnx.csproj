@@ -10,9 +10,10 @@
         <PackageReference Include="Microsoft.ML.Tokenizers" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+        <PackageReference Include="System.IO.Hashing" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\..\Core\Fuse.Fusion\Fuse.Fusion.csproj" />
+        <ProjectReference Include="..\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj" />
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="Fuse.Plugins.Rerank.Onnx.Tests" />

@@ -1,4 +1,5 @@
 using Fuse.Fusion.Scoping;
+using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Collection.Models;
 using Fuse.Collection.FileSystem;
 using Fuse.Plugins.Abstractions;
@@ -17,7 +18,7 @@ namespace Fuse.Fusion;
 ///     and dense rerank, then promotes seeds and expands the dependency graph. Extracted from
 ///     <see cref="FusionOrchestrator" /> so the query path is testable in isolation; behavior is unchanged.
 /// </summary>
-internal sealed class QueryScopingPipeline
+public sealed class QueryScopingPipeline
 {
     // The candidate pool is widened to this multiple of the seed count when a pool prior (dense rerank or the
     // git churn prior) is active, so the prior can promote a file the lexical pass ranked just outside the seeds.
@@ -49,6 +50,9 @@ internal sealed class QueryScopingPipeline
     private readonly FocusSeedResolver _focusSeedResolver;
     private readonly ILogger _logger;
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="QueryScopingPipeline" /> class.
+    /// </summary>
     public QueryScopingPipeline(
         CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
         CapabilityRegistry<ITypeNameLocator> typeNameLocators,
@@ -73,9 +77,20 @@ internal sealed class QueryScopingPipeline
         _logger = logger ?? NullLogger<QueryScopingPipeline>.Instance;
     }
 
-    // Scopes the file set by query. The dependency graph and the proximity-edge adjacency are built by the
-    // orchestrator (shared with the focus and changes paths) and passed in; both are deterministic and free of
-    // ranking dependencies, so computing them before ranking is behavior-identical to the inline build.
+    /// <summary>
+    ///     Scopes the file set by query using the supplied dependency graph and proximity edges.
+    /// </summary>
+    /// <param name="request">The fusion request.</param>
+    /// <param name="files">Candidate source files.</param>
+    /// <param name="parallelism">Maximum degree of parallelism.</param>
+    /// <param name="index">Optional persistent analysis index.</param>
+    /// <param name="fuseStore">Optional key-value store for relevance postings.</param>
+    /// <param name="contentProvider">Source content provider.</param>
+    /// <param name="experimental">Experimental scoping options.</param>
+    /// <param name="graph">Pre-built dependency graph.</param>
+    /// <param name="proximity">Proximity adjacency and expansion weight.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The scoped file set with scores and provenance.</returns>
     public async Task<FilteredFileSet> ScopeAsync(
         FusionRequest request,
         IReadOnlyList<SourceFile> files,

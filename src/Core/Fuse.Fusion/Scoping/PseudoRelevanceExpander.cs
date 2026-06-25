@@ -1,5 +1,7 @@
 namespace Fuse.Fusion.Scoping;
 
+using Fuse.Plugins.Abstractions.Scoping;
+
 /// <summary>
 ///     Expands a query with recurring declared-symbol terms drawn from the top files of a first-pass ranking
 ///     (pseudo-relevance feedback), so a sparse natural-language query is rewritten in the codebase's own

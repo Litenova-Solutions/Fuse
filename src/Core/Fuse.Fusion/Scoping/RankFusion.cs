@@ -1,5 +1,7 @@
 namespace Fuse.Fusion.Scoping;
 
+using Fuse.Plugins.Abstractions.Scoping;
+
 /// <summary>
 ///     Combines several ranked file lists into one using Reciprocal Rank Fusion (RRF), a rank-only combiner that
 ///     needs no score calibration across the input rankings.

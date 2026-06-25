@@ -7,6 +7,30 @@ using Fuse.Plugins.Abstractions.Options;
 namespace Fuse.Cli.Mcp;
 
 /// <summary>
+///     Outcome of an MCP tool fusion run.
+/// </summary>
+internal enum ToolResultKind
+{
+    Success,
+    Error,
+    Recoverable,
+}
+
+/// <summary>
+///     Typed result for MCP tool fusion, distinguishing hard errors from recoverable validation failures.
+/// </summary>
+internal readonly record struct ToolResult(ToolResultKind Kind, string Content)
+{
+    public bool IsSuccess => Kind == ToolResultKind.Success;
+    public bool IsError => Kind == ToolResultKind.Error;
+    public bool IsRecoverable => Kind == ToolResultKind.Recoverable;
+
+    public static ToolResult Success(string content) => new(ToolResultKind.Success, content);
+    public static ToolResult Error(string message) => new(ToolResultKind.Error, message);
+    public static ToolResult Recoverable(string message) => new(ToolResultKind.Recoverable, message);
+}
+
+/// <summary>
 ///     Shared helpers for Fuse MCP tool implementations.
 /// </summary>
 internal static class FuseToolHelpers
@@ -17,40 +41,43 @@ internal static class FuseToolHelpers
         string path,
         Action<FusionRequestBuilder> configure,
         bool trackTopTokenFiles,
+        CancellationToken cancellationToken) =>
+        (await ExecuteDotNetResultAsync(
+            orchestrator, templateRegistry, path, configure, trackTopTokenFiles, cancellationToken)).Content;
+
+    internal static async Task<ToolResult> ExecuteDotNetResultAsync(
+        FusionOrchestrator orchestrator,
+        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
+        string path,
+        Action<FusionRequestBuilder> configure,
+        bool trackTopTokenFiles,
         CancellationToken cancellationToken)
     {
         var resolvedPath = Path.GetFullPath(path);
         if (!Directory.Exists(resolvedPath))
-            return $"Error: Directory not found: {resolvedPath}";
+            return ToolResult.Error($"Error: Directory not found: {resolvedPath}");
 
         try
         {
             var builder = CreateDotNetBuilder(templateRegistry, resolvedPath);
             configure(builder);
-            return await ExecuteInMemoryAsync(orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
+            var content = await ExecuteInMemoryAsync(orchestrator, builder.Build(), trackTopTokenFiles, cancellationToken);
+            return ToolResult.Success(content);
+        }
+        catch (FusionValidationException ex)
+        {
+            return ToolResult.Recoverable("Error: " + string.Join("; ", ex.Errors));
         }
         catch (Exception ex)
         {
-            return $"Error during fusion: {ex.Message}";
+            return ToolResult.Error($"Error during fusion: {ex.Message}");
         }
     }
 
     internal static FusionRequestBuilder CreateDotNetBuilder(
         Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
         string resolvedPath) =>
-        new FusionRequestBuilder(templateRegistry)
-            .WithSourceDirectory(resolvedPath)
-            .WithTemplate(ProjectTemplate.DotNet)
-            .WithInMemory(true)
-            // The MCP server is a session: keep the analysis index warm so repeated calls reuse it.
-            .WithPersistentIndex(true)
-            .WithEmissionOptions(new EmissionOptions
-            {
-                MaxTokens = null,
-                ShowTokenCount = false,
-                IncludeManifest = true
-            })
-            .WithReductionOptions(new ReductionOptions(enableRedaction: true));
+        FusionRequestComposer.CreateDotNetInMemoryBuilder(templateRegistry, resolvedPath);
 
     internal static void ApplyCommonFilters(
         FusionRequestBuilder builder,

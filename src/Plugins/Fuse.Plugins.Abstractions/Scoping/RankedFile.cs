@@ -1,4 +1,4 @@
-namespace Fuse.Fusion.Scoping;
+namespace Fuse.Plugins.Abstractions.Scoping;
 
 /// <summary>
 ///     A ranked file and its relevance score.

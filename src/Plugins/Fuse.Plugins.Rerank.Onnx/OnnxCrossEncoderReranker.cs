@@ -1,4 +1,4 @@
-using Fuse.Fusion.Scoping;
+using Fuse.Plugins.Abstractions.Scoping;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -29,13 +29,13 @@
 
 Fuse is a Model Context Protocol server for AI-assisted development on .NET. It hands your coding agent (Claude Code, Cursor, GitHub Copilot) the right code, scoped and reduced, in a single call, instead of letting it burn its context window opening thousands of files during the explore phase. It cuts input tokens while keeping the public API intact, scopes to the files a task needs, and trims the round-trips an agent makes. The same engine is also a `fuse` CLI.
 
-Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. Roslyn structural analysis raises accuracy on hard C# codebases. The MCP server exposes nine tools; see [Connect your agent](https://fuse.codes/docs/start/connect-your-ai).
+Unlike generic repo packers (Repomix, Code2Prompt, Gitingest), Fuse understands C# structure: dependency graphs, skeleton extraction, BM25 query scoping, git change detection, and convention patterns. Roslyn structural analysis raises accuracy on hard C# codebases. The MCP server exposes eleven tools; see [Connect your agent](https://fuse.codes/docs/start/connect-your-ai).
 
 Full documentation lives at **[fuse.codes](https://fuse.codes/docs)**.
 
 ## Why Fuse
 
-Measured over a pinned corpus of four real .NET libraries (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json), counted with the `o200k_base` tokenizer. Reduction ratios transfer across models even though absolute token counts do not. Every figure is reproducible with one command and reported in full, including the arms where Fuse ties or loses, on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
+Measured over a pinned corpus of five real .NET libraries (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json, Serilog), counted with the `o200k_base` tokenizer. Reduction ratios transfer across models even though absolute token counts do not. Every figure is reproducible with one command and reported in full, including the arms where Fuse ties or loses, on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
 
 <p align="center">
   <img src="assets/fuse-benchmarks.png" alt="Fuse benchmark results: 40 percent fewer tokens at full public-API fidelity, 89 percent change-scoping recall versus a 34 percent grep baseline, 100 percent versus 4 percent skeleton method fidelity with the Roslyn tier, one scoped call replacing at least seven grep-and-open round-trips, and that call delivering a task's context in about 11 times fewer tokens than a generic packer." width="820">

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Fuse.Emission.Models;
 using Fuse.Reduction.Models;
@@ -31,7 +32,7 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
     private readonly string _baseFileName;
     private readonly List<string> _createdFilePaths = new();
     private readonly List<FileTokenInfo>? _fileTokenStats;
-    private readonly DateTime _startTime;
+    private readonly Stopwatch _stopwatch;
 
     private string _tempFilePath;
     private FileStream? _currentStream;
@@ -58,7 +59,7 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
         _fileTokenStats = options.TrackTopTokenFiles || options.IncludeManifest
             ? new List<FileTokenInfo>()
             : null;
-        _startTime = DateTime.Now;
+        _stopwatch = Stopwatch.StartNew();
         _tempFilePath = CreateTempFilePath(options.OutputDirectory);
 
         Directory.CreateDirectory(options.OutputDirectory);
@@ -173,7 +174,7 @@ public sealed class DiskOutputWriter : IOutputWriter, IAsyncDisposable
             File.Delete(_tempFilePath);
         }
 
-        var duration = DateTime.Now - _startTime;
+        var duration = _stopwatch.Elapsed;
         var topTokenFiles = OutputWriterHelpers.BuildTopTokenFiles(_fileTokenStats);
 
         return new FusionResult(

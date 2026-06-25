@@ -26,7 +26,7 @@ public sealed class DotNetTemplate : ProjectTemplateBase
     public override IReadOnlyCollection<string> ExcludeDirectories =>
     [
         "bin", "obj", ".vs", ".git", ".idea",
-        "node_modules",
+        "node_modules", ".next",
         "TestResults",
         "packages",
         "artifacts"

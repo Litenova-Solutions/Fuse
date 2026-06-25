@@ -1,7 +1,10 @@
 using Fuse.Emission.Manifest;
 using Fuse.Emission.Models;
 using Fuse.Emission.Writers;
+using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Reduction.Models;
+using Fuse.Reduction.Tokenization;
+using Fuse.Collection.FileSystem;
 
 namespace Fuse.Emission;
 
@@ -152,6 +155,82 @@ public sealed class EmissionPipeline
             writerResult.TopTokenFiles,
             manifestPatternSummary,
             emittedFileTokens: writerResult.EmittedFileTokens);
+    }
+
+    /// <summary>
+    ///     Emits a table-of-contents document for the reduced file set, degrading detail when a token budget is
+    ///     configured.
+    /// </summary>
+    /// <param name="reducedContent">Reduced entries whose paths and token costs appear in the map.</param>
+    /// <param name="options">Emission options, including format and optional <see cref="EmissionOptions.TableOfContentsMaxTokens" />.</param>
+    /// <param name="inMemory">When <see langword="true" />, capture output in memory instead of writing to disk.</param>
+    /// <param name="fileSystem">File system used for disk output.</param>
+    /// <param name="resolveSymbolsAsync">
+    ///     Resolves the symbol outline for an entry from original source (independent of reduction mode).
+    /// </param>
+    /// <param name="tokenCounter">Token counter used to measure the document and enforce the TOC budget.</param>
+    /// <param name="cancellationToken">Token used to cancel symbol resolution and writes.</param>
+    /// <returns>The completed fusion result containing the table of contents and per-file token costs.</returns>
+    public async Task<FusionResult> EmitTableOfContentsAsync(
+        IReadOnlyList<FusedContent> reducedContent,
+        EmissionOptions options,
+        bool inMemory,
+        IFileSystem fileSystem,
+        Func<FusedContent, CancellationToken, Task<IReadOnlyList<OutlineSymbol>>> resolveSymbolsAsync,
+        ITokenCounter tokenCounter,
+        CancellationToken cancellationToken = default)
+    {
+        var entries = new List<TableOfContentsFileEntry>(reducedContent.Count);
+        foreach (var item in reducedContent)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (item.IsTrivial)
+                continue;
+
+            var symbols = await resolveSymbolsAsync(item, cancellationToken);
+            entries.Add(new TableOfContentsFileEntry(item.NormalizedPath, item.TokenCount, symbols));
+        }
+
+        var (document, totalTokens) = BuildTocWithinBudget(entries, options, tokenCounter);
+        var emittedFileTokens = entries
+            .Select(e => new FileTokenInfo(e.Path, e.Tokens))
+            .ToArray();
+
+        await using var writer = new TableOfContentsOutputWriter(options, inMemory, fileSystem, emittedFileTokens);
+        await writer.WritePrefixAsync(document, cancellationToken);
+        var writerResult = await writer.CompleteAsync(cancellationToken);
+
+        return writerResult with
+        {
+            TotalTokens = totalTokens,
+            TotalFileCount = reducedContent.Count,
+        };
+    }
+
+    /// <summary>
+    ///     Renders the table of contents at the highest detail level that fits the configured token budget.
+    /// </summary>
+    private static (string Document, int Tokens) BuildTocWithinBudget(
+        IReadOnlyList<TableOfContentsFileEntry> entries,
+        EmissionOptions emission,
+        ITokenCounter tokenCounter)
+    {
+        var document = TableOfContentsBuilder.Build(entries, emission.Format, TableOfContentsDetail.Full);
+        var tokens = tokenCounter.Count(document);
+
+        if (emission.TableOfContentsMaxTokens is not int budget || tokens <= budget)
+            return (document, tokens);
+
+        foreach (var detail in (ReadOnlySpan<TableOfContentsDetail>)[TableOfContentsDetail.PathsOnly, TableOfContentsDetail.Directories])
+        {
+            document = TableOfContentsBuilder.Build(entries, emission.Format, detail);
+            tokens = tokenCounter.Count(document);
+            if (tokens <= budget)
+                break;
+        }
+
+        return (document, tokens);
     }
 
     /// <summary>

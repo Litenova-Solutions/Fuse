@@ -1,4 +1,4 @@
-namespace Fuse.Fusion.Scoping;
+namespace Fuse.Plugins.Abstractions.Scoping;
 
 /// <summary>
 ///     Reorders a query's BM25 candidate pool by blending the lexical score with a dense query-to-document

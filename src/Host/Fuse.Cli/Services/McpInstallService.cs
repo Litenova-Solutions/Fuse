@@ -39,9 +39,12 @@ public sealed class McpInstallService
         IConsoleUI consoleUI,
         CancellationToken cancellationToken)
     {
-        var command = string.IsNullOrWhiteSpace(fuseCommand)
-            ? ResolveFuseCommand()
-            : fuseCommand.Trim();
+        if (!TryValidateFuseCommand(fuseCommand, out var command, out var validationError))
+        {
+            consoleUI.WriteError(validationError!);
+            return 0;
+        }
+
         var projectRoot = string.IsNullOrWhiteSpace(projectDirectory)
             ? Directory.GetCurrentDirectory()
             : Path.GetFullPath(projectDirectory);
@@ -78,6 +81,41 @@ public sealed class McpInstallService
     {
         var processPath = Environment.ProcessPath;
         return string.IsNullOrWhiteSpace(processPath) ? "fuse" : processPath;
+    }
+
+    /// <summary>
+    ///     Validates a caller-supplied executable path for MCP registration.
+    /// </summary>
+    /// <param name="fuseCommand">The raw <c>--command</c> value, or <see langword="null" /> to resolve the default.</param>
+    /// <param name="command">The sanitized executable path or name.</param>
+    /// <param name="errorMessage">A user-facing error when validation fails.</param>
+    /// <returns><see langword="true" /> when <paramref name="command" /> is safe to register.</returns>
+    internal static bool TryValidateFuseCommand(string? fuseCommand, out string command, out string? errorMessage)
+    {
+        if (string.IsNullOrWhiteSpace(fuseCommand))
+        {
+            command = ResolveFuseCommand();
+            errorMessage = null;
+            return true;
+        }
+
+        command = fuseCommand.Trim();
+
+        if (command.AsSpan().ContainsAny("\r\n\0".AsSpan()))
+        {
+            errorMessage = "Invalid --command: control characters and newlines are not allowed.";
+            return false;
+        }
+
+        // A single executable path or name; arguments belong in the MCP server's args list, not the command field.
+        if (command.IndexOfAny(['|', '&', ';', '`', '$', '<', '>']) >= 0)
+        {
+            errorMessage = "Invalid --command: shell metacharacters are not allowed. Pass a single executable path.";
+            return false;
+        }
+
+        errorMessage = null;
+        return true;
     }
 
     private static bool WriteClaudeProjectConfig(string projectRoot, string fuseCommand, IConsoleUI consoleUI)

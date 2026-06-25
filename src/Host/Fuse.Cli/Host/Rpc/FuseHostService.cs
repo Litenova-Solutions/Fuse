@@ -9,7 +9,7 @@ using Fuse.Fusion;
 using Fuse.Fusion.Scoping;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
-using Fuse.Plugins.Languages.CSharp.Reducers;
+using Fuse.Plugins.Abstractions.Reducers;
 using Fuse.Reduction.Security;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
@@ -39,6 +39,7 @@ public sealed class FuseHostService : IDisposable
 
     private readonly ILogger<FuseHostService> _logger;
     private readonly FusionOrchestrator _orchestrator;
+    private readonly IExplainService _explainService;
     private readonly ProjectTemplateRegistry _templateRegistry;
     private readonly FileCollectionPipeline _collectionPipeline;
     private readonly DependencyGraphBuilder _graphBuilder;
@@ -46,6 +47,7 @@ public sealed class FuseHostService : IDisposable
     private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
     private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
     private readonly ISecretRedactor _redactor;
+    private readonly IGeneratedCodeDetector _generatedCodeDetector;
     private readonly string _sessionToken;
     private readonly long _startTimestamp;
     private readonly TaskCompletionSource _shutdownRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -56,6 +58,7 @@ public sealed class FuseHostService : IDisposable
     ///     Initializes a new instance of the <see cref="FuseHostService" /> class.
     /// </summary>
     /// <param name="orchestrator">The fusion orchestrator, shared with the MCP server and the CLI.</param>
+    /// <param name="explainService">The unified explain service for plan previews.</param>
     /// <param name="templateRegistry">The project-template registry that supplies the .NET fusion defaults.</param>
     /// <param name="collectionPipeline">The file collection pipeline used to enumerate the source tree for the graph.</param>
     /// <param name="graphBuilder">The dependency-graph builder, shared with the engine.</param>
@@ -63,9 +66,11 @@ public sealed class FuseHostService : IDisposable
     /// <param name="dependencyExtractors">Per-extension referenced-type extractors.</param>
     /// <param name="typeNameLocators">Per-extension declared-type locators.</param>
     /// <param name="redactor">The secret redactor, used read-only to locate secret spans for diagnostics.</param>
+    /// <param name="generatedCodeDetector">Detects machine-generated C# for editor diagnostics.</param>
     /// <param name="logger">The logger for host-side diagnostics, routed away from the transport stream.</param>
     public FuseHostService(
         FusionOrchestrator orchestrator,
+        IExplainService explainService,
         ProjectTemplateRegistry templateRegistry,
         FileCollectionPipeline collectionPipeline,
         DependencyGraphBuilder graphBuilder,
@@ -73,9 +78,11 @@ public sealed class FuseHostService : IDisposable
         CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
         CapabilityRegistry<ITypeNameLocator> typeNameLocators,
         ISecretRedactor redactor,
+        IGeneratedCodeDetector generatedCodeDetector,
         ILogger<FuseHostService> logger)
     {
         _orchestrator = orchestrator;
+        _explainService = explainService;
         _templateRegistry = templateRegistry;
         _collectionPipeline = collectionPipeline;
         _graphBuilder = graphBuilder;
@@ -83,6 +90,7 @@ public sealed class FuseHostService : IDisposable
         _dependencyExtractors = dependencyExtractors;
         _typeNameLocators = typeNameLocators;
         _redactor = redactor;
+        _generatedCodeDetector = generatedCodeDetector;
         _logger = logger;
         _sessionToken = FuseHostSessionToken.Generate();
         _startTimestamp = Stopwatch.GetTimestamp();
@@ -216,7 +224,7 @@ public sealed class FuseHostService : IDisposable
         if (!string.IsNullOrWhiteSpace(scopeMode))
         {
             var scopeBuilder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
-            ApplyScopeMode(scopeBuilder, scopeMode, seed, query, since);
+            FusionScopeDescriptor.ApplyMode(scopeBuilder, scopeMode, seed, query, since);
             var scoped = await _orchestrator.FuseAsync(scopeBuilder.Build());
             foreach (var planned in scoped.Plan)
                 roleByPath[planned.Path] = planned.Role;
@@ -254,29 +262,6 @@ public sealed class FuseHostService : IDisposable
             return new GraphDto(fileNodes, fileEdges, "Files");
 
         return AggregateToDirectories(fileNodes, fileEdges);
-    }
-
-    // Applies the requested scoping mode to a request builder and returns the normalized mode. Shared by scope,
-    // explain, and the graph role overlay so the focus/changes/search routing is defined once. Falls back to
-    // search when a focus seed or git base is absent.
-    private static string ApplyScopeMode(FusionRequestBuilder builder, string? mode, string? seed, string? query, string? since)
-    {
-        var normalized = (mode ?? "search").Trim().ToLowerInvariant();
-        switch (normalized)
-        {
-            case "focus" when !string.IsNullOrWhiteSpace(seed):
-                builder.WithFocusOptions(new FocusOptions(seed, Depth: 2));
-                break;
-            case "changes" when !string.IsNullOrWhiteSpace(since):
-                builder.WithChangeOptions(new ChangeOptions(since));
-                break;
-            default:
-                normalized = "search";
-                builder.WithQueryOptions(new QueryOptions(query ?? string.Empty, TopFiles: 10, Depth: 2));
-                break;
-        }
-
-        return normalized;
     }
 
     // Folds the file graph into directory supernodes: a node per directory (token cost summed, centrality summed
@@ -343,7 +328,7 @@ public sealed class FuseHostService : IDisposable
             IncludeManifest = true,
         });
 
-        var normalizedMode = ApplyScopeMode(builder, mode, seed, query, since);
+        var normalizedMode = FusionScopeDescriptor.ApplyMode(builder, mode, seed, query, since);
         var result = await _orchestrator.FuseAsync(builder.Build());
 
         string? payloadPath = null;
@@ -400,7 +385,7 @@ public sealed class FuseHostService : IDisposable
             var content = await contentProvider.GetContentAsync(file);
 
             // Flag generated C# (EF Core migrations and model snapshots, rarely worth reading) for an editor hint.
-            if (file.IsCSharp && GeneratedCodeCollapser.IsGenerated(content))
+            if (file.IsCSharp && _generatedCodeDetector.IsGenerated(content))
                 generated.Add(file.NormalizedRelativePath);
 
             var spans = _redactor.FindSecretSpans(content);
@@ -491,9 +476,9 @@ public sealed class FuseHostService : IDisposable
             return new ExplainResultDto((mode ?? "search").Trim().ToLowerInvariant(), []);
 
         var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
-        var normalizedMode = ApplyScopeMode(builder, mode, seed, query, since);
-        var result = await _orchestrator.FuseAsync(builder.Build());
-        var files = result.Plan
+        var normalizedMode = FusionScopeDescriptor.ApplyMode(builder, mode, seed, query, since);
+        var planResult = await _explainService.PlanAsync(builder.Build(), normalizedMode);
+        var files = planResult.FusionResult.Plan
             .Select(p => new ExplainFileDto(p.Path, p.Role, p.Tier, p.Score))
             .ToList();
 

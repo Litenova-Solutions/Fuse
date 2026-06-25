@@ -42,7 +42,7 @@ public sealed class GitChangeDetector : IChangeDetector
     // discrete tokens via ArgumentList so a ref containing spaces is never word-split and nothing is shell-quoted.
     private static async Task<string> RunGitAsync(string sourceDirectory, CancellationToken cancellationToken, params string[] arguments)
     {
-        var gitPath = FindGitExecutable();
+        var gitPath = GitExecutableLocator.Find();
         if (gitPath is null)
             throw new ChangeDetectionException("Git is not available on PATH. Change-scoped fusion requires git.");
 
@@ -92,28 +92,5 @@ public sealed class GitChangeDetector : IChangeDetector
         }
 
         return stdout;
-    }
-
-    private static string? FindGitExecutable()
-    {
-        var pathEnv = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrEmpty(pathEnv))
-            return null;
-
-        var extensions = OperatingSystem.IsWindows()
-            ? new[] { ".exe", ".cmd", "" }
-            : new[] { "" };
-
-        foreach (var dir in pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            foreach (var ext in extensions)
-            {
-                var candidate = Path.Combine(dir, "git" + ext);
-                if (File.Exists(candidate))
-                    return candidate;
-            }
-        }
-
-        return null;
     }
 }

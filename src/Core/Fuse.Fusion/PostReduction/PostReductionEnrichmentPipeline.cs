@@ -21,7 +21,7 @@ namespace Fuse.Fusion.PostReduction;
 /// </summary>
 /// <remarks>
 ///     Invoked by <see cref="FusionOrchestrator" /> after collection, scoping, reduction, and optional
-///     symbol-level transforms. Table-of-contents mode is handled separately by the orchestrator.
+///     symbol-level transforms. Table-of-contents mode is handled by <see cref="EmissionPipeline.EmitTableOfContentsAsync" />.
 /// </remarks>
 public sealed class PostReductionEnrichmentPipeline
 {
@@ -342,18 +342,11 @@ public sealed class PostReductionEnrichmentPipeline
             await _fileSystem.WriteAllTextAsync(firstPath, prefix + "\n" + existing);
         }
 
-        return new FusionResult(
-            generatedPaths,
-            inMemoryContent,
-            emissionResult.TotalTokens,
-            emissionResult.ProcessedFileCount,
-            emissionResult.TotalFileCount,
-            emissionResult.Duration,
-            emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary,
-            emissionResult.ReductionCacheHits,
-            emissionResult.ReductionCacheMisses,
-            emissionResult.EmittedFileTokens);
+        return emissionResult with
+        {
+            GeneratedPaths = generatedPaths,
+            InMemoryContent = inMemoryContent,
+        };
     }
 
     // Estimates the token cost of every output section emission prepends or appends on top of the file bodies,
@@ -526,18 +519,11 @@ public sealed class PostReductionEnrichmentPipeline
             await _fileSystem.WriteAllTextAsync(lastPath, existing + "\n" + comment);
         }
 
-        return new FusionResult(
-            generatedPaths,
-            inMemoryContent,
-            emissionResult.TotalTokens,
-            emissionResult.ProcessedFileCount,
-            emissionResult.TotalFileCount,
-            emissionResult.Duration,
-            emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary,
-            emissionResult.ReductionCacheHits,
-            emissionResult.ReductionCacheMisses,
-            emissionResult.EmittedFileTokens);
+        return emissionResult with
+        {
+            GeneratedPaths = generatedPaths,
+            InMemoryContent = inMemoryContent,
+        };
     }
 
     private async Task<FusionResult> PrependToDiskOrMemoryAsync(FusionResult emissionResult, string preamble)
@@ -554,17 +540,10 @@ public sealed class PostReductionEnrichmentPipeline
             await _fileSystem.WriteAllTextAsync(firstPath, preamble + "\n" + existing);
         }
 
-        return new FusionResult(
-            generatedPaths,
-            inMemoryContent,
-            emissionResult.TotalTokens,
-            emissionResult.ProcessedFileCount,
-            emissionResult.TotalFileCount,
-            emissionResult.Duration,
-            emissionResult.TopTokenFiles,
-            emissionResult.PatternSummary,
-            emissionResult.ReductionCacheHits,
-            emissionResult.ReductionCacheMisses,
-            emissionResult.EmittedFileTokens);
+        return emissionResult with
+        {
+            GeneratedPaths = generatedPaths,
+            InMemoryContent = inMemoryContent,
+        };
     }
 }

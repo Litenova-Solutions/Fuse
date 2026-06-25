@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO.Hashing;
 using System.Text;
-using Fuse.Fusion.Scoping;
+using Fuse.Plugins.Abstractions.Scoping;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 

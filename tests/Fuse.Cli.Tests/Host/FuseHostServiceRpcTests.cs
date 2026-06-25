@@ -224,5 +224,35 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task ConcurrentGraphAndScope_AgainstOneRoot_BothSucceed()
+    {
+        // The playbook's concurrency check: simultaneous fuse/graph and fuse/scope against one root exercise the
+        // shared orchestrator and pooled store under concurrent calls (C3 DI concurrency under the new transport).
+        var source = Path.Combine(Path.GetTempPath(), "fuse-host-concurrent", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "Service.cs"), "public class Service { public int V() => 1; }");
+        File.WriteAllText(Path.Combine(source, "Consumer.cs"),
+            "public class Consumer { private Service _s = new Service(); public int U() => _s.V(); }");
+
+        try
+        {
+            var service = NewService();
+            // Fire several graph and scope calls at once on one root; none may throw and each must return data.
+            var graphTasks = Enumerable.Range(0, 4).Select(_ => service.GraphAsync(source, "Files"));
+            var scopeTasks = Enumerable.Range(0, 4).Select(_ => service.ScopeAsync(source, "search", null, "service", null, 20000));
+
+            var graphs = await Task.WhenAll(graphTasks);
+            var scopes = await Task.WhenAll(scopeTasks);
+
+            Assert.All(graphs, g => Assert.NotEmpty(g.Nodes));
+            Assert.All(scopes, s => Assert.Equal("search", s.Mode));
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
     public void Dispose() => _provider.Dispose();
 }

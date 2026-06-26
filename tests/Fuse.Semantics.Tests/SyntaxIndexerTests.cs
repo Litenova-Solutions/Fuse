@@ -89,6 +89,28 @@ public sealed class SyntaxIndexerTests : IAsyncLifetime
         Assert.False(await ExistsAsync("SELECT 1 FROM symbols WHERE name = 'IOrderService';"));
     }
 
+    [Fact]
+    public async Task IndexStoresRoutesFromControllers()
+    {
+        File.WriteAllText(Path.Combine(_root, "src", "OrdersController.cs"), """
+            using Microsoft.AspNetCore.Mvc;
+
+            [Route("api/orders")]
+            public class OrdersController : ControllerBase
+            {
+                [HttpGet]
+                public IActionResult List() => Ok();
+            }
+            """);
+        var indexer = CreateIndexer();
+
+        var result = await indexer.IndexAsync(_root, CancellationToken.None);
+
+        Assert.True(result.RouteCount >= 1);
+        // A verb attribute with no route argument falls back to the handler name as the path segment.
+        Assert.True(await ExistsAsync("SELECT 1 FROM routes WHERE route_pattern = '/api/orders/List' AND http_method = 'GET';"));
+    }
+
     private SyntaxIndexer CreateIndexer()
     {
         var fileSystem = new PhysicalFileSystem();
@@ -103,7 +125,7 @@ public sealed class SyntaxIndexerTests : IAsyncLifetime
                 new BinaryFileFilter(fileSystem),
             ]);
         var scanner = new WorkspaceFileScanner(pipeline, new FileHashService());
-        return new SyntaxIndexer(scanner, _store, new SyntaxSymbolExtractor());
+        return new SyntaxIndexer(scanner, _store, new SyntaxSymbolExtractor(), new SyntaxRouteExtractor());
     }
 
     private async Task<bool> ExistsAsync(string sql)

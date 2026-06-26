@@ -18,7 +18,7 @@ Phase 1 - SQLite schema and store
 Phase 2 - Syntax-level semantic batch
 - [x] P2.1 File discovery + hash records (reuse FileCollectionPipeline)
 - [x] P2.2 Syntax symbol + chunk extraction into store (reuse RoslynSymbolChunkExtractor)
-- [ ] P2.3 Route syntax extraction into records (reuse RoslynRouteMapGenerator logic)
+- [x] P2.3 Route syntax extraction into records (reuse RoslynRouteMapGenerator logic)
 - [ ] P2.4 fuse index a simple repo; fuse map --detail symbols shows DB symbols; FTS returns chunks
 
 Phase 3 - MSBuild/Roslyn semantic indexing
@@ -1500,5 +1500,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None.
 - Lessons: The chunk extractor only yields member chunks, so type-level symbols/chunks are walked separately and members reuse the extractor's `Identity` for stable keys. Reindex correctness depends on `DeleteFileDataAsync` (P1.2) clearing prior symbols/chunks/FTS before re-extraction. The indexer re-reads file text (the scanner already read bytes for hashing) - a candidate optimization for incremental indexing later.
 - Time: ~25 min
+
+### P2.3 Route syntax extraction into records - 2026-06-26 10:38
+- Status: done
+- Result: Added `SyntaxRouteExtractor` to `Fuse.Semantics`, mirroring the route-map generator's detection (HttpVerb attributes, controller `[Route]` prefixes, minimal-API `Map*` calls) but emitting `RouteRecord`s with normalized leading-slash patterns, `route:{METHOD}:{pattern}` ids, source kind (`mvc`/`minimal-api`), and the handler name in `metadata_json`. Wired into `SyntaxIndexer` (now upserts routes; `SyntaxIndexResult` gains `RouteCount`). Added `SyntaxRouteExtractorTests` (3) and an indexer route-storage test (1). New solution test total 645 (Fuse.Semantics.Tests 7 -> 11).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 11 passed; `dotnet format Fuse.slnx --verify-no-changes` clean.
+- Blockers/issues: First indexer route test asserted GET `/api/orders` for a verb-only `[HttpGet]` action; the inherited generator heuristic falls back to the handler name, so the real pattern is `/api/orders/List`. Corrected the test to document that behavior.
+- Lessons: `HandlerSymbolId` is left null at the syntax stage; the route-to-handler edge is wired semantically in Phase 4 (`AspNetRouteAnalyzer`), which can read the handler name from `metadata_json`. Route patterns are normalized to a leading slash so `route:METHOD:/pattern` node ids match what resolve/retrieval will look up.
+- Time: ~20 min
 
 

@@ -1,44 +1,26 @@
 ---
 title: Benchmarks
-description: Reproducible measurements of Fuse token reduction, fidelity, and scoping recall over a pinned corpus of real .NET repositories, with a competitor comparison and honest reporting of where Fuse loses.
+description: Reproducible measurements of Fuse V3 as a Roslyn-backed .NET semantic context engine, scored on four suites over a pinned corpus of real .NET repositories, with honest reporting of where Fuse loses.
 ---
 
-This page reports what Fuse does to a real .NET codebase in numbers: how far it cuts the token count, how much of the public API surface survives that cut, and how well its scoping finds the files a task needs. Every number here comes from a harness that anyone can rerun against the same pinned commits. The goal is a credible claim backed by a script, not a marketing figure.
+Fuse V3 is a Roslyn-backed .NET semantic context engine with a warm persistent index. This page reports what it does on real .NET codebases, judged by one north star: can it resolve .NET wiring, scope a change with precision, help an agent gather the right files, and avoid returning junk on a low-signal query. The yardstick is the semantic engine, not tokens saved. Token efficiency is now a rendering and transport feature (a PR's context arrives in a median 874 tokens), not the headline claim.
 
-Three readers are served below. A stakeholder can read the headline findings and the fidelity table. A new engineer can follow the reproduction steps and run the suite. A maintainer can read the method, the corpus manifest, and the per-mode results, including the arms where Fuse ties or loses.
+Three readers are served below. A stakeholder can read the four suite headlines and the honest-reporting section. A new engineer can follow the reproduction steps and run a suite. A maintainer can read each suite's method, sample, index-mode distribution, and the cases where Fuse is weak.
 
-The benchmark is built in layers by cost and persuasiveness. Layers 1, 2, and 4 are deterministic and keyless: anyone reruns them offline and gets the same numbers. Layer 1 is intrinsic: token reduction, speed, memory, and fidelity. Layer 2 tests retrieval: scoping recall against real merged-PR change sets, and a single-turn localization task. Layer 4 is the context-acquisition scenario: Fuse, no Fuse, and Repomix on the two axes of round-trips and input tokens for the same task. Two further layers are model- or tool-dependent and gated off the default reproducible path: Layer 5 drives a real agent with each toolbox and measures the cost to gather sufficient context, and Layer 6 compares Fuse against two offline peer scopers (CodeGraph and coa-codesearch) on the same ground truth. The corpus is five .NET libraries plus one ASP.NET Core application (eShopOnWeb), so external validity beyond clean library APIs is tested. A full end-to-end task-resolution harness (driving a programmatic agent across arms and scoring patches against a test oracle) is not built here and is listed under Blocked And Out Of Scope.
+The benchmark is four suites run by a C# eval driver in `tests/benchmarks/Fuse.Benchmarks`, each reproduced with `fuse eval <suite>` and each writing its scorecard to `tests/benchmarks/results/<suite>.json`:
 
-## Reproduce First
+- Suite A, semantic resolution: does the extracted graph match a hand-built edge ground truth. Deterministic.
+- Suite B, change impact and review: does `fuse review` scope a real merged PR to the files it touches plus their semantic blast radius. Deterministic.
+- Suite C, open-ended localization: given only a PR title and no Git base, does `fuse localize` find the changed files. Deterministic, and the weakest mode.
+- Suite D, agent context sufficiency: under a real model, does an agent gather the task's files with the Fuse MCP tools. Model-dependent and not byte-reproducible.
 
-Prerequisites: the .NET SDK 10.0 or later, Git, and Node.js (the competitor packer Repomix runs through `npx`). Network access is needed once to clone the corpus.
+## An Honest Caveat on Index Mode
 
-One command runs everything from a clean checkout:
+Fuse's semantic graph is strongest when the corpus loads with a full MSBuild semantic workspace. In the current benchmark environment most repositories load in syntax or partial index mode, because a full semantic load needs a restored workspace that the offline harness does not provision. The full semantic graph is exercised on the eShopOnWeb application (partial mode) and on the in-repo wiring fixture (Suite A). Each suite below records its index-mode distribution so the reader can see which mode produced which number. Read the deterministic moat (Suite A) as the semantic ceiling and the corpus suites as what the partial and syntax modes deliver today.
 
-```bash
-pwsh -File tests/benchmarks/harness/run-all.ps1
-```
+## The Corpus
 
-That script builds the CLI and two measurement tools, clones the corpus at the pinned commits, regenerates the PR ground truth, and runs all three layers. Results are written as JSON, CSV, and Markdown tables under the results directory. To run one layer at a time, call the per-layer scripts in the harness directory after the corpus is in place.
-
-The inputs that make the run reproducible are committed alongside the harness: the corpus manifest pins each repository to an exact commit, the PR ground truth records base and head commits per change set, and the localization question set records each question with its known answer file.
-
-## What Is Measured, and How It Stays Fair
-
-Token counts use the `o200k_base` encoding through `Microsoft.ML.Tokenizers`, the same encoding Fuse uses by default. Reduction ratios transfer across models because they are ratios; absolute token counts do not, because each model tokenizes differently. Every arm in a comparison is counted with the one tokenizer, so raw concatenation, Fuse output, and Repomix output are measured on the same scale.
-
-Three rules keep the comparison honest:
-
-1. One file set per repository. Each tool sees a C#-only mirror of the repository, so raw concatenation, Fuse, and Repomix all process the same files. This isolates C# reduction, which is the feature under test.
-2. An independent fidelity oracle. The fidelity tool parses the raw source with Roslyn to build the ground-truth set of public and protected types, public methods, and ASP.NET route templates. It does not reuse Fuse's own regex extraction, so the measure cannot flatter Fuse by sharing its blind spots.
-3. No tuning for the result. Fuse runs with documented flags only. Runtime behavior was not changed to improve any number on this page.
-
-Two regression guards back these rules:
-
-- A body-integrity check parses each raw source file with Roslyn to collect the verbatim text of every non-trivial string literal, then verifies each survives byte-identical in the reduced output. It is the guard that a reduction never alters a literal's contents (embedded JSON, SQL, or templates), and for the body-preserving levels it also confirms the output still parses. It is measured with redaction disabled, since redaction deliberately replaces secret literals. Layer 1 records it as the Literals and Parses columns.
-- A compare gate (`run-all.ps1 -Compare baseline.json`) diffs a fresh layer-1 run against a committed baseline and fails on any drop in reduction ratio, type/method/route fidelity, or body-integrity beyond a small tolerance, and on any parses true-to-false flip. A SampleShop-only smoke (`smoke.ps1`) exercises this gate without cloning the corpus.
-
-The corpus is five open-source .NET libraries and one open-source ASP.NET Core application, all pinned by commit, plus the in-repo sample fixture for route coverage. The application (eShopOnWeb) is the only non-library: it carries DI wiring, MVC and Razor Pages, EF Core, and config sprawl that the clean library APIs do not exercise, so it tests external validity beyond tidy public surfaces.
+The corpus is five open-source .NET libraries and one open-source ASP.NET Core application, all pinned by commit, counted with the `o200k_base` encoding. The application (eShopOnWeb) is the only non-library: it carries DI wiring, MVC and Razor Pages, EF Core, and config sprawl that the clean library APIs do not exercise, so it tests external validity beyond tidy public surfaces. PR ground truth (`prs.json`) is reconstructed from merge history, dropping merged PRs whose titles are misleading maintenance (a CI tweak or a dependency or version bump over an unrelated C# diff), since a title-only scope cannot find their change sets.
 
 | Repository | Size | C# files |
 |------------|------|---------:|
@@ -48,382 +30,118 @@ The corpus is five open-source .NET libraries and one open-source ASP.NET Core a
 | Newtonsoft.Json | large | 945 |
 | Serilog | small to mid | 216 |
 | eShopOnWeb (application) | mid | 254 |
-| SampleShop | micro, in-repo | 7 |
 
-## Layer 1: Token Reduction and Fidelity
+## Reproduce
 
-Layer 1 runs each reduction mode against the raw concatenation baseline and against Repomix. The modes are the no-flag default (`--level none`), `--level aggressive` (every C# reduction combined), and `--level skeleton` (signatures only, bodies removed by design). Reduction ratio is the fraction of baseline tokens removed; a negative value means the output is larger than raw concatenation.
+Prerequisites: the .NET SDK 10.0 or later and Git. The corpus-bound suites (review, localize, agent) skip gracefully when the pinned corpus is absent, so a bare invocation stays offline; the semantics suite runs on the in-repo fixture with no corpus.
 
-| Repo | Mode | Tokens | Reduction | Wall ms | Peak MB |
-|------|------|-------:|----------:|--------:|--------:|
-| MediatR | none | 77,135 | 7.1% | 439 | 109 |
-| MediatR | aggressive | 61,282 | 26.2% | 451 | 109 |
-| MediatR | skeleton | 39,865 | 52.0% | 639 | 128 |
-| MediatR | repomix | 86,308 | -3.9% | 1,893 | n/a |
-| FluentValidation | none | 242,458 | 7.0% | 511 | 114 |
-| FluentValidation | aggressive | 166,740 | 36.0% | 574 | 111 |
-| FluentValidation | skeleton | 115,635 | 55.6% | 737 | 140 |
-| FluentValidation | repomix | 264,875 | -1.6% | 1,468 | n/a |
-| AutoMapper | none | 420,320 | 9.8% | 608 | 117 |
-| AutoMapper | aggressive | 366,121 | 21.5% | 601 | 127 |
-| AutoMapper | skeleton | 258,427 | 44.6% | 1,039 | 158 |
-| AutoMapper | repomix | 475,876 | -2.1% | 1,645 | n/a |
-| Newtonsoft.Json | none | 1,337,544 | 8.9% | 1,051 | 148 |
-| Newtonsoft.Json | aggressive | 873,992 | 40.5% | 863 | 161 |
-| Newtonsoft.Json | skeleton | 694,862 | 52.7% | 1,426 | 199 |
-| Newtonsoft.Json | repomix | 1,486,576 | -1.3% | 1,662 | n/a |
-| Serilog | none | 184,078 | 9.0% | 524 | 116 |
-| Serilog | aggressive | 109,238 | 46.0% | 556 | 117 |
-| Serilog | skeleton | 123,985 | 38.7% | 729 | 139 |
-| Serilog | repomix | 206,378 | -2.1% | 1,492 | n/a |
-| eShopOnWeb | none | 65,044 | 6.5% | 513 | 110 |
-| eShopOnWeb | aggressive | 48,576 | 30.1% | 514 | 110 |
-| eShopOnWeb | skeleton | 37,659 | 45.8% | 635 | 126 |
-| eShopOnWeb | repomix | 73,958 | -6.4% | 1,720 | n/a |
-
-Repomix memory is not recorded because it runs through a Node launcher whose working set does not reflect the packer process. Its wall-clock and token count are comparable.
-
-### Fidelity: Reduction Is Not Deletion
-
-Fidelity is the integrity guard. It reports the fraction of the public API surface that survives each reduction. For `--level skeleton`, these figures are signature preservation: bodies are removed on purpose, so skeleton makes no claim of body fidelity.
-
-| Repo | Mode | Types kept | Methods kept | Routes kept |
-|------|------|-----------:|-------------:|------------:|
-| MediatR | none | 100% | 100% | n/a |
-| MediatR | aggressive | 100% | 100% | n/a |
-| MediatR | skeleton | 100% | 100% | n/a |
-| FluentValidation | none | 100% | 100% | n/a |
-| FluentValidation | aggressive | 100% | 100% | n/a |
-| FluentValidation | skeleton | 100% | 100% | n/a |
-| AutoMapper | none | 99% | 100% | n/a |
-| AutoMapper | aggressive | 99% | 100% | n/a |
-| AutoMapper | skeleton | 99% | 100% | n/a |
-| Newtonsoft.Json | none | 100% | 100% | n/a |
-| Newtonsoft.Json | aggressive | 100% | 99% | n/a |
-| Newtonsoft.Json | skeleton | 100% | 100% | n/a |
-| Serilog | none | 99% | 100% | n/a |
-| Serilog | aggressive | 99% | 100% | n/a |
-| Serilog | skeleton | 99% | 100% | n/a |
-| eShopOnWeb | none | 100% | 100% | 100% |
-| eShopOnWeb | aggressive | 100% | 100% | 100% |
-| eShopOnWeb | skeleton | 100% | 100% | 60% |
-| SampleShop | none | 100% | 100% | 100% (4/4) |
-| SampleShop | aggressive | 100% | 100% | 100% (4/4) |
-| SampleShop | skeleton | 100% | 100% | 0% (0/4) |
-
-The library repositories define no ASP.NET routes, so route fidelity is reported only for the application (eShopOnWeb) and the sample fixture. eShopOnWeb is the real-world route case: the default and `--level aggressive` keep all of its route templates, while `--level skeleton` keeps 60 percent of them, because skeleton removes attributes and some routes are expressed only through attributes the skeleton drops. This is the same attribute-loss effect the fixture shows at 0/4, measured on a real application's route surface.
-
-### Layer 1 Findings, Including Losses
-
-- The no-flag default and `--level aggressive` preserve the public API. Across the five libraries and the application, the default and `--level aggressive` keep 99 to 100 percent of public types and methods while removing 6 to 46 percent of tokens (the application's default cut, 6.5 percent, is the low end). This is the headline result: Fuse cuts tokens without dropping the surface an agent reads for.
-- `--level aggressive` is the dependable cut. It removes 21 to 46 percent of tokens at full type and method fidelity. The cut is larger on repositories with heavy comments and usings (Serilog at 46 percent, Newtonsoft.Json at 40.5 percent, FluentValidation at 36 percent).
-- Skeleton is a faithful signatures-only cut on the Roslyn extractor, not the deepest cut. Roslyn skeleton removes 39 to 56 percent of tokens (Serilog 38.7, AutoMapper 44.6, MediatR 52.0, Newtonsoft.Json 52.7, FluentValidation 55.6) while keeping 99 to 100 percent of types and 100 percent of method signatures, including Newtonsoft.Json, where the retired regex skeleton kept only 4 percent of method signatures by dropping most of them. Skeleton is an architecture map at full signature fidelity; its smaller token cut than the old regex extractor is the honest price of keeping every signature rather than losing them. See the Roslyn structural analysis result below for the regex-to-Roslyn comparison.
-- Skeleton drops route attributes, and the application makes that concrete. On the sample fixture route fidelity falls to zero under skeleton because skeleton removes attributes; on the eShopOnWeb application it falls to 60 percent (the routes expressed only through dropped attributes are lost, the rest survive). The default and `--level aggressive` keep every route on both. Use the default or `--level aggressive` when route templates matter. This is the clearest application-versus-library difference in Layer 1: the libraries define no routes, so the cost only shows on the application.
-- The default reduction loses to raw on tiny inputs. SampleShop at `--level none` produces more tokens than raw concatenation because the structured wrapper and manifest cost more than whitespace normalization saves on a 7-file project. The cut turns positive once the project is large enough for reduction to dominate the wrapper cost.
-- Fuse beats Repomix in every mode, including the default. Repomix is a generic full-dump packer: it concatenates the file set without scoping or reducing, so its role here is the cost-of-not-scoping baseline, what blind packing costs in tokens, not a scoping competitor. Repomix output is 1.3 to 3.9 percent larger than raw concatenation on these repositories, because its preamble and structure add tokens. Fuse at the default is smaller than raw and smaller than Repomix; `--level aggressive` and `--level skeleton` widen the gap. Both tools preserve the API surface at full output, so the difference is token cost. Fuse cold wall-clock is also lower here, though Fuse pays a fixed startup cost that dominates on tiny inputs.
-
-## Layer 2A: Scoping Recall Against Real Pull Requests
-
-Layer 2A measures whether a scoping mode includes the files a real change touched. The ground truth is the set of C# files changed by 108 real merged pull requests (18 per repository) across the five libraries and the eShopOnWeb application; 107 of the 108 reconstruct to a non-empty C# change set at the PR head and are scored (one Newtonsoft.Json PR failed to reconstruct its worktree and is omitted, never stubbed). The PR set drops the title/diff-mismatch cases (a merged PR whose title is a CI tweak or a dependency or version bump over an unrelated C# diff, so a title-keyword scope cannot find its change set); these are filtered at ground-truth generation and logged. For each pull request the harness reconstructs the head state in a Git worktree and runs three Fuse modes plus a grep baseline. Recall@budget is measured at several token budgets (10,000, 25,000, and 50,000) so a retrieval change can be read across the budget curve rather than at one point; the 50,000 token budget remains the headline reported below. The grep baseline ranks files by query-term hit count and fills the budget, which is what an agent does when it greps and reads the top results. Recall (the necessary files included) is the headline; precision is the fraction of emitted files that were necessary.
-
-| Mode | Mean recall | Mean precision | Mean tokens |
-|------|------------:|---------------:|------------:|
-| changes | 89% | 53% | 28,905 |
-| focus | 74% | 6% | 34,480 |
-| query | 48% | 6% | 32,142 |
-| grep (baseline) | 38% | 13% | 35,914 |
-
-The corpus is 107 scored pull requests, so these means carry real sampling uncertainty. A 2,000-sample bootstrap 95 percent confidence interval for the mean recall at the headline budget is: changes 89 percent (84 to 94), focus 74 percent (68 to 80), query 48 percent (41 to 56), grep 38 percent (31 to 45). The intervals are wide and query's lower bound nearly meets grep's upper bound, so a few-point move between releases is within noise; a delta is only trustworthy when it also holds per repository and across budgets, which the per-repo tables below and the regression gate (`check-regressions.ps1`) enforce. Reproduce the intervals with `tests/benchmarks/harness/bootstrap-ci.ps1`.
-
-Adversarial-case split (B7): eight of the 107 PRs have merge-noise titles that carry no task vocabulary, so query mode falls back to the changed type names and recalls 87 percent on them. Reported honestly, the all-PRs query mean is 48 percent, while the clean-title recall excluding those eight is 45 percent over 99 PRs. The merge-noise cases are tagged and reported, never dropped silently; the harness prints all three figures. Merge-noise titles are kept because the fallback gives them a usable scope; the title/diff-mismatch PRs above are different (no fallback recovers a CI or bump title) and are dropped at generation, not here.
-
-Recall varies widely by repository, and the aggregate hides that:
-
-| Repo | changes | focus | query | grep |
-|------|--------:|------:|------:|-----:|
-| MediatR | 99% | 92% | 83% | 79% |
-| FluentValidation | 100% | 83% | 42% | 25% |
-| AutoMapper | 97% | 70% | 35% | 24% |
-| Newtonsoft.Json | 49% | 74% | 26% | 11% |
-| Serilog | 97% | 72% | 55% | 35% |
-| eShopOnWeb (application) | 91% | 55% | 47% | 52% |
-
-The per-feature lift figures in the findings below (for example "query 51 to 55", "focus 77 to 92") were each measured over the original 24-PR, four-library corpus at the time that feature landed, against the then-current baseline; they are kept as the historical record of why each lever was adopted. The headline tables above are the current measurement over the 108-PR, six-repository corpus (five libraries plus the eShopOnWeb application). The larger and less favorable sample lowers the focus mean (focus 92 to 74 at the headline budget, query 61 to 48) while change scoping holds (89). A lever's direction held when it landed; the absolute headline is the table above, not the intermediate values quoted in the historical findings.
-
-The application is the new external-validity test, and it splits the modes. Change scoping holds on it (91 percent, in line with the libraries), because a diff is a diff regardless of how the code is organized. Focus drops to 55 percent, the lowest of any repository: an application wires its types through DI and configuration rather than direct references, so a one-hop dependency neighborhood around a seed reaches fewer of the files a change touches than it does in a library with tight public-API call graphs. Query is mid-pack at 47 percent, and grep is unusually strong on the application (52 percent, well above its 11 to 35 percent on the libraries) because application identifiers echo the words in a PR title (a controller, a page, a service named for the feature) more directly than library internals do. The honest reading: Fuse's change mode is unaffected by the application, its focus mode is weaker there and that is reported, and the grep baseline is a tougher competitor on application code than on libraries.
-
-Findings, including losses:
-
-- Change scoping is the strongest mode. It leads recall at 89 percent at 54 percent precision, because following reverse edges one hop reaches the files that use a changed file without pulling in a wide neighborhood. On FluentValidation it recalls every changed file, and it clears 97 to 99 percent on MediatR, AutoMapper, and Serilog. Its mean emitted tokens (28,905) sit under the 50,000 budget because emission stops before the one entry that would cross the cap rather than overrunning it (strict total-token accounting); this raised precision, at the cost of about one budget-crossing file per large change set. Newtonsoft.Json (49 percent) stays the floor, where deeply nested types and conditional compilation defeat parts of the graph.
-- All three scoping modes beat the grep baseline at the headline budget. Focus (78 percent) and query (48 percent) both clear grep (34 percent). Focus gains because it pulls a seed's dependents as well as its dependencies, so a changed test that references the seed is reached. Query gains from fielded BM25F ranking, query normalization, and a pseudo-relevance feedback pass that rewrites a sparse title in the codebase's declared-symbol vocabulary before selecting files. On the larger corpus the gap between focus and query widens, because more of the 90 PRs carry sparse merge-style titles that the seed ranking cannot anchor.
-- Tiered emission is the largest single lift on focus and query. Dependency-expanded neighbours (provenance hop two or deeper) are reduced to signature skeletons rather than full bodies, so each costs fewer tokens and the budget-aware packer fits more files; recall counts file presence, so fitting more truth files raises recall. It lifted query at the headline budget from 51 to 55 percent and focus from 71 to 77 percent at fewer tokens (focus 46,543 to 41,505, query 46,366 to 43,190), with no per-repository regression: focus rose on AutoMapper (88 to 92), FluentValidation (74 to 88), and Newtonsoft.Json (21 to 28), query on AutoMapper (29 to 38), FluentValidation (51 to 57), and Newtonsoft.Json (30 to 32). The gain concentrates on the medium and large change-set strata, where the budget previously truncated truth files (focus medium 51 to 62 percent, large 14 to 24 percent). It is applied to query and focus only, not change mode. Set `FUSE_TIERED_EMISSION=0` to reproduce the untiered ordering.
-- Identifier-aware tokenization adds the last query points. Splitting identifiers on digit boundaries and acronym runs (so `OAuth2Token` yields `auth`, `2`, `token` and `HTTPClientFactory` yields `http`, `client`, `factory`) while keeping the whole token bridges a query that uses only part of a compound name. It lifted query recall at the headline budget from 55 to 57 percent, concentrated on AutoMapper (38 to 46 percent), with no per-repository regression at the headline budget; the tight 10,000 token row dips slightly (the extra sub-words shift ranking under a small budget), so the gain is a headline-budget effect.
-- Query expansion lifts the repositories where the title alone is too sparse. The second pass raised FluentValidation query recall from 47 to 51 percent and Newtonsoft.Json from 27 to 30 percent at the headline budget, with MediatR (94 percent) and AutoMapper (29 percent) unchanged, so the gain does not come at the cost of a per-repository regression. It is held to a low blend weight so an off-topic title does not displace an incidental first-pass hit. The effect is smaller at tight budgets (the 10,000 and 25,000 token query rows are slightly below the single-pass values) because the extra admitted seeds compete for a small budget; at the 50,000 token headline it is a clear gain.
-- Budget-aware expansion is the largest query lift this release. When a token ceiling is set, dependency expansion admits neighbours highest-score first only while their estimated reduced cost (skeleton-level for neighbours, since tiered emission skeletonizes them) fits the budget, instead of admitting the whole neighbourhood for the packer to cut. Holding the budget on the seeds and their closest neighbours lifted query recall at the headline budget from 57 to 61 percent (25,000 token row 45 to 49, 10,000 token row 33 to 39), with precision up (3 to 8 percent, wasted tokens 40,886 to 37,118) at fewer mean tokens (41,885 to 40,258). No per-repository regression at the headline budget (AutoMapper 46 to 50, Newtonsoft.Json 32 to 42, FluentValidation and MediatR unchanged), and every change-set-size stratum rose (small 68 to 71, medium 56 to 61, large 7 to 10). It is applied to the query path only. Set `FUSE_BUDGET_EXPANSION=0` to reproduce the unbounded expansion.
-- Dense rerank was measured and kept opt-in, not made the default, because it did not beat the lexical path. An optional in-process embedder (all-MiniLM-L6-v2) can rerank the candidate pool, blending the lexical score with query-to-document similarity. A measured A/B over the corpus (both arms) slightly regressed the headline rather than clearing the roughly 60 percent bar set for making it the default: query recall at 50,000 tokens fell from 61 to 59 percent (FluentValidation 57 to 55, Newtonsoft.Json 42 to 38, AutoMapper and MediatR unchanged). It trades off at the tight budgets rather than clearly winning: at 10,000 tokens it lifts the overall from 46 to 48 percent (AutoMapper 33 to 42, MediatR 72 to 78) but dips FluentValidation (39 to 35) and Newtonsoft.Json (40 to 38), and at 25,000 tokens it is flat overall (54). A general-purpose sentence embedder promotes plausible-but-wrong files over lexically exact ones once the budget is generous, so the lexical path remains the default and the published headline; dense rerank is available behind `FUSE_RERANK=1` with a downloaded model, and a code-trained embedder is the route to revisit it. Reproduce both arms with `spike-rerank.ps1`; the recorded results are in `tests/benchmarks/results/opt-in-levers.md`.
-- The cross-encoder reranker was measured and kept opt-in, not made the default, because it too did not beat the lexical path. A cross-encoder (ms-marco-MiniLM-L-6-v2) scores each query-document pair jointly rather than comparing two pooled embeddings, the more accurate reranker family. A three-arm A/B on the hard repos at the 50,000 token headline scored it 33 percent against the lexical floor at 46 and the bi-encoder at 44, below the roughly 60 percent bar for defaulting. The cause is structural: a cross-encoder runs once per candidate over the pair truncated to the model's context window, so at file granularity the relevant member deep in a large file falls outside the window the model sees. It is available behind `FUSE_RERANK=1` with `FUSE_RERANK_MODEL=cross`; feeding it shorter member-level chunks rather than whole truncated files is the open follow-up.
-- The coarse project-reference graph was measured and kept opt-in, a small clean win rather than the default. Parsing `.csproj` `ProjectReference` into a coarse inter-project graph and linking each candidate to files across the reference boundary (so a seed reaches a related test or sibling across the library/test assembly split) lifted query recall at the 50,000 token headline from 61 to 62 percent, concentrated on FluentValidation (57 to 61), with no per-repository regression. It is off the published default because the lift sits within the query confidence interval and it adds a `.csproj` disk scan per query; enable it with `FUSE_PROJECT_GRAPH=1`. The corpus is mostly two-project, so the cross-assembly case is lightly exercised; a multi-assembly corpus is the honest re-test.
-- Downgrade-before-drop is the largest focus lift and the largest tight-budget query lift. When the reduced set exceeds the budget, the lower-relevance tail that the packer would drop is replaced with a compact structural sketch (type and member names) instead, so a would-be-dropped file stays present; recall counts file presence. It only adds sketched files and never displaces a fuller one, so it cannot regress recall: focus rose from 77 to 92 percent at the headline budget (Newtonsoft.Json 28 to 74, FluentValidation 88 to 100), query rose at the tight budgets (10,000 token 39 to 46, 25,000 50 to 54) with the 50,000 headline unchanged at 61. The gain concentrates on focus, whose wide dependency neighbourhood the budget used to truncate, and on the medium and large change-set strata (focus medium 62 to 94 percent, large 24 to 60). It applies to query and focus under a budget, not change mode. Set `FUSE_DOWNGRADE_DROP=0` to reproduce the drop-only packer.
-- Precision stays modest under forward expansion. Seeding and graph expansion still surface more files than the task strictly needed; the relevance-ordered budget cut keeps the most relevant within the 50,000 tokens rather than the largest, and downgrade-before-drop keeps the rest as cheap sketches.
-- Newtonsoft.Json remains the hardest repository, but it is no longer a near-total miss. Over the original 24-PR corpus change recall rose from 17 to 56 percent and query from 0 to 42 percent as comment and string stripping removed false graph edges, fielded ranking found concept files, query expansion surfaced co-occurring symbol names, and budget-aware expansion kept the budget on the highest-ranked files. On the larger 108-PR corpus, which draws in more of its broad, conditional-compilation-heavy change sets, Newtonsoft.Json change recall is 49 percent and query 26 percent: deeply nested types and conditional compilation still defeat parts of the dependency graph, so it trails the smaller libraries.
-
-## Layer 2B: Single-Turn Localization
-
-Layer 2B is a cheap, outcome-flavored signal. It asks twelve natural-language questions of the form "which file handles X," each with one known correct answer file, and checks whether a mode surfaces that file inside a 20,000 token budget. The question set is recorded so the task is reproducible.
-
-| Mode | Accuracy | Hits | Mean tokens |
-|------|---------:|-----:|------------:|
-| query | 75% | 9/12 | 17,209 |
-| grep (baseline) | 58% | 7/12 | 19,924 |
-| focus | 42% | 5/12 | 7,401 |
-
-Findings, including losses:
-
-- Query now leads this task, after downgrade-before-drop. The baseline lands 7 of 12 answer files inside the 20,000 token budget by ranking on query-term hit count; query reaches 9 of 12 (75 percent) and focus 5 of 12 (42 percent). Query overtook grep because a target file that the 20,000 token budget used to drop is now kept as a compact sketch, so it is surfaced for localization even when its body did not fit. Before downgrade-before-drop, query and focus each reached 5 of 12 (42 percent) and grep led.
-- Focus spends the fewest tokens. Focus accuracy rose from 25 to 42 percent once it followed dependents as well as dependencies, and it spends about 7,400 tokens against query's 17,200. When the seed is a concept rather than a type name it still misses.
-- A lexical ceiling remains for the seed ranking. Ranking rewards shared vocabulary, so a question that shares no words or stems with the target file still ranks it low; downgrade-before-drop helps surface it within the budget once it is ranked at all, but a file the ranking never reaches is still missed. Layer 2B is the regression guard for future retrieval improvements.
-
-## Layer 4: Context Acquisition (Fuse VS No Fuse VS Repomix)
-
-This layer is the proof behind the front-door claim that Fuse collapses the explore phase
-into one scoped call; the concept is in [The explore phase](/docs/concepts/the-explore-phase).
-
-Layers 1 and 2 measure Fuse in isolation. Layer 4 puts three approaches side by side on the two axes that decide the real cost of a task: the round-trips it takes to acquire the context, and the input tokens that context costs. The task is the same one Layer 2A uses, "assemble the context this change needs," and the needed files are the C# files each of the 108 real merged pull requests touched. For every pull request the harness reconstructs the head state in a Git worktree and measures three arms at the same 50,000 token budget (with 10,000 and 25,000 token points for the curve). All counts use `o200k_base`.
-
-The three arms answer one question in three ways:
-
-- **no-fuse** is what an agent pays with no tool: it reads the files the task needs, one at a time. Its round-trip count is the number of files the change touches, which is a structural lower bound, because a blind agent must read each needed file at least once and in practice reads more while exploring to find them. Its recall is 1.00 by construction (it is exactly the needed set). The harness also records the whole-repo token total as the "explore blind" ceiling, what an agent pays if it cannot find the right files and reads broadly.
-- **Repomix** is the cost-of-not-scoping baseline: a generic full-dump packer that never scopes, one dump of the whole repository. One call, recall 1.00 by construction (it contains everything), and the token cost of the entire repository. It cannot lose on scoping because it never scopes, so its role is to show what blind packing costs in tokens, not to contest scoping.
-- **Fuse** is one scoped call. The harness runs three Fuse arms: `fuse --query "<PR title>"` (the stress floor: a sentence, no prior knowledge of the change, which routes to search), `fuse --changed-since <base>` (the routed default when a Git base is available, seeding on the diff with first-degree dependents), and `fuse ask --task "<PR title>"` (Fuse picks the strategy from the task text). All are one call, at `--depth 2 --level standard --max-tokens 50000`; recall is the fraction of the changed files the scoped output contains.
-
-Means across the 90 pull requests at the headline budget:
-
-| Arm | Round-trips | Input tokens | Recall of needed files |
-|-----|------------:|-------------:|-----------------------:|
-| no-fuse (blind, whole repo) | >= 6.8 | 348,147 | 1.00 |
-| no-fuse (relevant set) | >= 6.8 | 22,511 | 1.00 |
-| Repomix (one dump) | 1 | 363,039 | 1.00 |
-| Fuse (`--query`) | 1 | 31,978 | 49% |
-
-The round-trip number for no-fuse is a lower bound, not a measured agent: it is the mean count of files the change touched (6.8), and a real agent reads more while discovering them. Recall for no-fuse and Repomix is 1.00 by construction, so this is not a recall contest; the contest is tokens at one call (against Repomix) and round-trips against blind exploration. Always read Fuse's token number together with its recall: 31,978 tokens at 49 percent recall is the honest pairing for the query stress floor. The whole-repo and Repomix means dropped from the earlier five-library figures because adding the small eShopOnWeb application pulls the mean repository size down; the ratios hold.
-
-The table above uses the query arm as a deliberate stress floor: only a PR title, no Git base, so Fuse routes to search. When a Git base is available, the routed default is change scoping, and the story strengthens from "fewer tokens at lower recall" to "the task's files at a fraction of Repomix tokens":
-
-| Arm | Recall | Mean tokens |
-|-----|-------:|------------:|
-| `fuse --changed-since` (routed) | 91% | 25,805 |
-| `fuse ask` (routed) | 49% | 32,369 |
-| `fuse --query` (stress floor) | 49% | 31,978 |
-
-The change-scoped arm reaches 91 percent of the changed files at 25,805 tokens, against Repomix's 363,039 at the same one call, about 14 times fewer at higher useful recall. The ask arm is what Fuse picks from the title alone (search for most of these titles), so it tracks the query floor rather than the change arm; ask is the routing convenience, change scoping is the recall win when a base exists. Reading the budget curve as tokens-to-target-recall makes the gap concrete: change scoping clears 80 percent mean recall at the 25,000 token budget (15,053 mean tokens), while neither query nor ask reaches 80 percent by 50,000 tokens.
-
-Recall varies widely by repository, and the mean hides that. The per-repository view at the headline budget:
-
-| Repo | no-fuse round-trips (>=) | no-fuse relevant set | whole repo | Repomix | Fuse | Fuse recall |
-|------|-------------------------:|---------------------:|-----------:|--------:|-----:|------------:|
-| MediatR | 5.5 | 7,113 | 75,013 | 80,033 | 30,338 | 83% |
-| FluentValidation | 4.7 | 10,003 | 243,044 | 255,104 | 34,361 | 42% |
-| AutoMapper | 6.3 | 12,706 | 445,473 | 462,521 | 37,748 | 35% |
-| Newtonsoft.Json | 11.9 | 86,590 | 1,108,834 | 1,145,234 | 39,678 | 30% |
-| Serilog | 6.9 | 16,280 | 169,169 | 175,367 | 41,307 | 55% |
-| eShopOnWeb (application) | 5.7 | 2,373 | 47,349 | 59,975 | 8,434 | 47% |
-
-The application row is the cheapest in the corpus: eShopOnWeb's whole repository is only 47,349 tokens, so Repomix's full dump (59,975) is already small, and Fuse's scoped query reaches 47 percent of the changed files in 8,434 tokens. On a small application the absolute token win over a packer shrinks (the repository is not large to begin with), while the round-trip and recall story is unchanged.
-
-Recall rises with the budget, as expected, since a larger budget admits more of the neighborhood:
-
-| Budget | Fuse mean recall | Fuse mean tokens |
-|-------:|-----------------:|-----------------:|
-| 10,000 | 38% | 7,890 |
-| 25,000 | 43% | 17,538 |
-| 50,000 | 49% | 31,978 |
-
-Findings, including the honest boundary:
-
-- One Fuse call replaces many blind round-trips. A blind agent must read at least the files a change touches, a mean of 6.8 and as many as 11.9 on Newtonsoft.Json, before it has the context; Fuse and Repomix each acquire it in one call. Fuse does not beat Repomix on round-trips, it ties it at one call.
-- At that one call, Fuse costs far fewer tokens than the generic packer. Fuse delivers the scoped context in 31,978 tokens on average against Repomix's 363,039, about 11 times fewer, and against the 348,147 tokens of reading the whole repository blind. The Fuse number is the reduced, scoped set the task needs, not the whole repository.
-- The token win is paired with partial recall, and that is the trade. Fuse query reaches 49 percent of the changed files at the headline budget, against 1.00 for Repomix and the relevant set, which include everything by construction. Where the query carries real domain words and the repository is not dominated by conditional compilation, recall is high (MediatR 83 percent); on Newtonsoft.Json and on broad changes it is lower. For pull-request review, where a Git base is available, the change-scoping mode reaches 91 percent recall in this layer and 89 percent in Layer 2A. The defensible claim is coupled: Fuse reaches recall R of a task's files in one call at far fewer tokens than a generic packer needs for the same one call, while blind exploration needs at least K round-trips.
-
-Reproduce this layer with the full suite or on its own:
+Run a suite by name:
 
 ```bash
-pwsh -File tests/benchmarks/harness/run-all.ps1
-pwsh -File tests/benchmarks/harness/layer4-scenario.ps1
+fuse eval semantics
+fuse eval review
+fuse eval localize
+fuse eval agent
 ```
 
-Results land in `results/layer4-scenario.{json,csv,md}`, one row per pull request, arm, and budget, so the curve and the per-repository view are reconstructable. The Repomix arm needs `npx`; when it is unavailable that arm is omitted (never stubbed), and every Fuse-versus-no-fuse number still stands.
+Each suite writes its scorecard to `tests/benchmarks/results/<suite>.json` (one file per suite: `semantics.json`, `review.json`, `localize.json`, `agent.json`), with the per-task hits, misses, and the index-mode distribution that produced the numbers. The agent suite additionally requires a model and the Claude Code CLI, and is not byte-reproducible.
 
-## Layer 5: Agent Context Sufficiency (Fuse VS Bare Tools)
+## Suite A: Semantic Resolution (the deterministic moat)
 
-Layer 4 bounds the explore phase structurally: a blind agent must read each needed file at least once. Layer 5 replaces that lower bound with a real agent. The same model drives every arm and only the toolbox changes, so any difference is attributable to the tools, not the model. The layer measures the cost to acquire sufficient context (tool calls and cumulative input tokens across the whole trajectory) and the quality of what was acquired (recall and precision of the gathered file set against the pull request's C# change set, plus a model-scored sufficiency verdict).
+Suite A checks the extracted semantic graph against a hand-built edge ground truth on the in-repo OrderingApp wiring fixture. The fixture covers the four .NET wiring kinds that a regex or a tree-sitter scan cannot follow: DI registration and constructor injection, MediatR request-to-handler dispatch, ASP.NET route-to-action mapping, and options binding and consumption.
 
-This layer is model-dependent and not byte-reproducible. Unlike Layers 1, 2, and 4, the numbers depend on the model, its sampling, and the day; read them as a distribution over rollouts, not a fixed measurement. The honesty contract for this tier pins the model id, the run date, and the rollout count, reports a distribution rather than a point estimate, always reads recall together with tokens, and shows losses and per-repo variance.
+Result: 100 percent recall and 100 percent precision, 10 of 10 edges matched with zero false positives. This is the deterministic moat: when the workspace loads with semantics, Fuse resolves .NET wiring exactly, and nothing in the result depends on a model or a token budget.
 
-The design is four arms under one driver: **native** (filesystem read tools only: Read, Grep, Glob), **fuse** (the `fuse_*` MCP tools), **codegraph** (the CodeGraph MCP tool), and **serena** (the Serena symbol toolkit). The driver is the `claude` CLI in headless mode, pinned to `claude-sonnet-4-6`, run on 2026-06-26, three rollouts per (pull request, arm) over a deterministic 18-PR sample (three PRs per repository across the six repositories), 216 rollouts in all. The CodeGraph index build and Serena LSP warm-up are setup, outside the measured trajectory. Each rollout is bounded by a per-MCP-call timeout and a wall-clock backstop, so a wedged or slow MCP call cannot stall the layer; no rollout was omitted on this run.
+This is the suite that runs on the full semantic graph (the fixture loads with a complete workspace). The corpus suites below run mostly in partial or syntax mode, so read them against this ceiling.
 
-Per arm, median and inter-quartile range over all rollouts:
+## Suite B: Change Impact and Review
 
-| Arm | Tool calls (median, IQR) | Cumulative input tokens (median, IQR) | Mean recall | Mean precision | Sufficiency rate |
-|-----|--------------------------|---------------------------------------|------------:|---------------:|-----------------:|
-| native | 6 (2.2-9) | 197,034 (120,878-284,522) | 24% | 35% | 0.15 |
-| fuse | 6 (4-8.8) | 195,486 (125,121-279,097) | 25% | 23% | 0.22 |
-| codegraph | 4 (2-6) | 154,430 (86,621-207,155) | 18% | 25% | 0.11 |
-| serena | 3 (2-6) | 116,774 (86,681-183,172) | 13% | 16% | 0.07 |
+Suite B measures whether `fuse review` scopes a real merged PR to the files it touches plus the semantic blast radius around them. The sample is 48 real merged pull requests, 8 per repository across the six repositories, at a 25,000-token budget. Changed files are seeded as must-keep, so the question this suite answers is precision: beyond the files the PR changed, what else does review return, and is it relevant.
 
-The fuse and native arms track each other on recall (25 against 24 percent) at the same median token cost (about 195,000 against 197,000), with fuse reaching a higher model-scored sufficiency rate (0.22 against 0.15): on this sample, given the same Claude brain, the `fuse_*` tools gathered sufficient context slightly more often at equal recall and tokens. The codegraph and serena arms are cheaper, fewer tool calls and fewer tokens, but at lower recall: they gather a tighter set and miss more of the change set. The inter-quartile ranges are wide, the expected model-dependent variance and the reason the layer runs rollouts rather than a single point.
+| Metric | Value |
+|--------|------:|
+| Changed-file recall | 100% |
+| Precision | 89.6% |
+| F1 | 0.95 |
+| Median returned tokens | 874 |
+| Mean returned tokens | 3,196 |
 
-Per repository, the mean hides real wins and losses (mean recall, all four arms):
+Index modes over the 48 PRs: partial 12, syntax 36.
 
-| Repo | native | fuse | codegraph | serena |
-|------|-------:|-----:|----------:|-------:|
-| AutoMapper | 19% | 42% | 14% | 11% |
-| eShopOnWeb (application) | 4% | 0% | 1% | 1% |
-| FluentValidation | 23% | 30% | 51% | 33% |
-| MediatR | 48% | 33% | 7% | 0% |
-| Newtonsoft.Json | 43% | 40% | 25% | 20% |
-| Serilog | 7% | 7% | 9% | 13% |
+Findings, including the boundary:
 
-Findings, including the losses:
+- Changed-file recall is 100 percent by construction, since the changed files are seeded as must-keep. The signal in this suite is precision (89.6 percent) and F1 (0.95): review rarely returns a file the change did not touch or pull in.
+- Review delivers a PR's context compactly. The median PR is scoped in 874 returned tokens, the mean in 3,196. This is where token efficiency lives in V3: a rendering and transport property of the scoped review output, not a separate reduction claim.
+- The semantic blast radius shows up on the application, not the libraries. On eShopOnWeb (partial mode) review adds files beyond the changed set through the semantic graph, which lowers precision where the extra files are the wiring a reviewer would want: eShopOnWeb#322 scopes at 21 percent precision, eShopOnWeb#300 at 35 percent. The library repos load in syntax mode and scope tightly to the changed files, which is why aggregate precision stays high. The honest reading: the partial-mode application is where the blast radius is exercised, and there the wider set is the point, not noise.
 
-- No arm dominates, and the head-to-heads split by repository. Fuse clearly wins AutoMapper (42 percent against native 19, codegraph 14, serena 11). CodeGraph wins FluentValidation (51 against fuse 30 and native 23), the clearest peer win on the board. Native wins MediatR (48 against fuse 33), where direct file reading found the handlers a scoping tool spread thinner. Newtonsoft.Json is a near-tie between native and fuse (43 against 40). This is the honest result the level-field comparison was built to surface: with the same model, the right tool depends on how the codebase is organized.
-- Fuse edges native on the aggregate that matters here. At equal recall and tokens, the fuse arm's higher sufficiency rate (0.22 against 0.15) is the signal that its gathered set covered the change more often, even though raw recall is a tie. Read it as a small, sample-sized edge, not a settled win.
-- The peer arms trade recall for cost. CodeGraph (18 percent recall at 154,000 median tokens) and Serena (13 percent at 117,000) both gather less and cost less than native or fuse; Serena, multi-call by design, made the fewest calls here and gathered the least. Cheaper is not better when it misses needed files; this is why recall is read with tokens.
-- The eShopOnWeb application drags every arm to near zero (native 4, fuse 0, codegraph 1, serena 1 percent). The three sampled application PRs have titles that do not name the C# files they change, so the task signal points nowhere near the ground truth for any tool. This is a property of the application sample, not a tool difference.
-- Sufficiency is a model-scored 0/1 verdict and is labeled as such; recall and precision against the change set are the objective measures. Absolute numbers will shift under a different model; the comparison is between arms under one model, which is held fixed.
+## Suite C: Open-Ended Localization (the weakest mode)
 
-Reproduce this layer (it requires the `claude` CLI and the peer MCP servers, and is not in the default `run-all.ps1` path; an absent tool omits that arm, never stubbed):
+Suite C is the open-ended floor. It gives `fuse localize` only a PR title, with no Git base, and asks it to find the changed files from the title text alone over 108 PRs. This is the hardest mode and the one where Fuse is weakest.
 
-```bash
-pwsh -File tests/benchmarks/harness/layer5-agent.ps1 -PerRepo 3 -Rollouts 3 -Model claude-sonnet-4-6 -Arms native,fuse,codegraph,serena
-```
+| Metric | Value |
+|--------|------:|
+| Changed-file recall | 27.3% (95% CI 21.5 to 33.4) |
+| Precision | 8.4% |
+| Median returned tokens | 2,658 |
 
-Results land in `results/layer5-agent.{json,csv,md}`, one row per pull request, arm, and rollout, so the distribution and the per-repository view are reconstructable.
+By signal bucket (how much the title tells the engine where to look):
 
-## Layer 6: Peer Scopers (Fuse VS CodeGraph VS coa-codesearch)
+| Bucket | Mean recall |
+|--------|------------:|
+| identifier-rich | 40% |
+| test-only | 33% |
+| no-signal | 33% |
+| natural-language domain | 23% |
+| route/API | 12% |
+| formatting | 8% |
 
-Layers 4 and 5 measure Fuse against blind exploration and a generic full-dump packer. Layer 6 measures it against tools that do the same job: index a repository and return the relevant code for a task. The framing is deliberately narrow and stated up front. On .NET, this is Fuse (Roslyn, C#-specialized, BM25F scoping) against an offline graph tool (CodeGraph, a tree-sitter call graph) and an offline .NET lexical tool (coa-codesearch-mcp, a Lucene.NET index with tree-sitter type extraction, the closest methodological cousin to Fuse's own lexical ranking). Every peer is offline and keyless: no API key, no remote model, no server. Each tool gets the PR title as the query and returns a file set, scored against the same Layer 2A ground truth (`changed_cs`). No peer's published numbers are quoted; only what this harness measured appears here.
+Findings, including the known gap:
 
-This layer is tool-dependent and gated off the default `run-all.ps1` path. CodeGraph's `explore` is largely deterministic; coa-codesearch is MCP-only with no CLI, so its one search call is driven through the same headless `claude` mechanism Layer 5 uses, restricted to its search tool, which makes the coa arm model-driven (a `claude-sonnet-4-6` driver, run 2026-06-26) and not byte-reproducible. The sample is two PRs per repository (12 PRs); CodeGraph's index build (`codegraph init`) is setup, excluded from the reported token cost, the analogue of Fuse's prebuilt index.
+- Recall tracks the signal in the title. When the title names identifiers that appear in the code (identifier-rich, 40 percent), localization does best; when the title is a domain phrase (23 percent), a route or API description (12 percent), or a formatting note (8 percent), it does worse. This is the expected shape of a title-only, no-base task.
+- Low-signal detection is a known gap. The suite scores whether Fuse flags a title that carries no usable signal (so it can decline rather than guess). Low-signal detection F1 is 0.11 (1 true positive, 8 false positives, 8 false negatives). State this plainly: V3 does not yet reliably flag a no-signal title and instead returns full-text candidates. Closing this gap (declining or warning on a no-signal query rather than returning junk) is open work.
+- This is the floor, not the routed path. With a Git base available, the routed mode is change impact (Suite B), which is where the recall and precision are. Suite C is what Fuse can do from a sentence with no base, and it is reported as the weakest mode on purpose.
 
-| Arm | Mean recall | Mean precision | Mean tokens | What it returns |
-|-----|------------:|---------------:|------------:|-----------------|
-| fuse | 60% | 7% | 31,912 | reduced source of the scoped set |
-| coa-codesearch | 59% | 21% | 3,831 | ranked path and snippet list |
-| codegraph | 17% | 11% | 4,623 | verbatim source of focused symbols |
+## Suite D: Agent Context Sufficiency (model-dependent)
 
-The token columns are not directly comparable, and the table says why: Fuse and CodeGraph return source the agent can read directly, while coa returns a ranked list of paths and snippets the agent would still have to open, so coa's token count is small by construction and is not delivered context. Recall and precision against the change set are the comparable axes.
+Suite D replaces a structural bound with a real agent. It runs one Claude Code CLI driver, model `claude-sonnet-4-6`, over 6 PRs in two arms (native filesystem tools, and the Fuse MCP tools), one rollout each, for 12 rollouts. It measures the file recall of the set the agent gathered and the cumulative tokens it spent.
 
-Per repository, the mean hides where each tool wins:
+This suite is model-dependent and not byte-reproducible. The numbers depend on the model, its sampling, and the day; read them as a small, wide-CI sample, not a fixed measurement, and always read recall together with tokens.
 
-| Repo | fuse recall | coa recall | codegraph recall |
-|------|------------:|-----------:|-----------------:|
-| MediatR | 83% | 100% | 42% |
-| FluentValidation | 83% | 72% | 11% |
-| AutoMapper | 50% | 62% | 25% |
-| Newtonsoft.Json | 100% | 88% | 25% |
-| Serilog | 40% | 33% | 0% |
-| eShopOnWeb (application) | 6% | 0% | 0% |
+| Arm | Mean file recall | Median cumulative tokens |
+|-----|-----------------:|-------------------------:|
+| fuse | 21% | 135,012 |
+| native | 27% | 211,850 |
 
-Findings, including where Fuse loses:
+The sample is small and the confidence interval is wide (0 to 54 percent), so neither arm's mean is a settled result.
 
-- Fuse and coa-codesearch are close on recall (60 against 59 percent), and they split the corpus. Fuse leads on Newtonsoft.Json (100 against 88 percent) and FluentValidation (83 against 72), where C# structure matters and Roslyn is the home-field edge; coa leads on MediatR (100 against 83) and AutoMapper (62 against 50), where a Lucene lexical match on the title finds the changed files directly. This is the honest result the level-field comparison was built to surface: on this sample the .NET lexical peer ties Fuse on aggregate recall.
-- CodeGraph trails on recall (17 percent) but returns the tightest sets (precision 11 percent at about 4,600 tokens). Its `explore` is built to return a small, high-confidence symbol neighborhood with call paths, not to maximize recall of a change set, so it is precise and narrow rather than broad. Read with tokens, it is a different operating point, not simply worse.
-- All three tools collapse on the eShopOnWeb application's two sampled PRs (fuse 6, coa 0, codegraph 0 percent). Those PR titles do not echo the C# files they changed, so a title-query scope points nowhere near the ground truth for every tool. This is the same title-signal problem the Layer 2A application rows show, not a tool difference.
-- The coa arm is model-driven, so its recall blends the tool with the driver model and varies run to run; it carries the same model-pinned, not-byte-reproducible caveat as Layer 5. Fuse's and CodeGraph's arms are deterministic given the index.
+Findings, including the shape:
 
-Reproduce this layer (it requires the peers and is not in the default `run-all.ps1` path; absent peers are omitted, never stubbed):
+- Read recall with tokens. The fuse arm reached 21 percent mean recall at a median 135,012 cumulative tokens; native reached 27 percent at a median 211,850. The fuse arm gathered a somewhat less complete set at a markedly lower token cost on this sample.
+- The win is concentrated where the title names the wiring. On MediatR#1171, whose title names the licensing wiring, the fuse arm reached 100 percent recall in 4 tool calls at 121k tokens, while the native arm read 328k tokens to reach the same recall. When the semantic signal is present, the Fuse tools find the files fast and cheap.
+- The sample is too small to generalize. Six PRs, one rollout per arm, one model, one day. This suite is a directional signal about whether the Fuse MCP tools help an agent, not a benchmark of agent task success.
 
-```bash
-$env:COA_CODESEARCH_EXE = '<path to the built COA.CodeSearch.McpServer host>'
-pwsh -File tests/benchmarks/harness/layer6-peers.ps1 -PerRepo 2 -Model claude-sonnet-4-6
-```
+## What Is Not Measured on V3
 
-Results land in `results/layer6-peers.{json,csv,md}`, one row per pull request and arm, with recall, precision, and tokens, so the per-repository view is reconstructable.
+These were measured on the retired V2 surface and have not been re-run on the V3 semantic engine. Do not quote the old percentages as V3 results:
 
-## Retrieval and Output Changes: Before and After
+- Token reduction percentages and public-API fidelity percentages. V3 frames token cost as a transport feature (review's median 874 returned tokens), not as a standalone reduction ratio against raw concatenation.
+- Warm-call latency. The warm persistent index model is described qualitatively in [Performance and Benchmarking](/docs/project/performance); no V3 latency number is published.
+- The peer-scoper comparison against CodeGraph and coa-codesearch.
+- Full task resolution: driving an agent across arms and scoring its patch against a test oracle.
 
-This section records the effect of the retrieval work and the output and trust work against the pinned corpus. All token counts use `o200k_base`. The default and `--level aggressive` keep 99 to 100 percent of public types and methods, so the reduction cut was not bought by dropping API; the skeleton level now runs on the Roslyn extractor and keeps every signature (the move that retired the regex skeleton's Newtonsoft.Json collapse is in the Roslyn structural analysis result below).
-
-### Retrieval and Scoping
-
-The six retrieval items change one scoring and expansion pipeline, so the harness measures their combined effect rather than isolating each. The before and after columns below were measured over the original 24-PR, four-library corpus at the time the retrieval work landed; they are the historical record of that release. The current headline over the 90-PR, five-library corpus is the Layer 2A table above (changes 89, focus 78, query 48), where the larger and less favorable sample lowers focus and query while change scoping holds.
-
-| Metric (over the original 24-PR corpus) | Before | After |
-|--------|-------:|------:|
-| Layer 2A recall, changes | 71% | 87% |
-| Layer 2A recall, focus | 26% | 92% |
-| Layer 2A recall, query | 37% | 61% |
-| Layer 2A precision, changes | 21% | 50% |
-| Layer 2B accuracy, focus | 25% | 42% |
-| Layer 2B accuracy, query | 25% | 75% |
-| Grep baseline (unchanged) | 38% / 58% | 38% / 58% |
-
-What each item contributes to that combined movement:
-
-1. Reverse edges and dependents. Focus and changed-since now pull files that reference a seed's declared types, not only the files it references. This is the main driver of the focus recall gain and the changes precision gain (dependents replace a wider forward expansion).
-2. Fielded ranking (BM25F). Declared type and member names and path tokens are weighted above the body, which moves the file that declares a concept above files that mention it. This contributes to the Layer 2A query recall gain and lifted Layer 2B query accuracy from 25 to 42 percent; downgrade-before-drop later took query localization to 75 percent, overtaking grep (58 percent).
-3. Comment and string stripping. Removing type names that appear only in comments or strings before graph extraction cut false edges; this is the largest contributor to the Newtonsoft.Json improvement, where prose and string mentions previously polluted the graph.
-4. Budget-aware, rank-decayed expansion. Best-first expansion with per-hop decay and a budget stop keeps the seed neighborhood and drops distant files first, which holds precision as recall rises.
-5. Query normalization. CamelCase splitting, stopword removal, and light stemming align a natural-language question with code identifiers, contributing to the query gains in both layers.
-6. Relevance-ordered truncation. Under a token budget, emission now writes most-relevant first instead of largest first, so the seed file survives the cut. This protects recall and accuracy at the 50,000 and 20,000 token budgets used here.
-7. Pseudo-relevance feedback query expansion. A second BM25F pass seeded with recurring declared-symbol terms from the first pass's top files rewrites a sparse title in the codebase's vocabulary. It lifts Layer 2A query recall from 49 to 51 percent at the headline budget, concentrated on FluentValidation (47 to 51) and Newtonsoft.Json (27 to 30), with MediatR and AutoMapper unchanged.
-
-### Output and Trust
-
-These features are opt-in and do not change the default output, so they do not move the Layer 1 or Layer 2 arms above. Their effect is measured directly.
-
-- Compact envelope (`--format compact`). Measured on the corpus under default reduction against XML: MediatR 85,431 to 84,732 tokens (0.8 percent), FluentValidation 277,453 to 276,389 (0.4 percent), AutoMapper 456,992 to 454,740 (0.5 percent), Newtonsoft.Json 3,155,917 to 3,151,980 (0.1 percent). The saving is the per-file envelope, so it grows with file count and shrinks as a fraction when files are large.
-- Header dedup (`--dedup-headers`). On the pinned corpus the saving is negligible, because these projects do not prepend an identical comment header to every file (Newtonsoft.Json wraps its license in a `#region`, which the dedup correctly leaves alone). On a synthetic 40-file project where each file carries the same three-line banner, dedup cut 3,131 tokens to 1,989 (36 percent). The feature pays off on header-heavy codebases and is honestly near-zero here.
-- Tokenizers. The Anthropic and Gemini estimators are deterministic. On a small sample the run report counted 49 tokens under `o200k_base`, 60 under `claude`, and 59 under `gemini`, reflecting their published characters-per-token ratios. These are estimates; OpenAI encodings remain exact.
-- Verify. On MediatR excluding tests, `fuse verify` reports 86 of 86 public types and 36 of 36 public methods preserved under the default and `--level aggressive`. It is a trust check, not a reduction metric.
-- Explain and the JSON run report. Both surface the run without changing it: explain lists included and excluded files with a token estimate, and `--report` emits a machine-readable summary that names the tokenizer. They have no token-reduction figure to report.
-
-### Round-Trips and the Precision Tier
-
-The round-trip features (table-of-contents survey, the `fuse_ask` auto-scope tool, review-shaped change emission, session-delta emission) and most of the precision tier (symbol-level scoping, the persistent index, cross-language reduction, and generated-code collapse) are opt-in and do not change the default reduction or scoping path: the Layer 1 default (`--level none`) and `--level aggressive` token counts and fidelity are unchanged. The one tier feature that is now mandatory rather than opt-in is Roslyn structural analysis, which backs the `--level skeleton` level and the structural scoping path; the Layer 1 skeleton rows above therefore report the Roslyn extractor, which keeps every signature at a larger token size than the retired regex skeleton (see the Roslyn structural analysis result below).
-
-Each item is measured directly where the harness exercises it:
-
-- Table-of-contents (`--toc`, `fuse_toc`). On the SampleShop fixture the table of contents is 221 tokens against a 624-token cost to read every listed file in full under the default reduction, so the survey costs about a third of fetching the files it maps. The saving grows with file count, since the table of contents lists one line plus a symbol outline per file regardless of file size.
-- Round-trips: a measured lower bound plus a measured agent. The round-trip claim rests on two measurements, not a hand-rolled model. The Layer 4 bound above is the structural floor: a blind agent must read each file a task needs at least once (a lower bound from real change sets, a mean of 6.9 files and as many as 11.9 on Newtonsoft.Json), while Fuse and Repomix each acquire the context in one call. Layer 5 then replaces the bound with a real agent and measures the actual tool-call and cumulative-token cost to gather sufficient context, arm by arm. The earlier illustrative quadratic prefill model (a simulated stateless agent re-sending its whole context each turn) has been retired now that Layer 5 measures the same thing with a real agent; the archived script (`spike-layer3-prefill-model.ps1`) stays in git history but is no longer part of the suite. A downstream task-success layer (feeding fused context to a fixed model and scoring the resulting patch against a test oracle) remains out of scope and is listed under Blocked And Out Of Scope.
-- Generated-code collapse (`--collapse-generated`). The corpus libraries contain no EF Core migrations, so this item does not move the Layer 1 numbers; it is unit-tested on a migration fixture, where the generated `Up`, `Down`, and `BuildModel` bodies are dropped while the class and method signatures are kept. It is reported here as not exercised by the corpus rather than as an improvement.
-- Cross-language reduction (TS, JS, SQL). The corpus is a C#-only mirror, so this item does not move the Layer 1 numbers either; the TypeScript-family and SQL reducers are unit-tested for comment and whitespace removal. Extending the corpus with a TypeScript or SQL repository is the way to confirm a ratio, and is noted as future work rather than claimed here.
-- Roslyn structural analysis. This is the accuracy result of the whole effort. Running `--level skeleton` over the same C#-only mirrors the harness uses, with the same independent Roslyn fidelity oracle, Roslyn keeps the signatures the retired regex skeleton dropped:
-
-  | Repo | Regex skeleton | Roslyn skeleton |
-  |------|----------------|-----------------|
-  | MediatR | types 100%, methods 84% | types 100%, methods 100% |
-  | FluentValidation | types 98%, methods 99% | types 100%, methods 100% |
-  | AutoMapper | types 91%, methods 86% | types 99%, methods 100% |
-  | Newtonsoft.Json | types 71%, methods 4% | types 100%, methods 100% |
-
-  The Newtonsoft.Json row is the headline: regex skeleton kept 4 percent of method signatures, Roslyn keeps 100 percent. The cost is honest output size. Because the regex skeleton dropped most signatures, its deep cut was partly a fidelity failure, not real saving. The Roslyn skeleton is a faithful signatures-only cut and is therefore larger: Newtonsoft.Json moves from 96,953 tokens (regex, 93.4 percent reduction but 4 percent method fidelity) to 694,862 tokens (Roslyn, 52.7 percent reduction at 100 percent fidelity). MediatR moves from 26,405 to 39,865 tokens, FluentValidation from 51,890 to 115,635, AutoMapper from 159,542 to 258,427. This is the intended trade: the precision tier does not weaken fidelity to inflate reduction. Symbol-level scoping rides on the same tier and is unit-tested rather than measured over the corpus, since the corpus carries no god-class for a representative member slice.
-
-### The Persistent Index: Cold versus Warm
-
-The persistent index (`--index`, on by default in watch and serve) caches per-file analysis on disk so repeated scoped calls reuse it. Measured on MediatR (152 C# files) with a query-scoped run, wall-clock cold (a cleared index) versus warm (the index populated by a prior run), counted on one Windows machine and including the fixed process startup cost:
-
-| Tier | Cold | Warm |
-|------|-----:|-----:|
-| Regex (default) | 1,032 ms | 626 ms |
-| Roslyn | 1,127 to 1,217 ms | 611 to 644 ms |
-
-The warm run is about half the cold run. The Roslyn tier is more expensive cold because it parses each file, and the index is what amortizes that parse: warm, the two tiers converge because neither re-analyzes an unchanged file. These figures are directional and machine-specific, like the other wall-clock numbers on this page; the index's correctness (a hit returns the stored analysis, a changed file misses) is covered by unit tests.
-
-A note on the competitor arm: the Repomix comparison in the Layer 1 table and the Layer 4 scenario was measured live in this environment through `npx`. When `npx` is unavailable, the harness does not publish a broken stub: Layer 1 carries the prior committed Repomix row with a clear notice, and Layer 4 omits the Repomix arm for that run. The Fuse-versus-raw and Fuse-versus-no-fuse numbers do not need `npx` and stand regardless.
+Each of these is not-yet-measured on V3, not a claim. Treat any such figure as illustrative until a V3 suite produces it.
 
 ## How to Read These Results Together
 
-Layer 1 is the strong, clean claim: Fuse cuts 6 to 46 percent of tokens at full public-API fidelity with the default and `--level aggressive`, cuts 39 to 56 percent with the Roslyn skeleton at full signature fidelity, and beats Repomix on token cost in every mode. That claim is deterministic and holds across all six repositories, the five libraries and the application.
-
-Layer 2 is the honest boundary. Change scoping is reliable because it rests on Git, and it carries moderate precision through one-hop dependents: it leads the recall task at 89 percent over the 108-PR corpus, and holds at 91 percent on the application. Focus and query rest on a best-effort dependency graph and a lexical BM25F index; with reverse edges, fielded ranking, comment and string stripping, and query normalization they clear the grep baseline on the pull-request recall task, though the larger and less favorable 108-PR corpus lowers them (focus 74, query 48) relative to the original 24-PR sample, and the application drags focus the most (55 percent there, since DI and configuration wiring defeat a one-hop neighborhood). They help most when the query carries real domain words and the codebase is not dominated by conditional compilation, which is why Newtonsoft.Json still trails. On single-turn localization, query leads because downgrade-before-drop surfaces a dropped answer file as a sketch within the budget, though a lexical ceiling remains when the question shares no vocabulary with the target file.
+Suite A is the clean, deterministic claim: with a semantic workspace, Fuse resolves .NET wiring exactly (10 of 10 edges). Suite B is the practical strength: review scopes a real PR at 89.6 percent precision and 100 percent changed-file recall in a median 874 tokens, with the semantic blast radius exercised on the application in partial mode. Suite C is the honest floor: from a title alone with no base, recall is 27.3 percent and the engine does not yet flag a no-signal title. Suite D is a small, model-dependent signal that the Fuse MCP tools can gather the right files cheaply when the task names the wiring. The recurring caveat across the corpus suites is index mode: most repositories load in syntax or partial mode in this environment, so the corpus numbers sit below the semantic ceiling that Suite A and the application demonstrate.
 
 ## Blocked and Out of Scope
 
-- Task resolution with a test oracle. Agent context *sufficiency* is now measured (Layer 5: did a real agent gather the files the task needs, and at what cost). Full task *resolution*, a SWE-bench-style harness that drives an agent across arms and scores its patch with a test oracle, is still not built here. It needs provisioned model credentials and compute, and it is confounded and scaffold-specific. It remains aspirational, as the roadmap states.
-- Cross-machine timing. Wall-clock and memory were captured on one Windows machine. They are directional. Token counts and fidelity are machine-independent.
-- Tokenizer scope. All counts use `o200k_base`. Absolute counts differ under other encodings; the ratios are what transfer.
+- Full semantic load across the whole corpus. Most corpus repositories load in syntax or partial mode here because the offline harness does not provision a restored MSBuild workspace per repository. The full semantic graph is exercised on eShopOnWeb (partial) and the in-repo fixture (full). A restored-workspace corpus run is the way to lift the corpus suites toward the Suite A ceiling.
+- Task resolution with a test oracle. Suite D measures context sufficiency (did a real agent gather the files the task needs, and at what cost). Full task resolution, a SWE-bench-style harness that scores an agent's patch against a test oracle, is not built here; it needs provisioned model credentials and compute and is scaffold-specific.
+- Cross-machine timing. No V3 latency is published; see Performance for the qualitative warm-index model.
+- Tokenizer scope. All counts use `o200k_base`. Absolute counts differ under other encodings.
 
 ## Related Pages
 
-The measurement method for cold start and pipeline timing is in [Performance and Benchmarking](/docs/project/performance). The reduction flags are in the [Options reference](/docs/reference/options), and the scoping modes are in [Scoping To What Matters](/docs/concepts/scoping). Recall numbers cited elsewhere in the docs map to layers as follows: change-scoping recall at 89 percent with 53 percent precision is [Layer 2A](#layer-2a-scoping-recall-against-real-pull-requests); the one-call context-acquisition arms (query at 49 percent recall, change scoping at 91 percent) are [Layer 4](#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix); the peer comparison against CodeGraph and coa-codesearch is [Layer 6](#layer-6-peer-scopers-fuse-vs-codegraph-vs-coa-codesearch). The harness, corpus manifest, PR ground truth, and question set live in the benchmarks directory described in its own readme.
+The warm-index model and the method for thinking about Fuse's speed are in [Performance and Benchmarking](/docs/project/performance). The scoping modes are in [Scoping To What Matters](/docs/concepts/scoping). The harness, corpus manifest, PR ground truth, and the four suites live in `tests/benchmarks` and its readme.

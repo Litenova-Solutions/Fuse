@@ -65,8 +65,8 @@ Phase 9 - MCP rewrite
 Phase 10 - Tests, docs, benchmarks
 - [x] P10.1 Tests overhaul complete (Section 16.5 definition of done)
 - [ ] P10.2 Docs overhaul complete (Section 17.6 definition of done)
-- [ ] P10.3 fuse eval + suites A-D; offline PowerShell layers updated to new surface (Section 18)
-- [ ] P10.4 Regenerate benchmark figure; resync AGENTS.md and docs numbers (18.12, 18.13)
+- [~] P10.3 fuse eval + suites A-D done and committed (semantics/review/localize/agent results); offline token/fidelity PowerShell-layer C# port still remaining
+- [x] P10.4 Regenerate benchmark figure; resync AGENTS.md and docs numbers (18.12, 18.13)
 
 Phase 11 - Publish V3
 - [ ] P11.1 CI green: build, test (count risen), format, publish smoke for win-x64/linux-x64 incl. FTS5 and MSBuild-absent fallback
@@ -1823,5 +1823,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Remaining for P10.3 (box unticked): port the genuinely-offline token-reduction and fidelity continuity layers (old layer1 / fidelity) to C# benchmarks; the per-suite PowerShell layers (layer1/2a/2b/4) are still old-surface. This is secondary to the suites and does not block P10.4.
 - Lessons: A 1-rollout agent sample is enough to validate the driver and surface the fuse-vs-native shape; the moat shows clearest where a PR title names the wiring (MediatR). Suite B precision is the discriminating axis; recall is ~1.0 by construction because review seeds changed files as must-keep.
 - Time: ~2.5 h (incl. background corpus runs)
+
+### P10.4 Regenerate figure; resync AGENTS.md and docs numbers - 2026-06-26
+- Status: done
+- Result: Reframed the benchmark figure and all quoted numbers from the V2 token-reduction framing to the V3 semantic-engine north star (18.13), quoting only the committed suite results. Rewrote `assets/fuse-benchmarks-chart.py` `header()`/`compose()` to four cards (resolving .NET wiring 100/100; scoping a change recall 100/precision 90/median 874 tokens; localizing from a title 27% overall/40% identifier-rich; helping an agent 135K vs 212K median tokens, model-dependent), regenerated `fuse-benchmarks.svg` (1120x1479) and rasterized `fuse-benchmarks.png` via the site's bundled `sharp` (no ImageMagick/rsvg locally; `convert` is the Windows NTFS tool), and synced both into `site/public`. Rewrote the AGENTS.md Measured Results section, the README "Why Fuse" section and image alt text, `site/content/docs/project/benchmarks.mdx` (four-suite sections), and `site/content/docs/project/performance.mdx` (warm-index model, no fabricated latency). Removed the old layer1/2/4/5/6, Repomix, token-reduction, fidelity, and peer-scoper numbers; stated explicitly what is not yet re-measured on V3 (token-reduction/fidelity percentages, warm latency, peer scopers, full task resolution).
+- Verification: every quoted figure cross-checked against `tests/benchmarks/results/{semantics,review,localize,agent}.json`; all five touched prose/asset files scanned byte-level for non-ASCII (clean); the chart script runs and the PNG is a fresh 2987x3944 raster. No .NET code changed, so build/test/format stay green.
+- Blockers/issues: None. PNG rasterization needed the site's `sharp` (CommonJS require by absolute path) since no SVG rasterizer is on PATH; documented for reproducibility.
+- Lessons: 18.13 reframes the headline away from tokens saved, so the honest move was to lead with the deterministic resolution and review numbers and report localization as the weak floor, rather than carry forward old-engine percentages that were never re-measured on V3.
+- Time: ~50 min (incl. a parallel docs subagent for the two benchmark pages)
 
 

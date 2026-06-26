@@ -123,6 +123,9 @@ namespace Microsoft.Extensions.DependencyInjection
 
         public static IServiceCollection AddScoped(this IServiceCollection services, System.Type serviceType, System.Type implementationType) => services;
 
+        public static IServiceCollection TryAddSingleton<TService, TImplementation>(this IServiceCollection services)
+            where TImplementation : class, TService => services;
+
         public static IServiceCollection AddHostedService<THostedService>(this IServiceCollection services)
             where THostedService : class, Microsoft.Extensions.Hosting.IHostedService => services;
 

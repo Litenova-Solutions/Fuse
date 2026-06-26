@@ -19,6 +19,9 @@
     { "from": "type:OrderingApp.Ordering.IOrderService", "to": "type:OrderingApp.Ordering.OrderServiceLogger", "type": "di_decorates" },
     { "from": "route:GET:/health", "to": "method:OrderingApp.Api.HealthEndpoints.Check", "type": "route_handles" },
     { "from": "service:gRPC", "to": "type:OrderingApp.Api.GreeterService", "type": "grpc_endpoint" },
-    { "from": "service:SignalR", "to": "type:OrderingApp.Api.ChatHub", "type": "signalr_endpoint" }
+    { "from": "service:SignalR", "to": "type:OrderingApp.Api.ChatHub", "type": "signalr_endpoint" },
+    { "from": "type:OrderingApp.Data.ICache", "to": "type:OrderingApp.Data.MemoryCache", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Data.IShipping", "to": "type:OrderingApp.Data.FastShipping", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Data.IRepository<T>", "to": "type:OrderingApp.Data.Repository<T>", "type": "di_resolves_to" }
   ]
 }

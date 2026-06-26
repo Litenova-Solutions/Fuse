@@ -91,9 +91,17 @@ public sealed record ReviewRequest(
 /// </summary>
 /// <param name="Candidates">The ranked candidates.</param>
 /// <param name="Warnings">Warnings (for example low signal).</param>
+/// <param name="LowSignal">
+///     Whether the request carried no usable scoping signal (merge or dependency or CI noise, or an empty
+///     query with no route, symbol, service, request, config, or base), so localization abstained rather than
+///     returning candidates a title cannot support.
+/// </param>
+/// <param name="SuggestedInput">When <see cref="LowSignal" /> is true, a suggested next input to provide.</param>
 public sealed record LocalizationResult(
     IReadOnlyList<LocalizedCandidate> Candidates,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    bool LowSignal = false,
+    string? SuggestedInput = null);
 
 /// <summary>
 ///     A single localized candidate (no source body).

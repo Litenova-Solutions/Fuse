@@ -43,6 +43,21 @@ public sealed class SemanticRetrievalEngineTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task LocalizeAbstainsAndSuggestsOnNoSignalTitle()
+    {
+        var engine = new SemanticRetrievalEngine(_store);
+
+        // A merge-noise title that happens to share words with indexed files must still abstain, not return junk.
+        var result = await engine.LocalizeAsync(
+            new LocalizationRequest(".", Query: "Merge pull request #42 from acme/order-service"), CancellationToken.None);
+
+        Assert.True(result.LowSignal);
+        Assert.Empty(result.Candidates);
+        Assert.False(string.IsNullOrWhiteSpace(result.SuggestedInput));
+        Assert.Contains(result.Warnings, w => w.Contains("Low signal", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ContextPlanIncludesInterfaceImplementationAndConsumer()
     {
         var engine = new SemanticRetrievalEngine(_store);

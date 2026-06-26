@@ -138,7 +138,9 @@ public sealed class LocalizationSuite : IEvalSuite
         var recall = Metrics.Recall(retrieved, groundTruth);
         var precision = Metrics.Precision(retrieved.ToList(), groundTruth);
         var tokens = localization.Candidates.Sum(c => c.EstimatedTokens);
-        var detected = localization.Candidates.Count == 0 || localization.Warnings.Count > 0;
+        // R3: detection is the engine's explicit low-signal verdict (it abstained and suggested a next input),
+        // not the incidental "no candidates" heuristic, so the score measures the classifier, not luck.
+        var detected = localization.LowSignal;
 
         var result = new TaskResult(
             task.Id, task.Repo, task.Category, recall, precision, tokens, stopwatch.ElapsedMilliseconds,

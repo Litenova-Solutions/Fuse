@@ -1,37 +1,39 @@
-using System.Text;
-using System.Text.Json;
 using DotMake.CommandLine;
+using Fuse.Benchmarks;
 using Fuse.Cli.Services;
-using Fuse.Indexing;
+using Fuse.Retrieval;
 using Fuse.Semantics;
 
 namespace Fuse.Cli.Commands;
 
 /// <summary>
-///     Runs Fuse's evaluation suites. The semantics suite (Suite A) scores the semantic graph Fuse extracts
-///     against hand-built edge ground truth: per-edge-type recall and precision, plus the missed edges.
+///     Runs Fuse's evaluation suites. A thin entry point that delegates to the <c>Fuse.Benchmarks</c>
+///     library, which owns the typed suites: <c>semantics</c> (Suite A, semantic graph vs edge gold),
+///     <c>review</c> (Suite B, change-impact recall/precision over PR ground truth), <c>localize</c>
+///     (Suite C, open-ended localization by signal bucket), and <c>agent</c> (Suite D, agent context
+///     sufficiency via the Claude Code CLI).
 /// </summary>
 /// <remarks>
-///     The semantics suite is offline and deterministic: it indexes a fixture, reads the resulting edges, and
-///     compares them to the fixture's <c>expected-edges.json</c>. Recall is matched edges over expected edges;
-///     precision is measured only over the edge types present in the ground truth, so correct edges of other
-///     types (for example structural <c>implements</c> edges) are not counted as false positives.
+///     Corpus-bound suites (review/localize/agent) skip gracefully when the pinned corpus is absent, so
+///     a bare invocation stays offline. Results are written to <c>tests/benchmarks/results/&lt;suite&gt;.json</c>
+///     (or <c>--output</c>) as the single source of truth for quoted numbers.
 /// </remarks>
 [CliCommand(
     Name = "eval",
-    Description = "Run Fuse evaluation suites (semantics: score the semantic graph against edge ground truth).",
+    Description = "Run Fuse evaluation suites (semantics, review, localize, agent).",
     ShortFormAutoGenerate = CliNameAutoGenerate.None,
     Parent = typeof(FuseCliCommand))]
 public sealed class EvalCommand
 {
     private readonly SemanticIndexer _indexer;
+    private readonly IChangeSource _changeSource;
     private readonly IConsoleUI _consoleUI;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="EvalCommand" /> class for CLI option binding only.
     /// </summary>
     /// <remarks>Used by DotMake.CommandLine to bind options; the dependencies are null, so this instance must not run.</remarks>
-    public EvalCommand() : this(null!, null!)
+    public EvalCommand() : this(null!, null!, null!)
     {
     }
 
@@ -39,25 +41,52 @@ public sealed class EvalCommand
     ///     Initializes a new instance of the <see cref="EvalCommand" /> class.
     /// </summary>
     /// <param name="indexer">The semantic indexer.</param>
+    /// <param name="changeSource">The git change source for corpus-bound suites.</param>
     /// <param name="consoleUI">The console UI for output.</param>
-    public EvalCommand(SemanticIndexer indexer, IConsoleUI consoleUI)
+    public EvalCommand(SemanticIndexer indexer, IChangeSource changeSource, IConsoleUI consoleUI)
     {
         _indexer = indexer;
+        _changeSource = changeSource;
         _consoleUI = consoleUI;
     }
 
-    /// <summary>The suite to run. Currently <c>semantics</c>.</summary>
-    [CliArgument(Description = "The suite to run: semantics.")]
+    /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, or <c>agent</c>.</summary>
+    [CliArgument(Description = "The suite to run: semantics, review, localize, agent.")]
     public string Suite { get; set; } = "semantics";
 
-    /// <summary>
-    ///     The fixtures root. Each immediate subdirectory containing an <c>expected-edges.json</c> is a fixture;
-    ///     a fixtures path that itself contains <c>expected-edges.json</c> is treated as a single fixture.
-    /// </summary>
-    [CliOption(Description = "Fixtures root (a directory of fixtures, or a single fixture directory).")]
-    public string Fixtures { get; set; } = ".";
+    /// <summary>The benchmark root holding corpus.json, prs.json, and results. Defaults to tests/benchmarks under the current directory.</summary>
+    [CliOption(Required = false, Description = "Benchmark root (holds corpus.json, prs.json, results).")]
+    public string? BenchRoot { get; set; }
 
-    /// <summary>An optional path to write the JSON results to.</summary>
+    /// <summary>The fixtures root for the semantics suite (a directory of fixtures, or a single fixture directory).</summary>
+    [CliOption(Required = false, Description = "Fixtures root for the semantics suite.")]
+    public string? Fixtures { get; set; }
+
+    /// <summary>The corpus root holding the checked-out repositories. Defaults to .corpus under the benchmark root.</summary>
+    [CliOption(Required = false, Description = "Corpus root (checked-out repositories).")]
+    public string? Corpus { get; set; }
+
+    /// <summary>A per-repo task cap (0 means all).</summary>
+    [CliOption(Required = false, Description = "Per-repo task cap (0 = all).")]
+    public int Limit { get; set; }
+
+    /// <summary>Restrict the run to a single repository by name.</summary>
+    [CliOption(Required = false, Description = "Restrict to a single repository by name.")]
+    public string? Repo { get; set; }
+
+    /// <summary>Comma-separated token budgets for the review suite (for example 25000,50000).</summary>
+    [CliOption(Required = false, Description = "Comma-separated token budgets (review).")]
+    public string? Budgets { get; set; }
+
+    /// <summary>The model id for the agent suite.</summary>
+    [CliOption(Required = false, Description = "Model id for the agent suite.")]
+    public string? Model { get; set; }
+
+    /// <summary>The number of agent rollouts per task.</summary>
+    [CliOption(Required = false, Description = "Agent rollouts per task.")]
+    public int Rollouts { get; set; } = 1;
+
+    /// <summary>An optional path to write the JSON results to. Defaults to results/&lt;suite&gt;.json under the benchmark root.</summary>
     [CliOption(Required = false, Description = "Path to write JSON results to.")]
     public string? Output { get; set; }
 
@@ -68,164 +97,48 @@ public sealed class EvalCommand
     /// <returns>A task that completes when the suite has run.</returns>
     public async Task RunAsync(CliContext context)
     {
-        if (!Suite.Trim().Equals("semantics", StringComparison.OrdinalIgnoreCase))
+        var benchRoot = Path.GetFullPath(BenchRoot ?? Path.Combine("tests", "benchmarks"));
+        var options = new EvalOptions(
+            benchRoot,
+            CorpusRoot: Corpus is null ? null : Path.GetFullPath(Corpus),
+            FixturesRoot: Fixtures is null ? null : Path.GetFullPath(Fixtures),
+            Budgets: ParseBudgets(Budgets),
+            Limit: Limit,
+            RepoFilter: Repo,
+            AgentModel: Model,
+            Rollouts: Rollouts,
+            Log: _consoleUI.WriteStep);
+
+        var suite = BuildSuite(Suite.Trim().ToLowerInvariant());
+        if (suite is null)
         {
-            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics.");
+            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, agent.");
             return;
         }
 
-        var root = Path.GetFullPath(Fixtures);
-        var fixtures = ResolveFixtures(root);
-        if (fixtures.Count == 0)
-        {
-            _consoleUI.WriteError($"No fixtures with expected-edges.json found under {root}.");
-            return;
-        }
+        var result = await suite.RunAsync(options, context.CancellationToken);
+        _consoleUI.WriteResult(Reporting.FormatScorecard(result));
 
-        var results = new List<FixtureScore>();
-        foreach (var fixture in fixtures)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            results.Add(await ScoreFixtureAsync(fixture, context.CancellationToken));
-        }
-
-        var report = FormatReport(results);
-        _consoleUI.WriteResult(report);
-
-        if (!string.IsNullOrWhiteSpace(Output))
-        {
-            await File.WriteAllTextAsync(Path.GetFullPath(Output), ToJson(results), context.CancellationToken);
-            _consoleUI.WriteStep($"Wrote results to {Path.GetFullPath(Output)}");
-        }
+        var outputPath = Output is null
+            ? Path.Combine(options.ResultsRoot, $"{suite.Name}.json")
+            : Path.GetFullPath(Output);
+        await Reporting.WriteAsync(result, outputPath, context.CancellationToken);
+        _consoleUI.WriteStep($"Wrote results to {outputPath}");
     }
 
-    private async Task<FixtureScore> ScoreFixtureAsync(string fixtureDir, CancellationToken cancellationToken)
+    private IEvalSuite? BuildSuite(string name) => name switch
     {
-        var expected = ReadExpectedEdges(Path.Combine(fixtureDir, "expected-edges.json"));
+        "semantics" => new SemanticResolutionSuite(_indexer),
+        _ => null
+    };
 
-        // Index into a throwaway store so the evaluation never pollutes the workspace's own index.
-        var databasePath = Path.Combine(Path.GetTempPath(), "fuse-eval", Guid.NewGuid().ToString("N"), "fuse.db");
-        Edge[] predicted;
-        try
-        {
-            await using var store = new WorkspaceIndexStore(databasePath);
-            await store.InitializeAsync(cancellationToken);
-            await _indexer.IndexAsync(fixtureDir, store, cancellationToken);
-            predicted = (await store.GetAllEdgesAsync(cancellationToken))
-                .Select(e => new Edge(e.FromNodeId, e.ToNodeId, e.EdgeType))
-                .ToHashSet()
-                .ToArray();
-        }
-        finally
-        {
-            TryDeleteStore(databasePath);
-        }
-
-        var predictedSet = predicted.ToHashSet();
-        var matched = expected.Where(predictedSet.Contains).ToList();
-        var missed = expected.Where(e => !predictedSet.Contains(e)).ToList();
-        // Precision is scored only over edge types that appear in the ground truth.
-        var scoredTypes = expected.Select(e => e.Type).ToHashSet(StringComparer.Ordinal);
-        var predictedInScope = predicted.Where(e => scoredTypes.Contains(e.Type)).ToList();
-        var falsePositives = predictedInScope.Where(e => !expected.Contains(e)).ToList();
-
-        return new FixtureScore(Path.GetFileName(fixtureDir), expected.Count, matched.Count, falsePositives.Count, missed);
-    }
-
-    private static IReadOnlyList<string> ResolveFixtures(string root)
+    private static IReadOnlyList<int>? ParseBudgets(string? budgets)
     {
-        if (File.Exists(Path.Combine(root, "expected-edges.json")))
-            return [root];
-        if (!Directory.Exists(root))
-            return [];
-        return Directory.GetDirectories(root)
-            .Where(d => File.Exists(Path.Combine(d, "expected-edges.json")))
-            .OrderBy(d => d, StringComparer.Ordinal)
+        if (string.IsNullOrWhiteSpace(budgets))
+            return null;
+        return budgets.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(b => int.TryParse(b, out var v) ? v : 0)
+            .Where(v => v > 0)
             .ToList();
     }
-
-    private static HashSet<Edge> ReadExpectedEdges(string path)
-    {
-        using var document = JsonDocument.Parse(File.ReadAllText(path));
-        var edges = new HashSet<Edge>();
-        foreach (var element in document.RootElement.GetProperty("edges").EnumerateArray())
-        {
-            edges.Add(new Edge(
-                element.GetProperty("from").GetString()!,
-                element.GetProperty("to").GetString()!,
-                element.GetProperty("type").GetString()!));
-        }
-
-        return edges;
-    }
-
-    private static string FormatReport(IReadOnlyList<FixtureScore> results)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine("Fuse Eval: semantic resolution (Suite A)");
-        var totalExpected = results.Sum(r => r.Expected);
-        var totalMatched = results.Sum(r => r.Matched);
-        var totalFalsePositives = results.Sum(r => r.FalsePositives);
-        builder.AppendLine($"fixtures: {results.Count}  edges expected: {totalExpected}");
-        builder.AppendLine($"recall: {Ratio(totalMatched, totalExpected):P0} ({totalMatched}/{totalExpected})   " +
-                           $"precision: {Ratio(totalMatched, totalMatched + totalFalsePositives):P0} " +
-                           $"({totalMatched}/{totalMatched + totalFalsePositives})   F1: {F1(totalMatched, totalFalsePositives, totalExpected - totalMatched):F2}");
-        builder.AppendLine();
-
-        foreach (var result in results)
-        {
-            builder.AppendLine($"  {result.Name}: recall {result.Matched}/{result.Expected}, false positives {result.FalsePositives}");
-            foreach (var miss in result.Missed)
-                builder.AppendLine($"    MISS [{miss.Type}] {miss.From} -> {miss.To}");
-        }
-
-        return builder.ToString();
-    }
-
-    private static string ToJson(IReadOnlyList<FixtureScore> results)
-    {
-        var totalExpected = results.Sum(r => r.Expected);
-        var totalMatched = results.Sum(r => r.Matched);
-        var totalFalsePositives = results.Sum(r => r.FalsePositives);
-        var dto = new EvalResultsDto(
-            Suite: "semantics",
-            Fixtures: results.Count,
-            EdgesExpected: totalExpected,
-            EdgesMatched: totalMatched,
-            FalsePositives: totalFalsePositives,
-            Recall: Ratio(totalMatched, totalExpected),
-            Precision: Ratio(totalMatched, totalMatched + totalFalsePositives),
-            Results: results.Select(r => new FixtureResultDto(
-                r.Name, r.Expected, r.Matched, r.FalsePositives,
-                r.Missed.Select(m => $"[{m.Type}] {m.From} -> {m.To}").ToList())).ToList());
-        return JsonSerializer.Serialize(dto, FuseEvalJsonContext.Default.EvalResultsDto);
-    }
-
-    private static double Ratio(int numerator, int denominator) => denominator == 0 ? 1.0 : (double)numerator / denominator;
-
-    private static double F1(int truePositives, int falsePositives, int falseNegatives)
-    {
-        var precision = Ratio(truePositives, truePositives + falsePositives);
-        var recall = Ratio(truePositives, truePositives + falseNegatives);
-        return precision + recall == 0 ? 0 : 2 * precision * recall / (precision + recall);
-    }
-
-    private static void TryDeleteStore(string databasePath)
-    {
-        try
-        {
-            var directory = Path.GetDirectoryName(databasePath);
-            Microsoft.Data.Sqlite.SqliteConnection.ClearPool(new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={databasePath}"));
-            if (directory is not null && Directory.Exists(directory))
-                Directory.Delete(directory, recursive: true);
-        }
-        catch (IOException)
-        {
-            // Best-effort cleanup.
-        }
-    }
-
-    private readonly record struct Edge(string From, string To, string Type);
-
-    private sealed record FixtureScore(string Name, int Expected, int Matched, int FalsePositives, IReadOnlyList<Edge> Missed);
 }

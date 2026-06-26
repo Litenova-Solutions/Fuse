@@ -41,7 +41,7 @@ Phase 5 - Retrieval engine v2
 - [x] P5.1 LocalizationRequest + candidate generators (exact symbol/route/service/request/config, FTS, path, changed files)
 - [x] P5.2 Score normalization
 - [x] P5.3 Graph expansion with typed edge weights + pruning
-- [ ] P5.4 Context plan output; fuse localize and fuse context acceptance pass; no QueryScopingPipeline needed
+- [x] P5.4 Context plan output; fuse localize and fuse context acceptance pass; no QueryScopingPipeline needed
 
 Phase 6 - Review/change impact
 - [ ] P6.1 Wire GitChangeDetector/GitDiffParser; changed files become must-keep seeds
@@ -1636,5 +1636,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. `centralityBonus` from the 7.4 formula is left at 0 for now (no centrality metric computed yet); the ambiguity penalty and decay are in place. Edge traversal is bidirectional and untyped-by-mode here; the mode-specific traversal policy (7.5) is applied by review (P6) and context planning (P5.4).
 - Lessons: Because child scores are strictly non-increasing (edge weight and decay are <= 1), a max-priority frontier with visit-on-pop reaches each node by its best path without revisiting, so no score-relaxation bookkeeping is needed. `PriorityQueue` is a min-heap, so negative score is used as the priority key.
 - Time: ~30 min
+
+### P5.4 Context plan output; localize + context commands - 2026-06-26 16:40
+- Status: done
+- Result: Added `ContextPlan`/`ContextPlanItem`/`ContextPlanEdge`/`RenderTier`, `ContextRequest`/`ContextSeed`, `LocalizationResult`/`LocalizedCandidate`, and `SemanticRetrievalEngine` (LocalizeAsync: candidates -> score -> rank with token costs and low-signal warning; PlanContextAsync: seeds -> resolve to nodes -> expand -> collapse to files -> role + render tier + greedy budget pack) to `Fuse.Retrieval`. Added store `GetFileTokenEstimateAsync`. Added `fuse localize` and `fuse context` CLI commands. Added `SemanticRetrievalEngineTests` (4). New solution test total 716 (Fuse.Retrieval.Tests 16 -> 20). The old `QueryScopingPipeline` is not used by this path.
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 716 passed; `dotnet format --verify-no-changes` clean. End-to-end CLI confirmed against OrderingApp: `fuse localize --task "order service"` returns ranked candidates; `fuse context --seed IOrderService` plans IOrderService (exact-seed/Reduced, must-keep), OrderService (di-implementation), OrdersController + CreateOrderHandler (consumer), OrderOptions (config), CreateOrderCommand (request-handler).
+- Blockers/issues: None functional. FTS limitation surfaced: the unicode61 tokenizer does not split camelCase, so a query token "order" does not match the FTS token "orderservice"; path matching compensated in the demo. Worth addressing for localization recall in Phase 10 (split identifier tokens into the FTS `symbols` field, or a custom tokenizer).
+- Lessons: Roles are derived from the last edge in a node's provenance chain (parsed from the provenance strings), which keeps `ExpandedNode` simple; `ExplanationEdges` is left empty for now and can be reconstructed in the renderer (P7). Greedy packing always keeps must-keep seeds and drops optional files past the budget with a warning. Context seeds of any named kind resolve through `FindNodesByDisplayName`, so `--seed IOrderService` finds the interface node and expansion supplies the rest.
+- Time: ~55 min
 
 

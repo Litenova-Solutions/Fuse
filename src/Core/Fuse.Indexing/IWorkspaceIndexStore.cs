@@ -164,4 +164,12 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The matching files.</returns>
     Task<IReadOnlyList<FileListItem>> FindFilesByPathAsync(string fragment, int limit, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns the estimated reduced token cost of a file, summed over its chunks.
+    /// </summary>
+    /// <param name="normalizedPath">The file's normalized path.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The summed reduced token estimate, or 0 when the file has no chunks.</returns>
+    Task<int> GetFileTokenEstimateAsync(string normalizedPath, CancellationToken cancellationToken);
 }

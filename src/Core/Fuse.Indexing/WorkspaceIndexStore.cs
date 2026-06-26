@@ -850,6 +850,19 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<int> GetFileTokenEstimateAsync(string normalizedPath, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT COALESCE(SUM(c.reduced_token_estimate), 0) FROM chunks c " +
+            "JOIN files f ON f.file_id = c.file_id WHERE f.normalized_path = $p;";
+        command.Parameters.AddWithValue("$p", normalizedPath);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is long value ? (int)value : 0;
+    }
+
+    /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _connectionFactory.ClearPool();

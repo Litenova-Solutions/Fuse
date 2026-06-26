@@ -34,14 +34,15 @@ public sealed class CandidateGenerator
     ///     Creates a generator wired with the default set (exact, FTS, path, diff) over a store.
     /// </summary>
     /// <param name="store">The index store to query.</param>
+    /// <param name="changeSource">An optional change source so <c>ChangedSince</c> resolves to changed-file seeds.</param>
     /// <returns>A generator with the standard candidate sources.</returns>
-    public static CandidateGenerator CreateDefault(IWorkspaceIndexStore store) =>
+    public static CandidateGenerator CreateDefault(IWorkspaceIndexStore store, IChangeSource? changeSource = null) =>
         new(
         [
             new ExactCandidateGenerator(store),
             new FtsCandidateGenerator(store),
             new PathCandidateGenerator(store),
-            new DiffCandidateGenerator(),
+            new DiffCandidateGenerator(changeSource),
         ]);
 
     /// <summary>
@@ -210,33 +211,54 @@ public sealed class PathCandidateGenerator : ICandidateGenerator
 }
 
 /// <summary>
-///     Generates must-keep candidates from explicitly selected paths (changed or pinned files).
+///     Generates must-keep candidates from explicitly selected paths and from files changed since a git base
+///     ref (when a change source is available).
 /// </summary>
 /// <remarks>
-///     Git base resolution (<c>ChangedSince</c>) is wired into review in a later phase; this generator handles
-///     the explicit <see cref="LocalizationRequest.SelectedPaths" />.
+///     Diff candidates are the strongest signal (weight 1.00) and act as must-keep seeds in context and review
+///     planning. A change source failure (git unavailable, not a repository) is swallowed so localization still
+///     produces other candidates; the engine surfaces the low-signal case separately.
 /// </remarks>
 public sealed class DiffCandidateGenerator : ICandidateGenerator
 {
-    /// <inheritdoc />
-    public Task<IReadOnlyList<CandidateNode>> GenerateAsync(LocalizationRequest request, CancellationToken cancellationToken)
-    {
-        if (request.SelectedPaths is not { Count: > 0 } paths)
-            return Task.FromResult<IReadOnlyList<CandidateNode>>([]);
+    private readonly IChangeSource? _changeSource;
 
-        var candidates = paths
-            .Where(p => !string.IsNullOrWhiteSpace(p))
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="DiffCandidateGenerator" /> class.
+    /// </summary>
+    /// <param name="changeSource">An optional change source for resolving <c>ChangedSince</c>.</param>
+    public DiffCandidateGenerator(IChangeSource? changeSource = null) => _changeSource = changeSource;
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<CandidateNode>> GenerateAsync(LocalizationRequest request, CancellationToken cancellationToken)
+    {
+        var paths = new List<string>();
+        if (request.SelectedPaths is { Count: > 0 } selected)
+            paths.AddRange(selected.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+        if (!string.IsNullOrWhiteSpace(request.ChangedSince) && _changeSource is not null)
+        {
+            try
+            {
+                paths.AddRange(await _changeSource.GetChangedFilesAsync(request.RootDirectory, request.ChangedSince, cancellationToken));
+            }
+            catch (ChangeSourceException)
+            {
+                // Git unavailable or not a repository: skip diff candidates rather than failing the whole request.
+            }
+        }
+
+        return paths
             .Select(p => p.Replace('\\', '/'))
+            .Distinct(StringComparer.Ordinal)
             .Select(p => new CandidateNode(
                 NodeId: string.Empty,
                 FilePath: p,
                 Kind: "file",
                 BaseScore: CandidateSourceWeights.Weight(CandidateSource.DiffChangedFile),
                 Source: CandidateSource.DiffChangedFile,
-                Reasons: ["selected/changed file"],
+                Reasons: ["changed/selected file"],
                 TokenEstimate: 0))
             .ToList();
-
-        return Task.FromResult<IReadOnlyList<CandidateNode>>(candidates);
     }
 }

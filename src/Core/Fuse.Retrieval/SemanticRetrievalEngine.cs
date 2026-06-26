@@ -24,10 +24,11 @@ public sealed class SemanticRetrievalEngine
     ///     Initializes a new instance of the <see cref="SemanticRetrievalEngine" /> class.
     /// </summary>
     /// <param name="store">The index store to query.</param>
-    public SemanticRetrievalEngine(IWorkspaceIndexStore store)
+    /// <param name="changeSource">An optional change source so <c>ChangedSince</c> resolves to changed-file seeds.</param>
+    public SemanticRetrievalEngine(IWorkspaceIndexStore store, IChangeSource? changeSource = null)
     {
         _store = store;
-        _candidateGenerator = CandidateGenerator.CreateDefault(store);
+        _candidateGenerator = CandidateGenerator.CreateDefault(store, changeSource);
         _scorer = new CandidateScorer();
         _expansion = new GraphExpansionEngine(store, new EdgeWeightProvider());
     }

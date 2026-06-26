@@ -1,18 +1,37 @@
 {
   "suite": "semantics",
-  "fixtures": 1,
-  "edgesExpected": 10,
-  "edgesMatched": 10,
-  "falsePositives": 0,
-  "recall": 1,
-  "precision": 1,
-  "results": [
+  "description": "Semantic resolution: extracted graph edges vs hand-built edge ground truth.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 1,
+    "recall": 1,
+    "recallCiLow": 1,
+    "recallCiHigh": 1,
+    "precision": 1,
+    "f1": 1,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [
     {
-      "name": "OrderingApp",
-      "expected": 10,
-      "matched": 10,
-      "falsePositives": 0,
-      "missed": []
+      "id": "OrderingApp",
+      "repo": "OrderingApp",
+      "category": "fixture",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "10 edges"
+        ],
+        "misses": [],
+        "extras": []
+      }
     }
+  ],
+  "notes": [
+    "edges expected 10, matched 10, false positives 0"
   ]
 }

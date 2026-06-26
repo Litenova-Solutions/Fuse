@@ -70,6 +70,23 @@ public enum ContextRenderMode
 }
 
 /// <summary>
+///     A request to review the semantic impact of a change.
+/// </summary>
+/// <param name="RootDirectory">The workspace root.</param>
+/// <param name="ChangedSince">The git base ref to diff against.</param>
+/// <param name="Depth">The graph expansion depth for the blast radius.</param>
+/// <param name="MaxTokens">An optional token budget; changed files are always kept.</param>
+/// <param name="IncludeTests">Whether related test files are included.</param>
+/// <param name="IncludeConfig">Whether related config files are included.</param>
+public sealed record ReviewRequest(
+    string RootDirectory,
+    string ChangedSince,
+    int Depth = 2,
+    int? MaxTokens = null,
+    bool IncludeTests = true,
+    bool IncludeConfig = true);
+
+/// <summary>
 ///     The result of localizing a task: ranked candidates with reasons and token costs, no source bodies.
 /// </summary>
 /// <param name="Candidates">The ranked candidates.</param>

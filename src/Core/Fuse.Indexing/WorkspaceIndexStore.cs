@@ -816,6 +816,16 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<NodeRecord>> GetNodesByFileAsync(string normalizedPath, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = NodeSelect + " WHERE files.normalized_path = $p;";
+        command.Parameters.AddWithValue("$p", normalizedPath);
+        return await ReadNodesAsync(command, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<SemanticEdgeRecord>> GetOutgoingEdgesAsync(string nodeId, CancellationToken cancellationToken) =>
         GetEdgesAsync("from_node_id", nodeId, cancellationToken);
 

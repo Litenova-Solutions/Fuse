@@ -11,16 +11,7 @@ This page is for engineers choosing a template for a fusion and maintainers who 
 
 A template supplies three lists: the file extensions to include, the directories to exclude by name, and an optional set of file patterns to exclude. Collection applies these lists when it scans the source directory, before any reduction or scoping runs.
 
-How a template is chosen depends on how Fuse is invoked:
-
-| Invocation | Template selected |
-|------------|-------------------|
-| `fuse dotnet` | DotNet |
-| `fuse wiki` | AzureDevOpsWiki |
-| `fuse` (generic command) | A named template you pass |
-| `fuse_generic` MCP tool | A named template the client passes |
-
-The extension list a template provides is a default. You can add, remove, or replace it per run with `--include-extensions`, `--exclude-extensions`, and `--only-extensions`, documented in the [Options reference](/docs/reference/options).
+In V3 these templates are internal collection presets: there is no command flag to select one. The indexing and collection pipeline applies the .NET defaults for a .NET workspace, and `fuse reduce` selects a reducer by extension. The tables below document the defaults each preset provides so you can see exactly which files are collected and which are skipped.
 
 ## Template Defaults
 

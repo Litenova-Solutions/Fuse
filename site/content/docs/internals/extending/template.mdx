@@ -54,7 +54,7 @@ A template becomes available once it is registered as a singleton `IProjectTempl
 services.AddSingleton<IProjectTemplate, MyLangTemplate>();
 ```
 
-After registration the template is selectable by name. At the terminal it is the value of the template option on the generic command, and over the Model Context Protocol it is the template argument of the `fuse_generic` tool. In both cases the name is the enumeration member you defined.
+After registration the template is part of the internal collection preset set keyed by its enumeration member. V3 applies presets internally by workspace type rather than through a command flag, so a registered template extends which file types the collection pipeline recognizes.
 
 ## What This Does Not Cover
 

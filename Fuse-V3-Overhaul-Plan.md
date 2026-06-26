@@ -11,7 +11,7 @@ Phase 0 - Foundation
 
 Phase 1 - SQLite schema and store
 - [x] P1.1 WorkspaceIndexStore + schema creation/migration (drop-and-rebuild below version 10)
-- [ ] P1.2 Table models + transactional upsert/delete; reuse FuseStorePaths and WAL patterns
+- [x] P1.2 Table models + transactional upsert/delete; reuse FuseStorePaths and WAL patterns
 - [ ] P1.3 FTS5 indexing + search
 - [ ] P1.4 Fuse.Indexing.Tests: insert files/symbols/chunks, FTS finds OrderService, reindex changed file, edges persist
 
@@ -1460,5 +1460,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: Initial test used xUnit v3 `TestContext.Current.CancellationToken`; repo is xUnit 2.9.2, switched to `CancellationToken.None`.
 - Lessons: FTS5 virtual table is deliberately left out of `CreateTablesDdl` and added in P1.3 so a runtime lacking FTS5 can still build the relational schema. The migrator preserves the `schema_version` table across drops and resets its row. The full `IWorkspaceIndexStore` upsert/search surface is grown incrementally in P1.2/P1.3 rather than stubbed now.
 - Time: ~35 min
+
+### P1.2 Table models + transactional upsert/delete - 2026-06-26 09:18
+- Status: done
+- Result: Added `WorkspaceIndexRecords.cs` (record models: `IndexedFileRecord`, `ProjectRecord`, `NodeRecord`, `SymbolRecord`, `ChunkRecord`, `SemanticEdgeRecord`, `RouteRecord`, `DiRegistrationRecord`, `OptionsBindingRecord`). Extended `IWorkspaceIndexStore`/`WorkspaceIndexStore` with one-transaction-per-batch upserts for all nine record types plus `DeleteFileDataAsync` (incremental per-file clear keeping the `files` row). Files/projects use `ON CONFLICT(...) DO UPDATE` to preserve the integer key across re-index; symbols/chunks/routes/DI/options resolve their `file_id` from the normalized path (skip if the file is not yet indexed); edges derive a stable id (XxHash64 of from|to|type|evidence-file) so re-index replaces rather than duplicates. Added `WorkspaceIndexStoreUpsertTests` (5 tests). New solution test total 629 (Fuse.Indexing.Tests 4 -> 9).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Indexing.Tests` 9 passed; `dotnet format Fuse.slnx --verify-no-changes` clean.
+- Blockers/issues: xUnit 2.9.2 `IAsyncLifetime` uses `Task` (not v3 `ValueTask`); fixed the lifecycle method return types.
+- Lessons: Records carry the natural key (normalized path) rather than the DB `file_id`, and the store resolves the integer FK per batch; this keeps the per-table upsert methods order-tolerant (files first). `DeleteFileDataAsync` deletes evidence-only edges explicitly before deleting the file's nodes, because the node delete cascades only edges whose endpoints are this file's nodes. `ChunkRecord` already carries `Body`/`Comments`/`SymbolsText` (relationally unused) so P1.3 FTS can populate them without a record change.
+- Time: ~30 min
 
 

@@ -1,3 +1,5 @@
+using System.IO.Hashing;
+using System.Text;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -61,10 +63,564 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task UpsertFilesAsync(IReadOnlyList<IndexedFileRecord> files, CancellationToken cancellationToken)
+    {
+        if (files.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var projectIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO files(path, normalized_path, extension, size_bytes, mtime_utc_ticks, content_hash,
+                              project_id, is_generated, is_test, indexed_at_utc)
+            VALUES($path, $norm, $ext, $size, $mtime, $hash, $project, $generated, $test, $indexed)
+            ON CONFLICT(normalized_path) DO UPDATE SET
+              path = excluded.path, extension = excluded.extension, size_bytes = excluded.size_bytes,
+              mtime_utc_ticks = excluded.mtime_utc_ticks, content_hash = excluded.content_hash,
+              project_id = excluded.project_id, is_generated = excluded.is_generated,
+              is_test = excluded.is_test, indexed_at_utc = excluded.indexed_at_utc;
+            """;
+        var pathParam = command.Parameters.Add("$path", SqliteType.Text);
+        var normParam = command.Parameters.Add("$norm", SqliteType.Text);
+        var extParam = command.Parameters.Add("$ext", SqliteType.Text);
+        var sizeParam = command.Parameters.Add("$size", SqliteType.Integer);
+        var mtimeParam = command.Parameters.Add("$mtime", SqliteType.Integer);
+        var hashParam = command.Parameters.Add("$hash", SqliteType.Text);
+        var projectParam = command.Parameters.Add("$project", SqliteType.Integer);
+        var generatedParam = command.Parameters.Add("$generated", SqliteType.Integer);
+        var testParam = command.Parameters.Add("$test", SqliteType.Integer);
+        var indexedParam = command.Parameters.Add("$indexed", SqliteType.Text);
+
+        foreach (var file in files)
+        {
+            pathParam.Value = file.Path;
+            normParam.Value = file.NormalizedPath;
+            extParam.Value = file.Extension;
+            sizeParam.Value = file.SizeBytes;
+            mtimeParam.Value = file.MtimeUtcTicks;
+            hashParam.Value = file.ContentHash;
+            projectParam.Value = (object?)await ResolveProjectIdAsync(connection, transaction, file.ProjectPath, projectIds, cancellationToken) ?? DBNull.Value;
+            generatedParam.Value = file.IsGenerated ? 1 : 0;
+            testParam.Value = file.IsTest ? 1 : 0;
+            indexedParam.Value = (file.IndexedAtUtc ?? DateTimeOffset.UtcNow).ToString("o");
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertProjectsAsync(IReadOnlyList<ProjectRecord> projects, CancellationToken cancellationToken)
+    {
+        if (projects.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO projects(path, name, assembly_name, target_framework, project_hash, indexed_at_utc)
+            VALUES($path, $name, $assembly, $tfm, $hash, $indexed)
+            ON CONFLICT(path) DO UPDATE SET
+              name = excluded.name, assembly_name = excluded.assembly_name,
+              target_framework = excluded.target_framework, project_hash = excluded.project_hash,
+              indexed_at_utc = excluded.indexed_at_utc;
+            """;
+        var pathParam = command.Parameters.Add("$path", SqliteType.Text);
+        var nameParam = command.Parameters.Add("$name", SqliteType.Text);
+        var assemblyParam = command.Parameters.Add("$assembly", SqliteType.Text);
+        var tfmParam = command.Parameters.Add("$tfm", SqliteType.Text);
+        var hashParam = command.Parameters.Add("$hash", SqliteType.Text);
+        var indexedParam = command.Parameters.Add("$indexed", SqliteType.Text);
+
+        foreach (var project in projects)
+        {
+            pathParam.Value = project.Path;
+            nameParam.Value = project.Name;
+            assemblyParam.Value = (object?)project.AssemblyName ?? DBNull.Value;
+            tfmParam.Value = (object?)project.TargetFramework ?? DBNull.Value;
+            hashParam.Value = project.ProjectHash;
+            indexedParam.Value = (project.IndexedAtUtc ?? DateTimeOffset.UtcNow).ToString("o");
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertNodesAsync(IReadOnlyList<NodeRecord> nodes, CancellationToken cancellationToken)
+    {
+        if (nodes.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+        var projectIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT OR REPLACE INTO nodes(node_id, kind, display_name, file_id, project_id, symbol_id,
+                                         stable_key, start_line, end_line, signature, metadata_json)
+            VALUES($id, $kind, $display, $file, $project, $symbol, $stable, $start, $end, $sig, $meta);
+            """;
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
+        var displayParam = command.Parameters.Add("$display", SqliteType.Text);
+        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
+        var projectParam = command.Parameters.Add("$project", SqliteType.Integer);
+        var symbolParam = command.Parameters.Add("$symbol", SqliteType.Text);
+        var stableParam = command.Parameters.Add("$stable", SqliteType.Text);
+        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
+        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
+        var sigParam = command.Parameters.Add("$sig", SqliteType.Text);
+        var metaParam = command.Parameters.Add("$meta", SqliteType.Text);
+
+        foreach (var node in nodes)
+        {
+            idParam.Value = node.NodeId;
+            kindParam.Value = node.Kind;
+            displayParam.Value = node.DisplayName;
+            fileParam.Value = (object?)await ResolveFileIdAsync(connection, transaction, node.FilePath, fileIds, cancellationToken) ?? DBNull.Value;
+            projectParam.Value = (object?)await ResolveProjectIdAsync(connection, transaction, node.ProjectPath, projectIds, cancellationToken) ?? DBNull.Value;
+            symbolParam.Value = (object?)node.SymbolId ?? DBNull.Value;
+            stableParam.Value = node.StableKey;
+            startParam.Value = (object?)node.StartLine ?? DBNull.Value;
+            endParam.Value = (object?)node.EndLine ?? DBNull.Value;
+            sigParam.Value = (object?)node.Signature ?? DBNull.Value;
+            metaParam.Value = (object?)node.MetadataJson ?? DBNull.Value;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertSymbolsAsync(IReadOnlyList<SymbolRecord> symbols, CancellationToken cancellationToken)
+    {
+        if (symbols.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+        var projectIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT OR REPLACE INTO symbols(symbol_id, file_id, project_id, kind, name, fully_qualified_name,
+                                           metadata_name, containing_type, namespace, assembly_name,
+                                           accessibility, signature, start_line, end_line, is_public_api)
+            VALUES($id, $file, $project, $kind, $name, $fqn, $meta, $containing, $ns, $assembly,
+                   $access, $sig, $start, $end, $public);
+            """;
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
+        var projectParam = command.Parameters.Add("$project", SqliteType.Integer);
+        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
+        var nameParam = command.Parameters.Add("$name", SqliteType.Text);
+        var fqnParam = command.Parameters.Add("$fqn", SqliteType.Text);
+        var metaParam = command.Parameters.Add("$meta", SqliteType.Text);
+        var containingParam = command.Parameters.Add("$containing", SqliteType.Text);
+        var nsParam = command.Parameters.Add("$ns", SqliteType.Text);
+        var assemblyParam = command.Parameters.Add("$assembly", SqliteType.Text);
+        var accessParam = command.Parameters.Add("$access", SqliteType.Text);
+        var sigParam = command.Parameters.Add("$sig", SqliteType.Text);
+        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
+        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
+        var publicParam = command.Parameters.Add("$public", SqliteType.Integer);
+
+        foreach (var symbol in symbols)
+        {
+            var fileId = await ResolveFileIdAsync(connection, transaction, symbol.FilePath, fileIds, cancellationToken);
+            if (fileId is null)
+                continue;
+
+            idParam.Value = symbol.SymbolId;
+            fileParam.Value = fileId.Value;
+            projectParam.Value = (object?)await ResolveProjectIdAsync(connection, transaction, symbol.ProjectPath, projectIds, cancellationToken) ?? DBNull.Value;
+            kindParam.Value = symbol.Kind;
+            nameParam.Value = symbol.Name;
+            fqnParam.Value = symbol.FullyQualifiedName;
+            metaParam.Value = (object?)symbol.MetadataName ?? DBNull.Value;
+            containingParam.Value = (object?)symbol.ContainingType ?? DBNull.Value;
+            nsParam.Value = (object?)symbol.Namespace ?? DBNull.Value;
+            assemblyParam.Value = (object?)symbol.AssemblyName ?? DBNull.Value;
+            accessParam.Value = (object?)symbol.Accessibility ?? DBNull.Value;
+            sigParam.Value = (object?)symbol.Signature ?? DBNull.Value;
+            startParam.Value = symbol.StartLine;
+            endParam.Value = symbol.EndLine;
+            publicParam.Value = symbol.IsPublicApi ? 1 : 0;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertChunksAsync(IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken)
+    {
+        if (chunks.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT OR REPLACE INTO chunks(chunk_id, file_id, symbol_id, kind, name, stable_key,
+                                          start_line, end_line, text_hash, token_estimate,
+                                          reduced_token_estimate, signature, outline)
+            VALUES($id, $file, $symbol, $kind, $name, $stable, $start, $end, $hash, $tokens,
+                   $reduced, $sig, $outline);
+            """;
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
+        var symbolParam = command.Parameters.Add("$symbol", SqliteType.Text);
+        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
+        var nameParam = command.Parameters.Add("$name", SqliteType.Text);
+        var stableParam = command.Parameters.Add("$stable", SqliteType.Text);
+        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
+        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
+        var hashParam = command.Parameters.Add("$hash", SqliteType.Text);
+        var tokensParam = command.Parameters.Add("$tokens", SqliteType.Integer);
+        var reducedParam = command.Parameters.Add("$reduced", SqliteType.Integer);
+        var sigParam = command.Parameters.Add("$sig", SqliteType.Text);
+        var outlineParam = command.Parameters.Add("$outline", SqliteType.Text);
+
+        foreach (var chunk in chunks)
+        {
+            var fileId = await ResolveFileIdAsync(connection, transaction, chunk.FilePath, fileIds, cancellationToken);
+            if (fileId is null)
+                continue;
+
+            idParam.Value = chunk.ChunkId;
+            fileParam.Value = fileId.Value;
+            symbolParam.Value = (object?)chunk.SymbolId ?? DBNull.Value;
+            kindParam.Value = chunk.Kind;
+            nameParam.Value = (object?)chunk.Name ?? DBNull.Value;
+            stableParam.Value = chunk.StableKey;
+            startParam.Value = chunk.StartLine;
+            endParam.Value = chunk.EndLine;
+            hashParam.Value = chunk.TextHash;
+            tokensParam.Value = chunk.TokenEstimate;
+            reducedParam.Value = chunk.ReducedTokenEstimate;
+            sigParam.Value = (object?)chunk.Signature ?? DBNull.Value;
+            outlineParam.Value = (object?)chunk.Outline ?? DBNull.Value;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertEdgesAsync(IReadOnlyList<SemanticEdgeRecord> edges, CancellationToken cancellationToken)
+    {
+        if (edges.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT OR REPLACE INTO edges(edge_id, from_node_id, to_node_id, edge_type, weight, confidence,
+                                         evidence, evidence_file_id, evidence_start_line, evidence_end_line,
+                                         metadata_json)
+            VALUES($id, $from, $to, $type, $weight, $confidence, $evidence, $file, $start, $end, $meta);
+            """;
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var fromParam = command.Parameters.Add("$from", SqliteType.Text);
+        var toParam = command.Parameters.Add("$to", SqliteType.Text);
+        var typeParam = command.Parameters.Add("$type", SqliteType.Text);
+        var weightParam = command.Parameters.Add("$weight", SqliteType.Real);
+        var confidenceParam = command.Parameters.Add("$confidence", SqliteType.Real);
+        var evidenceParam = command.Parameters.Add("$evidence", SqliteType.Text);
+        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
+        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
+        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
+        var metaParam = command.Parameters.Add("$meta", SqliteType.Text);
+
+        foreach (var edge in edges)
+        {
+            var evidenceFileId = await ResolveFileIdAsync(connection, transaction, edge.EvidenceFilePath, fileIds, cancellationToken);
+            idParam.Value = BuildEdgeId(edge.FromNodeId, edge.ToNodeId, edge.EdgeType, evidenceFileId);
+            fromParam.Value = edge.FromNodeId;
+            toParam.Value = edge.ToNodeId;
+            typeParam.Value = edge.EdgeType;
+            weightParam.Value = edge.Weight;
+            confidenceParam.Value = edge.Confidence;
+            evidenceParam.Value = (object?)edge.Evidence ?? DBNull.Value;
+            fileParam.Value = (object?)evidenceFileId ?? DBNull.Value;
+            startParam.Value = (object?)edge.EvidenceStartLine ?? DBNull.Value;
+            endParam.Value = (object?)edge.EvidenceEndLine ?? DBNull.Value;
+            metaParam.Value = (object?)edge.MetadataJson ?? DBNull.Value;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertRoutesAsync(IReadOnlyList<RouteRecord> routes, CancellationToken cancellationToken)
+    {
+        if (routes.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT OR REPLACE INTO routes(route_id, http_method, route_pattern, handler_symbol_id, file_id,
+                                          start_line, end_line, source_kind, metadata_json)
+            VALUES($id, $method, $pattern, $handler, $file, $start, $end, $source, $meta);
+            """;
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var methodParam = command.Parameters.Add("$method", SqliteType.Text);
+        var patternParam = command.Parameters.Add("$pattern", SqliteType.Text);
+        var handlerParam = command.Parameters.Add("$handler", SqliteType.Text);
+        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
+        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
+        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
+        var sourceParam = command.Parameters.Add("$source", SqliteType.Text);
+        var metaParam = command.Parameters.Add("$meta", SqliteType.Text);
+
+        foreach (var route in routes)
+        {
+            var fileId = await ResolveFileIdAsync(connection, transaction, route.FilePath, fileIds, cancellationToken);
+            if (fileId is null)
+                continue;
+
+            idParam.Value = route.RouteId;
+            methodParam.Value = route.HttpMethod;
+            patternParam.Value = route.RoutePattern;
+            handlerParam.Value = (object?)route.HandlerSymbolId ?? DBNull.Value;
+            fileParam.Value = fileId.Value;
+            startParam.Value = route.StartLine;
+            endParam.Value = route.EndLine;
+            sourceParam.Value = route.SourceKind;
+            metaParam.Value = (object?)route.MetadataJson ?? DBNull.Value;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertDiRegistrationsAsync(IReadOnlyList<DiRegistrationRecord> registrations, CancellationToken cancellationToken)
+    {
+        if (registrations.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT OR REPLACE INTO di_registrations(registration_id, service_symbol_id, implementation_symbol_id,
+                                                    service_name, implementation_name, lifetime, file_id,
+                                                    start_line, end_line, registration_kind, confidence, evidence)
+            VALUES($id, $service_symbol, $impl_symbol, $service, $impl, $lifetime, $file, $start, $end,
+                   $kind, $confidence, $evidence);
+            """;
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var serviceSymbolParam = command.Parameters.Add("$service_symbol", SqliteType.Text);
+        var implSymbolParam = command.Parameters.Add("$impl_symbol", SqliteType.Text);
+        var serviceParam = command.Parameters.Add("$service", SqliteType.Text);
+        var implParam = command.Parameters.Add("$impl", SqliteType.Text);
+        var lifetimeParam = command.Parameters.Add("$lifetime", SqliteType.Text);
+        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
+        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
+        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
+        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
+        var confidenceParam = command.Parameters.Add("$confidence", SqliteType.Real);
+        var evidenceParam = command.Parameters.Add("$evidence", SqliteType.Text);
+
+        foreach (var registration in registrations)
+        {
+            var fileId = await ResolveFileIdAsync(connection, transaction, registration.FilePath, fileIds, cancellationToken);
+            if (fileId is null)
+                continue;
+
+            idParam.Value = registration.RegistrationId;
+            serviceSymbolParam.Value = (object?)registration.ServiceSymbolId ?? DBNull.Value;
+            implSymbolParam.Value = (object?)registration.ImplementationSymbolId ?? DBNull.Value;
+            serviceParam.Value = registration.ServiceName;
+            implParam.Value = (object?)registration.ImplementationName ?? DBNull.Value;
+            lifetimeParam.Value = registration.Lifetime;
+            fileParam.Value = fileId.Value;
+            startParam.Value = registration.StartLine;
+            endParam.Value = registration.EndLine;
+            kindParam.Value = registration.RegistrationKind;
+            confidenceParam.Value = registration.Confidence;
+            evidenceParam.Value = (object?)registration.Evidence ?? DBNull.Value;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertOptionsBindingsAsync(IReadOnlyList<OptionsBindingRecord> bindings, CancellationToken cancellationToken)
+    {
+        if (bindings.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT OR REPLACE INTO options_bindings(binding_id, options_symbol_id, options_name, config_section,
+                                                    file_id, start_line, end_line, binding_kind, confidence, evidence)
+            VALUES($id, $symbol, $name, $section, $file, $start, $end, $kind, $confidence, $evidence);
+            """;
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var symbolParam = command.Parameters.Add("$symbol", SqliteType.Text);
+        var nameParam = command.Parameters.Add("$name", SqliteType.Text);
+        var sectionParam = command.Parameters.Add("$section", SqliteType.Text);
+        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
+        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
+        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
+        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
+        var confidenceParam = command.Parameters.Add("$confidence", SqliteType.Real);
+        var evidenceParam = command.Parameters.Add("$evidence", SqliteType.Text);
+
+        foreach (var binding in bindings)
+        {
+            var fileId = await ResolveFileIdAsync(connection, transaction, binding.FilePath, fileIds, cancellationToken);
+            if (fileId is null)
+                continue;
+
+            idParam.Value = binding.BindingId;
+            symbolParam.Value = (object?)binding.OptionsSymbolId ?? DBNull.Value;
+            nameParam.Value = binding.OptionsName;
+            sectionParam.Value = (object?)binding.ConfigSection ?? DBNull.Value;
+            fileParam.Value = fileId.Value;
+            startParam.Value = binding.StartLine;
+            endParam.Value = binding.EndLine;
+            kindParam.Value = binding.BindingKind;
+            confidenceParam.Value = binding.Confidence;
+            evidenceParam.Value = (object?)binding.Evidence ?? DBNull.Value;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteFileDataAsync(string normalizedPath, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
+        var fileId = await ResolveFileIdAsync(connection, transaction, normalizedPath, fileIds, cancellationToken);
+        if (fileId is null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        // Edges whose evidence is this file but whose endpoints live in other files do not cascade from
+        // the node delete below, so remove them explicitly first. Deleting this file's nodes then cascades
+        // (ON DELETE CASCADE) to any remaining edges that touch them.
+        await using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = """
+                DELETE FROM edges WHERE evidence_file_id = $file;
+                DELETE FROM chunks WHERE file_id = $file;
+                DELETE FROM symbols WHERE file_id = $file;
+                DELETE FROM routes WHERE file_id = $file;
+                DELETE FROM di_registrations WHERE file_id = $file;
+                DELETE FROM options_bindings WHERE file_id = $file;
+                DELETE FROM nodes WHERE file_id = $file;
+                """;
+            command.Parameters.AddWithValue("$file", fileId.Value);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _connectionFactory.ClearPool();
         return ValueTask.CompletedTask;
+    }
+
+    // Derives a stable, bounded edge id from the components of the unique edge index so re-indexing the same
+    // edge replaces the prior row rather than accumulating duplicates.
+    private static string BuildEdgeId(string fromNodeId, string toNodeId, string edgeType, long? evidenceFileId)
+    {
+        var key = $"{fromNodeId}{toNodeId}{edgeType}{evidenceFileId?.ToString() ?? string.Empty}";
+        var hash = XxHash64.HashToUInt64(Encoding.UTF8.GetBytes(key));
+        return "edge:" + hash.ToString("x16");
+    }
+
+    private static async Task<long?> ResolveFileIdAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string? normalizedPath,
+        Dictionary<string, long?> cache,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(normalizedPath))
+            return null;
+        if (cache.TryGetValue(normalizedPath, out var cached))
+            return cached;
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT file_id FROM files WHERE normalized_path = $p LIMIT 1;";
+        command.Parameters.AddWithValue("$p", normalizedPath);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        var id = result is long value ? value : (long?)null;
+        cache[normalizedPath] = id;
+        return id;
+    }
+
+    private static async Task<long?> ResolveProjectIdAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string? projectPath,
+        Dictionary<string, long?> cache,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(projectPath))
+            return null;
+        if (cache.TryGetValue(projectPath, out var cached))
+            return cached;
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT project_id FROM projects WHERE path = $p LIMIT 1;";
+        command.Parameters.AddWithValue("$p", projectPath);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        var id = result is long value ? value : (long?)null;
+        cache[projectPath] = id;
+        return id;
     }
 
     private static async Task ApplyDatabasePragmasAsync(SqliteConnection connection, CancellationToken cancellationToken)

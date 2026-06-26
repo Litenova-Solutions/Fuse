@@ -46,7 +46,7 @@ public sealed class FuseResources
         await ExecuteFusionAsync(orchestrator, templateRegistry, template, path, _ => { }, cancellationToken);
 
     /// <summary>
-    ///     Reads a skeleton overview of a .NET codebase. Equivalent to <see cref="FuseTools.FuseSkeletonAsync" />.
+    ///     Reads a skeleton overview of a .NET codebase. Equivalent to the skeleton workflow.
     /// </summary>
     /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
     /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
@@ -78,7 +78,7 @@ public sealed class FuseResources
             cancellationToken);
 
     /// <summary>
-    ///     Reads focus-scoped fused content for a .NET codebase. Equivalent to <see cref="FuseTools.FuseFocusAsync" />
+    ///     Reads focus-scoped fused content for a .NET codebase. Equivalent to the focus workflow
     ///     with a dependency depth of one.
     /// </summary>
     /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
@@ -110,7 +110,7 @@ public sealed class FuseResources
             cancellationToken);
 
     /// <summary>
-    ///     Reads query-scoped fused content for a .NET codebase. Equivalent to <see cref="FuseTools.FuseSearchAsync" />
+    ///     Reads query-scoped fused content for a .NET codebase. Equivalent to the search workflow
     ///     with the top ten files and a dependency depth of one.
     /// </summary>
     /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
@@ -142,7 +142,7 @@ public sealed class FuseResources
             cancellationToken);
 
     /// <summary>
-    ///     Reads change-scoped fused content for a .NET codebase. Equivalent to <see cref="FuseTools.FuseChangesAsync" />
+    ///     Reads change-scoped fused content for a .NET codebase. Equivalent to the change-scoped workflow
     ///     with dependents included.
     /// </summary>
     /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>

@@ -58,7 +58,7 @@ Phase 8 - CLI rewrite
 - [x] P8.2 Remove or alias old commands; Section 9.1 manual examples run end to end
 
 Phase 9 - MCP rewrite
-- [ ] P9.1 Replace tools with the eight (10.1); rewrite server instructions (10.3)
+- [x] P9.1 Replace tools with the eight (10.1); rewrite server instructions (10.3)
 - [ ] P9.2 Compact localize/resolve; context consumes localize/resolve seeds; add session support
 - [ ] P9.3 Update mcp-registry manifest to the new tool list
 
@@ -1708,5 +1708,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: The removal was self-contained because golden tests drive the `FusionOrchestrator` directly (not the CLI commands) and the MCP tools do not reference the CLI command classes. The old MCP tools (`fuse_ask`/`fuse_dotnet`/`fuse_explain`/`fuse_generic`) and their tests still exist and are removed in Phase 9; the golden output files for removed shapes are replaced in Phase 10, per the plan's sequencing.
 - Lessons: The orchestrator and `CommandBase` survive for `reduce` and the (Phase 9) MCP tools, so removing the CLI commands did not require touching fusion internals. The verify/explain LOGIC services (ApiSurfaceVerifier, ExplanationBuilder) remain and keep `VerificationTests` green; only the CLI command wrappers were removed.
 - Time: ~30 min
+
+### P9.1 Replace MCP tools with the eight; rewrite instructions - 2026-06-26 21:00
+- Status: done
+- Result: Replaced the eleven old MCP tools with the eight V3 tools over the persistent index: `FuseTools.cs` (index/map/find/reduce + shared open/ensure-indexed helpers) and `FuseTools.Retrieval.cs` (localize/resolve/context/review), mirroring the CLI commands. Read tools build the index on first use; context/review render bodies via `SemanticContextRenderer`/`SemanticContextEmitter`. Deleted the old tool files (Scoping/TocSkeleton/ExplainFind/Fusion/ask) and the now-unused `AskStrategySelector`/`FindMode`; kept `ReduceRunner`, `FuseToolHelpers`, `FusionRequestComposer` (reduce). Rewrote `McpServeCommand` server instructions to the 10.3 guidance + tool list. Moved `IChangeSource` registration into `AddSemanticIndexing` so the MCP host gets it. Fixed dangling doc crefs in `FuseResources`. Replaced the MCP tests: deleted `FuseToolsTests`/`AskStrategySelectorTests`/`McpQueryOptionsDefaultsTests`; updated `McpServeIntegrationTests` to assert the 8 tools and drive `fuse_map` (git-init fixture for store isolation). New solution test total 681 (a tool-surface replacement: ~47 old tool tests removed, the new surface covered by the updated end-to-end integration test).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 681 passed, 0 failed; `dotnet format --verify-no-changes` clean. The integration test spawns `fuse mcp serve`, lists exactly the 8 V3 tools, and `fuse_map` builds the index and returns the indexed symbol.
+- Blockers/issues: No host RPC DTO or `[JsonRpcMethod]` changed (MCP tools are separate from the host RPC contract), so no `ProtocolVersion`/`PROTOCOL_VERSION` bump is due; the contract test is untouched. `FuseResources` still exposes the old-model skeleton/focus/search/changes resources (functional via the orchestrator); the resource rewrite and the MCP registry manifest are P9.3/P10.
+- Lessons: `ReduceRunner` depends on `FuseToolHelpers.CreateDotNetBuilder`, so those helpers must stay even though the other old tools are gone. The MCP tools resolve the per-workspace store via `FuseStorePaths` internally, so test isolation needs a git-init fixture (store lands in `{repo}/.fuse`) rather than a bare temp dir (shared `~/.fuse`).
+- Time: ~70 min
 
 

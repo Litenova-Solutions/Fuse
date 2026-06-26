@@ -15,6 +15,10 @@ public sealed class FixtureEdgeSetTests
     [InlineData("options_binds", "config:Orders", "type:OrderingApp.Ordering.OrderOptions")]
     [InlineData("options_consumes", "type:OrderingApp.Ordering.OrderService", "type:OrderingApp.Ordering.OrderOptions")]
     [InlineData("implements", "type:OrderingApp.Ordering.OrderService", "type:OrderingApp.Ordering.IOrderService")]
+    [InlineData("hosted_service", "service:IHostedService", "type:OrderingApp.Ordering.OrderDispatcher")]
+    [InlineData("pipeline_behavior", "service:IPipelineBehavior", "type:OrderingApp.Ordering.LoggingBehavior")]
+    [InlineData("ef_entity", "type:OrderingApp.Data.OrderingDbContext", "type:OrderingApp.Data.OrderEntity")]
+    [InlineData("ef_configures", "type:OrderingApp.Data.OrderEntity", "type:OrderingApp.Data.OrderEntityConfiguration")]
     public void ExpectedEdgeIsPresent(string edgeType, string from, string to)
     {
         var result = RunAllAnalyzers();

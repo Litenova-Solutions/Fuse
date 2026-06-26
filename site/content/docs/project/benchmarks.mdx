@@ -147,22 +147,20 @@ Findings, including the known gap:
 
 ## Suite D: Agent Context Sufficiency (model-dependent)
 
-Suite D replaces a structural bound with a real agent. It runs one Claude Code CLI driver, model `claude-sonnet-4-6`, over 6 PRs in two arms (native filesystem tools, and the Fuse MCP tools), one rollout each, for 12 rollouts. It measures the file recall of the set the agent gathered and the cumulative tokens it spent.
+Suite D replaces a structural bound with a real agent. It runs one Claude Code CLI driver, model `claude-sonnet-4-6`, over 12 PRs (two per repository) in two arms (native filesystem Read/Grep/Glob, and the Fuse MCP tools), one rollout each, for 24 rollouts. The run goes through the real `fuse.exe` so the fuse arm's MCP server is correctly wired, with `--restore` so the fuse arm indexes semantically where a repository restores. It measures the file recall of the set the agent gathered and the cumulative tokens it spent.
 
 This suite is model-dependent and not byte-reproducible. The numbers depend on the model, its sampling, and the day; read them as a small, wide-CI sample, not a fixed measurement, and always read recall together with tokens.
 
-| Arm | Mean file recall | Median cumulative tokens |
-|-----|-----------------:|-------------------------:|
-| fuse | 21% | 135,012 |
-| native | 27% | 211,850 |
-
-The sample is small and the confidence interval is wide (0 to 54 percent), so neither arm's mean is a settled result.
+| Arm | Mean file recall | Mean precision | Median cumulative tokens |
+|-----|-----------------:|---------------:|-------------------------:|
+| fuse | 30% | 44% | 211,502 |
+| native | 26% | 43% | 209,182 |
 
 Findings, including the shape:
 
-- Read recall with tokens. The fuse arm reached 21 percent mean recall at a median 135,012 cumulative tokens; native reached 27 percent at a median 211,850. The fuse arm gathered a somewhat less complete set at a markedly lower token cost on this sample.
-- The win is concentrated where the title names the wiring. On MediatR#1171, whose title names the licensing wiring, the fuse arm reached 100 percent recall in 4 tool calls at 121k tokens, while the native arm read 328k tokens to reach the same recall. When the semantic signal is present, the Fuse tools find the files fast and cheap.
-- The sample is too small to generalize. Six PRs, one rollout per arm, one model, one day. This suite is a directional signal about whether the Fuse MCP tools help an agent, not a benchmark of agent task success.
+- Fuse edges out native at parity cost. On this 12-PR sample, the fuse arm reached 30 percent mean recall to native's 26 percent, at comparable precision (44 versus 43 percent) and comparable token cost (211,502 versus 209,182). With the MCP server correctly wired and semantic indexing where the repo restores, the Fuse tools gather a slightly more complete set without spending more.
+- The sample is still small. Twelve PRs, one rollout per arm, one model, one day, so the confidence interval is wide and neither mean is settled. This suite is a directional signal about whether the Fuse MCP tools help an agent, not a fixed benchmark.
+- The peer head-to-head and the full scale remain. Comparing against CodeGraph, Serena, and coa-codesearch, and running 50 to 100 tasks at 3 rollouts, needs those peer tools installed and a larger agent-compute budget; the harness skips peers that are absent.
 
 ## Suite E: Token Reduction and Fidelity (offline continuity)
 

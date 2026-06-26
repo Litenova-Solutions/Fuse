@@ -35,21 +35,19 @@ Full documentation lives at **[fuse.codes](https://fuse.codes/docs)**.
 
 ## Why Fuse
 
-Measured over a pinned corpus of five real .NET libraries (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json, Serilog) and one ASP.NET Core application (eShopOnWeb), counted with the `o200k_base` tokenizer. Reduction ratios transfer across models even though absolute token counts do not. Every figure is reproducible with one command and reported in full, including the arms where Fuse ties or loses, on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
+Fuse is judged as a semantic engine, not a token compressor: can it resolve .NET wiring, scope a change with precision, help an agent, and stay honest on a vague query. Four suites measure that over a pinned corpus of five real .NET libraries (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json, Serilog) and one ASP.NET Core application (eShopOnWeb), counted with the `o200k_base` tokenizer. Every figure is reproducible and reported in full, including the modes where Fuse is weak, on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
 
 <p align="center">
-  <img src="assets/fuse-benchmarks.png" alt="Fuse benchmark results: 40 percent fewer tokens at full public-API fidelity, 89 percent change-scoping recall versus a 38 percent grep baseline, 100 percent versus 4 percent skeleton method fidelity with the Roslyn tier, one scoped call replacing at least seven grep-and-open round-trips, and that call delivering a task's context in about 11 times fewer tokens than a generic packer." width="820">
+  <img src="assets/fuse-benchmarks.png" alt="Fuse V3 benchmark results: 100 percent semantic-wiring edge recall and precision on the wiring fixture, fuse review keeping 100 percent of changed files at 90 percent precision in a median 874 tokens over 48 pull requests, 27 percent open-ended localization recall from a title alone, and a Claude agent reaching a change's files at 135K median tokens with the Fuse MCP versus 212K with bare tools." width="820">
 </p>
 
-- **One scoped call instead of an explore loop.** Over 108 real merged pull requests, one `fuse --query` call delivers the files a change needs in about 32,000 tokens at 49 percent recall, against a generic-packer dump of about 363,000 tokens (about 11 times more) at the same single call, and about 348,000 tokens to read the repository blind. Fuse ties a packer at one call and wins on tokens; with a git base the change-scoping mode reaches 91 percent recall. Read the token number with its recall.
-- **Cuts tokens without dropping API.** `--level none` removes 6 to 10 percent and `--level aggressive` removes 21 to 46 percent of tokens while keeping 99 to 100 percent of public types and methods. `--level skeleton` removes 39 to 56 percent for an architecture map at full signature fidelity.
-- **Smaller than the generic packers.** Repomix output runs 1.3 to 6.4 percent larger than raw concatenation on these repositories; Fuse is smaller than raw in every mode.
-- **Finds the files a change touches.** Change scoping recalls 89 percent of the files in 108 real merged pull requests at 53 percent precision, and all three scoping modes beat an agent-style grep baseline.
-- **Trustworthy skeletons on hard code.** Roslyn structural analysis keeps 100 percent of method signatures on all five benchmark libraries and the application, including Newtonsoft.Json, where the retired regex skeleton kept 4 percent.
-- **Cheap repeated calls.** The SQLite-backed analysis index roughly halves warm-call wall-clock across a session, so a multi-call task pays the analysis cost once.
+- **Resolves .NET wiring deterministically.** On the wiring fixture, the extracted semantic graph matches the hand-built edge ground truth 100 percent (10 of 10 edges): DI registration and injection, MediatR request-to-handler, ASP.NET route-to-action, and options binding. This is the moat.
+- **Scopes a change with precision.** Over 48 real merged pull requests, `fuse review` keeps 100 percent of the changed files (seeded as must-keep) at 89.6 percent precision and a median 874 returned tokens, adding the semantic blast radius (callers, DI consumers, handlers, tests) on top.
+- **Honest on open-ended localization.** From a task title alone, with no git base, `fuse localize` recalls 27 percent of the changed files overall (40 percent on identifier-rich titles): the weakest mode, reported straight, including that low-signal titles are not yet flagged.
+- **Helps a real agent at lower cost.** Driving Claude (sonnet-4-6) over 6 pull requests, the Fuse MCP arm gathered a change's files at a median 135K cumulative tokens versus 212K for bare filesystem tools, at comparable recall on a small, model-dependent sample.
 - **Self-contained distribution.** Release binaries bundle the .NET runtime; the global tool remains the recommended install when you already have the SDK.
 
-Reproduce every number with `pwsh -File tests/benchmarks/harness/run-all.ps1`.
+Reproduce the suites with `fuse eval semantics`, `fuse eval review`, `fuse eval localize`, and `fuse eval agent`; results land under `tests/benchmarks/results`.
 
 ## Install
 

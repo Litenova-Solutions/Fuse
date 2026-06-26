@@ -22,7 +22,7 @@ Phase 2 - Syntax-level semantic batch
 - [x] P2.4 fuse index a simple repo; fuse map --detail symbols shows DB symbols; FTS returns chunks
 
 Phase 3 - MSBuild/Roslyn semantic indexing
-- [ ] P3.1 DotNetWorkspaceDiscoverer (discovery order, ignore rules)
+- [x] P3.1 DotNetWorkspaceDiscoverer (discovery order, ignore rules)
 - [ ] P3.2 RoslynWorkspaceLoader; MSBuildLocator guarded once; syntax fallback on load failure
 - [ ] P3.3 Semantic symbol extraction + SymbolIdBuilder (IDs stable across runs)
 - [ ] P3.4 Project records + file linkage; index status Semantic or Partial on a real .sln/.csproj
@@ -1516,5 +1516,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: DotMake auto-generated subcommand short forms collided (`index` vs `init` both -> `-i`): "An item with the same key has already been added. Key: i". Fixed by `ShortFormAutoGenerate = CliNameAutoGenerate.None` on both new commands. The source generator also cannot read a `private const` used as a `[CliOption]` default, so the default is an inline literal.
 - Lessons: The CLI assembly name is `fuse` (`fuse.exe`/`fuse.dll`), not `Fuse.Cli.dll`. For a non-git workspace `FuseStorePaths` falls back to `~/.fuse/fuse.db`; per-workspace isolation is the warm host's job (Phase 11). The first V3 run drops the pre-V3 cache db (expected v10 migration). These minimal commands are formalized/expanded in Phase 8.
 - Time: ~40 min
+
+### P3.1 DotNetWorkspaceDiscoverer - 2026-06-26 11:18
+- Status: done
+- Result: Added `DotNetWorkspaceDiscoverer` + `WorkspaceDiscoveryResult` + `WorkspaceKind` to `Fuse.Semantics`. Discovery walks the tree pruning bin/obj/.git/.fuse/.vs/node_modules, then picks: a unique `.sln` (preferred), else a unique `.slnx` when no `.sln`, else `Projects` over all discovered `.csproj`, else `SyntaxOnly`. Pure filesystem logic (no MSBuild), so no runtime/AOT tension here. Added `DotNetWorkspaceDiscovererTests` (6 tests covering each branch + ignore rules). New solution test total 654 (Fuse.Semantics.Tests 14 -> 20).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 20 passed; `dotnet format Fuse.slnx --verify-no-changes` clean.
+- Blockers/issues: None. The MSBuild-at-runtime / AOT tension flagged in the plan begins at P3.2 (RoslynWorkspaceLoader), not here.
+- Lessons: Discovery deliberately does not parse the solution/project files; that is the loader's job (P3.2). `ProjectPaths` is populated even in `Solution` mode so a load failure can fall back to per-project or syntax indexing.
+- Time: ~15 min
 
 

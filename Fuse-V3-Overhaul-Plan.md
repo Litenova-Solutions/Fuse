@@ -60,7 +60,7 @@ Phase 8 - CLI rewrite
 Phase 9 - MCP rewrite
 - [x] P9.1 Replace tools with the eight (10.1); rewrite server instructions (10.3)
 - [x] P9.2 Compact localize/resolve; context consumes localize/resolve seeds; add session support
-- [ ] P9.3 Update mcp-registry manifest to the new tool list
+- [x] P9.3 Update mcp-registry manifest to the new tool list
 
 Phase 10 - Tests, docs, benchmarks
 - [ ] P10.1 Tests overhaul complete (Section 16.5 definition of done)
@@ -1724,5 +1724,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. The session store is in-memory and process-scoped, so it benefits the long-lived MCP server (one agent, many calls); the CLI is per-process so the delta only helps within a single invocation.
 - Lessons: File seeds expanding through the file's nodes makes the localize -> context handoff work without the agent re-deriving symbols. Session elision is computed on the rendered content hash (post-reduction), so a file whose reduced form is identical is correctly skipped even if unrelated whitespace changed.
 - Time: ~40 min
+
+### P9.3 Update mcp-registry manifest - 2026-06-26 21:45
+- Status: done
+- Result: Updated `mcp-registry/server.json` description from the old "skeleton, scoping, change-aware fusion" framing to the V3 semantic-engine framing naming the eight tools (index/map/localize/resolve/context/review/find/reduce) and the moat (DI/route/MediatR/options wiring, PR change impact, warm Roslyn index). Version is already 3.0.0; the package args (`mcp serve`) are unchanged.
+- Verification: manifest is valid JSON. No code or tests changed, so build/test/format remain green (687 tests, unchanged); a manifest-only item does not raise the test count.
+- Blockers/issues: The registry schema (2025-12-11 server.schema) has no per-tool list field; the tool surface is discovered at runtime via the MCP server, so the manifest carries the positioning in its description rather than an enumerated tool list.
+- Lessons: The MCP registry manifest describes the server/package, not the tools; the tool list lives in the server's runtime instructions (P9.1) and the docs (Phase 10).
+- Time: ~10 min
 
 

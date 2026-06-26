@@ -13,6 +13,7 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<FuseCliCommand>();
     services.AddTransient<IndexCommand>();
     services.AddTransient<MapCommand>();
+    services.AddTransient<ResolveCommand>();
     services.AddTransient<DotNetCommand>();
     services.AddTransient<AskCommand>();
     services.AddTransient<AzureDevOpsWikiCommand>();

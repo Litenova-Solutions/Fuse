@@ -795,11 +795,97 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<NodeRecord?> GetNodeAsync(string nodeId, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = NodeSelect + " WHERE n.node_id = $id LIMIT 1;";
+        command.Parameters.AddWithValue("$id", nodeId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadNode(reader) : null;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<NodeRecord>> FindNodesByDisplayNameAsync(string displayName, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = NodeSelect + " WHERE n.display_name = $name COLLATE NOCASE;";
+        command.Parameters.AddWithValue("$name", displayName);
+        return await ReadNodesAsync(command, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<SemanticEdgeRecord>> GetOutgoingEdgesAsync(string nodeId, CancellationToken cancellationToken) =>
+        GetEdgesAsync("from_node_id", nodeId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<SemanticEdgeRecord>> GetIncomingEdgesAsync(string nodeId, CancellationToken cancellationToken) =>
+        GetEdgesAsync("to_node_id", nodeId, cancellationToken);
+
+    /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _connectionFactory.ClearPool();
         return ValueTask.CompletedTask;
     }
+
+    private const string NodeSelect =
+        "SELECT n.node_id, n.kind, n.display_name, n.stable_key, files.normalized_path, n.symbol_id, " +
+        "n.start_line, n.end_line, n.signature, n.metadata_json " +
+        "FROM nodes n LEFT JOIN files ON files.file_id = n.file_id";
+
+    private async Task<IReadOnlyList<SemanticEdgeRecord>> GetEdgesAsync(string column, string nodeId, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT e.from_node_id, e.to_node_id, e.edge_type, e.weight, e.confidence, e.evidence, " +
+            "files.normalized_path, e.evidence_start_line, e.evidence_end_line, e.metadata_json " +
+            "FROM edges e LEFT JOIN files ON files.file_id = e.evidence_file_id " +
+            $"WHERE e.{column} = $id;";
+        command.Parameters.AddWithValue("$id", nodeId);
+
+        var edges = new List<SemanticEdgeRecord>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            edges.Add(new SemanticEdgeRecord(
+                FromNodeId: reader.GetString(0),
+                ToNodeId: reader.GetString(1),
+                EdgeType: reader.GetString(2),
+                Weight: reader.GetDouble(3),
+                Confidence: reader.GetDouble(4),
+                Evidence: reader.IsDBNull(5) ? null : reader.GetString(5),
+                EvidenceFilePath: reader.IsDBNull(6) ? null : reader.GetString(6),
+                EvidenceStartLine: reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                EvidenceEndLine: reader.IsDBNull(8) ? null : reader.GetInt32(8),
+                MetadataJson: reader.IsDBNull(9) ? null : reader.GetString(9)));
+        }
+
+        return edges;
+    }
+
+    private static async Task<IReadOnlyList<NodeRecord>> ReadNodesAsync(SqliteCommand command, CancellationToken cancellationToken)
+    {
+        var nodes = new List<NodeRecord>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            nodes.Add(ReadNode(reader));
+        return nodes;
+    }
+
+    private static NodeRecord ReadNode(SqliteDataReader reader) => new(
+        NodeId: reader.GetString(0),
+        Kind: reader.GetString(1),
+        DisplayName: reader.GetString(2),
+        StableKey: reader.GetString(3),
+        FilePath: reader.IsDBNull(4) ? null : reader.GetString(4),
+        SymbolId: reader.IsDBNull(5) ? null : reader.GetString(5),
+        StartLine: reader.IsDBNull(6) ? null : reader.GetInt32(6),
+        EndLine: reader.IsDBNull(7) ? null : reader.GetInt32(7),
+        Signature: reader.IsDBNull(8) ? null : reader.GetString(8),
+        MetadataJson: reader.IsDBNull(9) ? null : reader.GetString(9));
 
     // Build a safe FTS5 MATCH expression from free text. Each whitespace-separated run of letters/digits
     // becomes a quoted term (double quotes doubled per FTS5 escaping); terms are OR-ed for recall. Quoting

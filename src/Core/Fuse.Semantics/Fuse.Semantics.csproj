@@ -15,6 +15,7 @@
         <PackageReference Include="Microsoft.Build.Locator"/>
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
         <ProjectReference Include="..\Fuse.Indexing\Fuse.Indexing.csproj"/>
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj"/>
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj"/>

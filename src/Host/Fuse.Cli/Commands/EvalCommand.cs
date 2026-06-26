@@ -130,6 +130,8 @@ public sealed class EvalCommand
     {
         "semantics" => new SemanticResolutionSuite(_indexer),
         "review" => new ChangeImpactSuite(_indexer, _changeSource),
+        "localize" => new LocalizationSuite(_indexer, _changeSource),
+        "agent" => new AgentSuite(_indexer),
         _ => null
     };
 

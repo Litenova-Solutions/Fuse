@@ -32,29 +32,85 @@ public sealed class SemanticRetrievalEngineTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task LocalizeWarnsOnLowSignal()
+    public async Task ConfidentResultReturnsTightSetWithNoNavigationMap()
     {
         var engine = new SemanticRetrievalEngine(_store);
 
-        var result = await engine.LocalizeAsync(new LocalizationRequest(".", Query: "zzznotfound"), CancellationToken.None);
+        // A query that names one file's symbol stands clear of the rest: confident, tight set, no navigation map.
+        var result = await engine.LocalizeAsync(new LocalizationRequest(".", Query: "OrderService"), CancellationToken.None);
 
-        Assert.Empty(result.Candidates);
-        Assert.Contains(result.Warnings, w => w.Contains("Low signal", StringComparison.Ordinal));
+        Assert.Equal(SignalState.Confident, result.State);
+        Assert.Contains(result.Candidates, c => c.Path == "src/OrderService.cs");
+        Assert.Null(result.Navigation);
+        Assert.False(result.LowSignal);
     }
 
     [Fact]
-    public async Task LocalizeAbstainsAndSuggestsOnNoSignalTitle()
+    public async Task NoMatchIsInsufficientAndHandsBackANavigationMap()
     {
         var engine = new SemanticRetrievalEngine(_store);
 
-        // A merge-noise title that happens to share words with indexed files must still abstain, not return junk.
+        // Nothing matches "zzznotfound": the score distribution is empty, so the state is insufficient. The R3
+        // LowSignal flag stays false (the query is not a no-signal title); the engine still hands back a map.
+        var result = await engine.LocalizeAsync(new LocalizationRequest(".", Query: "zzznotfound"), CancellationToken.None);
+
+        Assert.Equal(SignalState.Insufficient, result.State);
+        Assert.False(result.LowSignal);
+        Assert.NotNull(result.Navigation);
+        // Refuse-and-route, never just refuse: the map carries the structure Fuse did see.
+        Assert.NotEmpty(result.Navigation!.CandidateAreas);
+        Assert.False(string.IsNullOrWhiteSpace(result.Navigation.Ask));
+    }
+
+    [Fact]
+    public async Task NoSignalTitleRefusesAndRoutesWithACandidateMap()
+    {
+        var engine = new SemanticRetrievalEngine(_store);
+
+        // A merge-noise title that happens to share words with indexed files must abstain (R3) and route, not
+        // return junk: insufficient state, LowSignal set, empty candidate list, but a populated navigation map.
         var result = await engine.LocalizeAsync(
             new LocalizationRequest(".", Query: "Merge pull request #42 from acme/order-service"), CancellationToken.None);
 
         Assert.True(result.LowSignal);
+        Assert.Equal(SignalState.Insufficient, result.State);
         Assert.Empty(result.Candidates);
         Assert.False(string.IsNullOrWhiteSpace(result.SuggestedInput));
-        Assert.Contains(result.Warnings, w => w.Contains("Low signal", StringComparison.Ordinal));
+        Assert.NotNull(result.Navigation);
+        Assert.NotEmpty(result.Navigation!.CandidateAreas);
+    }
+
+    [Fact]
+    public async Task StrictModeRefusesAnUnanchoredQueryButAnswersAnAnchoredOne()
+    {
+        var engine = new SemanticRetrievalEngine(_store);
+
+        // Unanchored (no match) under strict: refused, no candidate list, only the navigation map.
+        var refused = await engine.LocalizeAsync(
+            new LocalizationRequest(".", Query: "zzznotfound", Strict: true), CancellationToken.None);
+        Assert.Equal(SignalState.Insufficient, refused.State);
+        Assert.Empty(refused.Candidates);
+        Assert.NotNull(refused.Navigation);
+
+        // Anchored (a query that names a clear winner) under strict: answered with the tight set.
+        var answered = await engine.LocalizeAsync(
+            new LocalizationRequest(".", Query: "OrderService", Strict: true), CancellationToken.None);
+        Assert.Equal(SignalState.Confident, answered.State);
+        Assert.NotEmpty(answered.Candidates);
+    }
+
+    [Fact]
+    public async Task DefaultModeNeverReturnsNothingForAClientThatCannotRefine()
+    {
+        var engine = new SemanticRetrievalEngine(_store);
+
+        // The default (non-strict) contract always hands back something actionable: even when no candidate clears
+        // the bar, the navigation map (areas, nearest symbols, an ask) is present so a one-shot client is not stranded.
+        var result = await engine.LocalizeAsync(new LocalizationRequest(".", Query: "zzznotfound"), CancellationToken.None);
+
+        Assert.NotNull(result.Navigation);
+        Assert.False(string.IsNullOrWhiteSpace(result.Navigation!.Ask));
+        Assert.True(result.Navigation.CandidateAreas.Count > 0 || result.Navigation.NearestSymbols.Count > 0);
     }
 
     [Fact]
@@ -114,6 +170,13 @@ public sealed class SemanticRetrievalEngineTests : IAsyncLifetime
                 new ChunkRecord("chunk:IOrderService", "src/IOrderService.cs", "interface", "k1", 1, 5, "t1", 12, 8, Name: "IOrderService"),
                 new ChunkRecord("chunk:OrderService", "src/OrderService.cs", "type", "k2", 1, 20, "t2", 60, 40, Name: "OrderService", Body: "order service"),
                 new ChunkRecord("chunk:OrdersController", "src/OrdersController.cs", "type", "k3", 1, 30, "t3", 80, 50, Name: "OrdersController"),
+            ],
+            CancellationToken.None);
+        await _store.UpsertSymbolsAsync(
+            [
+                new SymbolRecord("sym:IOrderService", "src/IOrderService.cs", "interface", "IOrderService", "App.IOrderService", Namespace: "App", IsPublicApi: true),
+                new SymbolRecord("sym:OrderService", "src/OrderService.cs", "class", "OrderService", "App.OrderService", Namespace: "App", IsPublicApi: true),
+                new SymbolRecord("sym:OrdersController", "src/OrdersController.cs", "class", "OrdersController", "App.OrdersController", Namespace: "App", IsPublicApi: true),
             ],
             CancellationToken.None);
         await _store.UpsertNodesAsync(

@@ -19,6 +19,11 @@ namespace Fuse.Retrieval;
 /// <param name="MaxTokens">An optional token budget for packing.</param>
 /// <param name="IncludeTests">Whether test files are eligible.</param>
 /// <param name="IncludeConfig">Whether config files are eligible.</param>
+/// <param name="Strict">
+///     When true, the signal-sufficiency contract hard-requires an anchor: an insufficient request is refused
+///     (no file list, only the navigation map). The default (false) is best-effort-plus-flag, so a client that
+///     cannot refine still receives the partial set with a low-confidence flag.
+/// </param>
 public sealed record LocalizationRequest(
     string RootDirectory,
     string? Query = null,
@@ -34,7 +39,8 @@ public sealed record LocalizationRequest(
     int Depth = 2,
     int? MaxTokens = null,
     bool IncludeTests = true,
-    bool IncludeConfig = true);
+    bool IncludeConfig = true,
+    bool Strict = false);
 
 /// <summary>
 ///     A candidate file or symbol produced by a candidate generator, before scoring and graph expansion.

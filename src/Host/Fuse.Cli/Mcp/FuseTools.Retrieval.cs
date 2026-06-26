@@ -19,6 +19,7 @@ public sealed partial class FuseTools
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
     /// <param name="changeSource">The change source for resolving a git base ref.</param>
+    /// <param name="embedder">An optional text embedder; when present, a dense retrieval channel is added.</param>
     /// <param name="path">The workspace directory.</param>
     /// <param name="task">The free-text task or query.</param>
     /// <param name="route">A route to resolve.</param>
@@ -28,8 +29,9 @@ public sealed partial class FuseTools
     /// <param name="config">A config section to resolve.</param>
     /// <param name="changedSince">A git base ref whose changed files seed candidates.</param>
     /// <param name="maxCandidates">The maximum candidates to return.</param>
+    /// <param name="strict">When true, an insufficient request is refused and only a navigation map is returned; off by default (best-effort).</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
-    /// <returns>Ranked candidates with reasons and token costs.</returns>
+    /// <returns>Ranked candidates with reasons and token costs, or a navigation map when the request is not confident.</returns>
     [McpServerTool(Name = "fuse_localize", ReadOnly = true)]
     [Description("Localize a task to ranked candidate files and symbols (no bodies). The cheap first step of an iterative workflow; follow with fuse_context to read selected seeds.")]
     public static async Task<string> FuseLocalizeAsync(
@@ -45,6 +47,7 @@ public sealed partial class FuseTools
         [Description("A config section to resolve to its options type.")] string? config = null,
         [Description("A git base ref whose changed files seed the candidates.")] string? changedSince = null,
         [Description("Maximum candidates to return.")] int maxCandidates = 50,
+        [Description("Strict signal-sufficiency: when an insufficient request has no clear anchor, refuse and return only a navigation map instead of a low-confidence guess. Off by default (best-effort).")] bool strict = false,
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetFullPath(path);
@@ -52,22 +55,9 @@ public sealed partial class FuseTools
         var engine = new SemanticRetrievalEngine(store, changeSource, embedder);
         var requestModel = new LocalizationRequest(
             root, Query: task, ChangedSince: changedSince, Route: route, Focus: symbol, Service: service,
-            Request: request, ConfigSection: config, MaxCandidates: maxCandidates);
+            Request: request, ConfigSection: config, MaxCandidates: maxCandidates, Strict: strict);
         var result = await engine.LocalizeAsync(requestModel, cancellationToken);
-
-        var builder = new StringBuilder();
-        builder.AppendLine($"localize: {result.Candidates.Count} candidates");
-        foreach (var candidate in result.Candidates)
-        {
-            builder.AppendLine($"  {candidate.Score:F3}  {candidate.Path}  (~{candidate.EstimatedTokens} tokens)");
-            foreach (var reason in candidate.Reasons)
-                builder.AppendLine($"        {reason}");
-        }
-
-        foreach (var warning in result.Warnings)
-            builder.AppendLine($"  ! {warning}");
-
-        return builder.ToString();
+        return LocalizationFormatter.Format(result);
     }
 
     /// <summary>

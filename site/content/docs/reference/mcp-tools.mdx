@@ -54,8 +54,24 @@ Localize a task to ranked candidate files and symbols. Returns candidates with r
 | `config` | string | null | A config section to resolve to its options type |
 | `changedSince` | string | null | A git base ref whose changed files seed the candidates |
 | `maxCandidates` | int | 50 | Maximum candidates to return |
+| `strict` | bool | false | Refuse an insufficient request and return only a navigation map, instead of a low-confidence best-effort guess |
 
-When the task carries no usable scoping signal (a merge, dependency-bump, or CI title, or an empty query with no route, symbol, service, request, config, or base), `fuse_localize` abstains: it returns no candidates and a low-signal warning suggesting a next input (a git base, a route, or a symbol) rather than full-text guesses. Provide one of the structured parameters above to get a scoped answer.
+### The graded response
+
+`fuse_localize` grades each request into one of three states, computed from the candidate
+score distribution with no model, and leads its output with the state (`localize [confident]: ...`):
+
+- **confident**: a candidate or a tight cluster stands clear; the tight set is returned and precision is high.
+- **partial**: there is signal but no clear winner; a small best-effort set is returned, flagged low-confidence, with a navigation map of refinement options.
+- **insufficient**: no usable anchor; the engine refuses and routes, returning a navigation map (top candidate areas, entry-point files and routes, nearest symbols) and an explicit ask for a sharper input, instead of a guess.
+
+The navigation map turns a refusal into a navigation step: an exploring agent reads the
+areas and nearest symbols to pick its next, better-anchored query. By default (best-effort)
+a partial or insufficient request still returns a candidate set so a one-shot client is
+never stranded; with `strict: true` an insufficient request returns only the map. A
+no-signal title (a merge, dependency-bump, or CI title with no code reference) abstains in
+both modes, since it can only return noise. Provide one of the structured parameters above,
+or a name from the navigation map, to get a confident answer.
 
 ## fuse_resolve
 

@@ -1,5 +1,5 @@
-using System.Text;
 using DotMake.CommandLine;
+using Fuse.Cli.Mcp;
 using Fuse.Cli.Services;
 using Fuse.Indexing;
 using Fuse.Reduction.Caching;
@@ -84,6 +84,13 @@ public sealed class LocalizeCommand
     public int MaxCandidates { get; set; } = 50;
 
     /// <summary>
+    ///     Whether to apply the strict signal-sufficiency contract: refuse an insufficient request and return
+    ///     only a navigation map, instead of a low-confidence best-effort guess.
+    /// </summary>
+    [CliOption(Name = "--strict", Description = "Refuse an insufficient request and return only a navigation map (best-effort by default).")]
+    public bool Strict { get; set; }
+
+    /// <summary>
     ///     Runs the localize command.
     /// </summary>
     /// <param name="context">The CLI invocation context supplying the cancellation token.</param>
@@ -103,26 +110,9 @@ public sealed class LocalizeCommand
 
         var request = new LocalizationRequest(
             root, Query: Task, ChangedSince: ChangedSince, Route: Route, Focus: Symbol, Service: Service,
-            Request: Request, ConfigSection: Config, MaxCandidates: MaxCandidates);
+            Request: Request, ConfigSection: Config, MaxCandidates: MaxCandidates, Strict: Strict);
         var result = await new SemanticRetrievalEngine(store, _changeSource, _embedder).LocalizeAsync(request, context.CancellationToken);
 
-        _consoleUI.WriteResult(Format(result));
-    }
-
-    private static string Format(LocalizationResult result)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine($"localize: {result.Candidates.Count} candidates");
-        foreach (var candidate in result.Candidates)
-        {
-            builder.AppendLine($"  {candidate.Score:F3}  {candidate.Path}  (~{candidate.EstimatedTokens} tokens)");
-            foreach (var reason in candidate.Reasons)
-                builder.AppendLine($"        {reason}");
-        }
-
-        foreach (var warning in result.Warnings)
-            builder.AppendLine($"  ! {warning}");
-
-        return builder.ToString();
+        _consoleUI.WriteResult(LocalizationFormatter.Format(result));
     }
 }

@@ -16,6 +16,17 @@ public sealed class SemanticRetrievalEngine
 {
     private const double ExpansionThreshold = 0.10;
 
+    // The most candidates a non-confident (partial or best-effort insufficient) result returns. Smaller than the
+    // request cap so a low-confidence answer is a short, scannable set rather than a long, noisy one; the
+    // confident path returns only its leading cluster, which is typically smaller still.
+    private const int PartialCandidateLimit = 10;
+
+    private const string InsufficientAsk =
+        "No candidate stands clear. Provide a symbol, route, service, request, config section, git base, or a narrower description.";
+
+    private const string PartialAsk =
+        "No candidate stands clear; this is a low-confidence best effort. Refine with a symbol, route, service, request, config section, or git base.";
+
     private readonly IWorkspaceIndexStore _store;
     private readonly IChangeSource? _changeSource;
     private readonly CandidateGenerator _candidateGenerator;
@@ -45,32 +56,62 @@ public sealed class SemanticRetrievalEngine
     /// <returns>The ranked candidates and any warnings.</returns>
     public async Task<LocalizationResult> LocalizeAsync(LocalizationRequest request, CancellationToken cancellationToken)
     {
-        // Detect a request that carries no usable scoping signal (merge/dependency/CI noise, or an empty query
-        // with no structured input) and abstain with a suggestion rather than returning candidates a title
-        // cannot support. This is the honest answer where recall is bounded by the input, not the engine.
+        // Step 1: the R3 binary classifier. A request that carries no usable scoping signal (merge/dependency/CI
+        // noise, or an empty query with no structured input) names no code, so generating candidates would only
+        // return junk. Refuse and route: hand back the structural map and ask for an anchor. This is the
+        // insufficient state by classification, kept distinct from the score-distribution insufficiency below so
+        // the low-signal detection metric (which scores this classifier) is not contaminated by weak-match cases.
         var verdict = QuerySignalClassifier.Classify(request);
         if (verdict.IsLowSignal)
         {
-            var suggestion = verdict.Suggestion ?? "Provide a route, symbol, service, request, config section, or a git base.";
-            return new LocalizationResult([], [$"Low signal: {suggestion}"], LowSignal: true, SuggestedInput: suggestion);
+            var ask = verdict.Suggestion ?? InsufficientAsk;
+            var navigation = await new NavigationMapBuilder(_store).BuildAsync(request, [], ask, cancellationToken);
+            return new LocalizationResult(
+                [], [$"Low signal: {ask}"], LowSignal: true, SuggestedInput: ask,
+                State: SignalState.Insufficient, Navigation: navigation);
         }
 
+        // Step 2: generate, score, and grade the candidate distribution into the signal-sufficiency contract.
         var candidates = await _candidateGenerator.GenerateAsync(request, cancellationToken);
         var scored = _scorer.Score(candidates);
+        var state = SignalGrader.Grade(scored);
 
-        var localized = new List<LocalizedCandidate>(scored.Count);
-        foreach (var candidate in scored.Take(request.MaxCandidates))
+        // Select the returned set by state. Confident returns only the leading cluster (the precision win); partial
+        // returns a small flagged best-effort set; insufficient returns nothing under strict mode (a hard anchor
+        // requirement) and a best-effort set under the graceful default, so a client that cannot refine still gets
+        // something. The R3 LowSignal flag stays false here: this is a graded outcome, not a no-signal title.
+        IReadOnlyList<ScoredCandidate> selected = state switch
+        {
+            SignalState.Confident => SignalGrader.LeadingCluster(scored),
+            SignalState.Partial => scored.Take(PartialCandidateLimit).ToList(),
+            _ => request.Strict ? [] : scored.Take(PartialCandidateLimit).ToList(),
+        };
+        selected = selected.Take(request.MaxCandidates).ToList();
+
+        var warnings = new List<string>();
+        NavigationMap? navigationMap = null;
+        if (state != SignalState.Confident)
+        {
+            var ask = state == SignalState.Insufficient ? InsufficientAsk : PartialAsk;
+            navigationMap = await new NavigationMapBuilder(_store).BuildAsync(request, scored, ask, cancellationToken);
+            warnings.Add(state switch
+            {
+                SignalState.Insufficient when request.Strict => $"Insufficient signal (strict): refused, no candidates returned. {ask}",
+                SignalState.Insufficient when selected.Count == 0 => $"Insufficient signal: no candidate cleared the bar. {ask}",
+                SignalState.Insufficient => $"Insufficient signal: returning a best-effort set, low confidence. {ask}",
+                _ => $"Partial signal: returning a best-effort set, low confidence. {ask}",
+            });
+        }
+
+        var localized = new List<LocalizedCandidate>(selected.Count);
+        foreach (var candidate in selected)
         {
             var tokens = await _store.GetFileTokenEstimateAsync(candidate.FilePath, cancellationToken);
             localized.Add(new LocalizedCandidate(
                 candidate.FilePath, candidate.NodeId, candidate.Kind, candidate.Score, tokens, candidate.Reasons));
         }
 
-        var warnings = new List<string>();
-        if (localized.Count == 0)
-            warnings.Add("Low signal: no candidates found. Provide a route, symbol, service, request, config section, or a git base.");
-
-        return new LocalizationResult(localized, warnings);
+        return new LocalizationResult(localized, warnings, LowSignal: false, SuggestedInput: null, State: state, Navigation: navigationMap);
     }
 
     /// <summary>

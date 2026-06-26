@@ -24,6 +24,9 @@ public sealed class FixtureEdgeSetTests
     [InlineData("route_handles", "route:GET:/health", "method:OrderingApp.Api.HealthEndpoints.Check")]
     [InlineData("grpc_endpoint", "service:gRPC", "type:OrderingApp.Api.GreeterService")]
     [InlineData("signalr_endpoint", "service:SignalR", "type:OrderingApp.Api.ChatHub")]
+    [InlineData("di_resolves_to", "type:OrderingApp.Data.ICache", "type:OrderingApp.Data.MemoryCache")]
+    [InlineData("di_resolves_to", "type:OrderingApp.Data.IShipping", "type:OrderingApp.Data.FastShipping")]
+    [InlineData("di_resolves_to", "type:OrderingApp.Data.IRepository<T>", "type:OrderingApp.Data.Repository<T>")]
     public void ExpectedEdgeIsPresent(string edgeType, string from, string to)
     {
         var result = RunAllAnalyzers();

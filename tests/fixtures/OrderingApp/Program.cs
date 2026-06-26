@@ -1,7 +1,9 @@
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderingApp.Api;
+using OrderingApp.Data;
 using OrderingApp.Ordering;
 
 namespace OrderingApp;
@@ -20,6 +22,12 @@ public static class Program
         services.AddSingleton<IClock>(sp => new SystemClock());
         // Decoration: wrap IOrderService with a logging decorator.
         services.Decorate<IOrderService, OrderServiceLogger>();
+        // Open generic registration (typeof pair).
+        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        // TryAdd registration.
+        services.TryAddSingleton<ICache, MemoryCache>();
+        // Multiple-implementation ambiguity: only FastShipping is registered.
+        services.AddScoped<IShipping, FastShipping>();
     }
 
     public static void MapEndpoints(WebApplication app)

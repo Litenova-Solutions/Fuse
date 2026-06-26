@@ -165,8 +165,14 @@ public sealed class DiRegistrationAnalyzer : ISemanticAnalyzer
         return (null, null, "unknown");
     }
 
-    private static INamedTypeSymbol? ResolveType(SemanticModel model, SyntaxNode typeSyntax, CancellationToken cancellationToken) =>
-        model.GetTypeInfo(typeSyntax, cancellationToken).Type as INamedTypeSymbol;
+    private static INamedTypeSymbol? ResolveType(SemanticModel model, SyntaxNode typeSyntax, CancellationToken cancellationToken)
+    {
+        if (model.GetTypeInfo(typeSyntax, cancellationToken).Type is not INamedTypeSymbol type)
+            return null;
+        // typeof(IRepository<>) resolves to the unbound generic, whose display id ("<>") would not match the
+        // type's declaration id ("<T>"); use the original definition so the resolve edge connects to the node.
+        return type.IsUnboundGenericType ? type.OriginalDefinition : type;
+    }
 
     // Recovers the concrete type a factory registration builds: the first object creation in the factory
     // lambda's body (for example AddSingleton<IFoo>(sp => new Foo(...))). Returns null when the factory is not

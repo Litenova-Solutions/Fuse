@@ -45,6 +45,21 @@ public sealed class WiringAnalyzersTests
             && e.ToNodeId == "type:OrderingApp.Data.OrderEntityConfiguration");
     }
 
+    [Fact]
+    public void Ambiguity_resolves_only_the_registered_implementation()
+    {
+        var result = Analyze(new DiRegistrationAnalyzer());
+
+        // Two implementations of IShipping exist, but only FastShipping is registered: no resolve edge to
+        // SlowShipping (the precision side of the moat).
+        Assert.Contains(result.Edges, e =>
+            e.EdgeType == "di_resolves_to"
+            && e.FromNodeId == "type:OrderingApp.Data.IShipping"
+            && e.ToNodeId == "type:OrderingApp.Data.FastShipping");
+        Assert.DoesNotContain(result.Edges, e =>
+            e.EdgeType == "di_resolves_to" && e.ToNodeId == "type:OrderingApp.Data.SlowShipping");
+    }
+
     private static SemanticAnalyzerResult Analyze(ISemanticAnalyzer analyzer)
     {
         var project = OrderingAppFixture.Load();

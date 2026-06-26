@@ -1,0 +1,15 @@
+{
+  "comment": "Ground-truth semantic edges for the OrderingApp fixture (Suite A: semantic resolution). Edge ids use the analyzer node-id form (type:{fqn}, route:{METHOD}:{pattern}, method:{type}.{name}, config:{section}).",
+  "edges": [
+    { "from": "type:OrderingApp.Ordering.IOrderService", "to": "type:OrderingApp.Ordering.OrderService", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Api.OrdersController", "to": "type:OrderingApp.Ordering.IOrderService", "type": "di_injects" },
+    { "from": "type:OrderingApp.Api.OrdersController", "to": "type:MediatR.ISender", "type": "di_injects" },
+    { "from": "type:OrderingApp.Ordering.CreateOrderHandler", "to": "type:OrderingApp.Ordering.IOrderService", "type": "di_injects" },
+    { "from": "type:OrderingApp.Api.OrdersController", "to": "type:OrderingApp.Ordering.OrderService", "type": "di_depends_on_impl" },
+    { "from": "type:OrderingApp.Ordering.CreateOrderHandler", "to": "type:OrderingApp.Ordering.OrderService", "type": "di_depends_on_impl" },
+    { "from": "type:OrderingApp.Ordering.CreateOrderCommand", "to": "type:OrderingApp.Ordering.CreateOrderHandler", "type": "mediatr_handles" },
+    { "from": "route:POST:/api/orders/{id}", "to": "method:OrderingApp.Api.OrdersController.Create", "type": "route_handles" },
+    { "from": "config:Orders", "to": "type:OrderingApp.Ordering.OrderOptions", "type": "options_binds" },
+    { "from": "type:OrderingApp.Ordering.OrderService", "to": "type:OrderingApp.Ordering.OrderOptions", "type": "options_consumes" }
+  ]
+}

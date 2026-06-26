@@ -161,6 +161,11 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>The nodes whose file is the given path.</returns>
     Task<IReadOnlyList<NodeRecord>> GetNodesByFileAsync(string normalizedPath, CancellationToken cancellationToken);
 
+    /// <summary>Returns every edge in the graph, for whole-graph evaluation and export.</summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>All edges; <see cref="SemanticEdgeRecord.EvidenceFilePath" /> is the evidence file's normalized path or null.</returns>
+    Task<IReadOnlyList<SemanticEdgeRecord>> GetAllEdgesAsync(CancellationToken cancellationToken);
+
     /// <summary>Returns the edges leaving a node.</summary>
     /// <param name="nodeId">The source node id.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>

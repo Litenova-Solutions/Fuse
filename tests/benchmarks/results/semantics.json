@@ -1,0 +1,18 @@
+{
+  "suite": "semantics",
+  "fixtures": 1,
+  "edgesExpected": 10,
+  "edgesMatched": 10,
+  "falsePositives": 0,
+  "recall": 1,
+  "precision": 1,
+  "results": [
+    {
+      "name": "OrderingApp",
+      "expected": 10,
+      "matched": 10,
+      "falsePositives": 0,
+      "missed": []
+    }
+  ]
+}

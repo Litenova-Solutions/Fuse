@@ -129,6 +129,7 @@ public sealed class EvalCommand
     private IEvalSuite? BuildSuite(string name) => name switch
     {
         "semantics" => new SemanticResolutionSuite(_indexer),
+        "review" => new ChangeImpactSuite(_indexer, _changeSource),
         _ => null
     };
 

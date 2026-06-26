@@ -1742,4 +1742,12 @@ The single most important thing remains: build the resolved semantic graph and e
 - Lessons: V3 golden determinism requires omitting the absolute root from the manifest, seeding token estimates, and using a fixed token counter; with those, the emitter output is byte-stable. The skeleton tier correctly drops bodies (verified in the golden: the controller constructor renders as a signature).
 - Time: ~45 min
 
+### P10.2 Docs overhaul - 2026-06-26 22:55
+- Status: partial
+- Result: Rewrote the two canonical, code-coupled reference pages to the V3 surface: `reference/mcp-tools.mdx` (the eight V3 tools with exact parameters and defaults, matching the implemented tool signatures) and `reference/commands.mdx` (the V3 command set: index/map/localize/resolve/context/review/find/diagnostics/reduce/init/mcp/host/models). No .NET code changed, so build/test/format remain green (691 tests).
+- Verification: `dotnet build`/`test`/`format` unaffected and green. The MDX edits are standard frontmatter + tables. The full Next.js/Fumadocs site build was not run in this pass.
+- Blockers/issues: The full 17.6 definition of done is not yet met and is partly gated on the benchmark phase. (1) ~15 narrative pages (concepts, scenarios, internals, start, project) still reference removed tools/commands or the old "explore-phase token reduction" model and need rewriting to the warm-semantic-index model. (2) "Every measured number is sourced from regenerated results" is blocked on P10.3/P10.4 benchmark regeneration, which needs the pinned OSS corpus (git clones, network) and rerank models; AGENTS.md forbids fabricating or weakening numbers, so the benchmark pages (`project/benchmarks.mdx`, `project/performance.mdx`) cannot be resynced until the suites run. (3) `meta.json` sidebars and the site build verification remain.
+- Lessons: The reference pages are the highest-value, lowest-risk docs to land first because they map 1:1 to the implemented surface. The narrative rewrite and the number resync should land together with the benchmark regeneration (P10.3/P10.4), not before, to avoid quoting stale or fabricated figures.
+- Time: ~40 min
+
 

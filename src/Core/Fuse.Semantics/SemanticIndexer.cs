@@ -86,6 +86,52 @@ public sealed class SemanticIndexer
         return result;
     }
 
+    /// <summary>
+    ///     Re-indexes a single changed file in place: clears that file's stored rows and re-extracts its
+    ///     syntax-level data (symbols, chunks, full-text, routes), without rebuilding the whole index.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="normalizedPath">The changed file's normalized (forward-slash, repo-relative) path.</param>
+    /// <param name="store">The index store to update.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The number of symbols re-indexed for the file (0 for a non-C# file or a deleted file).</returns>
+    /// <remarks>
+    ///     This updates the file's own syntax-level rows only. Cross-file semantic graph edges (DI resolution,
+    ///     route handlers, MediatR and EF wiring) are computed from the whole compilation and are not
+    ///     recomputed here; a full <see cref="IndexAsync" /> refreshes those. The incremental path keeps an
+    ///     edit-heavy session's full-text and symbol rows current at low cost. When the file no longer exists,
+    ///     its rows are cleared and nothing is re-added.
+    /// </remarks>
+    public async Task<int> ReindexFileAsync(
+        string rootDirectory,
+        string normalizedPath,
+        IWorkspaceIndexStore store,
+        CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var absolute = Path.Combine(root, normalizedPath.Replace('/', Path.DirectorySeparatorChar));
+
+        await store.DeleteFileDataAsync(normalizedPath, cancellationToken);
+        if (!File.Exists(absolute))
+            return 0;
+
+        var info = new FileInfo(absolute);
+        var content = await File.ReadAllTextAsync(absolute, cancellationToken);
+        var hash = _hashService.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        await store.UpsertFilesAsync(
+            [new IndexedFileRecord(normalizedPath, normalizedPath, info.Extension, info.Length, info.LastWriteTimeUtc.Ticks, hash)],
+            cancellationToken);
+
+        if (!string.Equals(info.Extension, ".cs", StringComparison.OrdinalIgnoreCase))
+            return 0;
+
+        var extracted = _syntaxSymbols.Extract(normalizedPath, content);
+        await store.UpsertSymbolsAsync(extracted.Symbols, cancellationToken);
+        await store.UpsertChunksAsync(extracted.Chunks, cancellationToken);
+        await store.UpsertRoutesAsync(_routeExtractor.Extract(normalizedPath, content), cancellationToken);
+        return extracted.Symbols.Count;
+    }
+
     private async Task<SemanticIndexResult> IndexSemanticAsync(
         string root,
         IWorkspaceIndexStore store,

@@ -30,7 +30,7 @@ Phase 3 - MSBuild/Roslyn semantic indexing
 Phase 4 - Core semantic edges
 - [x] P4.1 Shared semantic fixture app (16.2)
 - [x] P4.2 InterfaceImplementationAnalyzer
-- [ ] P4.3 DiRegistrationAnalyzer
+- [x] P4.3 DiRegistrationAnalyzer
 - [ ] P4.4 ConstructorInjectionAnalyzer
 - [ ] P4.5 MediatRAnalyzer
 - [ ] P4.6 AspNetRouteAnalyzer
@@ -1563,6 +1563,14 @@ The single most important thing remains: build the resolved semantic graph and e
 - Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 38 passed (OrderService -> IOrderService implements edge present with weight 0.90 and both endpoint nodes); `dotnet format --verify-no-changes` clean.
 - Blockers/issues: None.
 - Lessons: Node ids are the shared contract between analyzers (`type:{fqn}`, `method:{type}.{name}`, `route:{METHOD}:{pattern}`, `service:{name}`, `config:{section}`); `SemanticNodes` centralizes them so edges from different analyzers join. Each analyzer emits the nodes for its edge endpoints so `UpsertNodes` (INSERT OR REPLACE) can precede `UpsertEdges` and satisfy the FK. "In source" means same assembly as the compilation plus a source location, which in the hermetic fixture includes the stub interfaces (acceptable; tests assert specific edges, not exclusivity).
+- Time: ~30 min
+
+### P4.3 DiRegistrationAnalyzer - 2026-06-26 13:20
+- Status: done
+- Result: Added `DiRegistrationAnalyzer` emitting `service -> implementation : di_resolves_to` (0.95) edges and `DiRegistrationRecord`s. Handles generic two-type (`AddScoped<TService,TImpl>`), generic self (`AddScoped<TService>`), and `typeof` pair forms across Scoped/Singleton/Transient and `TryAdd*`; factory and single-generic-with-factory record the service with a null implementation and no resolve edge. Type args resolved via `SemanticModel.GetTypeInfo` on the syntax (works without restore). Added test helper `InlineCompilation` (compiles inline snippets with the fixture's `Framework.cs` stubs) and `DiRegistrationAnalyzerTests` (5, incl. 3 registration-shape variants). New solution test total 677 (Fuse.Semantics.Tests 38 -> 43).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 43 passed (IOrderService -> OrderService di_resolves_to present, lifetime Scoped, generic2 kind); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None. di_registers (registration-site -> service) from 6.2 is intentionally not emitted as a separate edge: it is not in the P4.8 asserted set and the `DiRegistrationRecord` already carries the file linkage review needs. di_depends_on_impl (consumer -> impl) is the constructor-injection analyzer's job (P4.4).
+- Lessons: Resolving type arguments off the syntax via `GetTypeInfo` is robust whether or not the `Add*` method itself resolves, so DI detection survives an unrestored project. Self-registration (`AddScoped<T>()`) yields a di_resolves_to self-edge (service==impl), which is harmless.
 - Time: ~30 min
 
 

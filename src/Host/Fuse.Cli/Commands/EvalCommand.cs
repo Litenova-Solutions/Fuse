@@ -23,7 +23,7 @@ namespace Fuse.Cli.Commands;
 /// </remarks>
 [CliCommand(
     Name = "eval",
-    Description = "Run Fuse evaluation suites (semantics, review, localize, agent, reduce).",
+    Description = "Run Fuse evaluation suites (semantics, review, localize, agent, reduce, performance).",
     ShortFormAutoGenerate = CliNameAutoGenerate.None,
     Parent = typeof(FuseCliCommand))]
 public sealed class EvalCommand
@@ -69,7 +69,7 @@ public sealed class EvalCommand
     }
 
     /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, or <c>agent</c>.</summary>
-    [CliArgument(Description = "The suite to run: semantics, review, localize, agent, reduce.")]
+    [CliArgument(Description = "The suite to run: semantics, review, localize, agent, reduce, performance.")]
     public string Suite { get; set; } = "semantics";
 
     /// <summary>The benchmark root holding corpus.json, prs.json, and results. Defaults to tests/benchmarks under the current directory.</summary>
@@ -145,7 +145,7 @@ public sealed class EvalCommand
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());
         if (suite is null)
         {
-            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, agent, reduce.");
+            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, agent, reduce, performance.");
             return;
         }
 
@@ -165,6 +165,7 @@ public sealed class EvalCommand
         "review" => new ChangeImpactSuite(_indexer, _changeSource),
         "localize" => new LocalizationSuite(_indexer, _changeSource),
         "agent" => new AgentSuite(_indexer),
+        "performance" => new PerformanceSuite(_indexer, _changeSource),
         "reduce" => new ReductionSuite((dir, files, level, ct) =>
             ReduceRunner.ReduceFilesAsync(_orchestrator, _templateRegistry, dir, files, ParseLevel(level), null, ct)),
         _ => null

@@ -5,13 +5,13 @@ description: How Fuse V3 keeps work fast with a warm persistent index, and what 
 
 Fuse V3 is a Roslyn-backed .NET semantic context engine. Its performance model centers on one idea: build the semantic index once, then read it warm across calls. This page describes that warm-index model and is explicit about what has been re-measured on V3 and what has not.
 
-This page is for engineers tuning a Fuse run and maintainers comparing builds. Specific latency numbers are not published here, because none were re-measured on the V3 surface; the model is described qualitatively, and the one efficiency figure that V3 does report (the median tokens a review returns) is on the [Benchmarks](/docs/project/benchmarks) page.
+This page is for engineers tuning a Fuse run and maintainers comparing builds. Warm operation latency is now measured by the `performance` suite (see below); the token-efficiency figure that V3 reports (the median tokens a review returns) is on the [Benchmarks](/docs/project/benchmarks) page.
 
 ## The Warm Persistent Index
 
 Fuse analyzes each source file with Roslyn and stores the result in a persistent index. The index is built once and then read warm across calls: the MCP server (`fuse mcp serve`) and the host process hold the index resident, so a scoped call reuses the stored analysis instead of re-parsing the file. The cost of analysis is paid on the first pass and amortized over every later call that touches an unchanged file.
 
-When a file changes, Fuse re-indexes that file incrementally rather than rebuilding the whole index. So an edit-heavy session keeps the index warm: only the touched files are re-analyzed, and every other file's analysis is reused from the store.
+The store keys files by content hash, so an unchanged file's analysis is reused across runs. Single-file incremental re-index (clearing and re-analyzing only the changed file rather than rebuilding) is a design goal that is not yet wired or timed: a re-index currently runs a full pass. Measuring the incremental path is the remaining piece of the performance work.
 
 Persistent cache and index data live in a single SQLite database at `.fuse/fuse.db` in WAL mode. Key derivation and store layout are documented in [Caching Internals](/docs/internals/caching-internals).
 
@@ -35,9 +35,18 @@ Fuse distributes as a framework-dependent .NET global tool and as self-contained
 
 Self-contained packages include the .NET runtime and do not require a separate SDK install on the target machine. Roslyn structural analysis is always included; there is no trimmed or regex-only binary.
 
-## Latency Is Not Yet Benchmarked on V3
+## Measured Warm Latency
 
-The V3 semantic engine has not been timed in a reproducible harness. The warm-index model above is a structural property (analysis is built once and reused warm, and a changed file is re-indexed incrementally), not a measured latency claim. Earlier cold-versus-warm timings were taken on the retired V2 fusion surface and do not transfer to V3, so they are not carried forward. Treat any specific V3 latency or throughput figure as illustrative until a reproducible arm measures it.
+The `performance` suite (`fuse eval performance`, `performance.json`) indexes a present corpus repository once (the cold index) and then runs resolve and localize repeatedly over the warm index, reporting P50 and P95. On AutoMapper (518 files, 17,924 symbols, syntax index mode):
+
+| Operation | P50 | P95 |
+|-----------|----:|----:|
+| Warm resolve (symbol) | sub-millisecond | sub-millisecond |
+| Warm localize (query, 20 candidates) | 20 ms | 22 ms |
+
+Warm resolve and localize sit well inside the targets (resolve under 100 ms, localize under 500 ms): a warm read is a SQLite lookup plus a bounded candidate merge, not a re-parse. The cold index of the same repository took about 65 seconds, which includes the MSBuild workspace load attempt; cold index is paid once and amortized over every warm call.
+
+Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. Two latencies are not yet measured: the review-plan build (it needs a git base) and single-file incremental re-index (it needs an incremental index path). Earlier cold-versus-warm timings on the retired V2 fusion surface do not transfer to V3 and are not carried forward.
 
 ## What This Does Not Cover
 

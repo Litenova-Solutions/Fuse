@@ -1,60 +1,59 @@
 ---
 title: Survey a codebase cheaply
-description: Build a first-pass map of an unfamiliar .NET solution with a table of contents or a signature-only skeleton, for a fraction of the token cost.
+description: Build a first-pass map of an unfamiliar .NET solution from the warm index, its symbols, routes, and counts, for a fraction of the token cost of reading source.
 ---
 
 **Goal:** understand the shape of an unfamiliar solution, its types, endpoints, and
 layering, without reading the source.
 
-## The Cheapest Map: A Table of Contents
+## The Cheapest Map
 
 ```bash
-fuse dotnet --directory ./src --toc
+fuse map ./src --detail all
 ```
 
-`--toc` emits a directory tree with a per-file symbol outline and token cost, instead of
-file bodies. It is the cheapest first call: on the sample fixture the table of contents
-is 221 tokens against 624 to read every listed file, and the saving grows with file
-count because each file contributes one line plus an outline regardless of its size.
+`fuse map` prints what the index holds: the indexed symbols, the routes, and the counts,
+no file bodies. It is the cheapest first call, because it reads the warm semantic index
+rather than collecting and reducing source. Narrow it with `--detail symbols` or
+`--detail routes`, and cap the rows per section with `--maxRows`.
 
-## The Architecture Map: A Skeleton
+## See the Index State
 
 ```bash
-fuse dotnet --directory ./src --level skeleton --semantic-markers
+fuse diagnostics ./src
 ```
 
-A **skeleton** keeps class, interface, and method signatures and drops bodies, so the
-type and member surface of the whole solution fits in a fraction of the tokens.
-`--semantic-markers` annotates each type with its kind, the interfaces it implements, and
-the types it depends on.
+`fuse diagnostics` reports the index schema version, mode (`semantic`, `partial`, or
+`syntax`), record counts, and the store location, so you can confirm the workspace loaded
+through MSBuild and Roslyn before trusting resolution.
 
-## Add Structural Maps
+## An Architecture View: A Skeleton
 
-These prepend to the output, so combine them for a layered overview:
+When you want signatures rather than counts, plan a context at the skeleton render tier,
+which keeps class, interface, and method signatures and drops bodies:
 
 ```bash
-fuse dotnet --directory ./src --route-map --project-graph --level skeleton
+fuse context ./src --seed OrderService --max-tokens 50000
 ```
 
-- `--route-map` prepends a table of HTTP verb, path, and handler from controllers and
-  minimal API endpoints.
-- `--project-graph` prepends the solution and project reference structure.
-- `--level publicApi` keeps only public and protected member skeletons, the contract a
-  project presents to consumers.
+A budgeted `fuse context` call chooses the render tier per file to fit, so a tight budget
+yields a signature-heavy architecture view of the seed neighborhood. To reduce a known set
+of files to signatures directly, use `fuse reduce --level skeleton`.
 
 ## What You Get
 
-A small, structural payload that opens with the project graph and route map, then the
-skeleton of every type: enough to orient a reader or an agent before any scoped drill-in.
+A small, structural payload: from `fuse map`, the symbols and routes the index knows about;
+from a budgeted `fuse context`, a signature-level view of an area. Either is enough to
+orient a reader or an agent before any deeper drill-in.
 
 ## When to Use It
 
-Use a survey at the start of work on a codebase you do not know, or to produce a
-high-level map for review. Follow it with a [scoped fusion](/docs/concepts/scoping) to
-bring detail to the area that matters.
+Use a survey at the start of work on a codebase you do not know, or to produce a high-level
+map for review. Follow it with [localize or resolve](/docs/concepts/scoping) to bring
+detail to the area that matters.
 
 ## Related Concept
 
-Skeletons sit at the deep end of [Reduction levels](/docs/concepts/reduction-levels); the
-detected conventions in a pattern summary are in
-[Pattern detectors](/docs/reference/pattern-detectors).
+Render tiers, including the skeleton, are in
+[Reduction levels](/docs/concepts/reduction-levels); the detected conventions in a pattern
+summary are in [Pattern detectors](/docs/reference/pattern-detectors).

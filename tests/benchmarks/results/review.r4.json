@@ -1,0 +1,2741 @@
+{
+  "suite": "review",
+  "description": "Change impact: fuse review recall/precision/tokens over PR ground truth.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 108,
+    "recall": 1,
+    "recallCiLow": 1,
+    "recallCiHigh": 1,
+    "precision": 0.7810543145719964,
+    "f1": 0.8770696190247189,
+    "medianTokens": 1107.5,
+    "meanTokens": 4281.787037037037,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "AutoMapper#4608",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 259,
+      "latencyMs": 123,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Licensing/BuildInfo.cs",
+          "src/AutoMapper/Licensing/License.cs",
+          "src/AutoMapper/Licensing/LicenseValidator.cs",
+          "src/UnitTests/Licensing/LicenseValidatorTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4607",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1026,
+      "latencyMs": 101,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/ProfileMap.cs",
+          "src/UnitTests/Bug/OpenGenericInheritanceOrder.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4605",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 645,
+      "latencyMs": 107,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Configuration/INamingConvention.cs",
+          "src/UnitTests/Bug/NamingConventions.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4604",
+      "repo": "AutoMapper",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1873,
+      "latencyMs": 107,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Execution/ExpressionBuilder.cs",
+          "src/UnitTests/Bug/MapAtRuntime/MapAtRuntimeWithExtensionMethodAndNullable.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4603",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 6497,
+      "latencyMs": 46,
+      "hit": {
+        "hits": [
+          "src/AutoMapper.DI.Tests/AppDomainResolutionTests.cs",
+          "src/AutoMapper.DI.Tests/AssemblyResolutionTests.cs",
+          "src/AutoMapper.DI.Tests/DependencyTests.cs",
+          "src/AutoMapper.DI.Tests/Profiles.cs",
+          "src/AutoMapper.DI.Tests/TypeResolutionTests.cs",
+          "src/AutoMapper/Configuration/IMappingExpressionBase.cs",
+          "src/AutoMapper/Configuration/TypeMapConfiguration.cs",
+          "src/AutoMapper/ServiceCollectionExtensions.cs",
+          "src/AutoMapper/TypeMap.cs",
+          "src/UnitTests/Construction/ClassBasedObjectConstructorTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4601",
+      "repo": "AutoMapper",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1024,
+      "latencyMs": 103,
+      "hit": {
+        "hits": [
+          "src/AutoMapper.DI.Tests/AppDomainResolutionTests.cs",
+          "src/AutoMapper.DI.Tests/AssemblyResolutionTests.cs",
+          "src/AutoMapper.DI.Tests/DependencyTests.cs",
+          "src/AutoMapper.DI.Tests/Profiles.cs",
+          "src/AutoMapper.DI.Tests/TypeResolutionTests.cs",
+          "src/AutoMapper/Licensing/LicenseAccessor.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4596",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 9038,
+      "latencyMs": 41,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Configuration/IProfileExpression.cs",
+          "src/AutoMapper/Configuration/MapperConfiguration.cs",
+          "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+          "src/AutoMapper/Configuration/Profile.cs",
+          "src/AutoMapper/Internal/InternalApi.cs",
+          "src/AutoMapper/ProfileMap.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+          "src/IntegrationTests/Inheritance/PolymorphismTests.cs",
+          "src/IntegrationTests/IntegrationTest.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4583",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.6666666666666666,
+      "tokens": 18408,
+      "latencyMs": 129,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Configuration/PathConfigurationExpression.cs",
+          "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+          "src/AutoMapper/Internal/Polyfill.cs",
+          "src/AutoMapper/Mappers/AssignableMapper.cs",
+          "src/AutoMapper/Mappers/CollectionMapper.cs",
+          "src/AutoMapper/Mappers/ConstructorMapper.cs",
+          "src/AutoMapper/Mappers/ConversionOperatorMapper.cs",
+          "src/AutoMapper/Mappers/ConvertMapper.cs",
+          "src/AutoMapper/Mappers/EnumToEnumMapper.cs",
+          "src/AutoMapper/Mappers/FromDynamicMapper.cs",
+          "src/AutoMapper/Mappers/FromStringDictionaryMapper.cs",
+          "src/AutoMapper/Mappers/IObjectMapper.cs",
+          "src/AutoMapper/Mappers/KeyValueMapper.cs",
+          "src/AutoMapper/Mappers/ParseStringMapper.cs",
+          "src/AutoMapper/Mappers/ToDynamicMapper.cs",
+          "src/AutoMapper/Mappers/ToStringDictionaryMapper.cs",
+          "src/AutoMapper/Mappers/ToStringMapper.cs",
+          "src/AutoMapper/Mappers/UnderlyingEnumTypeMapper.cs",
+          "src/AutoMapper/MemberMap.cs",
+          "src/UnitTests/ArraysAndLists.cs",
+          "src/UnitTests/ForPath.cs",
+          "src/UnitTests/Mappers/CustomMapperTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/UnitTests/AutoMapperSpecBase.cs",
+          "src/AutoMapper/Configuration/MemberConfigurationExpression.cs",
+          "src/AutoMapper/AutoMapperMappingException.cs",
+          "src/AutoMapper/ConstructorMap.cs",
+          "src/AutoMapper/PathMap.cs",
+          "src/AutoMapper/PropertyMap.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+          "src/AutoMapper/TypeMap.cs",
+          "src/AutoMapper/Mappers/NullableDestinationMapper.cs",
+          "src/AutoMapper/Mappers/NullableSourceMapper.cs",
+          "src/AutoMapper/Mappers/StringToEnumMapper.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4577",
+      "repo": "AutoMapper",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 0.17391304347826086,
+      "tokens": 17158,
+      "latencyMs": 112,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+          "src/AutoMapper/TypeMap.cs",
+          "src/UnitTests/ForPath.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/AutoMapper/Internal/InternalApi.cs",
+          "src/AutoMapper/MemberMap.cs",
+          "src/UnitTests/AutoMapperSpecBase.cs",
+          "src/AutoMapper/Internal/MemberPath.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/AssignableProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/EnumProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/EnumerableProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/NullableSourceProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/StringProjectionMapper.cs",
+          "src/AutoMapper/Configuration/MapperConfiguration.cs",
+          "src/AutoMapper/AutoMapperMappingException.cs",
+          "src/AutoMapper/Configuration/MappingExpression.cs",
+          "src/AutoMapper/Configuration/TypeMapConfiguration.cs",
+          "src/AutoMapper/ConstructorMap.cs",
+          "src/AutoMapper/PathMap.cs",
+          "src/AutoMapper/ProfileMap.cs",
+          "src/AutoMapper/PropertyMap.cs",
+          "src/AutoMapper/Configuration/ConfigurationValidator.cs",
+          "src/AutoMapper/Licensing/LicenseAccessor.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4554",
+      "repo": "AutoMapper",
+      "category": "formatting",
+      "recall": 1,
+      "precision": 0.5652173913043478,
+      "tokens": 12996,
+      "latencyMs": 111,
+      "hit": {
+        "hits": [
+          "src/AutoMapper.DI.Tests/AppDomainResolutionTests.cs",
+          "src/AutoMapper.DI.Tests/AssemblyResolutionTests.cs",
+          "src/AutoMapper.DI.Tests/AttributeTests.cs",
+          "src/AutoMapper.DI.Tests/DependencyTests.cs",
+          "src/AutoMapper.DI.Tests/Integrations/ServiceLifetimeTests.cs",
+          "src/AutoMapper.DI.Tests/MultipleRegistrationTests.cs",
+          "src/AutoMapper.DI.Tests/ScopeTests.cs",
+          "src/AutoMapper.DI.Tests/ServiceLifetimeTests.cs",
+          "src/AutoMapper.DI.Tests/ServiceProviderTests.cs",
+          "src/AutoMapper.DI.Tests/TypeResolutionTests.cs",
+          "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+          "src/AutoMapper/Internal/InternalApi.cs",
+          "src/AutoMapper/ServiceCollectionExtensions.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/AutoMapper/Configuration/MapperConfiguration.cs",
+          "src/AutoMapper/Configuration/Profile.cs",
+          "src/AutoMapper/ProfileMap.cs",
+          "src/AutoMapper/Configuration/IProfileExpression.cs",
+          "src/AutoMapper/Configuration/ConfigurationValidator.cs",
+          "src/AutoMapper/Licensing/LicenseAccessor.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+          "src/AutoMapper/Mapper.cs",
+          "src/AutoMapper/Internal/TypeDetails.cs",
+          "src/AutoMapper/TypeMap.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4526",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.4,
+      "tokens": 11899,
+      "latencyMs": 86,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Configuration/ConfigurationValidator.cs",
+          "src/AutoMapper/Configuration/MapperConfiguration.cs",
+          "src/UnitTests/ConfigurationValidation.cs",
+          "src/UnitTests/CustomValidations.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/AutoMapper/Internal/InternalApi.cs",
+          "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+          "src/AutoMapper/Mapper.cs",
+          "src/UnitTests/AutoMapperSpecBase.cs",
+          "src/AutoMapper/Configuration/Profile.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4503",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.2,
+      "tokens": 9303,
+      "latencyMs": 103,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/ConstructorMap.cs",
+          "src/UnitTests/Bug/ByrefConstructorParameter.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/AutoMapper/MemberMap.cs",
+          "src/AutoMapper/TypeMap.cs",
+          "src/UnitTests/AutoMapperSpecBase.cs",
+          "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+          "src/AutoMapper/AutoMapperMappingException.cs",
+          "src/AutoMapper/PathMap.cs",
+          "src/AutoMapper/PropertyMap.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4402",
+      "repo": "AutoMapper",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 0.1111111111111111,
+      "tokens": 12091,
+      "latencyMs": 58,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+          "src/IntegrationTests/Inheritance/PolymorphismTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/AutoMapper/Internal/InternalApi.cs",
+          "src/AutoMapper/MemberMap.cs",
+          "src/IntegrationTests/IntegrationTest.cs",
+          "src/AutoMapper/Internal/MemberPath.cs",
+          "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/AssignableProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/EnumProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/EnumerableProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/NullableSourceProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/StringProjectionMapper.cs",
+          "src/AutoMapper/Configuration/MapperConfiguration.cs",
+          "src/AutoMapper/AutoMapperMappingException.cs",
+          "src/AutoMapper/ConstructorMap.cs",
+          "src/AutoMapper/PathMap.cs",
+          "src/AutoMapper/PropertyMap.cs",
+          "src/AutoMapper/TypeMap.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4390",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.2727272727272727,
+      "tokens": 12963,
+      "latencyMs": 107,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+          "src/AutoMapper/Mapper.cs",
+          "src/UnitTests/NullBehavior.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/AutoMapper/Internal/InternalApi.cs",
+          "src/AutoMapper/Configuration/MapperConfiguration.cs",
+          "src/AutoMapper/Configuration/Profile.cs",
+          "src/AutoMapper/ResolutionContext.cs",
+          "src/UnitTests/AutoMapperSpecBase.cs",
+          "src/AutoMapper/Configuration/IProfileExpression.cs",
+          "src/AutoMapper/ProfileMap.cs",
+          "src/AutoMapper/Configuration/IMappingOperationOptions.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4388",
+      "repo": "AutoMapper",
+      "category": "route-api",
+      "recall": 1,
+      "precision": 0.3,
+      "tokens": 9033,
+      "latencyMs": 70,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+          "src/AutoMapper/Mapper.cs",
+          "src/AutoMapper/QueryableExtensions/Extensions.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/AutoMapper/Internal/InternalApi.cs",
+          "src/AutoMapper/Configuration/MapperConfiguration.cs",
+          "src/AutoMapper/Configuration/Profile.cs",
+          "src/AutoMapper/ResolutionContext.cs",
+          "src/AutoMapper/Configuration/IProfileExpression.cs",
+          "src/AutoMapper/ProfileMap.cs",
+          "src/AutoMapper/Configuration/IMappingOperationOptions.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4327",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.7,
+      "tokens": 8064,
+      "latencyMs": 78,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Configuration/ConfigurationValidator.cs",
+          "src/AutoMapper/Configuration/CtorParamConfigurationExpression.cs",
+          "src/AutoMapper/Configuration/IMemberConfigurationExpression.cs",
+          "src/AutoMapper/Configuration/MemberConfigurationExpression.cs",
+          "src/IntegrationTests/ExplicitExpansion/ConstructorExplicitExpansionOverride.cs",
+          "src/IntegrationTests/ExplicitExpansion/ExpandCollectionsOverride.cs",
+          "src/UnitTests/ConfigurationValidation.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/IntegrationTests/IntegrationTest.cs",
+          "src/UnitTests/AutoMapperSpecBase.cs",
+          "src/AutoMapper/Configuration/PathConfigurationExpression.cs"
+        ]
+      }
+    },
+    {
+      "id": "AutoMapper#4314",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 30169,
+      "latencyMs": 149,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/ConstructorMap.cs",
+          "src/AutoMapper/Execution/ExpressionBuilder.cs",
+          "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+          "src/AutoMapper/Mapper.cs",
+          "src/AutoMapper/ProfileMap.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+          "src/AutoMapper/TypeMap.cs",
+          "src/IntegrationTests/CustomMapFrom/MapObjectPropertyFromSubQuery.cs",
+          "src/IntegrationTests/IncludeMembers.cs",
+          "src/IntegrationTests/Inheritance/ProjectToAbstractTypeWithInheritance.cs",
+          "src/IntegrationTests/IntegrationTest.cs",
+          "src/IntegrationTests/LocalDbContext.cs",
+          "src/UnitTests/IMappingExpression/IncludeMembers.cs",
+          "src/UnitTests/MappingInheritance/IncludedBaseMappingShouldInheritBaseMappings.cs",
+          "src/UnitTests/Projection/ConstructorTests.cs",
+          "src/UnitTests/ReverseMapping.cs",
+          "src/UnitTests/ValueTypes.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4304",
+      "repo": "AutoMapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.1111111111111111,
+      "tokens": 12159,
+      "latencyMs": 62,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+          "src/IntegrationTests/Inheritance/ProjectToAbstractTypeWithInheritance.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/AutoMapper/Internal/InternalApi.cs",
+          "src/AutoMapper/MemberMap.cs",
+          "src/IntegrationTests/IntegrationTest.cs",
+          "src/AutoMapper/Internal/MemberPath.cs",
+          "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/AssignableProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/EnumProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/EnumerableProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/NullableSourceProjectionMapper.cs",
+          "src/AutoMapper/QueryableExtensions/ProjectionMappers/StringProjectionMapper.cs",
+          "src/AutoMapper/Configuration/MapperConfiguration.cs",
+          "src/AutoMapper/AutoMapperMappingException.cs",
+          "src/AutoMapper/ConstructorMap.cs",
+          "src/AutoMapper/PathMap.cs",
+          "src/AutoMapper/PropertyMap.cs",
+          "src/AutoMapper/TypeMap.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#2158",
+      "repo": "FluentValidation",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 3261,
+      "latencyMs": 45,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/AbstractValidator.cs",
+          "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+          "src/FluentValidation/Internal/PropertyChain.cs",
+          "src/FluentValidation/Internal/PropertyRule.cs",
+          "src/FluentValidation/Internal/RuleBase.cs",
+          "src/FluentValidation/Internal/RulesetValidatorSelector.cs",
+          "src/FluentValidation/Internal/TrackingCollection.cs",
+          "src/FluentValidation/Validators/EmptyValidator.cs",
+          "src/FluentValidation/Validators/NotEmptyValidator.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation#1823",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 159,
+      "latencyMs": 55,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/Validators/EmptyValidator.cs",
+          "src/FluentValidation/Validators/NotEmptyValidator.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation#761",
+      "repo": "FluentValidation",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.3333333333333333,
+      "tokens": 3557,
+      "latencyMs": 54,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/ForEachRuleTests.cs",
+          "src/FluentValidation.Tests/ValidatorTesterTester.cs",
+          "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+          "src/FluentValidation/Internal/PropertyRule.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/IValidationRule.cs",
+          "src/FluentValidation/IValidator.cs",
+          "src/FluentValidation/Internal/RuleBuilder.cs",
+          "src/FluentValidation/Validators/PropertyValidatorContext.cs",
+          "src/FluentValidation/Internal/DelegateValidator.cs",
+          "src/FluentValidation/Validators/ChildCollectionValidatorAdaptor.cs",
+          "src/FluentValidation/Validators/ChildValidatorAdaptor.cs",
+          "src/FluentValidation/Syntax.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#745",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.2857142857142857,
+      "tokens": 738,
+      "latencyMs": 58,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/TestHelper/ValidationResultTester.cs",
+          "src/FluentValidation/TestHelper/ValidationTestException.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/TestHelper/IValidationResultTester.cs",
+          "src/FluentValidation/TestHelper/TestValidationResult.cs",
+          "src/FluentValidation/TestHelper/TestPropertyChain.cs",
+          "src/FluentValidation/MemberAccessor.cs",
+          "src/FluentValidation/Results/ValidationResult.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#741",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.6666666666666666,
+      "tokens": 390,
+      "latencyMs": 50,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/LanguageManagerTests.cs",
+          "src/FluentValidation/Resources/Languages/ChineseSimplifiedLanguage.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/Resources/Language.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#734",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 757,
+      "latencyMs": 51,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/ValidatorTesterTester.cs",
+          "src/FluentValidation/TestHelper/ValidatorTestExtensions.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation#733",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.2692307692307692,
+      "tokens": 13796,
+      "latencyMs": 63,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/AbstractValidator.cs",
+          "src/FluentValidation/AssemblyInfo.FluentValidation.cs",
+          "src/FluentValidation/BackwardsCompatibility.cs",
+          "src/FluentValidation/CollectionValidatorExtensions.cs",
+          "src/FluentValidation/DefaultValidatorExtensions.cs",
+          "src/FluentValidation/DefaultValidatorOptions.cs",
+          "src/FluentValidation/Internal/Extensions.cs",
+          "src/FluentValidation/Internal/RuleBuilder.cs",
+          "src/FluentValidation/Validators/AbstractComparisonValidator.cs",
+          "src/FluentValidation/Validators/AsyncPredicateValidator.cs",
+          "src/FluentValidation/Validators/ChildValidatorAdaptor.cs",
+          "src/FluentValidation/Validators/CustomValidator.cs",
+          "src/FluentValidation/Validators/PredicateValidator.cs",
+          "src/FluentValidation/Validators/PropertyValidator.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/IValidator.cs",
+          "src/FluentValidation/Validators/IPropertyValidator.cs",
+          "src/FluentValidation/Resources/IStringSource.cs",
+          "src/FluentValidation/Resources/LocalizedStringSource.cs",
+          "src/FluentValidation/Validators/AsyncValidatorBase.cs",
+          "src/FluentValidation/Validators/NoopPropertyValidator.cs",
+          "src/FluentValidation/Validators/PropertyValidatorContext.cs",
+          "src/FluentValidation/Syntax.cs",
+          "src/FluentValidation/InlineValidator.cs",
+          "src/FluentValidation/Internal/PropertyRule.cs",
+          "src/FluentValidation/Validators/EqualValidator.cs",
+          "src/FluentValidation/Validators/NotEqualValidator.cs",
+          "src/FluentValidation/Validators/ChildCollectionValidatorAdaptor.cs",
+          "src/FluentValidation/Validators/GreaterThanOrEqualValidator.cs",
+          "src/FluentValidation/Validators/GreaterThanValidator.cs",
+          "src/FluentValidation/Validators/LessThanOrEqualValidator.cs",
+          "src/FluentValidation/Validators/LessThanValidator.cs",
+          "src/FluentValidation/IValidationRule.cs",
+          "src/FluentValidation/Internal/MessageBuilderContext.cs",
+          "src/FluentValidation/Validators/DelegatingValidator.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#729",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.6,
+      "tokens": 544,
+      "latencyMs": 52,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/LocalisedMessagesTester.cs",
+          "src/FluentValidation/Resources/LanguageManager.cs",
+          "src/FluentValidation/Resources/Languages/ArabicLanguage.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/Resources/ILanguageManager.cs",
+          "src/FluentValidation/Resources/Language.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#702",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.5,
+      "tokens": 355,
+      "latencyMs": 54,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/Resources/LanguageManager.cs",
+          "src/FluentValidation/Resources/Languages/PortugueseBrazilLanguage.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/Resources/ILanguageManager.cs",
+          "src/FluentValidation/Resources/Language.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#700",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.5,
+      "tokens": 349,
+      "latencyMs": 42,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/Resources/LanguageManager.cs",
+          "src/FluentValidation/Resources/Languages/HebrewLanguage.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/Resources/ILanguageManager.cs",
+          "src/FluentValidation/Resources/Language.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#696",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.52,
+      "tokens": 6554,
+      "latencyMs": 55,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.AspNetCore/FluentValidationModelValidatorProvider.cs",
+          "src/FluentValidation.Mvc5/FluentValidationModelValidator.cs",
+          "src/FluentValidation.Tests/RuleDependencyTests.cs",
+          "src/FluentValidation.Tests/TransformTests.cs",
+          "src/FluentValidation.Tests/ValidatorTesterTester.cs",
+          "src/FluentValidation.WebApi/FluentValidationModelValidator.cs",
+          "src/FluentValidation/DefaultValidatorOptions.cs",
+          "src/FluentValidation/Internal/PropertyRule.cs",
+          "src/FluentValidation/Resources/Languages/CzechLanguage.cs",
+          "src/FluentValidation/Resources/Languages/SlovakLanguage.cs",
+          "src/FluentValidation/TestHelper/ValidatorTestExtensions.cs",
+          "src/FluentValidation/ValidatorOptions.cs",
+          "src/FluentValidation/Validators/PropertyValidatorContext.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/IValidationRule.cs",
+          "src/FluentValidation/IValidator.cs",
+          "src/FluentValidation/Resources/Language.cs",
+          "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+          "src/FluentValidation/Internal/RuleBuilder.cs",
+          "src/FluentValidation/Internal/MessageBuilderContext.cs",
+          "src/FluentValidation/ValidationContext.cs",
+          "src/FluentValidation/Validators/CustomValidator.cs",
+          "src/FluentValidation/Internal/DelegateValidator.cs",
+          "src/FluentValidation/Validators/ChildCollectionValidatorAdaptor.cs",
+          "src/FluentValidation/Validators/ChildValidatorAdaptor.cs",
+          "src/FluentValidation/Syntax.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#635",
+      "repo": "FluentValidation",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.43333333333333335,
+      "tokens": 7884,
+      "latencyMs": 75,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.AspNetCore/FluentValidationClientModelValidatorProvider.cs",
+          "src/FluentValidation.Tests.Mvc6.netcoreapp1/ClientsideMessageTester.cs",
+          "src/FluentValidation.Tests.Mvc6.netcoreapp1/TestModels_ClientSIde.cs",
+          "src/FluentValidation.Tests/AbstractValidatorTester.cs",
+          "src/FluentValidation.Tests/RuleBuilderTests.cs",
+          "src/FluentValidation.Tests/RulesetTests.cs",
+          "src/FluentValidation/Attributes/AttributedValidatorFactory.cs",
+          "src/FluentValidation/Attributes/ValidatorAttribute.cs",
+          "src/FluentValidation/DefaultValidatorExtensions.cs",
+          "src/FluentValidation/Internal/PropertyRule.cs",
+          "src/FluentValidation/Resources/Languages/CzechLanguage.cs",
+          "src/FluentValidation/Resources/Languages/SpanishLanguage.cs",
+          "src/FluentValidation/Validators/PropertyValidatorContext.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/IValidationRule.cs",
+          "src/FluentValidation.Tests.Mvc6.netcoreapp1/ClientsideFixture.cs",
+          "src/FluentValidation.Tests/Person.cs",
+          "src/FluentValidation/IValidator.cs",
+          "src/FluentValidation/Resources/Language.cs",
+          "src/FluentValidation/IParameterValidatorFactory.cs",
+          "src/FluentValidation/IValidatorFactory.cs",
+          "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+          "src/FluentValidation/Internal/RuleBuilder.cs",
+          "src/FluentValidation/ValidationContext.cs",
+          "src/FluentValidation/Validators/CustomValidator.cs",
+          "src/FluentValidation/Internal/DelegateValidator.cs",
+          "src/FluentValidation/ValidatorFactoryBase.cs",
+          "src/FluentValidation/Syntax.cs",
+          "src/FluentValidation.Tests/CollectionValidatorWithParentTests.cs",
+          "src/FluentValidation/Validators/ChildCollectionValidatorAdaptor.cs",
+          "src/FluentValidation/Validators/ChildValidatorAdaptor.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#612",
+      "repo": "FluentValidation",
+      "category": "formatting",
+      "recall": 1,
+      "precision": 0.18181818181818182,
+      "tokens": 4489,
+      "latencyMs": 71,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/BackwardsCompatibility.cs",
+          "src/FluentValidation/DefaultValidatorExtensions.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/Resources/IStringSource.cs",
+          "src/FluentValidation/Resources/LocalizedStringSource.cs",
+          "src/FluentValidation/Resources/LazyStringSource.cs",
+          "src/FluentValidation/Resources/LanguageStringSource.cs",
+          "src/FluentValidation/Resources/StaticStringSource.cs",
+          "src/FluentValidation/Validators/AbstractComparisonValidator.cs",
+          "src/FluentValidation/Validators/AsyncValidatorBase.cs",
+          "src/FluentValidation/Validators/LengthValidator.cs",
+          "src/FluentValidation/Validators/PropertyValidator.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#601",
+      "repo": "FluentValidation",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.3076923076923077,
+      "tokens": 2686,
+      "latencyMs": 67,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/EnumValidatorTests.cs",
+          "src/FluentValidation.Tests/RuleBuilderTests.cs",
+          "src/FluentValidation/Internal/RuleBuilder.cs",
+          "src/FluentValidation/Validators/EnumValidator.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/Internal/PropertyRule.cs",
+          "src/FluentValidation/Validators/PropertyValidator.cs",
+          "src/FluentValidation/Syntax.cs",
+          "src/FluentValidation/IValidationRule.cs",
+          "src/FluentValidation/Validators/IPropertyValidator.cs",
+          "src/FluentValidation/Resources/IStringSource.cs",
+          "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+          "src/FluentValidation/Validators/PropertyValidatorContext.cs",
+          "src/FluentValidation/Internal/IConfigurable.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#602",
+      "repo": "FluentValidation",
+      "category": "formatting",
+      "recall": 1,
+      "precision": 0.4,
+      "tokens": 964,
+      "latencyMs": 73,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/EnumValidatorTests.cs",
+          "src/FluentValidation/Validators/EnumValidator.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/Validators/PropertyValidator.cs",
+          "src/FluentValidation/Validators/IPropertyValidator.cs",
+          "src/FluentValidation/Resources/IStringSource.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#595",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.6666666666666666,
+      "tokens": 512,
+      "latencyMs": 71,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/LanguageManagerTests.cs",
+          "src/FluentValidation/Resources/LanguageManager.cs",
+          "src/FluentValidation/Resources/Languages/CroatianLanguage.cs",
+          "src/FluentValidation/ValidationException.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/FluentValidation/Resources/ILanguageManager.cs",
+          "src/FluentValidation/Resources/Language.cs"
+        ]
+      }
+    },
+    {
+      "id": "FluentValidation#509",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 181,
+      "latencyMs": 38,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/Resources/LanguageManager.cs",
+          "src/FluentValidation/Resources/Languages/HindiLanguage.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation#450",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2298,
+      "latencyMs": 78,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/DefaultValidatorExtensionTester.cs",
+          "src/FluentValidation/DefaultValidatorExtensions.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1171",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 132,
+      "latencyMs": 45,
+      "hit": {
+        "hits": [
+          "src/MediatR/Licensing/LicenseAccessor.cs",
+          "test/MediatR.Tests/Licensing/LicenseAccessorTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1162",
+      "repo": "MediatR",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 285,
+      "latencyMs": 48,
+      "hit": {
+        "hits": [
+          "src/MediatR/Licensing/BuildInfo.cs",
+          "src/MediatR/Licensing/License.cs",
+          "src/MediatR/Licensing/LicenseValidator.cs",
+          "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1163",
+      "repo": "MediatR",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 123,
+      "latencyMs": 46,
+      "hit": {
+        "hits": [
+          "src/MediatR/Licensing/LicenseValidator.cs",
+          "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1159",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 946,
+      "latencyMs": 46,
+      "hit": {
+        "hits": [
+          "src/MediatR/Registration/ServiceRegistrar.cs",
+          "src/MediatR/Wrappers/NotificationHandlerWrapper.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/Issue1118Tests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1157",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 809,
+      "latencyMs": 44,
+      "hit": {
+        "hits": [
+          "src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs",
+          "src/MediatR/Registration/ServiceRegistrar.cs",
+          "test/MediatR.Tests/ServiceFactoryTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1158",
+      "repo": "MediatR",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 134,
+      "latencyMs": 46,
+      "hit": {
+        "hits": [
+          "src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs",
+          "test/MediatR.Tests/ServiceFactoryTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1156",
+      "repo": "MediatR",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 749,
+      "latencyMs": 42,
+      "hit": {
+        "hits": [
+          "src/MediatR/Registration/ServiceRegistrar.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/AssemblyResolutionTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1155",
+      "repo": "MediatR",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 3268,
+      "latencyMs": 48,
+      "hit": {
+        "hits": [
+          "src/MediatR/Registration/ServiceRegistrar.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1137",
+      "repo": "MediatR",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 0.75,
+      "tokens": 279,
+      "latencyMs": 49,
+      "hit": {
+        "hits": [
+          "test/MediatR.DependencyInjectionTests/LamarDependencyInjectionTests.cs",
+          "test/MediatR.DependencyInjectionTests/LightInjectDependencyInjectionTests.cs",
+          "test/MediatR.DependencyInjectionTests/Providers/LamarServiceProviderFixture.cs",
+          "test/MediatR.DependencyInjectionTests/Providers/LightInjectServiceProviderFixture.cs",
+          "test/MediatR.DependencyInjectionTests/Providers/StashBoxServiceProviderFixture.cs",
+          "test/MediatR.DependencyInjectionTests/StashBoxDependencyInjectionTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "test/MediatR.DependencyInjectionTests/Abstractions/BaseAssemblyResolutionTests.cs",
+          "test/MediatR.DependencyInjectionTests/Abstractions/BaseServiceProviderFixture.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1134",
+      "repo": "MediatR",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.7419354838709677,
+      "tokens": 3152,
+      "latencyMs": 51,
+      "hit": {
+        "hits": [
+          "src/MediatR/Licensing/LicenseAccessor.cs",
+          "src/MediatR/Mediator.cs",
+          "test/MediatR.DependencyInjectionTests/Abstractions/BaseAssemblyResolutionTests.cs",
+          "test/MediatR.DependencyInjectionTests/Abstractions/BaseServiceProviderFixture.cs",
+          "test/MediatR.DependencyInjectionTests/AutoFacDependencyInjectionTests.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/Notifications/Ding.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/Requests/InternalPing.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/Requests/InternalVoidPing.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/Requests/PrivatePing.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/Requests/PrivateVoidPing.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/Requests/PublicPing.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/Requests/PublicVoidPing.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/Responses/Pong.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/StreamRequests/InternalZing.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/StreamRequests/PrivateZing.cs",
+          "test/MediatR.DependencyInjectionTests/Contracts/StreamRequests/PublicZing.cs",
+          "test/MediatR.DependencyInjectionTests/DryIocDependencyInjectionTests.cs",
+          "test/MediatR.DependencyInjectionTests/MicrosoftDependencyInjectionTests.cs",
+          "test/MediatR.DependencyInjectionTests/Providers/AutoFacServiceProviderFixture.cs",
+          "test/MediatR.DependencyInjectionTests/Providers/DryIocServiceProviderFixture.cs",
+          "test/MediatR.DependencyInjectionTests/Providers/MicrosoftServiceProviderFixture.cs",
+          "test/MediatR.DependencyInjectionTests/Usings.cs",
+          "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/MediatR/IMediator.cs",
+          "src/MediatR/INotificationPublisher.cs",
+          "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+          "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
+          "src/MediatR/NotificationPublishers/TaskWhenAllPublisher.cs",
+          "src/MediatR/IPublisher.cs",
+          "src/MediatR/ISender.cs",
+          "test/MediatR.Tests/PublishTests.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1136",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.2727272727272727,
+      "tokens": 2341,
+      "latencyMs": 46,
+      "hit": {
+        "hits": [
+          "src/MediatR/Licensing/LicenseAccessor.cs",
+          "src/MediatR/Mediator.cs",
+          "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/MediatR/IMediator.cs",
+          "src/MediatR/INotificationPublisher.cs",
+          "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+          "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
+          "src/MediatR/NotificationPublishers/TaskWhenAllPublisher.cs",
+          "src/MediatR/IPublisher.cs",
+          "src/MediatR/ISender.cs",
+          "test/MediatR.Tests/PublishTests.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1131",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.6666666666666666,
+      "tokens": 679,
+      "latencyMs": 45,
+      "hit": {
+        "hits": [
+          "src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs",
+          "test/MediatR.Tests/GenericRequestHandlerTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "test/MediatR.Tests/MicrosoftExtensionsDI/BaseGenericRequestHandlerTests.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1129",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.5882352941176471,
+      "tokens": 11001,
+      "latencyMs": 56,
+      "hit": {
+        "hits": [
+          "src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs",
+          "src/MediatR/Registration/ServiceRegistrar.cs",
+          "test/MediatR.Tests/CreateStreamTests.cs",
+          "test/MediatR.Tests/ExceptionTests.cs",
+          "test/MediatR.Tests/GenericTypeConstraintsTests.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/StreamPipelineTests.cs",
+          "test/MediatR.Tests/NotificationPublisherTests.cs",
+          "test/MediatR.Tests/Pipeline/RequestExceptionActionTests.cs",
+          "test/MediatR.Tests/Pipeline/RequestExceptionHandlerTests.cs",
+          "test/MediatR.Tests/Pipeline/RequestPostProcessorTests.cs",
+          "test/MediatR.Tests/Pipeline/RequestPreProcessorTests.cs",
+          "test/MediatR.Tests/Pipeline/Streams/StreamPipelineBehaviorTests.cs",
+          "test/MediatR.Tests/PipelineTests.cs",
+          "test/MediatR.Tests/PublishTests.cs",
+          "test/MediatR.Tests/SendTests.cs",
+          "test/MediatR.Tests/SendVoidInterfaceTests.cs",
+          "test/MediatR.Tests/ServiceFactoryTests.cs",
+          "test/MediatR.Tests/StreamPipelineTests.cs",
+          "test/MediatR.Tests/TestContainer.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/MediatR/IMediator.cs",
+          "src/MediatR/IPipelineBehavior.cs",
+          "src/MediatR/IRequestHandler.cs",
+          "src/MediatR/IStreamPipelineBehavior.cs",
+          "src/MediatR/Pipeline/IRequestExceptionHandler.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/Handlers.cs",
+          "src/MediatR/IPublisher.cs",
+          "src/MediatR/ISender.cs",
+          "src/MediatR/Mediator.cs",
+          "src/MediatR/Pipeline/RequestExceptionActionProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestExceptionProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestPostProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestPreProcessorBehavior.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/PipeLineMultiCallToConstructorTest.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1100",
+      "repo": "MediatR",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.75,
+      "tokens": 4053,
+      "latencyMs": 47,
+      "hit": {
+        "hits": [
+          "src/MediatR/Entities/OpenBehavior.cs",
+          "src/MediatR/Pipeline/RequestExceptionActionProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestExceptionProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestPostProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestPreProcessorBehavior.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/MediatR/IPipelineBehavior.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/Handlers.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1078",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.6666666666666666,
+      "tokens": 3477,
+      "latencyMs": 54,
+      "hit": {
+        "hits": [
+          "src/MediatR/Entities/OpenBehavior.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "test/MediatR.Tests/MicrosoftExtensionsDI/Handlers.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1058",
+      "repo": "MediatR",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 0.3333333333333333,
+      "tokens": 2061,
+      "latencyMs": 51,
+      "hit": {
+        "hits": [
+          "src/MediatR/IPipelineBehavior.cs",
+          "src/MediatR/Wrappers/RequestHandlerWrapper.cs",
+          "test/MediatR.Tests/SendTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "test/MediatR.Tests/MicrosoftExtensionsDI/PipeLineMultiCallToConstructorTest.cs",
+          "src/MediatR/Pipeline/RequestExceptionActionProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestExceptionProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestPostProcessorBehavior.cs",
+          "src/MediatR/Pipeline/RequestPreProcessorBehavior.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1061",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.875,
+      "tokens": 3083,
+      "latencyMs": 50,
+      "hit": {
+        "hits": [
+          "src/MediatR/Entities/OpenBehavior.cs",
+          "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+          "src/MediatR/Registration/ServiceRegistrar.cs",
+          "test/MediatR.Tests/GenericRequestHandlerTests.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/AssemblyResolutionTests.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/BaseGenericRequestHandlerTests.cs",
+          "test/MediatR.Tests/SendTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/MediatR/IRequestHandler.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1065",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.875,
+      "tokens": 3199,
+      "latencyMs": 47,
+      "hit": {
+        "hits": [
+          "src/MediatR/Entities/OpenBehavior.cs",
+          "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+          "src/MediatR/Registration/ServiceRegistrar.cs",
+          "test/MediatR.Tests/GenericRequestHandlerTests.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/AssemblyResolutionTests.cs",
+          "test/MediatR.Tests/MicrosoftExtensionsDI/BaseGenericRequestHandlerTests.cs",
+          "test/MediatR.Tests/SendTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/MediatR/IRequestHandler.cs"
+        ]
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1159",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 4091,
+      "latencyMs": 62,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/JsonTextWriterAsyncTests.cs",
+          "Src/Newtonsoft.Json/JsonTextWriter.Async.cs",
+          "Src/Newtonsoft.Json/Linq/JProperty.Async.cs",
+          "Src/Newtonsoft.Json/Utilities/JavaScriptUtils.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1158",
+      "repo": "NewtonsoftJson",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 228,
+      "latencyMs": 187,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Linq/JConstructor.Async.cs",
+          "Src/Newtonsoft.Json/Linq/JObject.Async.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1153",
+      "repo": "NewtonsoftJson",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 20450,
+      "latencyMs": 191,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Bson/BsonBinaryWriter.cs",
+          "Src/Newtonsoft.Json/Bson/BsonToken.cs",
+          "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+          "Src/Newtonsoft.Json/Converters/EntityKeyMemberConverter.cs",
+          "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs",
+          "Src/Newtonsoft.Json/JsonSerializer.cs",
+          "Src/Newtonsoft.Json/JsonTextReader.cs",
+          "Src/Newtonsoft.Json/JsonWriter.cs",
+          "Src/Newtonsoft.Json/Linq/JObject.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+          "Src/Newtonsoft.Json/Linq/JValue.cs",
+          "Src/Newtonsoft.Json/Linq/JsonPath/QueryExpression.cs",
+          "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs",
+          "Src/Newtonsoft.Json/Utilities/CollectionUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/ConvertUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/DynamicProxy.cs",
+          "Src/Newtonsoft.Json/Utilities/DynamicProxyMetaObject.cs",
+          "Src/Newtonsoft.Json/Utilities/DynamicUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/ExpressionReflectionDelegateFactory.cs",
+          "Src/Newtonsoft.Json/Utilities/MiscellaneousUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1151",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 20318,
+      "latencyMs": 185,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Bson/BsonBinaryWriter.cs",
+          "Src/Newtonsoft.Json/Bson/BsonToken.cs",
+          "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+          "Src/Newtonsoft.Json/Converters/EntityKeyMemberConverter.cs",
+          "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs",
+          "Src/Newtonsoft.Json/JsonSerializer.cs",
+          "Src/Newtonsoft.Json/JsonTextReader.cs",
+          "Src/Newtonsoft.Json/JsonWriter.cs",
+          "Src/Newtonsoft.Json/Linq/JObject.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+          "Src/Newtonsoft.Json/Linq/JValue.cs",
+          "Src/Newtonsoft.Json/Linq/JsonPath/QueryExpression.cs",
+          "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs",
+          "Src/Newtonsoft.Json/Utilities/CollectionUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/ConvertUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/DynamicProxy.cs",
+          "Src/Newtonsoft.Json/Utilities/DynamicProxyMetaObject.cs",
+          "Src/Newtonsoft.Json/Utilities/DynamicUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/ExpressionReflectionDelegateFactory.cs",
+          "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1132",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 16616,
+      "latencyMs": 91,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+          "Src/Newtonsoft.Json/Converters/DataTableConverter.cs",
+          "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs",
+          "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+          "Src/Newtonsoft.Json/JsonWriter.cs",
+          "Src/Newtonsoft.Json/Linq/Extensions.cs",
+          "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+          "Src/Newtonsoft.Json/Linq/JValue.cs",
+          "Src/Newtonsoft.Json/Linq/JsonPath/FieldMultipleFilter.cs",
+          "Src/Newtonsoft.Json/Schema/JsonSchemaNode.cs",
+          "Src/Newtonsoft.Json/Schema/JsonSchemaWriter.cs",
+          "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+          "Src/Newtonsoft.Json/Serialization/DefaultReferenceResolver.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs",
+          "Src/Newtonsoft.Json/Utilities/CollectionUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/CollectionWrapper.cs",
+          "Src/Newtonsoft.Json/Utilities/ConvertUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/ExpressionReflectionDelegateFactory.cs",
+          "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1131",
+      "repo": "NewtonsoftJson",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 5673,
+      "latencyMs": 150,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Converters/DataTableConverter.cs",
+          "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+          "Src/Newtonsoft.Json/Linq/Extensions.cs",
+          "Src/Newtonsoft.Json/Linq/JsonPath/FieldMultipleFilter.cs",
+          "Src/Newtonsoft.Json/Schema/JsonSchemaNode.cs",
+          "Src/Newtonsoft.Json/Schema/JsonSchemaWriter.cs",
+          "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+          "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1124",
+      "repo": "NewtonsoftJson",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 939,
+      "latencyMs": 159,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/Serialization/TraceWriterTests.cs",
+          "Src/Newtonsoft.Json/Bson/BsonBinaryWriter.cs",
+          "Src/Newtonsoft.Json/Serialization/TraceJsonWriter.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1121",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 775,
+      "latencyMs": 102,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/Serialization/TraceWriterTests.cs",
+          "Src/Newtonsoft.Json/Serialization/TraceJsonWriter.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1113",
+      "repo": "NewtonsoftJson",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 937,
+      "latencyMs": 157,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/JsonValidatingReaderTests.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/JsonReaderStubWithIsClosed.cs",
+          "Src/Newtonsoft.Json/JsonValidatingReader.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1111",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 7245,
+      "latencyMs": 199,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+          "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs",
+          "Src/Newtonsoft.Json/JsonSerializer.cs",
+          "Src/Newtonsoft.Json/JsonTextReader.cs",
+          "Src/Newtonsoft.Json/JsonTextWriter.cs",
+          "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+          "Src/Newtonsoft.Json/JsonWriter.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenWriter.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1105",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 13797,
+      "latencyMs": 204,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+          "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+          "Src/Newtonsoft.Json/JsonConvert.cs",
+          "Src/Newtonsoft.Json/JsonException.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs",
+          "Src/Newtonsoft.Json/JsonReaderException.cs",
+          "Src/Newtonsoft.Json/JsonSerializationException.cs",
+          "Src/Newtonsoft.Json/JsonSerializerSettings.cs",
+          "Src/Newtonsoft.Json/JsonTextReader.cs",
+          "Src/Newtonsoft.Json/JsonTextWriter.cs",
+          "Src/Newtonsoft.Json/JsonWriterException.cs",
+          "Src/Newtonsoft.Json/Linq/JArray.cs",
+          "Src/Newtonsoft.Json/Linq/JContainer.cs",
+          "Src/Newtonsoft.Json/Linq/JObject.cs",
+          "Src/Newtonsoft.Json/Linq/JProperty.cs",
+          "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs",
+          "Src/Newtonsoft.Json/Linq/JValue.cs",
+          "Src/Newtonsoft.Json/Schema/JsonSchema.cs",
+          "Src/Newtonsoft.Json/Schema/JsonSchemaException.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonContract.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonProperty.cs",
+          "Src/Newtonsoft.Json/Utilities/LinqBridge.cs",
+          "Src/Newtonsoft.Json/Utilities/MethodBinder.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1073",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 878,
+      "latencyMs": 104,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/ExceptionHandlingTests.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1072",
+      "repo": "NewtonsoftJson",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 4813,
+      "latencyMs": 205,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/Serialization/JsonSerializerCollectionsTests.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1044",
+      "repo": "NewtonsoftJson",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 19130,
+      "latencyMs": 165,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/Converters/XmlNodeConverterTest.cs",
+          "Src/Newtonsoft.Json.Tests/Documentation/SerializationTests.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextReaderTest.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/ExceptionHandlingTests.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/FloatTests.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/MiscTests.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/ParseTests.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/ReadTests.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextWriterTest.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/JsonSerializerCollectionsTests.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/JsonSerializerTest.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/PreserveReferencesHandlingTests.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/TypeNameHandlingTests.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/JsonTextReaderTests/FakeArrayPool.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/JsonTextReaderTests/SlowStream.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/JsonTextReaderTests/ToggleReaderError.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/JsonTextReaderTests/UnmanagedResourceFakingJsonReader.cs",
+          "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#922",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 4822,
+      "latencyMs": 201,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/PerformanceTests.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/CamelCaseNamingStrategyTests.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/SnakeCaseNamingStrategyTests.cs",
+          "Src/Newtonsoft.Json.Tests/Utilities/StringUtilsTests.cs",
+          "Src/Newtonsoft.Json/Converters/IsoDateTimeConverter.cs",
+          "Src/Newtonsoft.Json/JsonContainerAttribute.cs",
+          "Src/Newtonsoft.Json/JsonConverterAttribute.cs",
+          "Src/Newtonsoft.Json/JsonPropertyAttribute.cs",
+          "Src/Newtonsoft.Json/Serialization/CamelCaseNamingStrategy.cs",
+          "Src/Newtonsoft.Json/Serialization/CamelCasePropertyNamesContractResolver.cs",
+          "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+          "Src/Newtonsoft.Json/Serialization/DefaultNamingStrategy.cs",
+          "Src/Newtonsoft.Json/Serialization/JsonTypeReflector.cs",
+          "Src/Newtonsoft.Json/Serialization/NamingStrategy.cs",
+          "Src/Newtonsoft.Json/Serialization/SnakeCaseNamingStrategy.cs",
+          "Src/Newtonsoft.Json/Utilities/JavaScriptUtils.cs",
+          "Src/Newtonsoft.Json/Utilities/StringUtils.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#918",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 17796,
+      "latencyMs": 106,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/Serialization/ConstructorHandlingTests.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/ContractResolverTests.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/JsonSerializerTest.cs",
+          "Src/Newtonsoft.Json.Tests/Serialization/TraceWriterTests.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/PrivateConstructorWithPublicParameterizedConstructorTestClass.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/PublicParameterizedConstructorRequiringConverterTestClass.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/PublicParameterizedConstructorTestClass.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/PublicParameterizedConstructorWithNonPropertyParameterTestClass.cs",
+          "Src/Newtonsoft.Json.Tests/TestObjects/PublicParameterizedConstructorWithPropertyNameConflict.cs",
+          "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+          "Src/Newtonsoft.Json/ConstructorHandling.cs",
+          "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs",
+          "Src/Newtonsoft.Json/JsonTextReader.cs",
+          "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+          "Src/Newtonsoft.Json/Linq/JObject.cs",
+          "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenEqualityComparer.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+          "Src/Newtonsoft.Json/Linq/JValue.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#919",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 9112,
+      "latencyMs": 191,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+          "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs",
+          "Src/Newtonsoft.Json/JsonTextReader.cs",
+          "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+          "Src/Newtonsoft.Json/Linq/JObject.cs",
+          "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenEqualityComparer.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+          "Src/Newtonsoft.Json/Linq/JValue.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#917",
+      "repo": "NewtonsoftJson",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 9112,
+      "latencyMs": 172,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+          "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+          "Src/Newtonsoft.Json/JsonReader.cs",
+          "Src/Newtonsoft.Json/JsonTextReader.cs",
+          "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+          "Src/Newtonsoft.Json/Linq/JObject.cs",
+          "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenEqualityComparer.cs",
+          "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+          "Src/Newtonsoft.Json/Linq/JValue.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1452",
+      "repo": "Serilog",
+      "category": "formatting",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1044,
+      "latencyMs": 53,
+      "hit": {
+        "hits": [
+          "src/Serilog/Formatting/Json/JsonFormatter.cs",
+          "src/Serilog/Formatting/Json/JsonValueFormatter.cs",
+          "test/Serilog.Tests/Formatting/Json/JsonFormatterTests.cs",
+          "test/Serilog.Tests/Formatting/Json/JsonValueFormatterTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1472",
+      "repo": "Serilog",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 789,
+      "latencyMs": 63,
+      "hit": {
+        "hits": [
+          "src/Serilog/Configuration/LoggerAuditSinkConfiguration.cs",
+          "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+          "src/Serilog/LoggerConfiguration.cs",
+          "test/Serilog.Tests/Context/LogContextTests.cs",
+          "test/Serilog.Tests/Core/ChildLoggerTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1467",
+      "repo": "Serilog",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 733,
+      "latencyMs": 59,
+      "hit": {
+        "hits": [
+          "src/Serilog/Capturing/PropertyValueConverter.cs",
+          "src/Serilog/Events/ScalarValue.cs",
+          "test/Serilog.Tests/Core/MessageTemplateTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1466",
+      "repo": "Serilog",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1748,
+      "latencyMs": 55,
+      "hit": {
+        "hits": [
+          "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+          "src/Serilog/Core/CustomDefaultMethodImplementationAttribute.cs",
+          "src/Serilog/Core/Sinks/AggregateSink.cs",
+          "src/Serilog/Core/Sinks/ConditionalSink.cs",
+          "src/Serilog/Core/Sinks/DisposeDelegatingSink.cs",
+          "src/Serilog/Core/Sinks/DisposingAggregateSink.cs",
+          "src/Serilog/Core/Sinks/DisposingSafeAggregateSink.cs",
+          "src/Serilog/Core/Sinks/FilteringSink.cs",
+          "src/Serilog/Core/Sinks/RestrictedSink.cs",
+          "src/Serilog/Core/Sinks/SafeAggregateSink.cs",
+          "src/Serilog/Core/Sinks/SecondaryLoggerSink.cs",
+          "src/Serilog/Events/EventProperty.cs",
+          "test/Serilog.Tests/Core/LoggerTests.cs",
+          "test/Serilog.Tests/LoggerConfigurationTests.cs",
+          "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+          "test/Serilog.Tests/Rendering/MessageTemplateRendererTests.cs",
+          "test/Serilog.Tests/Support/DelegatingLogger.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1442",
+      "repo": "Serilog",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 593,
+      "latencyMs": 62,
+      "hit": {
+        "hits": [
+          "src/Serilog/Configuration/LoggerMinimumLevelConfiguration.cs",
+          "src/Serilog/Core/LevelOverrideMap.cs",
+          "src/Serilog/Filters/Matching.cs",
+          "test/Serilog.PerformanceTests/Harness.cs",
+          "test/Serilog.PerformanceTests/SourceContextMatchBenchmark.cs",
+          "test/Serilog.Tests/Filters/MatchingTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#10",
+      "repo": "Serilog",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2185,
+      "latencyMs": 49,
+      "hit": {
+        "hits": [
+          "src/Serilog/Configuration/LoggerMinimumLevelConfiguration.cs",
+          "src/Serilog/Core/CustomDefaultMethodImplementationAttribute.cs",
+          "src/Serilog/ILogger.cs",
+          "test/Serilog.PerformanceTests/Harness.cs",
+          "test/Serilog.Tests/Core/LoggerTests.cs",
+          "test/Serilog.Tests/LoggerConfigurationTests.cs",
+          "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+          "test/Serilog.Tests/Support/DelegatingLogger.cs",
+          "test/TestDummies/Properties/AssemblyInfo.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1435",
+      "repo": "Serilog",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1918,
+      "latencyMs": 59,
+      "hit": {
+        "hits": [
+          "src/Serilog/Core/CustomDefaultMethodImplementationAttribute.cs",
+          "src/Serilog/ILogger.cs",
+          "test/Serilog.PerformanceTests/Harness.cs",
+          "test/Serilog.Tests/Core/LoggerTests.cs",
+          "test/Serilog.Tests/LoggerConfigurationTests.cs",
+          "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+          "test/Serilog.Tests/Support/DelegatingLogger.cs",
+          "test/TestDummies/Properties/AssemblyInfo.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#7",
+      "repo": "Serilog",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 625,
+      "latencyMs": 60,
+      "hit": {
+        "hits": [
+          "src/Serilog/Capturing/PropertyValueConverter.cs",
+          "test/Serilog.Tests/Core/MessageTemplateTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1427",
+      "repo": "Serilog",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 625,
+      "latencyMs": 66,
+      "hit": {
+        "hits": [
+          "src/Serilog/Capturing/PropertyValueConverter.cs",
+          "test/Serilog.Tests/Core/MessageTemplateTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#5",
+      "repo": "Serilog",
+      "category": "no-signal",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1289,
+      "latencyMs": 56,
+      "hit": {
+        "hits": [
+          "src/Serilog/Core/Logger.cs",
+          "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1374",
+      "repo": "Serilog",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1289,
+      "latencyMs": 47,
+      "hit": {
+        "hits": [
+          "src/Serilog/Core/Logger.cs",
+          "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#4",
+      "repo": "Serilog",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 892,
+      "latencyMs": 55,
+      "hit": {
+        "hits": [
+          "src/Serilog/Configuration/LoggerDestructuringConfiguration.cs",
+          "src/Serilog/Parsing/MessageTemplateParser.cs",
+          "test/Serilog.Tests/LoggerConfigurationTests.cs",
+          "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1366",
+      "repo": "Serilog",
+      "category": "formatting",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 298,
+      "latencyMs": 51,
+      "hit": {
+        "hits": [
+          "src/Serilog/Parsing/MessageTemplateParser.cs",
+          "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1357",
+      "repo": "Serilog",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 594,
+      "latencyMs": 55,
+      "hit": {
+        "hits": [
+          "src/Serilog/Configuration/LoggerDestructuringConfiguration.cs",
+          "test/Serilog.Tests/LoggerConfigurationTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1316",
+      "repo": "Serilog",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 7343,
+      "latencyMs": 58,
+      "hit": {
+        "hits": [
+          "src/Serilog/Capturing/PropertyBinder.cs",
+          "src/Serilog/Configuration/LoggerEnrichmentConfiguration.cs",
+          "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+          "src/Serilog/Context/LogContextEnricher.cs",
+          "src/Serilog/Core/Enrichers/ConditionalEnricher.cs",
+          "src/Serilog/Core/Logger.cs",
+          "src/Serilog/Core/Pipeline/SilentLogger.cs",
+          "src/Serilog/Core/Sinks/ConditionalSink.cs",
+          "src/Serilog/Core/Sinks/SecondaryLoggerSink.cs",
+          "src/Serilog/Filters/Matching.cs",
+          "src/Serilog/Formatting/Display/MessageTemplateTextFormatter.cs",
+          "src/Serilog/Formatting/Json/JsonFormatter.cs",
+          "src/Serilog/LoggerConfiguration.cs",
+          "src/Serilog/Parsing/MessageTemplateParser.cs",
+          "src/Serilog/Parsing/PropertyToken.cs",
+          "src/Serilog/Rendering/MessageTemplateRenderer.cs",
+          "src/Serilog/Settings/KeyValuePairs/KeyValuePairSettings.cs",
+          "test/Serilog.PerformanceTests/BindingBenchmark.cs",
+          "test/Serilog.PerformanceTests/Support/ConcurrentDictionaryTemplateCache.cs",
+          "test/Serilog.Tests/Core/LevelOverrideMapTests.cs",
+          "test/Serilog.Tests/Core/LoggerTests.cs",
+          "test/Serilog.Tests/LoggerConfigurationTests.cs",
+          "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+          "test/Serilog.Tests/Support/CollectingEnricher.cs",
+          "test/TestDummies/DummyLoggerConfigurationExtensions.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1317",
+      "repo": "Serilog",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 4042,
+      "latencyMs": 53,
+      "hit": {
+        "hits": [
+          "src/Serilog/Capturing/PropertyBinder.cs",
+          "src/Serilog/Core/Logger.cs",
+          "src/Serilog/Core/Sinks/SecondaryLoggerSink.cs",
+          "src/Serilog/Filters/Matching.cs",
+          "src/Serilog/Formatting/Display/MessageTemplateTextFormatter.cs",
+          "src/Serilog/Formatting/Json/JsonFormatter.cs",
+          "src/Serilog/Parsing/MessageTemplateParser.cs",
+          "src/Serilog/Parsing/PropertyToken.cs",
+          "src/Serilog/Rendering/MessageTemplateRenderer.cs",
+          "src/Serilog/Settings/KeyValuePairs/KeyValuePairSettings.cs",
+          "test/Serilog.PerformanceTests/BindingBenchmark.cs",
+          "test/Serilog.PerformanceTests/Support/ConcurrentDictionaryTemplateCache.cs",
+          "test/Serilog.Tests/Core/LevelOverrideMapTests.cs",
+          "test/Serilog.Tests/Core/LoggerTests.cs",
+          "test/Serilog.Tests/MethodOverloadConventionTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1314",
+      "repo": "Serilog",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 3349,
+      "latencyMs": 57,
+      "hit": {
+        "hits": [
+          "src/Serilog/Capturing/DepthLimiter.cs",
+          "src/Serilog/Capturing/PropertyValueConverter.cs",
+          "src/Serilog/Filters/Matching.cs",
+          "src/Serilog/Formatting/Json/JsonValueFormatter.cs",
+          "src/Serilog/Settings/KeyValuePairs/KeyValuePairSettings.cs",
+          "test/Serilog.PerformanceTests/Support/NullTextWriter.cs",
+          "test/Serilog.Tests/Core/LoggerExtensionsTests.cs",
+          "test/Serilog.Tests/Formatting/Display/MessageTemplateTextFormatterTests.cs",
+          "test/Serilog.Tests/Formatting/Json/JsonFormatterTests.cs",
+          "test/Serilog.Tests/LogTests.cs",
+          "test/Serilog.Tests/LoggerConfigurationTests.cs",
+          "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+          "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1255",
+      "repo": "Serilog",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 301,
+      "latencyMs": 55,
+      "hit": {
+        "hits": [
+          "src/Serilog/Capturing/GetablePropertyFinder.cs",
+          "src/Serilog/Context/ImmutableStack.cs",
+          "src/Serilog/Formatting/Display/LevelOutputFormat.cs",
+          "test/Serilog.Tests/Capturing/GetablePropertyFinderTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#949",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 596,
+      "latencyMs": 67,
+      "hit": {
+        "hits": [
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/CatalogItemsSpecification.cs",
+          "tests/UnitTests/Builders/BasketBuilder.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetMyOrders.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetOrderDetails.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#878",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 312,
+      "latencyMs": 62,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
+          "src/Web/Features/MyOrders/GetMyOrders.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+          "src/Web/Program.cs",
+          "src/Web/ViewModels/OrderDetailViewModel.cs",
+          "src/Web/ViewModels/OrderViewModel.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#876",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 312,
+      "latencyMs": 47,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
+          "src/Web/Features/MyOrders/GetMyOrders.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+          "src/Web/ViewModels/OrderDetailViewModel.cs",
+          "src/Web/ViewModels/OrderViewModel.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#1",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 538,
+      "latencyMs": 87,
+      "hit": {
+        "hits": [
+          "src/Web/AzureDeveloperCliCredential.cs",
+          "src/Web/Program.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#818",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1129,
+      "latencyMs": 92,
+      "hit": {
+        "hits": [
+          "src/BlazorAdmin/CustomAuthStateProvider.cs",
+          "src/PublicApi/CatalogBrandEndpoints/CatalogBrandListEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CatalogItemGetByIdEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CreateCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/DeleteCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogTypeEndpoints/CatalogTypeListEndpoint.cs",
+          "src/PublicApi/Program.cs",
+          "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
+          "src/Web/Configuration/ConfigureWebServices.cs",
+          "src/Web/Controllers/UserController.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+          "src/Web/Program.cs",
+          "tests/PublicApiIntegrationTests/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#541",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.6153846153846154,
+      "tokens": 777,
+      "latencyMs": 85,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Interfaces/IFileSystem.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+          "src/Infrastructure/Services/WebFileSystem.cs",
+          "src/PublicApi/CatalogItemEndpoints/Create.cs",
+          "src/PublicApi/CatalogItemEndpoints/Update.cs",
+          "src/PublicApi/Startup.cs",
+          "src/Web/Controllers/FileController.cs",
+          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/CreateEndpoint.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "tests/FunctionalTests/PublicApi/ApiTestFixture.cs",
+          "tests/FunctionalTests/PublicApi/AuthEndpoints/AuthenticateEndpoint.cs",
+          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/ApiCatalogControllerList.cs",
+          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/DeleteEndpoint.cs",
+          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/GetByIdEndpoint.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#322",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.21052631578947367,
+      "tokens": 1557,
+      "latencyMs": 212,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Services/BasketService.cs",
+          "src/Web/Pages/Basket/Index.cshtml.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
+          "src/Web/Services/BasketViewModelService.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+          "src/Web/Interfaces/IBasketViewModelService.cs",
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
+          "src/Web/Pages/Basket/Checkout.cshtml.cs",
+          "src/Web/Pages/Shared/Components/BasketComponent/Basket.cs",
+          "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
+          "src/ApplicationCore/Entities/BuyerAggregate/Buyer.cs",
+          "src/ApplicationCore/Entities/CatalogBrand.cs",
+          "src/ApplicationCore/Entities/CatalogItem.cs",
+          "src/ApplicationCore/Entities/CatalogType.cs",
+          "src/ApplicationCore/Services/OrderService.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#300",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.35294117647058826,
+      "tokens": 1037,
+      "latencyMs": 57,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
+          "src/ApplicationCore/Services/BasketService.cs",
+          "tests/IntegrationTests/Repositories/BasketRepositoryTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketAddItem.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs",
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
+          "src/ApplicationCore/Entities/BuyerAggregate/Buyer.cs",
+          "src/ApplicationCore/Entities/CatalogBrand.cs",
+          "src/ApplicationCore/Entities/CatalogItem.cs",
+          "src/ApplicationCore/Entities/CatalogType.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+          "src/ApplicationCore/Services/OrderService.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#296",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.3333333333333333,
+      "tokens": 373,
+      "latencyMs": 266,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/CatalogItemOrdered.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/OrderItem.cs",
+          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#294",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.3,
+      "tokens": 883,
+      "latencyMs": 240,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/CatalogItemOrdered.cs",
+          "src/Infrastructure/Data/CatalogContext.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/OrderItem.cs",
+          "src/Infrastructure/Data/EfRepository.cs",
+          "src/Infrastructure/Data/OrderRepository.cs",
+          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs",
+          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#291",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.7647058823529411,
+      "tokens": 917,
+      "latencyMs": 83,
+      "hit": {
+        "hits": [
+          "src/Infrastructure/Data/CatalogContext.cs",
+          "src/Infrastructure/Data/Config/AddressConfiguration.cs",
+          "src/Infrastructure/Data/Config/BasketConfiguration.cs",
+          "src/Infrastructure/Data/Config/BasketItemConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogBrandConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogItemConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogItemOrderedConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogTypeConfiguration.cs",
+          "src/Infrastructure/Data/Config/OrderConfiguration.cs",
+          "src/Infrastructure/Data/Config/OrderItemConfiguration.cs",
+          "src/Infrastructure/Data/Migrations/20190818191507_UpdatedConstraints.cs",
+          "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs",
+          "src/Web/Startup.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Infrastructure/Data/Migrations/20190818191507_UpdatedConstraints.Designer.cs",
+          "src/Infrastructure/Data/EfRepository.cs",
+          "src/Infrastructure/Data/OrderRepository.cs",
+          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#280",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.36363636363636365,
+      "tokens": 1086,
+      "latencyMs": 277,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Interfaces/ISpecification.cs",
+          "src/ApplicationCore/Specifications/BaseSpecification.cs",
+          "src/Infrastructure/Data/CatalogContext.cs",
+          "src/Infrastructure/Data/SpecificationEvaluator.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/CustomerOrdersWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterSpecification.cs",
+          "src/Infrastructure/Data/EfRepository.cs",
+          "src/Infrastructure/Data/OrderRepository.cs",
+          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#268",
+      "repo": "eShopOnWeb",
+      "category": "route-api",
+      "recall": 1,
+      "precision": 0.8,
+      "tokens": 210,
+      "latencyMs": 282,
+      "hit": {
+        "hits": [
+          "src/Web/Areas/Identity/Pages/Account/ConfirmEmail.cshtml.cs",
+          "src/Web/Controllers/AccountController.cs",
+          "src/Web/Extensions/UrlHelperExtensions.cs",
+          "tests/FunctionalTests/Web/Controllers/AccountControllerSignIn.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "tests/FunctionalTests/Web/CustomWebApplicationFactory.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#267",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 241,
+      "latencyMs": 261,
+      "hit": {
+        "hits": [
+          "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
+          "src/Web/Startup.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#264",
+      "repo": "eShopOnWeb",
+      "category": "formatting",
+      "recall": 1,
+      "precision": 0.5,
+      "tokens": 578,
+      "latencyMs": 131,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/BasketAggregate/BasketItem.cs",
+          "src/ApplicationCore/Services/BasketService.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs",
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
+          "src/ApplicationCore/Services/OrderService.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#258",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.42857142857142855,
+      "tokens": 616,
+      "latencyMs": 269,
+      "hit": {
+        "hits": [
+          "src/Infrastructure/Data/CatalogContext.cs",
+          "src/Infrastructure/Data/Migrations/20190601014740_UpdatingDefaultDataTypes.cs",
+          "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Infrastructure/Data/Migrations/20190601014740_UpdatingDefaultDataTypes.Designer.cs",
+          "src/Infrastructure/Data/EfRepository.cs",
+          "src/Infrastructure/Data/OrderRepository.cs",
+          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#243",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.42857142857142855,
+      "tokens": 575,
+      "latencyMs": 261,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Interfaces/ISpecification.cs",
+          "src/ApplicationCore/Specifications/BaseSpecification.cs",
+          "src/Infrastructure/Data/SpecificationEvaluator.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/CustomerOrdersWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterSpecification.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#242",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.5714285714285714,
+      "tokens": 457,
+      "latencyMs": 277,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Services/BasketService.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/ApplicationCore/Interfaces/IAsyncRepository.cs"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "token budgets 25,000, 50,000",
+    "index modes: partial 36, semantic 14, syntax 58",
+    "adjudicated PRs (with a reading set): 5",
+    "budget 25,000 fuse vs changed: recall 100%, precision 78%, median tokens 1,108",
+    "budget 25,000 grep vs changed: recall 51%, precision 9%",
+    "budget 25,000 fuse vs adjudicated (n 5): recall 60%, precision 74%",
+    "budget 50,000 fuse vs changed: recall 100%, precision 77%, median tokens 1,108",
+    "budget 50,000 grep vs changed: recall 59%, precision 8%",
+    "budget 50,000 fuse vs adjudicated (n 5): recall 60%, precision 74%"
+  ]
+}

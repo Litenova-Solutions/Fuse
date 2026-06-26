@@ -55,7 +55,7 @@ Phase 7 - Context rendering
 
 Phase 8 - CLI rewrite
 - [x] P8.1 New command set (index/map/localize/resolve/context/review/diagnostics/find/reduce/host/mcp/models)
-- [ ] P8.2 Remove or alias old commands; Section 9.1 manual examples run end to end
+- [x] P8.2 Remove or alias old commands; Section 9.1 manual examples run end to end
 
 Phase 9 - MCP rewrite
 - [ ] P9.1 Replace tools with the eight (10.1); rewrite server instructions (10.3)
@@ -1699,6 +1699,14 @@ The single most important thing remains: build the resolved semantic graph and e
 - Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 738 passed; `dotnet format --verify-no-changes` clean. End-to-end: `fuse diagnostics` reports semantic mode / 11 files / 72 symbols / FTS available; `fuse find OrderService --kind symbol` returns the class, interface, and test class.
 - Blockers/issues: None. Cosmetic: `find` shows symbol FQNs with the `global::` prefix (SymbolRecord uses FullyQualifiedFormat); a display cleanup for the docs/polish phase, not a blocker.
 - Lessons: The new command set is now complete; P8.2 decides per old command (ask/dotnet/wiki/explain/verify/generic fusion) whether to remove or wrap, and removes the dead golden/MCP surface those imply.
+- Time: ~30 min
+
+### P8.2 Remove old commands; new examples run end to end - 2026-06-26 20:20
+- Status: done
+- Result: Removed the old CLI commands (`ask`, `dotnet`, `wiki`, `explain`, `verify`) and generic-template fusion: deleted the five command files, unregistered them from `Program.cs`, and rewrote the root `FuseCliCommand` to print V3 guidance (no longer inherits the fusion `CommandBase` or runs generic fusion). Kept `reduce`, `models`, `init`, `mcp` (install/serve), and `host`. Deleted the now-obsolete `AskCommandTests` and `ReductionLevelOptionTests` (both only exercised removed commands). New solution test total 728 (Fuse.Cli.Tests 112 -> 102; a removal item, so the count drops by design).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 728 passed, 0 failed; `dotnet format --verify-no-changes` clean. Bare `fuse` prints the V3 command guidance; the Section 9.1 examples (index/map/localize/resolve/context/review/diagnostics/find) run end to end (verified across P2-P8).
+- Blockers/issues: The removal was self-contained because golden tests drive the `FusionOrchestrator` directly (not the CLI commands) and the MCP tools do not reference the CLI command classes. The old MCP tools (`fuse_ask`/`fuse_dotnet`/`fuse_explain`/`fuse_generic`) and their tests still exist and are removed in Phase 9; the golden output files for removed shapes are replaced in Phase 10, per the plan's sequencing.
+- Lessons: The orchestrator and `CommandBase` survive for `reduce` and the (Phase 9) MCP tools, so removing the CLI commands did not require touching fusion internals. The verify/explain LOGIC services (ApiSurfaceVerifier, ExplanationBuilder) remain and keep `VerificationTests` green; only the CLI command wrappers were removed.
 - Time: ~30 min
 
 

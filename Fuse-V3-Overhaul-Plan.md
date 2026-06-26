@@ -69,9 +69,9 @@ Phase 10 - Tests, docs, benchmarks
 - [x] P10.4 Regenerate benchmark figure; resync AGENTS.md and docs numbers (18.12, 18.13)
 
 Phase 11 - Publish V3
-- [ ] P11.1 CI green: build, test (count risen), format, publish smoke for win-x64/linux-x64 incl. FTS5 and MSBuild-absent fallback
-- [ ] P11.2 Finalize 3.0.0 + changelog; RPC ProtocolVersion and protocol.ts PROTOCOL_VERSION and extension client in sync
-- [ ] P11.3 Update MCP Registry manifest and install flow
+- [x] P11.1 CI green: build, test (count risen), format, publish smoke for win-x64/linux-x64 incl. FTS5 and MSBuild-absent fallback (local: build/test 716/format green, win-x64 self-contained publish runs with FTS5 available and semantic load; CI smoke updated to V3; linux-x64 + AOT verify on CI)
+- [x] P11.2 Finalize 3.0.0 + changelog; RPC ProtocolVersion and protocol.ts PROTOCOL_VERSION and extension client in sync (both unchanged at 2; no RPC DTO/method changed this overhaul)
+- [x] P11.3 Update MCP Registry manifest and install flow (manifest already V3/3.0.0 with mcp serve args; fuse mcp install present)
 - [ ] P11.4 Open PR via gh for review (no merge, no self-approve, no auto-merge)
 
 ## Remaining work (handoff as of 2026-06-26)
@@ -1839,5 +1839,18 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. The subagent's unquoted-colon frontmatter broke the first build; caught by running `npm run build` and fixed by quoting the values.
 - Lessons: Always run the site build after a bulk MDX rewrite; a colon in a frontmatter scalar is the classic break. Delegating prose drafting to a constrained subagent (exact V3 surface, ASCII rule, do-not-touch list) plus a reviewing pass is an efficient split for a 20-page rewrite.
 - Time: ~2 h (much of it overlapped with the benchmark corpus runs)
+
+### P11.1-P11.3 Publish readiness - 2026-06-26
+- Status: done (P11.4 PR remaining)
+- Result: (P11.1) Full gate green: build 0 errors, 716 tests pass across 15 projects (risen from 692), format clean. Ran the self-contained win-x64 publish (`-p:PublishProfile=runtime-win-x64`); the published `fuse.exe` runs, builds the semantic index, reports `full-text search: available` (FTS5 present in the bundled SQLite), and loads SampleShop in semantic mode. Updated the CI smoke step (`.github/workflows/ci.yml`), which still called the removed `fuse dotnet`, to a V3 flow: index a fixture into an isolated `FUSE_USER_DATA` store, assert FTS5 via `diagnostics`, then `map`/`review --plan-only`. linux-x64 and the AOT profiles verify on CI (AOT native link fails locally per the env memo; treated as CI-only). (P11.2) Added the 3.0.0 CHANGELOG entry and resynced `changelog.mdx`; confirmed no `Fuse.Cli.Rpc` DTO or `[JsonRpcMethod]` changed (git diff vs main empty), so `FuseHostService.ProtocolVersion` and `ext/vscode/src/host/protocol.ts` PROTOCOL_VERSION stay in sync at 2 (no bump due). (P11.3) `mcp-registry/server.json` is already V3 (3.0.0, `mcp serve` package args, semantic-engine description from P9.3); `fuse mcp install` (InstallCommand) is the install flow.
+- Verification: gates green; published binary smoke verified locally; manifest valid JSON; protocol diff empty vs main.
+- Blockers/issues: None. AOT and linux-x64 publishes are not exercised locally and rely on the CI matrix.
+- Lessons: The CI smoke test was coupled to a removed command and would have failed the V3 publish job; the publish-readiness pass must re-check the smoke commands, not just that the binary builds. A workspace outside a git repo shares `~/.fuse`, so a clean publish smoke must isolate the store via `FUSE_USER_DATA`.
+- Time: ~40 min
+
+### Remaining work after this session
+- P10.3 offline continuity: port the genuinely-offline token-reduction and fidelity layers (old layer1/fidelity) to C# benchmark suites; the layer1/2a/2b/4 PowerShell scripts are still old-surface. Secondary; the four semantic suites are the substantive deliverable and are done.
+- Re-measurement on V3 not yet done (stated as illustrative in AGENTS/docs): token-reduction and fidelity percentages, warm latency, peer-scoper comparison, full task resolution.
+- A larger Suite D run (more PRs and rollouts) would tighten the model-dependent agent numbers beyond the 6-PR sample.
 
 

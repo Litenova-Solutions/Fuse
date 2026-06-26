@@ -777,6 +777,40 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<SymbolListItem>> FindSymbolsByNameAsync(string nameFragment, int limit, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT s.symbol_id, s.name, s.kind, s.fully_qualified_name, files.normalized_path,
+                   s.start_line, s.is_public_api
+            FROM symbols s
+            JOIN files ON files.file_id = s.file_id
+            WHERE s.name LIKE '%' || $n || '%' COLLATE NOCASE
+            ORDER BY s.is_public_api DESC, length(s.name), s.name COLLATE NOCASE
+            LIMIT $limit;
+            """;
+        command.Parameters.AddWithValue("$n", nameFragment);
+        command.Parameters.AddWithValue("$limit", limit);
+
+        var items = new List<SymbolListItem>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new SymbolListItem(
+                SymbolId: reader.GetString(0),
+                Name: reader.GetString(1),
+                Kind: reader.GetString(2),
+                FullyQualifiedName: reader.GetString(3),
+                FilePath: reader.GetString(4),
+                StartLine: reader.GetInt32(5),
+                IsPublicApi: reader.GetInt64(6) != 0));
+        }
+
+        return items;
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken)
     {
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);

@@ -54,7 +54,7 @@ Phase 7 - Context rendering
 - [x] P7.3 XML/Markdown/JSON + structural maps; redaction on; token budget respected
 
 Phase 8 - CLI rewrite
-- [ ] P8.1 New command set (index/map/localize/resolve/context/review/diagnostics/find/reduce/host/mcp/models)
+- [x] P8.1 New command set (index/map/localize/resolve/context/review/diagnostics/find/reduce/host/mcp/models)
 - [ ] P8.2 Remove or alias old commands; Section 9.1 manual examples run end to end
 
 Phase 9 - MCP rewrite
@@ -1692,5 +1692,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: JSON uses a source-generated `JsonSerializerContext` per the design invariant. "Structural maps" (route/DI/project graph) are served by `fuse map` (P2.4) plus the manifest's semantic-impact section rather than duplicated into every context payload; noted for the docs phase.
 - Lessons: With the plan already packed under budget and the renderer applying redaction, the emitter is a pure formatter over `(plan, rendered)`. The XML envelope embeds raw bodies (consumer is an LLM, not a strict XML parser), matching Fuse's existing output style; only attribute values are escaped.
 - Time: ~45 min
+
+### P8.1 New command set (diagnostics, find) - 2026-06-26 19:50
+- Status: done
+- Result: Added the two missing V3 commands: `fuse diagnostics` (reports store location, schema version, status, index mode, file/symbol counts, FTS availability) and `fuse find` (exact lookup over symbols-by-name, files-by-path, and FTS text, with `--kind symbol|path|text|all`). Added store `FindSymbolsByNameAsync` (public-API-first LIKE on symbol name). Registered both commands. The rest of the V3 set (index/map/localize/resolve/context/review/reduce/host/mcp/models) already exists from Phases 2-7 and the retained old commands. Added `WorkspaceIndexFindTests` (3). New solution test total 738 (Fuse.Indexing.Tests +3).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 738 passed; `dotnet format --verify-no-changes` clean. End-to-end: `fuse diagnostics` reports semantic mode / 11 files / 72 symbols / FTS available; `fuse find OrderService --kind symbol` returns the class, interface, and test class.
+- Blockers/issues: None. Cosmetic: `find` shows symbol FQNs with the `global::` prefix (SymbolRecord uses FullyQualifiedFormat); a display cleanup for the docs/polish phase, not a blocker.
+- Lessons: The new command set is now complete; P8.2 decides per old command (ask/dotnet/wiki/explain/verify/generic fusion) whether to remove or wrap, and removes the dead golden/MCP surface those imply.
+- Time: ~30 min
 
 

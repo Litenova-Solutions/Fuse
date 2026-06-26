@@ -1,4 +1,6 @@
-# Fuse V3 Overhaul Plan
+# Fuse V3 Overhaul Plan (archived)
+
+> Archived execution record. The V3 overhaul described here is complete (every box below is ticked; see PR #20). This file is kept for history: the original plan, the design spec, and the full progress log. The forward-looking plan now lives in [ROADMAP.md](ROADMAP.md).
 
 ## Execution checklist
 

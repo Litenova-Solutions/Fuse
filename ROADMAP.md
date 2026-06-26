@@ -1,0 +1,150 @@
+# Fuse Roadmap
+
+Fuse V3 shipped: a Roslyn-backed .NET semantic context engine with a warm persistent index, an 8-tool MCP surface, a five-suite C# benchmark, and a rewritten docs site. The full plan, execution record, and progress log for that overhaul are archived in [Fuse-V3-Overhaul-History.md](Fuse-V3-Overhaul-History.md) (and PR #20).
+
+This roadmap is the path from V3 to the most performant .NET context engine available: dominate the axes that are the moat (semantic wiring resolution, change review with a base), reach parity or better where Fuse is currently weak (open-ended localization), and prove it head to head and end to end. Items are ordered by leverage: result per item, not effort. The honest ceilings where "best of everything" genuinely trades off are stated at the end.
+
+This file holds the forward plan. Each item carries its engine work plus the tests, docs, and benchmark changes that land with it. Tick a box when its definition of done is met; record the measured result in `tests/benchmarks/results` and resync `AGENTS.md` and the benchmarks page in the same change.
+
+## Current baseline (V3, recorded 2026-06-26)
+
+All from `tests/benchmarks/results`, counted with `o200k_base`. The corpus loads mostly in syntax/partial index mode in the current environment, so the semantic suites sit below their semantic ceiling (R0 addresses this).
+
+- Suite A, semantic resolution: 100 percent edge recall and precision (10/10) on the wiring fixture.
+- Suite B, change/review: 100 percent changed-file recall, 89.6 percent precision, median 874 tokens over 48 PRs (recall is high by construction; review seeds changed files as must-keep).
+- Suite C, open-ended localization: 27.3 percent recall over 108 PRs from a title alone (the weakest mode); low-signal detection F1 0.11.
+- Suite D, agent (sonnet-4-6, 6 PRs): fuse 21 percent recall at 135K median tokens, native 27 percent at 212K.
+- Suite E, reduction/fidelity: skeleton keeps 100 percent of public types and 99 to 100 percent of methods; removes 37 to 55 percent of tokens.
+
+## The crown, defined (measurable target per axis)
+
+| Axis | Today | Crown target |
+|------|-------|--------------|
+| Semantic resolution (A) | 100/100 on one fixture | P@1 >= 0.95 MediatR, >= 0.85 DI and route, >= 0.80 options, across the real corpus by sampled adjudication, plus EF Core, minimal-API groups, gRPC/SignalR, open generics |
+| Change/review (B) | 100/90 over changed-files truth | Recall of an adjudicated support set >= 0.85 at >= 0.60 precision at a 25K budget, beating changed-files-only and grep |
+| Open-ended localize (C) | 27 percent, title only | Beat the retired 49 percent lexical floor on identifier-rich titles, competitive on natural-language titles via dense retrieval, low-signal detection F1 >= 0.80 |
+| Agent (D) | fuse about equal to native, small N | Higher recall at fewer tokens and calls than every peer toolbox, on 50 to 100 tasks x 3 rollouts, in both Fuse-first and agent-driven modes |
+| Reduction/fidelity (E) | about 100 percent fidelity | Hold 100 percent type and 99 to 100 percent method fidelity; report reduction per level |
+| Performance | not measured on V3 | Warm resolve P95 < 100 ms, localize < 500 ms, review plan < 2 s; single-file incremental re-index < 1 s |
+| Peers (layer 6) | not re-run on V3 | Top recall against CodeGraph, Serena, and coa-codesearch on the same ground truth |
+| Task resolution | not built | Measurably higher patch pass@1 with Fuse than without, on a test-oracle harness |
+
+## Execution checklist
+
+- [ ] R0 Semantic-mode corpus: restore MSBuild workspaces in the bench harness so the corpus indexes semantically
+- [ ] R1 Reconnect the lexical ranker (BM25F + PRF + centrality) as a candidate generator
+- [ ] R2 Hybrid retrieval with a warm dense reranker for natural-language queries
+- [ ] R3 Low-signal detection and abstention
+- [ ] R4 Adjudicated support-set ground truth for review (Suite B)
+- [ ] R5 Wider semantic analyzer set (EF Core, minimal-API groups, gRPC/SignalR, open generics, decorator/factory DI, pipeline behaviors, IHostedService)
+- [ ] R6 Suite A on the real wiring zoo with sampled adjudication
+- [ ] R7 Warm host as the runtime plus a latency suite
+- [ ] R8 Peer comparison and agent suite at scale, in semantic mode, with hybrid retrieval
+- [ ] R9 Full task-resolution harness (patch plus test oracle)
+
+---
+
+## R0. Semantic-mode corpus (the multiplier)
+
+The corpus loads in syntax or partial mode here because the harness does not provision a restored MSBuild workspace per repository. Every semantic suite reads a thin graph as a result. Restoring the workspaces lifts Suites A-on-corpus, B, C, and D toward the semantic ceiling with no engine change, so this gates the value of R1 through R8.
+
+- Work: in `CorpusManager`, run `dotnet restore` (and resolve the SDK) per pinned checkout before indexing; record the achieved index mode per repo; fail loudly if a repo cannot reach semantic mode rather than silently scoring the fallback.
+- Tests: a `CorpusManager` test that a restored fixture repo reaches `semantic` mode; the existing offline suites must still skip gracefully when restore is unavailable.
+- Docs: update the index-mode caveat in `benchmarks.mdx` and the AGENTS.md Measured Results once the corpus runs semantically; note the restore prerequisite in the benchmark reproduce section.
+- Benchmark: re-run B, C, D in semantic mode and record the lift; this becomes the headline corpus result instead of the syntax-mode floor.
+
+## R1. Reconnect the lexical ranker as a candidate generator
+
+The tuned BM25F ranker, pseudo-relevance-feedback expansion, and centrality prior still exist in `Fuse.Fusion.Scoping`, unplugged. Fused with the semantic candidates through the existing noisy-or combiner, they recover and exceed the retired 49 percent localize floor while keeping the semantic moat. Lexical finds the file a title names; the graph finds what it wires to.
+
+- Work: add a `LexicalCandidateGenerator` in `Fuse.Retrieval` that runs the BM25F ranker over the persistent index (or persist a BM25F field index alongside FTS5) and emits scored candidates; blend via the existing scorer; keep the `FUSE_*` levers meaningful again or replace them with typed options.
+- Tests: unit tests that the lexical generator ranks an identifier-rich query above unrelated files; a blend test that lexical and semantic candidates merge by noisy-or; a regression test that a known query localizes its file.
+- Docs: update `concepts/scoping.mdx` and `internals/scoping-internals.mdx` to describe lexical plus semantic candidate fusion; update `reference/options.mdx` if new flags appear.
+- Benchmark: Suite C recall by bucket, expecting identifier-rich to recover past the old floor; report at a token budget comparable to the old layer-4 operating point so the comparison is apples to apples.
+
+## R2. Hybrid retrieval with a warm dense reranker
+
+The natural-language-domain bucket (the largest and weakest in Suite C) fails lexical matching because prose titles do not share tokens with code. The ONNX reranker already exists as a plugin (`FUSE_RERANK`); make it warm by persisting an embedding index, and rank prose queries by semantic similarity over the candidate pool.
+
+- Work: persist a per-chunk embedding index in the store; add a `DenseCandidateGenerator` or reranker stage gated behind a model presence check; keep the lexical and graph path the default when no model is present (the no-model-download-by-default invariant holds).
+- Tests: a rerank test on a prose query that lexical ranks poorly; a no-model fallback test that the pipeline stays lexical and offline; an index-persistence test that embeddings survive disposal.
+- Docs: `concepts/scoping.mdx` (the optional dense stage), `start/connect-your-ai.mdx` and `reference/commands.mdx` (the model download flow), and the operator page (the embedding index size).
+- Benchmark: Suite C natural-language bucket recall with and without the reranker (an ablation: FTS only, FTS plus graph, FTS plus graph plus dense).
+
+## R3. Low-signal detection and abstention
+
+A no-signal title ("Merge branch", "Apply suggestions from code review") names no code, so recall is bounded by the input, not the engine. The honest crown there is to detect low signal and ask for a base, route, or symbol, rather than return overconfident junk. This is the Section 18.13 north star.
+
+- Work: a signal classifier on the localize path (reuse the `SignalBucket` logic in the engine) that, below a confidence threshold, returns a low-signal verdict and a suggested next input instead of candidates.
+- Tests: unit tests that no-signal and dependency-bump titles are flagged and identifier-rich titles are not; a localize test asserting the abstention payload shape.
+- Docs: `scenarios/ask-one-question.mdx` and `reference/mcp-tools.mdx` (the low-signal response), `concepts/scoping.mdx` (why abstention beats junk).
+- Benchmark: Suite C low-signal detection F1 (true positive on no-signal flagged, false positive on a solvable query downgraded), targeting F1 >= 0.80, up from 0.11.
+
+## R4. Adjudicated support-set ground truth for review
+
+Suite B recall is 100 percent by construction because changed files are must-keep, so the current number does not test blast radius. The crown claim needs a human or strong-model adjudicated set of files a developer must read to review a PR, then recall of that set.
+
+- Work: a curation pass that adds an optional `reading_set` (interfaces, callers, tests, config) per PR in `prs.json`; `ChangeImpactSuite` scores recall and precision against the changed set unioned with the reading set when present, labeled as adjudicated.
+- Tests: a `CorpusManager` test that a PR with a reading set lifts the scored truth; the suite still scores the changed-files truth when no label is present.
+- Docs: `benchmarks.mdx` Suite B section documents the two ground truths and which is adjudicated; the honest-reporting section notes the adjudication method and confidence intervals.
+- Benchmark: Suite B recall and precision against the adjudicated set at 25K and 50K budgets, versus changed-files-only and a grep baseline.
+
+## R5. Wider semantic analyzer set (moat width)
+
+Each new wiring kind is a resolution the crown requires and that a tree-sitter graph or a Lucene index structurally cannot follow. This is the durable lead over CodeGraph and Serena.
+
+- Work: add analyzers in `Fuse.Semantics` for EF Core (DbContext to entity to configuration), minimal-API route groups, gRPC and SignalR endpoints, open and closed generic DI, decorator and factory registrations, MediatR and ASP.NET pipeline behaviors, and IHostedService; emit new typed edge kinds.
+- Tests: a fixture per wiring kind with an `expected-edges.json`, asserted by the existing fixture-edge harness; one analyzer unit test per kind.
+- Docs: `concepts/glossary.mdx` and `internals/pipeline.mdx` (the new edge kinds), `reference/mcp-tools.mdx` (any new resolve targets).
+- Benchmark: Suite A extended to the new fixtures (edge recall and precision per kind), and the resolve P@1 metrics added to the scorecard.
+
+## R6. Suite A on the real wiring zoo with sampled adjudication
+
+100 percent on one fixture is a toy claim. Expand fixtures to the full Section 18.3 catalog and add sampled adjudication of predicted edges over the OSS corpus with confidence intervals, so the moat headline is "P@1 across real .NET wiring", not "100 percent on a fixture".
+
+- Work: build the fixture catalog (TryAdd, typeof pairs, factory lambdas, multiple-implementation ambiguity, open generics, route groups); add a sampled-adjudication mode to the semantics suite that samples N predicted edges per type for human or LLM verification and reports precision with CIs.
+- Tests: edge-gold tests for each new fixture; an adjudication-sampling unit test on a tiny set.
+- Docs: `benchmarks.mdx` Suite A section reports per-edge-type P@1 with stated ground truth and CIs; `concepts/precision-tier.mdx` notes the wiring coverage.
+- Benchmark: per-resolver P@1, P@3, MRR, ambiguous-case handling, false-positive rate; corpus edge precision by sampled adjudication.
+
+## R7. Warm host as the runtime plus a latency suite
+
+"Warm and fast from a persistent index" is part of the crown and is unmeasured. Promote the host to the measured runtime and add a performance suite hitting the Section 18.7 targets.
+
+- Work: drive resolve, localize, and review through the warm host in the latency suite; measure cold index, warm operation P50/P95, and single-file incremental re-index; ensure incremental indexing updates only the changed file's rows.
+- Tests: an incremental-index test (edit one file, assert only its rows change); a warm-versus-cold timing assertion with a generous bound to avoid flakiness.
+- Docs: rewrite `performance.mdx` with the measured warm latency numbers (replacing the current qualitative-only page); the operator page notes the host lifecycle.
+- Benchmark: a `performance` suite writing `performance.json` with cold index time, warm P50/P95 per operation, and incremental update time per size tier.
+
+## R8. Peer comparison and agent suite at scale
+
+Win the head-to-heads once the engine is strong (R0 through R6). Run the peer scopers and the agent suite at scale, in semantic mode, with hybrid retrieval, against CodeGraph, Serena, and coa-codesearch.
+
+- Work: re-run layer 6 (peers) and Suite D at 50 to 100 tasks x 3 rollouts, two agent variants (Fuse-first one-shot for PR review, agent-driven iterative for ambiguous edits), one pinned model; report distributions and per-repo splits, not just means.
+- Tests: the suites already exist; add a small smoke that each peer toolbox is reachable and skips gracefully when absent.
+- Docs: `benchmarks.mdx` peer and agent sections with the at-scale numbers, model id, run date, and confidence intervals; keep the model-dependent label.
+- Benchmark: Suite D recall, tokens, tool calls, and a 0/1/2 sufficiency verdict per arm; layer 6 recall by repo with return-shape-aware precision.
+
+## R9. Full task-resolution harness (the prize)
+
+The only claim users care about: not "did it find the files" but "did the agent's patch pass the repo's tests with Fuse versus without". This is the real crown and the highest-credibility number.
+
+- Work: a SWE-bench-style harness that, per task, runs an agent with and without the Fuse toolbox, applies the patch in an isolated worktree, and scores it against the repo's test oracle; record patch-applies, tests-pass, and pass@1.
+- Tests: a harness unit test on a trivial fixture task with a known-good and known-bad patch; isolation tests that a failed task cannot corrupt the next.
+- Docs: a new `benchmarks.mdx` section for task resolution, clearly labeled model-dependent and compute-heavy, with the oracle methodology.
+- Benchmark: patch pass@1 with Fuse versus the bare baseline, per repo, with confidence intervals.
+
+---
+
+## Sequencing
+
+R0 first; it multiplies the value of everything semantic. Then R1, R2, R3 in parallel (retrieval: recover and exceed the localize floor, attack the prose bucket, and abstain on no-signal). Then R4 with R5 and R6 (a credible review claim plus a wider, adjudicated moat). Then R7 (warm performance). Then R8 (head-to-heads at scale, once the engine is strong). R9 (the task-resolution prize) runs last or in parallel as a separate track, since it is the most compute-heavy.
+
+## Honest ceilings (where "best of everything" trades off)
+
+Two axes cannot be maxed simultaneously, so the crown there is the best frontier, not a single number:
+
+- Review precision versus recall. A tighter return is higher precision and lower support-file recall; a wider blast radius is the reverse. Report review at multiple budgets along that curve rather than claiming both ends.
+- No-signal localization. The recall ceiling is set by the input, not the engine. The crown is correct abstention (R3), not a recall number the title cannot support.
+
+Everywhere else, the combination of semantic-mode indexing (R0), hybrid retrieval (R1, R2), a wider analyzer set (R5, R6), warm performance (R7), and a task-resolution oracle (R9) is a defensible path to being the most performant .NET context engine and beating the structural and lexical peers on the axes that are theirs to lose.

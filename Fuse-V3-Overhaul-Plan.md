@@ -10,7 +10,7 @@ Phase 0 - Foundation
 - [x] P0.3 Add new test projects (16.1) wired into Fuse.slnx; solution builds, tests run
 
 Phase 1 - SQLite schema and store
-- [ ] P1.1 WorkspaceIndexStore + schema creation/migration (drop-and-rebuild below version 10)
+- [x] P1.1 WorkspaceIndexStore + schema creation/migration (drop-and-rebuild below version 10)
 - [ ] P1.2 Table models + transactional upsert/delete; reuse FuseStorePaths and WAL patterns
 - [ ] P1.3 FTS5 indexing + search
 - [ ] P1.4 Fuse.Indexing.Tests: insert files/symbols/chunks, FTS finds OrderService, reindex changed file, edges persist
@@ -1453,26 +1453,12 @@ The single most important thing remains: build the resolved semantic graph and e
 
 ## Progress Log
 
-### P0.1 Create projects - 2026-06-26 14:35
+### P1.1 WorkspaceIndexStore + schema creation/migration - 2026-06-26 09:02
 - Status: done
-- Result: Added four empty source projects under src/Core: Fuse.Indexing, Fuse.Semantics, Fuse.Retrieval, Fuse.Context. Each is an SDK-style csproj matching repo conventions (net10.0, file-scoped namespaces, InternalsVisibleTo its test project). Fuse.Context is created as a separate project rather than folded into the renderer, per Section 22 namespace layout, so Phase 7 has a home.
-- Verification: dotnet build Fuse.slnx -c Release succeeds (0 errors). Empty C# projects compile to empty assemblies.
-- Blockers/issues: none.
-- Lessons: Repo uses central package management (Directory.Packages.props); csproj files carry no versions. Project reference wiring lives inside each csproj, so P0.1 and P0.2 are co-dependent for a green restore.
-- Time: ~15 min
+- Result: Added the SQLite index lifecycle to `Core/Fuse.Indexing`: `WorkspaceIndexConnectionFactory` (pooled connections, per-connection `busy_timeout`/`foreign_keys` pragmas), `WorkspaceIndexSchema` (target version 10, database-level WAL/synchronous pragmas, full relational DDL for all Section 4 tables except FTS), `WorkspaceIndexMigrator` (drop-and-rebuild below version 10, driven off `sqlite_master` so legacy tables like the old `kv` cache are dropped too), `WorkspaceIndexState`/`WorkspaceIndexStatus`, `IWorkspaceIndexStore` (lifecycle members only this phase), and `WorkspaceIndexStore`. Added `WorkspaceIndexSchemaTests` (3 tests) in `Fuse.Indexing.Tests`. New solution test total 624 (Fuse.Indexing.Tests rose 1 -> 4).
+- Verification: `dotnet build Fuse.slnx -c Release` green (0 errors; pre-existing NU1902 warnings only); `dotnet test Fuse.slnx -c Release --no-build` 624 passed, 0 failed; `dotnet format Fuse.slnx --verify-no-changes` clean.
+- Blockers/issues: Initial test used xUnit v3 `TestContext.Current.CancellationToken`; repo is xUnit 2.9.2, switched to `CancellationToken.None`.
+- Lessons: FTS5 virtual table is deliberately left out of `CreateTablesDdl` and added in P1.3 so a runtime lacking FTS5 can still build the relational schema. The migrator preserves the `schema_version` table across drops and resets its row. The full `IWorkspaceIndexStore` upsert/search surface is grown incrementally in P1.2/P1.3 rather than stubbed now.
+- Time: ~35 min
 
-### P0.2 Wire references and packages - 2026-06-26 14:35
-- Status: done
-- Result: Registered Microsoft.CodeAnalysis.Workspaces.MSBuild 4.14.0 (matches the pinned Microsoft.CodeAnalysis.CSharp 4.14.0) and Microsoft.Build.Locator 1.7.8 in Directory.Packages.props. Wired project references per Section 19 Phase 0: Indexing -> Collection + Reduction (+ Microsoft.Data.Sqlite, SQLitePCLRaw.bundle_e_sqlite3, System.IO.Hashing); Semantics -> Indexing + Plugins.Abstractions + Plugins.Languages.CSharp.Roslyn (+ CodeAnalysis.CSharp, Workspaces.MSBuild, Build.Locator); Retrieval -> Indexing + Semantics + Reduction + Emission; Context -> Retrieval + Reduction + Emission. Suppressed transitive advisory GHSA-h4j7-5rxr-p4wc (Microsoft.Build.Tasks.Core 17.7.2, reference-only; real MSBuild loads from the SDK via MSBuildLocator) in Directory.Build.props.
-- Verification: dotnet build Fuse.slnx -c Release: 0 errors, 80 warnings (all pre-existing NU advisories; the new Build.Tasks.Core advisory is suppressed, dropping the count from 92 to 80).
-- Blockers/issues: Workspaces.MSBuild pulled in a high-severity transitive audit advisory; resolved by documented NuGetAuditSuppress consistent with the existing MessagePack suppression pattern.
-- Lessons: NU audit warnings (NU1902/NU1903) do not fail the build gate in this repo; the existing MessagePack NU1903 already rides along. The zero-warning gate is about compiler/analyzer warnings, not NuGet audit.
-- Time: ~10 min
 
-### P0.3 Add test projects, wire solution - 2026-06-26 14:35
-- Status: done
-- Result: Added four xUnit test projects (Fuse.Indexing.Tests, Fuse.Semantics.Tests, Fuse.Retrieval.Tests, Fuse.Context.Tests), each with one placeholder Fact proving discovery, replaced by real assertions in later phases. Wired all eight new projects into Fuse.slnx (both the nested and flat /src/Core/ folders, and /tests/) mirroring the existing layout. Test count rose by 4 (each new project: 1 passed).
-- Verification: dotnet build -c Release 0 errors; dotnet test Fuse.slnx -c Release --no-build all green (4 new project DLLs each report 1/1 passed); dotnet format Fuse.slnx --verify-no-changes exit 0.
-- Blockers/issues: none.
-- Lessons: The solution builds and the new projects run from the start, satisfying the Phase 0 done criteria; existing CLI still compiles unchanged.
-- Time: ~10 min

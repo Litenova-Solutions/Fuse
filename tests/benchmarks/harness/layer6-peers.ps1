@@ -43,6 +43,13 @@ param(
 
 . "$PSScriptRoot/common.ps1"
 
+# Bound every MCP tool call so a wedged coa/Lucene call cannot stall the layer (the claude CLI default
+# MCP_TOOL_TIMEOUT is ~28h). The coa arm launches through Invoke-ClaudeBounded (common.ps1), which adds a
+# wall-clock backstop and a process-tree kill so no coa MCP server orphans and holds an index lock.
+$env:MCP_TOOL_TIMEOUT = '120000'
+$env:MCP_TIMEOUT = '30000'
+$CoaRolloutTimeoutSec = 300
+
 # --- Peer availability (omit, never stub) ---
 $haveFuse      = Test-Path $Fuse
 $haveCodegraph = [bool](Get-Command codegraph -ErrorAction SilentlyContinue)
@@ -157,11 +164,12 @@ foreach ($grp in ($sampled | Group-Object repo)) {
                         @{ mcpServers = @{ coa = @{ command = $coaExe; args = @() } } } | ConvertTo-Json -Depth 6 | Set-Content $cfg
                         $coaStream = Join-Path $ResultsDir ".out6/$tag.coa.jsonl"
                         $prompt = "Index this workspace, then search it for code relevant to: $q. Return the repo-relative paths of the most relevant files as a bullet list."
-                        Push-Location $wtFull
-                        try {
-                            & claude -p $prompt --model $Model --output-format stream-json --verbose --permission-mode default `
-                                --max-turns 8 --allowedTools mcp__coa --mcp-config $cfg --strict-mcp-config 2>$null | Set-Content $coaStream
-                        } finally { Pop-Location }
+                        # Bounded launch (worktree as cwd): a hung coa MCP call is cut by MCP_TOOL_TIMEOUT, and a
+                        # wedged claude is cut by the wall-clock backstop, which kills the tree so no coa server orphans.
+                        $coaArgv = @('-p', $prompt, '--model', $Model, '--output-format','stream-json','--verbose',
+                                     '--permission-mode','default','--max-turns','8','--allowedTools','mcp__coa',
+                                     '--mcp-config', $cfg, '--strict-mcp-config')
+                        $null = Invoke-ClaudeBounded $coaArgv $coaStream $wtFull $CoaRolloutTimeoutSec
                         $set = New-Object System.Collections.Generic.HashSet[string]
                         $accum = ''
                         foreach ($ln in (Get-Content $coaStream -ErrorAction SilentlyContinue)) {

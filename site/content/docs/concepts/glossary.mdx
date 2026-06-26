@@ -5,55 +5,72 @@ description: The coined terms used across the Fuse documentation, each defined i
 
 The vocabulary you meet across these docs, defined once.
 
-**Fusion.** One scoped, reduced view of a codebase assembled for a single request,
-returned as an MCP tool response to an agent or written to a file from the CLI. To "fuse"
-is to assemble that view.
+**Index.** The persistent semantic graph of a workspace that Fuse builds with Roslyn and
+keeps in a single SQLite file at `.fuse/fuse.db`, reused across calls so the analysis cost
+is paid once.
 
-**Token.** The unit a language model reads; a model's context window is measured in
-tokens, so a fusion's token count decides how much of the window it consumes and what it
-costs.
+**Warm host.** The running server process that keeps the index loaded between calls, so a
+multi-call task does not rebuild or reload the graph each time.
 
-**Reduction.** How Fuse shrinks content without changing what it means, ranging from
-removing comments and whitespace up to dropping method bodies. See
-[Reduction levels](/docs/concepts/reduction-levels).
+**Node.** One indexed element of the graph: a type, a member, a route, a DI registration,
+or an options binding.
 
-**Skeleton.** A reduction that keeps class, interface, and method signatures and removes
-method bodies, producing an architecture map that is typically 39 to 56 percent smaller
-than a full fusion.
+**Edge.** One typed relationship between nodes: calls, implements, injects, handles, or
+binds.
 
-**Scoping.** Narrowing a fusion to the files relevant to a task (a type, a git change set,
-or a search query) and expanding through the dependency graph. See
+**Localize.** Rank the candidate files and symbols for a task, with reasons and token
+costs and no bodies, as the cheap first step of an open-ended request. See
 [Scoping](/docs/concepts/scoping).
 
-**Seed.** The starting file or files a scoping mode expands from before following
-dependency edges.
+**Resolve.** Deterministically map a name to its real target by walking the graph: a
+service to its DI implementation, a request to its handler, a route to its action, a
+config section to its options type, or a symbol to its declaration.
 
-**Manifest.** The header prepended to every fusion that lists each included file with its
+**Blast radius.** The set of code a change semantically impacts: the callers, DI
+consumers, route and request handlers, options consumers, and tests reachable from the
+changed files. See [Scope a pull request](/docs/scenarios/scope-a-pr).
+
+**Token.** The unit a language model reads; a model's context window is measured in
+tokens, so a context plan's token count decides how much of the window it consumes and
+what it costs.
+
+**Reduction.** How Fuse renders source in fewer tokens without changing what it means,
+ranging from removing comments and whitespace up to dropping method bodies. It is the
+rendering step, not the product core. See [Reduction levels](/docs/concepts/reduction-levels).
+
+**Render tier.** The fidelity at which a file is emitted: full bodies, compressed source,
+or signature-only **skeleton**. A context plan can mix tiers across files to fit a budget.
+
+**Skeleton.** A render tier that keeps class, interface, and method signatures and removes
+method bodies, producing an architecture view that is typically 39 to 56 percent smaller
+than full source.
+
+**Scoping.** Narrowing a context request to the code a task needs (by localizing,
+resolving wiring, or diffing a git change) and expanding through the typed graph. See
+[Scoping](/docs/concepts/scoping).
+
+**Seed.** The starting node or file set a scoping step expands from before following typed
+edges.
+
+**Manifest.** The header on every context plan that lists each included file with its
 token cost, so a reader or agent can judge the shape and cost before reading any body.
 
-**Template.** A named set of defaults that tells Fuse which file extensions to collect and
-which directories to skip for a project type; `fuse dotnet` uses the DotNet template. See
-[Templates](/docs/reference/templates).
-
-**Capability.** One unit of language-specific behavior, such as reducing C#, extracting a
-skeleton, or detecting routes, resolved by file extension.
+**Provenance.** The per-file annotation that records why a file is present: the seed and
+the edge chain that pulled it into the plan.
 
 **Round-trip.** One read-decide cycle an agent makes while exploring; Fuse cuts round-trips
-by answering a survey, a drill-in, or a review in a single response. See
-[The explore phase](/docs/concepts/the-explore-phase).
+by answering a survey, a localize, a resolve, or a review in a single call. See
+[The iterative workflow](/docs/concepts/the-explore-phase).
 
-**Session-delta.** A way to skip resending files an agent already has: pass a `session` id
+**Session-delta.** A way to skip resending files an agent already has: pass a `sessionId`
 across calls in the same task and Fuse omits files it sent earlier (tracked by content
 hash), so multi-turn refinement does not re-pay tokens. See
 [Sessions and deltas](/docs/concepts/sessions-and-deltas).
 
-**Roslyn structural analysis.** The default C# parse-tree path for skeletons, dependency
-edges, type location, outlines, route maps, and semantic markers. Regex still handles
+**Roslyn structural analysis.** The C# parse-tree path that drives indexing, skeletons,
+dependency edges, type location, route maps, and semantic markers. Regex still handles
 content reduction, the project graph, and pattern detectors. See
 [Roslyn structural analysis vs regex](/docs/concepts/precision-tier).
-
-**Provenance.** An annotation that records the inclusion chain that pulled a file into a
-scoped fusion, answering why a file is present.
 
 ## Next
 

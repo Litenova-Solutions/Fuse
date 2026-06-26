@@ -3,17 +3,17 @@ title: Sessions and deltas
 description: How a session id lets later Fuse calls in the same task skip files the agent already holds, so multi-turn refinement does not re-pay tokens.
 ---
 
-A task is rarely one call. An agent surveys, drills into one area, then drills into a
-related one, and the second scoped call often overlaps the first. **Session-delta** is how
-Fuse avoids resending what the agent already holds: pass the same `session` id across calls
-and Fuse omits files it sent earlier in that session, so multi-turn refinement does not
-re-pay tokens for unchanged context.
+A task is rarely one call. An agent surveys, plans context for one area, then plans
+context for a related one, and the second call often overlaps the first. **Session-delta**
+is how Fuse avoids resending what the agent already holds: pass the same `sessionId` across
+calls and Fuse omits files it sent earlier in that session, so multi-turn refinement does
+not re-pay tokens for unchanged context.
 
 ## How It Works
 
 A session is an opaque string you choose and reuse across calls in one task. Fuse tracks,
 per session, which files it has emitted and a hash of the content it sent. On a later call
-with the same session id:
+with the same `sessionId`:
 
 - A file sent earlier with the same content is **omitted**.
 - A file whose content changed since it was sent is **resent** (the new content matters).
@@ -29,7 +29,7 @@ if the agent no longer holds it.
 The first call on a session returns the scoped set in full:
 
 ```text
-fuse_focus(path="C:/Projects/MyApp/src", focus="OrderService", session="task-42")
+fuse_context(path="C:/Projects/MyApp/src", seeds=["OrderService"], sessionId="task-42")
 # returns OrderService.cs, Order.cs, IOrderRepository.cs, PricingPolicy.cs
 ```
 
@@ -37,7 +37,7 @@ A later call in the same task, on a related seed that shares some of those files
 only the new ones and notes what it skipped:
 
 ```text
-fuse_focus(path="C:/Projects/MyApp/src", focus="PricingPolicy", session="task-42")
+fuse_context(path="C:/Projects/MyApp/src", seeds=["PricingPolicy"], sessionId="task-42")
 # returns DiscountRule.cs, TaxPolicy.cs
 # note: omitted 1 file already sent this session: PricingPolicy.cs
 ```
@@ -56,5 +56,5 @@ carry session state between invocations.
 
 See the multi-turn workflow in
 [Refine across turns](/docs/scenarios/refine-across-turns), the wider loop in
-[The explore phase](/docs/concepts/the-explore-phase), and the `session` parameter in the
+[The iterative workflow](/docs/concepts/the-explore-phase), and the `sessionId` parameter in the
 [MCP tools reference](/docs/reference/mcp-tools).

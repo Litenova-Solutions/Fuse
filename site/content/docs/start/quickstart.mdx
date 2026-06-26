@@ -1,9 +1,9 @@
 ---
 title: Quickstart
-description: Run Fuse against a .NET project, read the output it produces, and find the generated file, in about 30 seconds.
+description: Index a .NET workspace, then localize, resolve, and review against it, reading the context Fuse produces, in about a minute.
 ---
 
-This walks you from an installed tool to a fused payload you can read. If you have
+This walks you from an installed tool to resolved context you can read. If you have
 not installed Fuse yet, see [Install](/docs/start/install).
 
 Fuse runs two ways: handed to an AI agent through the MCP server, or as a CLI in your
@@ -20,95 +20,105 @@ fuse mcp install --rules
 Your AI client (Claude Code, Cursor, or GitHub Copilot) then launches `fuse mcp serve`
 automatically when MCP is enabled. You do not run the server in a terminal yourself. The
 `--rules` flag also writes a short rule into your client's instruction file so the agent
-actually reaches for the `fuse_*` tools instead of grepping blindly; it is the recommended
-install. Use `--scope user` to register Fuse for every project on this machine. See
+reaches for the `fuse_*` tools instead of grepping blindly; it is the recommended install.
+Use `--scope user` to register Fuse for every project on this machine. See
 [Connect to your AI](/docs/start/connect-your-ai) for per-client details.
 
-That collapses the explore phase into one scoped call instead of the agent opening file
-after file. Give `fuse_ask` a task and a token budget and it picks the scoping strategy
-and packs to fit:
+The agent then resolves context in one or two calls instead of opening file after file.
+For change work, one `fuse_review` call returns the changed files and their blast radius:
 
 ```text
-fuse_ask(
+fuse_review(
   path="C:/Projects/MyApp/src",
-  task="where is the discount applied at checkout?",
-  tokenBudget=20000
+  changedSince="origin/main",
+  maxTokens=25000
 )
+```
+
+For an open-ended task, localize first, then plan context for the candidate files:
+
+```text
+fuse_localize(path="C:/Projects/MyApp/src", task="where is the discount applied at checkout?")
+fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], maxTokens=25000)
 ```
 
 See [Connect to your AI](/docs/start/connect-your-ai) for client setup and
 [Context for an agent](/docs/scenarios/context-for-an-agent) for the full workflow.
 
-## Run One Command
+## Build the Index
 
-Point Fuse at a .NET source directory:
+Point Fuse at a .NET source directory once to build the persistent index:
 
 ```bash
-fuse dotnet --directory ./src
+fuse index ./src
 ```
 
-The `dotnet` command selects the file extensions and exclusions appropriate for a
-.NET solution (C#, project files, Razor, configuration) and applies C# reduction.
+Fuse loads the workspace through MSBuild and Roslyn when it can, and falls back to
+syntax-level indexing otherwise. The index lives in a single SQLite file at
+`.fuse/fuse.db`. The read commands build it on first use, so this explicit step is
+optional, but running it once up front makes the first read call fast.
 
-## Read What It Prints
+## Read What It Reports
 
-When the run finishes, Fuse reports the shape of the result:
+When indexing finishes, Fuse reports the shape of what it built:
 
 ```text
-Fused 511 files
-Estimated tokens: 420,320 (-9.8%)
-cache: 0 hit / 511 miss
-Output: AutoMapper_2026-06-20_0130_420k.txt
+Indexed workspace ./src
+Mode: semantic
+Files: 218  Projects: 4  Symbols: 3,140  Routes: 12
+Store: .fuse/fuse.db
 ```
 
-It tells you the number of files included, the estimated token count and how much
-that cut from raw concatenation, the reduction cache split as `cache: N hit / M miss`,
-and where the file was written. By default the output goes to a `Fuse` folder inside
-your Documents directory, and the file name ends with a token estimate such as `420k`.
+The mode is `semantic` when the workspace loaded through MSBuild and Roslyn, `partial`
+when some projects fell back, and `syntax` when no project loaded. The counts tell you
+what the graph holds. `fuse diagnostics ./src` prints this state at any time.
 
-## Look Inside the Output
+## Survey the Workspace
 
-The file opens with a **manifest**: a header that lists every included file with its
-token cost, so a reader or an agent can judge the shape and cost of the fusion before
-reading any file body. After the manifest, each file appears as an entry. In the
-default XML format an entry looks like this:
-
-```xml
-<file path="src/Services/OrderService.cs">
-public class OrderService { }
-</file>
-```
-
-Files are ordered largest first by token count, so the most expensive content is at
-the top.
-
-## Choose How Much to Reduce
-
-The default run does light, lossless cleanup. To cut more while keeping the public
-API, raise the reduction level with `--level aggressive`:
+Print a cheap map of what was indexed before fetching any source:
 
 ```bash
-fuse dotnet --directory ./src --level aggressive
+fuse map ./src --detail all
 ```
 
-For an architecture-level survey, drop method bodies to signatures with a
-**skeleton**, which typically runs 39 to 56 percent smaller than a full fusion:
+`fuse map` lists indexed symbols, routes, and counts, no bodies, so you can judge the
+shape of the workspace at low token cost.
+
+## Resolve What Runs
+
+Ask the graph what a name actually maps to:
 
 ```bash
-fuse dotnet --directory ./src --level skeleton
+fuse resolve ./src --service IOrderService
+fuse resolve ./src --request CreateOrderCommand
+fuse resolve ./src --route "POST /api/orders/{id}"
 ```
 
-The [Reduction levels](/docs/concepts/reduction-levels) concept page explains each
-step, and [Cut tokens for .NET](/docs/scenarios/cut-tokens-dotnet) is the task-shaped
-version of this.
+Each prints the resolved target (the concrete implementation, the handler, the action)
+with provenance, and no bodies.
 
-## Control the Output
+## Plan and Emit Context
 
-Name the file and choose where it lands:
+Turn a set of seeds into packed source bodies at a budget:
 
 ```bash
-fuse dotnet --directory ./src --output ./context --name myproject
+fuse context ./src --seed IOrderService --max-tokens 25000 --format xml
 ```
+
+The output opens with a **manifest** that lists each included file with its token cost,
+then the source bodies at mixed render tiers, with per-file **provenance** that records
+why each file is present. Set `--format markdown` or `--format json` for other shapes.
+
+## Review a Change
+
+When a git base exists, review the semantic impact of a branch in one call:
+
+```bash
+fuse review ./src --changed-since origin/main --max-tokens 25000
+```
+
+This returns the changed files, the blast radius (callers, DI consumers, route and
+request handlers, options consumers, tests), and the packed context.
 
 ## Set Project Defaults
 

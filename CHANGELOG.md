@@ -1,6 +1,29 @@
 # Changelog
 
-All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 2.0 is a structural rewrite; backward compatibility with 1.x output is not a goal.
+All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 3.0 is a product overhaul; backward compatibility with 2.x output, commands, and the MCP tool surface is not a goal.
+
+## [3.0.0] - 2026-06-26
+
+Fuse 3.0 turns Fuse from a token-reduction context optimizer into a Roslyn-backed .NET semantic context engine for AI agents. It maintains a warm, persistent semantic index of a workspace and serves precise, provenance-backed context from it: which implementation is injected, which endpoint handles a route, which handler processes a request, which options type binds a config section, and what a git diff semantically impacts. Token reduction is now a rendering and transport feature, not the product.
+
+### Added
+
+- **Persistent semantic index.** A single SQLite database at `.fuse/fuse.db` (WAL, schema version 10) holds files, projects, symbols, chunks, a typed semantic graph (DI registrations and injection, MediatR request-to-handler, ASP.NET route-to-action, options binding and consumption, interface implementation), routes, and an FTS5 full-text index. The workspace loads through MSBuild and Roslyn with a syntax-only fallback; re-indexing is incremental per changed file.
+- **New CLI commands.** `fuse index`, `map`, `localize`, `resolve`, `context`, `review`, `find`, `diagnostics`, plus `reduce`, `models`, `init`, `mcp` (install/serve), and `host`.
+- **New MCP surface.** Eight tools (`fuse_index`, `fuse_map`, `fuse_localize`, `fuse_resolve`, `fuse_context`, `fuse_review`, `fuse_find`, `fuse_reduce`) and four resources (`fuse://map`, `fuse://localize`, `fuse://context`, `fuse://review`) over the persistent index, with session-delta elision on `context`/`review`.
+- **C# benchmark suite.** `tests/benchmarks/Fuse.Benchmarks`, run with `fuse eval semantics|review|localize|agent`, replaces the per-suite PowerShell harness. Recorded results in `tests/benchmarks/results`: semantic resolution 100 percent edge recall and precision on the wiring fixture; `fuse review` 100 percent changed-file recall at 89.6 percent precision and a median 874 tokens over 48 PRs; open-ended localization 27 percent recall from a title alone (the weak floor); and a model-dependent agent suite (sonnet-4-6) showing the Fuse MCP arm gathering a change's files at a median 135K tokens versus 212K for bare tools.
+
+### Changed
+
+- **Retrieval is graph-based, not lexical.** Candidate generation (exact resolution, FTS, path, changed files) feeds typed graph expansion with per-edge weights and pruning, replacing the in-memory BM25F query-scoping engine.
+- **Reduction is a render tier.** The context renderer reduces each planned file to full source, reduced, skeleton, or public-API per the plan; reduction is no longer the product claim.
+- **Docs rewritten.** The documentation site is rewritten to the warm-semantic-index model; the benchmark figure and quoted numbers are regenerated from the four suites.
+
+### Removed
+
+- The query-scoping and focus engine and its `FUSE_*` tuning levers, the eleven-tool MCP surface (`fuse_toc`, `fuse_skeleton`, `fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_ask`, `fuse_dotnet`, `fuse_generic`, `fuse_explain`), and the `fuse dotnet`, `fuse wiki`, `fuse ask`, `fuse explain`, and `fuse verify` commands. The `spike-*.ps1` benchmark scripts tied to the removed engine are deleted.
+
+The entries below this point predate 3.0 and describe development of the now-removed 2.x query-scoping engine; they are retained as history.
 
 ## [Unreleased]
 

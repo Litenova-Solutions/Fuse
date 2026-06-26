@@ -87,7 +87,43 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         var fileCount = await CountAsync(connection, "files", cancellationToken);
         var symbolCount = await CountAsync(connection, "symbols", cancellationToken);
         var status = fileCount == 0 ? WorkspaceIndexStatus.Cold : WorkspaceIndexStatus.Warm;
-        return new WorkspaceIndexState(version, status, fileCount, symbolCount);
+        var mode = await ReadMetaAsync(connection, "index_mode", cancellationToken);
+        return new WorkspaceIndexState(version, status, fileCount, symbolCount, mode);
+    }
+
+    /// <inheritdoc />
+    public async Task SetMetaAsync(string key, string value, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO index_meta(key, value) VALUES($k, $v) " +
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value;";
+        command.Parameters.AddWithValue("$k", key);
+        command.Parameters.AddWithValue("$v", value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetMetaAsync(string key, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        return await ReadMetaAsync(connection, key, cancellationToken);
+    }
+
+    private static async Task<string?> ReadMetaAsync(SqliteConnection connection, string key, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT value FROM index_meta WHERE key = $k LIMIT 1;";
+        command.Parameters.AddWithValue("$k", key);
+        try
+        {
+            return await command.ExecuteScalarAsync(cancellationToken) as string;
+        }
+        catch (SqliteException)
+        {
+            return null;
+        }
     }
 
     /// <inheritdoc />

@@ -25,7 +25,7 @@ Phase 3 - MSBuild/Roslyn semantic indexing
 - [x] P3.1 DotNetWorkspaceDiscoverer (discovery order, ignore rules)
 - [x] P3.2 RoslynWorkspaceLoader; MSBuildLocator guarded once; syntax fallback on load failure
 - [x] P3.3 Semantic symbol extraction + SymbolIdBuilder (IDs stable across runs)
-- [ ] P3.4 Project records + file linkage; index status Semantic or Partial on a real .sln/.csproj
+- [x] P3.4 Project records + file linkage; index status Semantic or Partial on a real .sln/.csproj
 
 Phase 4 - Core semantic edges
 - [ ] P4.1 Shared semantic fixture app (16.2)
@@ -1539,6 +1539,14 @@ The single most important thing remains: build the resolved semantic graph and e
 - Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 25 passed; `dotnet format --verify-no-changes` clean.
 - Blockers/issues: None.
 - Lessons: `ISymbol.GetDocumentationCommentId()` is the ideal stable, position-independent, parameter-inclusive descriptor for symbol ids - no need to hand-assemble parameter type displays. The test compiles in-memory via `CSharpCompilation.Create` (no MSBuild) for speed; the loader path is covered separately in P3.2. Semantic ids replace P2.2's `symbol:fallback:...` ids when semantic load succeeds; P3.4 wires which extractor the indexer uses based on load status.
+- Time: ~30 min
+
+### P3.4 Project records + file linkage; Semantic/Partial status - 2026-06-26 12:12
+- Status: done
+- Result: Added the integrating `SemanticIndexer` (+ `SemanticIndexResult`) to `Fuse.Semantics`: discover -> load -> on semantic success upsert project records (path/name/assembly/hash), link files to projects (file->project map from each compilation's syntax-tree paths), upsert semantic symbols, and upsert chunks/routes from syntax (chunk symbol ids dropped in semantic mode to avoid dangling refs); on load failure fall back to full syntax indexing. Mode is `semantic` (clean), `partial` (any load diagnostic), or `syntax` (fallback), persisted to a new `index_meta` table and surfaced via `WorkspaceIndexState.Mode`. Added store `SetMetaAsync`/`GetMetaAsync` + `index_meta` schema table. Added `SemanticIndexerTests` (1, against the real SampleShop.Core fixture: mode semantic/partial, project records, files linked, no fallback symbol ids, OrderService symbol present). New solution test total 660 (Fuse.Semantics.Tests 25 -> 26).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 660 passed; `dotnet format --verify-no-changes` clean. The real-project test passes (loads SampleShop.Core via MSBuild, links files, emits assembly-qualified symbol ids).
+- Blockers/issues: None. Without a fixture restore the mode is `partial` (MSBuild design-time warnings); with restore it is `semantic` - the test accepts either, matching the item's "Semantic or Partial".
+- Lessons: File-to-project linkage is derived from `Compilation.SyntaxTrees[].FilePath` (relative to root), which matches the scanner's normalized paths, so `files.project_id` resolves through `ProjectRecord.Path`. Chunks/routes stay syntax-driven in both modes so FTS is always populated; only symbols differ by mode. Index mode lives in `index_meta` rather than the host lifecycle `Status`, keeping the two concepts separate.
 - Time: ~30 min
 
 

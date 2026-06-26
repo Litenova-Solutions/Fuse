@@ -50,7 +50,7 @@ Phase 6 - Review/change impact
 
 Phase 7 - Context rendering
 - [x] P7.1 SemanticContextRenderer with tiered reduction
-- [ ] P7.2 Semantic manifest preamble + per-file provenance
+- [x] P7.2 Semantic manifest preamble + per-file provenance
 - [ ] P7.3 XML/Markdown/JSON + structural maps; redaction on; token budget respected
 
 Phase 8 - CLI rewrite
@@ -1676,5 +1676,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. The renderer relies on `ReductionLevel` deriving `SkeletonMode`/`PublicApiMode`, so a per-file level fully captures the tier and one pipeline pass renders mixed tiers.
 - Lessons: `ContentReductionPipeline.ReduceAsync` already supports per-file tiers through `perFileLevel`, so mixed-tier rendering needed no new reduction code, only a tier-to-level map. The pipeline drops trivial content and preserves input order, so rendered files come back in plan order. The manifest preamble and provenance comments (P7.2) and the output formats plus budget (P7.3) build on this `RenderedContext`.
 - Time: ~35 min
+
+### P7.2 Semantic manifest preamble + per-file provenance - 2026-06-26 18:50
+- Status: done
+- Result: Added `SemanticManifestBuilder` (manifest body: mode/root/changedSince/files/estimatedTokens, seeds list, semantic-impact list with each non-seed file's edge summary, notes from warnings) and `ProvenanceFormatter` (`Summarize` one-liner for the manifest, `Format` multi-line block for per-file comments) to `Fuse.Context`. Added `SemanticManifestBuilderTests` (4). New solution test total 732 (Fuse.Context.Tests 3 -> 7).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 732 passed; `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None.
+- Lessons: The manifest reuses the same provenance-edge parsing as the review preamble; both summarize a node's inclusion by its edge chain. The comment delimiters are deliberately left to the format-specific emitter (P7.3) so the same manifest body works for XML/Markdown/JSON.
+- Time: ~20 min
 
 

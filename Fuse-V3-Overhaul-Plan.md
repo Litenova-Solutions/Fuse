@@ -1758,4 +1758,12 @@ The single most important thing remains: build the resolved semantic graph and e
 - Lessons: The engine itself is exercised end to end by the unit/golden suites (691 tests, all green); the benchmark phase measures it against an external corpus that requires network and a model, which is the boundary of this environment.
 - Time: ~15 min (assessment)
 
+### P10.4 Regenerate figure; resync numbers - 2026-06-26 23:15
+- Status: blocked
+- Result: Not done. Depends directly on P10.3: the figure (`assets/fuse-benchmarks.png`/`.svg`) is generated from committed benchmark results, and the AGENTS.md / docs number resync (18.12, 18.13) requires regenerated results. P10.3 is blocked on the external OSS corpus and a model, so there are no regenerated results to chart or quote.
+- Verification: n/a.
+- Blockers/issues: Transitively blocked by P10.3. Regenerating the figure or resyncing `project/benchmarks.mdx`, `project/performance.mdx`, and the AGENTS.md Measured Results without rerunning the suites would mean fabricating or carrying stale numbers, which AGENTS.md forbids. The headline reframe from "tokens saved" to "semantic engine" (18.13) is prose that can land with the docs narrative once real numbers exist.
+- Lessons: The benchmark figure and the docs numbers are a single downstream of the benchmark run; they move together with P10.3, not independently.
+- Time: ~5 min (assessment)
+
 

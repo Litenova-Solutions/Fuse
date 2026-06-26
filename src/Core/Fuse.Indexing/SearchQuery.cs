@@ -25,3 +25,37 @@ public sealed record SearchHit(
     int StartLine,
     int EndLine,
     double Score);
+
+/// <summary>
+///     A summary of an indexed symbol, returned by listing queries (for example the workspace map).
+/// </summary>
+/// <param name="SymbolId">The symbol id.</param>
+/// <param name="Name">The simple name.</param>
+/// <param name="Kind">The symbol kind.</param>
+/// <param name="FullyQualifiedName">The fully qualified name.</param>
+/// <param name="FilePath">The declaring file's normalized path.</param>
+/// <param name="StartLine">The 1-based start line.</param>
+/// <param name="IsPublicApi">Whether the symbol is part of the public API surface.</param>
+public sealed record SymbolListItem(
+    string SymbolId,
+    string Name,
+    string Kind,
+    string FullyQualifiedName,
+    string FilePath,
+    int StartLine,
+    bool IsPublicApi);
+
+/// <summary>
+///     A summary of an indexed route, returned by listing queries (for example the workspace map).
+/// </summary>
+/// <param name="RouteId">The route id.</param>
+/// <param name="HttpMethod">The HTTP method.</param>
+/// <param name="RoutePattern">The route pattern.</param>
+/// <param name="FilePath">The declaring file's normalized path.</param>
+/// <param name="StartLine">The 1-based start line.</param>
+public sealed record RouteListItem(
+    string RouteId,
+    string HttpMethod,
+    string RoutePattern,
+    string FilePath,
+    int StartLine);

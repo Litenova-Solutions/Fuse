@@ -1,8 +1,10 @@
 using Fuse.Fusion.Extensions;
+using Fuse.Indexing;
 using Fuse.Plugins.Formats.Web.Extensions;
 using Fuse.Plugins.Languages.CSharp.Extensions;
 using Fuse.Plugins.Languages.CSharp.Roslyn.Extensions;
 using Fuse.Plugins.Rerank.Onnx;
+using Fuse.Semantics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Cli.Extensions;
@@ -30,6 +32,19 @@ public static class FuseServiceCollectionExtensions
         // Registers the dense reranker only when its model is cached; absent a model the query path stays
         // lexical, so the no-model floor is preserved.
         services.AddOnnxDenseReranker();
+        services.AddSemanticIndexing();
+        return services;
+    }
+
+    // Registers the V3 semantic indexing components. The workspace index store is created per command with a
+    // resolved database path (it is not a singleton), so only the stateless extractors and the file scanner
+    // are registered here.
+    private static IServiceCollection AddSemanticIndexing(this IServiceCollection services)
+    {
+        services.AddSingleton<FileHashService>();
+        services.AddSingleton<SyntaxSymbolExtractor>();
+        services.AddSingleton<SyntaxRouteExtractor>();
+        services.AddTransient<WorkspaceFileScanner>();
         return services;
     }
 }

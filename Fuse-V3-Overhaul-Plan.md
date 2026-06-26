@@ -19,7 +19,7 @@ Phase 2 - Syntax-level semantic batch
 - [x] P2.1 File discovery + hash records (reuse FileCollectionPipeline)
 - [x] P2.2 Syntax symbol + chunk extraction into store (reuse RoslynSymbolChunkExtractor)
 - [x] P2.3 Route syntax extraction into records (reuse RoslynRouteMapGenerator logic)
-- [ ] P2.4 fuse index a simple repo; fuse map --detail symbols shows DB symbols; FTS returns chunks
+- [x] P2.4 fuse index a simple repo; fuse map --detail symbols shows DB symbols; FTS returns chunks
 
 Phase 3 - MSBuild/Roslyn semantic indexing
 - [ ] P3.1 DotNetWorkspaceDiscoverer (discovery order, ignore rules)
@@ -1508,5 +1508,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: First indexer route test asserted GET `/api/orders` for a verb-only `[HttpGet]` action; the inherited generator heuristic falls back to the handler name, so the real pattern is `/api/orders/List`. Corrected the test to document that behavior.
 - Lessons: `HandlerSymbolId` is left null at the syntax stage; the route-to-handler edge is wired semantically in Phase 4 (`AspNetRouteAnalyzer`), which can read the handler name from `metadata_json`. Route patterns are normalized to a leading slash so `route:METHOD:/pattern` node ids match what resolve/retrieval will look up.
 - Time: ~20 min
+
+### P2.4 fuse index + fuse map acceptance - 2026-06-26 11:05
+- Status: done
+- Result: Added the first V3 CLI commands `IndexCommand` (`fuse index [path] [--force]`) and `MapCommand` (`fuse map [path] [--detail symbols|routes|all] [--max-rows N]`), wired into `Program.cs`. Added `WorkspaceMapRenderer` + `MapDetail` to `Fuse.Semantics` and read methods `ListSymbolsAsync`/`ListRoutesAsync` (+ `SymbolListItem`/`RouteListItem` DTOs) to the store. Registered the stateless indexing components in `AddFuse` (`AddSemanticIndexing`); the per-workspace store is constructed in the command from `FuseStorePaths.ResolveDatabasePath`. Added `Fuse.Indexing`/`Fuse.Semantics` project references to `Fuse.Cli`. Verified end-to-end against a sample repo: `fuse index` -> "Indexed 2 files: 6 symbols, 6 chunks, 1 routes"; `fuse map --detail all` lists symbols (public-API first) and the POST /api/orders/{id} route. Added `WorkspaceMapRendererTests` (3 tests). New solution test total 648 (Fuse.Semantics.Tests 11 -> 14).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 648 passed; `dotnet format Fuse.slnx --verify-no-changes` clean; manual CLI run of `fuse index`/`fuse map` succeeds.
+- Blockers/issues: DotMake auto-generated subcommand short forms collided (`index` vs `init` both -> `-i`): "An item with the same key has already been added. Key: i". Fixed by `ShortFormAutoGenerate = CliNameAutoGenerate.None` on both new commands. The source generator also cannot read a `private const` used as a `[CliOption]` default, so the default is an inline literal.
+- Lessons: The CLI assembly name is `fuse` (`fuse.exe`/`fuse.dll`), not `Fuse.Cli.dll`. For a non-git workspace `FuseStorePaths` falls back to `~/.fuse/fuse.db`; per-workspace isolation is the warm host's job (Phase 11). The first V3 run drops the pre-V3 cache db (expected v10 migration). These minimal commands are formalized/expanded in Phase 8.
+- Time: ~40 min
 
 

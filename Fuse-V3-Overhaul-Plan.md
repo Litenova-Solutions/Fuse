@@ -34,7 +34,7 @@ Phase 4 - Core semantic edges
 - [x] P4.4 ConstructorInjectionAnalyzer
 - [x] P4.5 MediatRAnalyzer
 - [x] P4.6 AspNetRouteAnalyzer
-- [ ] P4.7 OptionsBindingAnalyzer
+- [x] P4.7 OptionsBindingAnalyzer
 - [ ] P4.8 Fixture edge assertions pass; fuse resolve --service/--request/--route return correctly
 
 Phase 5 - Retrieval engine v2
@@ -1596,5 +1596,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. Minimal-API routes stay with the syntax route extractor (P2.3); this analyzer is the semantic MVC route-to-method edge. Pattern helpers are inlined here rather than refactoring the green `SyntaxRouteExtractor`.
 - Lessons: The route handler edge keys the method node by `method:{type}.{name}` (the same id `SemanticNodes.MethodId` produces), so review/resolve can hop route -> method -> containing type -> injected services. The handler symbol id on the route record lets resolve return the action without a graph hop.
 - Time: ~25 min
+
+### P4.7 OptionsBindingAnalyzer - 2026-06-26 14:25
+- Status: done
+- Result: Added `OptionsBindingAnalyzer` emitting `config:Section -> TOptions : options_binds` (0.85) from `Configure<TOptions>(...GetSection("Section")...)` plus an `OptionsBindingRecord`, and `consumer -> TOptions : options_consumes` (0.75) from `IOptions<T>`/`IOptionsMonitor<T>`/`IOptionsSnapshot<T>` constructor parameters. Also indexes top-level `appsettings*.json` sections as `config:{section}` nodes (JsonDocument, bin/obj skipped, malformed/unreadable skipped). Added `OptionsBindingAnalyzerTests` (3). New solution test total 688 (Fuse.Semantics.Tests 51 -> 54).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 54 passed (config:Orders -> OrderOptions options_binds; OrderService -> OrderOptions options_consumes; Orders config node present); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None. `config_impacts` (config -> consumer) from 6.6 is not emitted yet (not in the P4.8 asserted set); it is derivable as config -binds-> options -consumes-by- consumer and can be added if retrieval needs the direct hop.
+- Lessons: The config section name is found by searching the Configure call's arguments for a `GetSection("X")` invocation, which tolerates chained/extra arguments. `JsonDocument` reads arbitrary config json (not Fuse DTO serialization), so it does not conflict with the source-generated-JSON design invariant. Config nodes come from both the bind call and appsettings, deduped by node id via `TryAdd`.
+- Time: ~30 min
 
 

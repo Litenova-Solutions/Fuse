@@ -16,4 +16,5 @@ namespace Fuse.Benchmarks;
 [JsonSerializable(typeof(PrRecord[]))]
 [JsonSerializable(typeof(EvalDataset))]
 [JsonSerializable(typeof(SuiteResult))]
+[JsonSerializable(typeof(SampledEdge[]))]
 public partial class BenchmarkJsonContext : JsonSerializerContext;

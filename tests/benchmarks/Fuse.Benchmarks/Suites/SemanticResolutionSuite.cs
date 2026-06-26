@@ -35,6 +35,9 @@ public sealed class SemanticResolutionSuite : IEvalSuite
     /// <inheritdoc />
     public async Task<SuiteResult> RunAsync(EvalOptions options, CancellationToken cancellationToken)
     {
+        if (options.CorpusSample > 0)
+            return await RunCorpusSampleAsync(options, cancellationToken);
+
         var fixturesRoot = options.FixturesRoot is { } root
             ? Path.GetFullPath(root)
             : DefaultFixturesRoot(options.BenchRoot);
@@ -93,6 +96,68 @@ public sealed class SemanticResolutionSuite : IEvalSuite
                 0, 0, 0),
             tasks,
             [$"edges expected {totalExpected}, matched {totalMatched}, false positives {totalFalsePositives}"]);
+    }
+
+    // Corpus-adjudication mode: index each present repository, collect the predicted graph edges, sample a
+    // fixed number per edge type with a seeded shuffle, and write the sample to results/semantics-corpus-sample.json
+    // for a human or strong model to label. Precision with confidence intervals is reported once labels exist;
+    // this run produces the reproducible sample and the per-type and per-mode counts.
+    private async Task<SuiteResult> RunCorpusSampleAsync(EvalOptions options, CancellationToken cancellationToken)
+    {
+        var manager = new CorpusManager(options.BenchRoot, options.ResolvedCorpusRoot, options.Log);
+        var dataset = manager.LoadDataset("dotnet-prs-v1");
+        var present = dataset.Repos
+            .Where(r => r.Path is not null && (options.RepoFilter is null || r.Name.Equals(options.RepoFilter, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        var notes = new List<string> { $"sample {options.CorpusSample} edges per type" };
+        if (present.Count == 0)
+        {
+            notes.Add("No corpus repositories present; skipped.");
+            return new SuiteResult(Name, Description, null, new Scorecard(0, 0, 0, 0, 0, 0, 0, 0), [], notes);
+        }
+
+        var predicted = new List<SampledEdge>();
+        var modes = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var repo in present)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (options.Restore)
+                await manager.RestoreAsync(repo.Path!, cancellationToken);
+
+            var databasePath = Path.Combine(Path.GetTempPath(), "fuse-eval-sample", Guid.NewGuid().ToString("N"), "fuse.db");
+            try
+            {
+                await using var store = new WorkspaceIndexStore(databasePath);
+                await store.InitializeAsync(cancellationToken);
+                var mode = (await _indexer.IndexAsync(repo.Path!, store, cancellationToken)).Mode;
+                modes[mode] = modes.GetValueOrDefault(mode) + 1;
+                foreach (var edge in await store.GetAllEdgesAsync(cancellationToken))
+                    predicted.Add(new SampledEdge(edge.FromNodeId, edge.ToNodeId, edge.EdgeType, repo.Name));
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                options.Report($"semantics-sample: {repo.Name} failed: {e.Message}");
+            }
+            finally
+            {
+                TryDeleteStore(databasePath);
+            }
+        }
+
+        notes.Add("index modes: " + string.Join(", ", modes.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} {kv.Value}")));
+        notes.Add($"predicted edges: {predicted.Count}");
+        var sample = EdgeSampler.Sample(predicted, options.CorpusSample, seed: 1469);
+        foreach (var group in sample.GroupBy(e => e.Type, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal))
+            notes.Add($"sampled {group.Key}: {group.Count()}");
+
+        var samplePath = Path.Combine(options.ResultsRoot, "semantics-corpus-sample.json");
+        Directory.CreateDirectory(options.ResultsRoot);
+        await File.WriteAllTextAsync(samplePath,
+            JsonSerializer.Serialize(sample.ToArray(), BenchmarkJsonContext.Default.SampledEdgeArray), cancellationToken);
+        notes.Add($"wrote {sample.Count} sampled edges to {samplePath} for adjudication");
+
+        return new SuiteResult(Name, Description, null,
+            new Scorecard(sample.Count, 0, 0, 0, 0, 0, 0, 0), [], notes);
     }
 
     private async Task<FixtureScore> ScoreFixtureAsync(string fixtureDir, CancellationToken cancellationToken)

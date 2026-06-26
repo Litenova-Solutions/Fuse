@@ -28,7 +28,7 @@ Phase 3 - MSBuild/Roslyn semantic indexing
 - [x] P3.4 Project records + file linkage; index status Semantic or Partial on a real .sln/.csproj
 
 Phase 4 - Core semantic edges
-- [ ] P4.1 Shared semantic fixture app (16.2)
+- [x] P4.1 Shared semantic fixture app (16.2)
 - [ ] P4.2 InterfaceImplementationAnalyzer
 - [ ] P4.3 DiRegistrationAnalyzer
 - [ ] P4.4 ConstructorInjectionAnalyzer
@@ -1548,5 +1548,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. Without a fixture restore the mode is `partial` (MSBuild design-time warnings); with restore it is `semantic` - the test accepts either, matching the item's "Semantic or Partial".
 - Lessons: File-to-project linkage is derived from `Compilation.SyntaxTrees[].FilePath` (relative to root), which matches the scanner's normalized paths, so `files.project_id` resolves through `ProjectRecord.Path`. Chunks/routes stay syntax-driven in both modes so FTS is always populated; only symbols differ by mode. Index mode lives in `index_meta` rather than the host lifecycle `Status`, keeping the two concepts separate.
 - Time: ~30 min
+
+### P4.1 Shared semantic fixture app - 2026-06-26 12:45
+- Status: done
+- Result: Added the `OrderingApp` fixture under `tests/fixtures/OrderingApp` exercising every analyzer: `IOrderService`/`OrderService` (DI + `IOptions<OrderOptions>` consumption), `OrdersController` (`[ApiController]`, `[Route("api/orders")]`, `[HttpPost("{id}")]`, ctor-injected `IOrderService`+`ISender`, sends `CreateOrderCommand`), `CreateOrderCommand`/`CreateOrderHandler` (MediatR), `OrderOptions` bound to the `Orders` config section in `Program.ConfigureServices`, `OrderServiceTests`, and `appsettings.json`. `Framework.cs` supplies minimal stubs for MediatR, ASP.NET Core MVC, and `Microsoft.Extensions.*` in their real namespaces so the fixture is hermetic (compiles in-memory, no restore). Added `OrderingAppFixture` test loader (TPA reference set minus the stubbed-namespace assemblies) and `OrderingAppFixtureTests` (9: clean compile, 7 expected types, interface/handler implementation). README documents the expected edge set. New solution test total 669 (Fuse.Semantics.Tests 26 -> 35).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 669 passed; `dotnet format --verify-no-changes` clean. The fixture compiles with zero error diagnostics in-memory.
+- Blockers/issues: `Microsoft.CodeAnalysis.DiagnosticSeverity` collides with the new `Fuse.Semantics.DiagnosticSeverity`; fully qualified in the test. The in-memory reference set must exclude `Microsoft.Extensions.*`/`Microsoft.AspNetCore.*`/`MediatR`/`xunit` assemblies (present in the test host's TPA) or the stub namespaces would be ambiguously defined.
+- Lessons: A hermetic source-stub fixture compiled in-memory is faster and more deterministic than a restored project for analyzer unit tests, and stubs in the real namespaces make name+namespace detection behave identically to the real packages. The real-project MSBuild path stays covered by SampleShop (P3.2/P3.4). This fixture is the spine of P4.2-P4.8 analyzer edge assertions.
+- Time: ~45 min
 
 

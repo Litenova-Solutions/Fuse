@@ -16,6 +16,7 @@ public sealed class SyntaxIndexer
     private readonly WorkspaceFileScanner _scanner;
     private readonly IWorkspaceIndexStore _store;
     private readonly SyntaxSymbolExtractor _extractor;
+    private readonly SyntaxRouteExtractor _routeExtractor;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SyntaxIndexer" /> class.
@@ -23,11 +24,17 @@ public sealed class SyntaxIndexer
     /// <param name="scanner">The scanner used to discover files.</param>
     /// <param name="store">The index store to write records into.</param>
     /// <param name="extractor">The syntax extractor used to produce symbols and chunks.</param>
-    public SyntaxIndexer(WorkspaceFileScanner scanner, IWorkspaceIndexStore store, SyntaxSymbolExtractor extractor)
+    /// <param name="routeExtractor">The syntax extractor used to produce routes.</param>
+    public SyntaxIndexer(
+        WorkspaceFileScanner scanner,
+        IWorkspaceIndexStore store,
+        SyntaxSymbolExtractor extractor,
+        SyntaxRouteExtractor routeExtractor)
     {
         _scanner = scanner;
         _store = store;
         _extractor = extractor;
+        _routeExtractor = routeExtractor;
     }
 
     /// <summary>
@@ -43,6 +50,7 @@ public sealed class SyntaxIndexer
 
         var symbols = new List<SymbolRecord>();
         var chunks = new List<ChunkRecord>();
+        var routes = new List<RouteRecord>();
 
         foreach (var file in files)
         {
@@ -55,12 +63,14 @@ public sealed class SyntaxIndexer
             var extracted = _extractor.Extract(file.NormalizedPath, content);
             symbols.AddRange(extracted.Symbols);
             chunks.AddRange(extracted.Chunks);
+            routes.AddRange(_routeExtractor.Extract(file.NormalizedPath, content));
         }
 
         await _store.UpsertSymbolsAsync(symbols, cancellationToken);
         await _store.UpsertChunksAsync(chunks, cancellationToken);
+        await _store.UpsertRoutesAsync(routes, cancellationToken);
 
-        return new SyntaxIndexResult(files.Count, symbols.Count, chunks.Count);
+        return new SyntaxIndexResult(files.Count, symbols.Count, chunks.Count, routes.Count);
     }
 }
 
@@ -70,4 +80,5 @@ public sealed class SyntaxIndexer
 /// <param name="FileCount">The number of files indexed.</param>
 /// <param name="SymbolCount">The number of symbols extracted and stored.</param>
 /// <param name="ChunkCount">The number of chunks extracted and stored.</param>
-public sealed record SyntaxIndexResult(int FileCount, int SymbolCount, int ChunkCount);
+/// <param name="RouteCount">The number of routes extracted and stored.</param>
+public sealed record SyntaxIndexResult(int FileCount, int SymbolCount, int ChunkCount, int RouteCount);

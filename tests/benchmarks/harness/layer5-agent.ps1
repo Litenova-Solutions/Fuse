@@ -155,12 +155,14 @@ function Read-Stream([string]$streamFile, [string]$wtFull, [string]$arm) {
     $toolCalls = 0
     $acquired = New-Object System.Collections.Generic.HashSet[string]
     $resultObj = $null
+    $assistantModel = $null
     $wtNorm = ($wtFull -replace '\\','/')
     foreach ($ln in (Get-Content $streamFile)) {
         if (-not $ln.Trim()) { continue }
         try { $o = $ln | ConvertFrom-Json } catch { continue }
         if ($o.type -eq 'result') { $resultObj = $o; continue }
         if ($o.type -eq 'assistant' -and $o.message.content) {
+            if (-not $assistantModel -and $o.message.model) { $assistantModel = $o.message.model }
             foreach ($c in $o.message.content) {
                 if ($c.type -eq 'tool_use') {
                     $toolCalls++
@@ -204,7 +206,16 @@ function Read-Stream([string]$streamFile, [string]$wtFull, [string]$arm) {
     $modelId = 'unknown'
     if ($resultObj) {
         $cumIn = [int]$resultObj.usage.input_tokens + [int]$resultObj.usage.cache_read_input_tokens + [int]$resultObj.usage.cache_creation_input_tokens
-        if ($resultObj.modelUsage) { $modelId = ($resultObj.modelUsage.PSObject.Properties.Name | Select-Object -First 1) }
+        # Pin the DRIVER model (the assistant messages), not the first modelUsage key: the CLI also bills a
+        # small internal helper model (a haiku used for e.g. title summarization), and that helper key can sort
+        # ahead of the driver in modelUsage, which would mislabel the pinned model. Prefer the assistant model.
+        if ($assistantModel) { $modelId = $assistantModel }
+        elseif ($resultObj.modelUsage) {
+            $names = @($resultObj.modelUsage.PSObject.Properties.Name)
+            # Prefer a non-haiku driver if the driver was a larger model; fall back to the first key.
+            $driver = $names | Where-Object { $_ -notmatch '(?i)haiku' } | Select-Object -First 1
+            $modelId = if ($driver) { $driver } else { $names | Select-Object -First 1 }
+        }
     }
     return @{ toolCalls = $toolCalls; cumIn = $cumIn; acquired = @($acquired); model = $modelId }
 }

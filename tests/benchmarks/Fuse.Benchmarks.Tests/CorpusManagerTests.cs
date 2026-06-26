@@ -106,6 +106,34 @@ public sealed class CorpusManagerTests
         Assert.Equal(6, dataset.Repos.Count);
     }
 
+    [Fact]
+    public void ReadingSet_adds_adjudicated_files_with_the_reading_role()
+    {
+        var benchRoot = BenchRoot();
+        if (benchRoot is null)
+            return;
+
+        var manager = new CorpusManager(benchRoot, Path.Combine(benchRoot, ".corpus"));
+        var dataset = manager.LoadDataset("dotnet-prs-v1");
+        var allTasks = dataset.Repos.SelectMany(r => r.Tasks).ToList();
+
+        // At least one PR is adjudicated with a reading set; its task carries reading-role files beyond the
+        // changed set, and those are distinct from the changed files.
+        var adjudicated = allTasks.Where(t => t.GroundTruth.Files.Any(f => f.Role == "reading")).ToList();
+        Assert.NotEmpty(adjudicated);
+        Assert.All(adjudicated, t =>
+        {
+            var changed = t.GroundTruth.Files.Where(f => f.Role is "changed" or "test").Select(f => f.Path).ToHashSet();
+            var reading = t.GroundTruth.Files.Where(f => f.Role == "reading").Select(f => f.Path).ToList();
+            Assert.NotEmpty(reading);
+            Assert.All(reading, p => Assert.DoesNotContain(p, changed));
+        });
+
+        // A PR without a reading set carries only changed/test roles.
+        var plain = allTasks.First(t => t.GroundTruth.Files.All(f => f.Role != "reading"));
+        Assert.All(plain.GroundTruth.Files, f => Assert.True(f.Role is "changed" or "test"));
+    }
+
     private static async Task WriteAndCommit(string repo, string file, string content, string message)
     {
         File.WriteAllText(Path.Combine(repo, file), content);

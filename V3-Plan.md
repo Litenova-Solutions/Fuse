@@ -35,7 +35,7 @@ All from `tests/benchmarks/results`, counted with `o200k_base`. The corpus loads
 - [x] R1 Reconnect the lexical ranker (BM25F + PRF + centrality) as a candidate generator
 - [x] R2 Hybrid retrieval with a warm dense reranker for natural-language queries
 - [x] R3 Low-signal detection and abstention
-- [ ] R4 Adjudicated support-set ground truth for review (Suite B)
+- [x] R4 Adjudicated support-set ground truth for review (Suite B)
 - [ ] R5 Wider semantic analyzer set (EF Core, minimal-API groups, gRPC/SignalR, open generics, decorator/factory DI, pipeline behaviors, IHostedService)
 - [ ] R6 Suite A on the real wiring zoo with sampled adjudication
 - [ ] R7 Warm host as the runtime plus a latency suite
@@ -189,4 +189,13 @@ Append a timestamped entry per item as it lands (Status / Result / Verification 
 - Verification: `dotnet build` 0 errors; `dotnet test` all 15 projects green (Fuse.Retrieval.Tests 36 -> 49: classifier theory cases for low and high signal, structured-signal rescue, and an engine abstention-payload test). `dotnet format` clean. The pre-existing zero-match warning path (a high-signal query that finds nothing) is preserved and distinct from abstention.
 - Blockers: None. This is the honest ceiling the plan names: no-signal recall is bounded by the input, so the crown is correct abstention, achieved here at F1 1.0.
 - Lessons: Scoring detection on the engine's explicit verdict rather than the incidental "zero candidates or any warning" heuristic measures the classifier itself; the old heuristic conflated a solvable query that happened to miss with a genuine no-signal title, which is why the baseline F1 was 0.11 despite the buckets being well defined. Keeping the noise patterns identical to the benchmark's `SignalBucket` avoids a train/test definition gap.
+- Time: about 1 session.
+
+### R4 Adjudicated support-set ground truth for review (2026-06-26)
+
+- Status: Done (machinery: adjudicated reading set, grep baseline, two budgets; plus a curated pilot. The crown recall target is partly met, reported straight).
+- Result: Added an optional `reading_set` to the PR ground truth (`prs.json` and `PrRecord`), lifted into the task as files with a `reading` role deduplicated against the changed set. `ChangeImpactSuite` now separates the changed-files truth from the adjudicated (changed-plus-reading) truth, runs every budget, and scores a grep baseline (rank the repo's C# files by title-token matches, admit to budget) alongside fuse review. Curated a single-adjudicator pilot of 5 PRs (MediatR #1171, #1159, #1136, #1058; FluentValidation #1823) whose support files (the interface a changed type implements and its consumer) were read from each diff and verified to exist at the PR head. Measured (`review.r4.json`, 108 PRs, budgets 25,000 and 50,000; index modes partial 36, semantic 14, syntax 58): fuse vs changed 100 percent recall at 78 percent precision in a median 1,108 tokens, identical at both budgets; grep vs changed 51 percent recall at 9 percent precision (59 percent at 8 percent at 50,000); fuse vs adjudicated (5-PR pilot) 60 percent recall at 74 percent precision. Review beats grep decisively on both axes.
+- Verification: `dotnet build` 0 errors; `dotnet test` all 15 projects green (Fuse.Benchmarks.Tests 26 -> 27: a reading-set lifts the adjudicated truth with the reading role, distinct from changed files; a PR without a label carries only changed/test roles). `dotnet format` clean.
+- Blockers: The crown target (adjudicated support recall at least 0.85 at at least 0.60 precision, beating changed-files-only and grep) is met on precision (74 percent) and on beating grep, but adjudicated recall is 60 percent, short of 0.85. Two honest reasons: the blast radius is bounded in this mostly-syntax corpus (R0 restores only two repos here), and the adjudicated set is a 5-PR single-adjudicator pilot. Scaling the adjudication (more PRs, a second adjudicator or a strong model) and the semantic-mode coverage is the path to the target.
+- Lessons: The two budgets returned identical numbers because review returns compact scoped context (a median 1,108 tokens) far under both ceilings, so the budget is not the binding constraint and the precision-recall frontier is not exercised on this corpus; the frontier shows up only when the returned set approaches the budget. Adding reading-role files to the same ground-truth list meant the existing changed-files scoring had to be made role-aware, or it would have silently started scoring against the adjudicated set.
 - Time: about 1 session.

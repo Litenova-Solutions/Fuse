@@ -153,6 +153,19 @@ public sealed partial class CorpusManager
         var files = record.ChangedCs
             .Select(p => new GroundTruthFile(Normalize(p), IsTestPath(p) ? "test" : "changed"))
             .ToList();
+        // Adjudicated reading-set files (support files a reviewer must read) carry the "reading" role and are
+        // deduplicated against the changed set so a changed file is never double-counted.
+        if (record.ReadingSet is { Count: > 0 } reading)
+        {
+            var changed = files.Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in reading)
+            {
+                var normalized = Normalize(path);
+                if (changed.Add(normalized))
+                    files.Add(new GroundTruthFile(normalized, "reading"));
+            }
+        }
+
         return new PrTask(
             $"{record.Repo}#{record.Pr}", "pull_request", record.Repo, record.Pr,
             record.Base, record.Head, record.Merge, record.Title, Body: null,

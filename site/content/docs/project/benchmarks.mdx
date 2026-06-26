@@ -82,6 +82,18 @@ Index modes over the 48 PRs: partial 12, syntax 36.
 
 With `--restore` on the application (eShopOnWeb), the per-PR worktree restores and review runs in partial mode on 15 of 18 PRs (`review.restore.json`): changed-file recall 1.0 at 64 percent precision in a median 587 returned tokens. The lower precision here is the semantic blast radius working as intended on an application: review pulls in the wiring and support files a reviewer wants, which the changed-files-only truth counts against it. This is the same effect the per-PR examples below show, now across the application's PR set in restored mode.
 
+### R4: Adjudicated support set, grep baseline, and two budgets
+
+Changed-file recall is 100 percent by construction, so it does not test blast radius. R4 adds three things (`review.r4.json`, all 108 PRs, budgets 25,000 and 50,000): a grep baseline to beat, two budgets to read the precision-recall curve, and an adjudicated reading set (the support files a reviewer must read beyond the changed files) for a curated pilot of PRs.
+
+| Truth / arm (25,000 budget) | Recall | Precision | Median tokens |
+|------|------:|------:|------:|
+| fuse vs changed files | 100% | 78% | 1,108 |
+| grep vs changed files | 51% | 9% | - |
+| fuse vs adjudicated set (5-PR pilot) | 60% | 74% | - |
+
+Review beats the grep baseline decisively on both axes (100 versus 51 percent recall, 78 versus 9 percent precision). The two budgets give the same numbers because review returns compact scoped context (a median 1,108 tokens) far under both ceilings, so the precision-recall frontier is not exercised here; the budget is not the binding constraint. Against the adjudicated set (a single-adjudicator pilot of 5 PRs, with the support files read from each diff and recorded as `reading_set` in `prs.json`), review reaches 60 percent of the changed-plus-reading files at 74 percent precision. That meets the crown target on precision and on beating grep, but the 60 percent adjudicated recall is short of the 0.85 target: the blast radius is bounded in this mostly-syntax corpus and the pilot is small. Scaling the adjudication and the semantic-mode coverage is the honest path to closing it.
+
 Findings, including the boundary:
 
 - Changed-file recall is 100 percent by construction, since the changed files are seeded as must-keep. The signal in this suite is precision (89.6 percent) and F1 (0.95): review rarely returns a file the change did not touch or pull in.

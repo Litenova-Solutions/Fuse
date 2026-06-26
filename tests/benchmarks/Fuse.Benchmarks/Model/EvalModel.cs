@@ -41,6 +41,10 @@ public sealed record CorpusRepo(
 /// <param name="Head">The head commit (merge parent 2).</param>
 /// <param name="Title">The pull request title (head commit subject).</param>
 /// <param name="ChangedCs">The C# files changed between base and head.</param>
+/// <param name="ReadingSet">
+///     An optional adjudicated set of additional files a reviewer must read to review the PR (interfaces,
+///     callers, tests, config) beyond the changed files. Null when the PR has not been adjudicated.
+/// </param>
 public sealed record PrRecord(
     string Repo,
     int Pr,
@@ -48,7 +52,8 @@ public sealed record PrRecord(
     string Base,
     string Head,
     string Title,
-    [property: JsonPropertyName("changed_cs")] IReadOnlyList<string> ChangedCs);
+    [property: JsonPropertyName("changed_cs")] IReadOnlyList<string> ChangedCs,
+    [property: JsonPropertyName("reading_set")] IReadOnlyList<string>? ReadingSet = null);
 
 /// <summary>
 ///     The outcome of restoring a corpus checkout's NuGet packages before semantic indexing.

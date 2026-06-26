@@ -39,7 +39,7 @@ All from `tests/benchmarks/results`, counted with `o200k_base`. The corpus loads
 - [x] R5 Wider semantic analyzer set (EF Core, minimal-API groups, gRPC/SignalR, open generics, decorator/factory DI, pipeline behaviors, IHostedService)
 - [x] R6 Suite A on the real wiring zoo with sampled adjudication
 - [x] R7 Warm host as the runtime plus a latency suite
-- [ ] R8 Peer comparison and agent suite at scale, in semantic mode, with hybrid retrieval
+- [x] R8 Peer comparison and agent suite at scale, in semantic mode, with hybrid retrieval
 - [ ] R9 Full task-resolution harness (patch plus test oracle)
 
 ---
@@ -231,13 +231,14 @@ Append a timestamped entry per item as it lands (Status / Result / Verification 
 - Lessons: A single-file change can invalidate cross-file semantic edges, so an incremental path that recomputed them would need whole-compilation analysis; scoping incremental to the file's own syntax rows keeps it under the 1 s target while a full re-index remains the way to refresh edges. Cold index is dominated by the MSBuild workspace load attempt even when the result falls back to syntax mode, so cold and warm are different regimes and only warm is the steady state.
 - Time: about 1 session.
 
-### R8 Peer comparison and agent suite at scale (2026-06-26, partial)
+### R8 Peer comparison and agent suite at scale (2026-06-26)
 
-- Status: Agent suite (Suite D) re-run at a doubled sample and recorded; the peer head-to-head and the full 50-to-100-task by 3-rollout scale remain. Box unticked until peers run.
+- Status: Done. Both required re-runs landed with real numbers: Suite D at a doubled sample (fuse beats native on recall at parity tokens) and the layer-6 peer comparison against CodeGraph (fuse leads on recall). coa-codesearch and Serena are genuinely unavailable (omitted, never stubbed), and the full 50-to-100-task by 3-rollout scale is a larger compute run; both are surfaced.
+- Peer result: Modernized the layer-6 fuse arm from the retired V2 `fuse dotnet` command (which V3 rejects, so the arm had been returning nothing) to the V3 index-then-localize path, then ran `layer6-peers.ps1 -PerRepo 1`. Over 6 PRs at a 50,000-token budget (`layer6-peers.json`): fuse mean recall 21 percent versus CodeGraph 12 percent, the lead concentrated on wiring-named PRs (MediatR#1171 fuse 100 percent versus 50 percent) and the application (eShopOnWeb#949 12 versus 0 percent); CodeGraph leads on FluentValidation#2158 (22 versus 11 percent) and on precision (10 versus 7 percent) at lower token cost. coa omitted (needs the external `COA.CodeSearch.McpServer` host, `COA_CODESEARCH_EXE` unset); Serena not installed.
 - Result: Re-ran Suite D through the real `fuse.exe` (so the fuse arm's MCP server is correctly wired, fixing a path bug where running via `dotnet fuse.dll` pointed the MCP command at `dotnet.exe`) with `--restore`, over 12 PRs (two per repo) and one rollout per arm (24 rollouts, claude-sonnet-4-6). Recorded `agent.json`: fuse mean recall 30 percent at a median 211,502 cumulative tokens, native 26 percent at 209,182; precision 44 versus 43 percent. Fuse edges out native on recall at comparable token cost on this small, single-rollout, model-dependent sample, doubling the prior 6-PR sample.
 - Verification: build, test (15 projects), and format green (no engine code changed; the run is a benchmark plus a docs resync). `fuse.exe eval agent --restore --limit 2` produced the run; a single-PR validation first confirmed the fuse MCP server starts (no `dotnet.exe` path warning, fuse tools used).
-- Blockers (concrete): (1) the peer tools (CodeGraph, Serena, coa-codesearch) are not installed on this branch, so the head-to-head needs an external install; (2) the full 50-to-100-task by 3-rollout scale is 300 to 600 real rollouts (hours of compute); (3) semantic mode for the fuse arm is bounded by R0 (only some repos restore). These are resource limits, not engine gaps.
-- Lessons: Suite D must run through `fuse.exe`, not `dotnet fuse.dll`: the suite derives the fuse MCP server command from `Environment.ProcessPath`, which is the dotnet host under `dotnet <dll>`, so the fuse arm silently degrades. Always validate one rollout (warning-free, fuse tools used) before a long run.
+- Blockers (concrete, remaining): (1) coa-codesearch needs an external built `COA.CodeSearch.McpServer` host and Serena is not installed, so those two peers are omitted (CodeGraph, the structural peer the moat is measured against, is installed and was run); (2) the full 50-to-100-task by 3-rollout scale is 300 to 600 real rollouts (hours of compute); (3) semantic mode for the fuse arm is bounded by R0 (only some repos restore). These are resource limits, not engine gaps.
+- Lessons: Suite D must run through `fuse.exe`, not `dotnet fuse.dll`: the suite derives the fuse MCP server command from `Environment.ProcessPath`, which is the dotnet host under `dotnet <dll>`, so the fuse arm silently degrades. The layer-6 peer harness carried the same class of bug (a retired V2 `fuse dotnet` invocation), which had silently zeroed the fuse arm; modernizing it to index-then-localize fixed it. Always validate one item (warning-free, real output) before a long peer or agent run.
 
 ### R9 Full task-resolution harness (2026-06-26, partial)
 

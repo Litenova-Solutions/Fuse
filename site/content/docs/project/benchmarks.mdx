@@ -17,7 +17,9 @@ The benchmark is four suites run by a C# eval driver in `tests/benchmarks/Fuse.B
 
 ## An Honest Caveat on Index Mode
 
-Fuse's semantic graph is strongest when the corpus loads with a full MSBuild semantic workspace. In the current benchmark environment most repositories load in syntax or partial index mode, because a full semantic load needs a restored workspace that the offline harness does not provision. The full semantic graph is exercised on the eShopOnWeb application (partial mode) and on the in-repo wiring fixture (Suite A). Each suite below records its index-mode distribution so the reader can see which mode produced which number. Read the deterministic moat (Suite A) as the semantic ceiling and the corpus suites as what the partial and syntax modes deliver today.
+Fuse's semantic graph is strongest when the corpus loads with a full MSBuild semantic workspace. A full load needs a restored workspace (a `project.assets.json` from `dotnet restore`); without one, indexing falls back to syntax mode and every semantic suite reads a thin graph. The harness can now restore each checkout before indexing with the `--restore` flag (see Reproduce), and records the achieved index mode per repository so the reader can see which mode produced which number.
+
+In the current benchmark environment, restore lifts only the two repositories whose pinned commit still restores on the installed SDK: NewtonsoftJson and the eShopOnWeb application reach partial mode (the semantic graph), while AutoMapper, FluentValidation, MediatR, and Serilog fail to restore on this SDK because their pinned-era build (central package management with an inline-versioned SourceLink, or an older target framework) does not resolve against the newer SDK. Those four stay in syntax mode. This is a corpus-pinning limit, not an engine limit: where a repository restores, it loads semantically. The full semantic graph is exercised on eShopOnWeb (partial mode) and on the in-repo wiring fixture (Suite A). Read the deterministic moat (Suite A) as the semantic ceiling and the corpus suites as what the achieved modes deliver today.
 
 ## The Corpus
 
@@ -45,7 +47,16 @@ fuse eval localize
 fuse eval agent
 ```
 
-Each suite writes its scorecard to `tests/benchmarks/results/<suite>.json` (one file per suite: `semantics.json`, `review.json`, `localize.json`, `agent.json`), with the per-task hits, misses, and the index-mode distribution that produced the numbers. The agent suite additionally requires a model and the Claude Code CLI, and is not byte-reproducible.
+To index the corpus semantically, add `--restore`, which runs `dotnet restore` on each checkout (or, for review and agent, each PR worktree) before indexing so MSBuild and Roslyn can load it:
+
+```bash
+fuse eval review --restore
+fuse eval localize --restore
+```
+
+A repository that cannot restore on the installed SDK stays in syntax mode and is recorded as such. Add `--require-semantic` to skip (rather than silently score at the syntax fallback) any checkout that does not reach semantic mode, so a restored-workspace run reports only semantic numbers.
+
+Each suite writes its scorecard to `tests/benchmarks/results/<suite>.json` (one file per suite: `semantics.json`, `review.json`, `localize.json`, `agent.json`), with the per-task hits, misses, and the index-mode distribution that produced the numbers. A `--restore` run is recorded alongside as `<suite>.restore.json`. The agent suite additionally requires a model and the Claude Code CLI, and is not byte-reproducible.
 
 ## Suite A: Semantic Resolution (the deterministic moat)
 
@@ -68,6 +79,8 @@ Suite B measures whether `fuse review` scopes a real merged PR to the files it t
 | Mean returned tokens | 3,196 |
 
 Index modes over the 48 PRs: partial 12, syntax 36.
+
+With `--restore` on the application (eShopOnWeb), the per-PR worktree restores and review runs in partial mode on 15 of 18 PRs (`review.restore.json`): changed-file recall 1.0 at 64 percent precision in a median 587 returned tokens. The lower precision here is the semantic blast radius working as intended on an application: review pulls in the wiring and support files a reviewer wants, which the changed-files-only truth counts against it. This is the same effect the per-PR examples below show, now across the application's PR set in restored mode.
 
 Findings, including the boundary:
 

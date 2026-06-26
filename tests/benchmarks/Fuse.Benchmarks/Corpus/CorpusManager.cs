@@ -236,6 +236,81 @@ public sealed partial class CorpusManager
     }
 
     /// <summary>
+    ///     Restores NuGet packages for a checkout so MSBuild and Roslyn can load it semantically. Without a
+    ///     restore (a <c>project.assets.json</c>), <see cref="Fuse.Semantics.SemanticIndexer" /> falls back
+    ///     to syntax-only indexing, capping every semantic suite. Bounded: a single solution target (or the
+    ///     directory) is passed, never a variable-length project list.
+    /// </summary>
+    /// <param name="repoPath">The checkout or worktree root to restore.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>
+    ///     The restore outcome: whether at least one project restored, the restored and failed project
+    ///     counts parsed from the restore output, and a short summary line.
+    /// </returns>
+    /// <remarks>
+    ///     A partial restore is normal for a pinned OSS checkout on a newer SDK: some projects target a
+    ///     framework or reference a package the current SDK cannot resolve and fail, while the rest restore
+    ///     and can load semantically. The result reports both counts so the caller can decide.
+    /// </remarks>
+    public async Task<RestoreResult> RestoreAsync(string repoPath, CancellationToken cancellationToken)
+    {
+        var target = FindRestoreTarget(repoPath);
+        var relativeTarget = target is null ? "(directory)" : Path.GetRelativePath(repoPath, target);
+        _log?.Invoke($"corpus: restoring {Path.GetFileName(repoPath.TrimEnd(Path.DirectorySeparatorChar))} via {relativeTarget}");
+
+        var result = target is null
+            ? await DotnetCli.RunAsync(repoPath, cancellationToken, "restore")
+            : await DotnetCli.RunAsync(repoPath, cancellationToken, "restore", target);
+
+        // The restore output reports one "Restored <project>" or "Failed to restore <project>" line per
+        // project; count both so a partial restore (some projects fail on a newer SDK) is visible.
+        var restored = 0;
+        var failed = 0;
+        foreach (var line in result.Lines)
+        {
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith("Failed to restore", StringComparison.OrdinalIgnoreCase))
+                failed++;
+            else if (trimmed.StartsWith("Restored ", StringComparison.OrdinalIgnoreCase))
+                restored++;
+        }
+
+        var ok = restored > 0 || (result.Ok && failed == 0);
+        var summary = $"restored {restored}, failed {failed}";
+        _log?.Invoke($"corpus: restore {relativeTarget}: {summary}");
+        return new RestoreResult(ok, restored, failed, summary);
+    }
+
+    // Finds the best single solution to restore: prefer a solution whose file name matches the repo
+    // directory name, then the shallowest path, then the first found. Returns null when no solution exists,
+    // in which case the directory itself is restored (works when it holds a single project).
+    private static string? FindRestoreTarget(string repoPath)
+    {
+        var solutions = Directory
+            .EnumerateFiles(repoPath, "*.sln", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(repoPath, "*.slnx", SearchOption.AllDirectories))
+            .Where(p => !IsUnderIgnoredDir(p))
+            .ToList();
+        if (solutions.Count == 0)
+            return null;
+
+        var repoName = Path.GetFileName(repoPath.TrimEnd(Path.DirectorySeparatorChar));
+        return solutions
+            .OrderByDescending(p => Path.GetFileNameWithoutExtension(p).Equals(repoName, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(p => Path.GetFileNameWithoutExtension(p).Contains(repoName, StringComparison.OrdinalIgnoreCase))
+            .ThenBy(p => p.Count(c => c == Path.DirectorySeparatorChar))
+            .ThenBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .First();
+    }
+
+    private static bool IsUnderIgnoredDir(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        return normalized.Contains("/bin/", StringComparison.OrdinalIgnoreCase)
+               || normalized.Contains("/obj/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     ///     Adds a detached git worktree at a commit, returning its path. The caller must remove it with
     ///     <see cref="RemoveWorktreeAsync" />.
     /// </summary>

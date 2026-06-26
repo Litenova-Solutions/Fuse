@@ -88,6 +88,9 @@ public sealed partial class AgentSuite : IEvalSuite
                     continue;
                 }
 
+                if (options.Restore)
+                    await manager.RestoreAsync(worktree, cancellationToken);
+
                 try
                 {
                     foreach (var arm in arms)

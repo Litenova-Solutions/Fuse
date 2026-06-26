@@ -65,6 +65,12 @@ public sealed class LocalizationSuite : IEvalSuite
         foreach (var repo in present)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (options.Restore)
+            {
+                var restore = await manager.RestoreAsync(repo.Path!, cancellationToken);
+                notes.Add($"restore {repo.Name}: {restore.Summary}");
+            }
+
             options.Report($"localize: indexing {repo.Name}");
             var databasePath = Path.Combine(Path.GetTempPath(), "fuse-eval-c", Guid.NewGuid().ToString("N"), "fuse.db");
             try
@@ -73,6 +79,14 @@ public sealed class LocalizationSuite : IEvalSuite
                 await store.InitializeAsync(cancellationToken);
                 var mode = (await _indexer.IndexAsync(repo.Path!, store, cancellationToken)).Mode;
                 modes[mode] = modes.GetValueOrDefault(mode) + 1;
+
+                // Fail loudly rather than silently scoring the syntax fallback when semantic mode is required.
+                if (options.RequireSemantic && mode != "semantic")
+                {
+                    notes.Add($"require-semantic: {repo.Name} indexed as {mode}, not semantic; tasks skipped (not scored at fallback).");
+                    options.Report($"localize: {repo.Name} below semantic ({mode}); skipped under --require-semantic");
+                    continue;
+                }
 
                 var engine = new SemanticRetrievalEngine(store, _changeSource);
                 var repoTasks = options.Limit > 0 ? repo.Tasks.Take(options.Limit).ToList() : repo.Tasks;

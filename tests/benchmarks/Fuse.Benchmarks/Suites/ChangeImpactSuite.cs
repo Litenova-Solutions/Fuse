@@ -104,9 +104,19 @@ public sealed class ChangeImpactSuite : IEvalSuite
         string? mode = null;
         try
         {
+            if (options.Restore)
+                await manager.RestoreAsync(worktree, ct);
+
             await using var store = new WorkspaceIndexStore(databasePath);
             await store.InitializeAsync(ct);
             mode = (await _indexer.IndexAsync(worktree, store, ct)).Mode;
+
+            // Fail loudly rather than silently scoring the syntax fallback when semantic mode is required.
+            if (options.RequireSemantic && mode != "semantic")
+            {
+                options.Report($"review: {task.Id} indexed as {mode}, not semantic; skipped under --require-semantic");
+                return (null, mode);
+            }
 
             var engine = new SemanticRetrievalEngine(store, _changeSource);
             var plan = await engine.ReviewAsync(

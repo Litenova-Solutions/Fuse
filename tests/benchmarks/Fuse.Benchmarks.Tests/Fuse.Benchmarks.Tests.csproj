@@ -16,5 +16,8 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Fuse.Benchmarks\Fuse.Benchmarks.csproj"/>
+        <!-- Fuse.Collection supplies the file-collection pipeline needed to construct a SemanticIndexer in
+             the restore-to-semantic test (R0); the benchmark library itself does not depend on it. -->
+        <ProjectReference Include="..\..\..\src\Core\Fuse.Collection\Fuse.Collection.csproj"/>
     </ItemGroup>
 </Project>

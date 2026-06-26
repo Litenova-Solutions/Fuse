@@ -1,0 +1,275 @@
+{
+  "suite": "agent",
+  "description": "Agent context sufficiency: file recall and token cost per toolbox (model-dependent).",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 12,
+    "recall": 0.20833333333333334,
+    "recallCiLow": 0,
+    "recallCiHigh": 0.5416666666666666,
+    "precision": 0.3333333333333333,
+    "f1": 0.25641025641025644,
+    "medianTokens": 135012,
+    "meanTokens": 176576.83333333334,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "AutoMapper#4608/native/r1",
+      "repo": "AutoMapper",
+      "category": "native",
+      "recall": 0.5,
+      "precision": 1,
+      "tokens": 234417,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "src/AutoMapper/Licensing/License.cs",
+          "src/UnitTests/Licensing/LicenseValidatorTests.cs"
+        ],
+        "misses": [
+          "src/AutoMapper/Licensing/BuildInfo.cs",
+          "src/AutoMapper/Licensing/LicenseValidator.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper#4608/fuse/r1",
+      "repo": "AutoMapper",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 85681,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [
+          "src/AutoMapper/Licensing/BuildInfo.cs",
+          "src/AutoMapper/Licensing/License.cs",
+          "src/AutoMapper/Licensing/LicenseValidator.cs",
+          "src/UnitTests/Licensing/LicenseValidatorTests.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation#2158/native/r1",
+      "repo": "FluentValidation",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 204486,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [
+          "src/FluentValidation/AbstractValidator.cs",
+          "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+          "src/FluentValidation/Internal/PropertyChain.cs",
+          "src/FluentValidation/Internal/PropertyRule.cs",
+          "src/FluentValidation/Internal/RuleBase.cs",
+          "src/FluentValidation/Internal/RulesetValidatorSelector.cs",
+          "src/FluentValidation/Internal/TrackingCollection.cs",
+          "src/FluentValidation/Validators/EmptyValidator.cs",
+          "src/FluentValidation/Validators/NotEmptyValidator.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation#2158/fuse/r1",
+      "repo": "FluentValidation",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 154730,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [
+          "src/FluentValidation/AbstractValidator.cs",
+          "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+          "src/FluentValidation/Internal/PropertyChain.cs",
+          "src/FluentValidation/Internal/PropertyRule.cs",
+          "src/FluentValidation/Internal/RuleBase.cs",
+          "src/FluentValidation/Internal/RulesetValidatorSelector.cs",
+          "src/FluentValidation/Internal/TrackingCollection.cs",
+          "src/FluentValidation/Validators/EmptyValidator.cs",
+          "src/FluentValidation/Validators/NotEmptyValidator.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR#1171/native/r1",
+      "repo": "MediatR",
+      "category": "native",
+      "recall": 1,
+      "precision": 0.5,
+      "tokens": 327991,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "src/MediatR/Licensing/LicenseAccessor.cs",
+          "test/MediatR.Tests/Licensing/LicenseAccessorTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+          "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+        ]
+      }
+    },
+    {
+      "id": "MediatR#1171/fuse/r1",
+      "repo": "MediatR",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 121133,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "src/MediatR/Licensing/LicenseAccessor.cs",
+          "test/MediatR.Tests/Licensing/LicenseAccessorTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1159/native/r1",
+      "repo": "NewtonsoftJson",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 139119,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [
+          "Src/Newtonsoft.Json.Tests/JsonTextWriterAsyncTests.cs",
+          "Src/Newtonsoft.Json/JsonTextWriter.Async.cs",
+          "Src/Newtonsoft.Json/Linq/JProperty.Async.cs",
+          "Src/Newtonsoft.Json/Utilities/JavaScriptUtils.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson#1159/fuse/r1",
+      "repo": "NewtonsoftJson",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 463089,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [
+          "Src/Newtonsoft.Json.Tests/JsonTextWriterAsyncTests.cs",
+          "Src/Newtonsoft.Json/JsonTextWriter.Async.cs",
+          "Src/Newtonsoft.Json/Linq/JProperty.Async.cs",
+          "Src/Newtonsoft.Json/Utilities/JavaScriptUtils.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1452/native/r1",
+      "repo": "Serilog",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 59272,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [
+          "src/Serilog/Formatting/Json/JsonFormatter.cs",
+          "src/Serilog/Formatting/Json/JsonValueFormatter.cs",
+          "test/Serilog.Tests/Formatting/Json/JsonFormatterTests.cs",
+          "test/Serilog.Tests/Formatting/Json/JsonValueFormatterTests.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog#1452/fuse/r1",
+      "repo": "Serilog",
+      "category": "fuse",
+      "recall": 0.25,
+      "precision": 1,
+      "tokens": 148891,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "test/Serilog.Tests/Formatting/Json/JsonValueFormatterTests.cs"
+        ],
+        "misses": [
+          "src/Serilog/Formatting/Json/JsonFormatter.cs",
+          "src/Serilog/Formatting/Json/JsonValueFormatter.cs",
+          "test/Serilog.Tests/Formatting/Json/JsonFormatterTests.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#949/native/r1",
+      "repo": "eShopOnWeb",
+      "category": "native",
+      "recall": 0.125,
+      "precision": 1,
+      "tokens": 219214,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+        ],
+        "misses": [
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/CatalogItemsSpecification.cs",
+          "tests/UnitTests/Builders/BasketBuilder.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetMyOrders.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetOrderDetails.cs"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#949/fuse/r1",
+      "repo": "eShopOnWeb",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 85937,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/CatalogItemsSpecification.cs",
+          "tests/UnitTests/Builders/BasketBuilder.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetMyOrders.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetOrderDetails.cs"
+        ],
+        "extras": []
+      }
+    }
+  ],
+  "notes": [
+    "model claude-sonnet-4-6",
+    "max turns 25",
+    "arms: native, fuse",
+    "sampled PRs (6): AutoMapper#4608, FluentValidation#2158, MediatR#1171, NewtonsoftJson#1159, Serilog#1452, eShopOnWeb#949",
+    "rollouts per (PR, arm): 1",
+    "arm fuse: n 6, mean recall 21%, mean precision 33%, median tokens 135,012",
+    "arm native: n 6, mean recall 27%, mean precision 42%, median tokens 211,850"
+  ]
+}

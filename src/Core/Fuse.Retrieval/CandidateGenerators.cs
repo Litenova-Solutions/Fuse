@@ -31,16 +31,21 @@ public sealed class CandidateGenerator
     public CandidateGenerator(IEnumerable<ICandidateGenerator> generators) => _generators = generators.ToList();
 
     /// <summary>
-    ///     Creates a generator wired with the default set (exact, FTS, path, diff) over a store.
+    ///     Creates a generator wired with the default set (exact, lexical BM25F with PRF, path, diff) over a store.
     /// </summary>
     /// <param name="store">The index store to query.</param>
     /// <param name="changeSource">An optional change source so <c>ChangedSince</c> resolves to changed-file seeds.</param>
     /// <returns>A generator with the standard candidate sources.</returns>
+    /// <remarks>
+    ///     The lexical channel is <see cref="LexicalCandidateGenerator" />, which preserves the BM25F rank and
+    ///     adds pseudo-relevance feedback. <see cref="FtsCandidateGenerator" /> remains available as the flat
+    ///     per-source variant but is no longer in the default set.
+    /// </remarks>
     public static CandidateGenerator CreateDefault(IWorkspaceIndexStore store, IChangeSource? changeSource = null) =>
         new(
         [
             new ExactCandidateGenerator(store),
-            new FtsCandidateGenerator(store),
+            new LexicalCandidateGenerator(store),
             new PathCandidateGenerator(store),
             new DiffCandidateGenerator(changeSource),
         ]);

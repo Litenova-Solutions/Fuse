@@ -149,17 +149,21 @@ jobs:
           BIN="artifacts/runtime/${{ matrix.rid }}/${{ matrix.binary }}"
           "$BIN" init --help
 
-      - name: Smoke test SampleShop fusion
+      - name: Smoke test SampleShop index and context
         if: matrix.smoke
         shell: bash
         run: |
+          # Verify the self-contained binary can build the semantic index (FTS5 present in the bundled
+          # SQLite) and serve context, in an isolated store so the run does not depend on a shared cache.
           BIN="artifacts/runtime/${{ matrix.rid }}/${{ matrix.binary }}"
-          OUT="/tmp/fuse-runtime-smoke"
-          rm -rf "$OUT"
-          mkdir -p "$OUT"
-          "$BIN" dotnet \
-            --directory tests/fixtures/SampleShop \
-            --output "$OUT" \
-            --overwrite \
-            --format xml \
-            --tokenizer o200k_base
+          WS="${RUNNER_TEMP:-/tmp}/fuse-runtime-smoke"
+          export FUSE_USER_DATA="${RUNNER_TEMP:-/tmp}/fuse-runtime-store"
+          rm -rf "$WS" "$FUSE_USER_DATA"
+          mkdir -p "$WS" "$FUSE_USER_DATA"
+          cp -r tests/fixtures/SampleShop/* "$WS/"
+          "$BIN" index "$WS"
+          # diagnostics must report the index built and FTS5 available, or the publish dropped FTS5.
+          "$BIN" diagnostics "$WS" | tee "$WS/.diag.txt"
+          grep -q "full-text search: available" "$WS/.diag.txt"
+          "$BIN" map "$WS" --detail all
+          "$BIN" review "$WS" --plan-only || true

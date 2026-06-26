@@ -65,7 +65,7 @@ Phase 9 - MCP rewrite
 Phase 10 - Tests, docs, benchmarks
 - [x] P10.1 Tests overhaul complete (Section 16.5 definition of done)
 - [x] P10.2 Docs overhaul complete (Section 17.6 definition of done)
-- [~] P10.3 fuse eval + suites A-D done and committed (semantics/review/localize/agent results); offline token/fidelity PowerShell-layer C# port still remaining
+- [x] P10.3 fuse eval + suites A-E done and committed (semantics/review/localize/agent + reduction/fidelity continuity); old PowerShell spike scripts deleted
 - [x] P10.4 Regenerate benchmark figure; resync AGENTS.md and docs numbers (18.12, 18.13)
 
 Phase 11 - Publish V3
@@ -1848,9 +1848,16 @@ The single most important thing remains: build the resolved semantic graph and e
 - Lessons: The CI smoke test was coupled to a removed command and would have failed the V3 publish job; the publish-readiness pass must re-check the smoke commands, not just that the binary builds. A workspace outside a git repo shares `~/.fuse`, so a clean publish smoke must isolate the store via `FUSE_USER_DATA`.
 - Time: ~40 min
 
-### Remaining work after this session
-- P10.3 offline continuity: port the genuinely-offline token-reduction and fidelity layers (old layer1/fidelity) to C# benchmark suites; the layer1/2a/2b/4 PowerShell scripts are still old-surface. Secondary; the four semantic suites are the substantive deliverable and are done.
-- Re-measurement on V3 not yet done (stated as illustrative in AGENTS/docs): token-reduction and fidelity percentages, warm latency, peer-scoper comparison, full task resolution.
+### P10.3 ReductionSuite (Suite E, offline continuity) - 2026-06-26 (continued)
+- Status: done; P10.3 fully ticked
+- Result: Added `ReductionSuite` (`fuse eval reduce`) to Fuse.Benchmarks: for each target it counts raw o200k_base tokens (Microsoft.ML.Tokenizers), reduces at standard/aggressive/skeleton/publicApi through the shipped path (a reduce delegate the command wires to `ReduceRunner`, so the suite stays Core-only), counts reduced tokens, and at skeleton checks public/protected type and method survival (Roslyn over raw source as independent ground truth). Ran over the six-repo corpus and committed `reduction.json`: skeleton keeps 100 percent of public/protected types and 99 to 100 percent of public methods (mean fidelity 99 percent) while removing 37 to 55 percent of tokens (47 to 60 percent at public-API; 11 to 39 percent standard; 16 to 45 percent aggressive). Resynced AGENTS.md (added a Suite E line, dropped token-reduction/fidelity from the not-measured caveat) and benchmarks.mdx (added a Suite E table). Wired `reduce` into EvalCommand (injects FusionOrchestrator + ProjectTemplateRegistry).
+- Verification: full build/test green (716 across 15 projects, 0 fail), format clean; `npm run build` green; AGENTS/benchmarks ASCII clean.
+- Lessons: A reduce delegate keeps Fuse.Benchmarks dependent only on Core while the command supplies the in-process reduction pipeline (no command-line arg-limit, unlike shelling out). Presence-key fidelity (type name, `Method(` signature) over the skeleton output matches the retired fidelity tool's methodology and is non-circular because truth is parsed from raw with Roslyn.
+- Time: ~45 min
+
+### Remaining (not blocking; logged for a follow-up)
+- V3 re-measurement still open (stated illustrative in AGENTS/docs): warm-call latency, the peer-scoper comparison (CodeGraph/coa-codesearch), and full task resolution (patch plus test oracle).
 - A larger Suite D run (more PRs and rollouts) would tighten the model-dependent agent numbers beyond the 6-PR sample.
+- The corpus loads mostly in syntax/partial index mode here; a restored-workspace corpus run would lift the Suite B/C numbers toward the Suite A semantic ceiling.
 
 

@@ -13,6 +13,7 @@ The benchmark is four suites run by a C# eval driver in `tests/benchmarks/Fuse.B
 - Suite B, change impact and review: does `fuse review` scope a real merged PR to the files it touches plus their semantic blast radius. Deterministic.
 - Suite C, open-ended localization: given only a PR title and no Git base, does `fuse localize` find the changed files. Deterministic, and the weakest mode.
 - Suite D, agent context sufficiency: under a real model, does an agent gather the task's files with the Fuse MCP tools. Model-dependent and not byte-reproducible.
+- Suite E, token reduction and fidelity: how far each reduction level cuts tokens, and how much of the public API the skeleton keeps. Deterministic and offline.
 
 ## An Honest Caveat on Index Mode
 
@@ -120,11 +121,25 @@ Findings, including the shape:
 - The win is concentrated where the title names the wiring. On MediatR#1171, whose title names the licensing wiring, the fuse arm reached 100 percent recall in 4 tool calls at 121k tokens, while the native arm read 328k tokens to reach the same recall. When the semantic signal is present, the Fuse tools find the files fast and cheap.
 - The sample is too small to generalize. Six PRs, one rollout per arm, one model, one day. This suite is a directional signal about whether the Fuse MCP tools help an agent, not a benchmark of agent task success.
 
+## Suite E: Token Reduction and Fidelity (offline continuity)
+
+Suite E is the offline continuity layer. For each repository it counts the raw o200k_base tokens of the C# files, reduces them at each level through the shipped reduction path, counts the reduced tokens, and at skeleton level checks how many public and protected types and methods survive. Fidelity is counted by parsing the raw source with Roslyn as an independent ground truth, so the measure is not circular. Run with `fuse eval reduce`.
+
+| Repository | Raw tokens | Standard | Aggressive | Skeleton | Public API | Skeleton fidelity (types / methods) |
+|------------|-----------:|---------:|-----------:|---------:|-----------:|-------------------------------------|
+| AutoMapper | 458,486 | 13% | 20% | 44% | 51% | 2114/2114, 1051/1056 |
+| FluentValidation | 257,354 | 30% | 35% | 55% | 60% | 249/249, 847/889 |
+| MediatR | 80,635 | 20% | 24% | 51% | 57% | 256/256, 207/207 |
+| Newtonsoft.Json | 1,452,192 | 34% | 40% | 52% | 57% | 1212/1212, 3050/3053 |
+| Serilog | 199,026 | 39% | 45% | 37% | 47% | 140/140, 524/527 |
+| eShopOnWeb | 65,569 | 11% | 16% | 42% | 47% | 226/226, 186/189 |
+
+The Roslyn skeleton keeps every public and protected type and 99 to 100 percent of public methods while removing 37 to 55 percent of tokens; public-API level removes 47 to 60 percent. The percentages are reduction against the raw C# token count.
+
 ## What Is Not Measured on V3
 
 These were measured on the retired V2 surface and have not been re-run on the V3 semantic engine. Do not quote the old percentages as V3 results:
 
-- Token reduction percentages and public-API fidelity percentages. V3 frames token cost as a transport feature (review's median 874 returned tokens), not as a standalone reduction ratio against raw concatenation.
 - Warm-call latency. The warm persistent index model is described qualitatively in [Performance and Benchmarking](/docs/project/performance); no V3 latency number is published.
 - The peer-scoper comparison against CodeGraph and coa-codesearch.
 - Full task resolution: driving an agent across arms and scoring its patch against a test oracle.

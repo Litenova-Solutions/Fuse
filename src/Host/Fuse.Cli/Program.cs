@@ -18,6 +18,8 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<LocalizeCommand>();
     services.AddTransient<ContextCommand>();
     services.AddTransient<ReviewCommand>();
+    services.AddTransient<DiagnosticsCommand>();
+    services.AddTransient<FindCommand>();
     services.AddTransient<DotNetCommand>();
     services.AddTransient<AskCommand>();
     services.AddTransient<AzureDevOpsWikiCommand>();

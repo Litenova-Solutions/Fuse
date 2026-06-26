@@ -121,6 +121,15 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>The route summaries.</returns>
     Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     Finds indexed symbols whose simple name contains a fragment (case-insensitive), public-API first.
+    /// </summary>
+    /// <param name="nameFragment">The name fragment to match.</param>
+    /// <param name="limit">The maximum number of symbols to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The matching symbol summaries.</returns>
+    Task<IReadOnlyList<SymbolListItem>> FindSymbolsByNameAsync(string nameFragment, int limit, CancellationToken cancellationToken);
+
     /// <summary>Sets a key in the index metadata table.</summary>
     /// <param name="key">The metadata key.</param>
     /// <param name="value">The value to store.</param>

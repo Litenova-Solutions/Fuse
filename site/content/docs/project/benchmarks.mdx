@@ -139,6 +139,20 @@ The dense channel lifts the largest, weakest bucket (natural-language domain, 27
 
 R3 closes the low-signal gap with abstention (`localize.r3.json`). A query classifier on the localize path detects a title that names no code (merge, dependency-bump, or CI noise, or an empty query with no route, symbol, service, request, config, or base) and returns a low-signal verdict with a suggested next input (a base, route, or symbol) instead of candidates. Measured over the 108 PRs, low-signal detection F1 rises from 0.11 to 1.0 (9 true positives, 0 false positives, 0 false negatives). The no-signal bucket recall is now 0 by design: the engine declines rather than returning the lucky junk a title cannot support, which is the honest ceiling on this bucket (recall there is bounded by the input). Overall recall is 31.0 percent with the solvable buckets unchanged. A request that carries any structured signal is never downgraded.
 
+### The signal-sufficiency contract (S3)
+
+Because Fuse runs as an MCP server in a loop with a model, the answer to a low-signal request is not a low-precision list, it is to refuse and route. S3 turns the localize path into a graded contract (`localize.s3.json`): every request is graded **confident** (a candidate stands clear; return the tight set), **partial** (some signal, no clear winner; return a small flagged set with a navigation map), or **insufficient** (no usable anchor; return only a navigation map and an explicit ask). The grade is computed from the candidate score distribution with no model. The navigation map carries the top candidate areas, entry-point files and routes, and the nearest indexed symbols, so a refusal is a navigation step an exploring agent acts on, not a dead end. Strictness is opt-in: the default still returns a best-effort set so a one-shot client is never stranded, and `strict` hard-requires an anchor.
+
+This reframes the headline. Bare-title recall is no longer the measure for this path; the contract metrics are:
+
+| Metric | Value | Target |
+|--------|------:|-------:|
+| Correct-refusal on no-signal | 100% (low-signal F1 1.0) | >= 90% |
+| False-rejection on answerable | 8.1% (8 of 99) | <= 10% |
+| Precision when confident | 21.3% (18 tasks) | >= 20% |
+
+The cutoff trades recall for precision as designed: graded states over the 108 PRs are confident 18, partial 73, insufficient 17, and the returned-set recall falls to 16.4 percent at a median 956 returned tokens (from 31.0 percent at 4,642) because a confident result returns only its leading cluster and a partial result a capped best-effort set. Subword identifier indexing (the next item) widens recall back under this cutoff. Every number holds with no model present.
+
 Findings, including the known gap:
 
 - Recall tracks the signal in the title. When the title names identifiers that appear in the code (identifier-rich, 41 percent after R1), localization does best; when the title is a domain phrase (27 percent), a route or API description, or a formatting note, it does worse. This is the expected shape of a title-only, no-base task.

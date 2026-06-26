@@ -60,6 +60,7 @@ public sealed class LocalizationSuite : IEvalSuite
 
         var tasks = new List<TaskResult>();
         var detection = new List<(bool LowSignal, bool Detected)>();
+        var grades = new List<TaskGrade>();
         var modes = new Dictionary<string, int>(StringComparer.Ordinal);
 
         foreach (var repo in present)
@@ -93,9 +94,11 @@ public sealed class LocalizationSuite : IEvalSuite
                 foreach (var task in repoTasks)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var (result, detected) = await ScoreTaskAsync(engine, repo.Path!, task, options, cancellationToken);
+                    var (result, detected, state) = await ScoreTaskAsync(engine, repo.Path!, task, options, cancellationToken);
                     tasks.Add(result);
-                    detection.Add((SignalBucket.IsLowSignal(task.Category), detected));
+                    var lowSignal = SignalBucket.IsLowSignal(task.Category);
+                    detection.Add((lowSignal, detected));
+                    grades.Add(new TaskGrade(state, Answerable: !lowSignal, result.Precision));
                 }
             }
             catch (Exception e) when (e is not OperationCanceledException)
@@ -116,10 +119,15 @@ public sealed class LocalizationSuite : IEvalSuite
 
         notes.Add("index modes: " + string.Join(", ", modes.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} {kv.Value}")));
         AddBucketNotes(tasks, notes);
+        AddContractNotes(grades, notes);
         return Aggregate(tasks, detection, notes);
     }
 
-    private async Task<(TaskResult Result, bool Detected)> ScoreTaskAsync(
+    // S3: the graded signal-sufficiency outcome per task, with whether the task is answerable (has a code anchor)
+    // and the precision the engine returned, so the refusal contract can be scored separately from raw recall.
+    private readonly record struct TaskGrade(SignalState State, bool Answerable, double Precision);
+
+    private async Task<(TaskResult Result, bool Detected, SignalState State)> ScoreTaskAsync(
         SemanticRetrievalEngine engine, string root, PrTask task, EvalOptions options, CancellationToken ct)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -148,7 +156,40 @@ public sealed class LocalizationSuite : IEvalSuite
                 groundTruth.Where(retrieved.Contains).ToList(),
                 groundTruth.Where(g => !retrieved.Contains(g)).ToList(),
                 retrieved.Where(r => !groundTruth.Contains(r)).Take(20).ToList()));
-        return (result, detected);
+        return (result, detected, localization.State);
+    }
+
+    // S3 signal-sufficiency contract metrics: the graded-state distribution, the false-rejection rate on
+    // answerable queries (the new way to be wrong, target at or below 0.10), and the precision the engine returns
+    // when it does answer (confident or partial). These reframe the open-ended path: refusal quality and
+    // precision-when-answered replace bare-title recall as the headline.
+    private static void AddContractNotes(IReadOnlyList<TaskGrade> grades, List<string> notes)
+    {
+        if (grades.Count == 0)
+            return;
+
+        var confident = grades.Count(g => g.State == SignalState.Confident);
+        var partial = grades.Count(g => g.State == SignalState.Partial);
+        var insufficient = grades.Count(g => g.State == SignalState.Insufficient);
+        notes.Add($"graded states: confident {confident}, partial {partial}, insufficient {insufficient}");
+
+        var answerable = grades.Where(g => g.Answerable).ToList();
+        if (answerable.Count > 0)
+        {
+            var falseReject = answerable.Count(g => g.State == SignalState.Insufficient);
+            notes.Add($"false-rejection on answerable: {falseReject}/{answerable.Count} ({(double)falseReject / answerable.Count:P1})");
+        }
+
+        var answered = grades.Where(g => g.State != SignalState.Insufficient).ToList();
+        if (answered.Count > 0)
+        {
+            var precisionWhenAnswered = answered.Average(g => g.Precision);
+            notes.Add($"precision when answered (confident+partial): {precisionWhenAnswered:P1} over {answered.Count} tasks");
+        }
+
+        var confidentGrades = grades.Where(g => g.State == SignalState.Confident).ToList();
+        if (confidentGrades.Count > 0)
+            notes.Add($"precision when confident: {confidentGrades.Average(g => g.Precision):P1} over {confidentGrades.Count} tasks");
     }
 
     private SuiteResult Aggregate(

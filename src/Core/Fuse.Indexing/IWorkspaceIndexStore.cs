@@ -133,4 +133,28 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The stored value, or null when the key is absent.</returns>
     Task<string?> GetMetaAsync(string key, CancellationToken cancellationToken);
+
+    /// <summary>Reads a single node by id.</summary>
+    /// <param name="nodeId">The node id.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The node, or null when absent. <see cref="NodeRecord.FilePath" /> is the file's normalized path.</returns>
+    Task<NodeRecord?> GetNodeAsync(string nodeId, CancellationToken cancellationToken);
+
+    /// <summary>Finds nodes whose display name matches exactly (case-insensitive).</summary>
+    /// <param name="displayName">The display name to match.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The matching nodes.</returns>
+    Task<IReadOnlyList<NodeRecord>> FindNodesByDisplayNameAsync(string displayName, CancellationToken cancellationToken);
+
+    /// <summary>Returns the edges leaving a node.</summary>
+    /// <param name="nodeId">The source node id.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The outgoing edges. <see cref="SemanticEdgeRecord.EvidenceFilePath" /> is the evidence file's normalized path or null.</returns>
+    Task<IReadOnlyList<SemanticEdgeRecord>> GetOutgoingEdgesAsync(string nodeId, CancellationToken cancellationToken);
+
+    /// <summary>Returns the edges entering a node.</summary>
+    /// <param name="nodeId">The target node id.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The incoming edges.</returns>
+    Task<IReadOnlyList<SemanticEdgeRecord>> GetIncomingEdgesAsync(string nodeId, CancellationToken cancellationToken);
 }

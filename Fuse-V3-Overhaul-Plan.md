@@ -35,7 +35,7 @@ Phase 4 - Core semantic edges
 - [x] P4.5 MediatRAnalyzer
 - [x] P4.6 AspNetRouteAnalyzer
 - [x] P4.7 OptionsBindingAnalyzer
-- [ ] P4.8 Fixture edge assertions pass; fuse resolve --service/--request/--route return correctly
+- [x] P4.8 Fixture edge assertions pass; fuse resolve --service/--request/--route return correctly
 
 Phase 5 - Retrieval engine v2
 - [ ] P5.1 LocalizationRequest + candidate generators (exact symbol/route/service/request/config, FTS, path, changed files)
@@ -1604,5 +1604,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. `config_impacts` (config -> consumer) from 6.6 is not emitted yet (not in the P4.8 asserted set); it is derivable as config -binds-> options -consumes-by- consumer and can be added if retrieval needs the direct hop.
 - Lessons: The config section name is found by searching the Configure call's arguments for a `GetSection("X")` invocation, which tolerates chained/extra arguments. `JsonDocument` reads arbitrary config json (not Fuse DTO serialization), so it does not conflict with the source-generated-JSON design invariant. Config nodes come from both the bind call and appsettings, deduped by node id via `TryAdd`.
 - Time: ~30 min
+
+### P4.8 Fixture edges + fuse resolve - 2026-06-26 15:05
+- Status: done
+- Result: Added `SemanticAnalysisRunner` (aggregates the 6 analyzers, `CreateDefault`), wired it into `SemanticIndexer` (semantic mode now upserts nodes/edges/routes/DI/options from the analyzers after symbols). Added store graph queries (`GetNodeAsync`, `FindNodesByDisplayNameAsync`, `GetOutgoingEdgesAsync`, `GetIncomingEdgesAsync`). Added `SemanticResolver` (+ `ResolveResult`/`ResolvedNode`/`ResolveTarget`) in `Fuse.Retrieval` resolving service/request/route/config/symbol via graph edges. Switched `IndexCommand` to `SemanticIndexer`; added `ResolveCommand` (`fuse resolve --service|--request|--route|--config|--symbol`); registered the semantic components in DI; added `Fuse.Retrieval` reference to `Fuse.Cli`. Added `OrderingApp.csproj` (no package refs) so the fixture loads via MSBuild. Tests: `FixtureEdgeSetTests` (9, all worked-example edges + endpoint-node invariant) and `SemanticResolverTests` (4, seeded store); removed the Retrieval placeholder. New solution test total 700.
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 700 passed; `dotnet format --verify-no-changes` clean. End-to-end CLI confirmed against the OrderingApp fixture: `fuse index` reports [semantic] 11 files/1 project/72 symbols; `fuse resolve --service IOrderService` -> OrderService (di_resolves_to), `--request CreateOrderCommand` -> CreateOrderHandler (mediatr_handles), `--route "POST /api/orders/{id}"` -> OrdersController.Create (route_handles), `--config Orders` -> OrderOptions (options_binds).
+- Blockers/issues: DotMake marks nullable `string?` options Required by default; added `Required = false` to each resolve option. The fixture lives inside the Fuse git repo, so `FuseStorePaths` resolves the store to the repo root `.fuse/fuse.db` (gitignored) for both index and resolve, which keeps them consistent.
+- Lessons: Resolution is a uniform graph lookup (find source node by name or constructed id, follow one typed edge), so all five resolve kinds share `FollowEdgesAsync`. The analyzer set is wired once in `SemanticAnalysisRunner.CreateDefault` and reused by both the indexer and tests. Switching `fuse index` to the semantic pipeline means a real workspace now gets the full graph, not just syntax symbols.
+- Time: ~60 min
 
 

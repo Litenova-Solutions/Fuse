@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Self-contained fixture: Framework.cs stubs MediatR, ASP.NET MVC, and Microsoft.Extensions.* in their
+         real namespaces, so no package references are needed and the project compiles standalone. -->
+  </PropertyGroup>
+</Project>

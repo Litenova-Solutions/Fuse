@@ -1,4 +1,5 @@
 using Fuse.Indexing;
+using Fuse.Semantics.Analyzers;
 
 namespace Fuse.Semantics;
 
@@ -22,6 +23,7 @@ public sealed class SemanticIndexer
     private readonly SyntaxSymbolExtractor _syntaxSymbols;
     private readonly SyntaxRouteExtractor _routeExtractor;
     private readonly FileHashService _hashService;
+    private readonly SemanticAnalysisRunner _analysisRunner;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SemanticIndexer" /> class.
@@ -33,6 +35,7 @@ public sealed class SemanticIndexer
     /// <param name="syntaxSymbols">The syntax symbol and chunk extractor (used for chunks and as the fallback).</param>
     /// <param name="routeExtractor">The syntax route extractor.</param>
     /// <param name="hashService">The content hash service, used for project hashes.</param>
+    /// <param name="analysisRunner">The semantic analyzer runner producing graph edges (semantic mode only).</param>
     public SemanticIndexer(
         DotNetWorkspaceDiscoverer discoverer,
         RoslynWorkspaceLoader loader,
@@ -40,7 +43,8 @@ public sealed class SemanticIndexer
         SemanticSymbolExtractor semanticSymbols,
         SyntaxSymbolExtractor syntaxSymbols,
         SyntaxRouteExtractor routeExtractor,
-        FileHashService hashService)
+        FileHashService hashService,
+        SemanticAnalysisRunner analysisRunner)
     {
         _discoverer = discoverer;
         _loader = loader;
@@ -49,6 +53,7 @@ public sealed class SemanticIndexer
         _syntaxSymbols = syntaxSymbols;
         _routeExtractor = routeExtractor;
         _hashService = hashService;
+        _analysisRunner = analysisRunner;
     }
 
     /// <summary>
@@ -103,17 +108,30 @@ public sealed class SemanticIndexer
 
         await store.UpsertSymbolsAsync(symbols, cancellationToken);
 
-        var (chunks, routes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
+        var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
-        await store.UpsertRoutesAsync(routes, cancellationToken);
+        // Syntax routes first (covers minimal APIs), then the semantic MVC routes overwrite by route id with
+        // their resolved handler symbol ids.
+        await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
+
+        // Run the analyzers over every loaded project and store the resulting graph. Nodes are upserted before
+        // edges so the edge foreign keys resolve.
+        var graph = RunAnalyzers(root, snapshot, cancellationToken);
+        await store.UpsertNodesAsync(graph.Nodes, cancellationToken);
+        await store.UpsertEdgesAsync(graph.Edges, cancellationToken);
+        await store.UpsertRoutesAsync(graph.Routes, cancellationToken);
+        await store.UpsertDiRegistrationsAsync(graph.DiRegistrations, cancellationToken);
+        await store.UpsertOptionsBindingsAsync(graph.OptionsBindings, cancellationToken);
 
         // Any load diagnostic (MSBuild warning, a project without a compilation) means the semantic picture is
         // incomplete; report that honestly as partial rather than claiming a clean semantic index.
+        var diagnostics = snapshot.Diagnostics.Concat(graph.Diagnostics).ToList();
         var mode = snapshot.Diagnostics.Any(d => d.Severity is DiagnosticSeverity.Warning or DiagnosticSeverity.Error)
             ? "partial"
             : "semantic";
 
-        return new SemanticIndexResult(mode, linkedFiles.Count, projects.Count, symbols.Count, chunks.Count, routes.Count, snapshot.Diagnostics);
+        var routeCount = syntaxRoutes.Count + graph.Routes.Count;
+        return new SemanticIndexResult(mode, linkedFiles.Count, projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
     }
 
     private async Task<SemanticIndexResult> IndexSyntaxAsync(
@@ -172,6 +190,32 @@ public sealed class SemanticIndexer
         }
 
         return (chunks, routes);
+    }
+
+    // Runs the analyzer set over every loaded project and merges the per-project graphs.
+    private SemanticAnalyzerResult RunAnalyzers(string root, RoslynWorkspaceSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        var nodes = new Dictionary<string, NodeRecord>(StringComparer.Ordinal);
+        var edges = new List<SemanticEdgeRecord>();
+        var routes = new List<RouteRecord>();
+        var registrations = new List<DiRegistrationRecord>();
+        var bindings = new List<OptionsBindingRecord>();
+        var diagnostics = new List<DiagnosticRecord>();
+
+        foreach (var project in snapshot.Projects)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = _analysisRunner.Run(new SemanticAnalysisContext(project, root), cancellationToken);
+            foreach (var node in result.Nodes)
+                nodes[node.NodeId] = node;
+            edges.AddRange(result.Edges);
+            routes.AddRange(result.Routes);
+            registrations.AddRange(result.DiRegistrations);
+            bindings.AddRange(result.OptionsBindings);
+            diagnostics.AddRange(result.Diagnostics);
+        }
+
+        return new SemanticAnalyzerResult(nodes.Values.ToList(), edges, routes, registrations, bindings, diagnostics);
     }
 
     private List<ProjectRecord> BuildProjectRecords(RoslynWorkspaceSnapshot snapshot, CancellationToken cancellationToken)

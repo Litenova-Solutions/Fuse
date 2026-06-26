@@ -5,6 +5,7 @@ using Fuse.Plugins.Languages.CSharp.Extensions;
 using Fuse.Plugins.Languages.CSharp.Roslyn.Extensions;
 using Fuse.Plugins.Rerank.Onnx;
 using Fuse.Semantics;
+using Fuse.Semantics.Analyzers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Cli.Extensions;
@@ -44,7 +45,13 @@ public static class FuseServiceCollectionExtensions
         services.AddSingleton<FileHashService>();
         services.AddSingleton<SyntaxSymbolExtractor>();
         services.AddSingleton<SyntaxRouteExtractor>();
+        services.AddSingleton<SemanticSymbolExtractor>();
+        services.AddSingleton<DotNetWorkspaceDiscoverer>();
+        // Constructed via a factory because the optional ILogger constructor parameter is not registered.
+        services.AddSingleton(_ => new RoslynWorkspaceLoader());
+        services.AddSingleton(_ => SemanticAnalysisRunner.CreateDefault());
         services.AddTransient<WorkspaceFileScanner>();
+        services.AddTransient<SemanticIndexer>();
         return services;
     }
 }

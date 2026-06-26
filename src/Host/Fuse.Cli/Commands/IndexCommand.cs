@@ -7,8 +7,8 @@ using Fuse.Semantics;
 namespace Fuse.Cli.Commands;
 
 /// <summary>
-///     Builds or refreshes the persistent semantic index for a workspace. This is the syntax-level batch
-///     indexer; the MSBuild/Roslyn semantic pass layers on top of it.
+///     Builds or refreshes the persistent semantic index for a workspace. Loads the workspace through
+///     MSBuild/Roslyn when possible and falls back to syntax-level indexing otherwise.
 /// </summary>
 [CliCommand(
     Name = "index",
@@ -17,35 +17,25 @@ namespace Fuse.Cli.Commands;
     Parent = typeof(FuseCliCommand))]
 public sealed class IndexCommand
 {
-    private readonly WorkspaceFileScanner _scanner;
-    private readonly SyntaxSymbolExtractor _symbolExtractor;
-    private readonly SyntaxRouteExtractor _routeExtractor;
+    private readonly SemanticIndexer _indexer;
     private readonly IConsoleUI _consoleUI;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="IndexCommand" /> class for CLI option binding only.
     /// </summary>
     /// <remarks>Used by DotMake.CommandLine to bind options; the dependencies are null, so this instance must not run.</remarks>
-    public IndexCommand() : this(null!, null!, null!, null!)
+    public IndexCommand() : this(null!, null!)
     {
     }
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="IndexCommand" /> class.
     /// </summary>
-    /// <param name="scanner">The workspace file scanner.</param>
-    /// <param name="symbolExtractor">The syntax symbol and chunk extractor.</param>
-    /// <param name="routeExtractor">The syntax route extractor.</param>
+    /// <param name="indexer">The semantic indexer.</param>
     /// <param name="consoleUI">The console UI for status output.</param>
-    public IndexCommand(
-        WorkspaceFileScanner scanner,
-        SyntaxSymbolExtractor symbolExtractor,
-        SyntaxRouteExtractor routeExtractor,
-        IConsoleUI consoleUI)
+    public IndexCommand(SemanticIndexer indexer, IConsoleUI consoleUI)
     {
-        _scanner = scanner;
-        _symbolExtractor = symbolExtractor;
-        _routeExtractor = routeExtractor;
+        _indexer = indexer;
         _consoleUI = consoleUI;
     }
 
@@ -78,10 +68,12 @@ public sealed class IndexCommand
         await using var store = new WorkspaceIndexStore(databasePath);
         await store.InitializeAsync(context.CancellationToken);
 
-        var indexer = new SyntaxIndexer(_scanner, store, _symbolExtractor, _routeExtractor);
-        var result = await indexer.IndexAsync(root, context.CancellationToken);
+        var result = await _indexer.IndexAsync(root, store, context.CancellationToken);
 
         _consoleUI.WriteSuccess(
-            $"Indexed {result.FileCount} files: {result.SymbolCount} symbols, {result.ChunkCount} chunks, {result.RouteCount} routes.");
+            $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects: " +
+            $"{result.SymbolCount} symbols, {result.ChunkCount} chunks, {result.RouteCount} routes.");
+        foreach (var diagnostic in result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))
+            _consoleUI.WriteStep($"  {diagnostic.Code}: {diagnostic.Message}");
     }
 }

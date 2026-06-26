@@ -67,7 +67,8 @@ public sealed class SemanticIndexerTests : IAsyncLifetime
             new SemanticSymbolExtractor(),
             new SyntaxSymbolExtractor(),
             new SyntaxRouteExtractor(),
-            new FileHashService());
+            new FileHashService(),
+            Fuse.Semantics.Analyzers.SemanticAnalysisRunner.CreateDefault());
     }
 
     private async Task<long> CountAsync(string sql)

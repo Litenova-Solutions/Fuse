@@ -128,6 +128,28 @@ public sealed class WorkspaceIndexStoreUpsertTests : IAsyncLifetime
         Assert.Equal("hash3", await TextScalarAsync("SELECT content_hash FROM files WHERE normalized_path = 'src/OrderService.cs';"));
     }
 
+    [Fact]
+    public async Task EmbeddingsPersistAcrossDisposal()
+    {
+        await SeedOrderServiceFileAsync();
+        await _store.UpsertEmbeddingsAsync(
+            [new ChunkEmbeddingRecord("chunk:App.OrderService", 3, [0.1f, 0.2f, 0.97f])],
+            CancellationToken.None);
+
+        // Dispose and reopen the store on the same database file: the persisted vector must survive.
+        await _store.DisposeAsync();
+        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        _store = new WorkspaceIndexStore(_databasePath);
+        await _store.InitializeAsync(CancellationToken.None);
+
+        var embeddings = await _store.GetEmbeddingsAsync(CancellationToken.None);
+        var embedding = Assert.Single(embeddings);
+        Assert.Equal("chunk:App.OrderService", embedding.ChunkId);
+        Assert.Equal("src/OrderService.cs", embedding.FilePath);
+        Assert.Equal(3, embedding.Vector.Length);
+        Assert.Equal(0.97f, embedding.Vector[2], 3);
+    }
+
     private async Task SeedOrderServiceFileAsync()
     {
         await _store.UpsertFilesAsync(

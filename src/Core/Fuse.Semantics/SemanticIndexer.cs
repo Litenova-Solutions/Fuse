@@ -1,4 +1,5 @@
 using Fuse.Indexing;
+using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Semantics.Analyzers;
 
 namespace Fuse.Semantics;
@@ -24,6 +25,7 @@ public sealed class SemanticIndexer
     private readonly SyntaxRouteExtractor _routeExtractor;
     private readonly FileHashService _hashService;
     private readonly SemanticAnalysisRunner _analysisRunner;
+    private readonly ITextEmbedder? _embedder;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SemanticIndexer" /> class.
@@ -36,6 +38,7 @@ public sealed class SemanticIndexer
     /// <param name="routeExtractor">The syntax route extractor.</param>
     /// <param name="hashService">The content hash service, used for project hashes.</param>
     /// <param name="analysisRunner">The semantic analyzer runner producing graph edges (semantic mode only).</param>
+    /// <param name="embedder">An optional text embedder; when available, a dense vector is persisted per chunk for dense retrieval.</param>
     public SemanticIndexer(
         DotNetWorkspaceDiscoverer discoverer,
         RoslynWorkspaceLoader loader,
@@ -44,7 +47,8 @@ public sealed class SemanticIndexer
         SyntaxSymbolExtractor syntaxSymbols,
         SyntaxRouteExtractor routeExtractor,
         FileHashService hashService,
-        SemanticAnalysisRunner analysisRunner)
+        SemanticAnalysisRunner analysisRunner,
+        ITextEmbedder? embedder = null)
     {
         _discoverer = discoverer;
         _loader = loader;
@@ -54,6 +58,7 @@ public sealed class SemanticIndexer
         _routeExtractor = routeExtractor;
         _hashService = hashService;
         _analysisRunner = analysisRunner;
+        _embedder = embedder;
     }
 
     /// <summary>
@@ -110,6 +115,7 @@ public sealed class SemanticIndexer
 
         var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
+        await EmbedAndPersistAsync(store, chunks, cancellationToken);
         // Syntax routes first (covers minimal APIs), then the semantic MVC routes overwrite by route id with
         // their resolved handler symbol ids.
         await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
@@ -161,8 +167,50 @@ public sealed class SemanticIndexer
         await store.UpsertSymbolsAsync(symbols, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
         await store.UpsertRoutesAsync(routes, cancellationToken);
+        await EmbedAndPersistAsync(store, chunks, cancellationToken);
 
         return new SemanticIndexResult("syntax", files.Count, 0, symbols.Count, chunks.Count, routes.Count, snapshot.Diagnostics);
+    }
+
+    // Embeds each chunk's text representation (name, signature, body) and persists the vectors, when a text
+    // embedder is available. A no-op when no model is present, which keeps the no-model floor: the index still
+    // builds and retrieval stays lexical. Per-chunk text is truncated so tokenization cost stays bounded.
+    private async Task EmbedAndPersistAsync(IWorkspaceIndexStore store, IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken)
+    {
+        if (_embedder is null || !_embedder.IsAvailable || chunks.Count == 0)
+            return;
+
+        var embeddings = new List<ChunkEmbeddingRecord>(chunks.Count);
+        foreach (var chunk in chunks)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var text = BuildEmbedText(chunk);
+            if (text.Length == 0)
+                continue;
+            var vector = _embedder.Embed(text);
+            if (vector.Length == 0)
+                continue;
+            embeddings.Add(new ChunkEmbeddingRecord(chunk.ChunkId, vector.Length, vector));
+        }
+
+        await store.UpsertEmbeddingsAsync(embeddings, cancellationToken);
+    }
+
+    // The text a chunk is embedded from: its declared name and signature carry the most meaning, followed by a
+    // bounded slice of the body. Bounded to keep the model's tokenization within its context window.
+    private static string BuildEmbedText(ChunkRecord chunk)
+    {
+        const int maxChars = 2000;
+        var parts = new List<string>(3);
+        if (!string.IsNullOrWhiteSpace(chunk.Name))
+            parts.Add(chunk.Name!);
+        if (!string.IsNullOrWhiteSpace(chunk.Signature))
+            parts.Add(chunk.Signature!);
+        if (!string.IsNullOrWhiteSpace(chunk.Body))
+            parts.Add(chunk.Body!);
+
+        var text = string.Join('\n', parts).Trim();
+        return text.Length > maxChars ? text[..maxChars] : text;
     }
 
     // Chunks and routes always come from syntax so full-text search works in both modes. In semantic mode the

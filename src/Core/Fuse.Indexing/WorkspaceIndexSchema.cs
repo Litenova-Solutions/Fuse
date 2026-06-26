@@ -16,7 +16,7 @@ public static class WorkspaceIndexSchema
     ///     The current schema version. The existing cache database carries a lower or absent version,
     ///     so it is dropped and rebuilt on the first V3 run.
     /// </summary>
-    public const int TargetVersion = 10;
+    public const int TargetVersion = 11;
 
     /// <summary>
     ///     Database-level pragmas applied once at schema creation. WAL journaling and
@@ -204,6 +204,13 @@ public static class WorkspaceIndexSchema
         );
         CREATE INDEX IF NOT EXISTS idx_cochange_a ON git_cochange(path_a);
         CREATE INDEX IF NOT EXISTS idx_cochange_b ON git_cochange(path_b);
+
+        CREATE TABLE IF NOT EXISTS chunk_embeddings(
+          chunk_id TEXT PRIMARY KEY,
+          dim INTEGER NOT NULL,
+          vector BLOB NOT NULL,
+          FOREIGN KEY(chunk_id) REFERENCES chunks(chunk_id) ON DELETE CASCADE
+        );
         """;
 
     /// <summary>

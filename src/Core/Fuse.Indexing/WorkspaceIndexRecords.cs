@@ -143,6 +143,31 @@ public sealed record ChunkRecord(
     string? SymbolsText = null);
 
 /// <summary>
+///     A dense embedding vector for one chunk, persisted so a prose query can be ranked by meaning without
+///     re-embedding the corpus at query time.
+/// </summary>
+/// <param name="ChunkId">The chunk this vector embeds.</param>
+/// <param name="Dimension">The number of components in <paramref name="Vector" />.</param>
+/// <param name="Vector">The unit-length embedding vector.</param>
+public sealed record ChunkEmbeddingRecord(
+    string ChunkId,
+    int Dimension,
+    float[] Vector);
+
+/// <summary>
+///     A persisted chunk embedding joined to its file, returned for dense retrieval.
+/// </summary>
+/// <param name="ChunkId">The chunk id.</param>
+/// <param name="FilePath">The chunk's file, normalized path.</param>
+/// <param name="Name">The chunk's symbol or declaration name, when known.</param>
+/// <param name="Vector">The unit-length embedding vector.</param>
+public sealed record ChunkEmbedding(
+    string ChunkId,
+    string FilePath,
+    string? Name,
+    float[] Vector);
+
+/// <summary>
 ///     A typed, weighted edge between two semantic nodes.
 /// </summary>
 /// <param name="FromNodeId">The source node id.</param>

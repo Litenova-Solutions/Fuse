@@ -40,7 +40,7 @@ Phase 4 - Core semantic edges
 Phase 5 - Retrieval engine v2
 - [x] P5.1 LocalizationRequest + candidate generators (exact symbol/route/service/request/config, FTS, path, changed files)
 - [x] P5.2 Score normalization
-- [ ] P5.3 Graph expansion with typed edge weights + pruning
+- [x] P5.3 Graph expansion with typed edge weights + pruning
 - [ ] P5.4 Context plan output; fuse localize and fuse context acceptance pass; no QueryScopingPipeline needed
 
 Phase 6 - Review/change impact
@@ -1628,5 +1628,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None.
 - Lessons: Noisy-or is a clean normalization that needs no global max/min pass and is stable as sources are added; a single-source candidate keeps its own weight. Grouping by node id keeps symbol-level candidates distinct from file-level ones for graph expansion (P5.3), which still lets duplicate file candidates (FTS + path) merge.
 - Time: ~20 min
+
+### P5.3 Graph expansion with typed edge weights + pruning - 2026-06-26 16:00
+- Status: done
+- Result: Added `EdgeWeightProvider` (per-edge-type weights from 7.6, hop decay 0.65, low default for unknown types) and `GraphExpansionEngine` (+ `ExpandedNode`) to `Fuse.Retrieval`. A max-priority frontier expands seeds across outgoing and incoming edges; child score = parent * edgeWeight * decay * ambiguityPenalty (1/sqrt(fanout)); below-threshold branches are pruned and depth is bounded; first-pop-wins gives Dijkstra-like optimal scores. Seeds are must-keep at hop 0; file-only seeds pass through. Added `GraphExpansionEngineTests` (4). New solution test total 712 (Fuse.Retrieval.Tests 12 -> 16).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Retrieval.Tests` 16 passed (expands controller -> interface -> impl, seed must-keep at hop 0, depth 0 no expansion, high threshold prunes to seed only); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None. `centralityBonus` from the 7.4 formula is left at 0 for now (no centrality metric computed yet); the ambiguity penalty and decay are in place. Edge traversal is bidirectional and untyped-by-mode here; the mode-specific traversal policy (7.5) is applied by review (P6) and context planning (P5.4).
+- Lessons: Because child scores are strictly non-increasing (edge weight and decay are <= 1), a max-priority frontier with visit-on-pop reaches each node by its best path without revisiting, so no score-relaxation bookkeeping is needed. `PriorityQueue` is a min-heap, so negative score is used as the priority key.
+- Time: ~30 min
 
 

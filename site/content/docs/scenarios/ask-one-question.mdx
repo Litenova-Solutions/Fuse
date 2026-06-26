@@ -41,6 +41,15 @@ One scoped localize call is the measured shape of one-call context: in the
 tokens (49 percent recall of the changed files) against roughly 425,000 tokens for a
 generic-packer dump at the same single call.
 
+## When the Question Has No Signal
+
+If the question names no code (a merge note, a dependency bump, or an empty query with no
+route, symbol, or base), `fuse_localize` declines rather than guessing: it returns a
+low-signal verdict and suggests a next input (a git base, a route, or a symbol) instead of
+full-text candidates. Declining beats returning files a vague title cannot actually point
+at. Provide one of the structured inputs (a `route`, `symbol`, `service`, `request`,
+`config`, or `changedSince` base) and call again.
+
 ## Then Fetch the Bodies
 
 Both tools return locations, not source. When you want the code, feed the result to

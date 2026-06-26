@@ -45,6 +45,16 @@ public sealed class SemanticRetrievalEngine
     /// <returns>The ranked candidates and any warnings.</returns>
     public async Task<LocalizationResult> LocalizeAsync(LocalizationRequest request, CancellationToken cancellationToken)
     {
+        // Detect a request that carries no usable scoping signal (merge/dependency/CI noise, or an empty query
+        // with no structured input) and abstain with a suggestion rather than returning candidates a title
+        // cannot support. This is the honest answer where recall is bounded by the input, not the engine.
+        var verdict = QuerySignalClassifier.Classify(request);
+        if (verdict.IsLowSignal)
+        {
+            var suggestion = verdict.Suggestion ?? "Provide a route, symbol, service, request, config section, or a git base.";
+            return new LocalizationResult([], [$"Low signal: {suggestion}"], LowSignal: true, SuggestedInput: suggestion);
+        }
+
         var candidates = await _candidateGenerator.GenerateAsync(request, cancellationToken);
         var scored = _scorer.Score(candidates);
 

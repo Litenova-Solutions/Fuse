@@ -7,28 +7,26 @@ Recall is read together with tokens. Peer published numbers are ignored; only ha
 figures appear here. CodeGraph index build is setup, excluded from the reported token cost.
 
 - Budget: 50000 tokens (fuse --max-tokens; codegraph --max-files 15).
-- Arms: fuse, codegraph, coa.
-- PRs sampled (12): AutoMapper#4608, AutoMapper#4607, eShopOnWeb#949, eShopOnWeb#878, FluentValidation#2158, FluentValidation#1823, MediatR#1171, MediatR#1159, NewtonsoftJson#1159, NewtonsoftJson#1158, Serilog#1452, Serilog#1472.
-- coa arm is model-driven (one text_search call via claude-sonnet-4-6); tool-dependent and not byte-reproducible.
+- Arms: fuse, codegraph.
+- PRs sampled (6): AutoMapper#4608, eShopOnWeb#949, FluentValidation#2158, MediatR#1171, NewtonsoftJson#1159, Serilog#1452.
 
 ## Aggregate (mean over sampled PRs)
 
 | Arm | Mean recall | Mean precision | Mean tokens |
 |-----|------------:|---------------:|------------:|
-| fuse | 60% | 7% | 31,912 |
-| codegraph | 17% | 11% | 4,623 |
-| coa | 59% | 21% | 3,831 |
+| fuse | 21% | 7% | 19,753 |
+| codegraph | 12% | 10% | 4,456 |
 
 ## Per repo (mean recall, mean tokens)
 
-| Repo | fuse recall | codegraph recall | coa recall |
-|------|------:|------:|------:|
-| AutoMapper | 50% | 25% | 62% |
-| eShopOnWeb | 6% | 0% | 0% |
-| FluentValidation | 83% | 11% | 72% |
-| MediatR | 83% | 42% | 100% |
-| NewtonsoftJson | 100% | 25% | 88% |
-| Serilog | 40% | 0% | 33% |
+| Repo | fuse recall | codegraph recall |
+|------|------:|------:|
+| AutoMapper | 0% | 0% |
+| eShopOnWeb | 12% | 0% |
+| FluentValidation | 11% | 22% |
+| MediatR | 100% | 50% |
+| NewtonsoftJson | 0% | 0% |
+| Serilog | 0% | 0% |
 
 ## How to read this
 

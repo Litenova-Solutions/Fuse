@@ -160,7 +160,18 @@ Findings, including the shape:
 
 - Fuse edges out native at parity cost. On this 12-PR sample, the fuse arm reached 30 percent mean recall to native's 26 percent, at comparable precision (44 versus 43 percent) and comparable token cost (211,502 versus 209,182). With the MCP server correctly wired and semantic indexing where the repo restores, the Fuse tools gather a slightly more complete set without spending more.
 - The sample is still small. Twelve PRs, one rollout per arm, one model, one day, so the confidence interval is wide and neither mean is settled. This suite is a directional signal about whether the Fuse MCP tools help an agent, not a fixed benchmark.
-- The peer head-to-head and the full scale remain. Comparing against CodeGraph, Serena, and coa-codesearch, and running 50 to 100 tasks at 3 rollouts, needs those peer tools installed and a larger agent-compute budget; the harness skips peers that are absent.
+- The full scale remains. Running 50 to 100 tasks at 3 rollouts needs a larger agent-compute budget; this run is 12 PRs at one rollout.
+
+### Peer comparison (Fuse versus CodeGraph)
+
+The peer layer gives each tool the PR title and scores the returned file set against the changed files. Fuse runs through its V3 index-then-localize path; CodeGraph (the offline tree-sitter graph peer) runs `codegraph init` then `codegraph explore`. Over 6 PRs at a 50,000-token budget (`layer6-peers.json`):
+
+| Arm | Mean recall | Mean precision |
+|-----|------------:|---------------:|
+| fuse | 21% | 7% |
+| codegraph | 12% | 10% |
+
+Fuse leads on changed-file recall (21 versus 12 percent), and the lead is concentrated where the title names .NET wiring: on MediatR#1171 (the licensing wiring) Fuse reaches 100 percent to CodeGraph's 50 percent, and on the eShopOnWeb application 12 percent to 0 percent. CodeGraph leads on FluentValidation#2158 (22 versus 11 percent) and has higher precision at a lower token count. The token columns are not directly comparable: both return source here, while the omitted coa-codesearch arm would return pointers. coa-codesearch (which needs an external built MCP host) and Serena are omitted rather than stubbed; the harness skips an absent peer. This is a small sample with Fuse on its C# home field, reported straight.
 
 ## Suite E: Token Reduction and Fidelity (offline continuity)
 

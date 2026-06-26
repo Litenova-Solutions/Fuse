@@ -116,6 +116,10 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Add the dense embedding retrieval channel (requires a cached model).")]
     public bool Dense { get; set; }
 
+    /// <summary>When greater than zero, the semantics suite samples this many predicted edges per type over the corpus for adjudication.</summary>
+    [CliOption(Required = false, Description = "Sample N predicted edges per type over the corpus (semantics adjudication).")]
+    public int CorpusSample { get; set; }
+
     /// <summary>An optional path to write the JSON results to. Defaults to results/&lt;suite&gt;.json under the benchmark root.</summary>
     [CliOption(Required = false, Description = "Path to write JSON results to.")]
     public string? Output { get; set; }
@@ -140,6 +144,7 @@ public sealed class EvalCommand
             Restore: Restore,
             RequireSemantic: RequireSemantic,
             Embedder: Dense ? _embedder : null,
+            CorpusSample: CorpusSample,
             Log: _consoleUI.WriteStep);
 
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());

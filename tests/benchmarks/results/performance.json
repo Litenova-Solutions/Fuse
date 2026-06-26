@@ -1,0 +1,26 @@
+{
+  "suite": "performance",
+  "description": "Performance: cold index time and warm resolve/localize P50/P95 latency.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 1,
+    "recall": 0,
+    "recallCiLow": 0,
+    "recallCiHigh": 0,
+    "precision": 0,
+    "f1": 0,
+    "medianTokens": 19.8624,
+    "meanTokens": 64187,
+    "lowSignalF1": 0
+  },
+  "tasks": [],
+  "notes": [
+    "repo AutoMapper, index mode syntax, 518 files, 17924 symbols",
+    "cold index: 64,187 ms",
+    "warm localize (25x): P50 19.9 ms, P95 21.9 ms",
+    "warm resolve (25x): P50 0.0 ms, P95 0.0 ms",
+    "warm review plan (25x): P50 98.2 ms, P95 102.5 ms",
+    "incremental re-index of src/TestApp/Program.cs (25x): P50 176.7 ms, P95 185.9 ms",
+    "note: timings are environment-dependent; incremental re-index updates the file\u0027s syntax rows, not cross-file semantic edges."
+  ]
+}

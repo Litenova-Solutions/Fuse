@@ -54,4 +54,40 @@ public static class RerankServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    ///     Registers <see cref="OnnxTextEmbedder" /> as the <see cref="ITextEmbedder" /> when dense indexing is
+    ///     opted into (<c>FUSE_DENSE</c> truthy) and the bi-encoder model is present in the user-data cache;
+    ///     otherwise registers nothing, so indexing persists no embeddings and retrieval stays on the lexical
+    ///     floor.
+    /// </summary>
+    /// <param name="services">The service collection to add to.</param>
+    /// <returns>The same <paramref name="services" /> instance for chaining.</returns>
+    /// <remarks>
+    ///     Unlike the lazy reranker, the embedder is used eagerly at index time to persist a vector per chunk,
+    ///     which is a real indexing cost. It is therefore gated on an explicit opt-in (<c>FUSE_DENSE</c>) in
+    ///     addition to model presence, so downloading the model for the reranker alone does not silently slow
+    ///     indexing. When unregistered, indexing and retrieval are byte-identical to a build without dense.
+    /// </remarks>
+    public static IServiceCollection AddOnnxTextEmbedder(this IServiceCollection services)
+    {
+        if (!IsDenseEnabled() || !RerankModelLocator.IsModelPresent())
+            return services;
+
+        services.AddSingleton<ITextEmbedder>(provider =>
+            OnnxTextEmbedder.CreateDefault(provider.GetService<ILogger<OnnxTextEmbedder>>()));
+
+        return services;
+    }
+
+    // Dense indexing is opt-in: FUSE_DENSE set to 1/true/yes/on (case-insensitive) enables it.
+    private static bool IsDenseEnabled()
+    {
+        var value = Environment.GetEnvironmentVariable("FUSE_DENSE");
+        return value is not null
+               && (value.Equals("1", StringComparison.Ordinal)
+                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
+    }
 }

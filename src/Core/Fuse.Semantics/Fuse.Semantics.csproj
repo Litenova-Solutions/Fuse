@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseFileScopedNamespaces>true</UseFileScopedNamespaces>
+    </PropertyGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="Fuse.Semantics.Tests"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild"/>
+        <PackageReference Include="Microsoft.Build.Locator"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
+        <ProjectReference Include="..\Fuse.Indexing\Fuse.Indexing.csproj"/>
+        <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj"/>
+        <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj"/>
+    </ItemGroup>
+</Project>

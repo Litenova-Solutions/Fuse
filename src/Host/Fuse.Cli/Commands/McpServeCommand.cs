@@ -63,37 +63,22 @@ public sealed class McpServeCommand
                         ?? "0.0.0"
                 };
                 options.ServerInstructions =
-                    "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +
-                    "Prefer these tools over raw grep or reading files one by one when surveying or scoping a codebase; " +
-                    "reach for grep only for exact-string or symbol lookups.\n\n" +
+                    "Fuse is a .NET semantic context engine for AI agents. It indexes a workspace with Roslyn and " +
+                    "serves precise, provenance-backed context from a typed semantic graph.\n\n" +
+                    "Use fuse_review for PR/change work when a git base exists.\n" +
+                    "Use fuse_resolve when a task names a route, interface, service, request, handler, or config section.\n" +
+                    "Use fuse_localize for open-ended tasks.\n" +
+                    "Use fuse_context only after localize/resolve unless the user asks for one-shot context.\n" +
+                    "Use fuse_find for exact text/path/symbol lookup.\n\n" +
                     "TOOLS:\n" +
-                    "- fuse_toc: Table of contents (directory tree, symbol outline, per-file token costs). The cheapest first call.\n" +
-                    "- fuse_skeleton: Structural skeleton only (signatures, no bodies). Use for architecture review.\n" +
-                    "- fuse_focus: Dependency-aware scoping around a type, file, or path.\n" +
-                    "- fuse_search: BM25 query-scoped fusion with dependency expansion.\n" +
-                    "- fuse_changes: Git diff-scoped fusion for PR review.\n" +
-                    "- fuse_ask: Give a task and token budget; Fuse picks skeleton, focus, or search and packs to budget.\n" +
-                    "- fuse_dotnet: Full-control .NET fusion with all options combined.\n" +
-                    "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n" +
-                    "- fuse_reduce: Compact a specific set of files (or raw content) you already identified, without collecting a whole directory.\n" +
-                    "- fuse_explain: Preview which files a scoped fusion would include and exclude, with a token estimate, before fetching.\n" +
-                    "- fuse_find: Cheap exact lookup: a symbol definition, an exact text substring with context, or a path match. Use instead of broad grep.\n\n" +
-                    "CHOOSING A MODE (most accurate first):\n" +
-                    "- Branch, PR, or fix work with a git base: prefer fuse_changes with changedSince=\"{base}\". " +
-                    "It has by far the highest recall of the files a task touches, because it starts from the diff.\n" +
-                    "- Exploring or editing a specific type: fuse_focus with focus=\"{TypeName}\".\n" +
-                    "- Finding where a concept or feature lives: fuse_search with query=\"{topic}\".\n" +
-                    "- Broad survey first: fuse_toc, then a scoped fetch.\n" +
-                    "- Unsure: fuse_ask with the task and tokenBudget, and Fuse routes for you.\n\n" +
-                    "RECOMMENDED WORKFLOW:\n" +
-                    "1. Call fuse_toc (or fuse_skeleton) to survey the codebase at low token cost.\n" +
-                    "2. Identify the relevant area from the tree and per-file token costs.\n" +
-                    "3. Call fuse_focus with focus=\"{TypeName}\" or fuse_search with query=\"{topic}\".\n" +
-                    "4. For branch, PR, or fix work, call fuse_changes with changedSince=\"{baseBranch}\" (highest recall).\n" +
-                    "5. Or call fuse_ask with a task and tokenBudget to let Fuse choose and pack the context.\n\n" +
-                    "RESOURCES:\n" +
-                    "- fuse://skeleton/{path}, fuse://focus/{path}/{seed}, fuse://search/{path}/{query}, fuse://changes/{path}/{since}\n" +
-                    "- fuse://{template}/{path} for template-based fusion with default options.";
+                    "- fuse_index: Build or refresh the persistent semantic index. The read tools build it on first use.\n" +
+                    "- fuse_map: Workspace map (symbols, routes, counts). The cheap first call.\n" +
+                    "- fuse_localize: Rank candidate files/symbols for a task. No bodies.\n" +
+                    "- fuse_resolve: Resolve wiring (service->impl, request->handler, route->action, config->options, symbol). No bodies.\n" +
+                    "- fuse_context: Emit source context (mixed tiers, manifest, provenance) for selected seeds.\n" +
+                    "- fuse_review: Diff-first semantic impact and packed context for a change.\n" +
+                    "- fuse_find: Exact symbol/path/text lookup.\n" +
+                    "- fuse_reduce: Compact a known set of files or raw content.";
             })
             .WithStdioServerTransport()
             .WithTools<FuseTools>()

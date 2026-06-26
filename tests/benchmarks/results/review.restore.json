@@ -1,0 +1,480 @@
+{
+  "suite": "review",
+  "description": "Change impact: fuse review recall/precision/tokens over PR ground truth.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 18,
+    "recall": 1,
+    "recallCiLow": 1,
+    "recallCiHigh": 1,
+    "precision": 0.6395113543720354,
+    "f1": 0.7801243372504494,
+    "medianTokens": 587,
+    "meanTokens": 684.0555555555555,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "eShopOnWeb#949",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 596,
+      "latencyMs": 5473,
+      "hit": {
+        "hits": [
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/CatalogItemsSpecification.cs",
+          "tests/UnitTests/Builders/BasketBuilder.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetMyOrders.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetOrderDetails.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#878",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 312,
+      "latencyMs": 4719,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
+          "src/Web/Features/MyOrders/GetMyOrders.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+          "src/Web/Program.cs",
+          "src/Web/ViewModels/OrderDetailViewModel.cs",
+          "src/Web/ViewModels/OrderViewModel.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#876",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 312,
+      "latencyMs": 3610,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
+          "src/Web/Features/MyOrders/GetMyOrders.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+          "src/Web/ViewModels/OrderDetailViewModel.cs",
+          "src/Web/ViewModels/OrderViewModel.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#1",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 538,
+      "latencyMs": 19806,
+      "hit": {
+        "hits": [
+          "src/Web/AzureDeveloperCliCredential.cs",
+          "src/Web/Program.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#818",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.8421052631578947,
+      "tokens": 1248,
+      "latencyMs": 6337,
+      "hit": {
+        "hits": [
+          "src/BlazorAdmin/CustomAuthStateProvider.cs",
+          "src/PublicApi/CatalogBrandEndpoints/CatalogBrandListEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CatalogItemGetByIdEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CreateCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/DeleteCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogTypeEndpoints/CatalogTypeListEndpoint.cs",
+          "src/PublicApi/Program.cs",
+          "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
+          "src/Web/Configuration/ConfigureWebServices.cs",
+          "src/Web/Controllers/UserController.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+          "src/Web/Program.cs",
+          "tests/PublicApiIntegrationTests/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Web/Features/MyOrders/GetMyOrders.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+          "src/Web/Controllers/OrderController.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#541",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.6153846153846154,
+      "tokens": 777,
+      "latencyMs": 14679,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Interfaces/IFileSystem.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+          "src/Infrastructure/Services/WebFileSystem.cs",
+          "src/PublicApi/CatalogItemEndpoints/Create.cs",
+          "src/PublicApi/CatalogItemEndpoints/Update.cs",
+          "src/PublicApi/Startup.cs",
+          "src/Web/Controllers/FileController.cs",
+          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/CreateEndpoint.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "tests/FunctionalTests/PublicApi/ApiTestFixture.cs",
+          "tests/FunctionalTests/PublicApi/AuthEndpoints/AuthenticateEndpoint.cs",
+          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/ApiCatalogControllerList.cs",
+          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/DeleteEndpoint.cs",
+          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/GetByIdEndpoint.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#322",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.21052631578947367,
+      "tokens": 1557,
+      "latencyMs": 8225,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Services/BasketService.cs",
+          "src/Web/Pages/Basket/Index.cshtml.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
+          "src/Web/Services/BasketViewModelService.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+          "src/Web/Interfaces/IBasketViewModelService.cs",
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
+          "src/Web/Pages/Basket/Checkout.cshtml.cs",
+          "src/Web/Pages/Shared/Components/BasketComponent/Basket.cs",
+          "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
+          "src/ApplicationCore/Entities/BuyerAggregate/Buyer.cs",
+          "src/ApplicationCore/Entities/CatalogBrand.cs",
+          "src/ApplicationCore/Entities/CatalogItem.cs",
+          "src/ApplicationCore/Entities/CatalogType.cs",
+          "src/ApplicationCore/Services/OrderService.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#300",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.35294117647058826,
+      "tokens": 1037,
+      "latencyMs": 6942,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
+          "src/ApplicationCore/Services/BasketService.cs",
+          "tests/IntegrationTests/Repositories/BasketRepositoryTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketAddItem.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs",
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
+          "src/ApplicationCore/Entities/BuyerAggregate/Buyer.cs",
+          "src/ApplicationCore/Entities/CatalogBrand.cs",
+          "src/ApplicationCore/Entities/CatalogItem.cs",
+          "src/ApplicationCore/Entities/CatalogType.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+          "src/ApplicationCore/Services/OrderService.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#296",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.3333333333333333,
+      "tokens": 373,
+      "latencyMs": 4153,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/CatalogItemOrdered.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/OrderItem.cs",
+          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#294",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.3,
+      "tokens": 883,
+      "latencyMs": 4241,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/CatalogItemOrdered.cs",
+          "src/Infrastructure/Data/CatalogContext.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/OrderItem.cs",
+          "src/Infrastructure/Data/EfRepository.cs",
+          "src/Infrastructure/Data/OrderRepository.cs",
+          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs",
+          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#291",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.7647058823529411,
+      "tokens": 917,
+      "latencyMs": 4189,
+      "hit": {
+        "hits": [
+          "src/Infrastructure/Data/CatalogContext.cs",
+          "src/Infrastructure/Data/Config/AddressConfiguration.cs",
+          "src/Infrastructure/Data/Config/BasketConfiguration.cs",
+          "src/Infrastructure/Data/Config/BasketItemConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogBrandConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogItemConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogItemOrderedConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogTypeConfiguration.cs",
+          "src/Infrastructure/Data/Config/OrderConfiguration.cs",
+          "src/Infrastructure/Data/Config/OrderItemConfiguration.cs",
+          "src/Infrastructure/Data/Migrations/20190818191507_UpdatedConstraints.cs",
+          "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs",
+          "src/Web/Startup.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Infrastructure/Data/Migrations/20190818191507_UpdatedConstraints.Designer.cs",
+          "src/Infrastructure/Data/EfRepository.cs",
+          "src/Infrastructure/Data/OrderRepository.cs",
+          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#280",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.36363636363636365,
+      "tokens": 1086,
+      "latencyMs": 6618,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Interfaces/ISpecification.cs",
+          "src/ApplicationCore/Specifications/BaseSpecification.cs",
+          "src/Infrastructure/Data/CatalogContext.cs",
+          "src/Infrastructure/Data/SpecificationEvaluator.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/CustomerOrdersWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterSpecification.cs",
+          "src/Infrastructure/Data/EfRepository.cs",
+          "src/Infrastructure/Data/OrderRepository.cs",
+          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#268",
+      "repo": "eShopOnWeb",
+      "category": "route-api",
+      "recall": 1,
+      "precision": 0.8,
+      "tokens": 210,
+      "latencyMs": 4198,
+      "hit": {
+        "hits": [
+          "src/Web/Areas/Identity/Pages/Account/ConfirmEmail.cshtml.cs",
+          "src/Web/Controllers/AccountController.cs",
+          "src/Web/Extensions/UrlHelperExtensions.cs",
+          "tests/FunctionalTests/Web/Controllers/AccountControllerSignIn.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "tests/FunctionalTests/Web/CustomWebApplicationFactory.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#267",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 241,
+      "latencyMs": 4065,
+      "hit": {
+        "hits": [
+          "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
+          "src/Web/Startup.cs"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#264",
+      "repo": "eShopOnWeb",
+      "category": "formatting",
+      "recall": 1,
+      "precision": 0.5,
+      "tokens": 578,
+      "latencyMs": 5554,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Entities/BasketAggregate/BasketItem.cs",
+          "src/ApplicationCore/Services/BasketService.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Entities/BaseEntity.cs",
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
+          "src/ApplicationCore/Services/OrderService.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#258",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.42857142857142855,
+      "tokens": 616,
+      "latencyMs": 4140,
+      "hit": {
+        "hits": [
+          "src/Infrastructure/Data/CatalogContext.cs",
+          "src/Infrastructure/Data/Migrations/20190601014740_UpdatingDefaultDataTypes.cs",
+          "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Infrastructure/Data/Migrations/20190601014740_UpdatingDefaultDataTypes.Designer.cs",
+          "src/Infrastructure/Data/EfRepository.cs",
+          "src/Infrastructure/Data/OrderRepository.cs",
+          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#243",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.42857142857142855,
+      "tokens": 575,
+      "latencyMs": 4028,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Interfaces/ISpecification.cs",
+          "src/ApplicationCore/Specifications/BaseSpecification.cs",
+          "src/Infrastructure/Data/SpecificationEvaluator.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/CustomerOrdersWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterSpecification.cs"
+        ]
+      }
+    },
+    {
+      "id": "eShopOnWeb#242",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.5714285714285714,
+      "tokens": 457,
+      "latencyMs": 3883,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Services/BasketService.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/ApplicationCore/Interfaces/IAsyncRepository.cs"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "token budget 25,000",
+    "index modes: partial 15, syntax 3"
+  ]
+}

@@ -1,21 +1,23 @@
 ---
 title: Reduction levels
-description: How Fuse shrinks C# from light cleanup to aggressive compression and signature-only skeletons, and how to pick the smallest level that answers the task.
+description: How Fuse renders C# from light cleanup to aggressive compression and signature-only skeletons, and how to pick the smallest level that answers the task.
 ---
 
-**Reduction** is how Fuse shrinks content without changing what it means. A single dial,
-the **reduction level**, drives the C# structural reduction: it is one enum value that
-selects how far Fuse goes, from no structural change to signature-only skeletons. Pick
-the smallest level that still answers your task.
+**Reduction** is the rendering step that emits source in fewer tokens without changing
+what it means. A single dial, the **reduction level**, drives the C# structural reduction:
+it is one enum value that selects how far Fuse goes, from no structural change to
+signature-only skeletons. Pick the smallest level that still answers your task.
 
-The level is set with `--level <value>` on the CLI and the `level` parameter on the MCP
-tools. The default is `none`.
+The level is set with `--level <value>` on the `fuse reduce` command and the `level`
+parameter on the `fuse_reduce` MCP tool. `fuse context` and `fuse review` choose a render
+tier per file automatically to fit the token budget, drawing on the same ladder. The
+default level for `fuse reduce` is `standard`.
 
 ## The Five Levels
 
 | Level | What it does to C# | Use it when |
 |-------|--------------------|-------------|
-| `none` | No C# structural reduction. Whitespace trim and condense and the orthogonal flags below still apply. | Every fusion, a safe baseline |
+| `none` | No C# structural reduction. Whitespace trim and condense still apply. | A safe baseline that changes nothing structural |
 | `standard` | Removes C# comments, `using` directives, namespace wrappers, and `#region` directives. | Trim noise but keep structure |
 | `aggressive` | The `standard` removals plus aggressive whitespace and syntax compression. | Maximum reduction with bodies intact |
 | `skeleton` | Emits structural skeletons (type and member signatures), bodies removed. | An architecture pass on an unfamiliar solution |
@@ -26,9 +28,8 @@ and `publicApi` is `skeleton` narrowed to the public surface.
 
 ### none
 
-The default does lossless cleanup only: it normalizes whitespace, condenses blank lines,
-and minifies XML-family and Razor files. It applies no C# structural reduction. This runs
-on every fusion regardless of level.
+This level does lossless cleanup only: it normalizes whitespace, condenses blank lines,
+and minifies XML-family and Razor files. It applies no C# structural reduction.
 
 ### standard
 
@@ -71,40 +72,37 @@ measured comparison.
 only public and protected member signatures and drops the rest. Reach for it when you want
 the API surface alone.
 
-## The Orthogonal Flags
+## Where the Level Applies
 
-The level is the single dial for C# structural reduction. A set of other options are
-separate and orthogonal: they are not folded into the level and apply at any level. They
-include best-effort secret redaction (`--no-redact`, `--redact-report`; regex and entropy heuristics), generated-code collapse
-(`--collapse-generated`), the structural annotations (`--semantic-markers`), the pattern
-summary (`--pattern-summary`), the route map (`--route-map`), the project graph
-(`--project-graph`), XML and HTML/Razor minification (`--minify-xml-files`,
-`--minify-html-and-razor`), and the per-line content handling (trim and condense).
-
-Generated-code collapse is separate from the level. Combine it when you need both:
+The level is the single dial for C# structural reduction on a `fuse reduce` call:
 
 ```bash
-fuse dotnet --directory ./src --level aggressive --collapse-generated
+fuse reduce --files src/OrderService.cs --level skeleton
 ```
+
+In `fuse context` and `fuse review`, the level is not set by hand. The context plan picks
+a render tier per file (full, compressed, or skeleton) to fit the `--max-tokens` budget,
+keeping the must-keep seeds in full and reducing peripheral files further when the budget
+is tight. Best-effort secret redaction (regex and entropy heuristics) runs before token
+counting at every level. See [Keep secrets out](/docs/scenarios/keep-secrets-out).
 
 ## Reduction Is Not Deletion
 
 The `none`, `standard`, and `aggressive` levels are designed to keep the public API. An
-independent Roslyn oracle confirms 99 to 100 percent of public types and methods survive,
-and `fuse verify` reports the preserved surface for any run. The `skeleton` and
-`publicApi` levels make no claim of body fidelity, by design: they keep signatures and
-drop bodies.
+independent Roslyn oracle confirms 99 to 100 percent of public types and methods survive.
+The `skeleton` and `publicApi` levels make no claim of body fidelity, by design: they keep
+signatures and drop bodies.
 
 ## Survey Before You Reduce
 
-When you only need a map, the table-of-contents survey is cheaper still:
+When you only need a map, surveying the index is cheaper still:
 
 ```bash
-fuse dotnet --directory ./src --toc
+fuse map ./src --detail all
 ```
 
-`--toc` emits a directory tree with a per-file symbol outline and token cost instead
-of file bodies. See [Survey a codebase cheaply](/docs/scenarios/survey-cheaply).
+`fuse map` lists indexed symbols, routes, and counts instead of file bodies. See
+[Survey a codebase cheaply](/docs/scenarios/survey-cheaply).
 
 ## Next
 

@@ -1,51 +1,52 @@
 ---
 title: Scope a pull request
-description: Fuse only the files a branch changed, plus the code most likely to break, with a review map of diffs and callers.
+description: Review only the files a branch changed plus their blast radius, the callers, DI consumers, request and route handlers, options consumers, and tests, in one call.
 ---
 
-**Goal:** review a branch by fusing just what it changed and the code that depends on it,
-not the whole repository.
+**Goal:** review a branch by fetching just what it changed and the code that change
+impacts, not the whole repository.
 
 ## Do It
 
 ```bash
-fuse dotnet --directory ./src --changed-since main --include-dependents
+fuse review ./src --changed-since origin/main --max-tokens 25000
 ```
 
-The seed is every file changed since `main`. `--include-dependents` (on by default) adds
-the first-degree dependents of each changed file, the code most likely to break from the
-change. The ref can be a branch, a commit, or a relative reference like `HEAD~5`. This
-needs `git` on your PATH.
+The seed is every file changed since the git ref. `fuse review` then computes the **blast
+radius**, the callers, DI consumers, route and request handlers, options consumers, and
+related tests reachable from the changed files, and emits the changed files plus that
+neighborhood as packed context. The ref can be a branch, a commit, or a relative reference
+like `HEAD~5`. This needs `git` on your PATH.
 
-## Add a Review Map
+## Control What It Includes
 
 ```bash
-fuse dotnet --directory ./src --changed-since main --review
+fuse review ./src --changed-since origin/main --include-tests --format markdown
 ```
 
-`--review` prepends a review map: each changed file's diff hunks paired with its direct
-callers, so a reviewer or an agent sees what changed and who calls it before reading the
-files.
+`--include-tests` (on by default) keeps the related test files in the radius. `--format`
+picks the output shape (`xml`, `markdown`, or `json`). `--max-tokens` caps the output;
+the changed files are always kept, so the cut falls on the periphery first.
 
 ## What You Get
 
-A fusion scoped to the change set and its dependents, emitted most-relevant first so the
-changed files survive any token cut. Change scoping is the strongest mode by measurement: 89 percent recall of the files real
-merged pull requests touched, at 54 percent precision in the
+A context plan scoped to the change set and its blast radius, emitted with the changed
+files always kept. Change scoping is the strongest mode by measurement: 89 percent recall
+of the files real merged pull requests touched, at 54 percent precision in the
 [Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests).
 It is also one call, not an explore loop: in the
 [Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
-the change-scoped arm reached 91 percent recall at about 29,500 tokens against roughly 425,000 for a whole-repository
-packer dump at the same single call.
+the change-scoped arm reached 91 percent recall at about 29,500 tokens against roughly
+425,000 for a whole-repository packer dump at the same single call.
 
 ## When to Use It
 
 Use this for branch and pull-request review, for understanding the blast radius of a
-change, and for handing an agent exactly the context a code review needs. For the MCP
-equivalent, call `fuse_changes` with `review` set to true.
+change, and for handing an agent exactly the context a code review needs. It is the routed
+default whenever a git base is available. For the MCP equivalent, call `fuse_review`.
 
 ## Related Concept
 
-The git seed and dependent expansion are covered in
+The git seed and blast-radius expansion are covered in
 [Scoping](/docs/concepts/scoping); the recall and precision numbers are in
 [Benchmarks](/docs/project/benchmarks).

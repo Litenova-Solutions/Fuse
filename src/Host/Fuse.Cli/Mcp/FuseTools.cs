@@ -1,125 +1,187 @@
 using System.ComponentModel;
-using Fuse.Fusion.Scoping;
-using Fuse.Collection.Models;
-using Fuse.Emission.Models;
+using System.Text;
+using Fuse.Collection.Templates;
 using Fuse.Fusion;
+using Fuse.Indexing;
 using Fuse.Plugins.Abstractions.Options;
-using Fuse.Reduction.Security;
+using Fuse.Reduction.Caching;
+using Fuse.Semantics;
 using ModelContextProtocol.Server;
 
 namespace Fuse.Cli.Mcp;
 
 /// <summary>
-///     MCP tool definitions for Fuse, exposed to AI agents through the Model Context Protocol server.
+///     MCP tool definitions for Fuse V3, exposed to AI agents through the Model Context Protocol server.
 /// </summary>
 /// <remarks>
 ///     Each method maps to an MCP tool whose name is set by <see cref="McpServerToolAttribute" /> (for example
-///     <c>fuse_skeleton</c>). Every parameter maps to an MCP tool argument the agent supplies; the parameter
-///     <c>[Description]</c> attributes are the agent-facing schema descriptions. All tools are read-only, run
-///     fusion in memory (no files are written), and return errors as descriptive strings rather than throwing.
+///     <c>fuse_resolve</c>). The eight tools (index, map, localize, resolve, context, review, find, reduce) work
+///     over the persistent semantic index; read tools build the index on first use. Tools return errors as
+///     descriptive strings rather than throwing.
 /// </remarks>
 [McpServerToolType]
 public sealed partial class FuseTools
 {
     /// <summary>
-    ///     Answers a task by choosing a scoping strategy (skeleton, focus, or search) from the task text and a
-    ///     token budget, then packing the result to that budget. Collapses the manual survey-then-scope loop
-    ///     into one call.
+    ///     Builds or refreshes the persistent semantic index for a workspace.
     /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
-    /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
-    /// <param name="path">Absolute or relative path to the source directory.</param>
-    /// <param name="task">A natural-language description of what the agent needs to do or find.</param>
-    /// <param name="tokenBudget">The maximum number of tokens the returned context may use.</param>
-    /// <param name="excludeDirectories">Directory names to skip, or <see langword="null" /> for none.</param>
-    /// <param name="excludeFiles">File names to exclude, or <see langword="null" /> for none.</param>
-    /// <param name="excludePatterns">Glob patterns to exclude, or <see langword="null" /> for none.</param>
-    /// <param name="excludeTestProjects">When <see langword="true" />, skip all test project directories.</param>
-    /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
-    /// <returns>
-    ///     The packed context, prefixed with a one-line note naming the chosen strategy, or a descriptive error
-    ///     message when the directory is missing or fusion fails.
-    /// </returns>
-    [McpServerTool(Name = "fuse_ask", ReadOnly = true)]
-    [Description("Give a task and a token budget. Fuse picks the scoping strategy (skeleton for broad questions, focus for a named type, search otherwise) and packs the context to the budget. One call instead of survey-then-scope.")]
-    public static async Task<string> FuseAskAsync(
-        FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        [Description("Absolute or relative path to the source directory.")] string path,
-        [Description("What you need to do or find, in natural language.")] string task,
-        [Description("Maximum tokens the returned context may use.")] int tokenBudget = 20000,
-        [Description("Directory names to skip.")] string[]? excludeDirectories = null,
-        [Description("File names to exclude.")] string[]? excludeFiles = null,
-        [Description("Glob patterns to exclude.")] string[]? excludePatterns = null,
-        [Description("Exclude all test project directories.")] bool excludeTestProjects = false,
+    /// <param name="indexer">The semantic indexer.</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="cancellationToken">A token to cancel indexing.</param>
+    /// <returns>A summary of the index pass, or a descriptive error.</returns>
+    [McpServerTool(Name = "fuse_index", ReadOnly = false)]
+    [Description("Build or refresh the persistent semantic index for a .NET workspace. Run once before the read tools, or to pick up changes. Returns a summary (mode, files, projects, symbols, routes).")]
+    public static async Task<string> FuseIndexAsync(
+        SemanticIndexer indexer,
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(task))
-            return "Error: task must be a non-empty description of what you need.";
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
 
-        var budget = tokenBudget > 0 ? tokenBudget : 20000;
-        var plan = AskStrategySelector.Select(task, budget);
-
-        // Focus can fail when the named type is not in the collected set; fall back to search so a wrong guess
-        // degrades into a broader (still budgeted) result rather than an error.
-        var result = await RunAskPlanAsync(
-            orchestrator, templateRegistry, path, task, budget, plan,
-            excludeDirectories, excludeFiles, excludePatterns, excludeTestProjects, cancellationToken);
-
-        if (plan.Mode == AskMode.Focus && result.IsRecoverable)
-        {
-            plan = new AskPlan(AskMode.Search, null, plan.Depth);
-            result = await RunAskPlanAsync(
-                orchestrator, templateRegistry, path, task, budget, plan,
-                excludeDirectories, excludeFiles, excludePatterns, excludeTestProjects, cancellationToken);
-        }
-
-        var note = $"<!-- fuse_ask: strategy={plan.Mode.ToString().ToLowerInvariant()}" +
-                   (plan.Seed is not null ? $" seed=\"{plan.Seed}\"" : string.Empty) +
-                   $" budget={budget} -->\n";
-        return result.IsSuccess ? note + result.Content : result.Content;
+        await using var store = await OpenStoreAsync(root, cancellationToken);
+        var result = await indexer.IndexAsync(root, store, cancellationToken);
+        return $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects, " +
+               $"{result.SymbolCount} symbols, {result.ChunkCount} chunks, {result.RouteCount} routes.";
     }
 
-    private static Task<ToolResult> RunAskPlanAsync(
+    /// <summary>
+    ///     Prints a map of the indexed workspace (symbols, routes, counts).
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (used to build the index on first use).</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="detail">The detail to include: symbols, routes, or all.</param>
+    /// <param name="maxRows">The maximum rows per section.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The workspace map.</returns>
+    [McpServerTool(Name = "fuse_map", ReadOnly = true)]
+    [Description("Print a map of the workspace: indexed symbols, routes, and counts. The cheap first call to understand structure before fetching context.")]
+    public static async Task<string> FuseMapAsync(
+        SemanticIndexer indexer,
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("Detail to include: symbols, routes, or all. Default: all.")] string detail = "all",
+        [Description("Maximum rows per section.")] int maxRows = 200,
+        CancellationToken cancellationToken = default)
+    {
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var renderer = new WorkspaceMapRenderer(store);
+        return await renderer.RenderAsync(ParseDetail(detail), maxRows, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Exact lookup over the index: symbols by name, files by path, and chunks by full-text.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (used to build the index on first use).</param>
+    /// <param name="query">The name, path fragment, or text to find.</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="kind">Restrict to one kind: symbol, path, text, or all.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The matches grouped by kind.</returns>
+    [McpServerTool(Name = "fuse_find", ReadOnly = true)]
+    [Description("Exact lookup: find a symbol by name, a file by path fragment, or text by full-text search. Use instead of broad grep when the name or path is known.")]
+    public static async Task<string> FuseFindAsync(
+        SemanticIndexer indexer,
+        [Description("The name, path fragment, or text to find.")] string query,
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("Restrict to one kind: symbol, path, text, or all. Default: all.")] string kind = "all",
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return "Error: provide a query to find.";
+
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var normalizedKind = kind.Trim().ToLowerInvariant();
+        var builder = new StringBuilder();
+
+        if (normalizedKind is "all" or "symbol")
+        {
+            var symbols = await store.FindSymbolsByNameAsync(query, 50, cancellationToken);
+            builder.AppendLine($"symbols ({symbols.Count}):");
+            foreach (var symbol in symbols)
+                builder.AppendLine($"  {symbol.Kind} {symbol.FullyQualifiedName}  ({symbol.FilePath}:{symbol.StartLine})");
+        }
+
+        if (normalizedKind is "all" or "path")
+        {
+            var files = await store.FindFilesByPathAsync(query, 50, cancellationToken);
+            builder.AppendLine($"paths ({files.Count}):");
+            foreach (var file in files)
+                builder.AppendLine($"  {file.NormalizedPath}");
+        }
+
+        if (normalizedKind is "all" or "text")
+        {
+            var hits = await store.SearchAsync(new SearchQuery(query, 50), cancellationToken);
+            builder.AppendLine($"text ({hits.Count}):");
+            foreach (var hit in hits)
+                builder.AppendLine($"  {hit.Name ?? hit.Kind}  ({hit.FilePath}:{hit.StartLine})");
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    ///     Compacts a specific set of files (or raw content) without collecting a whole directory.
+    /// </summary>
+    /// <param name="orchestrator">The fusion orchestrator.</param>
+    /// <param name="templateRegistry">The project template registry.</param>
+    /// <param name="path">Base directory for resolving relative file paths.</param>
+    /// <param name="files">Explicit file paths to reduce.</param>
+    /// <param name="content">Raw content to reduce instead of files.</param>
+    /// <param name="extension">The extension selecting the reducer for content.</param>
+    /// <param name="level">The reduction level.</param>
+    /// <param name="maxTokens">The token ceiling, or zero for none.</param>
+    /// <param name="cancellationToken">A token to cancel the run.</param>
+    /// <returns>The reduced output, or a descriptive error.</returns>
+    [McpServerTool(Name = "fuse_reduce", ReadOnly = true)]
+    [Description("Compact a specific set of files (or raw content) by running Fuse's reduction, without collecting a whole directory. Pass `files` or `content` (+ `extension`).")]
+    public static Task<string> FuseReduceAsync(
         FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        string path,
-        string task,
-        int budget,
-        AskPlan plan,
-        string[]? excludeDirectories,
-        string[]? excludeFiles,
-        string[]? excludePatterns,
-        bool excludeTestProjects,
-        CancellationToken cancellationToken) =>
-        FuseToolHelpers.ExecuteDotNetResultAsync(
-            orchestrator,
-            templateRegistry,
-            path,
-            builder =>
-            {
-                builder.WithEmissionOptions(new EmissionOptions
-                {
-                    MaxTokens = budget,
-                    ShowTokenCount = false,
-                    IncludeManifest = true,
-                });
+        ProjectTemplateRegistry templateRegistry,
+        [Description("Base directory for resolving relative file paths. Ignored in content mode.")] string path = ".",
+        [Description("File paths to reduce, absolute or relative to path.")] string[]? files = null,
+        [Description("Raw content to reduce instead of files. Provide extension to select the reducer.")] string? content = null,
+        [Description("Extension that selects the reducer for content (for example .cs, .ts, .py). Defaults to .cs.")] string extension = ".cs",
+        [Description("Reduction level: none, standard, aggressive, skeleton, publicApi. Defaults to standard.")] ReductionLevel level = ReductionLevel.Standard,
+        [Description("Maximum tokens the reduced output may use, or 0 for no limit.")] int maxTokens = 0,
+        CancellationToken cancellationToken = default)
+    {
+        int? maxTokenLimit = maxTokens > 0 ? maxTokens : null;
 
-                builder.WithReductionOptions(new ReductionOptions(
-                    level: plan.Mode == AskMode.Skeleton ? ReductionLevel.Skeleton : ReductionLevel.Aggressive,
-                    enableRedaction: true));
+        if (!string.IsNullOrEmpty(content))
+            return ReduceRunner.ReduceContentAsync(orchestrator, templateRegistry, content, extension, level, maxTokenLimit, cancellationToken);
 
-                if (plan.Mode == AskMode.Focus && plan.Seed is not null)
-                    builder.WithFocusOptions(new FocusOptions(plan.Seed, plan.Depth));
-                else if (plan.Mode == AskMode.Search)
-                    builder.WithQueryOptions(new QueryOptions(task, 10, plan.Depth));
+        if (files is { Length: > 0 })
+            return ReduceRunner.ReduceFilesAsync(orchestrator, templateRegistry, path, files, level, maxTokenLimit, cancellationToken);
 
-                FuseToolHelpers.ApplyCommonFilters(
-                    builder,
-                    null, null, null,
-                    excludeDirectories, excludeFiles, excludePatterns,
-                    excludeTestProjects: excludeTestProjects);
-            },
-            trackTopTokenFiles: false,
-            cancellationToken);
+        return Task.FromResult("Error: provide either files (paths) or content to reduce.");
+    }
+
+    // Opens the index store for a workspace without indexing.
+    private static async Task<WorkspaceIndexStore> OpenStoreAsync(string root, CancellationToken cancellationToken)
+    {
+        var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+        var store = new WorkspaceIndexStore(databasePath);
+        await store.InitializeAsync(cancellationToken);
+        return store;
+    }
+
+    // Opens the store and builds the index on first use, so read tools work without an explicit fuse_index call.
+    private static async Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(path);
+        var store = await OpenStoreAsync(root, cancellationToken);
+        var state = await store.GetStateAsync(cancellationToken);
+        if (state.FileCount == 0)
+            await indexer.IndexAsync(root, store, cancellationToken);
+        return store;
+    }
+
+    private static MapDetail ParseDetail(string detail) => detail.Trim().ToLowerInvariant() switch
+    {
+        "symbols" => MapDetail.Symbols,
+        "routes" => MapDetail.Routes,
+        _ => MapDetail.All,
+    };
 }

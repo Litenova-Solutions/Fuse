@@ -1,0 +1,52 @@
+<!--
+fuse:semantic-context
+mode: context
+files: 3
+estimatedTokens: 66
+
+seeds:
+  - src/IOrderService.cs (exact-seed)
+
+semantic impact:
+  src/OrderService.cs [di-implementation] -> di_resolves_to (hop 1)
+  src/OrdersController.cs [consumer] <- di_injects (hop 1)
+-->
+<file path="src/IOrderService.cs" role="exact-seed" tier="Reduced" tokens="19">
+<!--
+included via:
+  seed: IOrderService
+-->
+namespace App;
+public interface IOrderService
+{
+int Create(int quantity);
+}
+</file>
+<file path="src/OrderService.cs" role="di-implementation" tier="Reduced" tokens="29">
+<!--
+included via:
+  seed: IOrderService
+  -> di_resolves_to (hop 1)
+-->
+namespace App;
+public class OrderService : IOrderService
+{
+public int Create(int quantity)
+{
+return quantity;
+}
+}
+</file>
+<file path="src/OrdersController.cs" role="consumer" tier="Skeleton" tokens="37">
+<!--
+included via:
+  seed: IOrderService
+  <- di_injects (hop 1)
+-->
+namespace App;
+public class OrdersController
+{
+    private readonly IOrderService _orders;
+    public OrdersController(IOrderService orders);
+}
+</file>

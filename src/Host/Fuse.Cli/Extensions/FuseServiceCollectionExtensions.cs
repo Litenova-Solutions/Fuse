@@ -1,8 +1,14 @@
 using Fuse.Fusion.Extensions;
+using Fuse.Indexing;
 using Fuse.Plugins.Formats.Web.Extensions;
 using Fuse.Plugins.Languages.CSharp.Extensions;
 using Fuse.Plugins.Languages.CSharp.Roslyn.Extensions;
 using Fuse.Plugins.Rerank.Onnx;
+using Fuse.Cli.Services;
+using Fuse.Context;
+using Fuse.Retrieval;
+using Fuse.Semantics;
+using Fuse.Semantics.Analyzers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Cli.Extensions;
@@ -30,6 +36,30 @@ public static class FuseServiceCollectionExtensions
         // Registers the dense reranker only when its model is cached; absent a model the query path stays
         // lexical, so the no-model floor is preserved.
         services.AddOnnxDenseReranker();
+        // Registers the text embedder only when its model is cached, so the indexer persists per-chunk vectors
+        // and the dense candidate channel turns on; absent a model, indexing and retrieval stay lexical.
+        services.AddOnnxTextEmbedder();
+        services.AddSemanticIndexing();
+        return services;
+    }
+
+    // Registers the V3 semantic indexing components. The workspace index store is created per command with a
+    // resolved database path (it is not a singleton), so only the stateless extractors and the file scanner
+    // are registered here.
+    private static IServiceCollection AddSemanticIndexing(this IServiceCollection services)
+    {
+        services.AddSingleton<FileHashService>();
+        services.AddSingleton<SyntaxSymbolExtractor>();
+        services.AddSingleton<SyntaxRouteExtractor>();
+        services.AddSingleton<SemanticSymbolExtractor>();
+        services.AddSingleton<DotNetWorkspaceDiscoverer>();
+        // Constructed via a factory because the optional ILogger constructor parameter is not registered.
+        services.AddSingleton(_ => new RoslynWorkspaceLoader());
+        services.AddSingleton(_ => SemanticAnalysisRunner.CreateDefault());
+        services.AddTransient<WorkspaceFileScanner>();
+        services.AddTransient<SemanticIndexer>();
+        services.AddSingleton<IChangeSource, GitChangeSource>();
+        services.AddSingleton<ContextSessionStore>();
         return services;
     }
 }

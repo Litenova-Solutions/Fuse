@@ -1,230 +1,161 @@
-using Fuse.Fusion.Scoping;
-using Fuse.Collection.Models;
-using Fuse.Emission.Models;
-using Fuse.Fusion;
-using Fuse.Plugins.Abstractions.Options;
+using System.ComponentModel;
+using Fuse.Collection.FileSystem;
+using Fuse.Context;
+using Fuse.Indexing;
+using Fuse.Reduction;
+using Fuse.Reduction.Caching;
+using Fuse.Retrieval;
+using Fuse.Semantics;
 using ModelContextProtocol.Server;
 
 namespace Fuse.Cli.Mcp;
 
 /// <summary>
-///     MCP resource definitions for Fuse, exposed to AI agents through the Model Context Protocol server.
+///     MCP resource definitions for Fuse V3, exposed to AI agents through the Model Context Protocol server.
 /// </summary>
 /// <remarks>
-///     Each method backs an MCP resource addressed by the <c>fuse://</c> URI templates declared on
-///     <see cref="McpServerResourceAttribute" />. The <c>{template}</c>, <c>{path}</c>, <c>{seed}</c>,
-///     <c>{query}</c>, and <c>{since}</c> URI segments bind to the matching method parameters. All resources run
-///     fusion in memory (no files are written) and return errors as descriptive strings rather than throwing.
-///     The scoped resources mirror the equivalent <see cref="FuseTools" /> tools with fixed default options.
+///     Each method backs an MCP resource addressed by a <c>fuse://</c> URI template. The resources mirror the
+///     read workflows of the equivalent <see cref="FuseTools" /> tools over the persistent semantic index: the
+///     index is built on first use, no files are written, and errors are returned as descriptive strings rather
+///     than thrown. Use the tools for full control; the resources are the fixed-default addressable form.
 /// </remarks>
 [McpServerResourceType]
 public sealed class FuseResources
 {
     /// <summary>
-    ///     Reads fused content for a given template and path using default options.
+    ///     Reads a workspace map: indexed symbols, routes, and counts. The cheap first call.
     /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
-    /// <param name="templateRegistry">Registry that resolves template defaults.</param>
-    /// <param name="template">Template name from the URI (<c>dotnet</c>, <c>python</c>, <c>generic</c>, <c>azuredevopswiki</c>).</param>
-    /// <param name="path">Relative path to the directory to fuse.</param>
-    /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
-    /// <returns>
-    ///     The fused content as a single string, or a descriptive error message when the directory is missing,
-    ///     the template name is unknown, or fusion fails.
-    /// </returns>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="path">Relative path to the workspace directory.</param>
+    /// <param name="cancellationToken">Token used to cancel the read.</param>
+    /// <returns>The workspace map, or a descriptive error message when the directory is missing.</returns>
     [McpServerResource(
-        UriTemplate = "fuse://{template}/{path}",
-        Name = "Fused Codebase Context",
+        UriTemplate = "fuse://map/{path}",
+        Name = "Workspace Map",
         MimeType = "text/plain")]
-    [System.ComponentModel.Description("Returns the optimized, minified content of a codebase directory.")]
-    public static async Task<string> ReadFuseResourceAsync(
-        FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        [System.ComponentModel.Description("The project template (dotnet, python, generic, azuredevopswiki).")] string template,
-        [System.ComponentModel.Description("Relative path to the directory to fuse.")] string path,
-        CancellationToken cancellationToken = default) =>
-        await ExecuteFusionAsync(orchestrator, templateRegistry, template, path, _ => { }, cancellationToken);
-
-    /// <summary>
-    ///     Reads a skeleton overview of a .NET codebase. Equivalent to <see cref="FuseTools.FuseSkeletonAsync" />.
-    /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
-    /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
-    /// <param name="path">Path to the directory to fuse.</param>
-    /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
-    /// <returns>
-    ///     The structural skeleton (signatures only) as a single string, or a descriptive error message when the
-    ///     directory is missing or fusion fails.
-    /// </returns>
-    [McpServerResource(
-        UriTemplate = "fuse://skeleton/{path}",
-        Name = "Skeleton Codebase Overview",
-        MimeType = "text/plain")]
-    [System.ComponentModel.Description("Returns a structural skeleton (signatures only) for a .NET codebase. Equivalent to fuse_skeleton.")]
-    public static Task<string> ReadSkeletonResourceAsync(
-        FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        [System.ComponentModel.Description("Path to the directory to fuse.")] string path,
-        CancellationToken cancellationToken = default) =>
-        ExecuteFusionAsync(
-            orchestrator,
-            templateRegistry,
-            "dotnet",
-            path,
-            builder => builder
-                .WithReductionOptions(new ReductionOptions(
-                    level: ReductionLevel.Skeleton,
-                    enableRedaction: true)),
-            cancellationToken);
-
-    /// <summary>
-    ///     Reads focus-scoped fused content for a .NET codebase. Equivalent to <see cref="FuseTools.FuseFocusAsync" />
-    ///     with a dependency depth of one.
-    /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
-    /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
-    /// <param name="path">Path to the directory to fuse.</param>
-    /// <param name="seed">Type name, filename, or path used as the focus seed.</param>
-    /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
-    /// <returns>
-    ///     The focus-scoped fused content as a single string, or a descriptive error message when the directory
-    ///     is missing or fusion fails.
-    /// </returns>
-    [McpServerResource(
-        UriTemplate = "fuse://focus/{path}/{seed}",
-        Name = "Focus-Scoped Codebase Context",
-        MimeType = "text/plain")]
-    [System.ComponentModel.Description("Returns fused content scoped to a type, file, or path plus dependencies. Equivalent to fuse_focus.")]
-    public static Task<string> ReadFocusResourceAsync(
-        FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        [System.ComponentModel.Description("Path to the directory to fuse.")] string path,
-        [System.ComponentModel.Description("Type name, filename, or path seed.")] string seed,
-        CancellationToken cancellationToken = default) =>
-        ExecuteFusionAsync(
-            orchestrator,
-            templateRegistry,
-            "dotnet",
-            path,
-            builder => builder.WithFocusOptions(new FocusOptions(seed, Depth: 1)),
-            cancellationToken);
-
-    /// <summary>
-    ///     Reads query-scoped fused content for a .NET codebase. Equivalent to <see cref="FuseTools.FuseSearchAsync" />
-    ///     with the top ten files and a dependency depth of one.
-    /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
-    /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
-    /// <param name="path">Path to the directory to fuse.</param>
-    /// <param name="query">BM25 query string used to rank files.</param>
-    /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
-    /// <returns>
-    ///     The query-scoped fused content as a single string, or a descriptive error message when the directory
-    ///     is missing or fusion fails.
-    /// </returns>
-    [McpServerResource(
-        UriTemplate = "fuse://search/{path}/{query}",
-        Name = "Query-Scoped Codebase Context",
-        MimeType = "text/plain")]
-    [System.ComponentModel.Description("Returns BM25 query-scoped fused content. Equivalent to fuse_search.")]
-    public static Task<string> ReadSearchResourceAsync(
-        FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        [System.ComponentModel.Description("Path to the directory to fuse.")] string path,
-        [System.ComponentModel.Description("BM25 query string.")] string query,
-        CancellationToken cancellationToken = default) =>
-        ExecuteFusionAsync(
-            orchestrator,
-            templateRegistry,
-            "dotnet",
-            path,
-            builder => builder.WithQueryOptions(new QueryOptions(query, TopFiles: 10, Depth: 1)),
-            cancellationToken);
-
-    /// <summary>
-    ///     Reads change-scoped fused content for a .NET codebase. Equivalent to <see cref="FuseTools.FuseChangesAsync" />
-    ///     with dependents included.
-    /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator that runs the pipeline.</param>
-    /// <param name="templateRegistry">Registry that resolves the <c>dotnet</c> template defaults.</param>
-    /// <param name="path">Path to the directory to fuse.</param>
-    /// <param name="since">Git ref (branch, commit, or <c>HEAD~N</c>) to diff against.</param>
-    /// <param name="cancellationToken">Token used to cancel the fusion run.</param>
-    /// <returns>
-    ///     The change-scoped fused content as a single string, or a descriptive error message when the directory
-    ///     is missing or fusion fails.
-    /// </returns>
-    [McpServerResource(
-        UriTemplate = "fuse://changes/{path}/{since}",
-        Name = "Change-Scoped Codebase Context",
-        MimeType = "text/plain")]
-    [System.ComponentModel.Description("Returns fused content for files changed since a git ref. Equivalent to fuse_changes.")]
-    public static Task<string> ReadChangesResourceAsync(
-        FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        [System.ComponentModel.Description("Path to the directory to fuse.")] string path,
-        [System.ComponentModel.Description("Git ref to diff against (branch, commit, HEAD~N).")] string since,
-        CancellationToken cancellationToken = default) =>
-        ExecuteFusionAsync(
-            orchestrator,
-            templateRegistry,
-            "dotnet",
-            path,
-            builder => builder.WithChangeOptions(new ChangeOptions(since, IncludeDependents: true)),
-            cancellationToken);
-
-    private static async Task<string> ExecuteFusionAsync(
-        FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        string template,
-        string path,
-        Action<FusionRequestBuilder> configure,
-        CancellationToken cancellationToken)
+    [Description("Returns a map of the indexed workspace (symbols, routes, counts). Mirrors fuse_map.")]
+    public static async Task<string> ReadMapResourceAsync(
+        SemanticIndexer indexer,
+        [Description("Relative path to the workspace directory.")] string path,
+        CancellationToken cancellationToken = default)
     {
-        var resolvedPath = Path.GetFullPath(path);
+        if (!Directory.Exists(Path.GetFullPath(path)))
+            return $"Error: Directory not found: {Path.GetFullPath(path)}";
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var renderer = new WorkspaceMapRenderer(store);
+        return await renderer.RenderAsync(MapDetail.All, maxRows: 200, cancellationToken);
+    }
 
-        if (!Directory.Exists(resolvedPath))
-            return $"Error: Directory not found: {resolvedPath}";
+    /// <summary>
+    ///     Reads ranked candidate files and symbols for a task, with no source bodies. Mirrors fuse_localize.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="changeSource">The change source (unused for a title-only query, passed for parity).</param>
+    /// <param name="path">Relative path to the workspace directory.</param>
+    /// <param name="query">The task or query to localize.</param>
+    /// <param name="cancellationToken">Token used to cancel the read.</param>
+    /// <returns>The ranked candidates, or a descriptive error message when the directory is missing.</returns>
+    [McpServerResource(
+        UriTemplate = "fuse://localize/{path}/{query}",
+        Name = "Localized Candidates",
+        MimeType = "text/plain")]
+    [Description("Returns ranked candidate files and symbols for a task, no source bodies. Mirrors fuse_localize.")]
+    public static async Task<string> ReadLocalizeResourceAsync(
+        SemanticIndexer indexer,
+        IChangeSource changeSource,
+        [Description("Relative path to the workspace directory.")] string path,
+        [Description("The task or query to localize.")] string query,
+        CancellationToken cancellationToken = default)
+    {
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var engine = new SemanticRetrievalEngine(store, changeSource);
+        var result = await engine.LocalizeAsync(new LocalizationRequest(root, Query: query), cancellationToken);
+        if (result.Candidates.Count == 0)
+            return "No candidates found for the query.";
+        return string.Join("\n", result.Candidates.Select(c =>
+            $"{c.Score:F2}  {c.Path}  [{c.Kind}]  ~{c.EstimatedTokens} tok  {string.Join("; ", c.Reasons)}"));
+    }
 
-        ProjectTemplate? parsedTemplate = null;
-        if (!string.Equals(template, "generic", StringComparison.OrdinalIgnoreCase) &&
-            !string.IsNullOrWhiteSpace(template))
-        {
-            if (!Enum.TryParse<ProjectTemplate>(template, ignoreCase: true, out var t))
-            {
-                return $"Error: Unknown template '{template}'. Valid values: generic, {string.Join(", ", Enum.GetNames<ProjectTemplate>())}";
-            }
+    /// <summary>
+    ///     Reads planned and emitted context for a single named seed (symbol, service, request, or config).
+    ///     Mirrors fuse_context.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="reductionPipeline">The reduction pipeline used to render bodies.</param>
+    /// <param name="path">Relative path to the workspace directory.</param>
+    /// <param name="seed">A symbol, service, request, or config-section seed.</param>
+    /// <param name="cancellationToken">Token used to cancel the read.</param>
+    /// <returns>The emitted context payload, or a descriptive error message when the directory is missing.</returns>
+    [McpServerResource(
+        UriTemplate = "fuse://context/{path}/{seed}",
+        Name = "Seeded Context",
+        MimeType = "text/plain")]
+    [Description("Returns planned and emitted context (source bodies, manifest, provenance) for a named seed. Mirrors fuse_context.")]
+    public static async Task<string> ReadContextResourceAsync(
+        SemanticIndexer indexer,
+        ContentReductionPipeline reductionPipeline,
+        [Description("Relative path to the workspace directory.")] string path,
+        [Description("A symbol, service, request, or config-section seed.")] string seed,
+        CancellationToken cancellationToken = default)
+    {
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var engine = new SemanticRetrievalEngine(store);
+        var plan = await engine.PlanContextAsync(
+            new ContextRequest(root, [new ContextSeed(ContextSeedKind.Symbol, seed)]), cancellationToken);
+        var renderer = new SemanticContextRenderer(reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
+        var rendered = await renderer.RenderAsync(plan, root, cancellationToken);
+        return SemanticContextEmitter.Emit(plan, rendered, ContextOutputFormat.Xml, root);
+    }
 
-            parsedTemplate = t;
-        }
+    /// <summary>
+    ///     Reads the semantic impact of a change since a git base ref, with the packed context. Mirrors fuse_review.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="reductionPipeline">The reduction pipeline used to render bodies.</param>
+    /// <param name="changeSource">The change source for resolving the git base ref.</param>
+    /// <param name="path">Relative path to the workspace directory.</param>
+    /// <param name="since">Git ref (branch, commit, or <c>HEAD~N</c>) to diff against.</param>
+    /// <param name="cancellationToken">Token used to cancel the read.</param>
+    /// <returns>The review payload, or a descriptive error message when the directory is missing.</returns>
+    [McpServerResource(
+        UriTemplate = "fuse://review/{path}/{since}",
+        Name = "Change Review Context",
+        MimeType = "text/plain")]
+    [Description("Returns the semantic impact of a change since a git ref (changed files, blast radius, packed context). Mirrors fuse_review.")]
+    public static async Task<string> ReadReviewResourceAsync(
+        SemanticIndexer indexer,
+        ContentReductionPipeline reductionPipeline,
+        IChangeSource changeSource,
+        [Description("Relative path to the workspace directory.")] string path,
+        [Description("Git ref to diff against (branch, commit, HEAD~N).")] string since,
+        CancellationToken cancellationToken = default)
+    {
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var engine = new SemanticRetrievalEngine(store, changeSource);
+        var plan = await engine.ReviewAsync(new ReviewRequest(root, since), cancellationToken);
+        var renderer = new SemanticContextRenderer(reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
+        var rendered = await renderer.RenderAsync(plan, root, cancellationToken);
+        return SemanticContextEmitter.Emit(plan, rendered, ContextOutputFormat.Xml, root, since);
+    }
 
-        try
-        {
-            var builder = new FusionRequestBuilder(templateRegistry)
-                .WithSourceDirectory(resolvedPath)
-                .WithInMemory(true)
-                .WithEmissionOptions(new EmissionOptions
-                {
-                    ShowTokenCount = false,
-                    IncludeManifest = true
-                })
-                .WithReductionOptions(new ReductionOptions(enableRedaction: true));
-
-            if (parsedTemplate.HasValue)
-                builder.WithTemplate(parsedTemplate.Value);
-
-            configure(builder);
-
-            var result = await orchestrator.FuseAsync(builder.Build(), cancellationToken);
-
-            if (string.IsNullOrEmpty(result.InMemoryContent))
-                return "No files found matching the criteria.";
-
-            return result.InMemoryContent;
-        }
-        catch (Exception ex)
-        {
-            return $"Error during fusion: {ex.Message}";
-        }
+    // Opens the store and builds the index on first use, so a resource works without an explicit index call.
+    private static async Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(path);
+        var store = new WorkspaceIndexStore(FuseStorePaths.ResolveDatabasePath(root));
+        await store.InitializeAsync(cancellationToken);
+        var state = await store.GetStateAsync(cancellationToken);
+        if (state.FileCount == 0)
+            await indexer.IndexAsync(root, store, cancellationToken);
+        return store;
     }
 }

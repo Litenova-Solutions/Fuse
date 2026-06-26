@@ -64,7 +64,7 @@ Phase 9 - MCP rewrite
 
 Phase 10 - Tests, docs, benchmarks
 - [x] P10.1 Tests overhaul complete (Section 16.5 definition of done)
-- [ ] P10.2 Docs overhaul complete (Section 17.6 definition of done)
+- [x] P10.2 Docs overhaul complete (Section 17.6 definition of done)
 - [~] P10.3 fuse eval + suites A-D done and committed (semantics/review/localize/agent results); offline token/fidelity PowerShell-layer C# port still remaining
 - [x] P10.4 Regenerate benchmark figure; resync AGENTS.md and docs numbers (18.12, 18.13)
 
@@ -1831,5 +1831,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. PNG rasterization needed the site's `sharp` (CommonJS require by absolute path) since no SVG rasterizer is on PATH; documented for reproducibility.
 - Lessons: 18.13 reframes the headline away from tokens saved, so the honest move was to lead with the deterministic resolution and review numbers and report localization as the weak floor, rather than carry forward old-engine percentages that were never re-measured on V3.
 - Time: ~50 min (incl. a parallel docs subagent for the two benchmark pages)
+
+### P10.2 Docs overhaul complete (17.6 DoD) - 2026-06-26
+- Status: done
+- Result: Rewrote the full narrative surface to the V3 warm-semantic-index model: 20 user-facing pages (start, concepts, scenarios, index, drafted by a constrained subagent and reviewed), `reference/options.mdx` (V3 per-command flags), `reference/mcp-resources.mdx` + `FuseResources` (V3 resources map/localize/context/review backed by the engine), the five internals pages (pipeline, retrieval, store, operator, capability-model), and the templates/pattern-detector/extending pages (reframed: those are internal capabilities with no V3 command). The measured-number resync landed in P10.4 (benchmarks.mdx/performance.mdx). Every removed tool/command name (fuse_toc/skeleton/focus/search/changes/ask/dotnet/generic/explain, fuse ask/dotnet/wiki/verify/explain) is gone from the docs except the historical changelog/roadmap. `meta.json` sidebars list page slugs that all still exist, so no sidebar change was needed.
+- Verification: every changed page scanned byte-level for non-ASCII (clean, no em dashes/smart quotes); `npm run build` in `site/` succeeds (50 pages, exit 0) after fixing three frontmatter `description:` fields that contained unquoted colons (a YAML mapping error the subagent introduced). `.next` build output stays gitignored. .NET build/test/format unaffected and green (FuseResources rewrite verified: Fuse.Cli.Tests 55 pass, format clean).
+- Blockers/issues: None. The subagent's unquoted-colon frontmatter broke the first build; caught by running `npm run build` and fixed by quoting the values.
+- Lessons: Always run the site build after a bulk MDX rewrite; a colon in a frontmatter scalar is the classic break. Delegating prose drafting to a constrained subagent (exact V3 surface, ASCII rule, do-not-touch list) plus a reviewing pass is an efficient split for a 20-page rewrite.
+- Time: ~2 h (much of it overlapped with the benchmark corpus runs)
 
 

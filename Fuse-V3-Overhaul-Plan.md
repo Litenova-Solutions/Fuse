@@ -13,7 +13,7 @@ Phase 1 - SQLite schema and store
 - [x] P1.1 WorkspaceIndexStore + schema creation/migration (drop-and-rebuild below version 10)
 - [x] P1.2 Table models + transactional upsert/delete; reuse FuseStorePaths and WAL patterns
 - [x] P1.3 FTS5 indexing + search
-- [ ] P1.4 Fuse.Indexing.Tests: insert files/symbols/chunks, FTS finds OrderService, reindex changed file, edges persist
+- [x] P1.4 Fuse.Indexing.Tests: insert files/symbols/chunks, FTS finds OrderService, reindex changed file, edges persist
 
 Phase 2 - Syntax-level semantic batch
 - [ ] P2.1 File discovery + hash records (reuse FileCollectionPipeline)
@@ -1476,5 +1476,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. FTS5 is present in `SQLitePCLRaw.bundle_e_sqlite3`, so the availability test passes locally; the publish smoke test (P11.1) must confirm it under self-contained publish.
 - Lessons: FTS5 standalone tables do not cascade and must be maintained manually on upsert and delete. The `bm25()` weight list needs one entry per declared column including the UNINDEXED `chunk_id` (weight 0). `bm25()` is lower-is-better, so scores are negated. Dropping a virtual table removes its shadow tables, so the migrator must drop virtual tables before the generic `DROP ... IF EXISTS` sweep.
 - Time: ~25 min
+
+### P1.4 Fuse.Indexing.Tests end-to-end Phase 1 - 2026-06-26 09:45
+- Status: done
+- Result: Added `WorkspaceIndexIntegrationTests` (2 tests): a full Phase 1 flow over a 2-file OrderService workspace (insert files/symbols/chunks/nodes/edges, FTS finds OrderService, edges persist, reopen the store and confirm data survives disposal, reindex a changed file and confirm symbols/hash replaced) and a WAL journal-mode assertion. Removed the Phase 0 `PlaceholderTests`. Phase 1 done criteria all covered across P1.2/P1.3/P1.4 tests: DB created, FTS works, upserts transactional, store disposes safely, WAL enabled. New solution test total 635 (Fuse.Indexing.Tests now 15: placeholder -1, integration +2).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 635 passed, 0 failed; `dotnet format Fuse.slnx --verify-no-changes` clean.
+- Blockers/issues: None.
+- Lessons: Reopening a `WorkspaceIndexStore` on an existing v10 DB correctly skips migration (version already at target) and re-creates the FTS table idempotently (`IF NOT EXISTS`), so persistence across disposal works without a rebuild.
+- Time: ~15 min
 
 

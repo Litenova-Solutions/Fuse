@@ -162,15 +162,15 @@ def compose():
         "40% fewer tokens than the raw codebase, ~100% of the public API kept. About 1.7x less to read.")
     y = card(
         y, "02", "Finding the Files a Change Needs",
-        "Recall within a 50,000-token budget across 90 real merged pull requests.",
+        "Recall within a 50,000-token budget across 108 real merged pull requests.",
         ["Higher recall means the agent gets the files a change needs the first time, instead of re-querying.",
          "Every Fuse scoping mode clears the grep baseline; git change-scoping reaches 89%."],
-        [("grep", 34, "34%", "base"),
+        [("grep", 38, "38%", "base"),
          ("Fuse query", 48, "48%", "fuse"),
-         ("Fuse focus", 78, "78%", "fuse"),
+         ("Fuse focus", 74, "74%", "fuse"),
          ("Fuse changes", 89, "89%", "fuse")],
         100,
-        "Up to 2.6x more of the needed files found than a grep baseline (89% vs 34%).")
+        "Up to 2.3x more of the needed files found than a grep baseline (89% vs 38%).")
     y = card(
         y, "03", "Method Signatures Kept in Skeleton Mode",
         "Public methods preserved when Fuse emits signatures only. Newtonsoft.Json.",
@@ -183,23 +183,34 @@ def compose():
         fuse=TEAL, fuse2=TEAL2)
     y = card(
         y, "04", "Round-Trips to Gather a Change's Files",
-        "Read round-trips to assemble the files a change needs, over 90 real merged pull requests.",
+        "Read round-trips to assemble the files a change needs, over 108 real merged pull requests.",
         ["An agent that greps and opens files reads them one at a time, and each open is a separate round-trip.",
          "Fuse returns the scoped neighborhood in one call. The baseline is a lower bound: at least one read per file the change touches, and more while searching."],
-        [("grep, open, re-open", 6.9, ">= 7 calls (lower bound)", "base"),
+        [("grep, open, re-open", 6.8, ">= 7 calls (lower bound)", "base"),
          ("Fuse, one scoped call", 1, "1 call", "fuse")],
         8,
-        "One scoped call instead of at least ~7 read round-trips, one per file the change touches (measured over 90 PRs). A generic packer also takes one call; against it the Fuse win is tokens, below.")
+        "One scoped call instead of at least ~7 read round-trips, one per file the change touches (measured over 108 PRs). A generic packer also takes one call; against it the Fuse win is tokens, below.")
     y = card(
         y, "05", "Tokens for That Same Context",
-        "Input tokens to acquire those files in one call, 90 pull requests at a 50,000-token budget.",
+        "Input tokens to acquire those files in one call, 108 pull requests at a 50,000-token budget.",
         ["A generic packer dumps the whole repository; Fuse sends the scoped, reduced set the task needs.",
          "Read Fuse's tokens with its recall: one scoped query call reaches 49% of the changed files, and 91% with a git base."],
-        [("Read repo blind", 409154, "409K tokens", "base"),
-         ("Repomix, one dump", 424511, "425K tokens", "base"),
-         ("Fuse --query", 36990, "37K tokens", "fuse")],
-        430000,
-        "About 11x fewer tokens than the generic packer at the same one call (37K vs 425K), recall 49% (measured, query mode).")
+        [("Read repo blind", 348147, "348K tokens", "base"),
+         ("Repomix, one dump", 363039, "363K tokens", "base"),
+         ("Fuse --query", 31978, "32K tokens", "fuse")],
+        370000,
+        "About 11x fewer tokens than the generic packer at the same one call (32K vs 363K), recall 49% (measured, query mode).")
+    y = card(
+        y, "06", "Against Offline Peer Scopers",
+        "Recall of a change's files against two offline .NET peers, 12 pull requests on the same ground truth.",
+        ["The level-field test: tools that do the same job, indexing a repo and returning the relevant code.",
+         "Recall is the comparable axis. CodeGraph is a tree-sitter graph; coa-codesearch is a Lucene .NET index."],
+        [("CodeGraph (graph)", 17, "17%", "base"),
+         ("coa-codesearch (Lucene)", 59, "59%", "base"),
+         ("Fuse (Roslyn)", 60, "60%", "fuse")],
+        100,
+        "Fuse ties the Lucene peer on aggregate recall (60% vs 59%) and leads it on C# structure (Newtonsoft.Json, FluentValidation); the graph peer trails at 17%. Reported where Fuse loses too.",
+        fuse=TEAL, fuse2=TEAL2)
     return y
 
 total = compose()
@@ -210,7 +221,7 @@ head = [
 ]
 foot = [
     f'<text x="{PAD}" y="{H-20}" font-family="{MONO}" font-size="11" fill="{FAINT}">'
-    f'github.com/Litenova-Solutions/Fuse  .  MIT  .  o200k_base tokens  .  all five sections reproducible via tests/benchmarks</text>',
+    f'github.com/Litenova-Solutions/Fuse  .  MIT  .  o200k_base tokens  .  all six sections reproducible via tests/benchmarks</text>',
     "</svg>",
 ]
 path = sys.argv[1] if len(sys.argv) > 1 else "fuse-benchmarks.svg"

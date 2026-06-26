@@ -16,6 +16,7 @@ public sealed class SemanticRetrievalEngine
     private const double ExpansionThreshold = 0.10;
 
     private readonly IWorkspaceIndexStore _store;
+    private readonly IChangeSource? _changeSource;
     private readonly CandidateGenerator _candidateGenerator;
     private readonly CandidateScorer _scorer;
     private readonly GraphExpansionEngine _expansion;
@@ -28,6 +29,7 @@ public sealed class SemanticRetrievalEngine
     public SemanticRetrievalEngine(IWorkspaceIndexStore store, IChangeSource? changeSource = null)
     {
         _store = store;
+        _changeSource = changeSource;
         _candidateGenerator = CandidateGenerator.CreateDefault(store, changeSource);
         _scorer = new CandidateScorer();
         _expansion = new GraphExpansionEngine(store, new EdgeWeightProvider());
@@ -68,42 +70,103 @@ public sealed class SemanticRetrievalEngine
     public async Task<ContextPlan> PlanContextAsync(ContextRequest request, CancellationToken cancellationToken)
     {
         var seedCandidates = await BuildSeedCandidatesAsync(request.Seeds, cancellationToken);
-        var scoredSeeds = _scorer.Score(seedCandidates);
-        var expanded = await _expansion.ExpandAsync(scoredSeeds, request.Depth, ExpansionThreshold, cancellationToken);
+        return await BuildPlanAsync(
+            "context", seedCandidates, changedPaths: null, request.Depth, request.MaxTokens,
+            request.RenderMode, request.IncludeTests, request.IncludeConfig, [], cancellationToken);
+    }
 
-        // Collapse nodes to files; the best-scoring node for a file decides its role and provenance.
+    /// <summary>
+    ///     Builds a review plan: changed files are must-keep seeds, and the semantic blast radius (callers, DI
+    ///     consumers, route handlers, request handlers, options consumers, tests) is expanded around them.
+    /// </summary>
+    /// <param name="request">The review request.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The review context plan; changed files carry the role <c>changed</c>.</returns>
+    public async Task<ContextPlan> ReviewAsync(ReviewRequest request, CancellationToken cancellationToken)
+    {
+        if (_changeSource is null)
+            return new ContextPlan("review", [], [], 0, ["No change source available; review requires git."]);
+
+        IReadOnlyList<string> changed;
+        try
+        {
+            changed = await _changeSource.GetChangedFilesAsync(request.RootDirectory, request.ChangedSince, cancellationToken);
+        }
+        catch (ChangeSourceException ex)
+        {
+            return new ContextPlan("review", [], [], 0, [ex.Message]);
+        }
+
+        var changedSet = changed.Select(p => p.Replace('\\', '/')).ToHashSet(StringComparer.Ordinal);
+        var seeds = new List<CandidateNode>();
+        foreach (var path in changedSet)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // Keep the file itself (handles files with no graph nodes, for example config json), and seed every
+            // node declared in the changed file so the blast radius expands from each changed symbol.
+            seeds.Add(new CandidateNode(string.Empty, path, "file", 1.0, CandidateSource.DiffChangedFile, ["changed file"], 0));
+            foreach (var node in await _store.GetNodesByFileAsync(path, cancellationToken))
+                seeds.Add(new CandidateNode(node.NodeId, node.FilePath ?? path, node.Kind, 1.0, CandidateSource.DiffChangedFile, ["changed symbol"], 0));
+        }
+
+        var warnings = new List<string>();
+        if (changedSet.Count == 0)
+            warnings.Add("No changed files since " + request.ChangedSince + ".");
+
+        return await BuildPlanAsync(
+            "review", seeds, changedSet, request.Depth, request.MaxTokens,
+            ContextRenderMode.Mixed, request.IncludeTests, request.IncludeConfig, warnings, cancellationToken);
+    }
+
+    // Shared planner: score seeds, expand the graph, collapse to files, assign role and render tier, and pack
+    // under the token budget. When changedPaths is supplied, files in that set are labeled "changed".
+    private async Task<ContextPlan> BuildPlanAsync(
+        string mode,
+        IReadOnlyList<CandidateNode> seedCandidates,
+        IReadOnlySet<string>? changedPaths,
+        int depth,
+        int? maxTokens,
+        ContextRenderMode renderMode,
+        bool includeTests,
+        bool includeConfig,
+        List<string> warnings,
+        CancellationToken cancellationToken)
+    {
+        var scoredSeeds = _scorer.Score(seedCandidates);
+        var expanded = await _expansion.ExpandAsync(scoredSeeds, depth, ExpansionThreshold, cancellationToken);
+
         var byFile = expanded
             .Where(n => !string.IsNullOrEmpty(n.FilePath))
             .GroupBy(n => n.FilePath!, StringComparer.Ordinal);
 
         var items = new List<ContextPlanItem>();
-        var warnings = new List<string>();
         foreach (var group in byFile)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var best = group.OrderByDescending(n => n.Score).First();
-            var role = RoleFor(best);
-            if (role == "test" && !request.IncludeTests)
+            var role = changedPaths?.Contains(group.Key) == true ? "changed" : RoleFor(best);
+            if (role == "test" && !includeTests)
                 continue;
-            if (role == "config" && !request.IncludeConfig)
+            if (role == "config" && !includeConfig)
                 continue;
 
+            var mustKeep = group.Any(n => n.MustKeep);
             var tokens = await _store.GetFileTokenEstimateAsync(group.Key, cancellationToken);
             items.Add(new ContextPlanItem(
                 Path: group.Key,
                 NodeId: string.IsNullOrEmpty(best.NodeId) ? null : best.NodeId,
                 Role: role,
-                Tier: TierFor(role, request.RenderMode),
+                Tier: TierFor(role, renderMode),
                 Score: best.Score,
                 EstimatedTokens: tokens,
-                MustKeep: group.Any(n => n.MustKeep),
+                MustKeep: mustKeep,
                 Reasons: best.Provenance,
                 ProvenanceChain: best.Provenance));
         }
 
-        var packed = Pack(items, request.MaxTokens, warnings);
+        var packed = Pack(items, maxTokens, warnings);
         var estimated = packed.Sum(i => i.EstimatedTokens);
-        return new ContextPlan("context", packed, [], estimated, warnings);
+        return new ContextPlan(mode, packed, [], estimated, warnings);
     }
 
     private async Task<List<CandidateNode>> BuildSeedCandidatesAsync(IReadOnlyList<ContextSeed> seeds, CancellationToken cancellationToken)
@@ -216,7 +279,7 @@ public sealed class SemanticRetrievalEngine
         ContextRenderMode.PublicApi => RenderTier.PublicApi,
         _ => role switch
         {
-            "exact-seed" or "route-handler" or "request-handler" or "di-implementation" => RenderTier.Reduced,
+            "changed" or "exact-seed" or "route-handler" or "request-handler" or "di-implementation" => RenderTier.Reduced,
             "config" => RenderTier.FullSource,
             "consumer" or "test" or "dependency" => RenderTier.Skeleton,
             _ => RenderTier.Skeleton,

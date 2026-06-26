@@ -45,7 +45,7 @@ Phase 5 - Retrieval engine v2
 
 Phase 6 - Review/change impact
 - [x] P6.1 Wire GitChangeDetector/GitDiffParser; changed files become must-keep seeds
-- [ ] P6.2 Per-changed-file semantic impact (symbols, callers, DI consumers, routes, handlers, options, tests, co-change)
+- [x] P6.2 Per-changed-file semantic impact (symbols, callers, DI consumers, routes, handlers, options, tests, co-change)
 - [ ] P6.3 Review preamble + packed context; fuse review --changed-since works and explains every non-changed file
 
 Phase 7 - Context rendering
@@ -1652,5 +1652,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: `GitChangeDetector` already passes git args as discrete `ArgumentList` tokens with a fixed-length command (`diff --name-only <since>`), so the bounded-external-args invariant holds with no change. The adapter lives in `Fuse.Cli` (which already references Fuse.Fusion) so `Fuse.Retrieval` does not take a dependency on the retiring Fusion orchestrator.
 - Lessons: Keeping the git dependency behind a Retrieval-owned `IChangeSource` interface, with the adapter in the host, preserves the layering the overhaul wants (Retrieval does not reference Fusion) while still reusing the existing detector and diff parser. Diff candidates are emitted as must-keep-weight (1.00) file candidates; their must-keep behavior is realized when used as seeds in review planning (P6.2/P6.3).
 - Time: ~30 min
+
+### P6.2 Per-changed-file semantic impact - 2026-06-26 17:25
+- Status: done
+- Result: Added store `GetNodesByFileAsync`. Refactored `SemanticRetrievalEngine` to extract a shared `BuildPlanAsync` (score -> expand -> collapse -> role/tier -> pack) and added `ReviewAsync` (+ `ReviewRequest`): resolves changed files via the change source, seeds the file plus every node declared in it (must-keep), expands the blast radius, and labels changed files with role `changed`. Tier mapping treats `changed` as Reduced. Added `ReviewImpactTests` (3). New solution test total 723 (Fuse.Retrieval.Tests 24 -> 27).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Retrieval.Tests` 27 passed (changed file marked changed + must-keep; impact reaches interface and consumer; no-change-source warning); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None. Co-change neighbors are not yet folded in (the co-change graph is a post-publish follow-up per Section 13); the structural blast radius (callers, DI consumers, route/request handlers, options consumers, tests) comes from graph expansion over the typed edges.
+- Lessons: Review is the same planner as context with a different seeding strategy (changed-file nodes instead of explicit seeds) plus a `changed` role override, so extracting `BuildPlanAsync` avoided duplicating the collapse/role/pack logic. Seeding both the file and its nodes ensures files with no graph nodes (config json) are still kept.
+- Time: ~25 min
 
 

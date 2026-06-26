@@ -146,6 +146,12 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>The matching nodes.</returns>
     Task<IReadOnlyList<NodeRecord>> FindNodesByDisplayNameAsync(string displayName, CancellationToken cancellationToken);
 
+    /// <summary>Returns the nodes declared in a file.</summary>
+    /// <param name="normalizedPath">The file's normalized path.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The nodes whose file is the given path.</returns>
+    Task<IReadOnlyList<NodeRecord>> GetNodesByFileAsync(string normalizedPath, CancellationToken cancellationToken);
+
     /// <summary>Returns the edges leaving a node.</summary>
     /// <param name="nodeId">The source node id.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>

@@ -1,7 +1,9 @@
-using System.Text;
 using DotMake.CommandLine;
 using Fuse.Cli.Services;
+using Fuse.Collection.FileSystem;
+using Fuse.Context;
 using Fuse.Indexing;
+using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Retrieval;
 
@@ -20,12 +22,13 @@ namespace Fuse.Cli.Commands;
 public sealed class ContextCommand
 {
     private readonly IConsoleUI _consoleUI;
+    private readonly ContentReductionPipeline _reductionPipeline;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="ContextCommand" /> class for CLI option binding only.
     /// </summary>
-    /// <remarks>Used by DotMake.CommandLine to bind options; the console UI is null, so this instance must not run.</remarks>
-    public ContextCommand() : this(null!)
+    /// <remarks>Used by DotMake.CommandLine to bind options; the dependencies are null, so this instance must not run.</remarks>
+    public ContextCommand() : this(null!, null!)
     {
     }
 
@@ -33,7 +36,12 @@ public sealed class ContextCommand
     ///     Initializes a new instance of the <see cref="ContextCommand" /> class.
     /// </summary>
     /// <param name="consoleUI">The console UI for output.</param>
-    public ContextCommand(IConsoleUI consoleUI) => _consoleUI = consoleUI;
+    /// <param name="reductionPipeline">The reduction pipeline used to render file bodies.</param>
+    public ContextCommand(IConsoleUI consoleUI, ContentReductionPipeline reductionPipeline)
+    {
+        _consoleUI = consoleUI;
+        _reductionPipeline = reductionPipeline;
+    }
 
     /// <summary>The workspace directory. Defaults to the current directory.</summary>
     [CliArgument(Description = "The workspace directory. Defaults to the current directory.")]
@@ -55,11 +63,19 @@ public sealed class ContextCommand
     [CliOption(Name = "--max-tokens", Required = false, Description = "Token budget.")]
     public int? MaxTokens { get; set; }
 
+    /// <summary>The output format: xml (default), markdown, or json.</summary>
+    [CliOption(Description = "Output format: xml (default), markdown, or json.")]
+    public string Format { get; set; } = "xml";
+
+    /// <summary>Print only the plan (files, roles, tiers) without rendering bodies.</summary>
+    [CliOption(Name = "--plan-only", Description = "Print the plan without rendering source bodies.")]
+    public bool PlanOnly { get; set; }
+
     /// <summary>
     ///     Runs the context command.
     /// </summary>
     /// <param name="context">The CLI invocation context supplying the cancellation token.</param>
-    /// <returns>A task that completes when the plan has been written.</returns>
+    /// <returns>A task that completes when the context has been written.</returns>
     public async Task RunAsync(CliContext context)
     {
         var root = System.IO.Path.GetFullPath(Path);
@@ -85,22 +101,15 @@ public sealed class ContextCommand
         var request = new ContextRequest(root, seeds, Depth, MaxTokens);
         var plan = await new SemanticRetrievalEngine(store).PlanContextAsync(request, context.CancellationToken);
 
-        _consoleUI.WriteResult(Format(plan));
-    }
-
-    private static string Format(ContextPlan plan)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine($"context plan: {plan.Items.Count} files, ~{plan.EstimatedTokens} tokens");
-        foreach (var item in plan.Items)
+        if (PlanOnly)
         {
-            var keep = item.MustKeep ? "*" : " ";
-            builder.AppendLine($"  {keep} {item.Score:F3} [{item.Role}/{item.Tier}] {item.Path}  (~{item.EstimatedTokens} tokens)");
+            _consoleUI.WriteResult(PlanFormatter.Format(plan));
+            return;
         }
 
-        foreach (var warning in plan.Warnings)
-            builder.AppendLine($"  ! {warning}");
-
-        return builder.ToString();
+        var renderer = new SemanticContextRenderer(_reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
+        var rendered = await renderer.RenderAsync(plan, root, context.CancellationToken);
+        var output = SemanticContextEmitter.Emit(plan, rendered, PlanFormatter.ParseFormat(Format), root);
+        _consoleUI.WriteResult(output);
     }
 }

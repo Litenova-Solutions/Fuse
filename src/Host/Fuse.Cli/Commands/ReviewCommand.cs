@@ -1,7 +1,10 @@
 using System.Text;
 using DotMake.CommandLine;
 using Fuse.Cli.Services;
+using Fuse.Collection.FileSystem;
+using Fuse.Context;
 using Fuse.Indexing;
+using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Retrieval;
 
@@ -21,12 +24,13 @@ public sealed class ReviewCommand
 {
     private readonly IConsoleUI _consoleUI;
     private readonly IChangeSource _changeSource;
+    private readonly ContentReductionPipeline _reductionPipeline;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="ReviewCommand" /> class for CLI option binding only.
     /// </summary>
     /// <remarks>Used by DotMake.CommandLine to bind options; the dependencies are null, so this instance must not run.</remarks>
-    public ReviewCommand() : this(null!, null!)
+    public ReviewCommand() : this(null!, null!, null!)
     {
     }
 
@@ -35,10 +39,12 @@ public sealed class ReviewCommand
     /// </summary>
     /// <param name="consoleUI">The console UI for output.</param>
     /// <param name="changeSource">The change source for resolving the git base ref.</param>
-    public ReviewCommand(IConsoleUI consoleUI, IChangeSource changeSource)
+    /// <param name="reductionPipeline">The reduction pipeline used to render file bodies.</param>
+    public ReviewCommand(IConsoleUI consoleUI, IChangeSource changeSource, ContentReductionPipeline reductionPipeline)
     {
         _consoleUI = consoleUI;
         _changeSource = changeSource;
+        _reductionPipeline = reductionPipeline;
     }
 
     /// <summary>The workspace directory. Defaults to the current directory.</summary>
@@ -56,6 +62,14 @@ public sealed class ReviewCommand
     /// <summary>Whether to include related test files.</summary>
     [CliOption(Name = "--include-tests", Description = "Include related test files.")]
     public bool IncludeTests { get; set; } = true;
+
+    /// <summary>The output format: xml (default), markdown, or json.</summary>
+    [CliOption(Description = "Output format: xml (default), markdown, or json.")]
+    public string Format { get; set; } = "xml";
+
+    /// <summary>Print only the review preamble and plan, without rendering source bodies.</summary>
+    [CliOption(Name = "--plan-only", Description = "Print the preamble and plan without rendering source bodies.")]
+    public bool PlanOnly { get; set; }
 
     /// <summary>
     ///     Runs the review command.
@@ -78,16 +92,19 @@ public sealed class ReviewCommand
         var request = new ReviewRequest(root, ChangedSince, MaxTokens: MaxTokens, IncludeTests: IncludeTests);
         var plan = await new SemanticRetrievalEngine(store, _changeSource).ReviewAsync(request, context.CancellationToken);
 
-        var output = new StringBuilder();
-        output.Append(ReviewPreambleBuilder.Build(plan, ChangedSince));
-        output.AppendLine();
-        output.AppendLine("plan:");
-        foreach (var item in plan.Items)
+        if (PlanOnly)
         {
-            var keep = item.MustKeep ? "*" : " ";
-            output.AppendLine($"  {keep} {item.Score:F3} [{item.Role}/{item.Tier}] {item.Path}  (~{item.EstimatedTokens} tokens)");
+            var summary = new StringBuilder();
+            summary.Append(ReviewPreambleBuilder.Build(plan, ChangedSince));
+            summary.AppendLine();
+            summary.Append(PlanFormatter.Format(plan));
+            _consoleUI.WriteResult(summary.ToString());
+            return;
         }
 
-        _consoleUI.WriteResult(output.ToString());
+        var renderer = new SemanticContextRenderer(_reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
+        var rendered = await renderer.RenderAsync(plan, root, context.CancellationToken);
+        var output = SemanticContextEmitter.Emit(plan, rendered, PlanFormatter.ParseFormat(Format), root, ChangedSince);
+        _consoleUI.WriteResult(output);
     }
 }

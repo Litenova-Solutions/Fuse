@@ -78,13 +78,14 @@ public sealed class ResolveCommand
         await store.InitializeAsync(context.CancellationToken);
         var resolver = new SemanticResolver(store);
 
-        var result = await ResolveAsync(resolver, context.CancellationToken);
-        if (result is null)
+        var resolveTask = ResolveAsync(resolver, context.CancellationToken);
+        if (resolveTask is null)
         {
             _consoleUI.WriteError("Specify one of --service, --request, --route, --config, or --symbol.");
             return;
         }
 
+        var result = await resolveTask;
         _consoleUI.WriteResult(Format(result));
     }
 

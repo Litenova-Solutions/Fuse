@@ -94,6 +94,7 @@ public sealed class SemanticContextRenderer
                 Path: item.Path,
                 Role: item.Role,
                 Tier: item.Tier,
+                Score: item.Score,
                 Content: content.Content,
                 TokenCount: content.TokenCount,
                 Provenance: item.ProvenanceChain));
@@ -126,6 +127,7 @@ public sealed record RenderedContext(IReadOnlyList<RenderedFile> Files, int Tota
 /// <param name="Path">The file's normalized path.</param>
 /// <param name="Role">The file's role in the plan.</param>
 /// <param name="Tier">The render tier applied.</param>
+/// <param name="Score">The retrieval score.</param>
 /// <param name="Content">The rendered (reduced and redacted) content.</param>
 /// <param name="TokenCount">The token count of the rendered content.</param>
 /// <param name="Provenance">The provenance chain explaining the file's inclusion.</param>
@@ -133,6 +135,7 @@ public sealed record RenderedFile(
     string Path,
     string Role,
     RenderTier Tier,
+    double Score,
     string Content,
     int TokenCount,
     IReadOnlyList<string> Provenance);

@@ -4,6 +4,8 @@ using Fuse.Plugins.Formats.Web.Extensions;
 using Fuse.Plugins.Languages.CSharp.Extensions;
 using Fuse.Plugins.Languages.CSharp.Roslyn.Extensions;
 using Fuse.Plugins.Rerank.Onnx;
+using Fuse.Cli.Services;
+using Fuse.Retrieval;
 using Fuse.Semantics;
 using Fuse.Semantics.Analyzers;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +54,7 @@ public static class FuseServiceCollectionExtensions
         services.AddSingleton(_ => SemanticAnalysisRunner.CreateDefault());
         services.AddTransient<WorkspaceFileScanner>();
         services.AddTransient<SemanticIndexer>();
+        services.AddSingleton<IChangeSource, GitChangeSource>();
         return services;
     }
 }

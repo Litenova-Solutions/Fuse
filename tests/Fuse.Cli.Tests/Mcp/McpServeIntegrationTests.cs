@@ -11,24 +11,22 @@ public sealed class McpServeIntegrationTests
 {
     private static readonly string[] ExpectedToolNames =
     [
-        "fuse_ask",
-        "fuse_changes",
-        "fuse_dotnet",
-        "fuse_explain",
+        "fuse_context",
         "fuse_find",
-        "fuse_focus",
-        "fuse_generic",
+        "fuse_index",
+        "fuse_localize",
+        "fuse_map",
         "fuse_reduce",
-        "fuse_search",
-        "fuse_skeleton",
-        "fuse_toc",
+        "fuse_resolve",
+        "fuse_review",
     ];
 
     [Fact]
-    public async Task StdioServer_ListsElevenTools_AndFuseTocReturnsFixtureOutline()
+    public async Task StdioServer_ListsTheEightV3Tools_AndFuseMapReturnsIndexedSymbols()
     {
         using var fixture = new McpFixtureProject();
         fixture.AddFile("Services/WidgetService.cs", """
+            namespace App;
             public class WidgetService
             {
                 public void Spin() { }
@@ -47,15 +45,15 @@ public sealed class McpServeIntegrationTests
         var tools = await client.ListToolsAsync(cancellationToken: TestCancellation);
         Assert.Equal(ExpectedToolNames, tools.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
 
+        // fuse_map builds the index on first use (the fixture is a git repo, so the store stays inside it).
         var result = await client.CallToolAsync(
-            "fuse_toc",
-            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath },
+            "fuse_map",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["detail"] = "symbols" },
             cancellationToken: TestCancellation);
 
         var text = TextContent(result);
-        Assert.Contains("fuse:table-of-contents", text);
-        Assert.Contains("WidgetService.cs", text);
-        Assert.Contains("class WidgetService", text);
+        Assert.Contains("workspace map", text);
+        Assert.Contains("WidgetService", text);
     }
 
     private static CancellationToken TestCancellation => default;
@@ -78,7 +76,33 @@ public sealed class McpServeIntegrationTests
         public string ProjectPath { get; } =
             Path.Combine(Path.GetTempPath(), "fuse-mcp-serve-tests", Guid.NewGuid().ToString("N"));
 
-        public McpFixtureProject() => Directory.CreateDirectory(ProjectPath);
+        public McpFixtureProject()
+        {
+            Directory.CreateDirectory(ProjectPath);
+            // Initialize a git repo so FuseStorePaths resolves the index to {ProjectPath}/.fuse, isolating the
+            // store from the machine-wide ~/.fuse used for non-git directories.
+            RunGit("init");
+        }
+
+        private void RunGit(string arguments)
+        {
+            try
+            {
+                using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "git",
+                    Arguments = arguments,
+                    WorkingDirectory = ProjectPath,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                });
+                process?.WaitForExit();
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // Git not on PATH: the store falls back to the machine-wide location; the test still functions.
+            }
+        }
 
         public void AddFile(string relativePath, string content)
         {

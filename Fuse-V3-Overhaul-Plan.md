@@ -31,7 +31,7 @@ Phase 4 - Core semantic edges
 - [x] P4.1 Shared semantic fixture app (16.2)
 - [x] P4.2 InterfaceImplementationAnalyzer
 - [x] P4.3 DiRegistrationAnalyzer
-- [ ] P4.4 ConstructorInjectionAnalyzer
+- [x] P4.4 ConstructorInjectionAnalyzer
 - [ ] P4.5 MediatRAnalyzer
 - [ ] P4.6 AspNetRouteAnalyzer
 - [ ] P4.7 OptionsBindingAnalyzer
@@ -1572,5 +1572,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. di_registers (registration-site -> service) from 6.2 is intentionally not emitted as a separate edge: it is not in the P4.8 asserted set and the `DiRegistrationRecord` already carries the file linkage review needs. di_depends_on_impl (consumer -> impl) is the constructor-injection analyzer's job (P4.4).
 - Lessons: Resolving type arguments off the syntax via `GetTypeInfo` is robust whether or not the `Add*` method itself resolves, so DI detection survives an unrestored project. Self-registration (`AddScoped<T>()`) yields a di_resolves_to self-edge (service==impl), which is harmless.
 - Time: ~30 min
+
+### P4.4 ConstructorInjectionAnalyzer - 2026-06-26 13:35
+- Status: done
+- Result: Added `ConstructorInjectionAnalyzer` emitting `consumer -> service : di_injects` (0.75) for each in-source constructor parameter of a source class, and `consumer -> implementation : di_depends_on_impl` (0.85) when the injected service is DI-registered. It composes `DiRegistrationAnalyzer` to build the service-node -> implementation-node map from its `di_resolves_to` edges. Added `ConstructorInjectionAnalyzerTests` (3: controller injects IOrderService, controller depends on OrderService impl, handler injects IOrderService). New solution test total 680 (Fuse.Semantics.Tests 43 -> 46).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 46 passed (OrdersController -> IOrderService di_injects and OrdersController -> OrderService di_depends_on_impl present); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None. di_depends_on_impl requires the DI map, so this analyzer depends on `DiRegistrationAnalyzer` (composition) rather than recomputing registrations; the Phase 4 aggregation (P4.8) can share one DI result if needed.
+- Lessons: di_depends_on_impl is the direct edge the worked example asserts, but it is derivable as a 2-hop (di_injects then di_resolves_to); emitting it directly keeps single-hop retrieval cheap. Only in-source parameter types are injected-edged to avoid flooding the graph with framework dependencies (ILogger, IOptions infra); the options consumption edge is the options analyzer's job (P4.7).
+- Time: ~25 min
 
 

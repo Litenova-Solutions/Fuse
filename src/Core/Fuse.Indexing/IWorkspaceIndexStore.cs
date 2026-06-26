@@ -93,4 +93,15 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>A task that completes when the delete is committed.</returns>
     /// <remarks>Used by incremental re-index: clear a changed file's data, then re-upsert it.</remarks>
     Task DeleteFileDataAsync(string normalizedPath, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Runs a full-text search over indexed chunks, ranked by relevance.
+    /// </summary>
+    /// <param name="query">The search query.</param>
+    /// <param name="cancellationToken">A token to cancel the search.</param>
+    /// <returns>
+    ///     Ranked hits (highest score first). Empty when the query is blank or full-text search is
+    ///     unavailable in the current runtime.
+    /// </returns>
+    Task<IReadOnlyList<SearchHit>> SearchAsync(SearchQuery query, CancellationToken cancellationToken);
 }

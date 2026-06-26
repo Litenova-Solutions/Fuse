@@ -33,11 +33,11 @@ Every capability extends the base contract, which declares the file extensions i
 | `ISemanticMarkerGenerator` | Generate type-level annotation comments |
 | `IDependencyExtractor` | Extract referenced type names for the dependency graph |
 | `ITypeNameLocator` | Resolve a type name to the file or files that define it |
-| `ISymbolOutlineExtractor` | Produce a per-file symbol outline for the table of contents |
+| `ISymbolOutlineExtractor` | Produce a per-file symbol outline for the workspace map |
 | `ISymbolSliceExtractor` | Reduce a file to one member, keeping its body and signatures only for the rest |
-| `IRouteMapGenerator` | Produce an endpoint table for the fusion |
+| `IRouteMapGenerator` | Produce an endpoint table for the workspace map |
 | `IProjectGraphGenerator` | Produce a solution and project reference graph |
-| `IPatternDetector` | Detect a cross-codebase convention across all fused files |
+| `IPatternDetector` | Detect a cross-codebase convention across the indexed files |
 
 `ISymbolOutlineExtractor` and `ISymbolSliceExtractor` live in `Fuse.Plugins.Abstractions` alongside the other contracts. The outline extractor backs the table-of-contents survey; the slice extractor backs `Type.Member` focus scoping.
 
@@ -72,7 +72,7 @@ The remaining capabilities (route map and project graph generators) are resolved
 
 ## What This Does Not Cover
 
-This page describes the capability boundary and resolution. It does not document the internal algorithms of any specific capability, such as how the dependency extractor or BM25 index work; see [Scoping Internals](/docs/internals/scoping-internals). It does not give a step-by-step plugin walkthrough.
+This page describes the capability boundary and resolution. It does not document the internal algorithms of any specific capability, such as how the dependency extractor or the full-text index work; see [Retrieval internals](/docs/internals/scoping-internals). It does not give a step-by-step plugin walkthrough.
 
 ## Next
 

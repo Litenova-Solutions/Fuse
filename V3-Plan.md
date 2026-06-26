@@ -31,7 +31,7 @@ All from `tests/benchmarks/results`, counted with `o200k_base`. The corpus loads
 
 ## Execution checklist
 
-- [ ] R0 Semantic-mode corpus: restore MSBuild workspaces in the bench harness so the corpus indexes semantically
+- [x] R0 Semantic-mode corpus: restore MSBuild workspaces in the bench harness so the corpus indexes semantically
 - [ ] R1 Reconnect the lexical ranker (BM25F + PRF + centrality) as a candidate generator
 - [ ] R2 Hybrid retrieval with a warm dense reranker for natural-language queries
 - [ ] R3 Low-signal detection and abstention
@@ -153,4 +153,13 @@ Everywhere else, the combination of semantic-mode indexing (R0), hybrid retrieva
 
 ## Progress Log
 
-Append a timestamped entry per item as it lands (Status / Result / Verification / Blockers / Lessons / Time), mirroring the archived history log. The first entry goes here.
+Append a timestamped entry per item as it lands (Status / Result / Verification / Blockers / Lessons / Time), mirroring the archived history log.
+
+### R0 Semantic-mode corpus (2026-06-26)
+
+- Status: Done (engine and harness work complete; corpus-wide benchmark lift bounded by a corpus-pinning limit, reported straight).
+- Result: Added `CorpusManager.RestoreAsync` (with `DotnetCli` and a `RestoreResult` record), wired restore into the review, localize, and agent suites behind a new `--restore` flag, and added `--require-semantic` to skip rather than silently score a checkout below semantic mode. The suites already recorded the achieved index mode; restore now lifts it where a checkout restores. Measured: on the corpus, restore lifts NewtonsoftJson and eShopOnWeb to partial mode (`localize.restore.json`, index modes partial 2, syntax 4); the other four repositories fail to restore on the installed SDK and stay in syntax. On the eShopOnWeb application, restoring each PR worktree lifts review to 15 of 18 PRs in partial mode (`review.restore.json`): changed-file recall 1.0, precision 0.64, median 587 returned tokens. Corpus-wide localization recall is unchanged at 27.3 percent (only two repositories lift; localization is still lexical, which R1 and R2 address).
+- Verification: `dotnet build Fuse.slnx -c Release` 0 errors; `dotnet test Fuse.slnx -c Release --no-build` all green (Fuse.Benchmarks.Tests 24 -> 26, two new restore-to-semantic tests); `dotnet format --verify-no-changes` clean. `--require-semantic` smoke confirmed a syntax-mode repo is skipped loudly, not scored at the fallback.
+- Blockers: AutoMapper, FluentValidation, MediatR, and Serilog do not restore on SDK 10.0.109 (central package management with an inline-versioned SourceLink, or an older target framework, against the newer SDK). This is a corpus-pinning limit, not an engine limit; fully unblocking it needs per-repo SDK or package pinning (corpus maintenance), tracked as follow-up. The mechanism is in place and `--require-semantic` makes the gap loud.
+- Lessons: The DotMake.CommandLine source generator needs a non-incremental rebuild to pick up new `[CliOption]` properties; an incremental build silently omitted them from the parser. Restore success on a pinned OSS checkout is partial by nature on a newer SDK, so `RestoreResult` reports restored and failed project counts rather than a single boolean.
+- Time: about 1 session.

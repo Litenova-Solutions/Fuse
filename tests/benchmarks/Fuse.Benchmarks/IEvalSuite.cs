@@ -12,6 +12,8 @@ namespace Fuse.Benchmarks;
 /// <param name="RepoFilter">A single repository name to restrict the run to, or null for all.</param>
 /// <param name="AgentModel">The model id for the agent suite, or null for its default.</param>
 /// <param name="Rollouts">The number of agent rollouts per task.</param>
+/// <param name="Restore">When true, run <c>dotnet restore</c> on each checkout before indexing so it can load semantically.</param>
+/// <param name="RequireSemantic">When true, do not score a task whose checkout indexes below semantic mode; report it loudly instead of silently scoring the syntax fallback.</param>
 /// <param name="Log">A progress callback, or null for no output.</param>
 public sealed record EvalOptions(
     string BenchRoot,
@@ -22,6 +24,8 @@ public sealed record EvalOptions(
     string? RepoFilter = null,
     string? AgentModel = null,
     int Rollouts = 1,
+    bool Restore = false,
+    bool RequireSemantic = false,
     Action<string>? Log = null)
 {
     /// <summary>Writes a progress line through <see cref="Log" />, if one is set.</summary>

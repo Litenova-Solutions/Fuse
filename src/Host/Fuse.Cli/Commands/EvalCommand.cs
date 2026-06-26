@@ -100,6 +100,14 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Agent rollouts per task.")]
     public int Rollouts { get; set; } = 1;
 
+    /// <summary>When set, run dotnet restore on each checkout before indexing so it can load semantically.</summary>
+    [CliOption(Required = false, Description = "Run dotnet restore on each checkout before indexing (semantic mode).")]
+    public bool Restore { get; set; }
+
+    /// <summary>When set, skip (do not score) any checkout that indexes below semantic mode, reporting it loudly.</summary>
+    [CliOption(Required = false, Description = "Skip checkouts that index below semantic mode instead of scoring the fallback.")]
+    public bool RequireSemantic { get; set; }
+
     /// <summary>An optional path to write the JSON results to. Defaults to results/&lt;suite&gt;.json under the benchmark root.</summary>
     [CliOption(Required = false, Description = "Path to write JSON results to.")]
     public string? Output { get; set; }
@@ -121,6 +129,8 @@ public sealed class EvalCommand
             RepoFilter: Repo,
             AgentModel: Model,
             Rollouts: Rollouts,
+            Restore: Restore,
+            RequireSemantic: RequireSemantic,
             Log: _consoleUI.WriteStep);
 
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());

@@ -51,6 +51,19 @@ public sealed record PrRecord(
     [property: JsonPropertyName("changed_cs")] IReadOnlyList<string> ChangedCs);
 
 /// <summary>
+///     The outcome of restoring a corpus checkout's NuGet packages before semantic indexing.
+/// </summary>
+/// <param name="Ok">Whether at least one project restored (so the checkout can load semantically in part).</param>
+/// <param name="RestoredProjects">The number of projects that restored successfully.</param>
+/// <param name="FailedProjects">The number of projects that failed to restore (for example on an SDK drift).</param>
+/// <param name="Summary">A short human-readable summary line.</param>
+public sealed record RestoreResult(
+    bool Ok,
+    int RestoredProjects,
+    int FailedProjects,
+    string Summary);
+
+/// <summary>
 ///     An evaluation dataset: a named set of repositories, each carrying the tasks evaluated against it.
 /// </summary>
 /// <param name="Name">The dataset name.</param>

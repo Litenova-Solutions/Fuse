@@ -72,7 +72,7 @@ Phase 11 - Publish V3
 - [x] P11.1 CI green: build, test (count risen), format, publish smoke for win-x64/linux-x64 incl. FTS5 and MSBuild-absent fallback (local: build/test 716/format green, win-x64 self-contained publish runs with FTS5 available and semantic load; CI smoke updated to V3; linux-x64 + AOT verify on CI)
 - [x] P11.2 Finalize 3.0.0 + changelog; RPC ProtocolVersion and protocol.ts PROTOCOL_VERSION and extension client in sync (both unchanged at 2; no RPC DTO/method changed this overhaul)
 - [x] P11.3 Update MCP Registry manifest and install flow (manifest already V3/3.0.0 with mcp serve args; fuse mcp install present)
-- [ ] P11.4 Open PR via gh for review (no merge, no self-approve, no auto-merge)
+- [x] P11.4 Open PR via gh for review (no merge, no self-approve, no auto-merge) - PR #20 (https://github.com/Litenova-Solutions/Fuse/pull/20)
 
 ## Remaining work (handoff as of 2026-06-26)
 

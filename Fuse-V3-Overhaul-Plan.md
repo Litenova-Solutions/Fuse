@@ -39,7 +39,7 @@ Phase 4 - Core semantic edges
 
 Phase 5 - Retrieval engine v2
 - [x] P5.1 LocalizationRequest + candidate generators (exact symbol/route/service/request/config, FTS, path, changed files)
-- [ ] P5.2 Score normalization
+- [x] P5.2 Score normalization
 - [ ] P5.3 Graph expansion with typed edge weights + pruning
 - [ ] P5.4 Context plan output; fuse localize and fuse context acceptance pass; no QueryScopingPipeline needed
 
@@ -1620,5 +1620,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: Git base resolution for `ChangedSince` is deferred to P6.1 (review wires `GitChangeDetector`); the diff generator handles explicit `SelectedPaths` for now. `TokenEstimate` is 0 until packing (P5.4) resolves per-file token costs from chunks. Stack-trace parsing (`StackTraceCandidateGenerator`) is not yet implemented (the `StackTrace` field is reserved).
 - Lessons: Candidates carry a `NodeId` (set for exact/graph candidates, empty for file-only FTS/path/diff candidates), which P5.3 graph expansion keys on; file-only candidates pass through to the plan directly. Base score starts at the source weight; P5.2 normalizes across sources. The "no signal yields nothing" case is the honest low-signal floor the localize benchmark (Suite C) checks for.
 - Time: ~35 min
+
+### P5.2 Score normalization - 2026-06-26 15:45
+- Status: done
+- Result: Added `CandidateScorer` (+ `ScoredCandidate`) to `Fuse.Retrieval`. Candidates are grouped by node id (or `file:`+path for file-only candidates), each group's sources combined with a noisy-or (`1 - product(1 - score)`) so corroboration raises the score toward but not past 1, with merged sources/reasons and max token estimate. Output is ranked by score desc then path. Added `CandidateScorerTests` (3). New solution test total 708 (Fuse.Retrieval.Tests 9 -> 12).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Retrieval.Tests` 12 passed (same-file merge to 0.865 from 0.55+0.70, distinct nodes kept separate, rank order); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None.
+- Lessons: Noisy-or is a clean normalization that needs no global max/min pass and is stable as sources are added; a single-source candidate keeps its own weight. Grouping by node id keeps symbol-level candidates distinct from file-level ones for graph expansion (P5.3), which still lets duplicate file candidates (FTS + path) merge.
+- Time: ~20 min
 
 

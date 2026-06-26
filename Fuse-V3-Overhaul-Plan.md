@@ -1811,4 +1811,17 @@ The single most important thing remains: build the resolved semantic graph and e
 - Lessons: Layering keeps `Fuse.Benchmarks` dependent only on Core projects; the suites take `SemanticIndexer`/`IChangeSource` by constructor and the `fuse eval` command (which owns DI) supplies them, so the shipped CLI stays the thin entry. Running the full corpus while the CLI dll is held by a prior run blocks rebuilds; sequence corpus runs after code is built.
 - Time: ongoing
 
+### P10.3 corpus runs complete (suites A-D committed) - 2026-06-26 (continued)
+- Status: suites A-D done and committed; offline token/fidelity layer C# port remains (box left unticked).
+- Result: Ran all four suites end to end against the pinned local corpus and committed real numbers to `tests/benchmarks/results/*.json`:
+  - Suite A (`semantics.json`): edge-gold recall/precision 100/100 on OrderingApp (10/10 edges).
+  - Suite B (`review.json`, 48 PRs, 8/repo): changed-file recall 100% (CI 100-100), precision 89.6%, F1 0.95, median 874 tokens / mean 3196 at a 25k budget; index modes partial 12, syntax 36. Review keeps every changed file and, on the eShopOnWeb app (partial mode), adds a semantic blast radius that lowers precision below 100% (for example eShopOnWeb#322 21%, #300 35%), which is the honest support-file signal; the library repos in syntax mode scope to the changed files (precision ~100%).
+  - Suite C (`localize.json`, 108 PRs, title-only): overall recall 0.273 (CI 0.215-0.334), precision 0.084, median 2658 tokens; by bucket identifier-rich 40%, nl-domain 23%, no-signal 33%, route-api 12%, formatting 8%, test-only 33%; low-signal detection F1 0.11 (tp 1, fp 8, fn 8) - an honest gap: V3 localize does not yet flag low-signal titles, it returns FTS candidates.
+  - Suite D (`agent.json`, model claude-sonnet-4-6, 6 PRs x native+fuse x 1 rollout = 12 rollouts): fuse arm mean recall 21% at 135k median tokens; native arm mean recall 27% at 212k median tokens; MediatR#1171 fuse hit 100% recall in 4 calls at 121k tokens while native took 328k. Small N, model-dependent, wide CI (0-54%), labeled as such.
+- Verification: `dotnet build`/`test`/`format` green (the runs are CLI invocations, no code change); each suite wrote its JSON; the bench test project is 24 tests.
+- Blockers/issues: The corpus loads mostly in syntax/partial mode here (MSBuild semantic load needs a restored workspace), so Suite B/C numbers reflect that mode and are noted with the index-mode distribution. Suite D consumed real Sonnet API at a small sample to bound cost.
+- Remaining for P10.3 (box unticked): port the genuinely-offline token-reduction and fidelity continuity layers (old layer1 / fidelity) to C# benchmarks; the per-suite PowerShell layers (layer1/2a/2b/4) are still old-surface. This is secondary to the suites and does not block P10.4.
+- Lessons: A 1-rollout agent sample is enough to validate the driver and surface the fuse-vs-native shape; the moat shows clearest where a PR title names the wiring (MediatR). Suite B precision is the discriminating axis; recall is ~1.0 by construction because review seeds changed files as must-keep.
+- Time: ~2.5 h (incl. background corpus runs)
+
 

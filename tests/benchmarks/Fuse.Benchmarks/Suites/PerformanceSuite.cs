@@ -15,8 +15,8 @@ namespace Fuse.Benchmarks;
 /// <remarks>
 ///     Corpus-bound: when no repository in the dataset is present on disk, the suite returns a skip result.
 ///     Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude
-///     signal, not a fixed cross-machine number. Single-file incremental re-index timing is not yet measured
-///     (it needs an incremental index path); this suite measures cold index and warm operation latency.
+///     signal, not a fixed cross-machine number. The suite measures cold index, warm operation latency, and
+///     single-file incremental re-index (which updates the file's syntax rows, not cross-file semantic edges).
 /// </remarks>
 public sealed class PerformanceSuite : IEvalSuite
 {
@@ -84,7 +84,29 @@ public sealed class PerformanceSuite : IEvalSuite
 
             notes.Add($"warm localize ({WarmIterations}x): P50 {Percentile(localizeMs, 50):F1} ms, P95 {Percentile(localizeMs, 95):F1} ms");
             notes.Add($"warm resolve ({WarmIterations}x): P50 {Percentile(resolveMs, 50):F1} ms, P95 {Percentile(resolveMs, 95):F1} ms");
-            notes.Add("note: timings are environment-dependent; incremental re-index timing is not yet measured.");
+
+            // Review-plan latency against the checkout's own recent history (a real git base).
+            try
+            {
+                var reviewMs = await TimeAsync(WarmIterations, async () =>
+                    await engine.ReviewAsync(new ReviewRequest(repo.Path, "HEAD~1", MaxTokens: 25_000), cancellationToken), cancellationToken);
+                notes.Add($"warm review plan ({WarmIterations}x): P50 {Percentile(reviewMs, 50):F1} ms, P95 {Percentile(reviewMs, 95):F1} ms");
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                notes.Add($"warm review plan: skipped ({e.Message})");
+            }
+
+            // Single-file incremental re-index: clear and re-extract one file's rows, timed over repeats.
+            var sampleFile = (await store.FindFilesByPathAsync(".cs", 1, cancellationToken)).FirstOrDefault()?.NormalizedPath;
+            if (sampleFile is not null)
+            {
+                var incrementalMs = await TimeAsync(WarmIterations, async () =>
+                    await _indexer.ReindexFileAsync(repo.Path, sampleFile, store, cancellationToken), cancellationToken);
+                notes.Add($"incremental re-index of {sampleFile} ({WarmIterations}x): P50 {Percentile(incrementalMs, 50):F1} ms, P95 {Percentile(incrementalMs, 95):F1} ms");
+            }
+
+            notes.Add("note: timings are environment-dependent; incremental re-index updates the file's syntax rows, not cross-file semantic edges.");
 
             // The scorecard's token columns are reused to surface the headline latencies for the JSON readers:
             // medianTokens carries warm localize P50, meanTokens carries cold index ms.

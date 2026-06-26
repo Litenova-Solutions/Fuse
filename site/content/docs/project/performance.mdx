@@ -37,16 +37,18 @@ Self-contained packages include the .NET runtime and do not require a separate S
 
 ## Measured Warm Latency
 
-The `performance` suite (`fuse eval performance`, `performance.json`) indexes a present corpus repository once (the cold index) and then runs resolve and localize repeatedly over the warm index, reporting P50 and P95. On AutoMapper (518 files, 17,924 symbols, syntax index mode):
+The `performance` suite (`fuse eval performance`, `performance.json`) indexes a present corpus repository once (the cold index) and then runs each operation repeatedly over the warm index, reporting P50 and P95. On AutoMapper (518 files, 17,924 symbols, syntax index mode):
 
-| Operation | P50 | P95 |
-|-----------|----:|----:|
-| Warm resolve (symbol) | sub-millisecond | sub-millisecond |
-| Warm localize (query, 20 candidates) | 20 ms | 22 ms |
+| Operation | P50 | P95 | Target |
+|-----------|----:|----:|-------:|
+| Warm resolve (symbol) | sub-millisecond | sub-millisecond | under 100 ms |
+| Warm localize (query, 20 candidates) | 20 ms | 22 ms | under 500 ms |
+| Warm review plan (25K budget, vs HEAD~1) | 98 ms | 103 ms | under 2 s |
+| Single-file incremental re-index | 177 ms | 186 ms | under 1 s |
 
-Warm resolve and localize sit well inside the targets (resolve under 100 ms, localize under 500 ms): a warm read is a SQLite lookup plus a bounded candidate merge, not a re-parse. The cold index of the same repository took about 65 seconds, which includes the MSBuild workspace load attempt; cold index is paid once and amortized over every warm call.
+Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. The cold index of the same repository took about 64 seconds, which includes the MSBuild workspace load attempt; cold index is paid once and amortized over every warm call.
 
-Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. Two latencies are not yet measured: the review-plan build (it needs a git base) and single-file incremental re-index (it needs an incremental index path). Earlier cold-versus-warm timings on the retired V2 fusion surface do not transfer to V3 and are not carried forward.
+Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. The numbers above run through an in-process warm store; the `fuse mcp serve` host holds the same store resident, so a resident session sees the same warm latencies after its one-time startup. Earlier cold-versus-warm timings on the retired V2 fusion surface do not transfer to V3 and are not carried forward.
 
 ## What This Does Not Cover
 

@@ -1,6 +1,9 @@
 using DotMake.CommandLine;
 using Fuse.Benchmarks;
 using Fuse.Cli.Services;
+using Fuse.Collection.Templates;
+using Fuse.Fusion;
+using Fuse.Plugins.Abstractions.Options;
 using Fuse.Retrieval;
 using Fuse.Semantics;
 
@@ -20,20 +23,22 @@ namespace Fuse.Cli.Commands;
 /// </remarks>
 [CliCommand(
     Name = "eval",
-    Description = "Run Fuse evaluation suites (semantics, review, localize, agent).",
+    Description = "Run Fuse evaluation suites (semantics, review, localize, agent, reduce).",
     ShortFormAutoGenerate = CliNameAutoGenerate.None,
     Parent = typeof(FuseCliCommand))]
 public sealed class EvalCommand
 {
     private readonly SemanticIndexer _indexer;
     private readonly IChangeSource _changeSource;
+    private readonly FusionOrchestrator _orchestrator;
+    private readonly ProjectTemplateRegistry _templateRegistry;
     private readonly IConsoleUI _consoleUI;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="EvalCommand" /> class for CLI option binding only.
     /// </summary>
     /// <remarks>Used by DotMake.CommandLine to bind options; the dependencies are null, so this instance must not run.</remarks>
-    public EvalCommand() : this(null!, null!, null!)
+    public EvalCommand() : this(null!, null!, null!, null!, null!)
     {
     }
 
@@ -42,16 +47,25 @@ public sealed class EvalCommand
     /// </summary>
     /// <param name="indexer">The semantic indexer.</param>
     /// <param name="changeSource">The git change source for corpus-bound suites.</param>
+    /// <param name="orchestrator">The fusion orchestrator used by the reduction suite.</param>
+    /// <param name="templateRegistry">The template registry used by the reduction suite.</param>
     /// <param name="consoleUI">The console UI for output.</param>
-    public EvalCommand(SemanticIndexer indexer, IChangeSource changeSource, IConsoleUI consoleUI)
+    public EvalCommand(
+        SemanticIndexer indexer,
+        IChangeSource changeSource,
+        FusionOrchestrator orchestrator,
+        ProjectTemplateRegistry templateRegistry,
+        IConsoleUI consoleUI)
     {
         _indexer = indexer;
         _changeSource = changeSource;
+        _orchestrator = orchestrator;
+        _templateRegistry = templateRegistry;
         _consoleUI = consoleUI;
     }
 
     /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, or <c>agent</c>.</summary>
-    [CliArgument(Description = "The suite to run: semantics, review, localize, agent.")]
+    [CliArgument(Description = "The suite to run: semantics, review, localize, agent, reduce.")]
     public string Suite { get; set; } = "semantics";
 
     /// <summary>The benchmark root holding corpus.json, prs.json, and results. Defaults to tests/benchmarks under the current directory.</summary>
@@ -112,7 +126,7 @@ public sealed class EvalCommand
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());
         if (suite is null)
         {
-            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, agent.");
+            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, agent, reduce.");
             return;
         }
 
@@ -132,7 +146,18 @@ public sealed class EvalCommand
         "review" => new ChangeImpactSuite(_indexer, _changeSource),
         "localize" => new LocalizationSuite(_indexer, _changeSource),
         "agent" => new AgentSuite(_indexer),
+        "reduce" => new ReductionSuite((dir, files, level, ct) =>
+            ReduceRunner.ReduceFilesAsync(_orchestrator, _templateRegistry, dir, files, ParseLevel(level), null, ct)),
         _ => null
+    };
+
+    private static ReductionLevel ParseLevel(string level) => level.Trim().ToLowerInvariant() switch
+    {
+        "none" => ReductionLevel.None,
+        "aggressive" => ReductionLevel.Aggressive,
+        "skeleton" => ReductionLevel.Skeleton,
+        "publicapi" => ReductionLevel.PublicApi,
+        _ => ReductionLevel.Standard
     };
 
     private static IReadOnlyList<int>? ParseBudgets(string? budgets)

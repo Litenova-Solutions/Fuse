@@ -1,0 +1,157 @@
+{
+  "suite": "reduce",
+  "description": "Token reduction and public-API fidelity over the corpus (offline continuity layer).",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 6,
+    "recall": 0.9915142987085132,
+    "recallCiLow": 0.979961639185902,
+    "recallCiHigh": 0.9988702603406304,
+    "precision": 0.4680333707487665,
+    "f1": 0,
+    "medianTokens": 120052.5,
+    "meanTokens": 212198.5,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "AutoMapper",
+      "repo": "AutoMapper",
+      "category": "reduction",
+      "recall": 0.998422712933754,
+      "precision": 0.4352673800290522,
+      "tokens": 258922,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 2114/2114",
+          "methods 1051/1056"
+        ],
+        "misses": [
+          "ForPath",
+          "Get",
+          "Has",
+          "GetMapExpression",
+          "ShouldBeOfLength"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation",
+      "repo": "FluentValidation",
+      "category": "reduction",
+      "recall": 0.9630931458699473,
+      "precision": 0.550677277213488,
+      "tokens": 115635,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 249/249",
+          "methods 847/889"
+        ],
+        "misses": [
+          "NotEmpty",
+          "Length",
+          "Matches",
+          "MaximumLength",
+          "MinimumLength",
+          "Must",
+          "MustAsync",
+          "LessThan",
+          "LessThanOrEqualTo",
+          "GreaterThan"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR",
+      "repo": "MediatR",
+      "category": "reduction",
+      "recall": 1,
+      "precision": 0.5056117070750914,
+      "tokens": 39865,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 256/256",
+          "methods 207/207"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NewtonsoftJson",
+      "repo": "NewtonsoftJson",
+      "category": "reduction",
+      "recall": 0.9992966002344665,
+      "precision": 0.5204683678191313,
+      "tokens": 696372,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 1212/1212",
+          "methods 3050/3053"
+        ],
+        "misses": [
+          "Throws",
+          "ThrowsAsync",
+          "DeserializeAnonymousType"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "Serilog",
+      "repo": "Serilog",
+      "category": "reduction",
+      "recall": 0.9955022488755623,
+      "precision": 0.3746043230532694,
+      "tokens": 124470,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 140/140",
+          "methods 524/527"
+        ],
+        "misses": [
+          "AsDictionary",
+          "ByTransforming",
+          "ByTransformingWhere"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb",
+      "repo": "eShopOnWeb",
+      "category": "reduction",
+      "recall": 0.9927710843373494,
+      "precision": 0.4215711693025668,
+      "tokens": 37927,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 226/226",
+          "methods 186/189"
+        ],
+        "misses": [
+          "FromJson",
+          "HttpDelete",
+          "HttpPut"
+        ],
+        "extras": []
+      }
+    }
+  ],
+  "notes": [
+    "AutoMapper: 511 files, raw 458,486 tokens; reduction by level: standard 13%, aggressive 20%, skeleton 44%, publicApi 51%; skeleton fidelity types 2114/2114, methods 1051/1056",
+    "FluentValidation: 217 files, raw 257,354 tokens; reduction by level: standard 30%, aggressive 35%, skeleton 55%, publicApi 60%; skeleton fidelity types 249/249, methods 847/889",
+    "MediatR: 152 files, raw 80,635 tokens; reduction by level: standard 20%, aggressive 24%, skeleton 51%, publicApi 57%; skeleton fidelity types 256/256, methods 207/207",
+    "NewtonsoftJson: 942 files, raw 1,452,192 tokens; reduction by level: standard 34%, aggressive 40%, skeleton 52%, publicApi 57%; skeleton fidelity types 1212/1212, methods 3050/3053",
+    "Serilog: 216 files, raw 199,026 tokens; reduction by level: standard 39%, aggressive 45%, skeleton 37%, publicApi 47%; skeleton fidelity types 140/140, methods 524/527",
+    "eShopOnWeb: 250 files, raw 65,569 tokens; reduction by level: standard 11%, aggressive 16%, skeleton 42%, publicApi 47%; skeleton fidelity types 226/226, methods 186/189"
+  ]
+}

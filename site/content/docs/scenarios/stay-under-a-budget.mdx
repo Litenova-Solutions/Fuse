@@ -1,68 +1,54 @@
 ---
 title: Stay under a token budget
-description: Cap a fusion with a hard token limit, split it into parts, or find the files to trim, so the output fits a model's context window.
+description: Cap a context plan with a hard token limit so the output fits a model's context window, with the must-keep seeds always retained.
 ---
 
-**Goal:** keep a fusion within a fixed token budget so it fits the context window of the
-model you are feeding.
+**Goal:** keep a context plan within a fixed token budget so it fits the context window of
+the model you are feeding.
 
 ## Cap with a Hard Limit
 
 ```bash
-fuse dotnet --directory ./src --level skeleton --max-tokens 100000
+fuse context ./src --seed OrderService --max-tokens 25000
 ```
 
-`--max-tokens` stops emission when the running total reaches the limit. In a scoped
-fusion the most relevant files are emitted first, so the files closest to the seed survive
-the cut and the least relevant drop. Use it when the fusion must fit the window and partial
-content is acceptable.
+`--max-tokens` caps the plan at the limit. The must-keep seeds are always included; the
+rest of the neighborhood fills the budget by weight-per-token, and Fuse chooses the render
+tier of each file (full, compressed, or skeleton) so the budget lands close to full rather
+than overshooting. A budget of 0 means no limit.
 
-## Split Instead of Dropping
+## Cap a Review the Same Way
 
 ```bash
-fuse dotnet --directory ./src --level aggressive --split-tokens 200000
+fuse review ./src --changed-since origin/main --max-tokens 25000
 ```
 
-`--split-tokens` (default 800,000) divides the output into multiple parts when a part would
-exceed the threshold, rather than dropping anything. Use it when you want the whole fusion,
-delivered in pieces a model reads in sequence.
+`fuse review` honors the same budget. The changed files are always kept, so when the
+budget is tight the cut falls on the periphery of the blast radius first, never on the diff
+itself.
 
-## Find What to Trim
+## What Survives the Cut
 
-```bash
-fuse dotnet --directory ./src --level aggressive --track-top-token-files
-```
-
-`--track-top-token-files` reports the largest files after the run, so you know which to
-scope out or reduce further when you are over budget.
-
-## Match the Tokenizer to the Model
-
-```bash
-fuse dotnet --directory ./src --level aggressive --tokenizer o200k_base --max-tokens 150000
-```
-
-A token count is only accurate against the tokenizer that produced it, so set `--tokenizer`
-to match the model the fusion is destined for. Supported names are in
-[Tokenizers](/docs/reference/tokenizers).
+Because the plan fills by weight-per-token, the files closest to the seeds survive and the
+least relevant drop. The single most relevant entry is always kept, so a budgeted call
+never emits nothing. The manifest lists each emitted file and its token cost, so you can
+see exactly what fit.
 
 ## Suggested Budgets
 
 | Workflow | Command shape | Budget |
 |----------|---------------|--------|
-| Architecture skeleton | `--level skeleton` | 50k to 100k |
-| Focus or query scope | `--focus` or `--query` | 100k to 200k |
-| Change review | `--changed-since` | 50k to 150k |
-| Full reduction | `--level aggressive` | 200k to 800k |
+| Architecture view | `fuse context --seed ... --max-tokens` | 15k to 50k |
+| Focused area | `fuse context --seed ...` | 15k to 50k |
+| Change review | `fuse review --changed-since ...` | 15k to 50k |
 
 ## When to Use It
 
-Set a budget whenever the fusion is destined for a model with a fixed window or when you
-are capping the cost of a run. `--max-tokens` enforces a ceiling by dropping content;
-`--split-tokens` keeps everything by dividing it.
+Set a budget whenever the plan is destined for a model with a fixed window or when you are
+capping the cost of a run. The seeds (or the changed files, in a review) are always
+retained, so the budget trims context the task needs least.
 
 ## Related Concept
 
-How parts and budgets are written is in the
-[Output specification](/docs/reference/output-specification); choosing the smallest
-reduction that fits is in [Reduction levels](/docs/concepts/reduction-levels).
+How the plan spends a budget is covered in [Scoping](/docs/concepts/scoping); choosing the
+smallest render tier that fits is in [Reduction levels](/docs/concepts/reduction-levels).

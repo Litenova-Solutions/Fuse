@@ -698,6 +698,67 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<SymbolListItem>> ListSymbolsAsync(int limit, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT s.symbol_id, s.name, s.kind, s.fully_qualified_name, files.normalized_path,
+                   s.start_line, s.is_public_api
+            FROM symbols s
+            JOIN files ON files.file_id = s.file_id
+            ORDER BY s.is_public_api DESC, s.name COLLATE NOCASE
+            LIMIT $limit;
+            """;
+        command.Parameters.AddWithValue("$limit", limit);
+
+        var items = new List<SymbolListItem>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new SymbolListItem(
+                SymbolId: reader.GetString(0),
+                Name: reader.GetString(1),
+                Kind: reader.GetString(2),
+                FullyQualifiedName: reader.GetString(3),
+                FilePath: reader.GetString(4),
+                StartLine: reader.GetInt32(5),
+                IsPublicApi: reader.GetInt64(6) != 0));
+        }
+
+        return items;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT r.route_id, r.http_method, r.route_pattern, files.normalized_path, r.start_line
+            FROM routes r
+            JOIN files ON files.file_id = r.file_id
+            ORDER BY r.route_pattern COLLATE NOCASE, r.http_method
+            LIMIT $limit;
+            """;
+        command.Parameters.AddWithValue("$limit", limit);
+
+        var items = new List<RouteListItem>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new RouteListItem(
+                RouteId: reader.GetString(0),
+                HttpMethod: reader.GetString(1),
+                RoutePattern: reader.GetString(2),
+                FilePath: reader.GetString(3),
+                StartLine: reader.GetInt32(4)));
+        }
+
+        return items;
+    }
+
+    /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _connectionFactory.ClearPool();

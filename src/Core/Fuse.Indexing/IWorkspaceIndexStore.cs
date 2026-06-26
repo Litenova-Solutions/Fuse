@@ -104,4 +104,20 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     ///     unavailable in the current runtime.
     /// </returns>
     Task<IReadOnlyList<SearchHit>> SearchAsync(SearchQuery query, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Lists indexed symbols, public-API first then by name, for summaries such as the workspace map.
+    /// </summary>
+    /// <param name="limit">The maximum number of symbols to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The symbol summaries.</returns>
+    Task<IReadOnlyList<SymbolListItem>> ListSymbolsAsync(int limit, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Lists indexed routes ordered by pattern then method.
+    /// </summary>
+    /// <param name="limit">The maximum number of routes to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The route summaries.</returns>
+    Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken);
 }

@@ -122,6 +122,9 @@ namespace Microsoft.Extensions.DependencyInjection
             where TImplementation : class, TService => services;
 
         public static IServiceCollection AddScoped(this IServiceCollection services, System.Type serviceType, System.Type implementationType) => services;
+
+        public static IServiceCollection AddHostedService<THostedService>(this IServiceCollection services)
+            where THostedService : class, Microsoft.Extensions.Hosting.IHostedService => services;
     }
 
     public static class OptionsServiceCollectionExtensions
@@ -129,6 +132,48 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IServiceCollection Configure<TOptions>(this IServiceCollection services, Microsoft.Extensions.Configuration.IConfiguration configuration)
             where TOptions : class => services;
     }
+}
+
+namespace Microsoft.Extensions.Hosting
+{
+    // Stubs of the hosting abstractions so the fixture can declare a background worker without a package.
+    public interface IHostedService
+    {
+        System.Threading.Tasks.Task StartAsync(System.Threading.CancellationToken cancellationToken);
+
+        System.Threading.Tasks.Task StopAsync(System.Threading.CancellationToken cancellationToken);
+    }
+
+    public abstract class BackgroundService : IHostedService
+    {
+        public System.Threading.Tasks.Task StartAsync(System.Threading.CancellationToken cancellationToken) =>
+            ExecuteAsync(cancellationToken);
+
+        public System.Threading.Tasks.Task StopAsync(System.Threading.CancellationToken cancellationToken) =>
+            System.Threading.Tasks.Task.CompletedTask;
+
+        protected abstract System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken stoppingToken);
+    }
+}
+
+namespace MediatR
+{
+    // The pipeline-behavior abstraction: a behavior wraps request handling.
+    public interface IPipelineBehavior<TRequest, TResponse>
+    {
+        System.Threading.Tasks.Task<TResponse> Handle(
+            TRequest request, System.Func<System.Threading.Tasks.Task<TResponse>> next, System.Threading.CancellationToken cancellationToken);
+    }
+}
+
+namespace Microsoft.EntityFrameworkCore
+{
+    // Minimal EF Core stubs: a DbContext exposing DbSet<TEntity> and an entity type configuration interface.
+    public class DbSet<TEntity> where TEntity : class { }
+
+    public abstract class DbContext { }
+
+    public interface IEntityTypeConfiguration<TEntity> where TEntity : class { }
 }
 
 namespace Xunit

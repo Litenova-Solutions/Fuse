@@ -10,6 +10,10 @@
     { "from": "type:OrderingApp.Ordering.CreateOrderCommand", "to": "type:OrderingApp.Ordering.CreateOrderHandler", "type": "mediatr_handles" },
     { "from": "route:POST:/api/orders/{id}", "to": "method:OrderingApp.Api.OrdersController.Create", "type": "route_handles" },
     { "from": "config:Orders", "to": "type:OrderingApp.Ordering.OrderOptions", "type": "options_binds" },
-    { "from": "type:OrderingApp.Ordering.OrderService", "to": "type:OrderingApp.Ordering.OrderOptions", "type": "options_consumes" }
+    { "from": "type:OrderingApp.Ordering.OrderService", "to": "type:OrderingApp.Ordering.OrderOptions", "type": "options_consumes" },
+    { "from": "service:IHostedService", "to": "type:OrderingApp.Ordering.OrderDispatcher", "type": "hosted_service" },
+    { "from": "service:IPipelineBehavior", "to": "type:OrderingApp.Ordering.LoggingBehavior", "type": "pipeline_behavior" },
+    { "from": "type:OrderingApp.Data.OrderingDbContext", "to": "type:OrderingApp.Data.OrderEntity", "type": "ef_entity" },
+    { "from": "type:OrderingApp.Data.OrderEntity", "to": "type:OrderingApp.Data.OrderEntityConfiguration", "type": "ef_configures" }
   ]
 }

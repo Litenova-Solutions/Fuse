@@ -23,7 +23,7 @@ public sealed class SemanticAnalysisRunner
 
     /// <summary>
     ///     Creates a runner wired with the default analyzer set (interface, DI, constructor injection, MediatR,
-    ///     route, options).
+    ///     route, options, hosted services, pipeline behaviors, EF Core).
     /// </summary>
     /// <returns>A runner with the standard analyzers.</returns>
     public static SemanticAnalysisRunner CreateDefault()
@@ -37,6 +37,9 @@ public sealed class SemanticAnalysisRunner
             new MediatRAnalyzer(),
             new AspNetRouteAnalyzer(),
             new OptionsBindingAnalyzer(),
+            new HostedServiceAnalyzer(),
+            new PipelineBehaviorAnalyzer(),
+            new EfCoreAnalyzer(),
         ]);
     }
 

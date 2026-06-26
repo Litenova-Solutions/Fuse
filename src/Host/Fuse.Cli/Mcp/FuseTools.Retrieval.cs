@@ -131,32 +131,42 @@ public sealed partial class FuseTools
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
     /// <param name="reductionPipeline">The reduction pipeline used to render bodies.</param>
+    /// <param name="sessionStore">The session store used to elide unchanged files.</param>
     /// <param name="path">The workspace directory.</param>
-    /// <param name="seeds">Named seeds (symbol/service/request/config).</param>
+    /// <param name="seeds">Symbol seeds.</param>
+    /// <param name="files">File path seeds (for example paths from localize).</param>
+    /// <param name="services">Service seeds to resolve and expand.</param>
+    /// <param name="requests">Request/command seeds to resolve and expand.</param>
+    /// <param name="configs">Config section seeds to resolve and expand.</param>
     /// <param name="routes">Route seeds.</param>
     /// <param name="depth">The graph expansion depth.</param>
     /// <param name="maxTokens">The token budget.</param>
     /// <param name="format">The output format: xml, markdown, or json.</param>
+    /// <param name="sessionId">Session id; files already sent unchanged in the session are elided.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The emitted context payload.</returns>
     [McpServerTool(Name = "fuse_context", ReadOnly = true)]
-    [Description("Plan and emit context (source bodies, mixed render tiers, manifest, provenance) for a set of seeds. Use after fuse_localize or fuse_resolve to read the selected seeds.")]
+    [Description("Plan and emit context (source bodies, mixed render tiers, manifest, provenance) for a set of seeds. Feed it the file paths from fuse_localize or the names from fuse_resolve. Pass a sessionId to elide files already sent in the session.")]
     public static async Task<string> FuseContextAsync(
         SemanticIndexer indexer,
         ContentReductionPipeline reductionPipeline,
+        ContextSessionStore sessionStore,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
-        [Description("Named seeds (symbol/service/request/config).")] string[]? seeds = null,
+        [Description("Symbol seeds.")] string[]? seeds = null,
+        [Description("File path seeds (for example the paths returned by fuse_localize).")] string[]? files = null,
+        [Description("Service seeds to resolve and expand.")] string[]? services = null,
+        [Description("Request/command seeds to resolve and expand.")] string[]? requests = null,
+        [Description("Config section seeds to resolve and expand.")] string[]? configs = null,
         [Description("Route seeds, for example \"POST /api/orders/{id}\".")] string[]? routes = null,
         [Description("Graph expansion depth.")] int depth = 2,
         [Description("Token budget; must-keep seeds are always included.")] int maxTokens = 0,
         [Description("Output format: xml (default), markdown, or json.")] string format = "xml",
+        [Description("Session id; files already sent unchanged in this session are elided.")] string? sessionId = null,
         CancellationToken cancellationToken = default)
     {
-        var seedList = (seeds ?? []).Select(s => new ContextSeed(ContextSeedKind.Symbol, s))
-            .Concat((routes ?? []).Select(r => new ContextSeed(ContextSeedKind.Route, r)))
-            .ToList();
+        var seedList = BuildSeeds(seeds, files, services, requests, configs, routes);
         if (seedList.Count == 0)
-            return "Error: provide at least one seed or route.";
+            return "Error: provide at least one seed (symbol/file/service/request/config/route).";
 
         var root = Path.GetFullPath(path);
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
@@ -166,8 +176,18 @@ public sealed partial class FuseTools
 
         var renderer = new SemanticContextRenderer(reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
         var rendered = await renderer.RenderAsync(plan, root, cancellationToken);
-        return SemanticContextEmitter.Emit(plan, rendered, ParseFormat(format), root);
+        var unchanged = string.IsNullOrWhiteSpace(sessionId) ? null : sessionStore.Reconcile(sessionId, rendered.Files);
+        return SemanticContextEmitter.Emit(plan, rendered, ParseFormat(format), root, unchangedPaths: unchanged);
     }
+
+    private static List<ContextSeed> BuildSeeds(string[]? seeds, string[]? files, string[]? services, string[]? requests, string[]? configs, string[]? routes) =>
+        (seeds ?? []).Select(s => new ContextSeed(ContextSeedKind.Symbol, s))
+            .Concat((files ?? []).Select(f => new ContextSeed(ContextSeedKind.File, f)))
+            .Concat((services ?? []).Select(s => new ContextSeed(ContextSeedKind.Service, s)))
+            .Concat((requests ?? []).Select(r => new ContextSeed(ContextSeedKind.Request, r)))
+            .Concat((configs ?? []).Select(c => new ContextSeed(ContextSeedKind.Config, c)))
+            .Concat((routes ?? []).Select(r => new ContextSeed(ContextSeedKind.Route, r)))
+            .ToList();
 
     /// <summary>
     ///     Reviews the semantic impact of a change and emits the packed context.
@@ -175,11 +195,13 @@ public sealed partial class FuseTools
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
     /// <param name="reductionPipeline">The reduction pipeline used to render bodies.</param>
     /// <param name="changeSource">The change source for resolving the git base ref.</param>
+    /// <param name="sessionStore">The session store used to elide unchanged files.</param>
     /// <param name="path">The workspace directory.</param>
     /// <param name="changedSince">The git base ref to diff against.</param>
     /// <param name="maxTokens">The token budget.</param>
     /// <param name="includeTests">Whether to include related test files.</param>
     /// <param name="format">The output format: xml, markdown, or json.</param>
+    /// <param name="sessionId">Session id; files already sent unchanged in the session are elided.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The review preamble plus the emitted context payload.</returns>
     [McpServerTool(Name = "fuse_review", ReadOnly = true)]
@@ -188,11 +210,13 @@ public sealed partial class FuseTools
         SemanticIndexer indexer,
         ContentReductionPipeline reductionPipeline,
         IChangeSource changeSource,
+        ContextSessionStore sessionStore,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("The git base ref to diff against (branch, commit, or HEAD~N).")] string changedSince = "HEAD",
         [Description("Token budget; changed files are always kept.")] int maxTokens = 0,
         [Description("Include related test files.")] bool includeTests = true,
         [Description("Output format: xml (default), markdown, or json.")] string format = "xml",
+        [Description("Session id; files already sent unchanged in this session are elided.")] string? sessionId = null,
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetFullPath(path);
@@ -204,7 +228,8 @@ public sealed partial class FuseTools
 
         var renderer = new SemanticContextRenderer(reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
         var rendered = await renderer.RenderAsync(plan, root, cancellationToken);
-        return SemanticContextEmitter.Emit(plan, rendered, ParseFormat(format), root, changedSince);
+        var unchanged = string.IsNullOrWhiteSpace(sessionId) ? null : sessionStore.Reconcile(sessionId, rendered.Files);
+        return SemanticContextEmitter.Emit(plan, rendered, ParseFormat(format), root, changedSince, unchanged);
     }
 
     private static ContextOutputFormat ParseFormat(string format) => format.Trim().ToLowerInvariant() switch

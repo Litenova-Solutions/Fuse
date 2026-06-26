@@ -23,7 +23,7 @@ Phase 2 - Syntax-level semantic batch
 
 Phase 3 - MSBuild/Roslyn semantic indexing
 - [x] P3.1 DotNetWorkspaceDiscoverer (discovery order, ignore rules)
-- [ ] P3.2 RoslynWorkspaceLoader; MSBuildLocator guarded once; syntax fallback on load failure
+- [x] P3.2 RoslynWorkspaceLoader; MSBuildLocator guarded once; syntax fallback on load failure
 - [ ] P3.3 Semantic symbol extraction + SymbolIdBuilder (IDs stable across runs)
 - [ ] P3.4 Project records + file linkage; index status Semantic or Partial on a real .sln/.csproj
 
@@ -1524,5 +1524,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. The MSBuild-at-runtime / AOT tension flagged in the plan begins at P3.2 (RoslynWorkspaceLoader), not here.
 - Lessons: Discovery deliberately does not parse the solution/project files; that is the loader's job (P3.2). `ProjectPaths` is populated even in `Solution` mode so a load failure can fall back to per-project or syntax indexing.
 - Time: ~15 min
+
+### P3.2 RoslynWorkspaceLoader + guarded MSBuildLocator + syntax fallback - 2026-06-26 11:40
+- Status: done
+- Result: Added `RoslynWorkspaceLoader` (+ `RoslynWorkspaceSnapshot`, `LoadedProject`) and `DiagnosticRecord`/`DiagnosticSeverity` to `Fuse.Semantics`. The loader registers `MSBuildLocator.RegisterDefaults()` once (lock-guarded static), opens the solution or each project via `MSBuildWorkspace`, collects `WorkspaceFailed` diagnostics as warnings, and returns compilations. Every failure mode degrades to `SemanticLoadSucceeded=false` with a diagnostic rather than throwing: SyntaxOnly discovery (info), no SDK/locator failure (`msbuild-unavailable`), load exception (`msbuild-load-failed`), no compilations (`no-projects-loaded`). Added `RoslynWorkspaceLoaderTests` (2). New solution test total 656 (Fuse.Semantics.Tests 20 -> 22).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 656 passed; `dotnet format --verify-no-changes` clean. MSBuild loads in this environment (under `dotnet test` the SDK is present); the SampleShop.Core fixture loads semantically and `OrderService` resolves as a type symbol - confirmed to pass even with the fixture's obj/bin deleted (CI-safe, no pre-restore needed).
+- Blockers/issues: First load failed with "Cannot open project ... language 'C#' is not supported" - the C# workspace language service was missing at runtime. Fixed by adding `Microsoft.CodeAnalysis.CSharp.Workspaces` 4.14.0 to `Directory.Packages.props` and referencing it from `Fuse.Semantics`. The MSBuild-absent fallback path is implemented but its real exercise is the P11.1 self-contained publish smoke test.
+- Lessons: `MSBuildWorkspace` needs BOTH `Microsoft.CodeAnalysis.Workspaces.MSBuild` AND the language-specific `Microsoft.CodeAnalysis.CSharp.Workspaces` assembly present, or it reports the language as unsupported. A `Compilation` resolves declared type symbols without restore (references only matter for external types), so semantic symbol extraction does not require a restored fixture. The new package flows transitively to `Fuse.Cli`, enlarging the publish; the MSBuild-unavailable fallback must be verified at publish time.
+- Time: ~35 min
 
 

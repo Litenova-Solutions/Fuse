@@ -120,4 +120,17 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The route summaries.</returns>
     Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken);
+
+    /// <summary>Sets a key in the index metadata table.</summary>
+    /// <param name="key">The metadata key.</param>
+    /// <param name="value">The value to store.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the value is committed.</returns>
+    Task SetMetaAsync(string key, string value, CancellationToken cancellationToken);
+
+    /// <summary>Reads a key from the index metadata table.</summary>
+    /// <param name="key">The metadata key.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The stored value, or null when the key is absent.</returns>
+    Task<string?> GetMetaAsync(string key, CancellationToken cancellationToken);
 }

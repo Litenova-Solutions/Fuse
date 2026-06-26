@@ -33,6 +33,11 @@ public static class WorkspaceIndexSchema
     public const string CreateTablesDdl = """
         CREATE TABLE IF NOT EXISTS schema_version(version INTEGER NOT NULL);
 
+        CREATE TABLE IF NOT EXISTS index_meta(
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS files(
           file_id INTEGER PRIMARY KEY,
           path TEXT NOT NULL UNIQUE,

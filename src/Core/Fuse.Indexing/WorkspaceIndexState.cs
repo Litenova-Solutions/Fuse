@@ -31,8 +31,10 @@ public enum WorkspaceIndexStatus
 /// <param name="Status">The indexing status.</param>
 /// <param name="FileCount">The number of indexed files.</param>
 /// <param name="SymbolCount">The number of indexed symbols.</param>
+/// <param name="Mode">The last index mode (<c>semantic</c>, <c>partial</c>, or <c>syntax</c>), or null if never indexed.</param>
 public sealed record WorkspaceIndexState(
     int SchemaVersion,
     WorkspaceIndexStatus Status,
     int FileCount,
-    int SymbolCount);
+    int SymbolCount,
+    string? Mode = null);

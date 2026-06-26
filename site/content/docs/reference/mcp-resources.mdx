@@ -1,34 +1,33 @@
 ---
 title: Resources Reference
-description: The fuse:// URI templates an AI client can read for codebase context using default options.
+description: The fuse:// URI templates an AI client can read for V3 semantic context using default options.
 ---
 
-The Fuse MCP server exposes its fusion output as resources in addition to tools. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools; a resource is the passive counterpart, a read addressed by a URI rather than a call with arguments. A client reads a `fuse://` URI and receives the fused content produced with default options. This page documents the five URI templates and what each returns.
+The Fuse MCP server exposes its read workflows as resources in addition to tools. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools; a resource is the passive counterpart, a read addressed by a URI rather than a call with arguments. A client reads a `fuse://` URI and receives the result produced with default options against the persistent semantic index. This page documents the four V3 URI templates and what each returns.
 
 This page is for engineers wiring resource reads into a client and for anyone deciding between a resource and the equivalent tool.
 
-## Purpose and Scope
+## Purpose and scope
 
-Resources run their fusion in memory and return the result as the resource content. They use default options: no token limit and no reduction flags beyond the defaults each scope applies. When a task needs a token limit, reduction control, or exclusions, prefer the equivalent tool in [Tools Reference](/docs/reference/mcp-tools), which accepts those parameters. Use a resource when the default behavior is sufficient and a URI is more convenient than a tool call.
+Resources read the persistent index (building it on first use) and return the result as the resource content. They use default options: no token limit, default render tiers, and a depth the workflow chooses. When a task needs a token budget, a render format, seeds of several kinds, or session elision, prefer the equivalent tool in [Tools reference](/docs/reference/mcp-tools), which accepts those parameters. Use a resource when the default behavior is sufficient and a URI is more convenient than a tool call.
 
-In the templates below, `{path}` is the source directory to fuse and the remaining segments supply the scope.
+In the templates below, `{path}` is the workspace directory and the remaining segments supply the query.
 
-## URI Templates
+## URI templates
 
-| URI template | Returns |
-|--------------|---------|
-| `fuse://skeleton/{path}` | A structural skeleton overview, signatures without bodies |
-| `fuse://focus/{path}/{seed}` | Content scoped to the seed type, file, or path plus its dependencies |
-| `fuse://search/{path}/{query}` | Content scoped to the files a query ranks highest plus dependencies |
-| `fuse://changes/{path}/{since}` | Content for files changed since the given git ref plus dependents |
-| `fuse://{template}/{path}` | Template-based fusion using the named template |
+| URI template | Returns | Mirrors |
+|--------------|---------|---------|
+| `fuse://map/{path}` | A workspace map: indexed symbols, routes, and counts | `fuse_map` |
+| `fuse://localize/{path}/{query}` | Ranked candidate files and symbols for the task, no source bodies | `fuse_localize` |
+| `fuse://context/{path}/{seed}` | Planned and emitted context (source bodies, manifest, provenance) for a named seed | `fuse_context` |
+| `fuse://review/{path}/{since}` | The semantic impact of a change since the git ref: changed files, blast radius, packed context | `fuse_review` |
 
-For the template URI, `{template}` is a template name such as `dotnet`, `python`, `generic`, or `azuredevopswiki`. All five resources return content with the MIME type `text/plain`.
+The `{seed}` segment of the context resource is treated as a symbol seed; for service, request, route, or config seeds, or to pass several seeds, use the `fuse_context` tool. All four resources return content with the MIME type `text/plain`.
 
-## What This Does Not Cover
+## What this does not cover
 
-This page documents the resource URIs and their default behavior. It does not cover the parameters that let you set token limits or reduction flags, which are available only on the tools. See [Tools Reference](/docs/reference/mcp-tools) for those.
+This page documents the resource URIs and their default behavior. It does not cover the parameters that set token budgets, render format, seed kinds, or session ids, which are available only on the tools. See [Tools reference](/docs/reference/mcp-tools) for those.
 
 ## Next
 
-Continue to [Tools Reference](/docs/reference/mcp-tools) when you need token limits, reduction flags, or exclusion control on a read.
+Continue to [Tools reference](/docs/reference/mcp-tools) when you need a token budget, a render format, or multi-seed context on a read.

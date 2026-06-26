@@ -1,8 +1,8 @@
 namespace Fuse.Fusion.Indexing;
 
 /// <summary>
-///     A content-hash-keyed store of per-file <see cref="FileAnalysis" />, kept on disk under
-///     <c>.fuse/index</c> so repeated scoping calls in a session reuse analysis instead of recomputing it.
+///     A content-hash-keyed store of per-file <see cref="FileAnalysis" />, kept in the <c>analysis</c> namespace
+///     of <c>.fuse/fuse.db</c> so repeated scoping calls in a session reuse analysis instead of recomputing it.
 /// </summary>
 /// <remarks>
 ///     Updated incrementally: a key is the hash of a file's content and analyzer tier, so an unchanged file is

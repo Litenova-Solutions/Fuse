@@ -1,11 +1,12 @@
 using Fuse.Fusion.Indexing;
 using Fuse.Fusion.Scoping;
+using Fuse.Reduction.Caching;
 
 namespace Fuse.Fusion.Tests.Indexing;
 
-public sealed class RelevancePostingsStoreTests
+public sealed class RelevancePostingsStoreTests : IDisposable
 {
-    // Counts body tokenizations by wrapping a real disk store, so a test can assert only changed files are
+    // Counts body tokenizations by wrapping a real SQLite store, so a test can assert only changed files are
     // re-tokenized on a warm run.
     private sealed class CountingStore(IRelevancePostingsStore inner) : IRelevancePostingsStore
     {
@@ -23,6 +24,11 @@ public sealed class RelevancePostingsStoreTests
             inner.SetBodyTokens(contentHash, tokens);
     }
 
+    private readonly string _databasePath;
+
+    public RelevancePostingsStoreTests() =>
+        _databasePath = SqliteTestHelpers.NewDatabasePath("fuse-postings-tests");
+
     private static Dictionary<string, IndexedDocument> Docs() => new(StringComparer.OrdinalIgnoreCase)
     {
         ["Order.cs"] = new IndexedDocument("public class Order { public void Place() { var total = ComputeTotal(); } }", "Order.cs", ["Order", "Place"]),
@@ -30,7 +36,7 @@ public sealed class RelevancePostingsStoreTests
     };
 
     [Fact]
-    public void PersistedIndex_RanksIdenticallyToInMemory()
+    public async Task PersistedIndex_RanksIdenticallyToInMemory()
     {
         var docs = Docs();
 
@@ -38,77 +44,56 @@ public sealed class RelevancePostingsStoreTests
         inMemory.Index(docs);
         var inMemoryRanked = inMemory.RankScored("place order total", 10);
 
-        var dir = NewDir();
-        try
-        {
-            var persisted = new Bm25RelevanceIndex();
-            persisted.Index(docs, new DiskRelevancePostingsStore(dir));
-            var persistedRanked = persisted.RankScored("place order total", 10);
+        await using var store = new SqliteKeyValueStore(_databasePath);
+        var persisted = new Bm25RelevanceIndex();
+        persisted.Index(docs, new SqliteRelevancePostingsStore(store));
+        var persistedRanked = persisted.RankScored("place order total", 10);
 
-            Assert.Equal(inMemoryRanked.Select(r => r.Path), persistedRanked.Select(r => r.Path));
-            Assert.Equal(inMemoryRanked.Select(r => r.Score), persistedRanked.Select(r => r.Score));
-        }
-        finally
-        {
-            Directory.Delete(dir, recursive: true);
-        }
+        Assert.Equal(inMemoryRanked.Select(r => r.Path), persistedRanked.Select(r => r.Path));
+        Assert.Equal(inMemoryRanked.Select(r => r.Score), persistedRanked.Select(r => r.Score));
     }
 
     [Fact]
-    public void WarmRun_ReTokenizesOnlyChangedFiles()
+    public async Task WarmRun_ReTokenizesOnlyChangedFiles()
     {
-        var dir = NewDir();
-        try
-        {
-            var store = new CountingStore(new DiskRelevancePostingsStore(dir));
+        await using var store = new SqliteKeyValueStore(_databasePath);
+        var sqliteStore = new CountingStore(new SqliteRelevancePostingsStore(store));
 
-            var docs = Docs();
-            new Bm25RelevanceIndex().Index(docs, store);
-            Assert.Equal(2, store.Misses); // cold: both bodies tokenized
+        var docs = Docs();
+        new Bm25RelevanceIndex().Index(docs, sqliteStore);
+        Assert.Equal(2, sqliteStore.Misses); // cold: both bodies tokenized
 
-            // Edit one file; the other is unchanged. A warm run must re-tokenize only the changed file.
-            docs["Order.cs"] = new IndexedDocument("public class Order { public void Place() { var total = 0; } }", "Order.cs", ["Order", "Place"]);
-            new Bm25RelevanceIndex().Index(docs, store);
-            Assert.Equal(3, store.Misses); // one new miss for the edited body; Payment.cs hit
-        }
-        finally
-        {
-            Directory.Delete(dir, recursive: true);
-        }
+        // Edit one file; the other is unchanged. A warm run must re-tokenize only the changed file.
+        docs["Order.cs"] = new IndexedDocument("public class Order { public void Place() { var total = 0; } }", "Order.cs", ["Order", "Place"]);
+        new Bm25RelevanceIndex().Index(docs, sqliteStore);
+        Assert.Equal(3, sqliteStore.Misses); // one new miss for the edited body; Payment.cs hit
     }
 
     [Fact]
-    public void StaleEntry_IsInvalidatedByContentHash()
+    public async Task StaleEntry_IsInvalidatedByContentHash()
     {
-        var dir = NewDir();
-        try
-        {
-            var store = new DiskRelevancePostingsStore(dir);
-            var original = "public class A { public void M() { Foo(); } }";
-            var hashStore = new CountingStore(store);
+        await using var store = new SqliteKeyValueStore(_databasePath);
+        var sqliteStore = new SqliteRelevancePostingsStore(store);
+        var original = "public class A { public void M() { Foo(); } }";
+        var hashStore = new CountingStore(sqliteStore);
 
-            var docs = new Dictionary<string, IndexedDocument>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["A.cs"] = new IndexedDocument(original, "A.cs", ["A", "M"]),
-            };
-            new Bm25RelevanceIndex().Index(docs, hashStore);
-            Assert.Equal(1, hashStore.Misses);
-
-            // Changed content -> different hash -> miss (the old entry is never served for the new content).
-            docs["A.cs"] = new IndexedDocument("public class A { public void M() { Bar(); } }", "A.cs", ["A", "M"]);
-            new Bm25RelevanceIndex().Index(docs, hashStore);
-            Assert.Equal(2, hashStore.Misses);
-        }
-        finally
+        var docs = new Dictionary<string, IndexedDocument>(StringComparer.OrdinalIgnoreCase)
         {
-            Directory.Delete(dir, recursive: true);
-        }
+            ["A.cs"] = new IndexedDocument(original, "A.cs", ["A", "M"]),
+        };
+        new Bm25RelevanceIndex().Index(docs, hashStore);
+        Assert.Equal(1, hashStore.Misses);
+
+        // Changed content -> different hash -> miss (the old entry is never served for the new content).
+        docs["A.cs"] = new IndexedDocument("public class A { public void M() { Bar(); } }", "A.cs", ["A", "M"]);
+        new Bm25RelevanceIndex().Index(docs, hashStore);
+        Assert.Equal(2, hashStore.Misses);
     }
 
-    private static string NewDir()
+    public void Dispose()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "fuse-postings-tests", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
+        var root = Path.GetDirectoryName(_databasePath);
+        if (root is not null && Directory.Exists(root))
+            Directory.Delete(root, recursive: true);
     }
 }

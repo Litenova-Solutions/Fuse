@@ -6,6 +6,8 @@
     "capability-model",
     "scoping-internals",
     "caching-internals",
+    "operator",
+    "host-rpc",
     "options-model",
     "extending"
   ]

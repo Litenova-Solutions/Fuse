@@ -12,7 +12,12 @@ namespace Fuse.Fusion.Scoping;
 /// <param name="Symbols">
 ///     The declared type and member names, or <c>null</c> to omit the symbol field. Weighted highest.
 /// </param>
+/// <param name="Comments">
+///     The file's comment and documentation-comment text, or <c>null</c> to omit the comment field. Carries the
+///     natural-language vocabulary a prose query matches; weighted above the body but below symbols and path.
+/// </param>
 public sealed record IndexedDocument(
     string Content,
     string? Path = null,
-    IReadOnlyList<string>? Symbols = null);
+    IReadOnlyList<string>? Symbols = null,
+    string? Comments = null);

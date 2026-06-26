@@ -119,6 +119,24 @@ public sealed class FusedContent
     public FusedContent WithReducedContent(string content, ITokenCounter tokenCounter) =>
         new(SourceFile, content, tokenCounter, RedactionCounts, InclusionChain, RelevanceScore);
 
+    /// <summary>
+    ///     Returns a copy of this content with replaced body text, a recomputed token count, and replaced
+    ///     redaction counts, preserving inclusion chain and relevance score.
+    /// </summary>
+    /// <param name="content">The new reduced content.</param>
+    /// <param name="tokenCounter">The token counter used to recompute <see cref="TokenCount" />.</param>
+    /// <param name="redactionCounts">
+    ///     Per-kind redaction counts for the new content, or <c>null</c> when nothing was redacted. Used when
+    ///     content is rebuilt from raw source after the reduction stage (thin skeleton, symbol slice, tiered
+    ///     emission) and re-run through the redactor, so the reported counts describe what was emitted.
+    /// </param>
+    /// <returns>A new <see cref="FusedContent" /> with the supplied content and redaction counts.</returns>
+    public FusedContent WithReducedContent(
+        string content,
+        ITokenCounter tokenCounter,
+        IReadOnlyDictionary<string, int>? redactionCounts) =>
+        new(SourceFile, content, tokenCounter, redactionCounts, InclusionChain, RelevanceScore);
+
     private static bool ComputeIsTrivial(string content)
     {
         if (string.IsNullOrWhiteSpace(content))

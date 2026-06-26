@@ -17,39 +17,97 @@ public sealed class ContentReductionPipelineCacheTests
     [Fact]
     public async Task ReduceAsync_SecondRun_UsesCacheHits()
     {
-        var root = Path.Combine(Path.GetTempPath(), "fuse-pipeline-cache", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(root);
+        var root = CreateTempRoot();
         var filePath = Path.Combine(root, "sample.txt");
         await File.WriteAllTextAsync(filePath, "  hello world  ");
 
         try
         {
-            var candidate = new FileCandidate(filePath, "sample.txt", new FileInfo(filePath));
-            var sourceFile = new SourceFile(candidate);
-            var provider = new StubContentProvider(sourceFile, "  hello world  ");
-            var reducers = new CapabilityRegistry<IContentReducer>(Array.Empty<IContentReducer>());
-            var skeletons = new CapabilityRegistry<ISkeletonExtractor>(Array.Empty<ISkeletonExtractor>());
-            var markers = new CapabilityRegistry<ISemanticMarkerGenerator>(Array.Empty<ISemanticMarkerGenerator>());
-            var pipeline = new ContentReductionPipeline(
-                reducers,
-                skeletons,
-                markers,
-                new SimpleTokenCounter(),
-                new DefaultSecretRedactor());
-            var options = new ReductionOptions(trimContent: true, enableRedaction: false);
-            var cache = new DiskReductionCache(root);
+            var (pipeline, sourceFile, provider, options) = CreatePipelineContext(filePath);
+            await using var store = new FuseStoreFactory().Open(root);
+            var cache = new SqliteReductionCache(store);
 
             await pipeline.ReduceAsync([sourceFile], options, provider, 1, cache);
             await pipeline.ReduceAsync([sourceFile], options, provider, 1, cache);
 
             Assert.Equal(1, cache.Statistics.Hits);
             Assert.Equal(1, cache.Statistics.Misses);
+            Assert.True(File.Exists(Path.Combine(root, ".fuse", "fuse.db")));
         }
         finally
         {
-            if (Directory.Exists(root))
-                Directory.Delete(root, recursive: true);
+            DeleteTempRoot(root);
         }
+    }
+
+    [Fact]
+    public async Task ReduceAsync_AfterFlushAndReopen_UsesPersistedCache()
+    {
+        var root = CreateTempRoot();
+        var filePath = Path.Combine(root, "sample.txt");
+        await File.WriteAllTextAsync(filePath, "  hello world  ");
+
+        try
+        {
+            var (pipeline, sourceFile, provider, options) = CreatePipelineContext(filePath);
+
+            await using (var store = new FuseStoreFactory().Open(root))
+            {
+                var cache = new SqliteReductionCache(store);
+                await pipeline.ReduceAsync([sourceFile], options, provider, 1, cache);
+                Assert.Equal(0, cache.Statistics.Hits);
+                Assert.Equal(1, cache.Statistics.Misses);
+                await store.FlushAsync();
+            }
+
+            await using (var store = new FuseStoreFactory().Open(root))
+            {
+                var cache = new SqliteReductionCache(store);
+                await pipeline.ReduceAsync([sourceFile], options, provider, 1, cache);
+                Assert.Equal(1, cache.Statistics.Hits);
+                Assert.Equal(0, cache.Statistics.Misses);
+            }
+        }
+        finally
+        {
+            DeleteTempRoot(root);
+        }
+    }
+
+    private static string CreateTempRoot()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-pipeline-cache", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(Path.Combine(root, ".git"));
+        return root;
+    }
+
+    private static void DeleteTempRoot(string root)
+    {
+        if (Directory.Exists(root))
+            Directory.Delete(root, recursive: true);
+    }
+
+    private static (
+        ContentReductionPipeline Pipeline,
+        SourceFile SourceFile,
+        StubContentProvider Provider,
+        ReductionOptions Options) CreatePipelineContext(string filePath)
+    {
+        var candidate = new FileCandidate(filePath, "sample.txt", new FileInfo(filePath));
+        var sourceFile = new SourceFile(candidate);
+        var provider = new StubContentProvider(sourceFile, "  hello world  ");
+        var reducers = new CapabilityRegistry<IContentReducer>(Array.Empty<IContentReducer>());
+        var skeletons = new CapabilityRegistry<ISkeletonExtractor>(Array.Empty<ISkeletonExtractor>());
+        var markers = new CapabilityRegistry<ISemanticMarkerGenerator>(Array.Empty<ISemanticMarkerGenerator>());
+        var pipeline = new ContentReductionPipeline(
+            reducers,
+            skeletons,
+            markers,
+            new SimpleTokenCounter(),
+            new DefaultSecretRedactor());
+        var options = new ReductionOptions(trimContent: true, enableRedaction: false);
+        return (pipeline, sourceFile, provider, options);
     }
 
     private sealed class StubContentProvider : ISourceContentProvider

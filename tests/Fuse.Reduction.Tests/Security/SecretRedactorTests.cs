@@ -19,6 +19,26 @@ public sealed class SecretRedactorTests
     }
 
     [Fact]
+    public void FindSecretSpans_ReturnsTheKindAndExactSpanOfTheSecret()
+    {
+        const string secret = "AKIAIOSFODNN7EXAMPLE";
+        var input = $"var key = \"{secret}\";";
+
+        var spans = _redactor.FindSecretSpans(input);
+
+        var finding = Assert.Single(spans, f => f.Kind == "aws-access-key");
+        // The span must cover exactly the secret literal in the original content.
+        Assert.Equal(secret, input.Substring(finding.Start, finding.Length));
+    }
+
+    [Fact]
+    public void FindSecretSpans_NoSecret_ReturnsEmpty()
+    {
+        Assert.Empty(_redactor.FindSecretSpans("public class C { public void M() { } }"));
+        Assert.Empty(_redactor.FindSecretSpans(string.Empty));
+    }
+
+    [Fact]
     public void Redact_Jwt_ReplacesToken()
     {
         const string input =
@@ -30,13 +50,38 @@ public sealed class SecretRedactorTests
     }
 
     [Fact]
-    public void Redact_PemHeader_ReplacesHeader()
+    public void Redact_PemPrivateKeyBlock_RemovesTheEntireBlockNotJustTheHeader()
     {
-        const string input = "-----BEGIN RSA PRIVATE KEY-----";
+        const string input = """
+            var key = @"-----BEGIN RSA PRIVATE KEY-----
+            MIIEowIBAAKCAQEA1c3RuZXRtYXRjaGtleWJvZHlzZWNyZXRtYXRlcmlhbAabcdef
+            ghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+/secret
+            -----END RSA PRIVATE KEY-----";
+            """;
         var result = _redactor.Redact(input);
 
         Assert.Contains("[REDACTED:pem-private-key]", result.Content);
+        // The key body and the END line must not survive: the header-only match left them in the output before.
         Assert.DoesNotContain("BEGIN RSA PRIVATE KEY", result.Content);
+        Assert.DoesNotContain("END RSA PRIVATE KEY", result.Content);
+        Assert.DoesNotContain("secretmaterial", result.Content);
+        Assert.DoesNotContain("MIIEowIBAAKCAQEA", result.Content);
+    }
+
+    [Theory]
+    [InlineData("github-token", "ghp_0123456789abcdefABCDEF0123456789abcdef")]
+    [InlineData("github-token", "github_pat_11ABCDEFG0aBcDeFgHiJkL_abcdefghijklmnopqrstuvwxyz0123456789AB")]
+    [InlineData("google-api-key", "AIzaSyA1234567890abcdefghijklmnopqrstuv")]
+    [InlineData("slack-token", "xoxb-123456789012-abcdefghijklmnopqrstuvwx")]
+    [InlineData("stripe-key", "sk_live_0123456789abcdefABCDEFghij")]
+    public void Redact_ProviderKey_IsRedacted(string kind, string secret)
+    {
+        var input = $"var token = \"{secret}\";";
+        var result = _redactor.Redact(input);
+
+        Assert.Contains($"[REDACTED:{kind}]", result.Content);
+        Assert.DoesNotContain(secret, result.Content);
+        Assert.True(result.CountsByKind[kind] >= 1);
     }
 
     [Fact]

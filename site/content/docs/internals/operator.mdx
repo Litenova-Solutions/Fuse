@@ -1,0 +1,68 @@
+---
+title: Operator guide
+description: Managing the on-disk store, clearing namespaces, recovering from corruption, and MCP environment variables.
+---
+
+This page is for operators running Fuse as an MCP server or in CI: where derived data lives, how to reset it, and which environment variables affect agent-facing behavior. For key derivation and store layout, see [Caching Internals](/docs/internals/caching-internals).
+
+## fuse.db lifecycle
+
+All persistent derived data for a source tree lives in one SQLite file named `fuse.db`. Placement depends on whether the fusion source directory is inside a git repository:
+
+| Context | Path |
+|---------|------|
+| Inside a git repo | `{repoRoot}/.fuse/fuse.db` at the repository root, so every scoped call in the same repo (for example `src/` or an MCP `path` scoped to one project folder) shares one warm index |
+| Outside a git repo | `~/.fuse/fuse.db` (override the directory with `FUSE_USER_DATA`) |
+
+The database is created on the first write. One-shot CLI runs use the reduction namespace by default; analysis, postings, and vectors are written when `--index` is on (enabled automatically in watch mode and `fuse mcp serve`). The MCP server keeps the store open across tool calls, so a multi-call task pays analysis cost once.
+
+Deleting the store file is a full reset: all namespaces are gone and every namespace repopulates from scratch on the next run. Inside a git repo, delete `{repoRoot}/.fuse/fuse.db`; outside git, delete `~/.fuse/fuse.db` (or the path under `FUSE_USER_DATA` when set).
+
+## Version control
+
+Add `.fuse/` to your repository `.gitignore`. The directory holds derived cache data (like `bin/` or `obj/`): it can grow large, varies by machine, and is rebuilt on the next run. The Fuse repository ignores `.fuse/` itself; your project should too. Running `fuse init` inside a git repo appends `.fuse/` to `.gitignore` when the entry is missing.
+
+## Namespace purge
+
+| Action | Effect |
+|--------|--------|
+| Delete the store file (`{repoRoot}/.fuse/fuse.db` or `~/.fuse/fuse.db`) | Full reset of reduction, analysis, postings, and vectors |
+| `--clear-cache` | Clears only the `reduction` namespace before the run; analysis and relevance data remain |
+| `--no-cache` | Skips the reduction namespace for one run (no reads or writes); does not delete on disk |
+| `--index` off | Skips writing analysis, postings, and vectors for that run; existing index rows remain on disk |
+
+There is no per-namespace CLI flag beyond `--clear-cache` for reduction. To drop analysis or vectors without a full reset, delete the database file.
+
+## Corrupt recovery
+
+Every entry in `.fuse/fuse.db` is derived data. If SQLite reports a malformed database on open, Fuse deletes the file and recreates an empty database rather than failing the run. The next fusion repopulates whatever namespaces the run uses.
+
+If corruption persists after recreation, check filesystem permissions on `.fuse/` and that no other process holds a stale lock on the WAL files.
+
+## MCP environment variables
+
+These variables apply to the `fuse mcp serve` process (set them in the MCP client config or the shell that launches the server):
+
+| Variable | Effect |
+|----------|--------|
+| `FUSE_USER_DATA` | Directory for machine-wide Fuse data when fusing outside a git repository (default `~/.fuse`). The store file is `{FUSE_USER_DATA}/fuse.db`. Inside a git repo the store stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
+| `FUSE_CENTRALITY_WEIGHT` | Weight of the graph-centrality prior in focus and query ranking (default `0.15`). Set to `0` to disable. |
+| `FUSE_HOP_DECAY` | Per-hop score decay for dependency-expanded neighbours, in (0, 1] (default `0.5`); lower drops distant files first under a budget. An item 5 tuning scalar. |
+| `FUSE_EXPANSION_WEIGHT` | Per-term weight of pseudo-relevance-feedback expansion terms relative to original query terms (default `0.2`). An item 5 tuning scalar. |
+| `FUSE_QUERY_EXPANSION` | Pseudo-relevance feedback query expansion in query ranking (default on). Set to `0` to disable and reproduce the single-pass BM25F ordering. |
+| `FUSE_BUDGET_EXPANSION` | Budget-aware query-path dependency expansion (default on): when a token ceiling is set, the graph admits neighbours by estimated cost rather than admitting the whole neighbourhood for the packer to cut. Set to `0` to disable and reproduce the unbounded expansion. |
+| `FUSE_RERANK` | Dense rerank of the query candidate pool with an in-process embedding model (default off, opt-in). Requires `fuse models download`; absent a model or offline the query path stays lexical. Set to `1` to enable. Not the default because it did not beat the lexical path on the benchmark corpus. |
+| `FUSE_RERANK_MODEL` | Which rerank model `FUSE_RERANK=1` uses: `bi` (default, the all-MiniLM-L6-v2 bi-encoder) or `cross` (the ms-marco-MiniLM-L-6-v2 cross-encoder, fetched with `fuse models download --model cross`). The cross-encoder scores each query-document pair jointly and is more accurate in general, but it runs the model once per candidate (slower) and, measured on the hard repos at the headline budget, scored below the lexical floor here because file-level truncation hides the relevant member deep in a large file. Both rerank arms remain opt-in. |
+| `FUSE_GIT_CHURN_WEIGHT` | Weight of a git churn and recency ranking prior on the query path (default `0`, off). A production-routing lever; the benchmark cannot validate it (historical checkouts make churn empty, and date-relative churn would leak), so it is off by default. A conservative value such as `0.15` is reasonable in production. |
+| `FUSE_SKETCH_HUGE` | Replace a file still very large after reduction (over roughly 6,000 tokens) with a compact structural sketch (type and member names, no bodies) for presence and navigation (default off). Set to `1` to enable. Opt-in; the default output is unchanged. |
+| `FUSE_MEMBER_LEVEL` | Member-level retrieval on the query path (default off): index each member, roll up to a file score, and surface a file whose match is concentrated in one member. Measured to lift query recall 61 to 68 at the headline budget but to roughly double or triple warm latency (re-parses chunks per query), so it is opt-in. Set to `1` to enable. |
+| `FUSE_PROJECT_GRAPH` | Coarse project-reference graph expansion (default off): parse `.csproj` `ProjectReference` elements and link each candidate to the files in the projects its project references or is referenced by, fed into the expansion graph at a decayed weight, so a seed reaches a related file across a library/test assembly boundary the intra-project type graph misses. Measured to lift query recall 61 to 62 percent at the headline budget (FluentValidation 57 to 61) with no per-repo regression, a small win; opt-in because it adds a `.csproj` disk scan per query. Set to `1` to enable. Query and focus expansion. |
+| `FUSE_DOWNGRADE_DROP` | Downgrade before dropping (default on): when packing under a token budget, the lower-relevance tail that would be cut is kept as a compact sketch instead, so a would-be-dropped file stays present. Query and focus only. Set to `0` to reproduce the drop-only packer. |
+| `FUSE_QUERY_REWRITE` | Rules-based query rewrite on the query path (item 12, default off): emphasize the compound PascalCase identifiers in a query (the strongest signal that the query names a type), with no model. Measured neutral on the original 24-PR corpus (61 percent at the 50k headline, on and off) because the PR titles are already identifier-rich and the symbol field is weighted highly, so it is opt-in. Set to `1` to enable; the LLM-backed rewrite stays separate and is never on the no-model path. |
+| `FUSE_FIELDED_COMMENTS` | Index comments and doc-comments as their own weighted BM25F field on the query path (default off). Comments carry the natural-language vocabulary a prose query matches. Measured neutral on the original 24-PR corpus (61 percent at the 50k headline, on and off, with a small per-repo dip at the tight budget) because the corpus PR titles already match via symbols and body, so it is opt-in. Set to `1` to enable; it may help a deployment whose queries are prose rather than identifiers. |
+
+Full semantics are in [Configuration Keys](/docs/reference/configuration-keys). Session-delta state (`session` on `fuse_focus` and `fuse_search`) is held in memory inside the running server only; it is not stored in `.fuse/fuse.db` and is lost when the process exits.
+
+## Next
+
+See [Caching Internals](/docs/internals/caching-internals) for keys and namespaces, or [Connect to your AI](/docs/start/connect-your-ai) for MCP client setup.

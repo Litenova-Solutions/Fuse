@@ -24,7 +24,8 @@ public sealed class FusionRequest
         int parallelism = 0,
         bool useReductionCache = true,
         bool clearReductionCache = false,
-        bool usePersistentIndex = false)
+        bool usePersistentIndex = false,
+        ExperimentalOptions? experimental = null)
     {
         Collection = collection;
         Reduction = reduction;
@@ -37,6 +38,7 @@ public sealed class FusionRequest
         UseReductionCache = useReductionCache;
         ClearReductionCache = clearReductionCache;
         UsePersistentIndex = usePersistentIndex;
+        Experimental = experimental ?? new ExperimentalOptions();
     }
 
     /// <summary>
@@ -80,18 +82,36 @@ public sealed class FusionRequest
     public int Parallelism { get; }
 
     /// <summary>
-    ///     Gets a value indicating whether per-file reduction results are cached on disk.
+    ///     Gets a value indicating whether per-file reduction results are cached in the SQLite store
+    ///     (<c>.fuse/fuse.db</c>).
     /// </summary>
+    /// <remarks>
+    ///     The database path is <c>{repoRoot}/.fuse/fuse.db</c> inside a git repository, or
+    ///     <c>~/.fuse/fuse.db</c> (override with <c>FUSE_USER_DATA</c>) otherwise.
+    /// </remarks>
     public bool UseReductionCache { get; }
 
     /// <summary>
-    ///     Gets a value indicating whether the reduction cache is cleared before fusion runs.
+    ///     Gets a value indicating whether cached reduction entries in <c>.fuse/fuse.db</c> are cleared
+    ///     before fusion runs.
     /// </summary>
     public bool ClearReductionCache { get; }
 
     /// <summary>
-    ///     Gets a value indicating whether per-file dependency and symbol analysis is cached in the on-disk
-    ///     index (<c>.fuse/index</c>), so repeated scoping calls reuse it. Off by default.
+    ///     Gets a value indicating whether per-file dependency and symbol analysis is cached in
+    ///     <c>.fuse/fuse.db</c>, so repeated scoping calls reuse it. Off by default.
     /// </summary>
+    /// <remarks>
+    ///     The database path is <c>{repoRoot}/.fuse/fuse.db</c> inside a git repository, or
+    ///     <c>~/.fuse/fuse.db</c> (override with <c>FUSE_USER_DATA</c>) otherwise.
+    /// </remarks>
     public bool UsePersistentIndex { get; }
+
+    /// <summary>
+    ///     Gets the experimental scoring knobs (graph-centrality weight, query expansion) for this run.
+    ///     Defaults to <see cref="ExperimentalOptions" /> defaults; environment variables override the
+    ///     configured values when the orchestrator resolves them, and the resolved values are recorded in the
+    ///     run report so a measurement is reproducible.
+    /// </summary>
+    public ExperimentalOptions Experimental { get; }
 }

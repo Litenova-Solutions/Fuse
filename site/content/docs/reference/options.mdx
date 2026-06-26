@@ -48,7 +48,7 @@ Types in the tables use these conventions: `bool` is a switch, `int` is a whole 
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--max-tokens` | int | None | Stop emission when this token count is reached. |
+| `--max-tokens` | int | None | Hard cap on the total payload. For a scoped run (`--query` or `--focus`) the packer reserves room for the manifest, route and project maps, redaction report, pattern summary, and any preamble, so the complete output fits the budget rather than overrunning it by the size of that framing. The single most-relevant file is always emitted, even if it alone exceeds the cap. |
 | `--split-tokens` | int | `800000` | Split output into multiple parts when this per-part token count is exceeded. |
 | `--show-token-count` | bool | `true` | Display the final token count after fusion completes. |
 | `--track-top-token-files` | bool | `false` | Display the top token-consuming files after fusion. |
@@ -72,7 +72,7 @@ The supported tokenizer names are listed in the [Tokenizers reference](/docs/ref
 | `--no-redact` | bool | `false` | Disable secret redaction. Redaction is on by default. |
 | `--redact-report` | bool | `false` | Append a redaction count summary to the output. |
 
-The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds reference](/docs/reference/secret-redaction-kinds).
+The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds reference](/docs/reference/secret-redaction-kinds). Redaction is best-effort pattern and entropy matching; it lowers accidental exposure but does not guarantee every secret is removed. Do not rely on it for compliance or secret scanning.
 
 ## Exclusion Options
 
@@ -107,19 +107,9 @@ The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds refer
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--no-cache` | bool | `false` | Disable per-file reduction caching. |
-| `--clear-cache` | bool | `false` | Clear the cache directory before running. |
-| `--index` | bool | `false` | Cache per-file dependency and symbol analysis on disk (`.fuse/index`) so repeated scoped runs reuse it. Enabled automatically in watch mode and the MCP server. |
+| `--clear-cache` | bool | `false` | Clear the `reduction` namespace in `.fuse/fuse.db` before running. |
+| `--index` | bool | `false` | Cache per-file analysis, relevance tokens, and optional vectors on disk (`.fuse/fuse.db`) so repeated scoped runs reuse them. Enabled automatically in watch mode and the MCP server. |
 | `--watch` | bool | `false` | Watch for file changes and re-run fusion after edits settle. Disabled automatically when stdio is redirected (MCP). |
-
-## Precision Tier (Opt-In)
-
-The precision tier replaces the default regex C# analysis with Roslyn for more accurate skeletons, dependency edges, and outlines. It is available only in the framework-dependent tool; the Native AOT build always uses the regex tier. The tier is selected at process start, so the flag is also recognized before command parsing, and the `FUSE_SEMANTIC` environment variable enables it for the MCP server.
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--semantic` | bool | `false` | Use the Roslyn precision tier for C# analysis (framework-dependent build only). |
-
-The tier and its trade-offs are described in [Scoping Internals](/docs/internals/scoping-internals).
 
 ## DotNet-Only Options
 
@@ -172,12 +162,10 @@ The detected patterns are listed in the [Pattern Detectors reference](/docs/refe
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--focus` | string | None | Type name, filename, or relative directory to scope the fusion around. With the precision tier (`--semantic`), a `Type.Member` seed scopes the seed file to that member (symbol-level scoping). |
+| `--focus` | string | None | Type name, filename, or relative directory to scope the fusion around. A `Type.Member` seed scopes the seed file to that member (symbol-level scoping). |
 | `--query` | string | None | Search query to scope fusion to the most relevant files. For C# the query ranks at member granularity and emits a thin host-type skeleton with the matched members in full and the rest collapsed to signatures (symbol-level retrieval). |
 | `--query-top` | int | `10` | Number of top-ranked files to seed query scoping. |
 | `--depth` | int | `1` | Dependency traversal depth for focus or query scoping. Valid range 1 to 10. |
-| `--rerank` | bool | `false` | Rerank query candidates with embedding-vector similarity (hybrid retrieval) before dependency expansion. |
-| `--embeddings` | bool | unset | Embedding backend for `--rerank`: on for the semantic ONNX model (downloaded once to `~/.fuse/models`), off for the dependency-free hashing embedding. Unset uses the build default. Ignored in the Native AOT build, which always uses hashing. |
 
 The three scoping modes (`--focus`, `--changed-since`, and `--query`) are mutually exclusive: a single fusion uses at most one. The [Scoping to What Matters](/docs/concepts/scoping) guide explains each mode, and [Reducing Tokens](/docs/concepts/reduction-levels) covers the reduction flags in practice.
 

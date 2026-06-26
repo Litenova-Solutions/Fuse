@@ -1,6 +1,6 @@
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
-using Fuse.Plugins.Languages.CSharp.Dependencies;
+using Fuse.Plugins.Languages.CSharp.Roslyn;
 using Fuse.Fusion.Scoping;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
@@ -26,8 +26,8 @@ public class FocusSeedResolverTests
             CreateFile("/root", "C.cs"),
         };
 
-        var extractors = new CapabilityRegistry<IDependencyExtractor>([new CSharpDependencyExtractor()]);
-        var typeLocators = new CapabilityRegistry<ITypeNameLocator>([new CSharpTypeNameLocator()]);
+        var extractors = new CapabilityRegistry<IDependencyExtractor>([new RoslynDependencyExtractor()]);
+        var typeLocators = new CapabilityRegistry<ITypeNameLocator>([new RoslynTypeNameLocator()]);
 
         var contentProvider = new SourceContentProvider(fs);
         var graph = await new DependencyGraphBuilder().BuildAsync(files, contentProvider, extractors, typeLocators);
@@ -62,8 +62,8 @@ public class FocusSeedResolverTests
             CreateFile("/root", "C.cs"),
         };
 
-        var extractors = new CapabilityRegistry<IDependencyExtractor>([new CSharpDependencyExtractor()]);
-        var typeLocators = new CapabilityRegistry<ITypeNameLocator>([new CSharpTypeNameLocator()]);
+        var extractors = new CapabilityRegistry<IDependencyExtractor>([new RoslynDependencyExtractor()]);
+        var typeLocators = new CapabilityRegistry<ITypeNameLocator>([new RoslynTypeNameLocator()]);
 
         var contentProvider = new SourceContentProvider(fs);
         var graph = await new DependencyGraphBuilder().BuildAsync(files, contentProvider, extractors, typeLocators);

@@ -64,4 +64,9 @@ public sealed class JsonRunReportDto
     ///     The names of any detected patterns, or <c>null</c> when pattern detection was not requested.
     /// </summary>
     public string[]? Patterns { get; set; }
+
+    /// <summary>
+    ///     The resolved experimental scoring knobs for this run, recorded so the measurement is reproducible.
+    /// </summary>
+    public JsonExperimentalOptionsDto? Experimental { get; set; }
 }

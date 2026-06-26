@@ -34,8 +34,8 @@ public sealed class OutputNamingService
             dirName = "fuse";
         }
 
-        var dateStamp = DateTime.Now.ToString("yyyy-MM-dd");
-        var timeStamp = DateTime.Now.ToString("HHmm");
+        var dateStamp = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var timeStamp = DateTime.UtcNow.ToString("HHmm");
 
         return $"{dirName}_{dateStamp}_{timeStamp}";
     }
@@ -102,7 +102,7 @@ public sealed class OutputNamingService
         {
             if (!overwrite)
             {
-                fileName = $"{baseName}{(isMultiPart ? $"_part{part}" : string.Empty)}_{FormatTokenCount(tokenCount)}_{DateTime.Now:mmss}.txt";
+                fileName = $"{baseName}{(isMultiPart ? $"_part{part}" : string.Empty)}_{FormatTokenCount(tokenCount)}_{DateTime.UtcNow:mmss}.txt";
                 finalPath = Path.Combine(directory, fileName);
             }
             else

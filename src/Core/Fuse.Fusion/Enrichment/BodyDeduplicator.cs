@@ -71,7 +71,7 @@ public sealed class BodyDeduplicator
                 }
 
                 group.Files.Add(content[i].NormalizedPath);
-                group.Hits.Add((i, chunk.QualifiedName));
+                group.Hits.Add((i, chunk.Identity));
             }
         }
 
@@ -95,12 +95,14 @@ public sealed class BodyDeduplicator
                 continue;
 
             var canonicalPath = content[group.CanonicalEntry].NormalizedPath;
+            // Display name for the marker text; keying uses the collision-free identity.
             var canonicalName = group.CanonicalChunk.QualifiedName;
+            var canonicalIdentity = group.CanonicalChunk.Identity;
 
-            foreach (var (entryIndex, qualified) in group.Hits)
+            foreach (var (entryIndex, identity) in group.Hits)
             {
                 // Keep the canonical occurrence in full; rewrite every other occurrence.
-                if (entryIndex == group.CanonicalEntry && qualified == canonicalName)
+                if (entryIndex == group.CanonicalEntry && identity == canonicalIdentity)
                     continue;
 
                 if (!rewritesByEntry.TryGetValue(entryIndex, out var map))
@@ -109,7 +111,7 @@ public sealed class BodyDeduplicator
                     rewritesByEntry[entryIndex] = map;
                 }
 
-                map[qualified] = $"// fuse:body[{id}] identical to {canonicalName} in {canonicalPath}";
+                map[identity] = $"// fuse:body[{id}] identical to {canonicalName} in {canonicalPath}";
                 membersRewritten++;
             }
         }
@@ -192,7 +194,7 @@ public sealed class BodyDeduplicator
             for (var l = cursor; l < chunk.StartLine; l++)
                 sb.Append(lines[l - 1]).Append('\n');
 
-            if (markers.TryGetValue(chunk.QualifiedName, out var marker))
+            if (markers.TryGetValue(chunk.Identity, out var marker))
             {
                 sb.Append(CollapseToMarker(lines, chunk, marker)).Append('\n');
             }
@@ -233,6 +235,6 @@ public sealed class BodyDeduplicator
         public int CanonicalEntry { get; } = canonicalEntry;
         public SymbolChunk CanonicalChunk { get; } = canonicalChunk;
         public HashSet<string> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
-        public List<(int EntryIndex, string Qualified)> Hits { get; } = [];
+        public List<(int EntryIndex, string Identity)> Hits { get; } = [];
     }
 }

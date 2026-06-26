@@ -1,4 +1,5 @@
 using DotMake.CommandLine;
+using Fuse.Cli;
 using Fuse.Cli.Services;
 
 namespace Fuse.Cli.Commands;
@@ -62,6 +63,10 @@ public sealed class InitCommand
 
         File.WriteAllText(targetPath, template);
         _consoleUI.WriteSuccess($"Created {targetPath}");
+        GitIgnoreHelper.TryEnsureFuseEntry(
+            System.IO.Directory.GetCurrentDirectory(),
+            _consoleUI.WriteStep,
+            _consoleUI.WriteStep);
         return Task.CompletedTask;
     }
 }

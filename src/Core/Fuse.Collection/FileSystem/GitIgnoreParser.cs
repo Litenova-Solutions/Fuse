@@ -8,7 +8,8 @@ namespace Fuse.Collection.FileSystem;
 /// <remarks>
 ///     Walks up the directory tree from a starting directory, collecting all
 ///     <c>.gitignore</c> patterns found along the way. Traversal stops at the
-///     repository root (directory containing a <c>.git</c> folder) or the file system root.
+///     git repository root resolved by <see cref="RepositoryRootResolver.TryFindRepositoryRoot" />
+///     (inclusive) or the file system root when not inside a repository.
 /// </remarks>
 public sealed class GitIgnoreParser
 {
@@ -35,7 +36,8 @@ public sealed class GitIgnoreParser
     public async Task<IReadOnlyList<Glob>> ParseAsync(string startDirectory, CancellationToken cancellationToken = default)
     {
         var patterns = new List<Glob>();
-        var currentDirectory = startDirectory;
+        var currentDirectory = Path.GetFullPath(startDirectory);
+        var repositoryRoot = RepositoryRootResolver.TryFindRepositoryRoot(currentDirectory);
 
         while (!string.IsNullOrEmpty(currentDirectory))
         {
@@ -60,8 +62,12 @@ public sealed class GitIgnoreParser
                 }
             }
 
+            if (repositoryRoot is not null &&
+                string.Equals(currentDirectory, repositoryRoot, StringComparison.OrdinalIgnoreCase))
+                break;
+
             var parent = Directory.GetParent(currentDirectory);
-            if (parent == null || parent.GetDirectories(".git").Length > 0)
+            if (parent is null)
                 break;
 
             currentDirectory = parent.FullName;

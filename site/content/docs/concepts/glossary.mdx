@@ -18,7 +18,7 @@ removing comments and whitespace up to dropping method bodies. See
 [Reduction levels](/docs/concepts/reduction-levels).
 
 **Skeleton.** A reduction that keeps class, interface, and method signatures and removes
-method bodies, producing an architecture map that is typically 66 to 93 percent smaller
+method bodies, producing an architecture map that is typically 39 to 56 percent smaller
 than a full fusion.
 
 **Scoping.** Narrowing a fusion to the files relevant to a task (a type, a git change set,
@@ -47,13 +47,10 @@ across calls in the same task and Fuse omits files it sent earlier (tracked by c
 hash), so multi-turn refinement does not re-pay tokens. See
 [Sessions and deltas](/docs/concepts/sessions-and-deltas).
 
-**Hybrid retrieval.** The opt-in reranking path that combines BM25 keyword scoring with
-local vector embeddings to order scoped results, enabled with `--rerank`. See
-[Precision tier](/docs/concepts/precision-tier).
-
-**Precision tier.** The opt-in Roslyn analysis path that replaces the default regex
-extraction for higher-fidelity skeletons and dependency edges. See
-[Precision tier](/docs/concepts/precision-tier).
+**Roslyn structural analysis.** The default C# parse-tree path for skeletons, dependency
+edges, type location, outlines, route maps, and semantic markers. Regex still handles
+content reduction, the project graph, and pattern detectors. See
+[Roslyn structural analysis vs regex](/docs/concepts/precision-tier).
 
 **Provenance.** An annotation that records the inclusion chain that pulled a file into a
 scoped fusion, answering why a file is present.

@@ -91,6 +91,14 @@ public sealed class EmissionOptions
     public bool TableOfContents { get; set; } = false;
 
     /// <summary>
+    ///     The maximum token size of the table-of-contents document, or <c>null</c> for no limit. When the full
+    ///     document would exceed this, it degrades in steps (drop symbol outlines, then collapse to directory
+    ///     aggregates) so the result stays within a consumer's size cap instead of being rejected. Applies only
+    ///     when <see cref="TableOfContents" /> is set.
+    /// </summary>
+    public int? TableOfContentsMaxTokens { get; set; }
+
+    /// <summary>
     ///     The output serialization format. Defaults to <see cref="OutputFormat.Xml" />.
     /// </summary>
     public OutputFormat Format { get; set; } = OutputFormat.Xml;

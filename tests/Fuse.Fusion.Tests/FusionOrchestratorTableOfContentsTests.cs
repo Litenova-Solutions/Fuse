@@ -35,7 +35,7 @@ public sealed class FusionOrchestratorTableOfContentsTests : IDisposable
             """);
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

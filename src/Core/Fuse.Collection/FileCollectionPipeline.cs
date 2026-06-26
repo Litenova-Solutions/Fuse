@@ -77,14 +77,28 @@ public sealed class FileCollectionPipeline
             ? await _gitIgnoreParser.ParseAsync(options.SourceDirectory, cancellationToken)
             : [];
 
-        foreach (var filter in _filters)
+        // Build a run-local filter list, substituting a fresh GitIgnoreFilter that carries this run's patterns
+        // for the shared placeholder. The pipeline is effectively a singleton (a transient captured by the
+        // singleton orchestrator), so mutating a shared filter's pattern set would let concurrent runs against
+        // different repositories race; every other filter is stateless and is reused as-is.
+        var runFilters = new IFileFilter[_filters.Count];
+        for (var i = 0; i < _filters.Count; i++)
         {
-            if (filter is GitIgnoreFilter gitIgnoreFilter)
-                gitIgnoreFilter.SetPatterns(gitIgnorePatterns);
+            runFilters[i] = _filters[i] is GitIgnoreFilter
+                ? new GitIgnoreFilter(gitIgnorePatterns)
+                : _filters[i];
         }
 
+        var rootDirectory = Path.GetFullPath(options.SourceDirectory);
+
+        // Skip file reparse points (symlinks) during enumeration; one extra stat per candidate. Directory
+        // junctions are not reparse points on the files reached through them, so paths under a junctioned
+        // directory can still pass IsPathUnderRoot. That partial mitigation is accepted for the hot path.
         var filePaths = _fileSystem
             .EnumerateFiles(options.SourceDirectory, "*.*", searchOption)
+            .Select(Path.GetFullPath)
+            .Where(path => IsPathUnderRoot(rootDirectory, path))
+            .Where(path => !HasReparsePointAttribute(_fileSystem.GetFileInfo(path)))
             .Select((path, index) => (path, index))
             .ToArray();
 
@@ -102,7 +116,7 @@ public sealed class FileCollectionPipeline
                 _fileSystem.GetRelativePath(options.SourceDirectory, item.path),
                 _fileSystem.GetFileInfo(item.path));
 
-            if (_filters.All(filter => filter.Include(candidate, options)))
+            if (runFilters.All(filter => filter.Include(candidate, options)))
                 includedFiles.Add((item.index, new SourceFile(candidate)));
 
             return ValueTask.CompletedTask;
@@ -119,13 +133,14 @@ public sealed class FileCollectionPipeline
     }
 
     // Builds source files from a caller-supplied path list, bypassing directory enumeration and the filters.
-    // Paths are resolved relative to SourceDirectory when not rooted; missing paths are skipped so a stale
-    // entry degrades the set rather than failing the run. Input order is preserved so the caller controls
-    // emission order.
+    // Paths are resolved relative to SourceDirectory when not rooted; paths outside the normalized root and
+    // missing paths are skipped so a stale or out-of-scope entry degrades the set rather than failing the run.
+    // Input order is preserved so the caller controls emission order.
     private CollectionResult CollectExplicitFiles(CollectionOptions options)
     {
         var files = new List<SourceFile>();
         var candidateCount = 0;
+        var rootDirectory = Path.GetFullPath(options.SourceDirectory);
 
         foreach (var raw in options.ExplicitFiles!)
         {
@@ -135,16 +150,32 @@ public sealed class FileCollectionPipeline
             candidateCount++;
             var fullPath = Path.IsPathRooted(raw)
                 ? Path.GetFullPath(raw)
-                : Path.GetFullPath(Path.Combine(options.SourceDirectory, raw));
+                : Path.GetFullPath(Path.Combine(rootDirectory, raw));
+
+            if (!IsPathUnderRoot(rootDirectory, fullPath))
+                continue;
 
             var fileInfo = _fileSystem.GetFileInfo(fullPath);
             if (!fileInfo.Exists)
                 continue;
 
-            var relativePath = _fileSystem.GetRelativePath(options.SourceDirectory, fullPath);
+            var relativePath = _fileSystem.GetRelativePath(rootDirectory, fullPath);
             files.Add(new SourceFile(new FileCandidate(fullPath, relativePath, fileInfo)));
         }
 
         return new CollectionResult(files, candidateCount);
     }
+
+    // Rejects resolved paths that escape the collection root via ".." segments or point at a different drive.
+    private static bool IsPathUnderRoot(string rootDirectory, string fullPath)
+    {
+        var relativePath = Path.GetRelativePath(rootDirectory, fullPath);
+        return !relativePath.StartsWith("..", StringComparison.Ordinal)
+            && !Path.IsPathRooted(relativePath);
+    }
+
+    // Directory enumeration can follow junctions and symlinks; skip reparse-point entries themselves.
+    // See the comment on the enumeration query for the junction limitation.
+    private static bool HasReparsePointAttribute(FileInfo fileInfo) =>
+        fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
 }

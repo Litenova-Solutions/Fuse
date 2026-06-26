@@ -144,8 +144,8 @@ export default function HomePage() {
             />
             <Feature
               icon={<ShieldCheck className="size-5" />}
-              title="Deterministic and AOT-clean"
-              body="The default path uses no runtime reflection and ships as a Native AOT binary. Same input, same output. An opt-in Roslyn tier raises precision when you ask for it."
+              title="Roslyn structural analysis"
+              body="C# skeletons, dependency edges, route maps, and semantic markers use Roslyn syntax parsing by default."
             />
           </div>
         </div>

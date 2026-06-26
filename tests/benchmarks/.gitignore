@@ -10,7 +10,19 @@ results/.wt/
 results/.wt4/
 results/.scope4/
 results/.out4/
+results/.wt5/
+results/.wt5spike/
+results/.out5/
+results/.wt6/
+results/.out6/
+results/.cg/
 results/.smoke/
+results/.rank/
+results/.wt-rank/
+results/.latency/
+results/.spike/
+results/.spike*/
+results/.pgf/
 results/*.raw.cs.txt
 
 # Keep the committed summaries: results/*.json, results/*.csv, results/*.md

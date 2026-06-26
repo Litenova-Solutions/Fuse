@@ -49,7 +49,7 @@ A capability registry builds an extension-to-capability map at startup. It itera
 
 Last registration wins. When two implementations declare the same extension, the one registered later replaces the earlier one in the map. A specialized plugin can therefore override a default by registering after it. Resolution returning nothing is a normal outcome: a file whose extension has no registered reducer passes through reduction unchanged, and a file with no registered dependency extractor contributes an empty reference list to the graph.
 
-The opt-in Roslyn precision tier is built on this rule. When enabled, it registers Roslyn implementations of the existing C# capabilities, the skeleton, dependency, type-name, and outline extractors, after the default regex ones, so the Roslyn implementations win for `.cs`. The tier is a separate assembly the Native AOT package does not reference, so the AOT build keeps the regex defaults.
+C# structural capabilities follow this rule in the default host. The C# language plugin registers the content reducer, project-graph generator, and pattern detectors. The Roslyn plugin registers skeleton, dependency, type-name, outline, slice, chunk, route-map, and semantic-marker implementations and is always registered after the C# plugin, so Roslyn supplies every structural capability for `.cs`. Content reduction and the project graph remain in the C# plugin and use regex-based transforms over source and project file text.
 
 ```mermaid
 flowchart LR

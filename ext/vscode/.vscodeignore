@@ -1,0 +1,15 @@
+# Ship only the bundled output and assets; the source, deps, and configs stay out of the VSIX.
+src/**
+node_modules/**
+.vscode-test/**
+**/*.ts
+**/*.map
+tsconfig*.json
+esbuild.js
+.eslintrc.json
+.gitignore
+DECISIONS.md
+PROGRESS.md
+SUMMARY.md
+BLOCKED.md
+**/tsconfig.tsbuildinfo

@@ -1,5 +1,7 @@
 using Fuse.Fusion.Scoping;
 using Fuse.Fusion.Enrichment;
+using Fuse.Fusion.PostReduction;
+using Fuse.Fusion.Stages;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Filters;
@@ -7,20 +9,20 @@ using Fuse.Collection.Templates;
 using Fuse.Collection.Templates.Definitions;
 using Fuse.Emission;
 using Fuse.Emission.Tokenization;
-using Fuse.Emission.Writers;
-using Fuse.Plugins.Formats.Web.Extensions;
 using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
 using Fuse.Plugins.Abstractions.Markers;
 using Fuse.Plugins.Abstractions.Outline;
+using Fuse.Plugins.Abstractions.Patterns;
 using Fuse.Plugins.Abstractions.Reducers;
+using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Plugins.Abstractions.Skeleton;
-using Fuse.Plugins.Languages.CSharp.Extensions;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Reduction.Security;
 using Fuse.Reduction.Tokenization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fuse.Fusion.Extensions;
 
@@ -30,46 +32,44 @@ namespace Fuse.Fusion.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    ///     Registers all Fuse fusion services required to execute the collection, reduction, and emission pipelines,
-    ///     including the C# language plugin and built-in format reducers.
-    /// </summary>
-    /// <param name="services">The service collection to add registrations to.</param>
-    /// <returns>The same <paramref name="services" /> instance, to allow chaining.</returns>
-    public static IServiceCollection AddFuse(this IServiceCollection services)
-    {
-        services.AddFuseCore();
-        services.AddCSharpLanguage();
-        services.AddFormatReducers();
-        return services;
-    }
-
-    /// <summary>
-    ///     Registers the core fusion pipelines, analysis engine, capability registries, file filters, and project
-    ///     templates, without any language-specific plugins.
+    ///     Registers stage pipelines, capability registries, and the SQLite store factory.
     /// </summary>
     /// <param name="services">The service collection to add registrations to.</param>
     /// <returns>The same <paramref name="services" /> instance, to allow chaining.</returns>
     /// <remarks>
-    ///     Use <see cref="AddFuse" /> for the full default registration. Call this directly only when composing a
-    ///     custom set of language plugins on top of the core services. File filter registration order equals
-    ///     evaluation order.
+    ///     Does not register language or format plugins. Hosts call language-specific extension methods
+    ///     (for example <c>AddCSharpLanguage</c> and <c>AddFormatReducers</c>) after this when needed.
+    ///     File filter registration order equals evaluation order.
     /// </remarks>
     public static IServiceCollection AddFuseCore(this IServiceCollection services)
     {
         services.AddSingleton<TokenizerFactory>();
         services.AddSingleton<ITokenCounter>(sp => sp.GetRequiredService<TokenizerFactory>().GetCounter());
-        services.AddSingleton<IEntryFormatter, XmlEntryFormatter>();
         services.AddSingleton<FusionValidator>();
         services.AddSingleton<FusionOrchestrator>();
+        services.AddSingleton<IExplainService, ExplainService>();
+        services.AddSingleton<FusionCollectionStage>();
+        services.AddSingleton<FusionScopingStage>();
+        services.AddSingleton<FusionReductionStage>();
+        services.AddSingleton<QueryScopingPipeline>();
         services.AddSingleton<ISecretRedactor, DefaultSecretRedactor>();
         // Per-run relevance index: the BM25 index rebuilds all of its state per query and shares nothing, so a
         // factory hands each fusion run a fresh instance instead of a serialized singleton.
         services.AddSingleton<Func<IRelevanceIndex>>(_ => () => new Bm25RelevanceIndex());
-        services.AddSingleton<Retrieval.IEmbeddingModel>(_ => new Retrieval.HashingEmbeddingModel());
+
+        // Process-lifetime cache of one built index, keyed by document content signature, so a warm query
+        // against an unchanged tree reuses the index instead of rebuilding its statistics (item 24).
+        services.AddSingleton<RelevanceIndexCache>();
 
         services.AddTransient<FileCollectionPipeline>();
         services.AddTransient<ContentReductionPipeline>();
         services.AddTransient<EmissionPipeline>();
+        services.AddSingleton<PostReductionEnrichmentPipeline>();
+        // Fresh pattern detectors per run: detectors accumulate mutable state during a detection pass, so the
+        // singleton post-reduction pipeline resolves a new transient batch for each run rather than sharing
+        // instances across concurrent runs.
+        services.AddSingleton<Func<IReadOnlyList<PatternDetectorBase>>>(
+            sp => () => sp.GetServices<PatternDetectorBase>().ToArray());
 
         services.AddSingleton<IFileSystem, PhysicalFileSystem>();
         // Per-run content cache: a fresh instance per run keeps the read-once-per-run invariant intact under
@@ -89,6 +89,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(sp => new CapabilityRegistry<IDependencyExtractor>(sp.GetServices<IDependencyExtractor>()));
         services.AddSingleton(sp => new CapabilityRegistry<ITypeNameLocator>(sp.GetServices<ITypeNameLocator>()));
 
+        services.AddSingleton<ITokenCostModel, DefaultTokenCostModel>();
         services.AddSingleton<DependencyGraphBuilder>();
         services.AddSingleton<FocusSeedResolver>();
         services.AddSingleton<Enrichment.BoilerplateDeduplicator>();
@@ -97,7 +98,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Session.ISessionTracker, Session.InMemorySessionTracker>();
         services.AddSingleton<IChangeDetector, GitChangeDetector>();
         services.AddSingleton<IGitStatsProvider, GitStatsProvider>();
-        services.AddSingleton<IReductionCacheFactory, ReductionCacheFactory>();
+        services.AddSingleton<IFuseStoreFactory>(sp =>
+            new FuseStoreFactory(sp.GetService<ILogger<SqliteKeyValueStore>>()));
 
         RegisterFileFilters(services);
         RegisterProjectTemplates(services);

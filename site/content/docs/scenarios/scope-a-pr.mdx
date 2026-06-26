@@ -30,10 +30,12 @@ files.
 ## What You Get
 
 A fusion scoped to the change set and its dependents, emitted most-relevant first so the
-changed files survive any token cut. Change scoping is the strongest mode by measurement:
-88 percent recall of the files real merged pull requests touched, at 61 percent precision.
-It is also one call, not an explore loop: in the [Layer 4 scenario](/docs/project/benchmarks)
-a scoped call averaged about 40,000 tokens against roughly 512,000 for a whole-repository
+changed files survive any token cut. Change scoping is the strongest mode by measurement: 89 percent recall of the files real
+merged pull requests touched, at 54 percent precision in the
+[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests).
+It is also one call, not an explore loop: in the
+[Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
+the change-scoped arm reached 91 percent recall at about 29,500 tokens against roughly 425,000 for a whole-repository
 packer dump at the same single call.
 
 ## When to Use It

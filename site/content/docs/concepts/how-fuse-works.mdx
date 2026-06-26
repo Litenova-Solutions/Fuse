@@ -41,8 +41,9 @@ stage that turns "the whole repo" into "the part that matters".
 
 Reduction reads each file once, normalizes whitespace, and applies the reducer for
 the file's type. For C# this ranges from removing comments and usings up to dropping
-method bodies to a signature-only **skeleton**. This stage also redacts detected
-secrets, before token counting, so the reported count reflects the safe output. The
+method bodies to a signature-only **skeleton**. This stage also applies best-effort
+secret redaction (regex and entropy heuristics) before token counting, so the
+reported count reflects redacted content when matches are found. The
 levels are covered in [Reduction levels](/docs/concepts/reduction-levels).
 
 ### 4. Emission

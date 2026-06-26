@@ -18,7 +18,7 @@ public sealed class FusionOrchestratorManifestTests : IDisposable
         File.WriteAllText(Path.Combine(_sourceDirectory, "Sample.cs"), "public class Sample { }");
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

@@ -19,10 +19,8 @@ namespace Fuse.Cli.Commands;
 /// </summary>
 /// <remarks>
 ///     Runs a fusion in memory, then compares the public API declared in the included source files against
-///     the fused output. The source side is parsed by Roslyn in the framework-dependent tool and by an
-///     AOT-clean regex analyzer in the Native AOT build; the fused side is matched by text presence so that
-///     skeleton output (signatures without bodies) is handled. A drop in type or method preservation under
-///     the default or <c>--all</c> reduction signals lost API; skeleton is signatures only by design.
+///     the fused output. The source side is parsed by Roslyn; the fused side is matched by text presence so
+///     that skeleton output (signatures without bodies) is handled.
 /// </remarks>
 [CliCommand(Name = "verify", Description = "Report the preserved percent of public types, methods, and routes after a .NET fusion.", Parent = typeof(FuseCliCommand))]
 public sealed class VerifyCommand : CommandBase

@@ -12,9 +12,12 @@
 #             also records no_fuse_whole_repo_tokens = exact tokens of every .cs file in the
 #                            repo, the "explore blind" ceiling an agent pays if it cannot find
 #                            the right files.
-#   repomix : one dump of the whole repo at the PR head. input_tokens = tokens of the dump.
-#             round_trips = 1. recall = 1.0 by construction (it contains everything). Omitted
-#             for a PR when Repomix is unavailable (no npx / sub-floor stub), never stubbed.
+#   repomix : the cost-of-not-scoping baseline. A generic full-dump packer that never scopes:
+#             one dump of the whole repo at the PR head. input_tokens = tokens of the dump.
+#             round_trips = 1. recall = 1.0 by construction (it contains everything), so its role
+#             is to show what blind packing costs in tokens, not to contest scoping (it cannot lose
+#             on scoping because it never scopes). Omitted for a PR when Repomix is unavailable
+#             (no npx / sub-floor stub), never stubbed.
 #   fuse    : one scoped call, fuse --query "<PR title>" --depth 2 --level standard --max-tokens
 #             <budget>. input_tokens = exact tokens of the emitted output. round_trips = 1.
 #             recall = fraction of changed_cs present in the output.
@@ -62,6 +65,18 @@ function Get-TokensMulti($paths) {
     if ($list.Count -eq 0) { return 0 }
     $json = ($list -join "`n") | & $TokenCount --stdin-list | ConvertFrom-Json
     return [int]$json.total
+}
+
+# Run one Fuse invocation (the argv after the exe) into a fresh output directory and return its emitted
+# token count and recall against the truth set. Shared by the query, changes, and ask arms.
+function Invoke-FuseArm([string[]]$argv, $outDir, $truth) {
+    if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
+    New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+    $null = Measure-Process $Fuse $argv
+    $emitted = Get-EmittedPaths $outDir
+    $recall = Measure-Recall $emitted $truth
+    $files = @(Get-ChildItem -Path $outDir -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+    return @{ tokens = (Get-TokensMulti $files); recall = $recall }
 }
 
 $repoGroups = $prs | Group-Object repo
@@ -152,6 +167,36 @@ foreach ($g in $repoGroups) {
                 input_tokens = $fuseTokens; no_fuse_whole_repo_tokens = $wholeTokens
                 recall = $recall; recall_by_construction = $false
             }
+
+            # fuse-changes arm: the routed arm when a git base is available. One scoped call seeding on the
+            # diff against the PR base, with first-degree dependents. This is the headline routed arm: the
+            # plain --query arm above is the stress floor (a sentence, no base, picked search).
+            $chRes = Invoke-FuseArm @(
+                'dotnet','--directory', $wt, '--output', (Join-Path $ResultsDir ".scope4/$($g.Name)_$($pr.pr)/changes_$b"),
+                '--overwrite','--format','xml','--tokenizer','o200k_base','--no-cache','--no-manifest',
+                '--max-tokens', "$b", '--level','standard',
+                '--changed-since', $pr.base, '--include-dependents'
+            ) (Join-Path $ResultsDir ".scope4/$($g.Name)_$($pr.pr)/changes_$b") $truth
+            $results += [pscustomobject]@{
+                repo = $g.Name; pr = $pr.pr; arm = 'fuse-changes'; budget = $b; truth = $truth.Count
+                round_trips = 1; round_trips_is_lower_bound = $false
+                input_tokens = $chRes.tokens; no_fuse_whole_repo_tokens = $wholeTokens
+                recall = $chRes.recall; recall_by_construction = $false
+            }
+
+            # fuse-ask arm: Fuse routes the task to a strategy and packs to budget. For a PR title this is the
+            # router's honest choice (search, or focus when the title names a type), one call.
+            $askRes = Invoke-FuseArm @(
+                'ask','--directory', $wt, '--output', (Join-Path $ResultsDir ".scope4/$($g.Name)_$($pr.pr)/ask_$b"),
+                '--overwrite','--format','xml','--tokenizer','o200k_base','--no-cache','--no-manifest',
+                '--max-tokens', "$b", '--task', $q
+            ) (Join-Path $ResultsDir ".scope4/$($g.Name)_$($pr.pr)/ask_$b") $truth
+            $results += [pscustomobject]@{
+                repo = $g.Name; pr = $pr.pr; arm = 'fuse-ask'; budget = $b; truth = $truth.Count
+                round_trips = 1; round_trips_is_lower_bound = $false
+                input_tokens = $askRes.tokens; no_fuse_whole_repo_tokens = $wholeTokens
+                recall = $askRes.recall; recall_by_construction = $false
+            }
         }
 
         $rmxShow = if ($null -ne $repomixTokens) { "{0,8}" -f $repomixTokens } else { "  (n/a)" }
@@ -187,7 +232,7 @@ $md = @()
 $md += '# Layer 4 results (context acquisition: Fuse vs no Fuse vs Repomix)'
 $md += ''
 $md += "Tokenizer o200k_base. Budgets $($Budgets -join ', '); headline budget $Budget. PRs: $($prs.Count). Fuse query depth $Depth."
-$md += 'Means across the PRs at the headline budget. no-fuse round-trips is a structural lower bound (a blind agent reads each needed file at least once, and more while exploring), not a measured agent. no-fuse and Repomix have recall 1.00 by construction.'
+$md += 'Means across the PRs at the headline budget. no-fuse round-trips is a structural lower bound (a blind agent reads each needed file at least once, and more while exploring), not a measured agent. Repomix is the cost-of-not-scoping baseline: a generic full-dump packer that never scopes, so its recall is 1.00 by construction and its role is to show what blind packing costs in tokens, not to contest scoping. no-fuse and Repomix both have recall 1.00 by construction.'
 $md += ''
 $md += '| Arm | Round-trips | Input tokens | Recall of needed files |'
 $md += '|-----|------------:|-------------:|-----------------------:|'
@@ -216,6 +261,48 @@ foreach ($name in ($head | Select-Object -ExpandProperty repo -Unique | Sort-Obj
     $fr  = [math]::Round(($rFu | Measure-Object recall -Average).Average, 3)
     $md += ('| {0} | {1} | {2} | {3} | {4} | {5} | {6:P0} |' -f $name, $k, (Fmt $rel), (Fmt $wh), (Fmt $rm), (Fmt $fu), $fr)
 }
+# Routed arms at the headline budget: the change-scoped and ask arms next to the query stress floor.
+function Get-ArmMean($arm, $field) {
+    $rows = $head | Where-Object { $_.arm -eq $arm }
+    if (-not $rows) { return $null }
+    return [math]::Round(($rows | Measure-Object $field -Average).Average, ($(if ($field -eq 'recall') { 3 } else { 0 })))
+}
+
+$md += ''
+$md += '## Routed arms (headline budget)'
+$md += ''
+$md += 'The change-scoped arm is the routed default when a git base is available; the ask arm is what Fuse picks from the task text; the query arm is the stress floor (a sentence, no base, picked search). All are one call.'
+$md += ''
+$md += '| Arm | Recall | Mean tokens |'
+$md += '|-----|-------:|------------:|'
+$md += ('| fuse --changed-since (routed) | {0:P0} | {1} |' -f (Get-ArmMean 'fuse-changes' 'recall'), (Fmt (Get-ArmMean 'fuse-changes' 'input_tokens')))
+$md += ('| fuse ask (routed) | {0:P0} | {1} |' -f (Get-ArmMean 'fuse-ask' 'recall'), (Fmt (Get-ArmMean 'fuse-ask' 'input_tokens')))
+$md += ('| fuse --query (stress floor) | {0:P0} | {1} |' -f (Get-ArmMean 'fuse' 'recall'), (Fmt (Get-ArmMean 'fuse' 'input_tokens')))
+
+# Tokens to reach a target recall: the smallest budget whose mean recall clears the target, with the mean
+# tokens actually spent there. Shows that change scoping reaches high recall at a tighter budget than query.
+$target = 0.80
+$md += ''
+$md += ("Tokens to reach {0:P0} recall (smallest budget whose mean recall clears it):" -f $target)
+$md += ''
+$md += '| Arm | Budget reached | Mean tokens there |'
+$md += '|-----|---------------:|------------------:|'
+foreach ($arm in @('fuse-changes','fuse-ask','fuse')) {
+    $reached = $null; $tokensThere = $null
+    foreach ($b in $Budgets) {
+        $rows = $results | Where-Object { $_.arm -eq $arm -and $_.budget -eq $b }
+        if (-not $rows) { continue }
+        $mr = ($rows | Measure-Object recall -Average).Average
+        if ($mr -ge $target) { $reached = $b; $tokensThere = [math]::Round(($rows | Measure-Object input_tokens -Average).Average, 0); break }
+    }
+    $label = switch ($arm) { 'fuse-changes' { 'fuse --changed-since' } 'fuse-ask' { 'fuse ask' } default { 'fuse --query' } }
+    if ($null -ne $reached) {
+        $md += ('| {0} | {1} | {2} |' -f $label, $reached, (Fmt $tokensThere))
+    } else {
+        $md += ('| {0} | not reached at <= {1} | n/a |' -f $label, ($Budgets[-1]))
+    }
+}
+
 $md -join "`n" | Set-Content (Join-Path $ResultsDir 'layer4-scenario.md')
 
 Write-Host ""

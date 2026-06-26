@@ -17,7 +17,7 @@ public sealed class GoldenFusionTestHost : IDisposable
     public GoldenFusionTestHost()
     {
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
         _templateRegistry = _serviceProvider.GetRequiredService<ProjectTemplateRegistry>();
     }

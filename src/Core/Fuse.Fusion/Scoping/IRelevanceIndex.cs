@@ -1,5 +1,7 @@
 namespace Fuse.Fusion.Scoping;
 
+using Fuse.Plugins.Abstractions.Scoping;
+
 /// <summary>
 ///     Builds an in-memory relevance index and ranks files against a query.
 /// </summary>
@@ -51,4 +53,38 @@ public interface IRelevanceIndex
     ///     nothing has been indexed, the query is blank, or no file matches any query term.
     /// </returns>
     IReadOnlyList<RankedFile> RankScored(string query, int topN);
+
+    /// <summary>
+    ///     Ranks indexed files against a set of pre-tokenized, individually weighted query terms.
+    /// </summary>
+    /// <param name="weightedTerms">
+    ///     Already-normalized query terms mapped to a per-term weight that scales each term's BM25F
+    ///     contribution. Terms are expected to come from <see cref="RelevanceTokenizer" /> so they share the
+    ///     index vocabulary; weights of zero or below are ignored.
+    /// </param>
+    /// <param name="topN">Maximum number of ranked files to return.</param>
+    /// <returns>
+    ///     Ranked files ordered from most to least relevant, capped at <paramref name="topN" />. Empty when
+    ///     nothing has been indexed, no terms are supplied, or no file matches any term.
+    /// </returns>
+    /// <remarks>
+    ///     This is the weighted generalization of <see cref="RankScored(string, int)" />, which delegates here
+    ///     after tokenizing its query at unit weight. It lets a caller blend an expanded query (for example
+    ///     pseudo-relevance feedback terms at a reduced weight) without rebuilding the index.
+    /// </remarks>
+    IReadOnlyList<RankedFile> RankScored(IReadOnlyDictionary<string, double> weightedTerms, int topN);
+
+    /// <summary>
+    ///     Returns the inverse document frequency of a term across the indexed corpus.
+    /// </summary>
+    /// <param name="term">The already-normalized term to look up (as produced by <see cref="RelevanceTokenizer" />).</param>
+    /// <returns>
+    ///     The BM25 inverse document frequency: higher for rarer, more discriminative terms; near zero for
+    ///     terms in most documents. Returns <c>0</c> when nothing is indexed or the term is unknown.
+    /// </returns>
+    /// <remarks>
+    ///     Exposed so query expansion can favor discriminative feedback terms over corpus-wide boilerplate,
+    ///     which is the main way pseudo-relevance feedback degrades on a weak first pass.
+    /// </remarks>
+    double InverseDocumentFrequency(string term);
 }

@@ -84,6 +84,50 @@ public sealed class RoslynSymbolChunkExtractor : ISymbolChunkExtractor
             parent,
             member.ToString(),
             span.StartLinePosition.Line + 1,
-            span.EndLinePosition.Line + 1);
+            span.EndLinePosition.Line + 1,
+            BuildStableId(member, name));
     }
+
+    // Builds a collision-free identity: namespace, the containing-type chain (each with generic arity), the
+    // member name, and for methods and constructors the generic arity and parameter type list. This separates
+    // overloads, like-named members of nested or different-namespace types, and partial-class members that the
+    // display QualifiedName would conflate.
+    private static string BuildStableId(SyntaxNode member, string name)
+    {
+        var prefix = new List<string>();
+
+        var ns = member.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault();
+        if (ns is not null)
+            prefix.Add(ns.Name.ToString());
+
+        // Outermost type first, so the chain reads namespace-to-member left to right.
+        foreach (var type in member.Ancestors().OfType<TypeDeclarationSyntax>().Reverse())
+        {
+            var arity = type.TypeParameterList?.Parameters.Count ?? 0;
+            prefix.Add(arity > 0 ? $"{type.Identifier.ValueText}`{arity}" : type.Identifier.ValueText);
+        }
+
+        var enumType = member.Ancestors().OfType<EnumDeclarationSyntax>().FirstOrDefault();
+        if (enumType is not null)
+            prefix.Add(enumType.Identifier.ValueText);
+
+        var head = prefix.Count > 0 ? string.Join(".", prefix) + "." + name : name;
+
+        return member switch
+        {
+            MethodDeclarationSyntax m =>
+                $"{head}{GenericArity(m.TypeParameterList)}({ParameterTypes(m.ParameterList)})",
+            ConstructorDeclarationSyntax c => $"{head}({ParameterTypes(c.ParameterList)})",
+            _ => head,
+        };
+    }
+
+    private static string GenericArity(TypeParameterListSyntax? typeParameters)
+    {
+        var count = typeParameters?.Parameters.Count ?? 0;
+        return count > 0 ? $"`{count}" : string.Empty;
+    }
+
+    private static string ParameterTypes(ParameterListSyntax parameters) =>
+        string.Join(",", parameters.Parameters.Select(p => p.Type?.ToString() ?? "?"));
 }

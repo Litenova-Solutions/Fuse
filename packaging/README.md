@@ -8,14 +8,14 @@ who do not have the .NET SDK and want a single self-contained binary.
 
 | Channel | Trigger | Workflow / source | Credentials |
 |---------|---------|-------------------|-------------|
-| NuGet (`dotnet tool install -g Fuse`) | `v*.*.*` tag | `.github/workflows/publish.yml` (`build/pack-aot.ps1`) | Trusted Publishing (OIDC) + `NUGET_USER` |
+| NuGet (`dotnet tool install -g Fuse`) | `v*.*.*` tag | `.github/workflows/publish.yml` (`build/pack-tool.ps1`) | Trusted Publishing (OIDC) + `NUGET_USER` |
 | GitHub Release (installer, self-contained win-x64 zip, linux-x64 tarball, `SHA256SUMS.txt`) | `v*.*.*` tag | `.github/workflows/release.yml` | built-in `GITHUB_TOKEN` |
 | MCP Registry (`fuse mcp serve` discovery) | `v*.*.*` tag | `.github/workflows/mcp-registry.yml` (`mcp-registry/server.json`) | GitHub OIDC, no secret |
 | Install scripts (`curl ... \| sh`, `irm ... \| iex`) | served from the site | `site/public/install.sh`, `site/public/install.ps1` (at fuse.codes) | none |
 | WinGet (`winget install Litenova.Fuse`) | manual PR | `packaging/winget/*` -> `microsoft/winget-pkgs` | none (PR review) |
 
-The self-contained binaries are Native AOT builds, so they run without the .NET
-SDK or runtime. The install scripts download those same release assets.
+The self-contained binaries bundle the .NET runtime, so they run without a separate
+SDK install. The install scripts download those same release assets.
 
 ## Order of operations for a release
 
@@ -39,6 +39,6 @@ SDK or runtime. The install scripts download those same release assets.
 - The placeholder `0000...` hash in the WinGet installer manifest is intentional:
   a manifest cannot carry a real hash until the release asset it points at exists.
 - macOS is not packaged as a binary. Mac users get Fuse via
-  `dotnet tool install -g Fuse`. Adding a macOS channel would need a macOS AOT
-  build (the `aot-osx-x64` profile exists) and, for an unwarned binary, Apple
-  notarization.
+  `dotnet tool install -g Fuse`. Adding a macOS channel would need a macOS
+  self-contained publish (`runtime-osx-x64` profile) and, for an unwarned binary,
+  Apple notarization.

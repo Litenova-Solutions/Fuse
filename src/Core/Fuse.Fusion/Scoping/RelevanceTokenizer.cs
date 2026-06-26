@@ -7,9 +7,9 @@ namespace Fuse.Fusion.Scoping;
 ///     indexed content and to queries so they share a vocabulary.
 /// </summary>
 /// <remarks>
-///     Normalization lowercases, splits on non-word characters, splits camelCase and snake_case identifiers
-///     into their sub-words, drops a small set of English and code stopwords, and applies a conservative
-///     suffix stemmer. Stemming is intentionally light: it folds common plural and verb endings so that, for
+///     Normalization lowercases, splits on non-word characters, splits camelCase, snake_case, all-caps acronym,
+///     and digit-boundary identifiers into their sub-words, drops a small set of English and code stopwords, and
+///     applies a conservative suffix stemmer. Stemming is intentionally light: it folds common plural and verb endings so that, for
 ///     example, <c>caching</c> and <c>cached</c> both reduce to <c>cach</c> and <c>handlers</c> reduces to
 ///     <c>handler</c>, without the aggressive rewrites of a full Porter stemmer.
 /// </remarks>
@@ -112,7 +112,11 @@ public static partial class RelevanceTokenizer
         return term;
     }
 
-    [GeneratedRegex(@"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|_+", RegexOptions.Compiled)]
+    // Split points, in order: camelCase / digit-then-upper (orderV2 -> order|V2), an acronym followed by a word
+    // (HTTPClient -> HTTP|Client), a letter-to-digit boundary (OAuth2 -> OAuth|2), a digit-to-letter boundary
+    // (2Token -> 2|Token, base64Url -> ... 64|Url), and underscores (snake_case). The whole token is kept too,
+    // so an exact identifier match still scores; the sub-words bridge a query that uses only part of a name.
+    [GeneratedRegex(@"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])|_+", RegexOptions.Compiled)]
     private static partial Regex BuildIdentifierSplitter();
 
     [GeneratedRegex(@"\W+", RegexOptions.Compiled)]

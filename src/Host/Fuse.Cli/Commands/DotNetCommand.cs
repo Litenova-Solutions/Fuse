@@ -77,7 +77,7 @@ public sealed class DotNetCommand : CommandBase
 
         if (!string.IsNullOrWhiteSpace(Query))
         {
-            builder.WithQueryOptions(new QueryOptions(Query, QueryTop, Depth, Rerank));
+            builder.WithQueryOptions(new QueryOptions(Query, QueryTop, Depth));
         }
 
         var request = builder.Build();
@@ -138,12 +138,6 @@ public sealed class DotNetCommand : CommandBase
     /// </summary>
     [CliOption(Description = "Number of top-ranked files to seed query scoping.")]
     public int QueryTop { get; set; } = 10;
-
-    /// <summary>
-    ///     Rerank query candidates with embedding-vector similarity (hybrid retrieval).
-    /// </summary>
-    [CliOption(Description = "Rerank query candidates with embedding-vector similarity (hybrid retrieval).")]
-    public bool Rerank { get; set; } = false;
 
     /// <summary>
     ///     Prepend an ASP.NET route map to the output.

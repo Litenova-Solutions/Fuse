@@ -114,6 +114,40 @@ public sealed class FocusSeedResolverExpandTests
     }
 
     [Fact]
+    public void Expand_FollowsProximityEdges_WhenWeighted()
+    {
+        var graph = BuildGraph();
+        var proximity = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["a.cs"] = ["aTests.cs"], // a structural sibling reachable by no type reference
+        };
+
+        var result = Resolver.Expand(
+            graph,
+            new Dictionary<string, double> { ["a.cs"] = 1.0 },
+            new ExpansionOptions(Depth: 1, FollowReferences: true, ProximityEdges: proximity, ProximityWeight: 0.5));
+
+        Assert.Contains("aTests.cs", result.IncludedPaths);
+    }
+
+    [Fact]
+    public void Expand_ZeroProximityWeight_IgnoresProximityEdges()
+    {
+        var graph = BuildGraph();
+        var proximity = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["a.cs"] = ["aTests.cs"],
+        };
+
+        var result = Resolver.Expand(
+            graph,
+            new Dictionary<string, double> { ["a.cs"] = 1.0 },
+            new ExpansionOptions(Depth: 1, FollowReferences: true, ProximityEdges: proximity, ProximityWeight: 0.0));
+
+        Assert.DoesNotContain("aTests.cs", result.IncludedPaths);
+    }
+
+    [Fact]
     public void Expand_SeedAlwaysAdmittedOverBudget()
     {
         var graph = BuildGraph();

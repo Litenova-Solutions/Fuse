@@ -1,0 +1,77 @@
+---
+title: VS Code extension
+description: Install the Fuse VS Code extension and host process for index status, token hotspots, scoping commands, and a dependency graph in the editor.
+---
+
+The Fuse VS Code extension is the human-facing twin of the MCP server. Your agent reads
+the warm engine over MCP; you read the same warm engine over a UI transport, sharing one
+index and one SQLite store at `.fuse/fuse.db`.
+
+The extension does not replace MCP registration. Install both when you want scoped context
+in the agent and native editor surfaces for yourself.
+
+## Install
+
+Install the **Fuse** extension from the VS Code Marketplace, or install a VSIX from a
+release. You also need the `fuse` global tool on your PATH (see [Install](/docs/start/install)):
+
+```bash
+dotnet tool install -g Fuse
+```
+
+The extension spawns `fuse host` automatically when you open a workspace. Set
+`fuse.host.path` in VS Code settings to point at a specific `fuse` executable when the
+global tool is not on PATH.
+
+## What It Shows
+
+- **Index panel** with warm-index state, file count, index time, and host memory.
+- **Token Hotspots** ranked by estimated token cost; click to open a file.
+- **Scope Result** after a scoping command: the files a fusion includes, with token costs.
+- **Dependency Graph** webview (Cytoscape, bundled, offline): nodes sized by centrality,
+  colored by token cost.
+- **Secret diagnostics**: detected secrets underlined at their exact range in the editor
+  and in the Problems panel.
+
+## Commands
+
+| Command | What it does |
+|---------|--------------|
+| Fuse: Index Workspace | Warm or refresh the analysis index for the open folder. |
+| Fuse: Search | Run query scoping and show the result. |
+| Fuse: Focus Here | Scope around the current editor selection or explorer item. |
+| Fuse: Changes Since Branch | Scope to files changed since a git ref, plus dependents. |
+| Fuse: Show Dependency Graph | Open the graph webview for the workspace. |
+| Fuse: Restart Host | Restart the background `fuse host` process. |
+
+Focus Here is also on the editor and explorer context menus.
+
+## The Host Process
+
+The extension supervises a long-lived `fuse host` process that serves the fusion engine
+over JSON-RPC on a named pipe (Windows) or a Unix domain socket (elsewhere). The host
+reuses the same dependency-injection graph as `fuse mcp serve`, so MCP calls and UI
+commands share analysis results.
+
+The host and engine run fully offline: no network calls and no telemetry from the
+extension. The optional dense-rerank model is never bundled; download it only through
+the explicit `fuse models download` flow if you enable reranking.
+
+For trust boundaries and local exposure, see [Host RPC](/docs/internals/host-rpc).
+
+## Connect Your Agent Too
+
+The extension and MCP server complement each other. Register MCP once so your agent can
+call the eleven `fuse_*` tools:
+
+```bash
+fuse mcp install --rules
+```
+
+See [Connect to your AI](/docs/start/connect-your-ai) for per-client setup.
+
+## Next
+
+For a task-shaped agent workflow, see
+[Context for an agent on a large codebase](/docs/scenarios/context-for-an-agent).
+For scoping modes the commands use, see [Scoping](/docs/concepts/scoping).

@@ -21,7 +21,13 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
         ("aws-access-key", AwsAccessKeyRegex()),
         ("aws-secret-key", AwsSecretKeyRegex()),
         ("jwt", JwtRegex()),
+        // PEM must run before the high-entropy literal pass so the whole block is removed as one unit rather
+        // than the base64 body being caught (or missed) line by line.
         ("pem-private-key", PemPrivateKeyRegex()),
+        ("github-token", GitHubTokenRegex()),
+        ("google-api-key", GoogleApiKeyRegex()),
+        ("slack-token", SlackTokenRegex()),
+        ("stripe-key", StripeKeyRegex()),
         ("api-token", ApiTokenRegex()),
     ];
 
@@ -70,6 +76,34 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
             counts[SecretRedactionResult.CodeLiteralKind] = codeLiteralRedactions;
 
         return new SecretRedactionResult(content, counts);
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<SecretFinding> FindSecretSpans(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return [];
+
+        // Mirror the redaction decisions on the ORIGINAL content (named patterns always match-redact;
+        // connection-string and high-entropy apply their predicates), recording each match's kind and span.
+        // This enumerates the same patterns Redact uses but never replaces, so it is a pure read-only view that
+        // cannot affect emitted output. Spans are offsets into the original content for in-place highlighting.
+        var findings = new List<SecretFinding>();
+
+        foreach (var (kind, pattern) in Patterns)
+            foreach (Match match in pattern.Matches(content))
+                findings.Add(new SecretFinding(kind, match.Index, match.Length));
+
+        foreach (Match match in ConnectionStringLiteralRegex().Matches(content))
+            if (LooksLikeConnectionString(match.Groups["value"].Value))
+                findings.Add(new SecretFinding("connection-string", match.Index, match.Length));
+
+        foreach (Match match in HighEntropyLiteralRegex().Matches(content))
+            if (IsHighEntropy(match.Groups["value"].Value))
+                findings.Add(new SecretFinding("high-entropy", match.Index, match.Length));
+
+        findings.Sort((a, b) => a.Start.CompareTo(b.Start));
+        return findings;
     }
 
     // Counts, on the original content, the secret matches that fall inside a C# string literal. This is an
@@ -298,8 +332,27 @@ public sealed partial class DefaultSecretRedactor : ISecretRedactor
     [GeneratedRegex(@"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b", RegexOptions.Compiled)]
     private static partial Regex JwtRegex();
 
-    [GeneratedRegex(@"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", RegexOptions.Compiled)]
+    // Match the entire PEM block, BEGIN line through END line including the base64 body, so the key material is
+    // removed rather than only its header. Singleline lets the body span newlines; the lazy quantifier stops at
+    // the first END line.
+    [GeneratedRegex(@"-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY-----.*?-----END (?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY-----", RegexOptions.Compiled | RegexOptions.Singleline)]
     private static partial Regex PemPrivateKeyRegex();
+
+    // GitHub personal/OAuth/app tokens (ghp_, gho_, ghu_, ghs_, ghr_) and fine-grained PATs (github_pat_).
+    [GeneratedRegex(@"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})\b", RegexOptions.Compiled)]
+    private static partial Regex GitHubTokenRegex();
+
+    // Google API keys: the fixed AIza prefix followed by 35 url-safe base64 characters.
+    [GeneratedRegex(@"\bAIza[0-9A-Za-z\-_]{35}\b", RegexOptions.Compiled)]
+    private static partial Regex GoogleApiKeyRegex();
+
+    // Slack tokens: xoxb/xoxa/xoxp/xoxr/xoxs followed by the dash-delimited body.
+    [GeneratedRegex(@"\bxox[baprs]-[A-Za-z0-9-]{10,}\b", RegexOptions.Compiled)]
+    private static partial Regex SlackTokenRegex();
+
+    // Stripe live secret and restricted keys.
+    [GeneratedRegex(@"\b[sr]k_live_[0-9A-Za-z]{16,}\b", RegexOptions.Compiled)]
+    private static partial Regex StripeKeyRegex();
 
     // Matches a single- or double-quoted literal with no embedded quote or newline, bounded to a sane length.
     // Whether the captured value is actually a connection string is decided by LooksLikeConnectionString.

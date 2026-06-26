@@ -43,7 +43,48 @@ public sealed class GraphCentralityTests
 
         Assert.True(centrality.TryGetValue("Core.cs", out var core));
         Assert.Equal(1.0, core); // most depended-upon -> normalized to 1
-        Assert.False(centrality.ContainsKey("Leaf.cs")); // no dependents -> absent (treated as zero)
+        // PageRank gives every node a floor score, so the peripheral file is present but ranks well below the
+        // central one (in-degree centrality omitted it entirely).
+        Assert.True(centrality.TryGetValue("Leaf.cs", out var leaf));
+        Assert.True(leaf < core);
+    }
+
+    [Fact]
+    public void Compute_PageRankRewardsBeingReferencedByCentralFiles()
+    {
+        // Hub is referenced by Core (itself heavily referenced) and by nobody-else; Lonely is referenced only
+        // by an otherwise-peripheral file. PageRank, unlike raw in-degree (both have one referrer), ranks Hub
+        // above Lonely because the importance flows from the central Core.
+        var fileReferences = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["A.cs"] = ["CoreType"],
+            ["B.cs"] = ["CoreType"],
+            ["C.cs"] = ["CoreType"],
+            ["Core.cs"] = ["HubType"],
+            ["Edge.cs"] = ["LonelyType"],
+        };
+        var declaredTypes = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Core.cs"] = ["CoreType"],
+            ["Hub.cs"] = ["HubType"],
+            ["Lonely.cs"] = ["LonelyType"],
+            ["A.cs"] = ["A"],
+            ["B.cs"] = ["B"],
+            ["C.cs"] = ["C"],
+            ["Edge.cs"] = ["Edge"],
+        };
+        var typeIndex = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        var typeReferences = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["CoreType"] = ["A.cs", "B.cs", "C.cs"],
+            ["HubType"] = ["Core.cs"],
+            ["LonelyType"] = ["Edge.cs"],
+        };
+
+        var centrality = GraphCentrality.Compute(
+            new DependencyGraph(fileReferences, typeIndex, declaredTypes, typeReferences));
+
+        Assert.True(centrality["Hub.cs"] > centrality["Lonely.cs"]);
     }
 
     [Fact]

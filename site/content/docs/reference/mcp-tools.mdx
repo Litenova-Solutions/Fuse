@@ -1,9 +1,9 @@
 ---
 title: Tools Reference
-description: Parameters and defaults for the nine MCP tools the Fuse server exposes to AI clients.
+description: Parameters and defaults for the eleven MCP tools the Fuse server exposes to AI clients.
 ---
 
-The Fuse MCP server exposes nine tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
+The Fuse MCP server exposes eleven tools an AI client can call to request scoped, reduced codebase context. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so that an agent or its author can choose the right call and supply correct arguments.
 
 This page is for engineers writing agent instructions and for experts who need the exact default of each parameter.
 
@@ -14,6 +14,8 @@ Every tool here is read-only and runs its fusion in memory, returning the result
 The three scoping parameters (`focus`, `changedSince`, and `query`) are mutually exclusive. A single fusion uses at most one of them.
 
 The scoping tools share one retrieval engine, documented in [Scoping Internals](/docs/internals/scoping-internals). Three behaviors are worth knowing when calling them. Focus pulls in both the files a seed depends on and the files that depend on it (its dependents), so a seed reaches its callers as well as its callees. Search ranks with BM25F, weighting a file's declared type and member names and its path above its body, so the file that declares a concept ranks above files that merely mention it. When `maxTokens` is set, the result is emitted most-relevant first, so the files closest to the seed survive the limit.
+
+Reduction level defaults differ by surface. CLI commands default to `none`; the scoped MCP tools (`fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_dotnet`) default to `standard`, so an agent gets the standard removals without naming a level.
 
 ## fuse_toc
 
@@ -26,6 +28,7 @@ Table of contents (directory tree, symbol outline, per-file token costs) instead
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
+| `maxTokens` | int | 24000 | Largest table of contents to return, in tokens; the map degrades to fit rather than overflow |
 
 ## fuse_ask
 
@@ -77,19 +80,17 @@ reads.
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
-| `session` | string | null | Session id: omit files already returned under this id earlier in the session |
+| `session` | string | null | Session id: omit files already returned unchanged under this id earlier in the session, and re-send a changed file as a unified diff rather than in full |
 
-A `focus` of the form `Type.Member` scopes the seed file to that member when the precision tier is active (the server is started with `FUSE_SEMANTIC`).
+A `focus` of the form `Type.Member` scopes the seed file to that member, keeping its body in full and reducing the rest of the file to signatures.
 
 ## fuse_search
 
 BM25F query-scoped fusion plus dependency expansion. One call turns a topic into the
-ranked files and their neighborhood, replacing a grep-and-open loop. Set `rerank` to true
-to reorder the BM25 candidates by embedding-vector similarity (hybrid retrieval), an
-opt-in tier; the default ranking is pure BM25F and uses no model.
+ranked files and their neighborhood, replacing a grep-and-open loop.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -97,21 +98,25 @@ opt-in tier; the default ranking is pure BM25F and uses no model.
 | `query` | string | required | Natural-language or keyword query, ranked with BM25F |
 | `queryTop` | int | 10 | Number of top-ranked files used to seed dependency expansion |
 | `depth` | int | 1 | Dependency hops to traverse out from the seed files |
-| `rerank` | bool | false | Rerank the BM25 candidates with embedding-vector similarity (hybrid retrieval) |
 | `excludeDirectories` | string[] | null | Directory names to skip |
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
-| `session` | string | null | Session id: omit files already returned under this id earlier in the session |
+| `session` | string | null | Session id: omit files already returned unchanged under this id earlier in the session, and re-send a changed file as a unified diff rather than in full |
 
 ## fuse_changes
 
 Files changed since a git ref plus optional dependents. With `review` set, one call answers
 "what changed and what breaks" with diff hunks and the callers of each changed file,
 instead of reading the diff and then chasing callers by hand.
+
+Prefer this tool for branch, PR, or fix work whenever a git base is available. Starting from the
+diff, it has by far the highest recall of the files a task touches (89 percent on the benchmark
+corpus, against 48 percent for query at the same budget), so routing PR-shaped work here rather
+than to a query is the single biggest accuracy lever.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -123,7 +128,7 @@ instead of reading the diff and then chasing callers by hand.
 | `excludeFiles` | string[] | null | File names to exclude |
 | `excludePatterns` | string[] | null | Glob patterns to exclude |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
-| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `maxTokens` | int | null | Hard token limit, or unlimited |
 | `trackTopTokenFiles` | bool | false | Append the top token-consuming files to the stats comment |
 
@@ -143,7 +148,7 @@ Full-control .NET fusion with all options.
 | `maxFileSizeKb` | int | 0 | Maximum file size in KB; 0 means unlimited |
 | `excludeTestProjects` | bool | false | Skip all test project directories |
 | `excludeUnitTestProjects` | bool | false | Skip only unit test project directories |
-| `level` | none \| standard \| aggressive \| skeleton \| publicApi | none | C# structural reduction level |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# structural reduction level |
 | `semanticMarkers` | bool | false | Prepend structural annotation comments |
 | `focus` | string | null | Type name, filename, or path to scope around |
 | `depth` | int | 1 | Dependency traversal depth for focus and query scoping |
@@ -191,6 +196,44 @@ Compacts a caller-supplied set of files, or raw content, by running Fuse's reduc
 | `extension` | string | `.cs` | Extension that selects the reducer for `content` |
 | `level` | enum | `standard` | C# reduction level: `none`, `standard`, `aggressive`, `skeleton`, `publicApi` |
 | `maxTokens` | int | 0 | Token ceiling for the output; 0 means unlimited |
+
+## fuse_explain
+
+Preview which files a scoped fusion would include and exclude, with a per-file token estimate, without returning any file bodies. Use it to check the effect of a focus seed, query, or change range before spending tokens on the actual context. The three scoping parameters are mutually exclusive, as in the scoping tools; with none set it previews the whole collected set.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to preview |
+| `focus` | string | null | Type, file, or path to scope around |
+| `query` | string | null | Relevance query to scope by |
+| `changedSince` | string | null | Git ref to scope to changed files |
+| `depth` | int | 1 | Dependency hops for focus or query scoping |
+| `queryTop` | int | 10 | Number of top-ranked files to seed query scoping |
+| `level` | none \| standard \| aggressive \| skeleton \| publicApi | standard | C# reduction level used for the token estimate |
+| `maxTokens` | int | null | Hard token limit applied to the previewed selection |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+
+## fuse_find
+
+A cheap, Fuse-native exact lookup over a codebase: one coherent interface in place of a broad grep. It returns locations, not fused context. Three modes: `symbol` finds a declared type or member by its exact simple name; `text` finds an exact substring and shows context lines around each match; `path` finds files whose path contains the query.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | required | Source directory to search |
+| `query` | string | required | The symbol name, exact text, or path fragment to find |
+| `mode` | symbol \| text \| path | symbol | Which lookup to run |
+| `ignoreCase` | bool | false | Match case-insensitively |
+| `maxMatches` | int | 50 | Largest number of matches to return; the rest are summarized as a count |
+| `contextLines` | int | 2 | Lines of context on each side of a `text`-mode match |
+| `excludeDirectories` | string[] | null | Directory names to skip |
+| `excludeFiles` | string[] | null | File names to exclude |
+| `excludePatterns` | string[] | null | Glob patterns to exclude |
+| `excludeTestProjects` | bool | false | Skip all test project directories |
+
+In `symbol` mode the match is on the exact simple name (a member match is reported as `member {name} in {Type}`); `text` and `path` modes match substrings.
 
 ## What This Does Not Cover
 

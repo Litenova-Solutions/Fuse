@@ -63,7 +63,7 @@ Phase 9 - MCP rewrite
 - [x] P9.3 Update mcp-registry manifest to the new tool list
 
 Phase 10 - Tests, docs, benchmarks
-- [ ] P10.1 Tests overhaul complete (Section 16.5 definition of done)
+- [x] P10.1 Tests overhaul complete (Section 16.5 definition of done)
 - [ ] P10.2 Docs overhaul complete (Section 17.6 definition of done)
 - [ ] P10.3 fuse eval + suites A-D; offline PowerShell layers updated to new surface (Section 18)
 - [ ] P10.4 Regenerate benchmark figure; resync AGENTS.md and docs numbers (18.12, 18.13)
@@ -1732,5 +1732,14 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: The registry schema (2025-12-11 server.schema) has no per-tool list field; the tool surface is discovered at runtime via the MCP server, so the manifest carries the positioning in its description rather than an enumerated tool list.
 - Lessons: The MCP registry manifest describes the server/package, not the tools; the tool list lives in the server's runtime instructions (P9.1) and the docs (Phase 10).
 - Time: ~10 min
+
+### P10.1 Tests overhaul complete (16.5 DoD) - 2026-06-26 22:15
+- Status: done
+- Result: Confirmed the 16.5 definition of done and closed the remaining gap (16.3 golden output for V3 shapes). Added `V3GoldenOutputTests` (4) to `Fuse.GoldenOutput.Tests` with golden files for the new shapes: `v3-context` (mixed-render with manifest + provenance), `v3-review` (changed-file blast radius), `v3-map`, and `v3-localize`. The fixture writes deterministic source files to disk and seeds the store directly; the manifest root is omitted so output is stable across machines, and a length-based token counter keeps counts deterministic. Old golden files (default/skeleton fusion, project graph, route map, TOC, formatters) are retained: they test the orchestrator, which survives for `reduce`. New solution test total 691.
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 691 passed; `dotnet format --verify-no-changes` clean. Goldens generated with UPDATE_GOLDEN_FILES=1 then verified to match on a normal run.
+- 16.5 DoD status: (1) tests green with the new projects (Indexing/Semantics/Retrieval/Context) discovered and run, count risen across phases; (2) format clean; (3) every analyzer fixture-backed (P4.2-P4.8 + FixtureEdgeSetTests over OrderingApp); (4) contract test: no new host RPC endpoints were added (the CLI and MCP call the engine directly; the execution checklist has no "add host RPC endpoint" item), so the existing `FuseHostContractTests` remains valid and in sync and no `ProtocolVersion` bump is due.
+- Blockers/issues: None. The warm-host RPC endpoint surface from doc section 11 is not a checklist item; the MCP server provides the warm path (index-on-first-use + session store). If host RPC endpoints are added later, the contract test and protocol version must move together per the change-safety invariant.
+- Lessons: V3 golden determinism requires omitting the absolute root from the manifest, seeding token estimates, and using a fixed token counter; with those, the emitter output is byte-stable. The skeleton tier correctly drops bodies (verified in the golden: the controller constructor renders as a signature).
+- Time: ~45 min
 
 

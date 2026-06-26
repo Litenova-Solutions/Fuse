@@ -824,6 +824,32 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         GetEdgesAsync("to_node_id", nodeId, cancellationToken);
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<FileListItem>> FindFilesByPathAsync(string fragment, int limit, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT path, normalized_path, extension, is_test, is_generated FROM files " +
+            "WHERE normalized_path LIKE '%' || $f || '%' COLLATE NOCASE ORDER BY length(normalized_path) LIMIT $limit;";
+        command.Parameters.AddWithValue("$f", fragment);
+        command.Parameters.AddWithValue("$limit", limit);
+
+        var files = new List<FileListItem>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            files.Add(new FileListItem(
+                Path: reader.GetString(0),
+                NormalizedPath: reader.GetString(1),
+                Extension: reader.GetString(2),
+                IsTest: reader.GetInt64(3) != 0,
+                IsGenerated: reader.GetInt64(4) != 0));
+        }
+
+        return files;
+    }
+
+    /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _connectionFactory.ClearPool();

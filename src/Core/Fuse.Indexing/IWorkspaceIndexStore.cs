@@ -157,4 +157,11 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The incoming edges.</returns>
     Task<IReadOnlyList<SemanticEdgeRecord>> GetIncomingEdgesAsync(string nodeId, CancellationToken cancellationToken);
+
+    /// <summary>Finds indexed files whose normalized path contains a fragment (case-insensitive).</summary>
+    /// <param name="fragment">The path fragment to match.</param>
+    /// <param name="limit">The maximum number of files to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The matching files.</returns>
+    Task<IReadOnlyList<FileListItem>> FindFilesByPathAsync(string fragment, int limit, CancellationToken cancellationToken);
 }

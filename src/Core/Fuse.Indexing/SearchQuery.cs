@@ -59,3 +59,18 @@ public sealed record RouteListItem(
     string RoutePattern,
     string FilePath,
     int StartLine);
+
+/// <summary>
+///     A summary of an indexed file, returned by path lookups.
+/// </summary>
+/// <param name="Path">The file path as discovered.</param>
+/// <param name="NormalizedPath">The normalized (forward-slash) path.</param>
+/// <param name="Extension">The file extension.</param>
+/// <param name="IsTest">Whether the file is a test file.</param>
+/// <param name="IsGenerated">Whether the file is generated.</param>
+public sealed record FileListItem(
+    string Path,
+    string NormalizedPath,
+    string Extension,
+    bool IsTest,
+    bool IsGenerated);

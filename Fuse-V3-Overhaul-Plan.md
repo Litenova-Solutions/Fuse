@@ -38,7 +38,7 @@ Phase 4 - Core semantic edges
 - [x] P4.8 Fixture edge assertions pass; fuse resolve --service/--request/--route return correctly
 
 Phase 5 - Retrieval engine v2
-- [ ] P5.1 LocalizationRequest + candidate generators (exact symbol/route/service/request/config, FTS, path, changed files)
+- [x] P5.1 LocalizationRequest + candidate generators (exact symbol/route/service/request/config, FTS, path, changed files)
 - [ ] P5.2 Score normalization
 - [ ] P5.3 Graph expansion with typed edge weights + pruning
 - [ ] P5.4 Context plan output; fuse localize and fuse context acceptance pass; no QueryScopingPipeline needed
@@ -1612,5 +1612,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: DotMake marks nullable `string?` options Required by default; added `Required = false` to each resolve option. The fixture lives inside the Fuse git repo, so `FuseStorePaths` resolves the store to the repo root `.fuse/fuse.db` (gitignored) for both index and resolve, which keeps them consistent.
 - Lessons: Resolution is a uniform graph lookup (find source node by name or constructed id, follow one typed edge), so all five resolve kinds share `FollowEdgesAsync`. The analyzer set is wired once in `SemanticAnalysisRunner.CreateDefault` and reused by both the indexer and tests. Switching `fuse index` to the semantic pipeline means a real workspace now gets the full graph, not just syntax symbols.
 - Time: ~60 min
+
+### P5.1 LocalizationRequest + candidate generators - 2026-06-26 15:30
+- Status: done
+- Result: Added `LocalizationRequest`, `CandidateNode`, `CandidateSource` (+ `CandidateSourceWeights`) and the candidate generators to `Fuse.Retrieval`: `ExactCandidateGenerator` (service/request/route/config/symbol via `SemanticResolver`), `FtsCandidateGenerator` (FtsSymbol when a hit name matches a query token, else FtsBody), `PathCandidateGenerator` (path LIKE on 3+ char tokens), `DiffCandidateGenerator` (SelectedPaths -> must-keep), and the composite `CandidateGenerator.CreateDefault`. Added store `FindFilesByPathAsync` + `FileListItem`. Added `CandidateGeneratorTests` (5). New solution test total 705 (Fuse.Retrieval.Tests 4 -> 9).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Retrieval.Tests` 9 passed (each source generates correctly; no-signal yields no candidates); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: Git base resolution for `ChangedSince` is deferred to P6.1 (review wires `GitChangeDetector`); the diff generator handles explicit `SelectedPaths` for now. `TokenEstimate` is 0 until packing (P5.4) resolves per-file token costs from chunks. Stack-trace parsing (`StackTraceCandidateGenerator`) is not yet implemented (the `StackTrace` field is reserved).
+- Lessons: Candidates carry a `NodeId` (set for exact/graph candidates, empty for file-only FTS/path/diff candidates), which P5.3 graph expansion keys on; file-only candidates pass through to the plan directly. Base score starts at the source weight; P5.2 normalizes across sources. The "no signal yields nothing" case is the honest low-signal floor the localize benchmark (Suite C) checks for.
+- Time: ~35 min
 
 

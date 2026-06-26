@@ -1,8 +1,8 @@
-# Fuse Roadmap
+# Fuse V3 Plan: the path to the crown
 
-Fuse V3 shipped: a Roslyn-backed .NET semantic context engine with a warm persistent index, an 8-tool MCP surface, a five-suite C# benchmark, and a rewritten docs site. The full plan, execution record, and progress log for that overhaul are archived in [Fuse-V3-Overhaul-History.md](Fuse-V3-Overhaul-History.md) (and PR #20).
+The first V3 wave shipped a Roslyn-backed .NET semantic context engine with a warm persistent index, an 8-tool MCP surface, a five-suite C# benchmark, and a rewritten docs site. Its plan, execution record, and full progress log are archived in [Fuse-V3-Overhaul-History.md](Fuse-V3-Overhaul-History.md) (and PR #20).
 
-This roadmap is the path from V3 to the most performant .NET context engine available: dominate the axes that are the moat (semantic wiring resolution, change review with a base), reach parity or better where Fuse is currently weak (open-ended localization), and prove it head to head and end to end. Items are ordered by leverage: result per item, not effort. The honest ceilings where "best of everything" genuinely trades off are stated at the end.
+This plan is the next V3 wave: the path to the most performant .NET context engine available. Dominate the axes that are the moat (semantic wiring resolution, change review with a base), reach parity or better where Fuse is currently weak (open-ended localization), and prove it head to head and end to end. Items are ordered by leverage: result per item, not effort. The honest ceilings where "best of everything" genuinely trades off are stated at the end.
 
 This file holds the forward plan. Each item carries its engine work plus the tests, docs, and benchmark changes that land with it. Tick a box when its definition of done is met; record the measured result in `tests/benchmarks/results` and resync `AGENTS.md` and the benchmarks page in the same change.
 
@@ -148,3 +148,9 @@ Two axes cannot be maxed simultaneously, so the crown there is the best frontier
 - No-signal localization. The recall ceiling is set by the input, not the engine. The crown is correct abstention (R3), not a recall number the title cannot support.
 
 Everywhere else, the combination of semantic-mode indexing (R0), hybrid retrieval (R1, R2), a wider analyzer set (R5, R6), warm performance (R7), and a task-resolution oracle (R9) is a defensible path to being the most performant .NET context engine and beating the structural and lexical peers on the axes that are theirs to lose.
+
+---
+
+## Progress Log
+
+Append a timestamped entry per item as it lands (Status / Result / Verification / Blockers / Lessons / Time), mirroring the archived history log. The first entry goes here.

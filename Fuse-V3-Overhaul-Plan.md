@@ -24,7 +24,7 @@ Phase 2 - Syntax-level semantic batch
 Phase 3 - MSBuild/Roslyn semantic indexing
 - [x] P3.1 DotNetWorkspaceDiscoverer (discovery order, ignore rules)
 - [x] P3.2 RoslynWorkspaceLoader; MSBuildLocator guarded once; syntax fallback on load failure
-- [ ] P3.3 Semantic symbol extraction + SymbolIdBuilder (IDs stable across runs)
+- [x] P3.3 Semantic symbol extraction + SymbolIdBuilder (IDs stable across runs)
 - [ ] P3.4 Project records + file linkage; index status Semantic or Partial on a real .sln/.csproj
 
 Phase 4 - Core semantic edges
@@ -1532,5 +1532,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: First load failed with "Cannot open project ... language 'C#' is not supported" - the C# workspace language service was missing at runtime. Fixed by adding `Microsoft.CodeAnalysis.CSharp.Workspaces` 4.14.0 to `Directory.Packages.props` and referencing it from `Fuse.Semantics`. The MSBuild-absent fallback path is implemented but its real exercise is the P11.1 self-contained publish smoke test.
 - Lessons: `MSBuildWorkspace` needs BOTH `Microsoft.CodeAnalysis.Workspaces.MSBuild` AND the language-specific `Microsoft.CodeAnalysis.CSharp.Workspaces` assembly present, or it reports the language as unsupported. A `Compilation` resolves declared type symbols without restore (references only matter for external types), so semantic symbol extraction does not require a restored fixture. The new package flows transitively to `Fuse.Cli`, enlarging the publish; the MSBuild-unavailable fallback must be verified at publish time.
 - Time: ~35 min
+
+### P3.3 Semantic symbol extraction + SymbolIdBuilder - 2026-06-26 11:55
+- Status: done
+- Result: Added `SymbolIdBuilder` (stable id `symbol:{assembly}:{kind}:{hash}` from assembly + documentation-comment id, XxHash64-bounded) and `SemanticSymbolExtractor` to `Fuse.Semantics`. The extractor walks a `LoadedProject` compilation's namespaces/types/nested-types/members, emitting `SymbolRecord`s with resolved metadata (FQN, metadata name, namespace, assembly, accessibility, signature via a custom `SymbolDisplayFormat`, public-API visibility computed up the containing-type chain), keyed to files by normalized relative path. Skips implicitly-declared symbols and property/event accessor methods. Added `SemanticSymbolExtractorTests` (3: id stability across compilations, metadata extraction, accessor skipping). New solution test total 659 (Fuse.Semantics.Tests 22 -> 25).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 25 passed; `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None.
+- Lessons: `ISymbol.GetDocumentationCommentId()` is the ideal stable, position-independent, parameter-inclusive descriptor for symbol ids - no need to hand-assemble parameter type displays. The test compiles in-memory via `CSharpCompilation.Create` (no MSBuild) for speed; the loader path is covered separately in P3.2. Semantic ids replace P2.2's `symbol:fallback:...` ids when semantic load succeeds; P3.4 wires which extractor the indexer uses based on load status.
+- Time: ~30 min
 
 

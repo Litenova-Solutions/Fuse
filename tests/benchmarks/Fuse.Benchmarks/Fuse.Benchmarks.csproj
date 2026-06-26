@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseFileScopedNamespaces>true</UseFileScopedNamespaces>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="Fuse.Benchmarks.Tests"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Core\Fuse.Indexing\Fuse.Indexing.csproj"/>
+        <ProjectReference Include="..\..\..\src\Core\Fuse.Semantics\Fuse.Semantics.csproj"/>
+        <ProjectReference Include="..\..\..\src\Core\Fuse.Retrieval\Fuse.Retrieval.csproj"/>
+    </ItemGroup>
+</Project>

@@ -109,9 +109,11 @@ By signal bucket (how much the title tells the engine where to look):
 | route/API | 12% |
 | formatting | 8% |
 
+The table above is the recorded baseline (`localize.json`). R1 reconnects the lexical ranker (`localize.r1.json`): the BM25F rank is now carried through to the candidate score (a stronger lexical match ranks higher, not just present), with one capped round of pseudo-relevance feedback that pulls in files sharing the top hits' vocabulary. Overall recall rises to 30.3 percent and the natural-language-domain bucket to 27 percent, at a precision cost (6.6 percent) and a higher median return (about 4,000 tokens) from the broader pool. Identifier-rich holds at 41 percent, short of the retired 49 percent lexical floor: recall here is averaged over multi-file PRs at a 20-candidate cap in a mostly-syntax corpus, so naming one file does not by itself lift the bucket past the floor. The dense reranker for prose titles (Suite C's largest bucket) is R2; low-signal abstention is R3.
+
 Findings, including the known gap:
 
-- Recall tracks the signal in the title. When the title names identifiers that appear in the code (identifier-rich, 40 percent), localization does best; when the title is a domain phrase (23 percent), a route or API description (12 percent), or a formatting note (8 percent), it does worse. This is the expected shape of a title-only, no-base task.
+- Recall tracks the signal in the title. When the title names identifiers that appear in the code (identifier-rich, 41 percent after R1), localization does best; when the title is a domain phrase (27 percent), a route or API description, or a formatting note, it does worse. This is the expected shape of a title-only, no-base task.
 - Low-signal detection is a known gap. The suite scores whether Fuse flags a title that carries no usable signal (so it can decline rather than guess). Low-signal detection F1 is 0.11 (1 true positive, 8 false positives, 8 false negatives). State this plainly: V3 does not yet reliably flag a no-signal title and instead returns full-text candidates. Closing this gap (declining or warning on a no-signal query rather than returning junk) is open work.
 - This is the floor, not the routed path. With a Git base available, the routed mode is change impact (Suite B), which is where the recall and precision are. Suite C is what Fuse can do from a sentence with no base, and it is reported as the weakest mode on purpose.
 

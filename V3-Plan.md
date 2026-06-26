@@ -32,7 +32,7 @@ All from `tests/benchmarks/results`, counted with `o200k_base`. The corpus loads
 ## Execution checklist
 
 - [x] R0 Semantic-mode corpus: restore MSBuild workspaces in the bench harness so the corpus indexes semantically
-- [ ] R1 Reconnect the lexical ranker (BM25F + PRF + centrality) as a candidate generator
+- [x] R1 Reconnect the lexical ranker (BM25F + PRF + centrality) as a candidate generator
 - [ ] R2 Hybrid retrieval with a warm dense reranker for natural-language queries
 - [ ] R3 Low-signal detection and abstention
 - [ ] R4 Adjudicated support-set ground truth for review (Suite B)
@@ -162,4 +162,13 @@ Append a timestamped entry per item as it lands (Status / Result / Verification 
 - Verification: `dotnet build Fuse.slnx -c Release` 0 errors; `dotnet test Fuse.slnx -c Release --no-build` all green (Fuse.Benchmarks.Tests 24 -> 26, two new restore-to-semantic tests); `dotnet format --verify-no-changes` clean. `--require-semantic` smoke confirmed a syntax-mode repo is skipped loudly, not scored at the fallback.
 - Blockers: AutoMapper, FluentValidation, MediatR, and Serilog do not restore on SDK 10.0.109 (central package management with an inline-versioned SourceLink, or an older target framework, against the newer SDK). This is a corpus-pinning limit, not an engine limit; fully unblocking it needs per-repo SDK or package pinning (corpus maintenance), tracked as follow-up. The mechanism is in place and `--require-semantic` makes the gap loud.
 - Lessons: The DotMake.CommandLine source generator needs a non-incremental rebuild to pick up new `[CliOption]` properties; an incremental build silently omitted them from the parser. Restore success on a pinned OSS checkout is partial by nature on a newer SDK, so `RestoreResult` reports restored and failed project counts rather than a single boolean.
+- Time: about 1 session.
+
+### R1 Reconnect the lexical ranker (2026-06-26)
+
+- Status: Done (BM25F rank preservation and PRF landed and measured; the centrality prior is graph-gated, see below).
+- Result: Added `LexicalCandidateGenerator` in `Fuse.Retrieval` and made it the default lexical channel (replacing the flat `FtsCandidateGenerator` in `CreateDefault`). The persistent index already ranks chunk hits with field-weighted BM25; the prior generator discarded that rank, giving every hit a flat per-source weight, so the lexical order was lost at the noisy-or merge and the 20-candidate truncation. The new generator collapses hits to one candidate per file, carries a rank-decayed score (band ceiling for a name-field match, decaying to a floor with rank), and runs one capped round of pseudo-relevance feedback (top files' distinctive symbol names seed an expanded query; up to 8 new vocabulary-related files are added at a discounted weight). Measured on Suite C (`localize.r1.json` vs `localize.json`): overall changed-file recall 27.3 -> 30.3 percent, natural-language domain 23 -> 27 percent, at a precision cost (8.4 -> 6.6 percent) and a higher median return (about 2,658 -> 4,000 tokens) from the broader pool. Identifier-rich holds at 41 percent, short of the retired 49 percent floor.
+- Verification: `dotnet build` 0 errors; `dotnet test` green (Fuse.Retrieval.Tests 30 -> 33: rank-preservation, PRF surfacing, empty-query). The `v3-localize` golden was regenerated (same candidates and order; OrderService's score reflects the new rank-decay, IOrderService stays 0.925 from exact resolution). `dotnet format` clean.
+- Blockers: Identifier-rich did not recover past the retired 49 percent floor (41 percent). Two honest reasons: the corpus is mostly syntax mode here (R0), so there is no semantic blend to add to lexical, and Suite C recall is averaged over multi-file PRs at a 20-candidate cap, so naming one file does not lift the bucket past the floor. The graph-centrality prior is a no-op in syntax mode (no edges), so it was not wired into the title-only candidate stage; it remains in the graph-expansion path used by review and context. The prose bucket (the largest) needs the dense reranker, which is R2.
+- Lessons: Uncapped PRF flooded the candidate pool and hurt precision and token count for a negligible recall gain; capping expansion-only files to the highest-ranked few kept the recall lift while limiting the precision cost. Recall-at-K over multi-file ground truth is insensitive to single-file rank improvements, so the lexical lift shows up more in the prose bucket than in identifier-rich.
 - Time: about 1 session.

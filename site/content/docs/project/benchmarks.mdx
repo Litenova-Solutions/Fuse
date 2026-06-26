@@ -183,20 +183,19 @@ The Roslyn skeleton keeps every public and protected type and 99 to 100 percent 
 
 These were measured on the retired V2 surface and have not been re-run on the V3 semantic engine. Do not quote the old percentages as V3 results:
 
-- Warm-call latency. The warm persistent index model is described qualitatively in [Performance and Benchmarking](/docs/project/performance); no V3 latency number is published.
-- The peer-scoper comparison against CodeGraph and coa-codesearch.
-- Full task resolution: driving an agent across arms and scoring its patch against a test oracle.
+- The peer-scoper comparison against CodeGraph, Serena, and coa-codesearch at scale. It needs those tools installed and a large agent-compute budget; the harness skips peers that are absent.
+- Full task resolution at scale: driving an agent across arms and scoring its patch against a test oracle over many tasks. The deterministic core of that harness (apply a patch in an isolated worktree, run a test oracle, score pass@1) is built and tested (R9); the agent-driven, at-scale run is compute-bounded and not run here.
 
-Each of these is not-yet-measured on V3, not a claim. Treat any such figure as illustrative until a V3 suite produces it.
+Warm-call latency is now measured (R7); see [Performance and Benchmarking](/docs/project/performance). Each remaining item above is not-yet-measured at scale on V3, not a claim. Treat any such figure as illustrative until a V3 suite produces it.
 
 ## How to Read These Results Together
 
-Suite A is the clean, deterministic claim: with a semantic workspace, Fuse resolves .NET wiring exactly (22 of 22 edges). Suite B is the practical strength: review scopes a real PR at 89.6 percent precision and 100 percent changed-file recall in a median 874 tokens, with the semantic blast radius exercised on the application in partial mode. Suite C is the honest floor: from a title alone with no base, recall is 27.3 percent and the engine does not yet flag a no-signal title. Suite D is a small, model-dependent signal that the Fuse MCP tools can gather the right files cheaply when the task names the wiring. The recurring caveat across the corpus suites is index mode: most repositories load in syntax or partial mode in this environment, so the corpus numbers sit below the semantic ceiling that Suite A and the application demonstrate.
+Suite A is the clean, deterministic claim: with a semantic workspace, Fuse resolves .NET wiring exactly (22 of 22 edges across the wiring catalog). Suite B is the practical strength: review scopes a real PR at high precision and 100 percent changed-file recall in around a thousand tokens, beating a grep baseline, with the semantic blast radius exercised on the application in partial mode. Suite C is the honest floor lifted by hybrid retrieval: from a title alone with no base, the lexical-plus-dense stack reaches 34 percent on the natural-language bucket, and the engine now abstains on a no-signal title (low-signal detection F1 1.0) rather than returning junk. Suite D is a small, model-dependent signal that the Fuse MCP tools can gather the right files cheaply when the task names the wiring. The recurring caveat across the corpus suites is index mode: most repositories load in syntax or partial mode in this environment, so the corpus numbers sit below the semantic ceiling that Suite A and the application demonstrate.
 
 ## Blocked and Out of Scope
 
 - Full semantic load across the whole corpus. Most corpus repositories load in syntax or partial mode here because the offline harness does not provision a restored MSBuild workspace per repository. The full semantic graph is exercised on eShopOnWeb (partial) and the in-repo fixture (full). A restored-workspace corpus run is the way to lift the corpus suites toward the Suite A ceiling.
-- Task resolution with a test oracle. Suite D measures context sufficiency (did a real agent gather the files the task needs, and at what cost). Full task resolution, a SWE-bench-style harness that scores an agent's patch against a test oracle, is not built here; it needs provisioned model credentials and compute and is scaffold-specific.
+- Task resolution at scale. Suite D measures context sufficiency (did a real agent gather the files the task needs, and at what cost). The deterministic core of a SWE-bench-style harness is now built and tested (R9): it materializes an isolated worktree at the base commit, applies a candidate patch, runs a test oracle, and scores pass@1, with a trivial fixture proving the oracle (a known-good patch passes, a known-bad patch fails, and a failing task does not corrupt the next). The agent-driven, at-scale run across arms (with and without Fuse) over many tasks needs provisioned model credentials and a large compute budget and is not run here.
 - Cross-machine timing. No V3 latency is published; see Performance for the qualitative warm-index model.
 - Tokenizer scope. All counts use `o200k_base`. Absolute counts differ under other encodings.
 

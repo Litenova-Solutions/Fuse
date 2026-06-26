@@ -62,4 +62,45 @@ public static class GitCli
         await process.WaitForExitAsync(cancellationToken);
         return new GitResult(process.ExitCode, stdout.ToString(), stderr.ToString());
     }
+
+    /// <summary>
+    ///     Runs git with the given arguments, writing <paramref name="stdin" /> to standard input. Used by
+    ///     <c>git apply -</c> so a patch of any size is passed via stdin rather than the command line.
+    /// </summary>
+    /// <param name="workingDirectory">The working directory, or null to use the process default.</param>
+    /// <param name="stdin">The text to write to standard input.</param>
+    /// <param name="cancellationToken">A token to cancel the invocation.</param>
+    /// <param name="arguments">The fixed git arguments.</param>
+    /// <returns>The invocation result.</returns>
+    public static async Task<GitResult> RunWithStdinAsync(
+        string? workingDirectory,
+        string stdin,
+        CancellationToken cancellationToken,
+        params string[] arguments)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+        foreach (var arg in arguments)
+            psi.ArgumentList.Add(arg);
+
+        using var process = new Process { StartInfo = psi };
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        process.OutputDataReceived += (_, e) => { if (e.Data is not null) stdout.AppendLine(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (e.Data is not null) stderr.AppendLine(e.Data); };
+
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        await process.StandardInput.WriteAsync(stdin);
+        process.StandardInput.Close();
+        await process.WaitForExitAsync(cancellationToken);
+        return new GitResult(process.ExitCode, stdout.ToString(), stderr.ToString());
+    }
 }

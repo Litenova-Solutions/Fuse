@@ -20,16 +20,11 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<ReviewCommand>();
     services.AddTransient<DiagnosticsCommand>();
     services.AddTransient<FindCommand>();
-    services.AddTransient<DotNetCommand>();
-    services.AddTransient<AskCommand>();
-    services.AddTransient<AzureDevOpsWikiCommand>();
     services.AddTransient<InitCommand>();
     services.AddTransient<McpCommand>();
     services.AddTransient<InstallCommand>();
     services.AddSingleton<McpInstallService>();
     services.AddTransient<McpServeCommand>();
-    services.AddTransient<ExplainCommand>();
-    services.AddTransient<VerifyCommand>();
     services.AddTransient<ReduceCommand>();
     services.AddTransient<ModelsCommand>();
 });

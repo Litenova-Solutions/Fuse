@@ -1,53 +1,52 @@
 using DotMake.CommandLine;
-using Fuse.Cli.Commands;
-using Fuse.Collection.Models;
-using Fuse.Fusion;
-using Fuse.Plugins.Abstractions.Options;
+using Fuse.Cli.Services;
 
 namespace Fuse.Cli;
 
 /// <summary>
-///     Root Fuse CLI command. Runs a generic template fusion and parents the <c>dotnet</c>, <c>wiki</c>,
-///     <c>init</c>, and <c>mcp</c> subcommands (the latter grouping <c>mcp install</c> and <c>mcp serve</c>).
+///     Root Fuse CLI command. Fuse V3 is a .NET semantic context engine; the root prints guidance and parents
+///     the V3 subcommands (index, map, localize, resolve, context, review, diagnostics, find, reduce, init,
+///     models, mcp). It no longer runs generic template fusion.
 /// </summary>
-[CliCommand(Description = "A flexible file combining tool for developers.")]
-public class FuseCliCommand : CommandBase
+[CliCommand(Description = "Fuse: a .NET semantic context engine for AI agents.")]
+public class FuseCliCommand
 {
+    private readonly IConsoleUI _consoleUI;
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="FuseCliCommand" /> class for CLI option binding only.
     /// </summary>
-    /// <remarks>
-    ///     Used by DotMake.CommandLine to bind options; the base services are <see langword="null" />, so this
-    ///     instance must not run fusion. The DI container resolves the service-injecting constructor for execution.
-    /// </remarks>
-    public FuseCliCommand() : base(null!, null!, null!, null!)
+    /// <remarks>Used by DotMake.CommandLine to bind options; the console UI is null, so this instance must not run.</remarks>
+    public FuseCliCommand() : this(null!)
     {
     }
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FuseCliCommand" /> class.
     /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator.</param>
-    /// <param name="templateRegistry">The project template registry.</param>
-    /// <param name="consoleUI">The console UI for status output.</param>
-    /// <param name="skeletonExtractors">Skeleton extractors resolved by file extension.</param>
-    public FuseCliCommand(
-        FusionOrchestrator orchestrator,
-        Fuse.Collection.Templates.ProjectTemplateRegistry templateRegistry,
-        Services.IConsoleUI consoleUI,
-        Fuse.Plugins.Abstractions.CapabilityRegistry<Fuse.Plugins.Abstractions.Skeleton.ISkeletonExtractor> skeletonExtractors)
-        : base(orchestrator, templateRegistry, skeletonExtractors, consoleUI)
-    {
-    }
+    /// <param name="consoleUI">The console UI for guidance output.</param>
+    public FuseCliCommand(IConsoleUI consoleUI) => _consoleUI = consoleUI;
 
     /// <summary>
-    ///     Runs a generic fusion using template defaults and the shared CLI options.
+    ///     Prints guidance pointing to the V3 workflow when no subcommand is given.
     /// </summary>
-    /// <param name="context">The CLI invocation context supplying the cancellation token.</param>
-    /// <returns>A task that completes when fusion finishes and results have been written and reported.</returns>
-    public async Task RunAsync(CliContext context)
+    /// <param name="context">The CLI invocation context.</param>
+    public void Run(CliContext context)
     {
-        var request = CreateRequestBuilder().Build();
-        await ExecuteFusionAsync(request, context.CancellationToken);
+        _consoleUI.WriteResult(
+            """
+            Fuse is a .NET semantic context engine. Start by indexing a workspace, then query it:
+
+              fuse index [path]                 Build the persistent semantic index.
+              fuse map [path]                   Print the workspace map (symbols, routes).
+              fuse review --changed-since ref   Review the semantic impact of a change.
+              fuse resolve --service IFoo       Resolve wiring (service/request/route/config/symbol).
+              fuse localize --task "..."        Localize a task to candidate files.
+              fuse context --seed Foo           Plan and emit context for seeds.
+              fuse find <query>                 Exact symbol/path/text lookup.
+              fuse diagnostics [path]           Report index state.
+
+            Run 'fuse <command> --help' for options. 'fuse mcp serve' starts the MCP server.
+            """);
     }
 }

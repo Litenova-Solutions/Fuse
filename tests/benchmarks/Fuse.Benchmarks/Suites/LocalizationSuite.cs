@@ -88,7 +88,7 @@ public sealed class LocalizationSuite : IEvalSuite
                     continue;
                 }
 
-                var engine = new SemanticRetrievalEngine(store, _changeSource);
+                var engine = new SemanticRetrievalEngine(store, _changeSource, options.Embedder);
                 var repoTasks = options.Limit > 0 ? repo.Tasks.Take(options.Limit).ToList() : repo.Tasks;
                 foreach (var task in repoTasks)
                 {

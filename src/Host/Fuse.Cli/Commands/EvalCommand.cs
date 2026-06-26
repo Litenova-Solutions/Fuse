@@ -33,6 +33,7 @@ public sealed class EvalCommand
     private readonly FusionOrchestrator _orchestrator;
     private readonly ProjectTemplateRegistry _templateRegistry;
     private readonly IConsoleUI _consoleUI;
+    private readonly Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? _embedder;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="EvalCommand" /> class for CLI option binding only.
@@ -50,18 +51,21 @@ public sealed class EvalCommand
     /// <param name="orchestrator">The fusion orchestrator used by the reduction suite.</param>
     /// <param name="templateRegistry">The template registry used by the reduction suite.</param>
     /// <param name="consoleUI">The console UI for output.</param>
+    /// <param name="embedder">An optional text embedder; present when a dense model is cached, enabling the dense channel.</param>
     public EvalCommand(
         SemanticIndexer indexer,
         IChangeSource changeSource,
         FusionOrchestrator orchestrator,
         ProjectTemplateRegistry templateRegistry,
-        IConsoleUI consoleUI)
+        IConsoleUI consoleUI,
+        Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? embedder = null)
     {
         _indexer = indexer;
         _changeSource = changeSource;
         _orchestrator = orchestrator;
         _templateRegistry = templateRegistry;
         _consoleUI = consoleUI;
+        _embedder = embedder;
     }
 
     /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, or <c>agent</c>.</summary>
@@ -108,6 +112,10 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Skip checkouts that index below semantic mode instead of scoring the fallback.")]
     public bool RequireSemantic { get; set; }
 
+    /// <summary>When set and a dense model is cached, add the dense (embedding) retrieval channel to localization.</summary>
+    [CliOption(Required = false, Description = "Add the dense embedding retrieval channel (requires a cached model).")]
+    public bool Dense { get; set; }
+
     /// <summary>An optional path to write the JSON results to. Defaults to results/&lt;suite&gt;.json under the benchmark root.</summary>
     [CliOption(Required = false, Description = "Path to write JSON results to.")]
     public string? Output { get; set; }
@@ -131,6 +139,7 @@ public sealed class EvalCommand
             Rollouts: Rollouts,
             Restore: Restore,
             RequireSemantic: RequireSemantic,
+            Embedder: Dense ? _embedder : null,
             Log: _consoleUI.WriteStep);
 
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());

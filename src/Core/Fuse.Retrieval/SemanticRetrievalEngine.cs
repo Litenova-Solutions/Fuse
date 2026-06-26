@@ -1,4 +1,5 @@
 using Fuse.Indexing;
+using Fuse.Plugins.Abstractions.Scoping;
 
 namespace Fuse.Retrieval;
 
@@ -26,11 +27,12 @@ public sealed class SemanticRetrievalEngine
     /// </summary>
     /// <param name="store">The index store to query.</param>
     /// <param name="changeSource">An optional change source so <c>ChangedSince</c> resolves to changed-file seeds.</param>
-    public SemanticRetrievalEngine(IWorkspaceIndexStore store, IChangeSource? changeSource = null)
+    /// <param name="embedder">An optional text embedder; when available, a dense retrieval channel is added.</param>
+    public SemanticRetrievalEngine(IWorkspaceIndexStore store, IChangeSource? changeSource = null, ITextEmbedder? embedder = null)
     {
         _store = store;
         _changeSource = changeSource;
-        _candidateGenerator = CandidateGenerator.CreateDefault(store, changeSource);
+        _candidateGenerator = CandidateGenerator.CreateDefault(store, changeSource, embedder);
         _scorer = new CandidateScorer();
         _expansion = new GraphExpansionEngine(store, new EdgeWeightProvider());
     }

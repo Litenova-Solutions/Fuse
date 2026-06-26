@@ -59,6 +59,20 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <remarks>Chunks whose owning file is not yet indexed are skipped.</remarks>
     Task UpsertChunksAsync(IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken);
 
+    /// <summary>Inserts or updates per-chunk dense embeddings (the persistent vector index).</summary>
+    /// <param name="embeddings">The chunk embeddings to upsert.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the batch is committed.</returns>
+    /// <remarks>Each vector is stored against its chunk id; a re-indexed chunk replaces its prior vector.</remarks>
+    Task UpsertEmbeddingsAsync(IReadOnlyList<ChunkEmbeddingRecord> embeddings, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns every persisted chunk embedding joined to its file, for dense retrieval over the workspace.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>All chunk embeddings; empty when none are persisted (no model was present at index time).</returns>
+    Task<IReadOnlyList<ChunkEmbedding>> GetEmbeddingsAsync(CancellationToken cancellationToken);
+
     /// <summary>Inserts or updates semantic edges.</summary>
     /// <param name="edges">The edges to upsert.</param>
     /// <param name="cancellationToken">A token to cancel the write.</param>

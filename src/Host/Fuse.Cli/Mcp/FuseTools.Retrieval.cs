@@ -35,6 +35,7 @@ public sealed partial class FuseTools
     public static async Task<string> FuseLocalizeAsync(
         SemanticIndexer indexer,
         IChangeSource changeSource,
+        Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? embedder = null,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("The task or query to localize.")] string? task = null,
         [Description("A route to resolve, for example \"POST /api/orders/{id}\".")] string? route = null,
@@ -48,7 +49,7 @@ public sealed partial class FuseTools
     {
         var root = Path.GetFullPath(path);
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
-        var engine = new SemanticRetrievalEngine(store, changeSource);
+        var engine = new SemanticRetrievalEngine(store, changeSource, embedder);
         var requestModel = new LocalizationRequest(
             root, Query: task, ChangedSince: changedSince, Route: route, Focus: symbol, Service: service,
             Request: request, ConfigSection: config, MaxCandidates: maxCandidates);

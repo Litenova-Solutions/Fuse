@@ -948,6 +948,81 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task UpsertEmbeddingsAsync(IReadOnlyList<ChunkEmbeddingRecord> embeddings, CancellationToken cancellationToken)
+    {
+        if (embeddings.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "INSERT OR REPLACE INTO chunk_embeddings(chunk_id, dim, vector) VALUES($id, $dim, $vec);";
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var dimParam = command.Parameters.Add("$dim", SqliteType.Integer);
+        var vecParam = command.Parameters.Add("$vec", SqliteType.Blob);
+
+        foreach (var embedding in embeddings)
+        {
+            // A chunk whose embedding row references a missing chunk would violate the foreign key, so skip
+            // empty vectors (an empty or untokenizable chunk) rather than write a zero-length blob.
+            if (embedding.Vector.Length == 0)
+                continue;
+            cancellationToken.ThrowIfCancellationRequested();
+            idParam.Value = embedding.ChunkId;
+            dimParam.Value = embedding.Dimension;
+            vecParam.Value = ToBlob(embedding.Vector);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ChunkEmbedding>> GetEmbeddingsAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT e.chunk_id, files.normalized_path, c.name, e.dim, e.vector
+            FROM chunk_embeddings e
+            JOIN chunks c ON c.chunk_id = e.chunk_id
+            JOIN files ON files.file_id = c.file_id;
+            """;
+
+        var embeddings = new List<ChunkEmbedding>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var dim = reader.GetInt32(3);
+            var blob = (byte[])reader[4];
+            embeddings.Add(new ChunkEmbedding(
+                ChunkId: reader.GetString(0),
+                FilePath: reader.GetString(1),
+                Name: reader.IsDBNull(2) ? null : reader.GetString(2),
+                Vector: FromBlob(blob, dim)));
+        }
+
+        return embeddings;
+    }
+
+    // Embedding vectors are stored as a packed little-endian float32 blob; Buffer.BlockCopy is the fast,
+    // allocation-light round trip and SQLite stores the bytes verbatim.
+    private static byte[] ToBlob(float[] vector)
+    {
+        var bytes = new byte[vector.Length * sizeof(float)];
+        Buffer.BlockCopy(vector, 0, bytes, 0, bytes.Length);
+        return bytes;
+    }
+
+    private static float[] FromBlob(byte[] bytes, int dim)
+    {
+        var vector = new float[dim];
+        Buffer.BlockCopy(bytes, 0, vector, 0, Math.Min(bytes.Length, dim * sizeof(float)));
+        return vector;
+    }
+
+    /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _connectionFactory.ClearPool();

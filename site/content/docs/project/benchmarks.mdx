@@ -109,7 +109,19 @@ By signal bucket (how much the title tells the engine where to look):
 | route/API | 12% |
 | formatting | 8% |
 
-The table above is the recorded baseline (`localize.json`). R1 reconnects the lexical ranker (`localize.r1.json`): the BM25F rank is now carried through to the candidate score (a stronger lexical match ranks higher, not just present), with one capped round of pseudo-relevance feedback that pulls in files sharing the top hits' vocabulary. Overall recall rises to 30.3 percent and the natural-language-domain bucket to 27 percent, at a precision cost (6.6 percent) and a higher median return (about 4,000 tokens) from the broader pool. Identifier-rich holds at 41 percent, short of the retired 49 percent lexical floor: recall here is averaged over multi-file PRs at a 20-candidate cap in a mostly-syntax corpus, so naming one file does not by itself lift the bucket past the floor. The dense reranker for prose titles (Suite C's largest bucket) is R2; low-signal abstention is R3.
+The table above is the recorded baseline (`localize.json`). R1 reconnects the lexical ranker (`localize.r1.json`): the BM25F rank is now carried through to the candidate score (a stronger lexical match ranks higher, not just present), with one capped round of pseudo-relevance feedback that pulls in files sharing the top hits' vocabulary. Overall recall rises to 30.3 percent and the natural-language-domain bucket to 27 percent, at a precision cost (6.6 percent) and a higher median return (about 4,000 tokens) from the broader pool. Identifier-rich holds at 41 percent, short of the retired 49 percent lexical floor: recall here is averaged over multi-file PRs at a 20-candidate cap in a mostly-syntax corpus, so naming one file does not by itself lift the bucket past the floor.
+
+R2 adds a warm dense channel: a per-chunk MiniLM embedding is persisted at index time (opt-in with a cached model via `FUSE_DENSE`), and a prose query is embedded and ranked by cosine over that index, so a file is found by meaning rather than shared words. The ablation is lexical (FTS plus graph, `localize.r1.json`) versus lexical plus dense (`localize.r2.json`):
+
+| Bucket | Lexical (R1) | + Dense (R2) |
+|--------|-------------:|-------------:|
+| natural-language domain | 27% | 34% |
+| overall recall | 30.3% | 34.6% |
+| route/API | 0% | 12% |
+| identifier-rich | 41% | 41% |
+| precision | 6.6% | 7.6% |
+
+The dense channel lifts the largest, weakest bucket (natural-language domain, 27 to 34 percent) and recovers route/API, which is its design target: prose titles that share no tokens with the code. Identifier-rich is unchanged because the lexical channel already finds a title that names its symbol. With no model present, indexing writes no vectors and retrieval is byte-identical to lexical, so the no-model floor holds. Low-signal abstention is R3.
 
 Findings, including the known gap:
 

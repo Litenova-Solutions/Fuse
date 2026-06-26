@@ -21,6 +21,7 @@ public sealed class LocalizeCommand
 {
     private readonly IConsoleUI _consoleUI;
     private readonly IChangeSource _changeSource;
+    private readonly Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? _embedder;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="LocalizeCommand" /> class for CLI option binding only.
@@ -35,10 +36,15 @@ public sealed class LocalizeCommand
     /// </summary>
     /// <param name="consoleUI">The console UI for output.</param>
     /// <param name="changeSource">The change source for resolving a git base ref.</param>
-    public LocalizeCommand(IConsoleUI consoleUI, IChangeSource changeSource)
+    /// <param name="embedder">An optional text embedder; when present, the dense retrieval channel is added.</param>
+    public LocalizeCommand(
+        IConsoleUI consoleUI,
+        IChangeSource changeSource,
+        Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? embedder = null)
     {
         _consoleUI = consoleUI;
         _changeSource = changeSource;
+        _embedder = embedder;
     }
 
     /// <summary>The workspace directory. Defaults to the current directory.</summary>
@@ -98,7 +104,7 @@ public sealed class LocalizeCommand
         var request = new LocalizationRequest(
             root, Query: Task, ChangedSince: ChangedSince, Route: Route, Focus: Symbol, Service: Service,
             Request: Request, ConfigSection: Config, MaxCandidates: MaxCandidates);
-        var result = await new SemanticRetrievalEngine(store, _changeSource).LocalizeAsync(request, context.CancellationToken);
+        var result = await new SemanticRetrievalEngine(store, _changeSource, _embedder).LocalizeAsync(request, context.CancellationToken);
 
         _consoleUI.WriteResult(Format(result));
     }

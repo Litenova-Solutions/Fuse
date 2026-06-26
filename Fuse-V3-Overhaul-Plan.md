@@ -49,7 +49,7 @@ Phase 6 - Review/change impact
 - [x] P6.3 Review preamble + packed context; fuse review --changed-since works and explains every non-changed file
 
 Phase 7 - Context rendering
-- [ ] P7.1 SemanticContextRenderer with tiered reduction
+- [x] P7.1 SemanticContextRenderer with tiered reduction
 - [ ] P7.2 Semantic manifest preamble + per-file provenance
 - [ ] P7.3 XML/Markdown/JSON + structural maps; redaction on; token budget respected
 
@@ -1668,5 +1668,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: Found and fixed the index_meta self-heal bug (surfaced as "no such table: index_meta" on a stale v10 db). Review requires workspace root == git root so git's repo-relative changed paths align with the index's normalized paths; documented as a constraint (the warm host will own per-workspace roots). Source body rendering is P7; review currently prints the plan.
 - Lessons: Additive schema changes within one schema version need an idempotent ensure-tables on init, not just migration, or pre-existing same-version databases miss the new table. Git changed-file paths are repo-root-relative, so review path-matching depends on the indexed root being the repo root.
 - Time: ~40 min
+
+### P7.1 SemanticContextRenderer with tiered reduction - 2026-06-26 18:30
+- Status: done
+- Result: Added `SemanticContextRenderer` (+ `RenderedContext`, `RenderedFile`) to `Fuse.Context`. It maps each plan item's `RenderTier` to a `ReductionLevel` (FullSource->None, Reduced->Standard, Skeleton/Sketch->Skeleton, PublicApi->PublicApi, Omitted excluded) and reuses `ContentReductionPipeline` in a single pass via its per-file level selector, with redaction enabled. Added `SemanticContextRendererTests` (3) and the Roslyn plugin reference to `Fuse.Context.Tests`; removed the placeholder. New solution test total 728 (Fuse.Context.Tests 1 -> 3).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 728 passed (full source keeps the method body; skeleton tier keeps the signature but drops the body; omitted excluded); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None. The renderer relies on `ReductionLevel` deriving `SkeletonMode`/`PublicApiMode`, so a per-file level fully captures the tier and one pipeline pass renders mixed tiers.
+- Lessons: `ContentReductionPipeline.ReduceAsync` already supports per-file tiers through `perFileLevel`, so mixed-tier rendering needed no new reduction code, only a tier-to-level map. The pipeline drops trivial content and preserves input order, so rendered files come back in plan order. The manifest preamble and provenance comments (P7.2) and the output formats plus budget (P7.3) build on this `RenderedContext`.
+- Time: ~35 min
 
 

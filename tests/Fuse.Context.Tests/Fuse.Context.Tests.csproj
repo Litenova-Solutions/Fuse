@@ -17,5 +17,6 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\src\Core\Fuse.Context\Fuse.Context.csproj"/>
+        <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj"/>
     </ItemGroup>
 </Project>

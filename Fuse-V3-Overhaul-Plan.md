@@ -74,6 +74,28 @@ Phase 11 - Publish V3
 - [ ] P11.3 Update MCP Registry manifest and install flow
 - [ ] P11.4 Open PR via gh for review (no merge, no self-approve, no auto-merge)
 
+## Remaining work (handoff as of 2026-06-26)
+
+Branch `feature/v3-overhaul`. Build/test/format all green; 692 tests pass. Done: Phases 0-9 (the full V3 engine, CLI, and 8-tool MCP server), P10.1 (tests overhaul + V3 golden files), P10.3 Suite A (semantic resolution eval, 100/100, committed) and the `fuse eval` scaffold.
+
+Open items, in order:
+
+- P10.2 docs (partial): reference `commands.mdx` and `mcp-tools.mdx` are rewritten to V3. Remaining: rewrite the ~15 narrative pages (concepts, scenarios, internals, start, project) from the old "explore-phase token reduction" model to the warm-semantic-index model; remove every remaining mention of removed commands/tools (`ask`/`dotnet`/`wiki`/`explain`/`verify`, `fuse_toc`/`skeleton`/`focus`/`search`/`changes`/`ask`/`dotnet`/`generic`/`explain`); update `meta.json` sidebars; rewrite `mcp-resources.mdx` and `FuseResources` to the V3 workflows; verify `npm run build` in `site/`. The measured-number resync waits on the benchmark run.
+- P10.3 benchmarks (partial): see the benchmark-rewrite direction below. Suites B (PR/change recall over 108 PRs), C (localization), D (agent via Claude Code CLI), and the offline token/fidelity layers remain. Network, git, and the Sonnet agent driver are all available; this is large compute, not blocked.
+- P10.4: regenerate `assets/fuse-benchmarks.*` from committed results and resync `project/benchmarks.mdx`, `project/performance.mdx`, and the AGENTS.md Measured Results. Never fabricate or weaken a number (AGENTS.md is absolute).
+- P11.1-P11.4: CI green incl. self-contained publish smoke for win-x64/linux-x64 with FTS5 present and MSBuild-absent fallback (AOT native link fails locally per the env memo; verify framework-dependent/self-contained publish, treat AOT as CI-only); finalize 3.0.0 + changelog; confirm no RPC DTO/`[JsonRpcMethod]` changed so `FuseHostService.ProtocolVersion` and `ext/vscode/src/host/protocol.ts` `PROTOCOL_VERSION` stay in sync (none changed this overhaul); MCP registry manifest is updated (P9.3 done), confirm the install flow; open a PR via `gh` (no merge, no self-approve).
+
+### Benchmark rewrite direction (supersedes the PowerShell harness for the new suites)
+
+Rewrite the benchmarks as proper, maintainable C# instead of the `tests/benchmarks/harness/*.ps1` scripts, which are coupled to the removed query-scoping engine and its `FUSE_*` flags. Target shape:
+
+- A new `tests/benchmarks/Fuse.Benchmarks` C# project (or `tools/Fuse.Eval`), referenced into `Fuse.slnx`, owning the eval suites as first-class code. The existing `fuse eval` CLI command stays as the thin entry point and delegates to this library.
+- Typed model, not stringly-typed scripts: records for `EvalDataset`, `RepoTask`/`PrTask`, `GroundTruth` (files/symbols/routes/services with roles), `SuiteResult`, `Scorecard`; source-generated JSON for datasets and results (honor the reflection-free-serialization invariant).
+- One class per suite implementing a shared `IEvalSuite`: `SemanticResolutionSuite` (A, fixtures + edge gold, already proven), `ChangeImpactSuite` (B, `fuse review`/engine recall+precision over PR ground truth), `LocalizationSuite` (C, `fuse localize` recall by signal bucket, with low-signal detection), `AgentSuite` (D, drives Claude Code CLI as the agent over toolboxes). Shared metrics helpers (recall/precision/F1, bootstrap CIs, return-shape-aware precision per 18.10).
+- Corpus management in C#: a `CorpusManager` that clones/pins from `corpus.json` and reconstructs PR change sets from merge history (port `gen-prs.ps1` logic), reproducible and unit-tested on a tiny fixture repo.
+- Keep only the genuinely-offline token/fidelity continuity layers, ported to C# unit-style benchmarks; delete the spike-*.ps1 scripts tied to the old engine. Results write to `tests/benchmarks/results/*.json` as the single source of truth.
+- The suites must be runnable from `dotnet test` (a `[Trait("Category","Benchmark")]` opt-in) or `fuse eval <suite>`; the corpus-bound suites skip gracefully when the corpus is absent so the normal test run stays fast and offline.
+
 ## Status and intent
 
 Fuse already carries the version `3.0.0` in `src/Host/Fuse.Cli/Fuse.Cli.csproj`, but V3 has never been published. This plan finishes V3: it overhauls what Fuse is, then ships it. There is no backward-compatibility requirement. We can remove commands, replace the MCP tool surface, change the on-disk schema, and break the output format.

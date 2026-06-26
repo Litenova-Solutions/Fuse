@@ -51,7 +51,7 @@ Phase 6 - Review/change impact
 Phase 7 - Context rendering
 - [x] P7.1 SemanticContextRenderer with tiered reduction
 - [x] P7.2 Semantic manifest preamble + per-file provenance
-- [ ] P7.3 XML/Markdown/JSON + structural maps; redaction on; token budget respected
+- [x] P7.3 XML/Markdown/JSON + structural maps; redaction on; token budget respected
 
 Phase 8 - CLI rewrite
 - [ ] P8.1 New command set (index/map/localize/resolve/context/review/diagnostics/find/reduce/host/mcp/models)
@@ -1684,5 +1684,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None.
 - Lessons: The manifest reuses the same provenance-edge parsing as the review preamble; both summarize a node's inclusion by its edge chain. The comment delimiters are deliberately left to the format-specific emitter (P7.3) so the same manifest body works for XML/Markdown/JSON.
 - Time: ~20 min
+
+### P7.3 XML/Markdown/JSON emission; budget respected - 2026-06-26 19:25
+- Status: done
+- Result: Added `SemanticContextEmitter` (+ `ContextOutputFormat`) and `ContextJsonDto`/`ContextFileDto` with a source-generated `FuseContextJsonContext` to `Fuse.Context`; added `Score` to `RenderedFile`. Wired rendering+emission into `fuse context` and `fuse review` (new `--format xml|markdown|json` and `--plan-only` options) via a shared `PlanFormatter` host helper; added the `Fuse.Context` reference to `Fuse.Cli`. Redaction is applied by the renderer; the budget is honored by plan packing so the emitter writes exactly the kept files. Fixed a latent P4.8 bug: `ResolveCommand` null-checked the awaited result instead of the nullable task, so the "no option specified" path would NRE; now null-checks the task. Added `SemanticContextEmitterTests` (3). New solution test total 735 (Fuse.Context.Tests 7 -> 10).
+- Verification: `dotnet build Fuse.slnx -c Release` green (0 warnings after the nullable fix); `dotnet test Fuse.slnx -c Release --no-build` 735 passed; `dotnet format --verify-no-changes` clean. End-to-end: `fuse context --seed IOrderService --max-tokens 400` emits the manifest, per-file provenance, reduced bodies, and a budget note.
+- Blockers/issues: JSON uses a source-generated `JsonSerializerContext` per the design invariant. "Structural maps" (route/DI/project graph) are served by `fuse map` (P2.4) plus the manifest's semantic-impact section rather than duplicated into every context payload; noted for the docs phase.
+- Lessons: With the plan already packed under budget and the renderer applying redaction, the emitter is a pure formatter over `(plan, rendered)`. The XML envelope embeds raw bodies (consumer is an LLM, not a strict XML parser), matching Fuse's existing output style; only attribute values are escaped.
+- Time: ~45 min
 
 

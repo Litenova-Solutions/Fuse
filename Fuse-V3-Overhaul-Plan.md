@@ -1750,4 +1750,12 @@ The single most important thing remains: build the resolved semantic graph and e
 - Lessons: The reference pages are the highest-value, lowest-risk docs to land first because they map 1:1 to the implemented surface. The narrative rewrite and the number resync should land together with the benchmark regeneration (P10.3/P10.4), not before, to avoid quoting stale or fabricated figures.
 - Time: ~40 min
 
+### P10.3 fuse eval + suites A-D - 2026-06-26 23:10
+- Status: blocked
+- Result: Not implemented/run. The benchmark suites require the pinned OSS corpus, which `tests/benchmarks/harness/setup-corpus.ps1` produces by `git clone` of external GitHub repositories (MediatR, FluentValidation, AutoMapper, Newtonsoft.Json, Serilog, eShopOnWeb) at pinned commits. The corpus is not present in this environment (`tests/benchmarks/repos` is absent) and cloning needs network access to github.com. Suite D (agent context sufficiency) additionally needs an LLM driver/model and many rollouts.
+- Verification: n/a (cannot run without the corpus).
+- Blockers/issues: External dependency. The pinned OSS corpus (network git clones) and the Suite D model are not available here. AGENTS.md is absolute that numbers must come from `tests/benchmarks/results` and never be fabricated or weakened, so suites B/C/D and the offline PowerShell layers (1, 2A, 2B, 4), which all run over that corpus, cannot be executed and their numbers cannot be produced. Suite A (semantic resolution) could run offline against the in-repo OrderingApp/SampleShop fixtures with edge gold files, but a full `fuse eval` driver covering all four suites plus the corpus-bound layers is the item, and it cannot be completed or verified here.
+- Lessons: The engine itself is exercised end to end by the unit/golden suites (691 tests, all green); the benchmark phase measures it against an external corpus that requires network and a model, which is the boundary of this environment.
+- Time: ~15 min (assessment)
+
 

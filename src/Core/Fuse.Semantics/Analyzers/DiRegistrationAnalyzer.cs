@@ -49,7 +49,36 @@ public sealed class DiRegistrationAnalyzer : ISemanticAnalyzer
             {
                 var nameSyntax = GetNameSyntax(invocation);
                 var methodName = nameSyntax?.Identifier.ValueText;
-                if (methodName is null || !LifetimeByMethod.TryGetValue(methodName, out var lifetime))
+                if (methodName is null)
+                    continue;
+
+                // Scrutor decoration: Decorate<TService, TDecorator>() wraps the service with a decorator, a
+                // distinct edge from resolution so a reviewer can see the wrapping.
+                if (methodName == "Decorate" && nameSyntax is GenericNameSyntax { TypeArgumentList.Arguments.Count: 2 } decorate)
+                {
+                    var decorated = ResolveType(model, decorate.TypeArgumentList.Arguments[0], cancellationToken);
+                    var decorator = ResolveType(model, decorate.TypeArgumentList.Arguments[1], cancellationToken);
+                    if (decorated is not null && decorator is not null)
+                    {
+                        AddNode(nodes, decorated, root);
+                        AddNode(nodes, decorator, root);
+                        var decSpan = invocation.GetLocation().GetLineSpan();
+                        edges.Add(new SemanticEdgeRecord(
+                            FromNodeId: SemanticNodes.TypeId(decorated),
+                            ToNodeId: SemanticNodes.TypeId(decorator),
+                            EdgeType: "di_decorates",
+                            Weight: ResolvesToWeight,
+                            Confidence: 0.9,
+                            Evidence: $"Decorate<{decorated.Name}, {decorator.Name}>",
+                            EvidenceFilePath: filePath,
+                            EvidenceStartLine: decSpan.StartLinePosition.Line + 1,
+                            EvidenceEndLine: decSpan.EndLinePosition.Line + 1));
+                    }
+
+                    continue;
+                }
+
+                if (!LifetimeByMethod.TryGetValue(methodName, out var lifetime))
                     continue;
 
                 var (service, implementation, kind) = ResolveTypes(model, invocation, nameSyntax!, cancellationToken);
@@ -113,8 +142,15 @@ public sealed class DiRegistrationAnalyzer : ISemanticAnalyzer
             {
                 var service = ResolveType(model, typeArgs[0], cancellationToken);
                 // AddScoped<TService>(factory) registers TService with an implementation the factory builds;
-                // AddScoped<TService>() self-registers the concrete type as itself.
-                return hasFactoryArgument ? (service, null, "factory") : (service, service, "generic1");
+                // AddScoped<TService>() self-registers the concrete type as itself. When the factory is a lambda
+                // whose body constructs a concrete type, recover that implementation so the resolve edge exists.
+                if (hasFactoryArgument)
+                {
+                    var built = ResolveFactoryImplementation(model, invocation, cancellationToken);
+                    return (service, built, "factory");
+                }
+
+                return (service, service, "generic1");
             }
         }
 
@@ -131,6 +167,25 @@ public sealed class DiRegistrationAnalyzer : ISemanticAnalyzer
 
     private static INamedTypeSymbol? ResolveType(SemanticModel model, SyntaxNode typeSyntax, CancellationToken cancellationToken) =>
         model.GetTypeInfo(typeSyntax, cancellationToken).Type as INamedTypeSymbol;
+
+    // Recovers the concrete type a factory registration builds: the first object creation in the factory
+    // lambda's body (for example AddSingleton<IFoo>(sp => new Foo(...))). Returns null when the factory is not
+    // a simple lambda that constructs a type.
+    private static INamedTypeSymbol? ResolveFactoryImplementation(
+        SemanticModel model, InvocationExpressionSyntax invocation, CancellationToken cancellationToken)
+    {
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            if (argument.Expression is not LambdaExpressionSyntax lambda)
+                continue;
+            SyntaxNode body = lambda.Body;
+            var creation = body.DescendantNodesAndSelf().OfType<ObjectCreationExpressionSyntax>().FirstOrDefault();
+            if (creation is not null && model.GetTypeInfo(creation, cancellationToken).Type is INamedTypeSymbol built)
+                return built;
+        }
+
+        return null;
+    }
 
     private static SimpleNameSyntax? GetNameSyntax(InvocationExpressionSyntax invocation) => invocation.Expression switch
     {

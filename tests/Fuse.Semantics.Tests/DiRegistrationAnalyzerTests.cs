@@ -34,7 +34,7 @@ public sealed class DiRegistrationAnalyzerTests
     [Theory]
     [InlineData("services.AddScoped<App.IFoo>();", "generic1", "App.IFoo", "App.IFoo")]
     [InlineData("services.AddSingleton(typeof(App.IFoo), typeof(App.Foo));", "typeof", "App.IFoo", "App.Foo")]
-    [InlineData("services.AddTransient<App.IFoo>(sp => new App.Foo());", "factory", "App.IFoo", null)]
+    [InlineData("services.AddTransient<App.IFoo>(sp => new App.Foo());", "factory", "App.IFoo", "App.Foo")]
     public void HandlesRegistrationShapes(string call, string expectedKind, string expectedService, string? expectedImpl)
     {
         var source = $$"""

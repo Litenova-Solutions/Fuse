@@ -40,6 +40,7 @@ public sealed class SemanticAnalysisRunner
             new HostedServiceAnalyzer(),
             new PipelineBehaviorAnalyzer(),
             new EfCoreAnalyzer(),
+            new EndpointAnalyzer(),
         ]);
     }
 

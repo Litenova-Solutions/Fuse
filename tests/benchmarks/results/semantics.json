@@ -24,7 +24,7 @@
       "latencyMs": 0,
       "hit": {
         "hits": [
-          "14 edges"
+          "19 edges"
         ],
         "misses": [],
         "extras": []
@@ -32,6 +32,6 @@
     }
   ],
   "notes": [
-    "edges expected 14, matched 14, false positives 0"
+    "edges expected 19, matched 19, false positives 0"
   ]
 }

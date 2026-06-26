@@ -125,6 +125,12 @@ namespace Microsoft.Extensions.DependencyInjection
 
         public static IServiceCollection AddHostedService<THostedService>(this IServiceCollection services)
             where THostedService : class, Microsoft.Extensions.Hosting.IHostedService => services;
+
+        public static IServiceCollection AddSingleton<TService>(this IServiceCollection services, System.Func<System.IServiceProvider, TService> factory) => services;
+
+        // Scrutor-style decoration registration.
+        public static IServiceCollection Decorate<TService, TDecorator>(this IServiceCollection services)
+            where TDecorator : TService => services;
     }
 
     public static class OptionsServiceCollectionExtensions
@@ -163,6 +169,33 @@ namespace MediatR
     {
         System.Threading.Tasks.Task<TResponse> Handle(
             TRequest request, System.Func<System.Threading.Tasks.Task<TResponse>> next, System.Threading.CancellationToken cancellationToken);
+    }
+}
+
+namespace Microsoft.AspNetCore.SignalR
+{
+    // Minimal SignalR hub base so the fixture can declare a hub mapped with MapHub<T>.
+    public abstract class Hub { }
+}
+
+namespace Microsoft.AspNetCore.Builder
+{
+    // Minimal endpoint-builder stubs so the fixture can map minimal-API, gRPC, and SignalR endpoints.
+    public sealed class WebApplication
+    {
+        public WebApplication MapGet(string pattern, System.Delegate handler) => this;
+
+        public WebApplication MapPost(string pattern, System.Delegate handler) => this;
+
+        public WebApplication MapPut(string pattern, System.Delegate handler) => this;
+
+        public WebApplication MapDelete(string pattern, System.Delegate handler) => this;
+
+        public WebApplication MapGroup(string prefix) => this;
+
+        public WebApplication MapGrpcService<TService>() where TService : class => this;
+
+        public WebApplication MapHub<THub>(string pattern) where THub : Microsoft.AspNetCore.SignalR.Hub => this;
     }
 }
 

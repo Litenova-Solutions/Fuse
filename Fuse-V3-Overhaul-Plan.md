@@ -29,7 +29,7 @@ Phase 3 - MSBuild/Roslyn semantic indexing
 
 Phase 4 - Core semantic edges
 - [x] P4.1 Shared semantic fixture app (16.2)
-- [ ] P4.2 InterfaceImplementationAnalyzer
+- [x] P4.2 InterfaceImplementationAnalyzer
 - [ ] P4.3 DiRegistrationAnalyzer
 - [ ] P4.4 ConstructorInjectionAnalyzer
 - [ ] P4.5 MediatRAnalyzer
@@ -1556,5 +1556,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: `Microsoft.CodeAnalysis.DiagnosticSeverity` collides with the new `Fuse.Semantics.DiagnosticSeverity`; fully qualified in the test. The in-memory reference set must exclude `Microsoft.Extensions.*`/`Microsoft.AspNetCore.*`/`MediatR`/`xunit` assemblies (present in the test host's TPA) or the stub namespaces would be ambiguously defined.
 - Lessons: A hermetic source-stub fixture compiled in-memory is faster and more deterministic than a restored project for analyzer unit tests, and stubs in the real namespaces make name+namespace detection behave identically to the real packages. The real-project MSBuild path stays covered by SampleShop (P3.2/P3.4). This fixture is the spine of P4.2-P4.8 analyzer edge assertions.
 - Time: ~45 min
+
+### P4.2 InterfaceImplementationAnalyzer - 2026-06-26 13:02
+- Status: done
+- Result: Added the analyzer contract (`ISemanticAnalyzer`, `SemanticAnalyzerResult`, `SemanticAnalysisContext`) and node helpers (`SemanticNodes`: type/method/route/service/config node ids, `TypeNode`/`MethodNode` record builders, `IsInSource`, `EnumerateTypes`) under `Fuse.Semantics/Analyzers`. Added `InterfaceImplementationAnalyzer` emitting `type -> interface : implements` (0.90) and `type -> base : inherits` (0.75) edges between in-source types only (skips external framework types and System.Object); reverse traversal is served by the store's incoming-edge query. Added `InterfaceImplementationAnalyzerTests` (3) against OrderingApp. New solution test total 672 (Fuse.Semantics.Tests 35 -> 38).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 38 passed (OrderService -> IOrderService implements edge present with weight 0.90 and both endpoint nodes); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None.
+- Lessons: Node ids are the shared contract between analyzers (`type:{fqn}`, `method:{type}.{name}`, `route:{METHOD}:{pattern}`, `service:{name}`, `config:{section}`); `SemanticNodes` centralizes them so edges from different analyzers join. Each analyzer emits the nodes for its edge endpoints so `UpsertNodes` (INSERT OR REPLACE) can precede `UpsertEdges` and satisfy the FK. "In source" means same assembly as the compilation plus a source location, which in the hermetic fixture includes the stub interfaces (acceptable; tests assert specific edges, not exclusivity).
+- Time: ~30 min
 
 

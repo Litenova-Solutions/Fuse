@@ -59,7 +59,7 @@ Phase 8 - CLI rewrite
 
 Phase 9 - MCP rewrite
 - [x] P9.1 Replace tools with the eight (10.1); rewrite server instructions (10.3)
-- [ ] P9.2 Compact localize/resolve; context consumes localize/resolve seeds; add session support
+- [x] P9.2 Compact localize/resolve; context consumes localize/resolve seeds; add session support
 - [ ] P9.3 Update mcp-registry manifest to the new tool list
 
 Phase 10 - Tests, docs, benchmarks
@@ -1716,5 +1716,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: No host RPC DTO or `[JsonRpcMethod]` changed (MCP tools are separate from the host RPC contract), so no `ProtocolVersion`/`PROTOCOL_VERSION` bump is due; the contract test is untouched. `FuseResources` still exposes the old-model skeleton/focus/search/changes resources (functional via the orchestrator); the resource rewrite and the MCP registry manifest are P9.3/P10.
 - Lessons: `ReduceRunner` depends on `FuseToolHelpers.CreateDotNetBuilder`, so those helpers must stay even though the other old tools are gone. The MCP tools resolve the per-workspace store via `FuseStorePaths` internally, so test isolation needs a git-init fixture (store lands in `{repo}/.fuse`) rather than a bare temp dir (shared `~/.fuse`).
 - Time: ~70 min
+
+### P9.2 Compact localize/resolve; context seeds; session support - 2026-06-26 21:35
+- Status: done
+- Result: localize/resolve already return body-free summaries (compact). `fuse_context` now consumes localize/resolve outputs directly: added `files`/`services`/`requests`/`configs` seed inputs (plus existing symbol/route), and file seeds now expand from the file's declared nodes in the engine (`BuildSeedCandidatesAsync`), so a localize'd path expands like a named seed. Added session support: `ContextSessionStore` (in-memory, singleton via `AddSemanticIndexing`) records per-session content hashes; `fuse_context`/`fuse_review` take an optional `sessionId`, and the emitter emits unchanged files as a reference (XML `unchanged="true"`, Markdown note, JSON `unchanged:true` with empty body and zero tokens). Added `ContextSessionStoreTests` (5) and a file-seed expansion test (1). New solution test total 687.
+- Verification: `dotnet build Fuse.slnx -c Release` green (param XML docs added for the new tool parameters); `dotnet test Fuse.slnx -c Release --no-build` 687 passed; `dotnet format --verify-no-changes` clean.
+- Blockers/issues: None. The session store is in-memory and process-scoped, so it benefits the long-lived MCP server (one agent, many calls); the CLI is per-process so the delta only helps within a single invocation.
+- Lessons: File seeds expanding through the file's nodes makes the localize -> context handoff work without the agent re-deriving symbols. Session elision is computed on the rendered content hash (post-reduction), so a file whose reduced form is identical is correctly skipped even if unrelated whitespace changed.
+- Time: ~40 min
 
 

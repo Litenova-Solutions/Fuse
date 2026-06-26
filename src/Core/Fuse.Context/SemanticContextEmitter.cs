@@ -23,20 +23,26 @@ public static class SemanticContextEmitter
     /// <param name="format">The output format.</param>
     /// <param name="root">The workspace root, for the manifest.</param>
     /// <param name="changedSince">The git base ref for review plans, for the manifest.</param>
+    /// <param name="unchangedPaths">Paths to emit as a reference (body omitted) because they were already sent unchanged in the session.</param>
     /// <returns>The emitted payload.</returns>
     public static string Emit(
         ContextPlan plan,
         RenderedContext rendered,
         ContextOutputFormat format,
         string? root = null,
-        string? changedSince = null) => format switch
+        string? changedSince = null,
+        IReadOnlyCollection<string>? unchangedPaths = null)
+    {
+        var unchanged = unchangedPaths ?? [];
+        return format switch
         {
-            ContextOutputFormat.Markdown => EmitMarkdown(plan, rendered, root, changedSince),
-            ContextOutputFormat.Json => EmitJson(plan, rendered, root, changedSince),
-            _ => EmitXml(plan, rendered, root, changedSince),
+            ContextOutputFormat.Markdown => EmitMarkdown(plan, rendered, root, changedSince, unchanged),
+            ContextOutputFormat.Json => EmitJson(plan, rendered, root, changedSince, unchanged),
+            _ => EmitXml(plan, rendered, root, changedSince, unchanged),
         };
+    }
 
-    private static string EmitXml(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince)
+    private static string EmitXml(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged)
     {
         var builder = new StringBuilder();
         builder.AppendLine("<!--");
@@ -45,6 +51,12 @@ public static class SemanticContextEmitter
 
         foreach (var file in rendered.Files)
         {
+            if (unchanged.Contains(file.Path))
+            {
+                builder.AppendLine($"<file path=\"{EscapeAttribute(file.Path)}\" role=\"{file.Role}\" unchanged=\"true\" />");
+                continue;
+            }
+
             builder.AppendLine(
                 $"<file path=\"{EscapeAttribute(file.Path)}\" role=\"{file.Role}\" tier=\"{file.Tier}\" tokens=\"{file.TokenCount}\">");
             var provenance = ProvenanceFormatter.Format(file.Provenance);
@@ -62,7 +74,7 @@ public static class SemanticContextEmitter
         return builder.ToString();
     }
 
-    private static string EmitMarkdown(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince)
+    private static string EmitMarkdown(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged)
     {
         var builder = new StringBuilder();
         builder.AppendLine("# Fuse semantic context");
@@ -74,6 +86,13 @@ public static class SemanticContextEmitter
 
         foreach (var file in rendered.Files)
         {
+            if (unchanged.Contains(file.Path))
+            {
+                builder.AppendLine($"## {file.Path}  [{file.Role}] (unchanged in session, body omitted)");
+                builder.AppendLine();
+                continue;
+            }
+
             builder.AppendLine($"## {file.Path}  [{file.Role}/{file.Tier}]");
             var summary = ProvenanceFormatter.Summarize(file.Provenance);
             if (summary != "seed")
@@ -88,16 +107,18 @@ public static class SemanticContextEmitter
         return builder.ToString();
     }
 
-    private static string EmitJson(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince)
+    private static string EmitJson(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged)
     {
         var dto = new ContextJsonDto(
             Mode: plan.Mode,
             Root: root,
             ChangedSince: changedSince,
             Files: rendered.Files.Count,
-            EstimatedTokens: rendered.TotalTokens,
+            EstimatedTokens: rendered.Files.Where(f => !unchanged.Contains(f.Path)).Sum(f => f.TokenCount),
             Entries: rendered.Files
-                .Select(f => new ContextFileDto(f.Path, f.Role, f.Tier.ToString(), f.Score, f.TokenCount, f.Provenance, f.Content))
+                .Select(f => unchanged.Contains(f.Path)
+                    ? new ContextFileDto(f.Path, f.Role, f.Tier.ToString(), f.Score, 0, f.Provenance, string.Empty, Unchanged: true)
+                    : new ContextFileDto(f.Path, f.Role, f.Tier.ToString(), f.Score, f.TokenCount, f.Provenance, f.Content))
                 .ToList(),
             Notes: plan.Warnings);
 

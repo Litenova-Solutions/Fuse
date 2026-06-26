@@ -31,6 +31,7 @@ public sealed record ContextJsonDto(
 /// <param name="Tokens">The token count.</param>
 /// <param name="Provenance">The provenance chain.</param>
 /// <param name="Content">The rendered content.</param>
+/// <param name="Unchanged">Whether the file was elided as unchanged in the session.</param>
 public sealed record ContextFileDto(
     string Path,
     string Role,
@@ -38,7 +39,8 @@ public sealed record ContextFileDto(
     double Score,
     int Tokens,
     IReadOnlyList<string> Provenance,
-    string Content);
+    string Content,
+    bool Unchanged = false);
 
 /// <summary>
 ///     Source-generated serializer context for emitted semantic-context JSON.

@@ -178,9 +178,16 @@ public sealed class SemanticRetrievalEngine
             switch (seed.Kind)
             {
                 case ContextSeedKind.File:
+                    var filePath = seed.Value.Replace('\\', '/');
                     candidates.Add(new CandidateNode(
-                        string.Empty, seed.Value.Replace('\\', '/'), "file", 1.0,
+                        string.Empty, filePath, "file", 1.0,
                         CandidateSource.DiffChangedFile, ["seed: file"], 0));
+                    // Seed the file's declared nodes too, so a file seed (for example a path from localize)
+                    // expands across the graph rather than being included in isolation.
+                    foreach (var node in await _store.GetNodesByFileAsync(filePath, cancellationToken))
+                        candidates.Add(new CandidateNode(
+                            node.NodeId, node.FilePath ?? filePath, node.Kind, 1.0,
+                            CandidateSource.SymbolExact, ["seed: file symbol"], 0));
                     break;
                 case ContextSeedKind.Route:
                     await AddRouteSeedAsync(candidates, seed.Value, cancellationToken);

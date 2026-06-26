@@ -59,6 +59,20 @@ public sealed class SemanticRetrievalEngineTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FileSeedExpandsFromTheFilesSymbols()
+    {
+        var engine = new SemanticRetrievalEngine(_store);
+        // Seeding the file that declares IOrderService should expand to its implementation, like a named seed.
+        var request = new ContextRequest(".", [new ContextSeed(ContextSeedKind.File, "src/IOrderService.cs")]);
+
+        var plan = await engine.PlanContextAsync(request, CancellationToken.None);
+
+        var paths = plan.Items.Select(i => i.Path).ToHashSet();
+        Assert.Contains("src/IOrderService.cs", paths);
+        Assert.Contains("src/OrderService.cs", paths);
+    }
+
+    [Fact]
     public async Task ContextPlanRespectsTokenBudget()
     {
         var engine = new SemanticRetrievalEngine(_store);

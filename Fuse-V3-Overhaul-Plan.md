@@ -32,7 +32,7 @@ Phase 4 - Core semantic edges
 - [x] P4.2 InterfaceImplementationAnalyzer
 - [x] P4.3 DiRegistrationAnalyzer
 - [x] P4.4 ConstructorInjectionAnalyzer
-- [ ] P4.5 MediatRAnalyzer
+- [x] P4.5 MediatRAnalyzer
 - [ ] P4.6 AspNetRouteAnalyzer
 - [ ] P4.7 OptionsBindingAnalyzer
 - [ ] P4.8 Fixture edge assertions pass; fuse resolve --service/--request/--route return correctly
@@ -1579,6 +1579,14 @@ The single most important thing remains: build the resolved semantic graph and e
 - Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 46 passed (OrdersController -> IOrderService di_injects and OrdersController -> OrderService di_depends_on_impl present); `dotnet format --verify-no-changes` clean.
 - Blockers/issues: None. di_depends_on_impl requires the DI map, so this analyzer depends on `DiRegistrationAnalyzer` (composition) rather than recomputing registrations; the Phase 4 aggregation (P4.8) can share one DI result if needed.
 - Lessons: di_depends_on_impl is the direct edge the worked example asserts, but it is derivable as a 2-hop (di_injects then di_resolves_to); emitting it directly keeps single-hop retrieval cheap. Only in-source parameter types are injected-edged to avoid flooding the graph with framework dependencies (ILogger, IOptions infra); the options consumption edge is the options analyzer's job (P4.7).
+- Time: ~25 min
+
+### P4.5 MediatRAnalyzer - 2026-06-26 13:50
+- Status: done
+- Result: Added `MediatRAnalyzer` emitting `request -> handler : mediatr_handles` (0.95) for source types implementing `IRequestHandler<TReq,TResp>`/`IRequestHandler<TReq>`/`INotificationHandler<TNotif>` (request is the first type argument of the handler interface), and `caller -> request : sends_request` (0.70) for `Send`/`Publish` calls whose argument type implements `IRequest`/`INotification`. Interfaces matched by simple name so real MediatR and the local stub both work. Added `MediatRAnalyzerTests` (2). New solution test total 682 (Fuse.Semantics.Tests 46 -> 48).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Semantics.Tests` 48 passed (CreateOrderCommand -> CreateOrderHandler mediatr_handles; OrdersController -> CreateOrderCommand sends_request); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: `SemanticModel.GetDeclaredSymbol(TypeDeclarationSyntax)` binds to the `ISymbol` overload here, so it needs an `as INamedTypeSymbol` cast.
+- Lessons: The request type is recovered from the handler's implemented generic interface's first type argument, which is robust regardless of how the handler is declared. `sends_request` uses the enclosing `TypeDeclarationSyntax` as the caller, which attributes the send to the controller/service rather than to a method node.
 - Time: ~25 min
 
 

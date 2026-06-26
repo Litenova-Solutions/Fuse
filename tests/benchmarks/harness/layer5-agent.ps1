@@ -5,7 +5,8 @@
 # precision against the PR change set, plus a model-scored sufficiency verdict).
 #
 # This layer is MODEL-DEPENDENT and NOT byte-reproducible. It is gated off the default run-all path.
-# The validation spike that proved the mechanism is spike-layer5.ps1 (Phase D1).
+# V3 note: the agent suite is reimplemented in C# as Fuse.Benchmarks AgentSuite (run via `fuse eval agent`);
+# this PowerShell driver is retained as the reference for the ported logic.
 #
 # THE FOUR ARMS (one Claude driver, only the toolbox changes):
 #   native    : filesystem read tools only (Read, Grep, Glob). No MCP. This is what an agent pays

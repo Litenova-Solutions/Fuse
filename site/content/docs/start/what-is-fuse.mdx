@@ -1,33 +1,35 @@
 ---
 title: What is Fuse
-description: Fuse collapses an AI agent's explore phase into one scoped call, finding the code a task needs and handing it over reduced, with the public API intact.
+description: Fuse is a Roslyn-backed semantic context engine for .NET. It keeps a warm index of a workspace and resolves what code actually runs, then hands an agent the exact context a task needs.
 ---
 
-An AI coding agent spends the start of every task exploring: listing directories,
-searching, opening file after file to find the few that matter. Fuse collapses that
-explore phase into one scoped call: it finds the code a task needs and hands it over
-already reduced, so the agent starts work instead of hunting.
+Fuse is a semantic context engine for .NET coding agents. It maintains a warm, persistent
+index of a workspace built with Roslyn, and answers the questions an agent really has:
+which implementation is injected for an interface, which handler processes a request,
+which endpoint serves a route, which options type binds a config section, and what a git
+diff actually impacts. It then hands the agent the exact code that task needs, reduced to
+fit the window.
 
-The collapse is measured. Over 90 real merged pull requests, one scoped call acquires a
-change's context in about 37,000 tokens at 49 percent recall, against a blind agent that
-must read each needed file at least once (a structural lower bound of about seven reads)
-and a generic packer that dumps the whole repository at roughly 425,000 tokens. Read the
-token number with its recall; the change-scoping mode reaches 91 percent recall in the
-[Layer 4 one-call scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
-when a git base is available (89 percent in the
-[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests)).
-See [The explore phase](/docs/concepts/the-explore-phase) and
-[Benchmarks](/docs/project/benchmarks).
+A warm index is one that stays built between calls, in a single SQLite file at
+`.fuse/fuse.db`, so the first call pays the analysis cost and later calls are fast.
 
-Hand it to an agent through the MCP server: give `fuse_ask` a task and a token budget and
-it picks the scoping strategy and packs to fit.
+Hand it to an agent through the MCP server. For change and pull-request work, one call
+returns the changed files plus their blast radius (callers, DI consumers, route and
+request handlers, options consumers, tests) as packed context:
 
 ```text
-fuse_ask(
+fuse_review(
   path="C:/Projects/MyApp/src",
-  task="where is the discount applied at checkout?",
-  tokenBudget=20000
+  changedSince="origin/main",
+  maxTokens=25000
 )
+```
+
+For an open-ended task, localize to candidate files first, then plan context for them:
+
+```text
+fuse_localize(path="C:/Projects/MyApp/src", task="where is the discount applied at checkout?")
+fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], maxTokens=25000)
 ```
 
 It also runs as a CLI for humans and CI:
@@ -36,46 +38,50 @@ It also runs as a CLI for humans and CI:
 # install once
 dotnet tool install -g Fuse
 
-# fuse a project, keeping the full public API
-fuse dotnet --directory ./src --level aggressive
+# build the index, then review a branch
+fuse index ./src
+fuse review ./src --changed-since origin/main --max-tokens 25000
 ```
-
-```text
-Fused 511 files
-Estimated tokens: 366,121 (-21.5%)
-cache: 0 hit / 511 miss
-Output: AutoMapper_2026-06-20_366k.txt
-```
-
-That run took 511 C# files down by 21.5 percent and kept 99 percent of public types
-and 100 percent of public methods. The cut is not deletion: the surface an agent
-reads the code for is still there.
 
 ## What It Does, in One Line
 
-Fuse is a retrieval engine for .NET coding agents: it finds the code a task needs and
-hands it over scoped and reduced in one call, instead of letting the agent open thousands
-of files to find its way around.
+Fuse resolves what .NET code actually runs and hands an agent the exact context a task
+needs, from a warm Roslyn-backed graph, instead of letting the agent open thousands of
+files to find its way around.
 
-A single request returns a **fusion**: one scoped, reduced view of a codebase assembled
-for that request, returned as an MCP tool response to an agent or written to a file from
-the CLI.
+A read call returns a **context plan**: a scoped set of source bodies at mixed render
+tiers, a semantic manifest, and per-file provenance, returned as an MCP tool response to
+an agent or written to a file from the CLI.
 
 ## Why That Matters
 
-On a solution with hundreds or thousands of C# files, the explore phase is the expensive
-part of the task: every file the agent opens to orient itself burns context window, each
-open is a separate round-trip with latency, and reading files in isolation loses the
-dependency structure. Fuse front-loads that work into one deterministic step and hands
-the agent scoped, reduced context that fits the window. For the full mechanism, see
-[The explore phase](/docs/concepts/the-explore-phase).
+On a solution with hundreds or thousands of C# files, a coding agent spends the start of
+every task hunting: every file it opens to orient itself burns context window, each open
+is a separate round-trip, and reading files in isolation loses the wiring (which concrete
+type runs, who calls it, what a change breaks). Fuse front-loads that work into a warm
+index and resolves the wiring deterministically, then hands the agent scoped context that
+fits the window. For the mechanism, see [How Fuse works](/docs/concepts/how-fuse-works).
+
+## Resolves What Actually Runs
+
+The core is semantic resolution over a typed graph, not text search. Fuse resolves:
+
+- a service interface to the concrete type registered for it in DI,
+- a request or command to the handler that processes it,
+- a route to the action or endpoint that serves it,
+- a config section to the options type that binds it,
+- a symbol to its declaration.
+
+From any of those it expands through typed edges (calls, implements, injects, handles,
+binds) to the neighborhood a task needs, and prunes the rest.
 
 ## Reduction without Losing the Surface
 
-Across a commit-pinned corpus of real .NET libraries, the default and `--level aggressive`
-reductions cut 7 to 40 percent of tokens while keeping 99 to 100 percent of public
-types and methods. Skeleton mode, which keeps signatures and drops bodies, cuts 66
-to 93 percent for an architecture-level survey.
+Reduction is now the rendering step that fits context to a budget, not the product. Across
+a commit-pinned corpus of real .NET libraries, the default and `aggressive` reductions cut
+6 to 46 percent of tokens while keeping 99 to 100 percent of public types and methods. The
+**skeleton** render tier, which keeps signatures and drops bodies, removes 39 to 56 percent
+for an architecture-level view.
 
 ![Fuse benchmark results across MediatR, FluentValidation, AutoMapper, Newtonsoft.Json, and Serilog: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with Roslyn structural analysis, one scoped call replacing at least seven grep-and-open round-trips, and that call delivering a task's context in about 11 times fewer tokens than a generic packer.](/fuse-benchmarks.png)
 
@@ -87,21 +93,21 @@ including where Fuse loses.
 
 Fuse ships from one package in two forms:
 
-- The **`fuse` global tool** writes a fusion to a file from your terminal. Start at
-  the [Quickstart](/docs/start/quickstart).
-- The **`fuse mcp serve` MCP server** exposes eleven tools to an AI client such as Claude
-  Code, Cursor, or GitHub Copilot, so the agent requests scoped context directly.
+- The **`fuse` global tool** indexes a workspace and writes context to a file from your
+  terminal. Start at the [Quickstart](/docs/start/quickstart).
+- The **`fuse mcp serve` MCP server** exposes eight tools to an AI client such as Claude
+  Code, Cursor, or GitHub Copilot, so the agent requests resolved context directly.
   See [Connect to your AI](/docs/start/connect-your-ai).
 
 ## What It Is Not
 
 Fuse is not a generic file packer that concatenates text, and it is not an embedding
-index that returns fuzzy chunks. It is also not a one-shot dump: it scopes to the files a
-task needs and refines across calls in a session. It understands C# structure, preserves
-the public API, and produces the same output for the same input. The
+index that returns fuzzy chunks. It does not guess from vocabulary similarity: it resolves
+.NET wiring from a parsed graph and is deterministic for the same index. It understands
+C# structure, preserves the public API, and refines across calls in a session. The
 [Why Fuse](/docs/start/why-fuse) page covers the landscape and the trade-offs in full.
 
 ## Next
 
 Install the tool on the [Install](/docs/start/install) page, then run your first
-fusion in the [Quickstart](/docs/start/quickstart).
+index and review in the [Quickstart](/docs/start/quickstart).

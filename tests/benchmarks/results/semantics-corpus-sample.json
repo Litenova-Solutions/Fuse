@@ -1,0 +1,146 @@
+[
+  {
+    "from": "type:FluentValidation.Internal.RuleBuilder\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.AbstractValidator\u003CT\u003E",
+    "type": "di_injects",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Internal.RuleComponent\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.Validators.IPropertyValidator\u003CT, TProperty\u003E",
+    "type": "di_injects",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Internal.TrackingCollection\u003CT\u003E.EventDisposable",
+    "to": "type:FluentValidation.Internal.TrackingCollection\u003CT\u003E",
+    "type": "di_injects",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Validators.ChildValidatorAdaptor\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.IValidator\u003CTProperty\u003E",
+    "type": "di_injects",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:Serilog.Configuration.LoggerFilterConfiguration",
+    "to": "type:Serilog.LoggerConfiguration",
+    "type": "di_injects",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:Serilog.Configuration.LoggerSinkConfiguration",
+    "to": "type:Serilog.LoggerConfiguration",
+    "type": "di_injects",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:Serilog.Context.EnricherStack",
+    "to": "type:Serilog.Core.ILogEventEnricher",
+    "type": "di_injects",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:Serilog.Core.LevelOverrideMap",
+    "to": "type:Serilog.Events.LogEventLevel",
+    "type": "di_injects",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:FluentValidation.IRuleBuilderInitial\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.IRuleBuilder\u003CT, TProperty\u003E",
+    "type": "implements",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Internal.DefaultValidatorSelector",
+    "to": "type:FluentValidation.Internal.IValidatorSelector",
+    "type": "implements",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Validators.ChildValidatorAdaptor\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.Validators.IAsyncPropertyValidator\u003CT, TProperty\u003E",
+    "type": "implements",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:Serilog.Capturing.PropertyValueConverter.DepthLimiter",
+    "to": "type:Serilog.Core.ILogEventPropertyValueFactory",
+    "type": "implements",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:Serilog.Core.Enrichers.SafeAggregateEnricher",
+    "to": "type:Serilog.Core.ILogEventEnricher",
+    "type": "implements",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:Serilog.Core.Logger",
+    "to": "type:Serilog.Core.ILogEventSink",
+    "type": "implements",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:Serilog.Core.Pipeline.SilentLogger",
+    "to": "type:Serilog.ILogger",
+    "type": "implements",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:Serilog.Core.Sinks.Batching.BatchingSink",
+    "to": "type:Serilog.Core.ISetLoggingFailureListener",
+    "type": "implements",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:FluentValidation.Tests.SharedConditionTests.Collision1",
+    "to": "type:FluentValidation.Tests.SharedConditionTests.CollisionBase",
+    "type": "inherits",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Validators.CreditCardValidator\u003CT\u003E",
+    "to": "type:FluentValidation.Validators.PropertyValidator\u003CT, System.String\u003E",
+    "type": "inherits",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Validators.GreaterThanOrEqualValidator\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.Validators.AbstractComparisonValidator\u003CT, TProperty\u003E",
+    "type": "inherits",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Validators.LessThanOrEqualValidator\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.Validators.AbstractComparisonValidator\u003CT, TProperty\u003E",
+    "type": "inherits",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Validators.NotEqualValidator\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.Validators.PropertyValidator\u003CT, TProperty\u003E",
+    "type": "inherits",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Validators.PolymorphicValidator\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.Validators.ChildValidatorAdaptor\u003CT, TProperty\u003E",
+    "type": "inherits",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:Serilog.Data.LogEventPropertyValueRewriter\u003CTState\u003E",
+    "to": "type:Serilog.Data.LogEventPropertyValueVisitor\u003CTState, Serilog.Events.LogEventPropertyValue\u003E",
+    "type": "inherits",
+    "repo": "Serilog"
+  },
+  {
+    "from": "type:Serilog.Events.SequenceValue",
+    "to": "type:Serilog.Events.LogEventPropertyValue",
+    "type": "inherits",
+    "repo": "Serilog"
+  }
+]

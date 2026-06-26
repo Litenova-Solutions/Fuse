@@ -1,0 +1,27 @@
+{
+  "comment": "Ground-truth semantic edges for the OrderingApp fixture (Suite A: semantic resolution). Edge ids use the analyzer node-id form (type:{fqn}, route:{METHOD}:{pattern}, method:{type}.{name}, config:{section}).",
+  "edges": [
+    { "from": "type:OrderingApp.Ordering.IOrderService", "to": "type:OrderingApp.Ordering.OrderService", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Api.OrdersController", "to": "type:OrderingApp.Ordering.IOrderService", "type": "di_injects" },
+    { "from": "type:OrderingApp.Api.OrdersController", "to": "type:MediatR.ISender", "type": "di_injects" },
+    { "from": "type:OrderingApp.Ordering.CreateOrderHandler", "to": "type:OrderingApp.Ordering.IOrderService", "type": "di_injects" },
+    { "from": "type:OrderingApp.Api.OrdersController", "to": "type:OrderingApp.Ordering.OrderService", "type": "di_depends_on_impl" },
+    { "from": "type:OrderingApp.Ordering.CreateOrderHandler", "to": "type:OrderingApp.Ordering.OrderService", "type": "di_depends_on_impl" },
+    { "from": "type:OrderingApp.Ordering.CreateOrderCommand", "to": "type:OrderingApp.Ordering.CreateOrderHandler", "type": "mediatr_handles" },
+    { "from": "route:POST:/api/orders/{id}", "to": "method:OrderingApp.Api.OrdersController.Create", "type": "route_handles" },
+    { "from": "config:Orders", "to": "type:OrderingApp.Ordering.OrderOptions", "type": "options_binds" },
+    { "from": "type:OrderingApp.Ordering.OrderService", "to": "type:OrderingApp.Ordering.OrderOptions", "type": "options_consumes" },
+    { "from": "service:IHostedService", "to": "type:OrderingApp.Ordering.OrderDispatcher", "type": "hosted_service" },
+    { "from": "service:IPipelineBehavior", "to": "type:OrderingApp.Ordering.LoggingBehavior", "type": "pipeline_behavior" },
+    { "from": "type:OrderingApp.Data.OrderingDbContext", "to": "type:OrderingApp.Data.OrderEntity", "type": "ef_entity" },
+    { "from": "type:OrderingApp.Data.OrderEntity", "to": "type:OrderingApp.Data.OrderEntityConfiguration", "type": "ef_configures" },
+    { "from": "type:OrderingApp.Ordering.IClock", "to": "type:OrderingApp.Ordering.SystemClock", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Ordering.IOrderService", "to": "type:OrderingApp.Ordering.OrderServiceLogger", "type": "di_decorates" },
+    { "from": "route:GET:/health", "to": "method:OrderingApp.Api.HealthEndpoints.Check", "type": "route_handles" },
+    { "from": "service:gRPC", "to": "type:OrderingApp.Api.GreeterService", "type": "grpc_endpoint" },
+    { "from": "service:SignalR", "to": "type:OrderingApp.Api.ChatHub", "type": "signalr_endpoint" },
+    { "from": "type:OrderingApp.Data.ICache", "to": "type:OrderingApp.Data.MemoryCache", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Data.IShipping", "to": "type:OrderingApp.Data.FastShipping", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Data.IRepository<T>", "to": "type:OrderingApp.Data.Repository<T>", "type": "di_resolves_to" }
+  ]
+}

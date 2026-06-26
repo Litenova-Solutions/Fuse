@@ -1,85 +1,59 @@
 ---
-title: Scoping Internals
-description: The relevance index, dependency graph, and seed resolution that implement focus, changes, and query scoping.
+title: Retrieval Internals
+description: The candidate generators, score normalization, and typed graph expansion that implement localize, resolve, context, and review.
 ---
 
-Scoping narrows a fusion to the files relevant to a task. Three modes drive it: focus from a named seed, changes from a git ref, and query from a search string. All three rest on the same two mechanisms, a relevance index and a dependency graph, plus a seed resolver that maps a seed to starting files and expands outward. This page documents those mechanisms, the constants they use, and where their accuracy ends.
+Retrieval narrows a workspace to the files a task needs by reading the persistent semantic graph, not by ranking a fresh in-memory index. It runs in three steps: generate candidate nodes from several sources, normalize their scores into one ranking, and expand the seed set through the typed edges with per-edge weights and pruning. The result is a context plan: an ordered set of files, each with a role, a render tier, a token estimate, and a provenance chain. This page documents those steps and where their accuracy ends.
 
-This page is for maintainers working on scoping behavior and for engineers who need to know why a scoped fusion includes or omits a given file.
+This page is for maintainers working on retrieval behavior and for engineers who need to know why a query includes or omits a given file.
 
-## Implementation Context
+## Implementation context
 
-Scoping is best-effort by design. For C#, the dependency graph is built from Roslyn syntax analysis over each file, not from a compiled semantic model with metadata references, so it approximates the real reference structure rather than reproducing it. Every mode that expands through the graph inherits that approximation. The honest ceiling on scoping accuracy is this syntax-level graph: it can still miss references that arrive through dynamic dispatch or reflection, and it does not resolve types across assemblies.
+Retrieval is only as good as the index beneath it. When the workspace loads through MSBuild and Roslyn, the graph carries resolved symbols and the wiring edges (DI, MediatR, routes, options); when it falls back to syntax-only indexing, the graph is sparser and expansion has fewer typed edges to follow. The index mode (`semantic`, `partial`, or `syntax`) is recorded so a result can be read in light of how much structure was available.
 
-## BM25F Relevance Index
+## Candidate generation
 
-Query scoping ranks files by lexical relevance to a query using BM25F, the fielded form of BM25, with K1 = 1.2. Each document carries three fields with independent length-normalization (B) and boost weights: the body (B 0.75, boost 1.0), the declared symbol names (B 0.5, boost 5.0), and the path tokens (B 0.5, boost 3.0). Field contributions are combined before the term-frequency saturation, per the BM25F model. The effect is that a query term matched in a file's declared types or members, or in its name, counts for more than the same term buried in its body, so the file that declares or is named after a concept ranks above files that merely mention it. The declared symbol field is populated from the type-name locator capability, which for C# contributes declared type and member names from the Roslyn parse tree.
+A localization request is turned into candidate nodes by several generators, each blind to the others:
 
-Tokenization and normalization come from a single tokenizer shared by indexing and querying, so both sides use the same vocabulary. It splits on non-word characters, then splits each identifier on camelCase, PascalCase, and snake_case boundaries, so `OrderService` is indexed under `order` and `service` as well as the whole token. It then drops a small set of English and code stopwords and applies a light suffix stemmer that folds common plural and verb endings, so `validators` and `validator` reduce to one term and a natural-language query lands on the same stems as the code. Matching is case-insensitive.
+- Exact resolution: a named route, service, request, or config section is resolved through the graph to its node (the same lookup `fuse resolve` uses), and a symbol name is matched to its declaration. These are the highest-confidence candidates.
+- Lexical (BM25F with pseudo-relevance feedback): the query tokens are matched against the FTS5 index over chunk path, name, declared symbols, signature, comments, and body, with column weights that favor names and signatures over body text. Unlike a flat full-text pass, the lexical generator carries the BM25 rank through to the candidate score: hits are collapsed to one candidate per file, the best in-pool file keeps its band ceiling (a name-field match outranks a body-only match), and the score decays with rank to a floor, so the lexical order survives the noisy-or merge and truncation. It then runs one round of pseudo-relevance feedback: the distinctive symbol names of the top files seed an expanded query, and a capped number of new, vocabulary-related files are added as a weaker signal. This is the channel that recovers identifier-rich and natural-language recall without a model.
+- Dense (embedding similarity, optional): when a text-embedding model is present and dense indexing is enabled (`FUSE_DENSE`), each chunk is embedded at index time and the vector is persisted alongside the relational tables. At query time the query is embedded once and ranked by cosine over the persisted vectors (unit vectors, so cosine is a dot product), collapsed to the best chunk per file. This is the channel that finds a file by meaning when a prose query shares no tokens with the code. It is absent with no model, so the no-model path is lexical only.
+- Path: query tokens of three or more characters are matched against file paths.
+- Changed files: when a git base is supplied, the changed files become must-keep candidates.
 
-The index is rebuilt on each run and is not thread-safe; indexing must complete before ranking. Ranking is lexical and best-effort. It rewards shared vocabulary, which means it can surface a file that merely happens to share a word with the query, and it can miss a conceptually related file that shares no vocabulary at all. It has no semantic understanding of the code.
+A candidate carries a node id (for exact and graph candidates) or a file path (for file-only full-text and path candidates), a source weight, and a reason.
 
-### Query Expansion
+## Score normalization
 
-A short query often omits the type and member names the codebase actually uses, so the first ranking can rank the right files just below the budget. Query scoping runs a second BM25F pass to close that gap, using pseudo-relevance feedback: the top files from the first pass are treated as relevant, and the declared-symbol names they share are added to the query as expansion terms before re-ranking. This rewrites a natural-language query in the codebase's own vocabulary. The pass is entirely lexical: it adds one more ranking pass and reads no extra files, so the default scoping path stays fast with no model inference and no network.
+Candidates that point at the same node or file are grouped and their source scores combined with a noisy-or rule: the combined score is one minus the product of one minus each source score. Corroboration from several sources raises the score toward but never past one, and a single-source candidate keeps its own weight. Grouping is by node id, so a symbol-level candidate stays distinct from a file-level one while duplicate file candidates (a full-text hit and a path hit for the same file) merge. The output is ranked by score, then by path for stability.
 
-Pseudo-relevance feedback degrades retrieval when the first pass is weak, because it then feeds back terms from non-relevant files. Several guards keep expansion conservative. Candidate terms come only from the declared-symbol field, the highest-signal field, not from file bodies. A candidate must recur across at least two of the feedback files, which filters names incidental to a single file. And a candidate must clear a corpus inverse-document-frequency floor, which drops boilerplate names shared across most files (a type suffix every file carries, for example) that would otherwise broaden the query toward the whole repository. Survivors are ranked by feedback weight times inverse document frequency and capped to a small number of terms.
+## Typed graph expansion
 
-The expansion terms are blended in at a low weight relative to the original query terms, so they nudge ranking toward co-occurring concepts without displacing the original results. The weight matters: a heavy weight lifts a few extra files but also demotes incidental first-pass hits when a query's title is poorly aligned with its change (a title about one concern against an edit to another), which costs more recall than it gains. After re-ranking, the expanded ranking is merged with the first pass rather than replacing it, so a file the first pass ranked highly is retained as a seed even if expansion demoted it. When no candidate clears the term guards, re-ranking reproduces the first pass exactly. Expansion is on by default and is controlled by `QueryExpansionOptions`; setting `FUSE_QUERY_EXPANSION=0` disables it and reproduces the single-pass ordering.
+From the scored seeds, expansion walks the edges to a configured depth. Edges are typed and weighted: a strong, deterministic edge (a route to its action, a request to its handler, a service to its implementation) carries more weight than a weaker structural or co-change edge, and a neighbor's score is its parent's score times the edge weight. Expansion admits the highest-scoring candidate first and prunes low-scoring branches, so the seed and its nearest semantic neighborhood survive while distant, weakly connected files are cut. Each file is included once, by the highest-scoring chain that reaches it, and the chain is recorded as that file's provenance.
 
-## Dependency Graph
+When a token budget is set, expansion is budget-aware: it keeps admitting candidates in score order until a pre-render token estimate of the admitted set would exceed the budget, then stops. Must-keep seeds (the exact resolution targets, and the changed files in a review) are always admitted regardless of budget.
 
-The dependency graph maps each file to the type names it references, each type name to the files that define it, each file to the type names it declares, and each type name to the files that reference it. The last two are the reverse edges: joined together they reach a file's dependents, the files that reference the types it declares. For C#, all directions are extracted from the Roslyn syntax tree: return types, generic arguments, object creations, and other type-position identifiers. A file whose extension has no registered dependency extractor contributes an empty reference list.
+## Resolve
 
-The graph is built in parallel across files, and its output ordering is made deterministic by reordering the result to follow the input file order regardless of how the parallel work completed.
+Resolve is the deterministic core the other modes reuse. It finds a node by display name or by a constructed id (`route:{METHOD}:{pattern}`, `service:{name}`, `config:{section}`, or a symbol id) and follows one typed edge to its target: `di_resolves_to` for a service, `mediatr_handles` for a request, `route_handles` for a route, `options_binds` for a config section. It returns the matched node, its target, and the evidence, with no source bodies.
 
-## Focus Seed Resolution
+## Review
 
-Focus scoping resolves a seed string to one or more starting files by trying strategies in a fixed order and stopping at the first that yields any match:
-
-1. Exact relative path.
-2. Exact file name.
-3. Type name, resolved through the type-name locator capability to the files that define that type.
-4. Directory prefix, matching every file under that path.
-
-Only the type-name strategy reads file content. If no strategy matches, the fusion fails with a diagnostic rather than producing an empty result silently.
-
-## Path Expansion
-
-From the resolved seed set, expansion is a best-first traversal through the dependency graph to the configured depth, which ranges from 1 to 10. Each seed starts with a score: 1.0 for a focus or change seed, and its BM25F relevance for a query seed. A neighbour's score is its parent's score multiplied by a per-hop decay (0.5), so files near a strong seed rank well above files several hops out or off a weak seed. The traversal admits the highest-scoring candidate first; seeds are always admitted. Each file is included once, with the highest score and shortest chain by which it is reached, and the expansion records a provenance chain for every included file: the hop sequence from a seed to that file, inclusive. That chain is surfaced when provenance annotation is requested with the provenance flag.
-
-Expansion can follow forward edges, reverse edges, or both. Focus follows both, so a focus seed pulls in the files it depends on and the files that depend on it (its dependents). Query follows forward edges only, expanding ranked seeds to their dependencies without broadening to every file that uses a matched type. Change scoping follows reverse edges one hop when dependents are requested, reaching the files that reference the changed files.
-
-When a token budget is set, expansion is budget-aware: it keeps admitting candidates in score order until a rough pre-reduction token estimate of the admitted set would exceed the budget, then stops. Because admission is by score, the seeds and their nearest neighbourhood survive and the weakest, most distant files are the first to be cut. The per-file score that ordered the traversal is carried forward to emission, where entries are written most-relevant first so the closest files also survive the exact token budget applied after reduction.
-
-### The Centrality Prior
-
-A query-independent importance prior is blended into the rank score so that, at equal relevance, the more depended-upon file ranks earlier. The prior is normalized in-degree centrality computed from the already-built graph: a file's score is the count of distinct other files that reference any type it declares, divided by the largest such count, giving a value in the range 0 to 1. It is computed once per run and adds no extra file reads. The rank score is relevance plus weight times centrality, where the weight is the `FUSE_CENTRALITY_WEIGHT` environment variable (default 0.15). The blend is additive and is applied only to the recorded and admission-ordering score, never to the score propagated to neighbours, so it cannot compound across hops; a weight of 0 reproduces the pre-centrality ordering exactly.
-
-Query scoping reuses the same traversal from its ranked seed files.
+Review seeds the plan with the files a git diff changed, marked must-keep, and expands the blast radius: the changed symbols' callers, the DI consumers of changed services, the handlers of changed routes and requests, the consumers of changed options, and the related tests. The changed files are always kept; the expansion adds the unchanged context needed to understand the change, each with a provenance chain naming the edge that pulled it in.
 
 ```mermaid
 flowchart LR
-    A[Seed: path, name, type, or query] --> B[Resolve seed files and scores]
-    B --> C[Best-first expand to depth 1 to 10<br/>forward and reverse edges, rank-decayed,<br/>budget-aware]
-    C --> D[Included files with scores<br/>and provenance chains]
-    G[(Roslyn dependency graph<br/>forward and reverse edges)] -.edges.-> C
+    A[Request: task, name, or git base] --> B[Candidate generators]
+    B --> C[Score normalization: group + noisy-or]
+    C --> D[Typed graph expansion<br/>weighted edges, pruned, budget-aware]
+    G[(Semantic graph: typed edges)] -.edges.-> D
+    D --> E[Context plan: files, roles, tiers, provenance]
 ```
 
-## Symbol-Level Scoping
+## What this does not cover
 
-A focus seed of the form `Type.Member` scopes the seed file to a single member. The resolver first tries the seed as a whole; when that does not resolve and a symbol-slice capability is registered, it splits the seed at the last dot, resolves the type, and records the member. After reduction, the seed file's content is replaced by a slice that keeps the named member's body in full and reduces every other member of the file to its signature, so a large file costs only the member plus its type shell. When no slice capability handles the extension or the member is not found, the whole file is emitted unchanged.
-
-For C#, member boundaries come from the Roslyn parse tree, so query-based member retrieval and `Type.Member` focus use exact boundaries rather than coarse regex chunks.
-
-## Persistent Analysis Store
-
-The per-file analysis the graph build and the relevance index need (referenced types, declared types, declared symbols, and body tokens) is cached on disk in `.fuse/fuse.db`, keyed by content hash (and, for analysis, an analyzer tier tag). An unchanged file is a hit; a changed file is a miss that overwrites its entry. One store instance is shared across a run, so the query relevance pass warms entries that the graph build then reuses. The store is off by default for one-shot CLI runs and enabled automatically in watch mode and the MCP server, where a session makes several calls and the Roslyn parse cost is paid once. See [Caching Internals](/docs/internals/caching-internals) for the SQLite layout and store namespaces.
-
-## What This Does Not Cover
-
-This page documents the scoping algorithms. It does not give command syntax for selecting a mode or setting depth; see the [Scoping guide](/docs/concepts/scoping). It does not cover the reduction or emission of the files scoping selects.
+This page documents the retrieval algorithms. It does not give command syntax (see [Scoping](/docs/concepts/scoping)), the index schema and analyzers that produce the edges (see [The Fuse pipeline](/docs/internals/pipeline)), or the rendering of the files retrieval selects.
 
 ## Next
 
-See [Scoping To What Matters](/docs/concepts/scoping) for task-oriented use of the three modes, and [The Fusion Pipeline](/docs/internals/pipeline) for where filtering sits in the run.
+See [Scoping](/docs/concepts/scoping) for task-oriented use of localize, resolve, and review, and [The Fuse pipeline](/docs/internals/pipeline) for where retrieval sits in the run.

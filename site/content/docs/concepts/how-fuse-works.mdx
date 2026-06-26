@@ -1,76 +1,92 @@
 ---
 title: How Fuse works
-description: The four stages of a fusion, what each one does, and why the pipeline is shaped this way.
+description: "The warm-index pipeline behind a Fuse call: index, localize, resolve, expand, plan, render, and why it is shaped this way."
 ---
 
-A **fusion** is one scoped, reduced view of a codebase assembled for a single request:
-returned as an MCP tool response to an agent, or written to a file from the CLI. This
-page is about what happens inside one fusion. For how an agent uses Fuse across a whole
-task (survey, scope, drill in, review, refine), see
-[The explore phase](/docs/concepts/the-explore-phase); the four stages below are what one
-call does internally.
+Fuse answers a context request from a warm, persistent semantic graph of the workspace.
+This page is the model behind a call. For the exact parameters of each tool, see the
+[Tools reference](/docs/reference/mcp-tools); for how an agent strings calls together
+across a task, see [The iterative workflow](/docs/concepts/the-explore-phase).
 
-Assembling that view moves through four stages. You do not need to know them to use Fuse,
-but they explain every flag and every result.
+A **warm index** is a semantic graph that stays built between calls, stored in a single
+SQLite file at `.fuse/fuse.db`. Building it once and reusing it is what makes resolution
+and context planning cheap on the second and later calls.
 
-## The Four Stages
+## The Pipeline
 
 | Stage | What it does |
 |-------|--------------|
-| 1. Collection | Scans the directory and applies filters to produce the candidate file set. |
-| 2. Filtering | Optionally narrows that set to the files relevant to a task (scoping). |
-| 3. Reduction | Rewrites each file's content to use fewer tokens without changing meaning. |
-| 4. Emission | Counts tokens, builds the manifest, applies the output format, and writes. |
+| 1. Index | Load the workspace through MSBuild and Roslyn into a typed graph; persist it. |
+| 2. Localize | Rank candidate files and symbols for a task, no bodies. |
+| 3. Resolve | Map a service, request, route, config, or symbol to its real target. |
+| 4. Expand | Walk typed edges from the seeds, weighting and pruning the neighborhood. |
+| 5. Plan | Pick what to keep under the token budget; seeds are always kept. |
+| 6. Render | Emit source at mixed tiers, with a manifest and per-file provenance. |
 
-### 1. Collection
+### 1. Index
 
-Collection walks the source directory and applies an ordered chain of filters: the
-file extensions a **template** allows, `.gitignore` rules, excluded directories,
-test-project exclusion, file-size limits, binary detection, and glob patterns. What
-survives is the candidate set. A template is just a named set of defaults for a
-project type; `fuse dotnet` uses the DotNet template.
+Indexing loads the workspace through MSBuild and Roslyn and records a typed graph of
+**nodes** (types, members, routes, DI registrations, options bindings) and **edges**
+(calls, implements, injects, handles, binds). When a project does not load, Fuse falls
+back to syntax-only indexing for that project, which records fewer edges. The result is
+persisted to `.fuse/fuse.db` in WAL mode and reused on later calls, so the analysis cost
+is paid once. The index mode is reported as `semantic`, `partial`, or `syntax`.
 
-### 2. Filtering
+### 2. Localize
 
-Without scoping, every collected file passes through. With scoping, Fuse narrows the
-set to the files a task needs and expands through a dependency graph. There are three
-mutually exclusive modes, covered in [Scoping](/docs/concepts/scoping). This is the
-stage that turns "the whole repo" into "the part that matters".
+Localization turns a free-text task (or a route, symbol, service, request, or config
+hint) into ranked candidate files and symbols, each with a reason and a token cost, and
+no source bodies. It is the cheap first step of an open-ended task: see what the graph
+thinks is relevant before fetching anything.
 
-### 3. Reduction
+### 3. Resolve
 
-Reduction reads each file once, normalizes whitespace, and applies the reducer for
-the file's type. For C# this ranges from removing comments and usings up to dropping
-method bodies to a signature-only **skeleton**. This stage also applies best-effort
-secret redaction (regex and entropy heuristics) before token counting, so the
-reported count reflects redacted content when matches are found. The
-levels are covered in [Reduction levels](/docs/concepts/reduction-levels).
+Resolution is the deterministic core. Given a name, Fuse walks the graph to its real
+target: a service interface to the concrete type registered for it in DI, a request or
+command to its handler, a route to its action or endpoint, a config section to the
+options type that binds it, or a symbol to its declaration. This is what text search
+cannot do: it finds the type that actually runs, not the one a name matches.
 
-### 4. Emission
+### 4. Expand
 
-Emission counts tokens with a real tokenizer, builds the **manifest** (the header
-that lists each file and its token cost), applies the chosen output format, and writes
-the result, splitting into parts if a fusion exceeds the split threshold.
+From the seeds (the localize candidates, the resolved targets, or a changed file set)
+Fuse walks typed edges outward to a configurable depth. Each hop is weighted, and the
+expansion prunes low-weight branches so the neighborhood stays the part a task needs
+rather than the whole transitive closure.
+
+### 5. Plan
+
+The plan chooses what to emit under the token budget. Must-keep seeds are always
+included; the rest fill the budget by weight, and the render tier of each file is chosen
+so the budget lands close to full. A budget of 0 means no limit.
+
+### 6. Render
+
+Rendering emits the planned set as source bodies at mixed **render tiers** (full,
+compressed, or signature-only **skeleton**), with a **manifest** that lists each file and
+its token cost and per-file **provenance** that records why each file is present. Secret
+redaction runs before any source reaches the payload, and the chosen output format
+(`xml`, `markdown`, or `json`) is applied last.
 
 ## Why It Is Shaped This Way
 
-The stages are separated because they change for different reasons. Collection cares
-about the filesystem, filtering about relevance, reduction about language structure,
-and emission about output shape. Keeping them apart means a new language is a
-reduction plugin, not a pipeline change, and scoping is one optional stage rather than
-logic threaded through everything. The deeper design is in
-[the pipeline internals](/docs/internals/pipeline).
+The stages are separated because they change for different reasons. Indexing cares about
+the build and the parse, localization and resolution about relevance and wiring, expansion
+about the graph, and rendering about output shape and budget. Keeping them apart means the
+persistent index is built once and reused, resolution is deterministic and independent of
+how context is later rendered, and a new language is an indexing and rendering concern, not
+a pipeline change. The deeper design is in [the pipeline internals](/docs/internals/pipeline).
 
 ## Tokens, the Unit That Matters
 
 A **token** is the unit a language model reads. Models have a fixed context window
-measured in tokens, so the token count of a fusion decides how much of that window it
-consumes and what it costs. Fuse counts with a real tokenizer rather than estimating
+measured in tokens, so the token count of a context plan decides how much of that window
+it consumes and what it costs. Fuse counts with a real tokenizer rather than estimating
 from character length, so the manifest's numbers match what the target model sees.
 See [Tokenizers](/docs/reference/tokenizers).
 
 ## Next
 
-See the [Reduction levels](/docs/concepts/reduction-levels) and
-[Scoping](/docs/concepts/scoping) concepts, or the
+See [Scoping](/docs/concepts/scoping) for how localize and resolve narrow a task, the
+[Render tiers](/docs/concepts/reduction-levels) for how source is emitted, or the
 [Glossary](/docs/concepts/glossary) for the vocabulary in one place.

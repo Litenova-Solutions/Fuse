@@ -1,35 +1,29 @@
 ---
 title: Performance and Benchmarking
-description: How Fuse keeps fusion fast, what each performance feature does, and how to measure cold-start and pipeline timing.
+description: How Fuse V3 keeps work fast with a warm persistent index, and what is and is not benchmarked on the V3 surface.
 ---
 
-Fuse runs in two shapes with different performance profiles. One-shot commands such as `fuse dotnet` and `fuse init` pay a fixed cost on every invocation: process startup, dependency injection graph construction, and tokenizer initialization. On small repositories that fixed cost can dominate wall time. The long-running `fuse mcp serve` (MCP) server stays resident, so startup is paid once per session and pipeline work dominates from then on. This page describes the features that govern fusion speed and the method for measuring it.
+Fuse V3 is a Roslyn-backed .NET semantic context engine. Its performance model centers on one idea: build the semantic index once, then read it warm across calls. This page describes that warm-index model and is explicit about what has been re-measured on V3 and what has not.
 
-This page is for engineers tuning a fusion run and maintainers comparing builds. A reader who only needs the timing numbers can skip to How To Run The Benchmarks.
+This page is for engineers tuning a Fuse run and maintainers comparing builds. Warm operation latency is now measured by the `performance` suite (see below); the token-efficiency figure that V3 reports (the median tokens a review returns) is on the [Benchmarks](/docs/project/benchmarks) page.
 
-## Parallel Pipelines
+## The Warm Persistent Index
 
-Collection, reduction, and graph building run in parallel. The `--parallelism` flag sets the degree of parallelism; the default is the processor count. Set `--parallelism 1` for serial execution, which is useful when comparing runs or isolating a fault to a single file.
+Fuse analyzes each source file with Roslyn and stores the result in a persistent index. The index is built once and then read warm across calls: the MCP server (`fuse mcp serve`) and the host process hold the index resident, so a scoped call reuses the stored analysis instead of re-parsing the file. The cost of analysis is paid on the first pass and amortized over every later call that touches an unchanged file.
 
-## The Single-Read Content Provider
+The store keys files by content hash, so an unchanged file's analysis is reused across runs. Single-file incremental re-index (clearing and re-analyzing only the changed file rather than rebuilding) is a design goal that is not yet wired or timed: a re-index currently runs a full pass. Measuring the incremental path is the remaining piece of the performance work.
 
-A fusion reads each file once per run. The content provider holds that single read and shares it across the stages that need file content: graph building, query indexing, and reduction. No stage re-reads the source directory, so file I/O scales with the number of candidate files rather than the number of stages that consume them. Each run constructs its own content provider, so this single-read state is run-local.
+Persistent cache and index data live in a single SQLite database at `.fuse/fuse.db` in WAL mode. Key derivation and store layout are documented in [Caching Internals](/docs/internals/caching-internals).
 
-## Concurrent Runs
+## One-Shot Versus Resident
 
-The orchestrator holds no process-wide gate. Each run constructs its own content cache and BM25 relevance index, so independent runs share no mutable state and execute concurrently, scaling toward the core count. On a server hosting the MCP tools, several tool calls handled at once run in parallel rather than queueing behind one another. This concurrency is a structural property of the per-run design rather than a benchmarked figure; treat any specific throughput multiple as illustrative until a reproducible harness arm measures it.
+Fuse runs in two shapes. One-shot commands pay a fixed cost on every invocation: process startup, dependency-injection graph construction, and tokenizer initialization. On small repositories that fixed cost can dominate. The long-running `fuse mcp serve` server stays resident, so startup is paid once per session and the warm index dominates from then on. The resident shape is where the warm-index model pays off: the second and later calls in a session read stored analysis rather than re-parsing.
 
-## The Persistent Store
+## What Token Cost Looks Like on V3
 
-Reduction results, analysis, relevance tokens, and optional embedding vectors are cached in a single SQLite database at `.fuse/fuse.db`, so an unchanged file is not reduced or re-analyzed again on a later run. The store is on by default for reduction; disable it with `--no-cache` and clear the reduction namespace with `--clear-cache`. Analysis caching is controlled by `--index` (enabled automatically in watch mode and the MCP server). Key derivation and store layout are documented in [Caching Internals](/docs/internals/caching-internals).
+V3 frames token cost as a transport property of the scoped output, not as a standalone reduction ratio. The concrete figure is from the change-impact suite: `fuse review` delivers a real merged PR's context in a median 874 returned tokens (mean 3,196) at 89.6 percent precision. That is the efficiency number to cite for V3; see [Benchmarks](/docs/project/benchmarks) for the suite, the sample, and the index-mode distribution behind it.
 
-## Watch Mode
-
-Watch mode re-runs a fusion when source files change, which keeps in-process state warm across iterations. Enable it with `--watch`. Watch mode is disabled under MCP stdio, because the server already holds resident state for the session.
-
-## Cold Start and Distribution
-
-One-shot commands are sensitive to cold start. Token counting uses `Microsoft.ML.Tokenizers`, which initializes faster than the previous tokenizer and produces accurate `o200k_base` and `cl100k_base` counts. Configuration and JSON output use source-generated `System.Text.Json` contexts. Remaining dynamic patterns use `[GeneratedRegex]`, so there is no runtime regex compiler. The binary probe uses `ArrayPool` and span-based line scans to lower allocation volume on large repositories.
+## Distribution
 
 Fuse distributes as a framework-dependent .NET global tool and as self-contained runtime-specific packages that bundle the .NET runtime:
 
@@ -41,35 +35,25 @@ Fuse distributes as a framework-dependent .NET global tool and as self-contained
 
 Self-contained packages include the .NET runtime and do not require a separate SDK install on the target machine. Roslyn structural analysis is always included; there is no trimmed or regex-only binary.
 
-## How to Run the Benchmarks
+## Measured Warm Latency
 
-Measure fresh-process wall time, not warm in-shell repeats. JIT tiering makes second invocations faster than a true cold start, so repeated runs in one shell report misleading figures.
+The `performance` suite (`fuse eval performance`, `performance.json`) indexes a present corpus repository once (the cold index) and then runs each operation repeatedly over the warm index, reporting P50 and P95. On AutoMapper (518 files, 17,924 symbols, syntax index mode):
 
-On Windows, time a fresh process with a stopwatch around `Start-Process`:
+| Operation | P50 | P95 | Target |
+|-----------|----:|----:|-------:|
+| Warm resolve (symbol) | sub-millisecond | sub-millisecond | under 100 ms |
+| Warm localize (query, 20 candidates) | 20 ms | 22 ms | under 500 ms |
+| Warm review plan (25K budget, vs HEAD~1) | 98 ms | 103 ms | under 2 s |
+| Single-file incremental re-index | 177 ms | 186 ms | under 1 s |
 
-```powershell
-$sw = [System.Diagnostics.Stopwatch]::StartNew()
-$p = Start-Process -FilePath "path/to/fuse.exe" `
-    -ArgumentList "dotnet","--directory","tests/fixtures/SampleShop","--output","C:\temp\fuse-bench","--overwrite","--format","xml","--tokenizer","o200k_base" `
-    -PassThru -NoNewWindow -Wait
-$sw.Stop()
-"$($sw.ElapsedMilliseconds) ms (exit $($p.ExitCode))"
-```
+Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. The cold index of the same repository took about 64 seconds, which includes the MSBuild workspace load attempt; cold index is paid once and amortized over every warm call.
 
-For repeatable measurement with BenchmarkDotNet, use `RunStrategy=ColdStart` and `WarmupCount=0` when comparing CLI frameworks or builds.
-
-Use `tests/fixtures/SampleShop` for small-repo comparisons. For throughput work, use a medium monorepo of several thousand source files. Record the fixture size, the command line, the hardware, the operating system, the cold wall time, and the pipeline duration reported on the `Stats:` line. The benchmark fixtures and harness are described in `tests/benchmarks/README.md`.
-
-The `runtime` job in `.github/workflows/ci.yml` validates the self-contained publish path on every change. It publishes for `win-x64` and `linux-x64`, then smoke-runs `fuse init --help` and `fuse dotnet` on SampleShop with the required `--format` and `--tokenizer`.
+Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. The numbers above run through an in-process warm store; the `fuse mcp serve` host holds the same store resident, so a resident session sees the same warm latencies after its one-time startup. Earlier cold-versus-warm timings on the retired V2 fusion surface do not transfer to V3 and are not carried forward.
 
 ## What This Does Not Cover
 
-This page covers fusion speed and measurement. It does not explain the cache key derivation or invalidation, which live in [Caching Internals](/docs/internals/caching-internals), nor the stage responsibilities of the pipeline, which the [Pipeline](/docs/internals/pipeline) page describes. Installing the `fuse` command is covered in [Install](/docs/start/install).
-
-## Published Benchmark Results
-
-This page covers the method for timing a single run. For published, reproducible measurements of token reduction, public-API fidelity, and scoping recall over a pinned corpus of real .NET repositories, with a competitor comparison and an account of where Fuse loses, see [Benchmarks](/docs/project/benchmarks).
+This page covers the warm-index model and what is measured on V3. It does not explain cache key derivation or invalidation, which live in [Caching Internals](/docs/internals/caching-internals), nor the stage responsibilities of the pipeline, which the [Pipeline](/docs/internals/pipeline) page describes. Installing the `fuse` command is covered in [Install](/docs/start/install).
 
 ## Next
 
-Read [Benchmarks](/docs/project/benchmarks) for the full results, [Caching Internals](/docs/internals/caching-internals) for how the store decides what to reuse, or [Pipeline](/docs/internals/pipeline) for the stages that the parallelism and content-provider features apply to.
+Read [Benchmarks](/docs/project/benchmarks) for the four V3 suites and the one published token figure, [Caching Internals](/docs/internals/caching-internals) for how the store decides what to reuse, or [Pipeline](/docs/internals/pipeline) for the stages behind a fusion.

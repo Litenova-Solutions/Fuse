@@ -11,16 +11,20 @@ Cli.Ext.ConfigureServices(services =>
     services.AddFuse();
 
     services.AddTransient<FuseCliCommand>();
-    services.AddTransient<DotNetCommand>();
-    services.AddTransient<AskCommand>();
-    services.AddTransient<AzureDevOpsWikiCommand>();
+    services.AddTransient<IndexCommand>();
+    services.AddTransient<MapCommand>();
+    services.AddTransient<ResolveCommand>();
+    services.AddTransient<LocalizeCommand>();
+    services.AddTransient<ContextCommand>();
+    services.AddTransient<ReviewCommand>();
+    services.AddTransient<DiagnosticsCommand>();
+    services.AddTransient<FindCommand>();
+    services.AddTransient<EvalCommand>();
     services.AddTransient<InitCommand>();
     services.AddTransient<McpCommand>();
     services.AddTransient<InstallCommand>();
     services.AddSingleton<McpInstallService>();
     services.AddTransient<McpServeCommand>();
-    services.AddTransient<ExplainCommand>();
-    services.AddTransient<VerifyCommand>();
     services.AddTransient<ReduceCommand>();
     services.AddTransient<ModelsCommand>();
 });

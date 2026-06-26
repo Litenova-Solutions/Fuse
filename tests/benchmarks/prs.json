@@ -9,6 +9,10 @@
     "changed_cs": [
       "src/MediatR/Licensing/LicenseAccessor.cs",
       "test/MediatR.Tests/Licensing/LicenseAccessorTests.cs"
+    ],
+    "reading_set": [
+      "src/MediatR/Licensing/License.cs",
+      "src/MediatR/Licensing/LicenseValidator.cs"
     ]
   },
   {
@@ -48,6 +52,10 @@
       "src/MediatR/Registration/ServiceRegistrar.cs",
       "src/MediatR/Wrappers/NotificationHandlerWrapper.cs",
       "test/MediatR.Tests/MicrosoftExtensionsDI/Issue1118Tests.cs"
+    ],
+    "reading_set": [
+      "src/MediatR/INotificationHandler.cs",
+      "src/MediatR/Mediator.cs"
     ]
   },
   {
@@ -159,6 +167,10 @@
       "src/MediatR/Licensing/LicenseAccessor.cs",
       "src/MediatR/Mediator.cs",
       "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+    ],
+    "reading_set": [
+      "src/MediatR/Licensing/License.cs",
+      "src/MediatR/Licensing/LicenseValidator.cs"
     ]
   },
   {
@@ -242,6 +254,10 @@
       "src/MediatR/IPipelineBehavior.cs",
       "src/MediatR/Wrappers/RequestHandlerWrapper.cs",
       "test/MediatR.Tests/SendTests.cs"
+    ],
+    "reading_set": [
+      "src/MediatR/Mediator.cs",
+      "src/MediatR/IRequestHandler.cs"
     ]
   },
   {
@@ -307,6 +323,10 @@
     "changed_cs": [
       "src/FluentValidation/Validators/EmptyValidator.cs",
       "src/FluentValidation/Validators/NotEmptyValidator.cs"
+    ],
+    "reading_set": [
+      "src/FluentValidation/Validators/PropertyValidator.cs",
+      "src/FluentValidation/Validators/IPropertyValidator.cs"
     ]
   },
   {

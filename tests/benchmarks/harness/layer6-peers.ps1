@@ -131,15 +131,18 @@ foreach ($grp in ($sampled | Group-Object repo)) {
             try {
                 switch ($arm) {
                     'fuse' {
-                        $outDir = Join-Path $ResultsDir ".out6/$tag.fuse"
-                        if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
-                        New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-                        $a = @('dotnet','--directory', $wt, '--output', $outDir, '--overwrite','--format','xml',
-                               '--tokenizer','o200k_base','--no-cache','--no-manifest','--max-tokens',"$Budget",
-                               '--level','standard','--query', $q, '--query-top','10','--depth','2')
-                        $null = Measure-Process $Fuse $a
-                        $files = @(Get-FuseFiles $outDir)
-                        $tokens = (Get-TokensMulti6 (@(Get-ChildItem -Path $outDir -File | ForEach-Object { $_.FullName })))
+                        # V3 surface: build the persistent index once, then localize the title to ranked
+                        # candidate file paths (no bodies). Token cost is the candidate files a consumer reads.
+                        $null = & $Fuse index $wt *> $null
+                        $locOut = (& $Fuse localize $wt --task $q --max-candidates 10 2>&1 | Out-String)
+                        $set = New-Object System.Collections.Generic.HashSet[string]
+                        foreach ($m in [regex]::Matches($locOut, '(?m)^\s*\d+\.\d+\s+(\S+\.cs)\b')) {
+                            [void]$set.Add(($m.Groups[1].Value -replace '\\','/'))
+                        }
+                        $files = @($set)
+                        $abs = @($files | ForEach-Object { Join-Path $wt $_ } | Where-Object { Test-Path $_ })
+                        $tokens = (Get-TokensMulti6 $abs)
+                        if (Test-Path (Join-Path $wt '.fuse')) { Remove-Item -Recurse -Force (Join-Path $wt '.fuse') -ErrorAction SilentlyContinue }
                     }
                     'codegraph' {
                         $sw = [System.Diagnostics.Stopwatch]::StartNew()

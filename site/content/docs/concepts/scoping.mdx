@@ -1,96 +1,107 @@
 ---
 title: Scoping
-description: Narrow a fusion to the files a task needs by name, by git change, or by query, expanding through the dependency graph.
+description: Narrow a context request to the code a task needs by localizing, resolving wiring, or diffing a git change, then expanding through the typed graph.
 ---
 
-**Scoping** selects a subset of the codebase relevant to a task instead of fusing
-everything. Each mode starts from a **seed** set of files and expands through the
-dependency graph to a configurable depth, so you get the relevant neighborhood whole
-rather than a single file in isolation.
+**Scoping** selects the part of the workspace a task needs instead of returning
+everything. In Fuse V3 it works against the warm semantic index in two steps: pick a
+**seed** set (by localizing a task, resolving named wiring, or diffing a git change), then
+expand from those seeds through the typed graph to a configurable depth, so you get the
+relevant neighborhood whole rather than a single file in isolation.
 
-There are three modes, and a single fusion uses at most one of them.
+There are three ways to seed a request.
 
-| Mode | Flag | Seeds on | Use when |
-|------|------|----------|----------|
-| Focus | `--focus` | A path, filename, type, or directory | You know the area by name |
-| Changes | `--changed-since` | Files changed since a git ref, plus dependents | Reviewing a branch or pull request |
-| Query | `--query` | The top-ranked files for a search query | You have a topic but not a file name |
+| Way | Tool / flag | Seeds on | Use when |
+|-----|-------------|----------|----------|
+| Localize | `fuse_localize` / `fuse localize` | The top-ranked files and symbols for a task | You have a topic but not a name |
+| Resolve | `fuse_resolve` / `fuse resolve` | The real target of a service, request, route, config, or symbol | The task names wiring |
+| Review | `fuse_review` / `fuse review --changed-since` | Files changed since a git ref, plus their blast radius | Reviewing a branch or pull request |
 
-## Focus: Scope by Name
+## Localize: Scope by Task
 
-```bash
-fuse dotnet --directory ./src --focus OrderService --depth 2
+```text
+fuse localize ./src --task "discount calculation at checkout"
 ```
 
-The seed resolves in order: an exact relative path, then an exact filename, then the
-files that define a type of that name, then a directory prefix. `--depth` (1 to 10,
-default 1) sets how many hops out through the graph Fuse follows. Focus pulls both
-what the seed depends on and the files that depend on it.
+Localization ranks candidate files and symbols for a task and returns them with reasons
+and token costs, no bodies. Ranking weights a node's declared type and member names and
+its path, so a task lands on the file that declares a concept rather than one that merely
+mentions it. The lexical channel is a field-weighted BM25 ranker whose rank is carried
+through to the score (a stronger lexical match ranks higher, not just present), with one
+round of pseudo-relevance feedback that pulls in files sharing the vocabulary of the top
+hits. When a local embedding model is present and dense indexing is enabled (`FUSE_DENSE`),
+an optional dense channel ranks files by embedding similarity, so a prose task that shares
+no words with the code still finds the right file; with no model the path stays lexical and
+offline. Feed the candidate file paths to `fuse_context` to fetch their bodies. It
+needs no prior knowledge of a change, which makes it the honest default for one-call
+context: in the
+[Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
+a scoped localize call reached 49 percent of the files the real pull requests touched at a
+50,000-token budget, in about 37,000 tokens against roughly 425,000 for a whole-repository
+packer dump. When a git base is available, the review mode below reaches higher recall.
 
-## Changes: Scope by Git Diff
+## Resolve: Scope by Wiring
 
-```bash
-fuse dotnet --directory ./src --changed-since main --include-dependents
+```text
+fuse resolve ./src --service IOrderService
+fuse resolve ./src --request CreateOrderCommand
+fuse resolve ./src --route "POST /api/orders/{id}"
+fuse resolve ./src --config Orders
 ```
 
-The seed is the set of files changed since a git ref, which can be a branch, a commit,
-or a relative reference like `HEAD~5`. `--include-dependents` (on by default) adds the
-first-degree dependents of each changed file, the code most likely to break. This mode
-needs `git` on your PATH. It is the strongest mode by measurement: 89 percent change
-recall on real merged pull requests in the
+Resolution is deterministic: it walks the graph to the real target rather than guessing
+from vocabulary. A service interface resolves to the concrete type registered for it in
+DI, a request or command to its handler, a route to its action, a config section to its
+options type, and a symbol to its declaration. This is the step text search cannot do. Use
+the resolved names as `fuse_context` seeds (`services`, `requests`, `routes`, `configs`,
+`seeds`) to expand and emit them.
+
+## Review: Scope by Git Diff
+
+```text
+fuse review ./src --changed-since origin/main --include-tests
+```
+
+The seed is the set of files changed since a git ref, which can be a branch, a commit, or
+a relative reference like `HEAD~5`. Fuse then computes the **blast radius**: the callers,
+DI consumers, route and request handlers, options consumers, and (with `--include-tests`,
+on by default) the related tests. This mode needs `git` on your PATH. It is the strongest
+mode by measurement: 89 percent change recall on real merged pull requests in the
 [Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests).
 
-## Query: Scope by Topic
+## Expanding through the Typed Graph
 
-```bash
-fuse dotnet --directory ./src --query "discount calculation at checkout" --query-top 5 --depth 2
-```
+Each seed mode then expands the same way. From the seeds, Fuse walks typed edges (calls,
+implements, injects, handles, binds) outward to `--depth` (default 2). Each hop is
+weighted and the score decays with distance, so the seed neighborhood ranks above distant
+files. The expansion prunes low-weight branches so the result is the part a task needs,
+not the whole transitive closure.
 
-Query ranks files by relevance, seeds on the top ones (`--query-top`, default 10), and
-expands through their dependencies. Ranking weights a file's declared type and member
-names and its path above the body, so a query lands on the file that declares a
-concept rather than one that merely mentions it. Query needs no prior knowledge of a
-change, which makes it the honest default for one-call context: in the
-[Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix) a scoped query call reached 49 percent of
-the files 90 real pull requests touched at a 50,000-token budget, in about 37,000
-tokens against roughly 425,000 for a whole-repository packer dump. When a git base is
-available, the changes mode below reaches higher recall.
-
-Focus and query ranking also fold in a small importance prior: at equal relevance, a file
-that more of the codebase depends on ranks earlier, so a central type surfaces ahead of a
-peripheral one. The prior is conservative and set by `FUSE_CENTRALITY_WEIGHT`; set it to 0
-to rank on relevance alone.
-
-For C#, query ranking works at member granularity, not whole files. It scores each declared
-member, then for a matched file emits a thin host-type skeleton: the members the query hit
-stay in full and the rest of the type collapses to signatures. A focused question pulls in
-the methods it needs plus the shell of their type, not every line of the file. A query by
-type name still pulls the whole type in; only a query that lands on specific members trims
-the rest. Member boundaries come from the Roslyn parse tree.
+A changed file rarely stands alone. The handler that processes its request, the type its
+DI registration injects, and the test that calls it are part of the same task. Graph
+expansion brings that neighborhood in so the agent does not have to discover it with more
+round-trips.
 
 ## Spending the Token Budget
 
-When a query or focus runs under `--max-tokens`, Fuse picks the entries to emit by their
-real reduced token cost, not a byte estimate: it reduces the candidates, then fills the
-budget by relevance-per-token so the most relevant members survive and the budget lands
-close to full. The single most relevant entry is always kept, so a scoped run never emits
-nothing.
-
-## Why Expand through the Graph
-
-A changed file rarely stands alone. The type it calls, and the test that calls it, are
-part of the same task. Graph expansion brings that neighborhood in so the agent does
-not have to discover it with more round-trips. Per-hop scoring decays with distance, so
-the seed neighborhood ranks above distant files; under a token budget the reduction-aware
-pack (above) then keeps the highest relevance-per-token entries and drops the rest.
+When context is planned under `--max-tokens`, Fuse picks the entries to emit by their real
+reduced token cost, not a byte estimate: must-keep seeds are always included, then the
+rest fill the budget by weight-per-token so the most relevant code survives and the budget
+lands close to full. The render tier of each file is chosen so a budget lands near full
+rather than overshooting. A budget of 0 means no limit.
 
 ## A Note on Accuracy
 
-The dependency graph for C# is built from Roslyn syntax analysis and is best-effort: it can miss edges from dynamic dispatch or reflection because it does not bind types across a compilation. Query and focus scoping also rest on a lexical BM25 index, so a query that shares no vocabulary with the target file can miss. The ranking and traversal are detailed in [Scoping internals](/docs/internals/scoping-internals).
+Resolution is as complete as the index. When the workspace loads through MSBuild and
+Roslyn the graph is semantic; when a project falls back to syntax-only indexing it records
+fewer edges. Resolution can still miss edges from dynamic dispatch or reflection because
+those targets are not visible to static analysis. Localization ranking rests on the
+indexed names, so a task that shares no vocabulary with the target can rank it low. The
+ranking and traversal are detailed in [Scoping internals](/docs/internals/scoping-internals).
 
 ## Next
 
 Scoping is the step that makes the round-trip collapse possible; see
-[The explore phase](/docs/concepts/the-explore-phase) for how an agent uses it across a
-task. Or put a mode to work: [Scope a pull request](/docs/scenarios/scope-a-pr) or
+[The iterative workflow](/docs/concepts/the-explore-phase) for how an agent uses it across
+a task. Or put a mode to work: [Scope a pull request](/docs/scenarios/scope-a-pr) or
 [Ask one question](/docs/scenarios/ask-one-question).

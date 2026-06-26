@@ -28,6 +28,12 @@
          (GHSA-hv8m-jj95-wg3x) is unreachable. Suppressed repo-wide with that documented intent rather than
          pinning a 3.x MessagePack that StreamJsonRpc 2.x does not accept. -->
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-hv8m-jj95-wg3x" />
+    <!-- Microsoft.Build.Tasks.Core 17.7.2 arrives only as a reference-only transitive of
+         Microsoft.CodeAnalysis.Workspaces.MSBuild. At runtime the real MSBuild assemblies are
+         resolved from the installed SDK via MSBuildLocator.RegisterDefaults(), not this restored
+         17.7.2, so the advisory's code path is not loaded. Suppressed repo-wide with that intent
+         rather than pinning a version Workspaces.MSBuild 4.14.0 does not accept. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-h4j7-5rxr-p4wc" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(PublishTrimmed)' == 'true'">

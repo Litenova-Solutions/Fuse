@@ -1,48 +1,71 @@
 ---
 title: Ask one question
-description: Give Fuse a task and a token budget and let it choose the scoping strategy and pack context to fit, in one MCP call.
+description: "Get the answer to a single question about a .NET codebase in one call: localize an open-ended question, or resolve a named piece of wiring."
 ---
 
-**Goal:** get the right context for a task without first deciding whether to survey,
-focus, or search. Hand Fuse the task and a budget; it picks the strategy.
+**Goal:** answer one question about a codebase, such as "where is the discount applied?"
+or "what handles this request?", without reading file after file.
 
-This is the `fuse_ask` MCP tool. It collapses the survey-then-scope sequence into a
-single call. One call is the measured shape: in the
-[Layer 4 scenario](/docs/project/benchmarks) one scoped query call acquired a task's
-context in about 37,000 tokens (49 percent recall of the changed files) against roughly
-425,000 tokens for a generic-packer dump at the same single call.
+Fuse answers this against the warm index in one call. Which tool depends on whether the
+question names a concrete piece of wiring or is open-ended.
 
-## Do It
+## A Named Question: Resolve
+
+When the question names a service, request, route, or config section, `fuse_resolve`
+answers it deterministically by walking the graph to the real target:
 
 ```text
-fuse_ask(
+fuse_resolve(path="C:/Projects/MyApp/src", request="CreateOrderCommand")
+fuse_resolve(path="C:/Projects/MyApp/src", route="POST /api/orders/{id}")
+fuse_resolve(path="C:/Projects/MyApp/src", service="IOrderService")
+```
+
+Each returns the resolved target (the handler, the action, the concrete implementation)
+with provenance and no bodies. This is the answer text search cannot give: it finds the
+type that actually runs, not the one a name matches.
+
+## An Open-Ended Question: Localize
+
+When the question is a topic rather than a name, `fuse_localize` ranks the files and
+symbols most likely to hold the answer, with reasons and token costs and no bodies:
+
+```text
+fuse_localize(
   path="C:/Projects/MyApp/src",
-  task="where is the discount applied at checkout?",
-  tokenBudget=20000
+  task="where is the discount applied at checkout?"
 )
 ```
 
-## How It Chooses
+One scoped localize call is the measured shape of one-call context: in the
+[Layer 4 scenario](/docs/project/benchmarks) it acquired a task's context in about 37,000
+tokens (49 percent recall of the changed files) against roughly 425,000 tokens for a
+generic-packer dump at the same single call.
 
-Fuse reads the task text and picks a strategy:
+## When the Question Has No Signal
 
-- A broad question (architecture, overview) becomes a **skeleton**.
-- A task naming one type becomes a **focus** on that type.
-- Anything else becomes a **search**.
+If the question names no code (a merge note, a dependency bump, or an empty query with no
+route, symbol, or base), `fuse_localize` declines rather than guessing: it returns a
+low-signal verdict and suggests a next input (a git base, a route, or a symbol) instead of
+full-text candidates. Declining beats returning files a vague title cannot actually point
+at. Provide one of the structured inputs (a `route`, `symbol`, `service`, `request`,
+`config`, or `changedSince` base) and call again.
 
-Focus falls back to search when the named type does not resolve. The result is prefixed
-with a one-line note saying which strategy it chose, so the agent knows how the context
-was assembled, and it is packed to the `tokenBudget` (default 20,000).
+## Then Fetch the Bodies
+
+Both tools return locations, not source. When you want the code, feed the result to
+`fuse_context`:
+
+```text
+fuse_context(path="C:/Projects/MyApp/src", requests=["CreateOrderCommand"], maxTokens=15000)
+```
 
 ## When to Use It
 
-Use `fuse_ask` as the default first call for an agent that has a task in natural language
-but does not yet know the codebase. Use the specific tools (`fuse_skeleton`,
-`fuse_focus`, `fuse_search`, `fuse_changes`) when you already know which strategy you
-want and want to control its parameters. The progressive flow is in
-[Context for an agent](/docs/scenarios/context-for-an-agent).
+Use `fuse_resolve` when the question names wiring you can quote (an interface, a request,
+a route, a config section) and `fuse_localize` when it is a topic. The full progressive
+flow for a larger task is in [Context for an agent](/docs/scenarios/context-for-an-agent).
 
 ## Related Concept
 
-The strategies it chooses among are the modes in [Scoping](/docs/concepts/scoping); the
-full parameter list is in the [MCP tools reference](/docs/reference/mcp-tools).
+The seed modes are covered in [Scoping](/docs/concepts/scoping); the full parameter list
+is in the [MCP tools reference](/docs/reference/mcp-tools).

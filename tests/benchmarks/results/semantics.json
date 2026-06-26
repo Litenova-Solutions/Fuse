@@ -1,0 +1,37 @@
+{
+  "suite": "semantics",
+  "description": "Semantic resolution: extracted graph edges vs hand-built edge ground truth.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 1,
+    "recall": 1,
+    "recallCiLow": 1,
+    "recallCiHigh": 1,
+    "precision": 1,
+    "f1": 1,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "OrderingApp",
+      "repo": "OrderingApp",
+      "category": "fixture",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "22 edges"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    }
+  ],
+  "notes": [
+    "edges expected 22, matched 22, false positives 0"
+  ]
+}

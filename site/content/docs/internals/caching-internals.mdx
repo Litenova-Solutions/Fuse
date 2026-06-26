@@ -1,87 +1,59 @@
 ---
-title: Caching Internals
-description: How the persistent SQLite store keys, stores, and serves reduced output and analysis across runs.
+title: Store Internals
+description: How the persistent SQLite semantic index is laid out, keyed by content hash, and updated incrementally.
 ---
 
-Reducing a file and analyzing it for scoping are repeatable work: the same content under the same options always yields the same reduced output, and the same source always yields the same dependency and symbol analysis. Fuse stores that derived data on disk so an unchanged file is read from the store rather than recomputed. This page documents where the store lives, how keys are computed, how the SQLite layout works, and how it differs from the per-run content provider.
+Indexing a workspace is repeatable work: the same source always yields the same symbols, chunks, and wiring edges. Fuse persists that derived graph in one SQLite file so a warm call reads precomputed structure instead of re-analyzing, and an edit re-indexes only the changed files. This page documents where the store lives, its layout, how content hashing drives incremental updates, and how the reduction cache fits in.
 
-This page is for maintainers working on caching and for engineers diagnosing why a fusion did or did not reuse cached output.
+This page is for maintainers working on the store and for engineers diagnosing why a call did or did not see fresh data.
 
-## Implementation Context
+## Implementation context
 
-The store trades disk for compute. Reduction entries are keyed so that any change to a file's content or to any reduction option produces a distinct entry, which means a stale entry cannot be served: a cache hit is only possible when both the content and the full reduction configuration match exactly. Analysis and relevance entries are keyed by content hash (and, for analysis, an analyzer tag), so an edited file invalidates automatically. The cost is one SQLite database file under the source root.
+The store trades disk for compute. File records carry a content hash, so an edited file is detected and its derived rows are replaced; an unchanged file is skipped. Because every row is derived from source, a lost or corrupt store costs only a rebuild, never a wrong answer.
 
-## Location and Layout
+## Location and layout
 
-All persistent cache data lives in a single SQLite database file named `fuse.db`. Placement depends on whether the fusion source directory is inside a git repository:
+All index data lives in a single SQLite database file named `fuse.db`. Placement depends on whether the workspace is inside a git repository:
 
 | Context | Path |
 |---------|------|
 | Inside a git repo | `{repoRoot}/.fuse/fuse.db` at the directory that contains `.git`, not under the scoped subdirectory or process working directory |
 | Outside a git repo | `~/.fuse/fuse.db` (override the directory with the `FUSE_USER_DATA` environment variable) |
 
-The file uses WAL journal mode and a single `kv` table partitioned by a `store` column. Three logical namespaces share the database:
-
-| Store namespace | Purpose |
-|-----------------|---------|
-| `reduction` | Per-file reduced output |
-| `analysis` | Referenced types, declared types, and declared symbols for dependency graph and ranking |
-| `postings` | Tokenized body text for BM25 relevance indexing |
-
-The database is created lazily on the first write. A corrupt file is deleted and recreated on open rather than failing the run, because every entry holds only derived data. See [Operator guide](/docs/internals/operator) for reset and purge actions.
+The file uses WAL journal mode with `synchronous = NORMAL` and foreign keys on. It is a relational schema, not a key-value cache: separate tables hold files, projects, symbols, chunks, semantic nodes, typed edges, routes, DI registrations, and options bindings, plus an FTS5 virtual table over chunk text. A `schema_version` row gates migration: a database older than the current version is dropped and rebuilt rather than migrated in place.
 
 ```mermaid
 flowchart LR
-    A[File content] --> B[Content hash<br/>XXHash64]
-    C[Extension plus all<br/>reduction flags] --> D[Options hash<br/>XXHash64]
-    B --> E[reduction key]
-    D --> E
-    E --> F[(.fuse/fuse.db<br/>store: reduction)]
-    G[File content] --> H[analysis key]
-    H --> I[(.fuse/fuse.db<br/>store: analysis)]
-    G --> J[postings key]
-    J --> K[(.fuse/fuse.db<br/>store: postings)]
+    A[Source file] --> B[Content hash<br/>XXHash64]
+    B --> C[files row]
+    C --> D[(.fuse/fuse.db)]
+    A --> E[Roslyn analysis]
+    E --> F[symbols, chunks, nodes, edges,<br/>routes, DI, options]
+    F --> D
+    F --> G[chunk_fts FTS5 index]
+    G --> D
 ```
 
-## Reduction Cache Keys
+## Content hashing and incremental update
 
-The reduction key combines two 64-bit hashes:
+Each file row stores an XXHash64 of its content. When the indexer revisits a workspace, a file whose hash is unchanged is left as is; a file whose hash changed has its prior rows cleared (symbols, chunks, nodes, edges, and FTS entries for that file) and re-extracted. Because the file row is the foreign-key parent, clearing and re-inserting a single file's derived rows keeps the graph consistent without a full rebuild. A removed file's rows are deleted. This is what makes a warm re-index cost a function of the changed files rather than the whole tree.
 
-- A content hash: an XXHash64 of the UTF-8 file content.
-- A reduction-options hash: an XXHash64 over the file extension plus every reduction option flag.
+## Symbol and chunk identity
 
-Because the options hash folds in redaction and every other reduction flag, changing any one of them yields a different key and therefore a distinct entry. The same file reduced under two different option sets occupies two entries, and neither can be mistaken for the other.
+Symbols carry a stable id so the same declaration keeps its identity across re-indexes: `symbol:{assembly}:{kind}:{hash}` from the Roslyn documentation-comment id when the workspace loads semantically, and a source-only fallback id (`symbol:fallback:{path}:{kind}:{name}:{line}`) when it does not. Chunks carry a text hash and a token estimate so the renderer can plan a budget without re-reading the file, and the FTS5 row for a chunk is maintained on every upsert and delete so full-text search never returns a stale chunk.
 
-## Analysis and Relevance Keys
+## Concurrency
 
-The analysis store keys each file by a 32-character hex string combining the content hash with a hash of the analyzer tier tag, so an analysis entry always matches the extractor that produced it.
+Writes within an index batch run in one transaction; reads use pooled connections and a per-connection busy timeout. Across processes, safety comes from WAL mode and content-addressed rows: because a row is derived from a content hash, a concurrent rebuild can only recompute the same bytes, never produce a conflicting answer. The MCP server and the host hold one store open across calls so the warm graph is shared by every call in the session.
 
-The postings store keys body tokens by content hash alone. Only the body field is persisted; symbol and path tokenization are cheap, and symbol analysis is already served by the analysis store.
+## The reduction cache
 
-## Concurrency and Statistics
+Rendering a planned file to a token-reduced form is also repeatable, and that reduced output is cached so an unchanged file under the same reduction level is not reduced twice. The reduction cache is keyed by a content hash combined with a hash of the reduction options, so any change to the file or the level yields a distinct entry and a stale entry can never be served. It lives in the same `.fuse/fuse.db` file and is derived data like the rest.
 
-Within one run, the SQLite store serializes writes through a pending buffer and commits them once via `FlushAsync` at the end of the run. Reads use pooled connections and are safe across parallel reduction and graph-building workers. Read-your-writes semantics apply: entries buffered in memory are visible before flush.
+## What this does not cover
 
-Across concurrent runs over the same database, safety comes from SQLite WAL mode and content-addressed keys. Because every entry for a given key is byte-identical, a lost write only forces a recomputation, never a wrong result. The reduction cache tracks hits and misses, reported at the end as `cache: N hit / M miss`.
-
-## Controls
-
-Two run-level flags govern the reduction cache. The no-cache control bypasses it entirely for the run, so every file is reduced fresh and nothing is read or written to the `reduction` namespace. The clear-cache control clears the `reduction` namespace before the run begins, then proceeds normally.
-
-The `--index` flag enables the persistent analysis and postings stores. It is off by default for one-shot CLI runs and enabled automatically in watch mode and the MCP server, where a session makes several calls and the analysis cost is paid once.
-
-## Distinct from the Single-Read Content Provider
-
-The single-read content provider is a separate, per-run optimization. It reads each file's raw content once per run and shares it across graph building, query indexing, and reduction, so a file is not read from disk several times within one fusion. Each run constructs its own provider, so it holds raw content only for the duration of that run and is never shared with or cleared by another run. The BM25 relevance index is likewise built per run. Because neither holds cross-run state, the orchestrator runs fusions concurrently with no process-wide gate: independent requests (for example two MCP tool calls) execute in parallel and scale toward the core count.
-
-The SQLite store, by contrast, is persistent: it holds reduced output and analysis between runs. The provider avoids re-reading within a run; the store avoids re-reducing and re-analyzing across runs. They are independent and neither replaces the other.
-
-When the persistent index is enabled, a warm query against an unchanged tree finds every file's analysis and body tokens in the store and skips re-tokenizing and re-parsing, so the index build drops from a cost in the number of files to a cost in the number of changed files plus the query. Ranking with persisted tokens is identical to the in-memory build.
-
-## What This Does Not Cover
-
-This page documents the persistent store and its relationship to the content provider. It does not document the reduction transforms themselves or the watch workflow that drives repeated runs; those are covered elsewhere.
+This page documents the store and its update model. It does not document the analyzers that produce the edges (see [The Fuse pipeline](/docs/internals/pipeline)) or the retrieval that reads them (see [Retrieval internals](/docs/internals/scoping-internals)).
 
 ## Next
 
-See [The Fusion Pipeline](/docs/internals/pipeline) for where reduction and its caching sit in a fusion, [Performance](/docs/project/performance) for measured cold-versus-warm timings, and [Operator guide](/docs/internals/operator) for reset and MCP environment variables.
+See [The Fuse pipeline](/docs/internals/pipeline) for where indexing and rendering sit, [Performance](/docs/project/performance) for cold-versus-warm timings, and [Operator guide](/docs/internals/operator) for reset and environment variables.

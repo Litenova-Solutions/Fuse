@@ -44,7 +44,7 @@ Phase 5 - Retrieval engine v2
 - [x] P5.4 Context plan output; fuse localize and fuse context acceptance pass; no QueryScopingPipeline needed
 
 Phase 6 - Review/change impact
-- [ ] P6.1 Wire GitChangeDetector/GitDiffParser; changed files become must-keep seeds
+- [x] P6.1 Wire GitChangeDetector/GitDiffParser; changed files become must-keep seeds
 - [ ] P6.2 Per-changed-file semantic impact (symbols, callers, DI consumers, routes, handlers, options, tests, co-change)
 - [ ] P6.3 Review preamble + packed context; fuse review --changed-since works and explains every non-changed file
 
@@ -1644,5 +1644,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None functional. FTS limitation surfaced: the unicode61 tokenizer does not split camelCase, so a query token "order" does not match the FTS token "orderservice"; path matching compensated in the demo. Worth addressing for localization recall in Phase 10 (split identifier tokens into the FTS `symbols` field, or a custom tokenizer).
 - Lessons: Roles are derived from the last edge in a node's provenance chain (parsed from the provenance strings), which keeps `ExpandedNode` simple; `ExplanationEdges` is left empty for now and can be reconstructed in the renderer (P7). Greedy packing always keeps must-keep seeds and drops optional files past the budget with a warning. Context seeds of any named kind resolve through `FindNodesByDisplayName`, so `--seed IOrderService` finds the interface node and expansion supplies the rest.
 - Time: ~55 min
+
+### P6.1 Wire GitChangeDetector/GitDiffParser; changed files as must-keep seeds - 2026-06-26 17:05
+- Status: done
+- Result: Added `IChangeSource` (+ `ChangedFile`, `ChangeSourceException`) to `Fuse.Retrieval` to decouple the engine from the git plumbing. Updated `DiffCandidateGenerator` to resolve `ChangedSince` through an optional `IChangeSource` (combined with `SelectedPaths`, deduped, weight 1.00, source DiffChangedFile); a `ChangeSourceException` is swallowed so localization still produces other candidates. Threaded the change source through `CandidateGenerator.CreateDefault` and `SemanticRetrievalEngine`. Added `GitChangeSource` adapter in `Fuse.Cli` wrapping the existing `IChangeDetector` (reuses `GitChangeDetector`/`GitDiffParser`), registered `IChangeSource` in DI, and added `--changed-since` to `fuse localize`. Added `DiffChangeSourceTests` (4). New solution test total 720 (Fuse.Retrieval.Tests 20 -> 24).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Retrieval.Tests` 24 passed (changed-since -> diff candidates, combine+dedup with selected paths, failure swallowed, no source means none); `dotnet format --verify-no-changes` clean.
+- Blockers/issues: `GitChangeDetector` already passes git args as discrete `ArgumentList` tokens with a fixed-length command (`diff --name-only <since>`), so the bounded-external-args invariant holds with no change. The adapter lives in `Fuse.Cli` (which already references Fuse.Fusion) so `Fuse.Retrieval` does not take a dependency on the retiring Fusion orchestrator.
+- Lessons: Keeping the git dependency behind a Retrieval-owned `IChangeSource` interface, with the adapter in the host, preserves the layering the overhaul wants (Retrieval does not reference Fusion) while still reusing the existing detector and diff parser. Diff candidates are emitted as must-keep-weight (1.00) file candidates; their must-keep behavior is realized when used as seeds in review planning (P6.2/P6.3).
+- Time: ~30 min
 
 

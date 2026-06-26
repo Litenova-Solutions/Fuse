@@ -9,6 +9,7 @@ Cli.Ext.ConfigureServices(services =>
 {
     services.AddSingleton<IConsoleUI, ConsoleUI>();
     services.AddFuse();
+    services.AddSingleton<Fuse.Retrieval.IChangeSource, GitChangeSource>();
 
     services.AddTransient<FuseCliCommand>();
     services.AddTransient<IndexCommand>();

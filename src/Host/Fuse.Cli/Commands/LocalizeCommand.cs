@@ -20,12 +20,13 @@ namespace Fuse.Cli.Commands;
 public sealed class LocalizeCommand
 {
     private readonly IConsoleUI _consoleUI;
+    private readonly IChangeSource _changeSource;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="LocalizeCommand" /> class for CLI option binding only.
     /// </summary>
-    /// <remarks>Used by DotMake.CommandLine to bind options; the console UI is null, so this instance must not run.</remarks>
-    public LocalizeCommand() : this(null!)
+    /// <remarks>Used by DotMake.CommandLine to bind options; the dependencies are null, so this instance must not run.</remarks>
+    public LocalizeCommand() : this(null!, null!)
     {
     }
 
@@ -33,7 +34,12 @@ public sealed class LocalizeCommand
     ///     Initializes a new instance of the <see cref="LocalizeCommand" /> class.
     /// </summary>
     /// <param name="consoleUI">The console UI for output.</param>
-    public LocalizeCommand(IConsoleUI consoleUI) => _consoleUI = consoleUI;
+    /// <param name="changeSource">The change source for resolving a git base ref.</param>
+    public LocalizeCommand(IConsoleUI consoleUI, IChangeSource changeSource)
+    {
+        _consoleUI = consoleUI;
+        _changeSource = changeSource;
+    }
 
     /// <summary>The workspace directory. Defaults to the current directory.</summary>
     [CliArgument(Description = "The workspace directory. Defaults to the current directory.")]
@@ -63,6 +69,10 @@ public sealed class LocalizeCommand
     [CliOption(Required = false, Description = "A config section to resolve.")]
     public string? Config { get; set; }
 
+    /// <summary>A git base ref whose changed files seed the candidates.</summary>
+    [CliOption(Name = "--changed-since", Required = false, Description = "A git base ref whose changed files seed the candidates.")]
+    public string? ChangedSince { get; set; }
+
     /// <summary>The maximum number of candidates to return.</summary>
     [CliOption(Name = "--max-candidates", Description = "Maximum candidates to return.")]
     public int MaxCandidates { get; set; } = 50;
@@ -86,9 +96,9 @@ public sealed class LocalizeCommand
         await store.InitializeAsync(context.CancellationToken);
 
         var request = new LocalizationRequest(
-            root, Query: Task, Route: Route, Focus: Symbol, Service: Service,
+            root, Query: Task, ChangedSince: ChangedSince, Route: Route, Focus: Symbol, Service: Service,
             Request: Request, ConfigSection: Config, MaxCandidates: MaxCandidates);
-        var result = await new SemanticRetrievalEngine(store).LocalizeAsync(request, context.CancellationToken);
+        var result = await new SemanticRetrievalEngine(store, _changeSource).LocalizeAsync(request, context.CancellationToken);
 
         _consoleUI.WriteResult(Format(result));
     }

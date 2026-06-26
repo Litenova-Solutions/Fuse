@@ -65,6 +65,30 @@ public sealed class WorkspaceIndexStoreUpsertTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetAllEdgesReturnsEveryStoredEdge()
+    {
+        await SeedOrderServiceFileAsync();
+        await _store.UpsertNodesAsync(
+            [
+                new NodeRecord("type:App.IOrderService", "interface", "IOrderService", "App.IOrderService", "src/OrderService.cs"),
+                new NodeRecord("type:App.OrderService", "type", "OrderService", "App.OrderService", "src/OrderService.cs"),
+            ],
+            CancellationToken.None);
+        await _store.UpsertEdgesAsync(
+            [
+                new SemanticEdgeRecord("type:App.IOrderService", "type:App.OrderService", "di_resolves_to", 0.95, 0.95),
+                new SemanticEdgeRecord("type:App.OrderService", "type:App.IOrderService", "implements", 0.9, 1.0),
+            ],
+            CancellationToken.None);
+
+        var edges = await _store.GetAllEdgesAsync(CancellationToken.None);
+
+        Assert.Equal(2, edges.Count);
+        Assert.Contains(edges, e => e.EdgeType == "di_resolves_to");
+        Assert.Contains(edges, e => e.EdgeType == "implements");
+    }
+
+    [Fact]
     public async Task DeleteFileDataClearsDerivedRowsButKeepsFile()
     {
         await SeedOrderServiceFileAsync();

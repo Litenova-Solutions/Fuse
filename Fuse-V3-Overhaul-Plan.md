@@ -1766,4 +1766,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Lessons: The benchmark figure and the docs numbers are a single downstream of the benchmark run; they move together with P10.3, not independently.
 - Time: ~5 min (assessment)
 
+### P10.3 fuse eval + suites A-D (correction + Suite A landed) - 2026-06-26 23:45
+- Status: partial
+- Correction: the earlier "blocked" entry was wrong about the environment. Network and git ARE available (verified by cloning MediatR: 152 cs files), and the agent arm can run via Claude Code CLI with Sonnet. So P10.3 is not blocked on network/model; it is simply a large item.
+- Result: Built the `fuse eval` command (Suite A, semantic resolution) and the supporting store query `GetAllEdgesAsync`. `fuse eval semantics --fixtures <dir>` indexes each fixture into a throwaway store, reads the extracted edges, and scores them against the fixture's `expected-edges.json` (recall over expected; precision over the scored edge types). Added `expected-edges.json` (10-edge complete ground truth) to OrderingApp. Ran it: recall 100% (10/10), precision 100% (10/10), F1 1.00; wrote `tests/benchmarks/results/semantics.json`. Fixed a real graph-quality issue surfaced by the eval: `ConstructorInjectionAnalyzer` was emitting `di_injects` for `IOptions<T>` wrappers (configuration consumption, already an `options_consumes` edge), now excluded. Added a `GetAllEdges` store test. New solution test total 692.
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 692 passed; `dotnet format --verify-no-changes` clean; the eval runs end to end against the real MSBuild-loaded fixture.
+- Blockers/issues: None blocking; the remainder is sizable, not blocked. Suite B (PR/change recall over the 108-PR corpus), Suite C (open-ended localization), Suite D (agent, via Claude Code CLI), and the offline PowerShell layers (1/2A/2B/4, currently coupled to the removed query-scoping engine and its FUSE_* flags) all need the corpus cloned and the layers reframed to the V3 surface, which is a multi-step run.
+- Lessons: The eval is a real product check, not a rubber stamp: it caught the IOptions di_injects noise that the unit tests did not flag. Precision is scored only over edge types present in the ground truth, so the fixture gold must list every true edge of those types (the handler's IOrderService injection and dependency, the controller's ISender injection) or precision is understated.
+- Time: ~60 min
+
 

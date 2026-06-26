@@ -19,6 +19,11 @@ public sealed class ConstructorInjectionAnalyzer : ISemanticAnalyzer
     private const double InjectsWeight = 0.75;
     private const double DependsOnImplWeight = 0.85;
 
+    // Options wrapper interfaces are configuration consumption, not service injection; the options analyzer
+    // records them as options_consumes, so they are excluded here to keep di_injects to real services.
+    private static readonly HashSet<string> OptionsWrappers =
+        new(StringComparer.Ordinal) { "IOptions", "IOptionsMonitor", "IOptionsSnapshot" };
+
     private readonly DiRegistrationAnalyzer _diAnalyzer;
 
     /// <summary>
@@ -64,6 +69,8 @@ public sealed class ConstructorInjectionAnalyzer : ISemanticAnalyzer
                 foreach (var parameter in constructor.Parameters)
                 {
                     if (parameter.Type is not INamedTypeSymbol serviceType || !SemanticNodes.IsInSource(serviceType, compilation))
+                        continue;
+                    if (OptionsWrappers.Contains(serviceType.Name))
                         continue;
 
                     var serviceId = SemanticNodes.TypeId(serviceType);

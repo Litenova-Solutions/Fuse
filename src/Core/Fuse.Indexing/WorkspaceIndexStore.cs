@@ -871,6 +871,36 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<SemanticEdgeRecord>> GetAllEdgesAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT e.from_node_id, e.to_node_id, e.edge_type, e.weight, e.confidence, e.evidence, " +
+            "files.normalized_path, e.evidence_start_line, e.evidence_end_line, e.metadata_json " +
+            "FROM edges e LEFT JOIN files ON files.file_id = e.evidence_file_id;";
+
+        var edges = new List<SemanticEdgeRecord>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            edges.Add(new SemanticEdgeRecord(
+                FromNodeId: reader.GetString(0),
+                ToNodeId: reader.GetString(1),
+                EdgeType: reader.GetString(2),
+                Weight: reader.GetDouble(3),
+                Confidence: reader.GetDouble(4),
+                Evidence: reader.IsDBNull(5) ? null : reader.GetString(5),
+                EvidenceFilePath: reader.IsDBNull(6) ? null : reader.GetString(6),
+                EvidenceStartLine: reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                EvidenceEndLine: reader.IsDBNull(8) ? null : reader.GetInt32(8),
+                MetadataJson: reader.IsDBNull(9) ? null : reader.GetString(9)));
+        }
+
+        return edges;
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<SemanticEdgeRecord>> GetOutgoingEdgesAsync(string nodeId, CancellationToken cancellationToken) =>
         GetEdgesAsync("from_node_id", nodeId, cancellationToken);
 

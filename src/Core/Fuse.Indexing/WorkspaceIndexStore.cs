@@ -51,6 +51,10 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await ApplyDatabasePragmasAsync(connection, cancellationToken);
         _schemaVersion = await WorkspaceIndexMigrator.MigrateAsync(connection, cancellationToken);
+        // Ensure the relational schema on every init (all statements are IF NOT EXISTS). This self-heals an
+        // additive schema change made within the same schema version, where migration is skipped because the
+        // on-disk version already equals the target.
+        await EnsureTablesAsync(connection, cancellationToken);
         _ftsAvailable = await TryCreateFtsAsync(connection, cancellationToken);
         _initialized = true;
         _logger?.LogDebug(
@@ -58,6 +62,13 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             _connectionFactory.DatabasePath,
             _schemaVersion,
             _ftsAvailable);
+    }
+
+    private static async Task EnsureTablesAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = WorkspaceIndexSchema.CreateTablesDdl;
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     // FTS5 ships with the bundled SQLite, but a stripped runtime can lack it. Creating the virtual table is the

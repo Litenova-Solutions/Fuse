@@ -46,7 +46,7 @@ Phase 5 - Retrieval engine v2
 Phase 6 - Review/change impact
 - [x] P6.1 Wire GitChangeDetector/GitDiffParser; changed files become must-keep seeds
 - [x] P6.2 Per-changed-file semantic impact (symbols, callers, DI consumers, routes, handlers, options, tests, co-change)
-- [ ] P6.3 Review preamble + packed context; fuse review --changed-since works and explains every non-changed file
+- [x] P6.3 Review preamble + packed context; fuse review --changed-since works and explains every non-changed file
 
 Phase 7 - Context rendering
 - [ ] P7.1 SemanticContextRenderer with tiered reduction
@@ -1660,5 +1660,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: None. Co-change neighbors are not yet folded in (the co-change graph is a post-publish follow-up per Section 13); the structural blast radius (callers, DI consumers, route/request handlers, options consumers, tests) comes from graph expansion over the typed edges.
 - Lessons: Review is the same planner as context with a different seeding strategy (changed-file nodes instead of explicit seeds) plus a `changed` role override, so extracting `BuildPlanAsync` avoided duplicating the collapse/role/pack logic. Seeding both the file and its nodes ensures files with no graph nodes (config json) are still kept.
 - Time: ~25 min
+
+### P6.3 Review preamble + fuse review command - 2026-06-26 18:00
+- Status: done
+- Result: Added `ReviewPreambleBuilder` (changed files, semantic impact with each non-changed file's edge-chain explanation, notes) to `Fuse.Retrieval`, and the `fuse review --changed-since` command (preamble + plan) to `Fuse.Cli`. Fixed a schema self-heal bug: a db created at the target version before a table was added never got the new table because migration is skipped when the version already equals the target; `InitializeAsync` now runs the idempotent `CreateTablesDdl` on every init. Added `ReviewPreambleTests` (2) and a schema self-heal regression test (1). New solution test total 726 (Fuse.Retrieval.Tests 27 -> 29, Fuse.Indexing.Tests +1).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test Fuse.slnx -c Release --no-build` 726 passed; `dotnet format --verify-no-changes` clean. End-to-end against a temp git repo: `fuse review --changed-since HEAD` detects the changed OrderService.cs and explains the blast radius (IOrderService via di_resolves_to, OrdersController/CreateOrderHandler via di_depends_on_impl, OrderOptions/Program via options, CreateOrderCommand via mediatr); every non-changed file carries its edge chain.
+- Blockers/issues: Found and fixed the index_meta self-heal bug (surfaced as "no such table: index_meta" on a stale v10 db). Review requires workspace root == git root so git's repo-relative changed paths align with the index's normalized paths; documented as a constraint (the warm host will own per-workspace roots). Source body rendering is P7; review currently prints the plan.
+- Lessons: Additive schema changes within one schema version need an idempotent ensure-tables on init, not just migration, or pre-existing same-version databases miss the new table. Git changed-file paths are repo-root-relative, so review path-matching depends on the indexed root being the repo root.
+- Time: ~40 min
 
 

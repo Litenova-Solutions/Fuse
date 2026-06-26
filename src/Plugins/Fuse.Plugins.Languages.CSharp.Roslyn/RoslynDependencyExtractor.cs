@@ -49,7 +49,8 @@ public sealed class RoslynDependencyExtractor : IDependencyExtractor
             switch (node)
             {
                 case GenericNameSyntax generic:
-                    AddName(names, generic.Identifier.ValueText);
+                    if (IsGenericTypePosition(generic))
+                        AddName(names, generic.Identifier.ValueText);
                     break;
 
                 case IdentifierNameSyntax id:
@@ -62,9 +63,9 @@ public sealed class RoslynDependencyExtractor : IDependencyExtractor
         return names.ToArray();
     }
 
-    // Keeps PascalCase identifiers in type position and skips the namespace-qualifier left side and the member
-    // name of a member access, which are not type references. The PascalCase filter drops camelCase locals,
-    // parameters, and fields that share the identifier-name node shape.
+    // Keeps PascalCase identifiers in type position and skips the namespace-qualifier left side, the member name
+    // of a member access, and bare method invocations, which are not type references. The PascalCase filter
+    // drops camelCase locals, parameters, and fields that share the identifier-name node shape.
     private static bool IsTypePosition(IdentifierNameSyntax id)
     {
         var name = id.Identifier.ValueText;
@@ -78,6 +79,25 @@ public sealed class RoslynDependencyExtractor : IDependencyExtractor
                 return false;
             // The member being accessed (x.Member) is not a type.
             case MemberAccessExpressionSyntax member when member.Name == id:
+                return false;
+            // A bare call Foo() targets a method, not a type, so it is not a dependency on a type named Foo.
+            case InvocationExpressionSyntax invocation when invocation.Expression == id:
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    // A generic name is a type reference (List<T>, Dictionary<K, V>, a generic base type) unless it is a generic
+    // method call: the invoked expression of Foo<T>() or the member name of x.Map<T>(). Those name methods, not
+    // types, and were creating false graph edges to any file declaring a type of that name.
+    private static bool IsGenericTypePosition(GenericNameSyntax generic)
+    {
+        switch (generic.Parent)
+        {
+            case InvocationExpressionSyntax invocation when invocation.Expression == generic:
+                return false;
+            case MemberAccessExpressionSyntax member when member.Name == generic:
                 return false;
             default:
                 return true;

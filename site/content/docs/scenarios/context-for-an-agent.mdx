@@ -9,12 +9,14 @@ spending its window on files the task does not touch.
 The principle is to start wide and narrow: a cheap map first, then a scoped drill-in.
 Each step is one MCP tool call that returns scoped, reduced context. The payoff is
 measured: in the [Layer 4 scenario](/docs/project/benchmarks), one scoped call
-acquired a task's context in about 40,000 tokens against roughly 512,000 for a generic
+acquired a task's context in about 37,000 tokens against roughly 425,000 for a generic
 packer dump at the same single call, while a blind agent must read each needed file at
-least once (a lower bound of about six round-trips over the 24 pull requests tested).
-Read that token number with its recall: one scoped query call reaches 51 percent of
-the changed files, and the change-scoping mode reaches 88 percent when a git base is
-available.
+least once (a lower bound of about seven round-trips over the 90 pull requests tested).
+Read that token number with its recall: one scoped query call reaches 49 percent of
+the changed files, and the change-scoping mode reaches 91 percent in the
+[Layer 4 one-call scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
+when a git base is available (89 percent in the
+[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests)).
 
 ## The Sequence
 

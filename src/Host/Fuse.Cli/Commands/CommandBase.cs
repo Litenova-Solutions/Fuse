@@ -72,6 +72,10 @@ public abstract class CommandBase
     /// </summary>
     /// <param name="request">The fusion request to execute.</param>
     /// <param name="cancellationToken">Token used to cancel the run and stop watching.</param>
+    /// <param name="fallbackOnNoMatch">
+    ///     An alternate request to run when <paramref name="request" /> resolves no files (a
+    ///     <see cref="FusionValidationException" />), instead of surfacing the error; <c>null</c> to surface it.
+    /// </param>
     /// <returns>A task that completes when the run finishes, or when watch mode is cancelled.</returns>
     /// <remarks>
     ///     Writes output files (or in-memory content) through the orchestrator and reports progress, results, and
@@ -81,7 +85,10 @@ public abstract class CommandBase
     ///     until cancelled, re-running fusion after edits settle; watch mode is disabled automatically when stdio
     ///     is redirected (MCP).
     /// </remarks>
-    protected async Task ExecuteFusionAsync(FusionRequest request, CancellationToken cancellationToken)
+    protected async Task ExecuteFusionAsync(
+        FusionRequest request,
+        CancellationToken cancellationToken,
+        FusionRequest? fallbackOnNoMatch = null)
     {
         if (Watch && StdioGuard.IsStdioRedirected())
         {
@@ -101,7 +108,8 @@ public abstract class CommandBase
 
             using var watcher = new DebouncedFileWatcher(
                 request.Collection.SourceDirectory,
-                request.Collection.Recursive);
+                request.Collection.Recursive,
+                cancellationToken: cancellationToken);
 
             watcher.Changed += async _ =>
             {
@@ -113,6 +121,14 @@ public abstract class CommandBase
         }
         catch (FusionValidationException ex)
         {
+            // A scoping mode that resolved nothing (for example a focus seed that names no collected type) can
+            // fall back to a broader, still-budgeted mode rather than failing the run. Used by `ask`.
+            if (fallbackOnNoMatch is not null)
+            {
+                await RunFusionOnceAsync(fallbackOnNoMatch, cancellationToken);
+                return;
+            }
+
             foreach (var error in ex.Errors)
             {
                 _consoleUI.WriteError(error);
@@ -143,15 +159,36 @@ public abstract class CommandBase
             return;
 
         DisplayResults(result, request.Emission);
-        WriteRunReport(result, request.Emission);
+        WriteRunReport(result, request);
     }
 
-    private void WriteRunReport(FusionResult result, EmissionOptions emissionOptions)
+    private void WriteRunReport(FusionResult result, FusionRequest request)
     {
         if (string.IsNullOrWhiteSpace(Report))
             return;
 
-        var json = RunReportBuilder.Build(result, emissionOptions);
+        // Record the same resolved experimental options the orchestrator used (configured values with
+        // environment overrides applied), so the report names exactly what produced the run.
+        var resolved = Fuse.Fusion.ExperimentalOptions.ResolveFromEnvironment(request.Experimental);
+        var experimental = new Fuse.Emission.Serialization.JsonExperimentalOptionsDto
+        {
+            CentralityWeight = resolved.CentralityWeight,
+            HopDecay = resolved.HopDecay,
+            ExpansionWeight = resolved.ExpansionWeight,
+            QueryExpansion = resolved.QueryExpansion,
+            TieredEmission = resolved.TieredEmission,
+            MultiQueryFusion = resolved.MultiQueryFusion,
+            BudgetAwareExpansion = resolved.BudgetAwareExpansion,
+            DenseRerank = resolved.DenseRerank,
+            GitChurnWeight = resolved.GitChurnWeight,
+            SketchHugeFiles = resolved.SketchHugeFiles,
+            DowngradeBeforeDrop = resolved.DowngradeBeforeDrop,
+            DistributionalThesaurus = resolved.DistributionalThesaurus,
+            ProximityEdges = resolved.ProximityEdges,
+            MemberLevelRetrieval = resolved.MemberLevelRetrieval,
+        };
+
+        var json = RunReportBuilder.Build(result, request.Emission, experimental);
 
         if (Report == "-")
         {
@@ -534,14 +571,6 @@ public abstract class CommandBase
     public string? Session { get; set; }
 
     /// <summary>
-    ///     Engage the opt-in Roslyn precision tier for C# analysis (more accurate skeletons, dependency edges,
-    ///     and outlines). Available in the framework-dependent tool only; the Native AOT build always uses the
-    ///     regex tier. The tier is selected at startup, so this option is also detected before parsing.
-    /// </summary>
-    [CliOption(Description = "Use the Roslyn precision tier for C# (framework-dependent build only).")]
-    public bool Semantic { get; set; } = false;
-
-    /// <summary>
     ///     Include git churn and last-modified stats in the manifest.
     /// </summary>
     [CliOption(Description = "Include git churn and last-modified stats in the manifest.")]
@@ -565,14 +594,6 @@ public abstract class CommandBase
     /// </summary>
     [CliOption(Description = "Replace member bodies identical across files with a marker referencing the canonical copy, keeping every signature.")]
     public bool DedupBodies { get; set; } = false;
-
-    /// <summary>
-    ///     Select the embedding backend for rerank: on for the semantic ONNX model (downloaded once), off for
-    ///     the dependency-free hashing embedding. Unset uses the build default. Ignored in the Native AOT build,
-    ///     which always uses hashing.
-    /// </summary>
-    [CliOption(Required = false, Description = "Embedding backend for --rerank: true for the semantic ONNX model (downloaded once), false for hashing. Ignored in the Native AOT build.")]
-    public bool? Embeddings { get; set; }
 
     /// <summary>
     ///     Output format (<c>xml</c>, <c>markdown</c>, <c>json</c>, or <c>compact</c>).
@@ -659,22 +680,22 @@ public abstract class CommandBase
     #region Cache and Watch Options
 
     /// <summary>
-    ///     Disable per-file reduction caching.
+    ///     Disable per-file reduction caching in <c>.fuse/fuse.db</c>.
     /// </summary>
-    [CliOption(Description = "Disable per-file reduction caching.")]
+    [CliOption(Description = "Disable per-file reduction caching in .fuse/fuse.db.")]
     public bool NoCache { get; set; } = false;
 
     /// <summary>
-    ///     Clear the <c>.fuse/cache</c> directory before running.
+    ///     Clear the reduction cache namespace in <c>.fuse/fuse.db</c> before running.
     /// </summary>
-    [CliOption(Description = "Clear the .fuse/cache directory before running.")]
+    [CliOption(Description = "Clear the reduction cache namespace in .fuse/fuse.db before running.")]
     public bool ClearCache { get; set; } = false;
 
     /// <summary>
-    ///     Cache per-file dependency and symbol analysis in the on-disk index (<c>.fuse/index</c>) so repeated
-    ///     scoped runs reuse it. Pays off across a session and amortizes the cost of the Roslyn precision tier.
+    ///     Cache per-file dependency and symbol analysis in <c>.fuse/fuse.db</c> so repeated scoped runs
+    ///     reuse it. Pays off across a session and amortizes the cost of the Roslyn precision tier.
     /// </summary>
-    [CliOption(Description = "Cache dependency/symbol analysis on disk (.fuse/index) to speed up repeated scoped runs.")]
+    [CliOption(Description = "Cache dependency/symbol analysis in .fuse/fuse.db to speed up repeated scoped runs.")]
     public bool Index { get; set; } = false;
 
     /// <summary>

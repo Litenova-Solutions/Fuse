@@ -7,8 +7,8 @@ namespace Fuse.Emission.Serialization;
 ///     Builds the machine-readable JSON run report for a completed fusion run.
 /// </summary>
 /// <remarks>
-///     Serialization uses the source-generated <see cref="FuseEmissionJsonContext" />, so the report is
-///     AOT-safe. The report always names the tokenizer used for its token counts.
+///     Serialization uses the source-generated <see cref="FuseEmissionJsonContext" />. The report always
+///     names the tokenizer used for its token counts.
 /// </remarks>
 public static class RunReportBuilder
 {
@@ -17,8 +17,14 @@ public static class RunReportBuilder
     /// </summary>
     /// <param name="result">The completed fusion result.</param>
     /// <param name="options">The emission options used for the run.</param>
+    /// <param name="experimental">
+    ///     The resolved experimental scoring knobs to record, or <c>null</c> to omit them from the report.
+    /// </param>
     /// <returns>The run report as a JSON string.</returns>
-    public static string Build(FusionResult result, EmissionOptions options)
+    public static string Build(
+        FusionResult result,
+        EmissionOptions options,
+        JsonExperimentalOptionsDto? experimental = null)
     {
         var dto = new JsonRunReportDto
         {
@@ -35,6 +41,7 @@ public static class RunReportBuilder
             Patterns = result.PatternSummary is { Patterns.Count: > 0 }
                 ? [.. result.PatternSummary.Patterns.Select(p => p.PatternName)]
                 : null,
+            Experimental = experimental,
         };
 
         return JsonSerializer.Serialize(dto, FuseEmissionJsonContext.Default.JsonRunReportDto);

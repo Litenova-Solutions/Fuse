@@ -104,6 +104,66 @@ public class RoslynDependencyExtractorTests
         Assert.DoesNotContain("PhantomType", refs);
         Assert.DoesNotContain("AlsoPhantom", refs);
     }
+
+    [Fact]
+    public void ExtractReferencedTypes_DoesNotTreatBareMethodCallsAsTypes()
+    {
+        // Foo() and Bar<T>() are method calls, not references to types named Foo/Bar (item 6 false edges).
+        const string input = """
+            public class Svc
+            {
+                public void M()
+                {
+                    Configure();
+                    var x = Build<int>();
+                }
+            }
+            """;
+
+        var refs = _extractor.ExtractReferencedTypes(input);
+
+        Assert.DoesNotContain("Configure", refs);
+        Assert.DoesNotContain("Build", refs);
+    }
+
+    [Fact]
+    public void ExtractReferencedTypes_DoesNotTreatGenericMethodCallsOnReceiverAsTypes()
+    {
+        const string input = """
+            public class Svc
+            {
+                public void M(IMapper mapper)
+                {
+                    mapper.Map<OrderDto>(source);
+                }
+            }
+            """;
+
+        var refs = _extractor.ExtractReferencedTypes(input);
+
+        // The generic argument is a real type reference; the generic method name is not.
+        Assert.Contains("OrderDto", refs);
+        Assert.DoesNotContain("Map", refs);
+    }
+
+    [Fact]
+    public void ExtractReferencedTypes_StillCapturesGenericTypesAndConstruction()
+    {
+        const string input = """
+            public class Svc : BaseService
+            {
+                private System.Collections.Generic.List<Order> _orders = new();
+                public Repository Make() { return new Repository(); }
+            }
+            """;
+
+        var refs = _extractor.ExtractReferencedTypes(input);
+
+        Assert.Contains("List", refs);       // generic type
+        Assert.Contains("Order", refs);       // generic argument
+        Assert.Contains("Repository", refs);  // construction and return type
+        Assert.Contains("BaseService", refs); // base type
+    }
 }
 
 public class RoslynTypeNameLocatorTests
@@ -286,5 +346,80 @@ public class RoslynSymbolChunkExtractorTests
 
         Assert.Contains(chunks, c => c is { SymbolKind: "constructor", SymbolName: "Widget" });
         Assert.Contains(chunks, c => c is { SymbolKind: "enum-member", SymbolName: "Pending" });
+    }
+
+    [Fact]
+    public void ExtractChunks_Overloads_GetDistinctStableIdsButShareQualifiedName()
+    {
+        const string input = """
+            public class Calc
+            {
+                public int Add(int a) => a;
+                public int Add(int a, int b) => a + b;
+            }
+            """;
+
+        var chunks = _extractor.ExtractChunks(input);
+
+        var adds = chunks.Where(c => c.SymbolName == "Add").ToList();
+        Assert.Equal(2, adds.Count);
+        // The display name collides for overloads, which is exactly why member operations key on Identity.
+        Assert.Equal(adds[0].QualifiedName, adds[1].QualifiedName);
+        Assert.NotEqual(adds[0].Identity, adds[1].Identity);
+        Assert.Contains("(int)", adds[0].Identity);
+        Assert.Contains("(int,int)", adds[1].Identity);
+    }
+
+    [Fact]
+    public void ExtractChunks_StableId_IncludesNamespaceAndContainingTypeChain()
+    {
+        const string input = """
+            namespace Acme.Billing
+            {
+                public class Outer
+                {
+                    public class Inner
+                    {
+                        public void Run() { }
+                    }
+                }
+            }
+            """;
+
+        var run = Assert.Single(_extractor.ExtractChunks(input), c => c.SymbolName == "Run");
+
+        Assert.Equal("Acme.Billing.Outer.Inner.Run()", run.Identity);
+    }
+
+    [Fact]
+    public void ExtractChunks_LikeNamedMembersInDifferentTypes_GetDistinctStableIds()
+    {
+        const string input = """
+            public class A { public void Handle() { } }
+            public class B { public void Handle() { } }
+            """;
+
+        var handles = _extractor.ExtractChunks(input).Where(c => c.SymbolName == "Handle").ToList();
+
+        Assert.Equal(2, handles.Count);
+        Assert.NotEqual(handles[0].Identity, handles[1].Identity);
+    }
+
+    [Fact]
+    public void ExtractChunks_GenericMethodArity_IsPartOfStableId()
+    {
+        const string input = """
+            public class Mapper
+            {
+                public void Map() { }
+                public void Map<T>() { }
+            }
+            """;
+
+        var maps = _extractor.ExtractChunks(input).Where(c => c.SymbolName == "Map").ToList();
+
+        Assert.Equal(2, maps.Count);
+        Assert.NotEqual(maps[0].Identity, maps[1].Identity);
+        Assert.Contains(maps, m => m.Identity.Contains("`1"));
     }
 }

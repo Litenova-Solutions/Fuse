@@ -1,7 +1,8 @@
+using System.Reflection;
 using DotMake.CommandLine;
+using Fuse.Cli.Extensions;
 using Fuse.Cli.Mcp;
 using Fuse.Cli.Services;
-using Fuse.Fusion.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -50,26 +51,16 @@ public sealed class McpServeCommand
         builder.Services.AddSingleton<IConsoleUI, StderrConsoleUI>();
         builder.Services.AddFuse();
 
-#if FUSE_ROSLYN
-        // Opt-in Roslyn precision tier for the serve process, enabled by FUSE_SEMANTIC. Registered after AddFuse
-        // so it wins .cs capability resolution. Compiled out of the Native AOT build.
-        if (SemanticModeDetector.EnvironmentRequested())
-            Fuse.Plugins.Languages.CSharp.Roslyn.Extensions.RoslynServiceCollectionExtensions.AddCSharpRoslyn(builder.Services);
-#endif
-
-#if FUSE_ONNX
-        // Opt-in semantic embeddings tier for the serve process, selected by FUSE_EMBEDDINGS. Registered after
-        // AddFuse so it wins the IEmbeddingModel resolution. Compiled out of the Native AOT build.
-        Fuse.Fusion.Embeddings.Onnx.Extensions.OnnxEmbeddingsServiceCollectionExtensions.AddFuseOnnxEmbeddings(builder.Services, explicitFlag: null);
-#endif
-
         builder.Services
             .AddMcpServer(options =>
             {
                 options.ServerInfo = new()
                 {
                     Name = "fuse",
-                    Version = "2.4.0"
+                    Version = typeof(McpServeCommand).Assembly
+                        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                        ?? typeof(McpServeCommand).Assembly.GetName().Version?.ToString(3)
+                        ?? "0.0.0"
                 };
                 options.ServerInstructions =
                     "Fuse is a codebase context optimizer for AI-assisted workflows.\n\n" +
@@ -84,12 +75,21 @@ public sealed class McpServeCommand
                     "- fuse_ask: Give a task and token budget; Fuse picks skeleton, focus, or search and packs to budget.\n" +
                     "- fuse_dotnet: Full-control .NET fusion with all options combined.\n" +
                     "- fuse_generic: Generic fusion for any template (Python, Go, Rust, etc.).\n" +
-                    "- fuse_reduce: Compact a specific set of files (or raw content) you already identified, without collecting a whole directory.\n\n" +
+                    "- fuse_reduce: Compact a specific set of files (or raw content) you already identified, without collecting a whole directory.\n" +
+                    "- fuse_explain: Preview which files a scoped fusion would include and exclude, with a token estimate, before fetching.\n" +
+                    "- fuse_find: Cheap exact lookup: a symbol definition, an exact text substring with context, or a path match. Use instead of broad grep.\n\n" +
+                    "CHOOSING A MODE (most accurate first):\n" +
+                    "- Branch, PR, or fix work with a git base: prefer fuse_changes with changedSince=\"{base}\". " +
+                    "It has by far the highest recall of the files a task touches, because it starts from the diff.\n" +
+                    "- Exploring or editing a specific type: fuse_focus with focus=\"{TypeName}\".\n" +
+                    "- Finding where a concept or feature lives: fuse_search with query=\"{topic}\".\n" +
+                    "- Broad survey first: fuse_toc, then a scoped fetch.\n" +
+                    "- Unsure: fuse_ask with the task and tokenBudget, and Fuse routes for you.\n\n" +
                     "RECOMMENDED WORKFLOW:\n" +
                     "1. Call fuse_toc (or fuse_skeleton) to survey the codebase at low token cost.\n" +
                     "2. Identify the relevant area from the tree and per-file token costs.\n" +
                     "3. Call fuse_focus with focus=\"{TypeName}\" or fuse_search with query=\"{topic}\".\n" +
-                    "4. For PR review, call fuse_changes with changedSince=\"{baseBranch}\".\n" +
+                    "4. For branch, PR, or fix work, call fuse_changes with changedSince=\"{baseBranch}\" (highest recall).\n" +
                     "5. Or call fuse_ask with a task and tokenBudget to let Fuse choose and pack the context.\n\n" +
                     "RESOURCES:\n" +
                     "- fuse://skeleton/{path}, fuse://focus/{path}/{seed}, fuse://search/{path}/{query}, fuse://changes/{path}/{since}\n" +

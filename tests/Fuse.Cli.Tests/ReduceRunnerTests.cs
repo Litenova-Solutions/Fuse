@@ -28,7 +28,7 @@ public sealed class ReduceRunnerTests : IDisposable
     {
         Directory.CreateDirectory(_dir);
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

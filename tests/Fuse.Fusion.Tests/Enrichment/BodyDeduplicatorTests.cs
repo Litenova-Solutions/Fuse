@@ -48,7 +48,7 @@ public sealed class BodyDeduplicatorTests : IDisposable
             """);
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -72,6 +72,52 @@ public sealed class BodyDeduplicatorTests : IDisposable
 
         // A member with a unique body is untouched.
         Assert.Contains("unique-alpha-body-token", output);
+    }
+
+    // A body shared by an overload across two files, long enough to qualify for deduplication.
+    private const string OverloadSharedBody = """
+            {
+                var sum = 0;
+                for (var i = 0; i < x; i++) { sum += i; }
+                var tag = "OVERLOAD-SHARED-BODY-TOKEN-DISTINCT";
+                return sum + tag.Length;
+            }
+        """;
+
+    [Fact]
+    public async Task FuseAsync_DeduplicateBodies_DoesNotCollapseSiblingOverloadWithUniqueBody()
+    {
+        // C5: GammaCanon.Process(int) and GammaDup.Process(int) share a body (deduplicated). GammaDup also
+        // declares an overload Process(int, int) with a unique body. Keying the rewrite on the display name
+        // would collapse BOTH overloads in GammaDup (they share Type.Member); keying on the collision-free
+        // identity collapses only the duplicated overload and leaves the unique one intact.
+        WriteFile("GammaCanon.cs", $$"""
+            public class GammaCanon
+            {
+                public int Process(int x)
+                {{OverloadSharedBody}}
+            }
+            """);
+        WriteFile("GammaDup.cs", $$"""
+            public class GammaDup
+            {
+                public int Process(int x)
+                {{OverloadSharedBody}}
+
+                public int Process(int x, int y)
+                {
+                    var marker = "gamma-unique-overload-token-distinct";
+                    return x + y + marker.Length;
+                }
+            }
+            """);
+
+        var output = await FuseAsync(deduplicateBodies: true);
+
+        // The duplicate single-arg overload is collapsed (a marker is emitted)...
+        Assert.Contains("fuse:body[", output);
+        // ...but the two-arg overload's unique body must survive: identity keying does not conflate overloads.
+        Assert.Contains("gamma-unique-overload-token-distinct", output);
     }
 
     [Fact]

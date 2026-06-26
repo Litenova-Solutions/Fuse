@@ -1,6 +1,6 @@
 name: Release
 
-# On a version tag, build the Native AOT binaries and publish a GitHub Release
+# On a version tag, build self-contained binaries and publish a GitHub Release
 # carrying: the Windows installer (Inno Setup), a portable win-x64 zip, a
 # linux-x64 tarball, and a SHA256SUMS file. The portable archives and their
 # checksums are what the Scoop manifest and Homebrew formula consume.
@@ -33,26 +33,26 @@ jobs:
           $version = "${{ github.ref_name }}".TrimStart('v')
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Publish Native AOT win-x64
+      - name: Publish self-contained win-x64
         shell: pwsh
         run: |
           dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj `
             --configuration Release `
-            /p:PublishProfile=aot-win-x64 `
+            /p:PublishProfile=runtime-win-x64 `
             /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Package portable zip
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path dist -Force | Out-Null
-          Compress-Archive -Path artifacts/aot/win-x64/fuse.exe `
+          Compress-Archive -Path artifacts/runtime/win-x64/fuse.exe `
             -DestinationPath "dist/fuse-${{ steps.version.outputs.VERSION }}-win-x64.zip" -Force
 
       - name: Stage installer binary
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path publish/win-x64 -Force | Out-Null
-          Copy-Item artifacts/aot/win-x64/fuse.exe publish/win-x64/fuse.exe -Force
+          Copy-Item artifacts/runtime/win-x64/fuse.exe publish/win-x64/fuse.exe -Force
 
       - name: Build installer with Inno Setup
         shell: pwsh
@@ -80,7 +80,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install Native AOT prerequisites
+      - name: Install Linux publish prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y clang zlib1g-dev
@@ -89,18 +89,18 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Publish Native AOT linux-x64
+      - name: Publish self-contained linux-x64
         run: |
           dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj \
             --configuration Release \
-            /p:PublishProfile=aot-linux-x64 \
+            /p:PublishProfile=runtime-linux-x64 \
             /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Package tarball
         run: |
           mkdir -p dist
           tar -czf "dist/fuse-${{ steps.version.outputs.VERSION }}-linux-x64.tar.gz" \
-            -C artifacts/aot/linux-x64 fuse
+            -C artifacts/runtime/linux-x64 fuse
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4

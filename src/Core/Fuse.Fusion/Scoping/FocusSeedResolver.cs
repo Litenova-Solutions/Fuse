@@ -218,6 +218,15 @@ public sealed class FocusSeedResolver
                     EnqueueEach(queue, options, referencingPaths, path, parentChain, nextScore, hop);
             }
         }
+
+        // Structural proximity edges (item 7): a test or implementation counterpart and same-stem siblings,
+        // followed at a weight below a real reference, so they break ties and reach a related file the
+        // type-reference graph missed without overrunning the budget.
+        if (options.ProximityWeight > 0 && options.ProximityEdges is { } proximity &&
+            proximity.TryGetValue(path, out var nearbyPaths))
+        {
+            EnqueueEach(queue, options, nearbyPaths, path, parentChain, nextScore * options.ProximityWeight, hop);
+        }
     }
 
     private static void EnqueueEach(

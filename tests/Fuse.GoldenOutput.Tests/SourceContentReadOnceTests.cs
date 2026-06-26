@@ -18,7 +18,7 @@ public sealed class SourceContentReadOnceTests
         // One counting provider for the run; the orchestrator obtains its run-scoped provider from the factory,
         // so registering the factory to return this instance lets us count every read in the run.
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         var counter = new CountingSourceContentProvider(new PhysicalFileSystem());
         services.AddSingleton<Func<ISourceContentProvider>>(_ => () => counter);
         await using var provider = services.BuildServiceProvider();

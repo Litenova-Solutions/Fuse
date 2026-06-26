@@ -7,9 +7,7 @@ namespace Fuse.Plugins.Abstractions.Outline;
 ///     expose.
 /// </summary>
 /// <remarks>
-///     A precise (semantic) implementation registered later overrides a regex one by extension. The regex tier
-///     produces coarser chunking but must still yield coherent, independently parseable member bodies so the
-///     symbol-level path keeps working on the Native AOT build, where Roslyn is absent.
+///     Roslyn supplies member-level chunks for C#; other languages may register their own extractors.
 /// </remarks>
 public interface ISymbolChunkExtractor : ILanguageCapability
 {

@@ -30,7 +30,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Install Native AOT prerequisites
+      - name: Install Linux publish prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y clang zlib1g-dev
@@ -38,10 +38,10 @@ jobs:
       - name: Restore
         run: dotnet restore src/Host/Fuse.Cli/Fuse.Cli.csproj
 
-      - name: Pack framework-dependent tool and AOT runtime packages
+      - name: Pack framework-dependent tool and runtime packages
         shell: pwsh
         run: |
-          ./build/pack-aot.ps1 -Version ${{ steps.version.outputs.version }} -Rids linux-x64
+          ./build/pack-tool.ps1 -Version ${{ steps.version.outputs.version }} -Rids linux-x64
 
       - name: NuGet login (Trusted Publishing, short-lived key via OIDC)
         uses: NuGet/login@v1

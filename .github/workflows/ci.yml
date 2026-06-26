@@ -23,6 +23,44 @@ jobs:
       - name: Restore
         run: dotnet restore Fuse.slnx
 
+      - name: Check vulnerable packages (shipped)
+        shell: pwsh
+        run: |
+          # Keep in sync with NuGetAuditSuppress entries in Directory.Build.props.
+          $suppressedAdvisories = @(
+            'https://github.com/advisories/GHSA-hv8m-jj95-wg3x'
+          )
+          $failed = $false
+          Get-ChildItem -Path src -Recurse -Filter *.csproj | ForEach-Object {
+            $project = $_.FullName
+            Write-Host "Auditing $project"
+            $jsonText = dotnet list $project package --vulnerable --include-transitive --format json
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "dotnet list package failed for $project"
+              $failed = $true
+              return
+            }
+            $report = $jsonText | ConvertFrom-Json
+            foreach ($entry in $report.projects) {
+              foreach ($framework in $entry.frameworks) {
+                $packages = @()
+                if ($framework.topLevelPackages) { $packages += $framework.topLevelPackages }
+                if ($framework.transitivePackages) { $packages += $framework.transitivePackages }
+                foreach ($package in $packages) {
+                  if (-not $package.vulnerabilities) { continue }
+                  foreach ($advisory in $package.vulnerabilities) {
+                    if ($suppressedAdvisories -contains $advisory.advisoryurl) { continue }
+                    if ($advisory.severity -eq 'High' -or $advisory.severity -eq 'Critical') {
+                      Write-Host "::error::$($package.id) $($package.resolvedVersion) [$($advisory.severity)] $($advisory.advisoryurl)"
+                      $failed = $true
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if ($failed) { exit 1 }
+
       - name: Build
         run: dotnet build Fuse.slnx --configuration Release --no-restore
 
@@ -42,21 +80,46 @@ jobs:
       - name: Format check
         run: dotnet format Fuse.slnx --verify-no-changes
 
-  aot:
-    name: Native AOT Publish (${{ matrix.rid }})
+  runtime:
+    name: Self-contained runtime (${{ matrix.rid }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        # All six RIDs are published (for the VS Code extension to bundle a host per platform). Each RID is built
+        # on its matching OS; the native-arch ones also smoke-test, while the cross-arch ones (built on the other
+        # arch of the same OS) only publish, since the runner cannot execute a different architecture.
         include:
           - os: windows-latest
             rid: win-x64
-            profile: aot-win-x64
+            profile: runtime-win-x64
             binary: fuse.exe
+            smoke: true
+          - os: windows-latest
+            rid: win-arm64
+            profile: runtime-win-arm64
+            binary: fuse.exe
+            smoke: false
           - os: ubuntu-latest
             rid: linux-x64
-            profile: aot-linux-x64
+            profile: runtime-linux-x64
             binary: fuse
+            smoke: true
+          - os: ubuntu-latest
+            rid: linux-arm64
+            profile: runtime-linux-arm64
+            binary: fuse
+            smoke: false
+          - os: macos-latest
+            rid: osx-arm64
+            profile: runtime-osx-arm64
+            binary: fuse
+            smoke: true
+          - os: macos-latest
+            rid: osx-x64
+            profile: runtime-osx-x64
+            binary: fuse
+            smoke: false
 
     steps:
       - name: Checkout
@@ -67,7 +130,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install Native AOT prerequisites (Linux)
+      - name: Install Linux publish prerequisites
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -76,20 +139,22 @@ jobs:
       - name: Restore
         run: dotnet restore src/Host/Fuse.Cli/Fuse.Cli.csproj
 
-      - name: Publish Native AOT
+      - name: Publish self-contained
         run: dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj --configuration Release /p:PublishProfile=${{ matrix.profile }}
 
       - name: Smoke test init help
+        if: matrix.smoke
         shell: bash
         run: |
-          BIN="artifacts/aot/${{ matrix.rid }}/${{ matrix.binary }}"
+          BIN="artifacts/runtime/${{ matrix.rid }}/${{ matrix.binary }}"
           "$BIN" init --help
 
       - name: Smoke test SampleShop fusion
+        if: matrix.smoke
         shell: bash
         run: |
-          BIN="artifacts/aot/${{ matrix.rid }}/${{ matrix.binary }}"
-          OUT="/tmp/fuse-aot-smoke"
+          BIN="artifacts/runtime/${{ matrix.rid }}/${{ matrix.binary }}"
+          OUT="/tmp/fuse-runtime-smoke"
           rm -rf "$OUT"
           mkdir -p "$OUT"
           "$BIN" dotnet \

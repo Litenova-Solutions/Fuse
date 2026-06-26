@@ -46,18 +46,24 @@ These four were once separate flags; the level applies all of them at once.
 `--level aggressive` runs the `standard` removals and then a second tier: it strips noise
 attributes such as `DebuggerDisplay` and `MethodImpl`, removes the `this.` prefix,
 rewrites auto-properties to a compact form, and collapses whitespace around delimiters.
-It preserves string-literal contents, but the output is no longer guaranteed to compile.
-Use it when the reader is a model that needs the logic, not a compiler. On the benchmark
-corpus it removes 21 to 40 percent of tokens at 99 to 100 percent type and method
-fidelity, which makes it the dependable cut.
+These transforms are **regex-based**, not Roslyn-parsed. They preserve string-literal
+contents and keep 99 to 100 percent of public types and methods on the benchmark corpus,
+but the output is no longer guaranteed to compile and can rewrite syntax in ways a
+Roslyn parse would reject. Use it when the reader is a model that needs the logic, not
+a compiler. On the benchmark corpus it removes 21 to 46 percent of tokens at full type
+and method fidelity, which makes it the dependable cut for bodies intact.
 
 ### skeleton
 
 `--level skeleton` drops method bodies entirely and emits class, interface, and method
-signatures only. It is the deepest cut, 66 to 93 percent on the corpus, and it is an
-architecture map, not a substitute for the source. On a codebase with heavy conditional
-compilation the regex skeleton can lose signatures; the
-[precision tier](/docs/concepts/precision-tier) fixes that.
+signatures only. Unlike `aggressive`, skeleton extraction uses **Roslyn syntax analysis**,
+so signatures match the source parse tree rather than a line-based regex guess. That
+makes skeleton the faithful architecture map: on the benchmark corpus it removes 39 to
+56 percent of tokens and keeps every method signature, including on Newtonsoft.Json where
+the retired regex skeleton kept only 4 percent. The Roslyn skeleton is larger than the
+old regex skeleton because the regex cut was partly a fidelity failure, not real saving.
+See [Roslyn structural analysis vs regex](/docs/concepts/precision-tier) for the
+measured comparison.
 
 ### publicApi
 
@@ -69,14 +75,13 @@ the API surface alone.
 
 The level is the single dial for C# structural reduction. A set of other options are
 separate and orthogonal: they are not folded into the level and apply at any level. They
-include secret redaction (`--no-redact`, `--redact-report`), generated-code collapse
+include best-effort secret redaction (`--no-redact`, `--redact-report`; regex and entropy heuristics), generated-code collapse
 (`--collapse-generated`), the structural annotations (`--semantic-markers`), the pattern
 summary (`--pattern-summary`), the route map (`--route-map`), the project graph
 (`--project-graph`), XML and HTML/Razor minification (`--minify-xml-files`,
 `--minify-html-and-razor`), and the per-line content handling (trim and condense).
 
-For example, `--all` once bundled generated-code collapse with full reduction; now you
-combine them explicitly:
+Generated-code collapse is separate from the level. Combine it when you need both:
 
 ```bash
 fuse dotnet --directory ./src --level aggressive --collapse-generated

@@ -8,8 +8,8 @@ namespace Fuse.Cli.Verification;
 /// <remarks>
 ///     The source side is parsed by an <see cref="IApiSurfaceAnalyzer" />; the fused side is matched by text
 ///     presence (declared type names, call or declaration targets, and literal route templates), because
-///     reduced or skeleton output is not always valid C#. This matching is AOT-clean regex, mirroring the
-///     benchmark fidelity oracle so the numbers are comparable.
+///     reduced or skeleton output is not always valid C#. Fused-side matching uses text presence so skeleton
+///     output is handled, mirroring the benchmark fidelity oracle so the numbers are comparable.
 /// </remarks>
 public sealed partial class ApiSurfaceVerifier
 {

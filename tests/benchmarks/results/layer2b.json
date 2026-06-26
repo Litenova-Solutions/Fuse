@@ -5,7 +5,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 13640
+    "tokens": 18096
   },
   {
     "repo": "MediatR",
@@ -13,7 +13,7 @@
     "answer": "src/MediatR/Mediator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 11640
+    "tokens": 13533
   },
   {
     "repo": "MediatR",
@@ -29,7 +29,7 @@
     "answer": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 13540
+    "tokens": 18875
   },
   {
     "repo": "MediatR",
@@ -53,7 +53,7 @@
     "answer": "src/MediatR/Registration/ServiceRegistrar.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 14245
+    "tokens": 17979
   },
   {
     "repo": "MediatR",
@@ -77,7 +77,7 @@
     "answer": "src/FluentValidation/DefaultValidatorExtensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 23599
+    "tokens": 13922
   },
   {
     "repo": "FluentValidation",
@@ -100,8 +100,8 @@
     "question": "Which file defines the abstract base class that user validators inherit from?",
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "query",
-    "hit": 1,
-    "tokens": 16219
+    "hit": 0,
+    "tokens": 19225
   },
   {
     "repo": "FluentValidation",
@@ -109,7 +109,7 @@
     "answer": "src/FluentValidation/AbstractValidator.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 16515
+    "tokens": 19286
   },
   {
     "repo": "FluentValidation",
@@ -125,7 +125,7 @@
     "answer": "src/FluentValidation/Validators/EmailValidator.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 21187
+    "tokens": 15635
   },
   {
     "repo": "FluentValidation",
@@ -148,8 +148,8 @@
     "question": "Which file holds the main entry-point class that maps one object to another?",
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 15232
+    "hit": 1,
+    "tokens": 16525
   },
   {
     "repo": "AutoMapper",
@@ -157,7 +157,7 @@
     "answer": "src/AutoMapper/Mapper.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 14236
+    "tokens": 18586
   },
   {
     "repo": "AutoMapper",
@@ -173,7 +173,7 @@
     "answer": "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 20573
+    "tokens": 19428
   },
   {
     "repo": "AutoMapper",
@@ -197,7 +197,7 @@
     "answer": "src/AutoMapper/QueryableExtensions/Extensions.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 15521
+    "tokens": 18387
   },
   {
     "repo": "AutoMapper",
@@ -221,7 +221,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "query",
     "hit": 1,
-    "tokens": 21293
+    "tokens": 17092
   },
   {
     "repo": "NewtonsoftJson",
@@ -229,7 +229,7 @@
     "answer": "Src/Newtonsoft.Json/JsonSerializer.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 13481
+    "tokens": 18505
   },
   {
     "repo": "NewtonsoftJson",
@@ -244,8 +244,8 @@
     "question": "Where is the forward-only reader that parses JSON from text implemented?",
     "answer": "Src/Newtonsoft.Json/JsonTextReader.cs",
     "mode": "query",
-    "hit": 0,
-    "tokens": 21530
+    "hit": 1,
+    "tokens": 16195
   },
   {
     "repo": "NewtonsoftJson",
@@ -269,7 +269,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "query",
     "hit": 0,
-    "tokens": 42356
+    "tokens": 15148
   },
   {
     "repo": "NewtonsoftJson",
@@ -277,7 +277,7 @@
     "answer": "Src/Newtonsoft.Json/Linq/JObject.cs",
     "mode": "focus",
     "hit": 1,
-    "tokens": 13633
+    "tokens": 18907
   },
   {
     "repo": "NewtonsoftJson",

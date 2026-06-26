@@ -40,9 +40,15 @@ public sealed class TokenBudget
     /// <param name="tokens">The token cost of the entry, including marker overhead.</param>
     /// <returns>
     ///     <see cref="BudgetConsumeResult.Split" /> when the current part must be finalized first,
-    ///     <see cref="BudgetConsumeResult.Halt" /> when the hard limit is exceeded,
+    ///     <see cref="BudgetConsumeResult.Halt" /> when the hard limit would be exceeded,
     ///     or <see cref="BudgetConsumeResult.Continue" /> when the entry was accepted.
     /// </returns>
+    /// <remarks>
+    ///     The token cost is committed only when the result is <see cref="BudgetConsumeResult.Continue" />. A
+    ///     <see cref="BudgetConsumeResult.Halt" /> rejects the entry without charging it, so a caller that
+    ///     declines to write the rejected entry leaves <see cref="TotalTokens" /> reflecting only what was
+    ///     emitted. This is what lets emission stop at the hard limit without overshooting by one entry.
+    /// </remarks>
     public BudgetConsumeResult Consume(int tokens)
     {
         if (IsExhausted)
@@ -57,15 +63,17 @@ public sealed class TokenBudget
             return BudgetConsumeResult.Split;
         }
 
-        CurrentPartTokens += tokens;
-        TotalTokens += tokens;
-
-        if (_maxTokens.HasValue && TotalTokens > _maxTokens.Value)
+        // Reject before committing when the entry would breach the hard limit, so the over-budget entry is
+        // never charged and never written. Previously the cost was added first and the limit checked after,
+        // which let the entry that crossed MaxTokens still be emitted.
+        if (_maxTokens.HasValue && TotalTokens + tokens > _maxTokens.Value)
         {
             IsExhausted = true;
             return BudgetConsumeResult.Halt;
         }
 
+        CurrentPartTokens += tokens;
+        TotalTokens += tokens;
         return BudgetConsumeResult.Continue;
     }
 

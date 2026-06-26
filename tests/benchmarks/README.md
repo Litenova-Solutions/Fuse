@@ -26,7 +26,7 @@ The cloned corpus under `.corpus/` and the per-run outputs under `results/.out`,
 
 ## Manual wall-clock timing
 
-The rest of this document covers ad hoc timing for pipeline changes. See also [the performance page](https://fuse.codes/docs/project/performance) for cold-start methodology and Native AOT packaging.
+The rest of this document covers ad hoc timing for pipeline changes. See also [the performance page](https://fuse.codes/docs/project/performance) for cold-start methodology and self-contained packaging.
 
 ## Fixture
 
@@ -53,7 +53,7 @@ Start-Process -FilePath fuse.exe -ArgumentList "dotnet","--directory","...","--o
 $sw.ElapsedMilliseconds
 ```
 
-Compare before/after Native AOT builds using the same command. CI smoke tests in `.github/workflows/ci.yml` use this pattern on published AOT binaries.
+Compare before/after self-contained builds using the same command. CI smoke tests in `.github/workflows/ci.yml` use this pattern on published runtime binaries.
 
 ## Cold run (serial baseline)
 
@@ -80,7 +80,7 @@ On Linux or macOS, replace `%NUMBER_OF_PROCESSORS%` with the output of `nproc` o
 
 After persistent reduction cache is enabled (default unless `--no-cache`):
 
-1. Run once to populate `.fuse/cache/` under the source directory.
+1. Run once to populate `.fuse/fuse.db` at the repo root (or `~/.fuse/fuse.db` outside a git repository).
 2. Run the same command again without `--clear-cache`.
 3. Compare the second run wall-clock to the cold parallel run.
 

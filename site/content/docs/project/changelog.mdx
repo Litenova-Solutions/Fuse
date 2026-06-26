@@ -1,27 +1,33 @@
 ---
 title: Changelog
-description: Where to find the full version history and migration notes for Fuse.
+description: Where to find the full version history for Fuse.
 ---
 
-The complete version history and migration notes live in the CHANGELOG.md file at the repository root. This page points to that file and names the most recent notable change. The changelog records what has shipped; planned work is described separately on the [Roadmap](/docs/project/roadmap).
+The complete version history lives in the CHANGELOG.md file at the repository root. This page points to that file and names the most recent notable changes. The changelog records what has shipped; planned work is described separately on the [Roadmap](/docs/project/roadmap).
 
-This page is for anyone checking what changed between versions or migrating an existing setup.
+This page is for anyone checking what changed between versions.
 
 ## Where the History Lives
 
-The repository CHANGELOG.md file documents every notable change by version, including breaking changes, additions, and a migration table for moving between major versions. Read it there rather than here so the history stays in one place alongside the source.
+The repository CHANGELOG.md file documents every notable change by version, including breaking changes and additions. Read it there rather than here so the history stays in one place alongside the source.
 
-## Most Recent Notable Change
+## Most Recent Notable Changes
 
-Breaking change (2.2): `fuse serve` moved to `fuse mcp serve`. The MCP server is now a subcommand of a new `fuse mcp` group, alongside `fuse mcp install`, which registers Fuse with Claude Code, Cursor, or GitHub Copilot in one command instead of hand-editing JSON. Client configuration that launched `fuse serve` must change its arguments from `["serve"]` to `["mcp", "serve"]`; re-running `fuse mcp install` rewrites them. See [Connect to your AI](/docs/start/connect-your-ai) for the current setup flow.
+Breaking change: Roslyn is now mandatory for C# structural analysis (skeleton, dependency graph, type location, outlines, route maps, semantic markers). C# content reduction, the project graph, and pattern detectors still use regex-based transforms; see [Roslyn structural analysis vs regex](/docs/concepts/precision-tier).
 
-Prior breaking change (2.1): the C# reduction boolean cluster is replaced by a single reduction level. The flags `--all`, `--skeleton`, `--public-api`, `--aggressive`, and the `--remove-csharp-*` switches are gone, replaced by one `--level` option (and a matching `level` MCP parameter) with the values `none`, `standard`, `aggressive`, `skeleton`, and `publicApi`. The CLI commands default to `none`; the scoped MCP tools (`fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_dotnet`) default to `standard`, so an agent gets the standard removals (which preserve 99 to 100 percent of the public API surface on the benchmark corpus) without specifying a level. Migrate `--all` to `--level aggressive` (add `--collapse-generated` if you relied on `--all` collapsing generated code), `--aggressive` to `--level aggressive`, `--skeleton` to `--level skeleton`, `--public-api` to `--level publicApi`, and any `--remove-csharp-*` flag to `--level standard`, which performs all four removals together. The redaction, generated-code collapse, semantic-marker, pattern-summary, route-map, project-graph, and minification flags are unchanged and remain orthogonal to the level.
+The persistent store is a single SQLite database at `.fuse/fuse.db` under the source root. The `--index`, `--no-cache`, and `--clear-cache` flags still apply; see [Caching Internals](/docs/internals/caching-internals) and [Operator guide](/docs/internals/operator).
 
-Fuse 2.0 is a structural rewrite. It replaces the monolithic layers with an axis-based layout split into Core pipeline libraries, a Host for the CLI and MCP server, and language plugins. Backward compatibility with 1.x output is not a goal; the changelog includes a migration table covering the MCP tool changes, the default tokenizer change to `o200k_base`, the manifest header, and secret redaction now defaulting on.
+Native AOT distribution is decommissioned. Release binaries are self-contained framework-dependent publishes that bundle the .NET runtime. Install paths are unchanged; see [Install](/docs/start/install).
+
+Prior breaking change (2.2): `fuse serve` moved to `fuse mcp serve`. The MCP server is now a subcommand of a new `fuse mcp` group, alongside `fuse mcp install`, which registers Fuse with Claude Code, Cursor, or GitHub Copilot in one command instead of hand-editing JSON. Client configuration that launched `fuse serve` must use `["mcp", "serve"]` instead of `["serve"]`; re-running `fuse mcp install` rewrites them. See [Connect to your AI](/docs/start/connect-your-ai).
+
+Prior breaking change (2.1): the C# reduction boolean cluster is replaced by a single `--level` option (and a matching `level` MCP parameter) with the values `none`, `standard`, `aggressive`, `skeleton`, and `publicApi`. The CLI commands default to `none`; the scoped MCP tools (`fuse_focus`, `fuse_search`, `fuse_changes`, `fuse_dotnet`) default to `standard`. Redaction, generated-code collapse, semantic markers, pattern summary, route map, project graph, and minification flags remain orthogonal to the level.
+
+Fuse 2.0 is a structural rewrite. It replaces the monolithic layers with an axis-based layout split into Core pipeline libraries, a Host for the CLI and MCP server, and language plugins. Backward compatibility with 1.x output is not a goal.
 
 ## What This Does Not Cover
 
-This page does not reproduce the version history or the migration steps. The repository CHANGELOG.md file holds both. Planned and unshipped work is on the [Roadmap](/docs/project/roadmap), not in the changelog.
+This page does not reproduce the version history. The repository CHANGELOG.md file holds it. Planned and unshipped work is on the [Roadmap](/docs/project/roadmap), not in the changelog.
 
 ## Next
 

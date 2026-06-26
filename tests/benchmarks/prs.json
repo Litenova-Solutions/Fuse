@@ -76,6 +76,209 @@
     ]
   },
   {
+    "repo": "MediatR",
+    "pr": 1156,
+    "merge": "a63f9382c847d3ee4255c191fc73d6b51aa3702d",
+    "base": "bef72a7316401744ff36c9b70da60281c4601527",
+    "head": "e77c908e2da6bbb0d972b56ede62b4fa03613e04",
+    "title": "Apply suggestions from code review",
+    "changed_cs": [
+      "src/MediatR/Registration/ServiceRegistrar.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/AssemblyResolutionTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1155,
+    "merge": "bef72a7316401744ff36c9b70da60281c4601527",
+    "base": "d67f2d592840f90b87cc7a6836759f0a43f7caf8",
+    "head": "bd37b432239fa6233fae8572ba736dee81f3cc31",
+    "title": "Update src/MediatR/Registration/ServiceRegistrar.cs",
+    "changed_cs": [
+      "src/MediatR/Registration/ServiceRegistrar.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1137,
+    "merge": "dfdd5566e0a10680657c7db2f427db4d476ee9f1",
+    "base": "f4421b1ab8d62cd52c59c8f6690758ea5c214b15",
+    "head": "0992a83356d330990135140f85b68f227465232a",
+    "title": "Merge branch 'master' into master",
+    "changed_cs": [
+      "test/MediatR.DependencyInjectionTests/LamarDependencyInjectionTests.cs",
+      "test/MediatR.DependencyInjectionTests/LightInjectDependencyInjectionTests.cs",
+      "test/MediatR.DependencyInjectionTests/Providers/LamarServiceProviderFixture.cs",
+      "test/MediatR.DependencyInjectionTests/Providers/LightInjectServiceProviderFixture.cs",
+      "test/MediatR.DependencyInjectionTests/Providers/StashBoxServiceProviderFixture.cs",
+      "test/MediatR.DependencyInjectionTests/StashBoxDependencyInjectionTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1134,
+    "merge": "a4b86645cd4f3e07e0d4c56a657936dbfe15a895",
+    "base": "338a6aca4cb6edc29b50154dc0ee5d42b15d4ad2",
+    "head": "85348266b0efcb7a28c86613b60b13ca69dbeff2",
+    "title": "- Added FakeLogging to resolve ILogger errors - Added IServiceProvider compatible container for DryIoc",
+    "changed_cs": [
+      "src/MediatR/Licensing/LicenseAccessor.cs",
+      "src/MediatR/Mediator.cs",
+      "test/MediatR.DependencyInjectionTests/Abstractions/BaseAssemblyResolutionTests.cs",
+      "test/MediatR.DependencyInjectionTests/Abstractions/BaseServiceProviderFixture.cs",
+      "test/MediatR.DependencyInjectionTests/AutoFacDependencyInjectionTests.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/Notifications/Ding.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/Requests/InternalPing.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/Requests/InternalVoidPing.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/Requests/PrivatePing.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/Requests/PrivateVoidPing.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/Requests/PublicPing.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/Requests/PublicVoidPing.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/Responses/Pong.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/StreamRequests/InternalZing.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/StreamRequests/PrivateZing.cs",
+      "test/MediatR.DependencyInjectionTests/Contracts/StreamRequests/PublicZing.cs",
+      "test/MediatR.DependencyInjectionTests/DryIocDependencyInjectionTests.cs",
+      "test/MediatR.DependencyInjectionTests/MicrosoftDependencyInjectionTests.cs",
+      "test/MediatR.DependencyInjectionTests/Providers/AutoFacServiceProviderFixture.cs",
+      "test/MediatR.DependencyInjectionTests/Providers/DryIocServiceProviderFixture.cs",
+      "test/MediatR.DependencyInjectionTests/Providers/MicrosoftServiceProviderFixture.cs",
+      "test/MediatR.DependencyInjectionTests/Usings.cs",
+      "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1136,
+    "merge": "338a6aca4cb6edc29b50154dc0ee5d42b15d4ad2",
+    "base": "2a99c25995e0096d46f21384920c34e371df9d8f",
+    "head": "6a686e119a66335426b20be81ad5c65ab9f96924",
+    "title": "Allowing static license key values",
+    "changed_cs": [
+      "src/MediatR/Licensing/LicenseAccessor.cs",
+      "src/MediatR/Mediator.cs",
+      "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1131,
+    "merge": "243dbc7f283556fb285f8c1d694a9dcf113e95b1",
+    "base": "10714720d8e95a24ca33462654b286eb1b64239d",
+    "head": "424268307affe97657ea7e3ef11b73f7a447e921",
+    "title": "Turning off parallelization because of static properties",
+    "changed_cs": [
+      "src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs",
+      "test/MediatR.Tests/GenericRequestHandlerTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1129,
+    "merge": "10714720d8e95a24ca33462654b286eb1b64239d",
+    "base": "8991661b293239fded4f7d02a83e82a453e0bc74",
+    "head": "5a31dc5c6ae7c1127cef8403e0c8a4805104d3f5",
+    "title": "Removing parallelization",
+    "changed_cs": [
+      "src/MediatR/MicrosoftExtensionsDI/MediatRServiceCollectionExtensions.cs",
+      "src/MediatR/Registration/ServiceRegistrar.cs",
+      "test/MediatR.Tests/CreateStreamTests.cs",
+      "test/MediatR.Tests/ExceptionTests.cs",
+      "test/MediatR.Tests/GenericTypeConstraintsTests.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/StreamPipelineTests.cs",
+      "test/MediatR.Tests/NotificationPublisherTests.cs",
+      "test/MediatR.Tests/Pipeline/RequestExceptionActionTests.cs",
+      "test/MediatR.Tests/Pipeline/RequestExceptionHandlerTests.cs",
+      "test/MediatR.Tests/Pipeline/RequestPostProcessorTests.cs",
+      "test/MediatR.Tests/Pipeline/RequestPreProcessorTests.cs",
+      "test/MediatR.Tests/Pipeline/Streams/StreamPipelineBehaviorTests.cs",
+      "test/MediatR.Tests/PipelineTests.cs",
+      "test/MediatR.Tests/PublishTests.cs",
+      "test/MediatR.Tests/SendTests.cs",
+      "test/MediatR.Tests/SendVoidInterfaceTests.cs",
+      "test/MediatR.Tests/ServiceFactoryTests.cs",
+      "test/MediatR.Tests/StreamPipelineTests.cs",
+      "test/MediatR.Tests/TestContainer.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1100,
+    "merge": "8a64581e2570e7410c5f44835d9ea112beccbe6b",
+    "base": "e839444457a731df57339c22fdb4e87c781949cc",
+    "head": "95b988a4c704085c20eec7ea04f3c9355f867161",
+    "title": "Passing CancellationToken to the invocation chain",
+    "changed_cs": [
+      "src/MediatR/Entities/OpenBehavior.cs",
+      "src/MediatR/Pipeline/RequestExceptionActionProcessorBehavior.cs",
+      "src/MediatR/Pipeline/RequestExceptionProcessorBehavior.cs",
+      "src/MediatR/Pipeline/RequestPostProcessorBehavior.cs",
+      "src/MediatR/Pipeline/RequestPreProcessorBehavior.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1078,
+    "merge": "e839444457a731df57339c22fdb4e87c781949cc",
+    "base": "2841be9d799649f0671fb4768b293ed1b8ce28e5",
+    "head": "baa26be17c4f4a981d38fa5fb0e23b15b1b43ba4",
+    "title": "Refactor argument null exception message.",
+    "changed_cs": [
+      "src/MediatR/Entities/OpenBehavior.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1058,
+    "merge": "0d3bf4c472b98e7fc72b2cbd6101907868ae09b0",
+    "base": "69b54c81bda7e1ca30eecc2f68f5135d10e59160",
+    "head": "0d5ef88950d1901a979bd8ad1d588bcc4c4690e4",
+    "title": "Merge branch 'master' into timeout-behavior-support",
+    "changed_cs": [
+      "src/MediatR/IPipelineBehavior.cs",
+      "src/MediatR/Wrappers/RequestHandlerWrapper.cs",
+      "test/MediatR.Tests/SendTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1061,
+    "merge": "69b54c81bda7e1ca30eecc2f68f5135d10e59160",
+    "base": "585f0dc135dff7b5d9c6f56ee5d625b7b02cbd03",
+    "head": "9dae66c90642a73bd3dcfd8f83f03cb972f83cb6",
+    "title": "Remove duplicate `Nullable` property",
+    "changed_cs": [
+      "src/MediatR/Entities/OpenBehavior.cs",
+      "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+      "src/MediatR/Registration/ServiceRegistrar.cs",
+      "test/MediatR.Tests/GenericRequestHandlerTests.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/AssemblyResolutionTests.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/BaseGenericRequestHandlerTests.cs",
+      "test/MediatR.Tests/SendTests.cs"
+    ]
+  },
+  {
+    "repo": "MediatR",
+    "pr": 1065,
+    "merge": "585f0dc135dff7b5d9c6f56ee5d625b7b02cbd03",
+    "base": "fb309026775ef953a64fb5339d074426c1ad2c37",
+    "head": "b106f2d1bafe690377e75c28b19a61cac42010d9",
+    "title": "Add extensions to add multiple open behaviors.",
+    "changed_cs": [
+      "src/MediatR/Entities/OpenBehavior.cs",
+      "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+      "src/MediatR/Registration/ServiceRegistrar.cs",
+      "test/MediatR.Tests/GenericRequestHandlerTests.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/AssemblyResolutionTests.cs",
+      "test/MediatR.Tests/MicrosoftExtensionsDI/BaseGenericRequestHandlerTests.cs",
+      "test/MediatR.Tests/SendTests.cs"
+    ]
+  },
+  {
     "repo": "FluentValidation",
     "pr": 2158,
     "merge": "701bc75edef70286cf609c478cd34e6e2033338a",
@@ -157,27 +360,186 @@
     ]
   },
   {
-    "repo": "AutoMapper",
-    "pr": 4634,
-    "merge": "b206d0a78a76b17e3250807b1f2d939da121a9b7",
-    "base": "b57c206dc7291821e42bdf816a5637a5c1d8cb54",
-    "head": "53c8ff9d55352f5df693e9754bf3d919e5a5d33d",
-    "title": "ci: skip Azure login and signing on PRs (publish-only, secrets absent)",
+    "repo": "FluentValidation",
+    "pr": 733,
+    "merge": "cff53c4e812a6698af4f7cd48b84391146ab80d0",
+    "base": "a5e458dee8bcc1d75125a91d8bd2113a6a9c7406",
+    "head": "30233c822aca56dd508be34c988bfc16c1d64b91",
+    "title": "braces adjustments",
     "changed_cs": [
-      "src/AutoMapper/Licensing/LicenseAccessor.cs",
-      "src/UnitTests/Licensing/LicenseKeyEnvironmentVariableTests.cs"
+      "src/FluentValidation/AbstractValidator.cs",
+      "src/FluentValidation/AssemblyInfo.FluentValidation.cs",
+      "src/FluentValidation/BackwardsCompatibility.cs",
+      "src/FluentValidation/CollectionValidatorExtensions.cs",
+      "src/FluentValidation/DefaultValidatorExtensions.cs",
+      "src/FluentValidation/DefaultValidatorOptions.cs",
+      "src/FluentValidation/Internal/Extensions.cs",
+      "src/FluentValidation/Internal/RuleBuilder.cs",
+      "src/FluentValidation/Validators/AbstractComparisonValidator.cs",
+      "src/FluentValidation/Validators/AsyncPredicateValidator.cs",
+      "src/FluentValidation/Validators/ChildValidatorAdaptor.cs",
+      "src/FluentValidation/Validators/CustomValidator.cs",
+      "src/FluentValidation/Validators/PredicateValidator.cs",
+      "src/FluentValidation/Validators/PropertyValidator.cs"
     ]
   },
   {
-    "repo": "AutoMapper",
-    "pr": 4616,
-    "merge": "7aea8082ca7d5dd317c2a2a455d07e7b36557a9f",
-    "base": "34eb913f2a512d54c49608dc493845ae85e9b9a2",
-    "head": "a64a623b41c65c60554f92f79d00aaa48681b46b",
-    "title": "Update Microsoft.Sbom.DotNetTool from 1.2.0 to 4.1.5",
+    "repo": "FluentValidation",
+    "pr": 729,
+    "merge": "a5e458dee8bcc1d75125a91d8bd2113a6a9c7406",
+    "base": "f9091d41aefa06d120a4f2cee9a5f905f5df25b8",
+    "head": "e8ebbbd4fa7ca04de8117591860b122118223a9d",
+    "title": "Supporting Arabic language for default messages",
     "changed_cs": [
-      "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
-      "src/UnitTests/Bug/DeepNestingStackOverflow.cs"
+      "src/FluentValidation.Tests/LocalisedMessagesTester.cs",
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/ArabicLanguage.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 702,
+    "merge": "344d97f2fa2df50002c2090693c02b203495a048",
+    "base": "e2657fd4f101cd1e21c292061520541a60d7f6e7",
+    "head": "ae94d68882b2efa80602e97c89c2d0b88d54e99b",
+    "title": "Added Brazilian-PT translation and fixed translation typos for PT-BR.",
+    "changed_cs": [
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/PortugueseBrazilLanguage.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 700,
+    "merge": "a9ce7ead2d2195e404a33957c53e26a768f6cff3",
+    "base": "ed3300e34b3665af2fa13a3d574798172a2af9d4",
+    "head": "511e1f04ed39a8bf4bcf685ca88d5b706c8f3121",
+    "title": "Fixed file encoding to UTF-8",
+    "changed_cs": [
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/HebrewLanguage.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 696,
+    "merge": "e8c582fb87edbdbfa4dbad7c1fe0aa5fdd210d4c",
+    "base": "d1e2c87ac610fbfd34e45758dc0890c718957332",
+    "head": "080444fec525a592c53bcb5b5c5fe90554159a1c",
+    "title": "Fix exect length validation message",
+    "changed_cs": [
+      "src/FluentValidation.AspNetCore/FluentValidationModelValidatorProvider.cs",
+      "src/FluentValidation.Mvc5/FluentValidationModelValidator.cs",
+      "src/FluentValidation.Tests/RuleDependencyTests.cs",
+      "src/FluentValidation.Tests/TransformTests.cs",
+      "src/FluentValidation.Tests/ValidatorTesterTester.cs",
+      "src/FluentValidation.WebApi/FluentValidationModelValidator.cs",
+      "src/FluentValidation/DefaultValidatorOptions.cs",
+      "src/FluentValidation/Internal/PropertyRule.cs",
+      "src/FluentValidation/Resources/Languages/CzechLanguage.cs",
+      "src/FluentValidation/Resources/Languages/SlovakLanguage.cs",
+      "src/FluentValidation/TestHelper/ValidatorTestExtensions.cs",
+      "src/FluentValidation/ValidatorOptions.cs",
+      "src/FluentValidation/Validators/PropertyValidatorContext.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 635,
+    "merge": "5290f2cc677d2dc997f51cd0e328d76493e842cc",
+    "base": "263c4af83cdba61296ae0f4170a2135d316ce714",
+    "head": "cb2e12e4395bfcd34ef674470dd1e903f7409bfd",
+    "title": "Update SpanishLanguage.cs",
+    "changed_cs": [
+      "src/FluentValidation.AspNetCore/FluentValidationClientModelValidatorProvider.cs",
+      "src/FluentValidation.Tests.Mvc6.netcoreapp1/ClientsideMessageTester.cs",
+      "src/FluentValidation.Tests.Mvc6.netcoreapp1/TestModels_ClientSIde.cs",
+      "src/FluentValidation.Tests/AbstractValidatorTester.cs",
+      "src/FluentValidation.Tests/RuleBuilderTests.cs",
+      "src/FluentValidation.Tests/RulesetTests.cs",
+      "src/FluentValidation/Attributes/AttributedValidatorFactory.cs",
+      "src/FluentValidation/Attributes/ValidatorAttribute.cs",
+      "src/FluentValidation/DefaultValidatorExtensions.cs",
+      "src/FluentValidation/Internal/PropertyRule.cs",
+      "src/FluentValidation/Resources/Languages/CzechLanguage.cs",
+      "src/FluentValidation/Resources/Languages/SpanishLanguage.cs",
+      "src/FluentValidation/Validators/PropertyValidatorContext.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 612,
+    "merge": "e7a4b05a0f898c5872a41666f39ea2e53c54b10a",
+    "base": "36fb56403c089a5779123f9543ee81ba4bfff809",
+    "head": "a31cfda43f5dbe75e8e26d11b1bd4ddc9c265d27",
+    "title": "Fixed small typo in XML Comments.",
+    "changed_cs": [
+      "src/FluentValidation/BackwardsCompatibility.cs",
+      "src/FluentValidation/DefaultValidatorExtensions.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 601,
+    "merge": "b7f4216473600aa3cf0c1efe0feabe8941b7034e",
+    "base": "ce19ca90e16dab19e84251b5fb5486bb218e31df",
+    "head": "5091efabec4b14478bafc1497fc11aa2becf492f",
+    "title": "when setting a conditional validator, register the type of validator instead of the property, for the 'validatorType' param.",
+    "changed_cs": [
+      "src/FluentValidation.Tests/EnumValidatorTests.cs",
+      "src/FluentValidation.Tests/RuleBuilderTests.cs",
+      "src/FluentValidation/Internal/RuleBuilder.cs",
+      "src/FluentValidation/Validators/EnumValidator.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 602,
+    "merge": "ce19ca90e16dab19e84251b5fb5486bb218e31df",
+    "base": "90a37eb324aad1d924e203b7c3653d7bf52355fb",
+    "head": "26679312157b9f7ddd146fb00002d750b46019b0",
+    "title": "Formatting fix-up #571",
+    "changed_cs": [
+      "src/FluentValidation.Tests/EnumValidatorTests.cs",
+      "src/FluentValidation/Validators/EnumValidator.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 595,
+    "merge": "90a37eb324aad1d924e203b7c3653d7bf52355fb",
+    "base": "6ec647d4e6b19f8e4fa4a9475e024c7f0a4527ab",
+    "head": "e34ec9adbe824d37e12d83b56ba79b7f776f839c",
+    "title": "fixes",
+    "changed_cs": [
+      "src/FluentValidation.Tests/LanguageManagerTests.cs",
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/CroatianLanguage.cs",
+      "src/FluentValidation/ValidationException.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 509,
+    "merge": "89752212214f3ac20d8d28e01668ed99742b7077",
+    "base": "d848b9d034faf9e15dda65bd5ce0e335af9a71ab",
+    "head": "87e4aac63fbb5ea2088d1106329435014e60b207",
+    "title": "Added support for Hindi language for the default defined validators.",
+    "changed_cs": [
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/HindiLanguage.cs"
+    ]
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 450,
+    "merge": "a22cdd4d4aa0b886b2eaa2f704e691a4fbc261f3",
+    "base": "c56be8a125e1f84a5c847e775dc51e925e61e07b",
+    "head": "c34ee2741120f667f2baa278c5f3bd11537e7849",
+    "title": "Add max/min length extensions",
+    "changed_cs": [
+      "src/FluentValidation.Tests/DefaultValidatorExtensionTester.cs",
+      "src/FluentValidation/DefaultValidatorExtensions.cs"
     ]
   },
   {
@@ -228,6 +590,250 @@
     "changed_cs": [
       "src/AutoMapper/Execution/ExpressionBuilder.cs",
       "src/UnitTests/Bug/MapAtRuntime/MapAtRuntimeWithExtensionMethodAndNullable.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4603,
+    "merge": "fd06570bc94de5eb4492a430d13e2834c4a286a1",
+    "base": "603df79578610a51a44ac1e2d227105dbf165606",
+    "head": "8e5248b6397da2e4bc233bf8e7d97e4043c1fd3f",
+    "title": "Fixing docs",
+    "changed_cs": [
+      "src/AutoMapper.DI.Tests/AppDomainResolutionTests.cs",
+      "src/AutoMapper.DI.Tests/AssemblyResolutionTests.cs",
+      "src/AutoMapper.DI.Tests/DependencyTests.cs",
+      "src/AutoMapper.DI.Tests/Profiles.cs",
+      "src/AutoMapper.DI.Tests/TypeResolutionTests.cs",
+      "src/AutoMapper/Configuration/IMappingExpressionBase.cs",
+      "src/AutoMapper/Configuration/TypeMapConfiguration.cs",
+      "src/AutoMapper/ServiceCollectionExtensions.cs",
+      "src/AutoMapper/TypeMap.cs",
+      "src/UnitTests/Construction/ClassBasedObjectConstructorTests.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4601,
+    "merge": "7e9f34ae3f5471ad39b04e581272363b373a797c",
+    "base": "48ae10c13dc29f0ca9be62b7ce05cafd0ee6f771",
+    "head": "c94a7c1fee0b676d314048562b5a55aff9076230",
+    "title": "Address review feedback: fix double semicolon, add DI condition test, update docs",
+    "changed_cs": [
+      "src/AutoMapper.DI.Tests/AppDomainResolutionTests.cs",
+      "src/AutoMapper.DI.Tests/AssemblyResolutionTests.cs",
+      "src/AutoMapper.DI.Tests/DependencyTests.cs",
+      "src/AutoMapper.DI.Tests/Profiles.cs",
+      "src/AutoMapper.DI.Tests/TypeResolutionTests.cs",
+      "src/AutoMapper/Licensing/LicenseAccessor.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4596,
+    "merge": "17d519da8d4e1b123f18d15fe1b92a9374123297",
+    "base": "218d6292d1d1299b5bfe565f3782319ea65f5160",
+    "head": "d044feb44e33aa9cf13dd39425f39da58247ba0c",
+    "title": "Adding docs for new property",
+    "changed_cs": [
+      "src/AutoMapper/Configuration/IProfileExpression.cs",
+      "src/AutoMapper/Configuration/MapperConfiguration.cs",
+      "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+      "src/AutoMapper/Configuration/Profile.cs",
+      "src/AutoMapper/Internal/InternalApi.cs",
+      "src/AutoMapper/ProfileMap.cs",
+      "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+      "src/IntegrationTests/Inheritance/PolymorphismTests.cs",
+      "src/IntegrationTests/IntegrationTest.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4583,
+    "merge": "971822536b9aa27fe6b6236c6a1e0ffc0ed75ce1",
+    "base": "c67bc5f995c8b1c1926a48c2a02ae82a4c42391f",
+    "head": "49d6de4eb8228b9abc88281a43cd72b9dbdb1005",
+    "title": "Skipping artifacts for *nix run",
+    "changed_cs": [
+      "src/AutoMapper/Configuration/PathConfigurationExpression.cs",
+      "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+      "src/AutoMapper/Internal/Polyfill.cs",
+      "src/AutoMapper/Mappers/AssignableMapper.cs",
+      "src/AutoMapper/Mappers/CollectionMapper.cs",
+      "src/AutoMapper/Mappers/ConstructorMapper.cs",
+      "src/AutoMapper/Mappers/ConversionOperatorMapper.cs",
+      "src/AutoMapper/Mappers/ConvertMapper.cs",
+      "src/AutoMapper/Mappers/EnumToEnumMapper.cs",
+      "src/AutoMapper/Mappers/FromDynamicMapper.cs",
+      "src/AutoMapper/Mappers/FromStringDictionaryMapper.cs",
+      "src/AutoMapper/Mappers/IObjectMapper.cs",
+      "src/AutoMapper/Mappers/KeyValueMapper.cs",
+      "src/AutoMapper/Mappers/ParseStringMapper.cs",
+      "src/AutoMapper/Mappers/ToDynamicMapper.cs",
+      "src/AutoMapper/Mappers/ToStringDictionaryMapper.cs",
+      "src/AutoMapper/Mappers/ToStringMapper.cs",
+      "src/AutoMapper/Mappers/UnderlyingEnumTypeMapper.cs",
+      "src/AutoMapper/MemberMap.cs",
+      "src/UnitTests/ArraysAndLists.cs",
+      "src/UnitTests/ForPath.cs",
+      "src/UnitTests/Mappers/CustomMapperTests.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4577,
+    "merge": "6d3b6ae6c4595844feb0fb243ad8514470f496e8",
+    "base": "a4134dfd9ada9654956e48fab0951e4cdd8bfc7d",
+    "head": "b1d214ed9c69d7f20b342a342d10480b1eb42a43",
+    "title": "Fixing failing tests",
+    "changed_cs": [
+      "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+      "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+      "src/AutoMapper/TypeMap.cs",
+      "src/UnitTests/ForPath.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4554,
+    "merge": "8eb2b200f8d63bd2d26296952c0159ef4864a004",
+    "base": "76b4ad1b25ced4c5d575825f9cc9eed36b8b5ed2",
+    "head": "80b6996e0dbc60ad7983b006960c5ab49ada6688",
+    "title": "Typo",
+    "changed_cs": [
+      "src/AutoMapper.DI.Tests/AppDomainResolutionTests.cs",
+      "src/AutoMapper.DI.Tests/AssemblyResolutionTests.cs",
+      "src/AutoMapper.DI.Tests/AttributeTests.cs",
+      "src/AutoMapper.DI.Tests/DependencyTests.cs",
+      "src/AutoMapper.DI.Tests/Integrations/ServiceLifetimeTests.cs",
+      "src/AutoMapper.DI.Tests/MultipleRegistrationTests.cs",
+      "src/AutoMapper.DI.Tests/ScopeTests.cs",
+      "src/AutoMapper.DI.Tests/ServiceLifetimeTests.cs",
+      "src/AutoMapper.DI.Tests/ServiceProviderTests.cs",
+      "src/AutoMapper.DI.Tests/TypeResolutionTests.cs",
+      "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+      "src/AutoMapper/Internal/InternalApi.cs",
+      "src/AutoMapper/ServiceCollectionExtensions.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4526,
+    "merge": "bf76a5819e1bad7af7db5382bf0f3a0178048a15",
+    "base": "bbb32fa8b29fa8e862c1a839cd624a3baadf5526",
+    "head": "2f9ef9eb07448dea93ac8f6897b73aac4f313fc2",
+    "title": "no need to throw to report errors",
+    "changed_cs": [
+      "src/AutoMapper/Configuration/ConfigurationValidator.cs",
+      "src/AutoMapper/Configuration/MapperConfiguration.cs",
+      "src/UnitTests/ConfigurationValidation.cs",
+      "src/UnitTests/CustomValidations.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4503,
+    "merge": "b4331bb5d74dfe72ca5ea506344b5611e3d48f8e",
+    "base": "ff2e46a04b930f55b34e83d88f61cc3afb7c969f",
+    "head": "980e66fad510e0cce74c945b06a92a9e452ac97b",
+    "title": "Fix Issue #4502 - Confusing exception when trying top map types with in parameters in ctor",
+    "changed_cs": [
+      "src/AutoMapper/ConstructorMap.cs",
+      "src/UnitTests/Bug/ByrefConstructorParameter.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4402,
+    "merge": "1fbdf63dd99bff60b8fea096897ce0ee921f54f0",
+    "base": "50747ca56caf357456915f58c82b2540bc0927ac",
+    "head": "a3dd45d93a30054db2d3a75f106d5237e00e5ef6",
+    "title": "write integration tests for polymorphic mappings",
+    "changed_cs": [
+      "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+      "src/IntegrationTests/Inheritance/PolymorphismTests.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4390,
+    "merge": "50747ca56caf357456915f58c82b2540bc0927ac",
+    "base": "f13753466880413af7e4b2f642240ee06514544a",
+    "head": "7cc31ed1a40dbb7ff291e8d9e367486739a22630",
+    "title": "no need for any change in behaviour",
+    "changed_cs": [
+      "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+      "src/AutoMapper/Mapper.cs",
+      "src/UnitTests/NullBehavior.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4388,
+    "merge": "f13753466880413af7e4b2f642240ee06514544a",
+    "base": "df315ec3350fdbe4db158f80fcb8b580e0fcaabc",
+    "head": "66e4498d2497260c3dc9788cfcdd29adebe94bb6",
+    "title": "Revert \"nullable annotations for the runtime public API\"",
+    "changed_cs": [
+      "src/AutoMapper/Configuration/MapperConfigurationExpression.cs",
+      "src/AutoMapper/Mapper.cs",
+      "src/AutoMapper/QueryableExtensions/Extensions.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4327,
+    "merge": "2d8af824e9c2c1a70786eb57a6a56273a670d08c",
+    "base": "70b8ede8fe18bdeae6576497b48d3be5be3d3f2c",
+    "head": "0b9fbce5d41f621520974e7df2caf325da66733a",
+    "title": "remove the ad-hoc stuff",
+    "changed_cs": [
+      "src/AutoMapper/Configuration/ConfigurationValidator.cs",
+      "src/AutoMapper/Configuration/CtorParamConfigurationExpression.cs",
+      "src/AutoMapper/Configuration/IMemberConfigurationExpression.cs",
+      "src/AutoMapper/Configuration/MemberConfigurationExpression.cs",
+      "src/IntegrationTests/ExplicitExpansion/ConstructorExplicitExpansionOverride.cs",
+      "src/IntegrationTests/ExplicitExpansion/ExpandCollectionsOverride.cs",
+      "src/UnitTests/ConfigurationValidation.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4314,
+    "merge": "8252b63adb1250255e4d29112137259c86ff9ec2",
+    "base": "dab92b1479c2c3460af690d19772aa96cf899fd6",
+    "head": "d5edfd11f3e4a11a63e55ddb8adcd5abdd667c99",
+    "title": "cosmetic",
+    "changed_cs": [
+      "src/AutoMapper/ConstructorMap.cs",
+      "src/AutoMapper/Execution/ExpressionBuilder.cs",
+      "src/AutoMapper/Execution/TypeMapPlanBuilder.cs",
+      "src/AutoMapper/Mapper.cs",
+      "src/AutoMapper/ProfileMap.cs",
+      "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+      "src/AutoMapper/TypeMap.cs",
+      "src/IntegrationTests/CustomMapFrom/MapObjectPropertyFromSubQuery.cs",
+      "src/IntegrationTests/IncludeMembers.cs",
+      "src/IntegrationTests/Inheritance/ProjectToAbstractTypeWithInheritance.cs",
+      "src/IntegrationTests/IntegrationTest.cs",
+      "src/IntegrationTests/LocalDbContext.cs",
+      "src/UnitTests/IMappingExpression/IncludeMembers.cs",
+      "src/UnitTests/MappingInheritance/IncludedBaseMappingShouldInheritBaseMappings.cs",
+      "src/UnitTests/Projection/ConstructorTests.cs",
+      "src/UnitTests/ReverseMapping.cs",
+      "src/UnitTests/ValueTypes.cs"
+    ]
+  },
+  {
+    "repo": "AutoMapper",
+    "pr": 4304,
+    "merge": "dab92b1479c2c3460af690d19772aa96cf899fd6",
+    "base": "77a082b6c4d0202bd98a60bbd9fe8837d02a804f",
+    "head": "48fd7b32a757bb23790e331496c7507e9014ae2d",
+    "title": "exclude included abstract types",
+    "changed_cs": [
+      "src/AutoMapper/QueryableExtensions/ProjectionBuilder.cs",
+      "src/IntegrationTests/Inheritance/ProjectToAbstractTypeWithInheritance.cs"
     ]
   },
   {
@@ -375,6 +981,840 @@
       "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
       "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
       "Src/Newtonsoft.Json/Utilities/ReflectionUtils.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1124,
+    "merge": "ba23c14d57f746a50caad6cfbee95f4b04172032",
+    "base": "0c24088279e37e126c269ffb8bc36d5aa564dae5",
+    "head": "ecd265dad9d36c5acdf7075fba11bf10365b2250",
+    "title": "Don't assign _largeByteBuffer until clear it will be used.",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Serialization/TraceWriterTests.cs",
+      "Src/Newtonsoft.Json/Bson/BsonBinaryWriter.cs",
+      "Src/Newtonsoft.Json/Serialization/TraceJsonWriter.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1121,
+    "merge": "0c24088279e37e126c269ffb8bc36d5aa564dae5",
+    "base": "322252a98991a4a8a8f83dec300c76663cb99c5f",
+    "head": "5648cb50f7dfb0dd59f4d4f99c2aa7fd21b8fcdb",
+    "title": "Don't write duplicate nulls to trace for byte[]",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Serialization/TraceWriterTests.cs",
+      "Src/Newtonsoft.Json/Serialization/TraceJsonWriter.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1113,
+    "merge": "f38ce923064f698d3639ea8a6c58fa43d3416d83",
+    "base": "ee5a229922bfc1247f7a1c2a6c67226f2febce7e",
+    "head": "7644768580a1397b3fd0f353c18f2ec78b7a61dd",
+    "title": "Make JsonValidatingReader close underlying reader",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/JsonValidatingReaderTests.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/JsonReaderStubWithIsClosed.cs",
+      "Src/Newtonsoft.Json/JsonValidatingReader.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1111,
+    "merge": "bf88603c924846a19d84f80d5daba7eea3ef03c8",
+    "base": "cf6a917a46b532558578c53d34cdc4f39ec0560a",
+    "head": "1eb391c14700fa0b485818a6f26278b1041b192f",
+    "title": "Replace \"stream\" in reader/writer classes' comments",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+      "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs",
+      "Src/Newtonsoft.Json/JsonSerializer.cs",
+      "Src/Newtonsoft.Json/JsonTextReader.cs",
+      "Src/Newtonsoft.Json/JsonTextWriter.cs",
+      "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+      "Src/Newtonsoft.Json/JsonWriter.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenWriter.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1105,
+    "merge": "d244812522f4995a355a40f8f51b890060e0fd3a",
+    "base": "5456067b1138d6ee7adca6bea9bd5c2eae10078f",
+    "head": "2e6d2ecd4c2aadd7b9379edadd6e6ebe6cf2e780",
+    "title": "Fix typos, punctuation, etc. in XML doc comments",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+      "Src/Newtonsoft.Json/Bson/BsonWriter.cs",
+      "Src/Newtonsoft.Json/JsonConvert.cs",
+      "Src/Newtonsoft.Json/JsonException.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs",
+      "Src/Newtonsoft.Json/JsonReaderException.cs",
+      "Src/Newtonsoft.Json/JsonSerializationException.cs",
+      "Src/Newtonsoft.Json/JsonSerializerSettings.cs",
+      "Src/Newtonsoft.Json/JsonTextReader.cs",
+      "Src/Newtonsoft.Json/JsonTextWriter.cs",
+      "Src/Newtonsoft.Json/JsonWriterException.cs",
+      "Src/Newtonsoft.Json/Linq/JArray.cs",
+      "Src/Newtonsoft.Json/Linq/JContainer.cs",
+      "Src/Newtonsoft.Json/Linq/JObject.cs",
+      "Src/Newtonsoft.Json/Linq/JProperty.cs",
+      "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs",
+      "Src/Newtonsoft.Json/Linq/JValue.cs",
+      "Src/Newtonsoft.Json/Schema/JsonSchema.cs",
+      "Src/Newtonsoft.Json/Schema/JsonSchemaException.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonContract.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonProperty.cs",
+      "Src/Newtonsoft.Json/Utilities/LinqBridge.cs",
+      "Src/Newtonsoft.Json/Utilities/MethodBinder.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1073,
+    "merge": "a8ab6b343666daaf92a170d10d4ad1065c9ab82c",
+    "base": "e2dc61b8f348031d588654b74fb5adbe2ba82ef3",
+    "head": "b47f7440d19f56478d0f7b87bc9319ea43174e71",
+    "title": "Fix null reference error when deserializing bytes",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/ExceptionHandlingTests.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1072,
+    "merge": "b2e30121dbe43522162f5e2a0dcde2b525c8804d",
+    "base": "803403ae2190b6ffd863a0f2b02f0d17d3e2571e",
+    "head": "b234eafbf2f922c20138de343de2fd2dc5008902",
+    "title": "Fix return type for SByte and SByteNullable in ToObject",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Serialization/JsonSerializerCollectionsTests.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 1044,
+    "merge": "26d887125453cfd85c08f81a48f2d4d6a51d4a2d",
+    "base": "07b070065a173c58d4c02d915147289b2eef748e",
+    "head": "26ae7d07fc84e6eda49c98714fe30e2bc77418f5",
+    "title": "Break up JsonTextReaderTest class into smaller test classes",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Converters/XmlNodeConverterTest.cs",
+      "Src/Newtonsoft.Json.Tests/Documentation/SerializationTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextReaderTest.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/ExceptionHandlingTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/FloatTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/MiscTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/ParseTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextReaderTests/ReadTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextWriterTest.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/JsonSerializerCollectionsTests.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/JsonSerializerTest.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/PreserveReferencesHandlingTests.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/TypeNameHandlingTests.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/JsonTextReaderTests/FakeArrayPool.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/JsonTextReaderTests/SlowStream.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/JsonTextReaderTests/ToggleReaderError.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/JsonTextReaderTests/UnmanagedResourceFakingJsonReader.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 922,
+    "merge": "533121433c15aa5d5d978972873faa26a21f90c9",
+    "base": "aa235d606828a19586d1a567c3b7eff44b4635b4",
+    "head": "9eb14a6590ad49d601dddc4a8f2e68ca98c2f2c4",
+    "title": "-Minor fixes",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/PerformanceTests.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/CamelCaseNamingStrategyTests.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/SnakeCaseNamingStrategyTests.cs",
+      "Src/Newtonsoft.Json.Tests/Utilities/StringUtilsTests.cs",
+      "Src/Newtonsoft.Json/Converters/IsoDateTimeConverter.cs",
+      "Src/Newtonsoft.Json/JsonContainerAttribute.cs",
+      "Src/Newtonsoft.Json/JsonConverterAttribute.cs",
+      "Src/Newtonsoft.Json/JsonPropertyAttribute.cs",
+      "Src/Newtonsoft.Json/Serialization/CamelCaseNamingStrategy.cs",
+      "Src/Newtonsoft.Json/Serialization/CamelCasePropertyNamesContractResolver.cs",
+      "Src/Newtonsoft.Json/Serialization/DefaultContractResolver.cs",
+      "Src/Newtonsoft.Json/Serialization/DefaultNamingStrategy.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonTypeReflector.cs",
+      "Src/Newtonsoft.Json/Serialization/NamingStrategy.cs",
+      "Src/Newtonsoft.Json/Serialization/SnakeCaseNamingStrategy.cs",
+      "Src/Newtonsoft.Json/Utilities/JavaScriptUtils.cs",
+      "Src/Newtonsoft.Json/Utilities/StringUtils.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 918,
+    "merge": "aa235d606828a19586d1a567c3b7eff44b4635b4",
+    "base": "fe941a1492466f44c0ccfbede78bc426c2c299e8",
+    "head": "07b72a5637e7e1cf4a8693a88e9f433926d7cb84",
+    "title": "Fix spelling of \"parameterized\"",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Serialization/ConstructorHandlingTests.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/ContractResolverTests.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/JsonSerializerTest.cs",
+      "Src/Newtonsoft.Json.Tests/Serialization/TraceWriterTests.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/PrivateConstructorWithPublicParameterizedConstructorTestClass.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/PublicParameterizedConstructorRequiringConverterTestClass.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/PublicParameterizedConstructorTestClass.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/PublicParameterizedConstructorWithNonPropertyParameterTestClass.cs",
+      "Src/Newtonsoft.Json.Tests/TestObjects/PublicParameterizedConstructorWithPropertyNameConflict.cs",
+      "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+      "Src/Newtonsoft.Json/ConstructorHandling.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs",
+      "Src/Newtonsoft.Json/JsonTextReader.cs",
+      "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+      "Src/Newtonsoft.Json/Linq/JObject.cs",
+      "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenEqualityComparer.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+      "Src/Newtonsoft.Json/Linq/JValue.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 919,
+    "merge": "fe941a1492466f44c0ccfbede78bc426c2c299e8",
+    "base": "88229ddcf49232ca1898729a8fe319f3c8782f22",
+    "head": "af33de216902c49c284ed06f3746336857c26e90",
+    "title": "Escape paths in quotes",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs",
+      "Src/Newtonsoft.Json/JsonTextReader.cs",
+      "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+      "Src/Newtonsoft.Json/Linq/JObject.cs",
+      "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenEqualityComparer.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+      "Src/Newtonsoft.Json/Linq/JValue.cs"
+    ]
+  },
+  {
+    "repo": "NewtonsoftJson",
+    "pr": 917,
+    "merge": "88229ddcf49232ca1898729a8fe319f3c8782f22",
+    "base": "dadc431af5cfe465d9fa4b72a9d6dfbff0e77594",
+    "head": "3bfc8223a187265cd67e8cb9b309aab46b65f139",
+    "title": "Unify the usage of <c> tags for true/false values in XML docs",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/Bson/BsonReader.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs",
+      "Src/Newtonsoft.Json/JsonReader.cs",
+      "Src/Newtonsoft.Json/JsonTextReader.cs",
+      "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+      "Src/Newtonsoft.Json/Linq/JObject.cs",
+      "Src/Newtonsoft.Json/Linq/JPropertyDescriptor.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenEqualityComparer.cs",
+      "Src/Newtonsoft.Json/Linq/JTokenReader.cs",
+      "Src/Newtonsoft.Json/Linq/JValue.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1452,
+    "merge": "33f1fd59307838f280579f89f07cc809bec348e1",
+    "base": "d98fca51063cf6d3345a3171dda28048e0469748",
+    "head": "94d9e1ab332808f6c48592dfed6c222324c868e5",
+    "title": "Nitpicks - whitespace, slightly more specific test description",
+    "changed_cs": [
+      "src/Serilog/Formatting/Json/JsonFormatter.cs",
+      "src/Serilog/Formatting/Json/JsonValueFormatter.cs",
+      "test/Serilog.Tests/Formatting/Json/JsonFormatterTests.cs",
+      "test/Serilog.Tests/Formatting/Json/JsonValueFormatterTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1472,
+    "merge": "308208e12f722ad6c48394586965ea957aa37c02",
+    "base": "c10e3a81dbd555f2ab89730a9b106e5d91cddff7",
+    "head": "89ec7f326b20ede2d14f61379102795335393605",
+    "title": "removed inheriting minimum level from other places",
+    "changed_cs": [
+      "src/Serilog/Configuration/LoggerAuditSinkConfiguration.cs",
+      "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+      "src/Serilog/LoggerConfiguration.cs",
+      "test/Serilog.Tests/Context/LogContextTests.cs",
+      "test/Serilog.Tests/Core/ChildLoggerTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1467,
+    "merge": "c10e3a81dbd555f2ab89730a9b106e5d91cddff7",
+    "base": "94a934ddbe71bf028813b6fd122cfcc67266ca30",
+    "head": "ae7dd3543a45be7c8f62aead3ab79447f123e188",
+    "title": "Merge branch 'dev' into tostring-null",
+    "changed_cs": [
+      "src/Serilog/Capturing/PropertyValueConverter.cs",
+      "src/Serilog/Events/ScalarValue.cs",
+      "test/Serilog.Tests/Core/MessageTemplateTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1466,
+    "merge": "94a934ddbe71bf028813b6fd122cfcc67266ca30",
+    "base": "bb6188a93fc64b31aa87ee4c7d130f2a2acac78e",
+    "head": "f906d6b1a442e0261007a01efa53a7651744d017",
+    "title": "Merge branch 'update-logger-sink-configuration-wrap' of https://github.com/augustoproiete-forks/serilog--serilog into wrapper-sinks-refactor",
+    "changed_cs": [
+      "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+      "src/Serilog/Core/CustomDefaultMethodImplementationAttribute.cs",
+      "src/Serilog/Core/Sinks/AggregateSink.cs",
+      "src/Serilog/Core/Sinks/ConditionalSink.cs",
+      "src/Serilog/Core/Sinks/DisposeDelegatingSink.cs",
+      "src/Serilog/Core/Sinks/DisposingAggregateSink.cs",
+      "src/Serilog/Core/Sinks/DisposingSafeAggregateSink.cs",
+      "src/Serilog/Core/Sinks/FilteringSink.cs",
+      "src/Serilog/Core/Sinks/RestrictedSink.cs",
+      "src/Serilog/Core/Sinks/SafeAggregateSink.cs",
+      "src/Serilog/Core/Sinks/SecondaryLoggerSink.cs",
+      "src/Serilog/Events/EventProperty.cs",
+      "test/Serilog.Tests/Core/LoggerTests.cs",
+      "test/Serilog.Tests/LoggerConfigurationTests.cs",
+      "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+      "test/Serilog.Tests/Rendering/MessageTemplateRendererTests.cs",
+      "test/Serilog.Tests/Support/DelegatingLogger.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1442,
+    "merge": "9b4b1d8c2d6583ac8ad67833014fdc3105c0d5e3",
+    "base": "22271f2e2b31e8dcd47128bde8db4287e8425557",
+    "head": "770f888b919187cc0bc4f7226ce5a2b93270613e",
+    "title": "copyright years update",
+    "changed_cs": [
+      "src/Serilog/Configuration/LoggerMinimumLevelConfiguration.cs",
+      "src/Serilog/Core/LevelOverrideMap.cs",
+      "src/Serilog/Filters/Matching.cs",
+      "test/Serilog.PerformanceTests/Harness.cs",
+      "test/Serilog.PerformanceTests/SourceContextMatchBenchmark.cs",
+      "test/Serilog.Tests/Filters/MatchingTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 10,
+    "merge": "88c7d945b4406214906737439d2b2bf13d224649",
+    "base": "2d81a61e743b68235bb4d82b08a18cb36a8a90b1",
+    "head": "22271f2e2b31e8dcd47128bde8db4287e8425557",
+    "title": "Merge pull request #1445 from JakenVeina/logger-minimum-level-configuration-override-docs-update",
+    "changed_cs": [
+      "src/Serilog/Configuration/LoggerMinimumLevelConfiguration.cs",
+      "src/Serilog/Core/CustomDefaultMethodImplementationAttribute.cs",
+      "src/Serilog/ILogger.cs",
+      "test/Serilog.PerformanceTests/Harness.cs",
+      "test/Serilog.Tests/Core/LoggerTests.cs",
+      "test/Serilog.Tests/LoggerConfigurationTests.cs",
+      "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+      "test/Serilog.Tests/Support/DelegatingLogger.cs",
+      "test/TestDummies/Properties/AssemblyInfo.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1435,
+    "merge": "8f2263cb9e97146d9e180783dba601d9902eeeaf",
+    "base": "5e2164756efb6023a548b4eb91a71ed7edc3d9e1",
+    "head": "194ce557c8eec69ba969e50f9f963ae41fc31319",
+    "title": "ILogger.Write() fix: forward BindMessageTemplate(..) call to interface implementation",
+    "changed_cs": [
+      "src/Serilog/Core/CustomDefaultMethodImplementationAttribute.cs",
+      "src/Serilog/ILogger.cs",
+      "test/Serilog.PerformanceTests/Harness.cs",
+      "test/Serilog.Tests/Core/LoggerTests.cs",
+      "test/Serilog.Tests/LoggerConfigurationTests.cs",
+      "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+      "test/Serilog.Tests/Support/DelegatingLogger.cs",
+      "test/TestDummies/Properties/AssemblyInfo.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 7,
+    "merge": "1818ec6baad4a7524707c40e66e6d760b80c9697",
+    "base": "e2c828a289d626cb3810f99baf88384e9ce257d2",
+    "head": "ed1fc89570450eafd09d225cdf322fc616d4ae37",
+    "title": "Update NuGet.org key (Serilog Core publishing only)",
+    "changed_cs": [
+      "src/Serilog/Capturing/PropertyValueConverter.cs",
+      "test/Serilog.Tests/Core/MessageTemplateTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1427,
+    "merge": "645c173197cdae3e38e825ebd013b7fe97ea27c1",
+    "base": "2c7dbbfad6c607adad6a57f86e8cd680ddf620a1",
+    "head": "40857b626975186ce4f9179a343ef3bcbf2b4004",
+    "title": "BugFix Exception when using Stringify. Fix #1426",
+    "changed_cs": [
+      "src/Serilog/Capturing/PropertyValueConverter.cs",
+      "test/Serilog.Tests/Core/MessageTemplateTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 5,
+    "merge": "dd5194252eedf7df5f7238f2169bb556bde8ebbd",
+    "base": "90cdec6c722f2b94c2485366ad4fc685ed7d16fb",
+    "head": "8ae332d983b31044f4da0fa34e3b9cb85ba68bc9",
+    "title": "Merge pull request #1374 from rafaelsc/improvements/unitTest/parser",
+    "changed_cs": [
+      "src/Serilog/Core/Logger.cs",
+      "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1374,
+    "merge": "8ae332d983b31044f4da0fa34e3b9cb85ba68bc9",
+    "base": "c357da4e7e2e696473feb1a31f4677fbfe974ecc",
+    "head": "db18cbfcaa78835c8a3a338a273bef0529dec9ef",
+    "title": "Add more tests to MessageTemplateParser",
+    "changed_cs": [
+      "src/Serilog/Core/Logger.cs",
+      "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 4,
+    "merge": "90cdec6c722f2b94c2485366ad4fc685ed7d16fb",
+    "base": "ffc484a794390d3c99f8b37228357e3fdee6be18",
+    "head": "3007b0a535243d37090990a24d75c5124d704d21",
+    "title": "Dev version bump [skip ci]",
+    "changed_cs": [
+      "src/Serilog/Configuration/LoggerDestructuringConfiguration.cs",
+      "src/Serilog/Parsing/MessageTemplateParser.cs",
+      "test/Serilog.Tests/LoggerConfigurationTests.cs",
+      "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1366,
+    "merge": "2b13493739628ee533d3456b34caab07fdbb1da2",
+    "base": "5c127cbebda73391eb69f2aa9c9170376a758826",
+    "head": "3bb9e242aeac3f19fe7531fa5a6fe099ae7db2ed",
+    "title": "fix format strings with '+' not parsed correctly.",
+    "changed_cs": [
+      "src/Serilog/Parsing/MessageTemplateParser.cs",
+      "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1357,
+    "merge": "5c127cbebda73391eb69f2aa9c9170376a758826",
+    "base": "f4c879823ec722fc5614026728432a0eca457a11",
+    "head": "0494601e0b3fd238502ff1482a851e6a2e28134d",
+    "title": "Update summary of ToMaximumDepth method",
+    "changed_cs": [
+      "src/Serilog/Configuration/LoggerDestructuringConfiguration.cs",
+      "test/Serilog.Tests/LoggerConfigurationTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1316,
+    "merge": "8ed3afd0f2d942429832b6674a2f599c7fb1fa38",
+    "base": "70624912bf79cf0406516d57c0fc225d783d281f",
+    "head": "c8702094e95f3312a384e0f50c4e68483ad3d1ca",
+    "title": "WriteTo.Conditional()",
+    "changed_cs": [
+      "src/Serilog/Capturing/PropertyBinder.cs",
+      "src/Serilog/Configuration/LoggerEnrichmentConfiguration.cs",
+      "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+      "src/Serilog/Context/LogContextEnricher.cs",
+      "src/Serilog/Core/Enrichers/ConditionalEnricher.cs",
+      "src/Serilog/Core/Logger.cs",
+      "src/Serilog/Core/Pipeline/SilentLogger.cs",
+      "src/Serilog/Core/Sinks/ConditionalSink.cs",
+      "src/Serilog/Core/Sinks/SecondaryLoggerSink.cs",
+      "src/Serilog/Filters/Matching.cs",
+      "src/Serilog/Formatting/Display/MessageTemplateTextFormatter.cs",
+      "src/Serilog/Formatting/Json/JsonFormatter.cs",
+      "src/Serilog/LoggerConfiguration.cs",
+      "src/Serilog/Parsing/MessageTemplateParser.cs",
+      "src/Serilog/Parsing/PropertyToken.cs",
+      "src/Serilog/Rendering/MessageTemplateRenderer.cs",
+      "src/Serilog/Settings/KeyValuePairs/KeyValuePairSettings.cs",
+      "test/Serilog.PerformanceTests/BindingBenchmark.cs",
+      "test/Serilog.PerformanceTests/Support/ConcurrentDictionaryTemplateCache.cs",
+      "test/Serilog.Tests/Core/LevelOverrideMapTests.cs",
+      "test/Serilog.Tests/Core/LoggerTests.cs",
+      "test/Serilog.Tests/LoggerConfigurationTests.cs",
+      "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+      "test/Serilog.Tests/Support/CollectingEnricher.cs",
+      "test/TestDummies/DummyLoggerConfigurationExtensions.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1317,
+    "merge": "70624912bf79cf0406516d57c0fc225d783d281f",
+    "base": "36c39eb882533247e1880bdb376ce6a7cca01802",
+    "head": "c5233b2f61857be8100334b41be56e9201b3552c",
+    "title": "redundant usings due to var change",
+    "changed_cs": [
+      "src/Serilog/Capturing/PropertyBinder.cs",
+      "src/Serilog/Core/Logger.cs",
+      "src/Serilog/Core/Sinks/SecondaryLoggerSink.cs",
+      "src/Serilog/Filters/Matching.cs",
+      "src/Serilog/Formatting/Display/MessageTemplateTextFormatter.cs",
+      "src/Serilog/Formatting/Json/JsonFormatter.cs",
+      "src/Serilog/Parsing/MessageTemplateParser.cs",
+      "src/Serilog/Parsing/PropertyToken.cs",
+      "src/Serilog/Rendering/MessageTemplateRenderer.cs",
+      "src/Serilog/Settings/KeyValuePairs/KeyValuePairSettings.cs",
+      "test/Serilog.PerformanceTests/BindingBenchmark.cs",
+      "test/Serilog.PerformanceTests/Support/ConcurrentDictionaryTemplateCache.cs",
+      "test/Serilog.Tests/Core/LevelOverrideMapTests.cs",
+      "test/Serilog.Tests/Core/LoggerTests.cs",
+      "test/Serilog.Tests/MethodOverloadConventionTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1314,
+    "merge": "decfe093b48a152364df30322fc8532996e3e60b",
+    "base": "8ce1bcec9d7a82c4e7990927470d7e3948bfdafe",
+    "head": "7ba406abb95b7fb791e6f244e05fed694a7d3620",
+    "title": "use static where possible",
+    "changed_cs": [
+      "src/Serilog/Capturing/DepthLimiter.cs",
+      "src/Serilog/Capturing/PropertyValueConverter.cs",
+      "src/Serilog/Filters/Matching.cs",
+      "src/Serilog/Formatting/Json/JsonValueFormatter.cs",
+      "src/Serilog/Settings/KeyValuePairs/KeyValuePairSettings.cs",
+      "test/Serilog.PerformanceTests/Support/NullTextWriter.cs",
+      "test/Serilog.Tests/Core/LoggerExtensionsTests.cs",
+      "test/Serilog.Tests/Formatting/Display/MessageTemplateTextFormatterTests.cs",
+      "test/Serilog.Tests/Formatting/Json/JsonFormatterTests.cs",
+      "test/Serilog.Tests/LogTests.cs",
+      "test/Serilog.Tests/LoggerConfigurationTests.cs",
+      "test/Serilog.Tests/MethodOverloadConventionTests.cs",
+      "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+    ]
+  },
+  {
+    "repo": "Serilog",
+    "pr": 1255,
+    "merge": "ec87800f0375ca8c58285987e950703310a3be65",
+    "base": "ca9664f3091815a449d62fd2811b7f755d281e53",
+    "head": "e61ffbf84239a540a90e0509d95bb2c2598db134",
+    "title": "Handwritten implementation of IEnumerator  to avoid allocations",
+    "changed_cs": [
+      "src/Serilog/Capturing/GetablePropertyFinder.cs",
+      "src/Serilog/Context/ImmutableStack.cs",
+      "src/Serilog/Formatting/Display/LevelOutputFormat.cs",
+      "test/Serilog.Tests/Capturing/GetablePropertyFinderTests.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 949,
+    "merge": "0936533b04d7fb3f4752dd072378d6dd7525ae87",
+    "base": "257a8388c3652690e7ce1fc45c56cfae25382855",
+    "head": "09dfcba4ef8e41a5e0bd13b35499090b51be32d4",
+    "title": "Updated Result for nullable results as well and remove warning",
+    "changed_cs": [
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
+      "tests/UnitTests/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+      "tests/UnitTests/ApplicationCore/Specifications/CatalogItemsSpecification.cs",
+      "tests/UnitTests/Builders/BasketBuilder.cs",
+      "tests/UnitTests/MediatorHandlers/OrdersTests/GetMyOrders.cs",
+      "tests/UnitTests/MediatorHandlers/OrdersTests/GetOrderDetails.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 878,
+    "merge": "d22efcc6f4ed97c1e2583b013c7ac9d5300558f0",
+    "base": "803c7dc91faa1569833a427f677fcb6995e3f798",
+    "head": "e7cc45edaf0424dd992f2dc9a6d326b7c7a125b5",
+    "title": "Fix dotnet-xunit warning NU1604",
+    "changed_cs": [
+      "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
+      "src/Web/Features/MyOrders/GetMyOrders.cs",
+      "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+      "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+      "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+      "src/Web/Program.cs",
+      "src/Web/ViewModels/OrderDetailViewModel.cs",
+      "src/Web/ViewModels/OrderViewModel.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 876,
+    "merge": "f8d1d1e15b11f0158bad0512dd9da0212e7f770f",
+    "base": "f97e1751cde4700c25ddf7d13b331c0ab79f246c",
+    "head": "0daa2750bd33060e6c9961e195f5287d8848fe17",
+    "title": "fixed connection strings",
+    "changed_cs": [
+      "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
+      "src/Web/Features/MyOrders/GetMyOrders.cs",
+      "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+      "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+      "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+      "src/Web/ViewModels/OrderDetailViewModel.cs",
+      "src/Web/ViewModels/OrderViewModel.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 1,
+    "merge": "9955c69264f6930deab8ea17f0f952f2cac5b415",
+    "base": "a72dd775eebe9898d2ef5acc97f7667c2cca0ed7",
+    "head": "fc3f7b27469c1370cc9a14f99c3aa37c4eaf33a3",
+    "title": "Remove invalid files",
+    "changed_cs": [
+      "src/Web/AzureDeveloperCliCredential.cs",
+      "src/Web/Program.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 818,
+    "merge": "9a955a29af2f8dbcb399d71ee4de734428979077",
+    "base": "61d2d6cdd0d36b4935d809d4580b8a11267e2325",
+    "head": "4b691494823bf83cdbfdb5db717367446b88c040",
+    "title": "Update libman.json",
+    "changed_cs": [
+      "src/BlazorAdmin/CustomAuthStateProvider.cs",
+      "src/PublicApi/CatalogBrandEndpoints/CatalogBrandListEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/CatalogItemGetByIdEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/CreateCatalogItemEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/DeleteCatalogItemEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.cs",
+      "src/PublicApi/CatalogTypeEndpoints/CatalogTypeListEndpoint.cs",
+      "src/PublicApi/Program.cs",
+      "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
+      "src/Web/Configuration/ConfigureWebServices.cs",
+      "src/Web/Controllers/UserController.cs",
+      "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+      "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+      "src/Web/Program.cs",
+      "tests/PublicApiIntegrationTests/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 541,
+    "merge": "54c9e4df5fa134b7f97239ac7782ce2d42d6c5f7",
+    "base": "9251940529a52dcbacf3e38830483c1802d0a4ed",
+    "head": "1c9c491c515825bb4a9fd08165b18d097bb644ad",
+    "title": "Included feedback",
+    "changed_cs": [
+      "src/ApplicationCore/Interfaces/IFileSystem.cs",
+      "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+      "src/Infrastructure/Services/WebFileSystem.cs",
+      "src/PublicApi/CatalogItemEndpoints/Create.cs",
+      "src/PublicApi/CatalogItemEndpoints/Update.cs",
+      "src/PublicApi/Startup.cs",
+      "src/Web/Controllers/FileController.cs",
+      "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/CreateEndpoint.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 322,
+    "merge": "9a21db6979da339c109d717fe3809bbaa8555400",
+    "base": "8ccc87d7e9fc8ae63d8c99442e283da8ea31d9c8",
+    "head": "d422c42c24c68a78cd8fbfcdf490be9b445c84bb",
+    "title": "minor code rearange, quantity as optional parameter, removed some unused fields",
+    "changed_cs": [
+      "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
+      "src/ApplicationCore/Interfaces/IBasketService.cs",
+      "src/ApplicationCore/Services/BasketService.cs",
+      "src/Web/Pages/Basket/Index.cshtml.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 300,
+    "merge": "9ce4bcf76fcdea75f007316725d1744051cdedda",
+    "base": "c370b8affb3533a852dc4c2e4df89e7ec0a72af5",
+    "head": "70e009bda20734e726af9c4c78ee82b8aa86780e",
+    "title": "Allow to remove items from the basket setting quantity to zero",
+    "changed_cs": [
+      "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
+      "src/ApplicationCore/Services/BasketService.cs",
+      "tests/IntegrationTests/Repositories/BasketRepositoryTests/SetQuantities.cs",
+      "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketAddItem.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 296,
+    "merge": "1cc0e51d1682fe8629e5b4a0a8efa4b8121cb0e7",
+    "base": "8e1952158a7a5a5c65c12493a00d0ef4b3d0dd09",
+    "head": "11cb67a14a93b41d1218726b33250f9bd2d8bd40",
+    "title": "Remove references to namespace \"Microsoft.EntityFrameworkCore.*\" in order to remove dependencies to EF Core in project ApplicationCore. Remove any packages related to EF Core from ApplicationCore.csproj.",
+    "changed_cs": [
+      "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+      "src/ApplicationCore/Entities/OrderAggregate/CatalogItemOrdered.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 294,
+    "merge": "b53f21f5851e4610c3b1b94e5e93a71e0b62ccdf",
+    "base": "954df47b4a675784959e6cf6a8ad0fcb5af7474e",
+    "head": "d4993abd5f81ad01f8f90599d33cca3bc88f9832",
+    "title": "Rolling back change to use extension method to wiret up config",
+    "changed_cs": [
+      "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+      "src/ApplicationCore/Entities/OrderAggregate/CatalogItemOrdered.cs",
+      "src/Infrastructure/Data/CatalogContext.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 291,
+    "merge": "954df47b4a675784959e6cf6a8ad0fcb5af7474e",
+    "base": "6eba16b09b4b49b610f516e034a1509fbb3ec943",
+    "head": "4fb07d4d889ad22e2e2d29f382832c59cd0546e4",
+    "title": "Configuring to use In-Memory Database by default",
+    "changed_cs": [
+      "src/Infrastructure/Data/CatalogContext.cs",
+      "src/Infrastructure/Data/Config/AddressConfiguration.cs",
+      "src/Infrastructure/Data/Config/BasketConfiguration.cs",
+      "src/Infrastructure/Data/Config/BasketItemConfiguration.cs",
+      "src/Infrastructure/Data/Config/CatalogBrandConfiguration.cs",
+      "src/Infrastructure/Data/Config/CatalogItemConfiguration.cs",
+      "src/Infrastructure/Data/Config/CatalogItemOrderedConfiguration.cs",
+      "src/Infrastructure/Data/Config/CatalogTypeConfiguration.cs",
+      "src/Infrastructure/Data/Config/OrderConfiguration.cs",
+      "src/Infrastructure/Data/Config/OrderItemConfiguration.cs",
+      "src/Infrastructure/Data/Migrations/20190818191507_UpdatedConstraints.cs",
+      "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs",
+      "src/Web/Startup.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 280,
+    "merge": "6eba16b09b4b49b610f516e034a1509fbb3ec943",
+    "base": "f7ef0aca37b8e77b5b3a16f6861aca204f15280e",
+    "head": "b5defc8d347e5714e4efaa410308236a93441104",
+    "title": "Capitalized isPaging property",
+    "changed_cs": [
+      "src/ApplicationCore/Interfaces/ISpecification.cs",
+      "src/ApplicationCore/Specifications/BaseSpecification.cs",
+      "src/Infrastructure/Data/CatalogContext.cs",
+      "src/Infrastructure/Data/SpecificationEvaluator.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 268,
+    "merge": "4706682973364cdaa7f129a593d4269c569eb0ba",
+    "base": "86f65e3541c3b8e56baebacff380387eb0d1b2b4",
+    "head": "b3d855847bec0de45ee12bb970e12782fee86afb",
+    "title": "Updating route in test to use the proper login route",
+    "changed_cs": [
+      "src/Web/Areas/Identity/Pages/Account/ConfirmEmail.cshtml.cs",
+      "src/Web/Controllers/AccountController.cs",
+      "src/Web/Extensions/UrlHelperExtensions.cs",
+      "tests/FunctionalTests/Web/Controllers/AccountControllerSignIn.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 267,
+    "merge": "86f65e3541c3b8e56baebacff380387eb0d1b2b4",
+    "base": "ba8bdfad849cbc3231243fc3d02cf7cf3708b3af",
+    "head": "3ec24771754fe8cd341f8560ffd16694e71f4c4c",
+    "title": "Updating to match previous logic",
+    "changed_cs": [
+      "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
+      "src/Web/Startup.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 264,
+    "merge": "ba8bdfad849cbc3231243fc3d02cf7cf3708b3af",
+    "base": "246fa950292e7d4b0244de6a06a9e2f2ea24799d",
+    "head": "8006754cd7eef1d1369ca7ecfd4cfb288c81e44d",
+    "title": "Rename test",
+    "changed_cs": [
+      "src/ApplicationCore/Entities/BasketAggregate/BasketItem.cs",
+      "src/ApplicationCore/Services/BasketService.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 258,
+    "merge": "a805c6136deec093e40dcc7ecbeb0caaa0b0f08f",
+    "base": "e87f11b0e156c61aa7dd741692f4604a87dcd5d6",
+    "head": "8924df0e1b45e6b503f735d89722e8a2f47a2326",
+    "title": "Adding migration for updating defaults",
+    "changed_cs": [
+      "src/Infrastructure/Data/CatalogContext.cs",
+      "src/Infrastructure/Data/Migrations/20190601014740_UpdatingDefaultDataTypes.cs",
+      "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 243,
+    "merge": "b7d806dacd8ba61b740025b6da9be6ce470809e4",
+    "base": "ccaef555ab7df0ae5bf66b198438f3d74d321ead",
+    "head": "0d606d18572a405c76f2e2a05456bdc89a5d4f81",
+    "title": "Removing the apply in the CatalogFilterPaginationSpecification",
+    "changed_cs": [
+      "src/ApplicationCore/Interfaces/ISpecification.cs",
+      "src/ApplicationCore/Specifications/BaseSpecification.cs",
+      "src/Infrastructure/Data/SpecificationEvaluator.cs"
+    ]
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 242,
+    "merge": "1632f7fb7589f71b01138ea7b2ee49e8c4fe19e1",
+    "base": "c0f0cf3a1abdef7a92b74e976aa40d4c697b534f",
+    "head": "693c6c4466e37b3723ce988b60b3075bc263f744",
+    "title": "BasketService no onger uses UriComposer",
+    "changed_cs": [
+      "src/ApplicationCore/Services/BasketService.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
+      "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
     ]
   }
 ]

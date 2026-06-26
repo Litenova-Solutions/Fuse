@@ -41,10 +41,13 @@ public sealed class EmissionPipelineOrderingTests
 
         var pipeline = new EmissionPipeline();
         var writer = new RecordingOutputWriter();
+        // SplitTokens (per-part size) and MaxTokens (hard total cap) are independent axes: the part size forces
+        // a rotation between the two entries, while the total cap is generous enough to admit both. Each entry
+        // costs 80 plus the per-entry marker overhead, so a 120-token part holds one at a time.
         var options = new EmissionOptions
         {
             IncludeManifest = false,
-            MaxTokens = 120,
+            MaxTokens = 10000,
             SplitTokens = 120,
         };
 
@@ -95,6 +98,41 @@ public sealed class EmissionPipelineOrderingTests
         await pipeline.EmitAsync(entries, options, writer);
 
         Assert.Equal(["large.cs", "small.cs"], writer.EntryPaths);
+    }
+
+    [Fact]
+    public async Task EmitAsync_DoesNotWriteEntryThatWouldExceedMaxTokens()
+    {
+        // Two equal entries: the first fits, the second would cross the hard cap. The over-budget entry must
+        // not be written, and the reported total must stay within MaxTokens.
+        var first = CreateEntry("first.cs", "a", tokenCount: 50).WithRelevanceScore(1.0);
+        var second = CreateEntry("second.cs", "b", tokenCount: 50).WithRelevanceScore(0.5);
+
+        var pipeline = new EmissionPipeline();
+        var writer = new RecordingOutputWriter();
+        // Each entry costs 50 plus the 30-token marker overhead (80). The budget admits one but not two.
+        var options = new EmissionOptions { IncludeManifest = false, MaxTokens = 120 };
+
+        var result = await pipeline.EmitAsync([first, second], options, writer);
+
+        Assert.Equal(["first.cs"], writer.EntryPaths);
+        Assert.True(result.TotalTokens <= options.MaxTokens);
+    }
+
+    [Fact]
+    public async Task EmitAsync_AlwaysWritesMostRelevantEntryEvenWhenAloneOverBudget()
+    {
+        // The single closest match must survive even if it alone exceeds the budget, so a scoped run never
+        // emits nothing.
+        var seed = CreateEntry("seed.cs", new string('a', 500), tokenCount: 500).WithRelevanceScore(1.0);
+
+        var pipeline = new EmissionPipeline();
+        var writer = new RecordingOutputWriter();
+        var options = new EmissionOptions { IncludeManifest = false, MaxTokens = 100 };
+
+        await pipeline.EmitAsync([seed], options, writer);
+
+        Assert.Equal(["seed.cs"], writer.EntryPaths);
     }
 
     private static FusedContent CreateEntry(string path, string body, int tokenCount)

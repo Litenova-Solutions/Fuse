@@ -7,15 +7,6 @@ using Fuse.Plugins.Abstractions.Outline;
 namespace Fuse.Emission.Manifest;
 
 /// <summary>
-///     One file in a table of contents: its path, the token cost of reading it under the current reduction,
-///     and its structural outline.
-/// </summary>
-/// <param name="Path">The normalized, forward-slash relative path of the file.</param>
-/// <param name="Tokens">The token cost of reading the file's reduced content.</param>
-/// <param name="Symbols">The declared types and members, or an empty list when no outline is available.</param>
-public sealed record TocFileEntry(string Path, long Tokens, IReadOnlyList<OutlineSymbol> Symbols);
-
-/// <summary>
 ///     Builds the table-of-contents document: a directory tree annotated with per-file token costs and a
 ///     symbol outline. The document is a cheap first call that lets an agent decide which files to read in full
 ///     before spending the tokens to fetch them.
@@ -23,30 +14,51 @@ public sealed record TocFileEntry(string Path, long Tokens, IReadOnlyList<Outlin
 public static class TableOfContentsBuilder
 {
     /// <summary>
-    ///     Renders a table of contents for the supplied files in the requested output format.
+    ///     Renders a table of contents for the supplied files in the requested output format and detail level.
     /// </summary>
     /// <param name="files">The files to list, each with its token cost and outline.</param>
     /// <param name="format">The output format that selects the document representation.</param>
+    /// <param name="detail">How much per-file and per-symbol detail to render.</param>
     /// <returns>
     ///     The rendered table-of-contents document terminated by a newline, or <see cref="string.Empty" />
     ///     when <paramref name="files" /> is empty.
     /// </returns>
     /// <remarks>
     ///     Files are listed sorted by path. <see cref="OutputFormat.Json" /> produces a structured object;
-    ///     all other formats produce an indented directory tree with a header line.
+    ///     all other formats produce an indented directory tree with a header line. Use a lower
+    ///     <paramref name="detail" /> level to keep the document within a size budget on a large codebase.
     /// </remarks>
-    public static string Build(IReadOnlyList<TocFileEntry> files, OutputFormat format)
+    public static string Build(
+        IReadOnlyList<TableOfContentsFileEntry> files,
+        OutputFormat format,
+        TableOfContentsDetail detail = TableOfContentsDetail.Full)
     {
         if (files.Count == 0)
             return string.Empty;
 
         return format == OutputFormat.Json
-            ? BuildJson(files)
-            : BuildTree(files);
+            ? BuildJson(files, detail)
+            : BuildTree(files, detail);
     }
 
-    private static string BuildJson(IReadOnlyList<TocFileEntry> files)
+    private static string BuildJson(IReadOnlyList<TableOfContentsFileEntry> files, TableOfContentsDetail detail)
     {
+        if (detail == TableOfContentsDetail.Directories)
+        {
+            var dirs = AggregateByDirectory(files);
+            var dirDto = new JsonTocDto
+            {
+                Files = files.Count,
+                ReadCostTokens = files.Sum(f => f.Tokens),
+                Entries = dirs
+                    .Select(d => new JsonTocFileDto { Path = d.Directory, Tokens = d.Tokens, Symbols = [] })
+                    .ToArray(),
+            };
+
+            return JsonSerializer.Serialize(dirDto, FuseEmissionJsonContext.Default.JsonTocDto) + "\n";
+        }
+
+        var includeSymbols = detail == TableOfContentsDetail.Full;
         var dto = new JsonTocDto
         {
             Files = files.Count,
@@ -57,14 +69,16 @@ public static class TableOfContentsBuilder
                 {
                     Path = f.Path,
                     Tokens = f.Tokens,
-                    Symbols = f.Symbols
-                        .Select(s => new JsonTocSymbolDto
-                        {
-                            Kind = s.Kind,
-                            Name = s.Name,
-                            Members = s.Members.ToArray(),
-                        })
-                        .ToArray(),
+                    Symbols = includeSymbols
+                        ? f.Symbols
+                            .Select(s => new JsonTocSymbolDto
+                            {
+                                Kind = s.Kind,
+                                Name = s.Name,
+                                Members = s.Members.ToArray(),
+                            })
+                            .ToArray()
+                        : [],
                 })
                 .ToArray(),
         };
@@ -72,7 +86,7 @@ public static class TableOfContentsBuilder
         return JsonSerializer.Serialize(dto, FuseEmissionJsonContext.Default.JsonTocDto) + "\n";
     }
 
-    private static string BuildTree(IReadOnlyList<TocFileEntry> files)
+    private static string BuildTree(IReadOnlyList<TableOfContentsFileEntry> files, TableOfContentsDetail detail)
     {
         var ordered = files.OrderBy(f => f.Path, StringComparer.OrdinalIgnoreCase).ToList();
         var totalTokens = ordered.Sum(f => f.Tokens);
@@ -81,7 +95,32 @@ public static class TableOfContentsBuilder
         sb.Append("<!-- fuse:table-of-contents files=").Append(ordered.Count)
             .Append(" read-cost=~").Append(FormatTokens(totalTokens)).Append(" tokens\n");
         sb.Append("     A map of the codebase. Each file shows its token cost to read and the types it declares.\n");
+
+        // When degraded to fit a size budget, say so plainly so the agent treats the map as a starting point
+        // rather than the whole picture, and knows how to drill in.
+        switch (detail)
+        {
+            case TableOfContentsDetail.PathsOnly:
+                sb.Append("     Type outlines omitted to fit the size budget; call fuse_skeleton for signatures.\n");
+                break;
+            case TableOfContentsDetail.Directories:
+                sb.Append("     Large codebase: showing directories and aggregate token costs only. Call fuse_toc\n");
+                sb.Append("     on a subdirectory, or fuse_search/fuse_focus, to drill into files.\n");
+                break;
+        }
+
         sb.Append("     Fetch a file's full content with fuse_focus, fuse_search, or by path. -->\n");
+
+        if (detail == TableOfContentsDetail.Directories)
+        {
+            foreach (var dir in AggregateByDirectory(ordered))
+            {
+                sb.Append(dir.Directory).Append(" (").Append(dir.FileCount).Append(" files, ~")
+                    .Append(FormatTokens(dir.Tokens)).Append(" tokens)\n");
+            }
+
+            return sb.ToString();
+        }
 
         // Render an indented directory tree. Directories that contain only a single child collapse visually by
         // still printing each path segment, which keeps the tree unambiguous and cheap to scan.
@@ -100,6 +139,9 @@ public static class TableOfContentsBuilder
             sb.Append(Indent(dirs.Length)).Append(fileName)
                 .Append(" (~").Append(FormatTokens(file.Tokens)).Append(" tokens)\n");
 
+            if (detail != TableOfContentsDetail.Full)
+                continue;
+
             foreach (var symbol in file.Symbols)
             {
                 sb.Append(Indent(dirs.Length + 1)).Append(symbol.Kind).Append(' ').Append(symbol.Name);
@@ -110,6 +152,22 @@ public static class TableOfContentsBuilder
         }
 
         return sb.ToString();
+    }
+
+    // Groups files by their immediate parent directory (root files under "."), preserving sort order, so the
+    // Directories detail level can show one aggregate row per directory instead of every file.
+    private static IReadOnlyList<TableOfContentsDirectoryAggregate> AggregateByDirectory(
+        IReadOnlyList<TableOfContentsFileEntry> files)
+    {
+        return files
+            .GroupBy(f =>
+            {
+                var slash = f.Path.LastIndexOf('/');
+                return slash < 0 ? "." : f.Path[..slash];
+            })
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new TableOfContentsDirectoryAggregate(g.Key + "/", g.Count(), g.Sum(f => f.Tokens)))
+            .ToList();
     }
 
     private static int CommonPrefixLength(string[] a, string[] b)

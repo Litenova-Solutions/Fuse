@@ -12,26 +12,42 @@ namespace Fuse.Fusion.Session;
 /// </remarks>
 public sealed class InMemorySessionTracker : ISessionTracker
 {
-    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ulong>> _sessions = new(StringComparer.Ordinal);
+    // Content larger than this is not retained for diffing (only its hash is kept), so a session's memory stays
+    // bounded; a later change to such a file falls back to a whole-file resend. The unified-diff generator caps
+    // diffing at its own line limit anyway, so retaining very large bodies would not pay off.
+    private const int MaxRetainedChars = 64 * 1024;
+
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, Entry>> _sessions = new(StringComparer.Ordinal);
 
     /// <inheritdoc />
-    public bool TryClaim(string sessionId, string path, ulong contentHash)
+    public SessionClaim Claim(string sessionId, string path, ulong contentHash, string content)
     {
-        var session = _sessions.GetOrAdd(sessionId, _ => new ConcurrentDictionary<string, ulong>(StringComparer.OrdinalIgnoreCase));
+        var session = _sessions.GetOrAdd(sessionId, _ => new ConcurrentDictionary<string, Entry>(StringComparer.OrdinalIgnoreCase));
+        var retained = content.Length <= MaxRetainedChars ? content : null;
 
-        var isNew = true;
+        var status = SessionEntryStatus.New;
+        string? prior = null;
         session.AddOrUpdate(
             path,
-            _ => contentHash,
+            _ => new Entry(contentHash, retained),
             (_, existing) =>
             {
-                isNew = existing != contentHash;
-                return contentHash;
+                if (existing.Hash == contentHash)
+                {
+                    status = SessionEntryStatus.Unchanged;
+                    return existing; // keep the retained content as-is
+                }
+
+                status = SessionEntryStatus.Changed;
+                prior = existing.Content;
+                return new Entry(contentHash, retained);
             });
 
-        return isNew;
+        return new SessionClaim(status, prior);
     }
 
     /// <inheritdoc />
     public void Reset(string sessionId) => _sessions.TryRemove(sessionId, out _);
+
+    private sealed record Entry(ulong Hash, string? Content);
 }

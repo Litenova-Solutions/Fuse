@@ -16,6 +16,11 @@
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\..\src\Host\Fuse.Cli\Fuse.Cli.csproj"/>
         <ProjectReference Include="..\..\src\Core\Fuse.Fusion\Fuse.Fusion.csproj"/>
+        <ProjectReference Include="..\..\src\Core\Fuse.Reduction\Fuse.Reduction.csproj"/>
+        <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Formats.Web\Fuse.Plugins.Formats.Web.csproj"/>
+        <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Languages.CSharp\Fuse.Plugins.Languages.CSharp.csproj"/>
+        <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj"/>
     </ItemGroup>
 </Project>

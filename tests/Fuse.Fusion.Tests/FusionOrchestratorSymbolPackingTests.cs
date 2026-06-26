@@ -8,9 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fuse.Fusion.Tests;
 
-// Exercises symbol-level packing (roadmap 2.2) end to end through the default regex tier, which is also the
-// Native AOT path. A focused query keeps the members it matched in full and collapses the rest of the host
-// type to signatures.
+// Exercises symbol-level packing end to end: a focused query keeps matched members in full and collapses the
+// rest of the host type to signatures.
 public sealed class FusionOrchestratorSymbolPackingTests : IDisposable
 {
     private readonly string _sourceDirectory;
@@ -37,7 +36,7 @@ public sealed class FusionOrchestratorSymbolPackingTests : IDisposable
             """);
 
         var services = new ServiceCollection();
-        services.AddFuse();
+        services.AddFuseForTests();
         _serviceProvider = services.BuildServiceProvider();
     }
 

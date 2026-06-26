@@ -36,7 +36,7 @@ public sealed class SymbolScopingTests : IDisposable
     [Fact]
     public async Task FuseAsync_FocusOnTypeDotMember_EmitsOnlyThatMemberBody()
     {
-        var provider = new ServiceCollection().AddFuse().AddCSharpRoslyn().BuildServiceProvider();
+        var provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
         var orchestrator = provider.GetRequiredService<FusionOrchestrator>();
 
         var request = new FusionRequest(

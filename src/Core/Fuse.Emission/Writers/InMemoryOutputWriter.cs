@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Fuse.Emission.Models;
 using Fuse.Reduction.Models;
@@ -18,7 +19,7 @@ public sealed class InMemoryOutputWriter : IOutputWriter
     private readonly IEntryFormatter _entryFormatter;
     private readonly StringBuilder _contentBuilder = new();
     private readonly List<FileTokenInfo> _fileTokenStats = new();
-    private readonly DateTime _startTime;
+    private readonly Stopwatch _stopwatch;
 
     private int _processedFileCount;
     private bool _completed;
@@ -34,7 +35,7 @@ public sealed class InMemoryOutputWriter : IOutputWriter
         _options = options;
         _ = tokenCounter;
         _entryFormatter = entryFormatter;
-        _startTime = DateTime.Now;
+        _stopwatch = Stopwatch.StartNew();
     }
 
     /// <inheritdoc />
@@ -98,7 +99,7 @@ public sealed class InMemoryOutputWriter : IOutputWriter
 
         _completed = true;
 
-        var duration = DateTime.Now - _startTime;
+        var duration = _stopwatch.Elapsed;
         var topTokenFiles = OutputWriterHelpers.BuildTopTokenFiles(
             _options.TrackTopTokenFiles ? _fileTokenStats : null);
 

@@ -36,8 +36,9 @@ fuse dotnet --directory ./src --changed-since main --include-dependents
 The seed is the set of files changed since a git ref, which can be a branch, a commit,
 or a relative reference like `HEAD~5`. `--include-dependents` (on by default) adds the
 first-degree dependents of each changed file, the code most likely to break. This mode
-needs `git` on your PATH. It is the strongest mode by measurement: 88 percent change
-recall on real merged pull requests.
+needs `git` on your PATH. It is the strongest mode by measurement: 89 percent change
+recall on real merged pull requests in the
+[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests).
 
 ## Query: Scope by Topic
 
@@ -50,9 +51,9 @@ expands through their dependencies. Ranking weights a file's declared type and m
 names and its path above the body, so a query lands on the file that declares a
 concept rather than one that merely mentions it. Query needs no prior knowledge of a
 change, which makes it the honest default for one-call context: in the
-[Layer 4 scenario](/docs/project/benchmarks) a scoped query call reached 51 percent of
-the files 24 real pull requests touched at a 50,000-token budget, in about 40,000
-tokens against roughly 512,000 for a whole-repository packer dump. When a git base is
+[Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix) a scoped query call reached 49 percent of
+the files 90 real pull requests touched at a 50,000-token budget, in about 37,000
+tokens against roughly 425,000 for a whole-repository packer dump. When a git base is
 available, the changes mode below reaches higher recall.
 
 Focus and query ranking also fold in a small importance prior: at equal relevance, a file
@@ -65,7 +66,7 @@ member, then for a matched file emits a thin host-type skeleton: the members the
 stay in full and the rest of the type collapses to signatures. A focused question pulls in
 the methods it needs plus the shell of their type, not every line of the file. A query by
 type name still pulls the whole type in; only a query that lands on specific members trims
-the rest. The fallback path (no precision tier) chunks more coarsely but behaves the same way.
+the rest. Member boundaries come from the Roslyn parse tree.
 
 ## Spending the Token Budget
 
@@ -85,10 +86,7 @@ pack (above) then keeps the highest relevance-per-token entries and drops the re
 
 ## A Note on Accuracy
 
-The default dependency graph is regex-based and best-effort: it can miss edges from
-dynamic dispatch or reflection. For accurate edges and member-level scoping, the
-[precision tier](/docs/concepts/precision-tier) swaps in Roslyn. The ranking and
-traversal are detailed in [Scoping internals](/docs/internals/scoping-internals).
+The dependency graph for C# is built from Roslyn syntax analysis and is best-effort: it can miss edges from dynamic dispatch or reflection because it does not bind types across a compilation. Query and focus scoping also rest on a lexical BM25 index, so a query that shares no vocabulary with the target file can miss. The ranking and traversal are detailed in [Scoping internals](/docs/internals/scoping-internals).
 
 ## Next
 

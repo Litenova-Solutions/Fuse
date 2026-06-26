@@ -200,4 +200,19 @@ public static class WorkspaceIndexSchema
         CREATE INDEX IF NOT EXISTS idx_cochange_a ON git_cochange(path_a);
         CREATE INDEX IF NOT EXISTS idx_cochange_b ON git_cochange(path_b);
         """;
+
+    /// <summary>
+    ///     DDL for the FTS5 chunk search index. Created separately from <see cref="CreateTablesDdl" /> so a
+    ///     runtime without FTS5 can still build the relational schema and fall back to no full-text search.
+    /// </summary>
+    /// <remarks>
+    ///     Column order matters: the relevance weights in the search query (see the store's search path)
+    ///     are positional. <c>chunk_id</c> is unindexed and used only to join hits back to the
+    ///     <c>chunks</c> table.
+    /// </remarks>
+    public const string CreateFtsDdl =
+        "CREATE VIRTUAL TABLE IF NOT EXISTS chunk_fts USING fts5(" +
+        "  chunk_id UNINDEXED," +
+        "  path, name, symbols, signature, comments, body," +
+        "  tokenize = 'unicode61');";
 }

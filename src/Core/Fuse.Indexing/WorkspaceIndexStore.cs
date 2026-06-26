@@ -21,6 +21,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     private readonly ILogger<WorkspaceIndexStore>? _logger;
     private int _schemaVersion;
     private bool _initialized;
+    private bool _ftsAvailable;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="WorkspaceIndexStore" /> class.
@@ -36,6 +37,12 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     /// <summary>The absolute path to the index database file.</summary>
     public string DatabasePath => _connectionFactory.DatabasePath;
 
+    /// <summary>
+    ///     Whether full-text search is available. False when the runtime lacks FTS5; searches then
+    ///     return no hits until a fallback index is built.
+    /// </summary>
+    public bool FullTextSearchAvailable => _ftsAvailable;
+
     /// <inheritdoc />
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
@@ -44,11 +51,32 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await ApplyDatabasePragmasAsync(connection, cancellationToken);
         _schemaVersion = await WorkspaceIndexMigrator.MigrateAsync(connection, cancellationToken);
+        _ftsAvailable = await TryCreateFtsAsync(connection, cancellationToken);
         _initialized = true;
         _logger?.LogDebug(
-            "Workspace index initialized at {DatabasePath} (schema v{SchemaVersion}).",
+            "Workspace index initialized at {DatabasePath} (schema v{SchemaVersion}, fts={FtsAvailable}).",
             _connectionFactory.DatabasePath,
-            _schemaVersion);
+            _schemaVersion,
+            _ftsAvailable);
+    }
+
+    // FTS5 ships with the bundled SQLite, but a stripped runtime can lack it. Creating the virtual table is the
+    // honest availability probe: on failure the relational schema is intact and search degrades to empty rather
+    // than crashing the run.
+    private async Task<bool> TryCreateFtsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = WorkspaceIndexSchema.CreateFtsDdl;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return true;
+        }
+        catch (SqliteException ex)
+        {
+            _logger?.LogWarning(ex, "FTS5 unavailable at {DatabasePath}; full-text search disabled.", _connectionFactory.DatabasePath);
+            return false;
+        }
     }
 
     /// <inheritdoc />
@@ -298,26 +326,75 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         var sigParam = command.Parameters.Add("$sig", SqliteType.Text);
         var outlineParam = command.Parameters.Add("$outline", SqliteType.Text);
 
-        foreach (var chunk in chunks)
+        // FTS is a standalone (non-content) table managed manually: delete then insert by chunk_id so a
+        // re-indexed chunk replaces its prior search row instead of duplicating it.
+        SqliteCommand? ftsDelete = null;
+        SqliteCommand? ftsInsert = null;
+        if (_ftsAvailable)
         {
-            var fileId = await ResolveFileIdAsync(connection, transaction, chunk.FilePath, fileIds, cancellationToken);
-            if (fileId is null)
-                continue;
+            ftsDelete = connection.CreateCommand();
+            ftsDelete.Transaction = transaction;
+            ftsDelete.CommandText = "DELETE FROM chunk_fts WHERE chunk_id = $id;";
+            ftsDelete.Parameters.Add("$id", SqliteType.Text);
 
-            idParam.Value = chunk.ChunkId;
-            fileParam.Value = fileId.Value;
-            symbolParam.Value = (object?)chunk.SymbolId ?? DBNull.Value;
-            kindParam.Value = chunk.Kind;
-            nameParam.Value = (object?)chunk.Name ?? DBNull.Value;
-            stableParam.Value = chunk.StableKey;
-            startParam.Value = chunk.StartLine;
-            endParam.Value = chunk.EndLine;
-            hashParam.Value = chunk.TextHash;
-            tokensParam.Value = chunk.TokenEstimate;
-            reducedParam.Value = chunk.ReducedTokenEstimate;
-            sigParam.Value = (object?)chunk.Signature ?? DBNull.Value;
-            outlineParam.Value = (object?)chunk.Outline ?? DBNull.Value;
-            await command.ExecuteNonQueryAsync(cancellationToken);
+            ftsInsert = connection.CreateCommand();
+            ftsInsert.Transaction = transaction;
+            ftsInsert.CommandText = """
+                INSERT INTO chunk_fts(chunk_id, path, name, symbols, signature, comments, body)
+                VALUES($id, $path, $name, $symbols, $sig, $comments, $body);
+                """;
+            ftsInsert.Parameters.Add("$id", SqliteType.Text);
+            ftsInsert.Parameters.Add("$path", SqliteType.Text);
+            ftsInsert.Parameters.Add("$name", SqliteType.Text);
+            ftsInsert.Parameters.Add("$symbols", SqliteType.Text);
+            ftsInsert.Parameters.Add("$sig", SqliteType.Text);
+            ftsInsert.Parameters.Add("$comments", SqliteType.Text);
+            ftsInsert.Parameters.Add("$body", SqliteType.Text);
+        }
+
+        try
+        {
+            foreach (var chunk in chunks)
+            {
+                var fileId = await ResolveFileIdAsync(connection, transaction, chunk.FilePath, fileIds, cancellationToken);
+                if (fileId is null)
+                    continue;
+
+                idParam.Value = chunk.ChunkId;
+                fileParam.Value = fileId.Value;
+                symbolParam.Value = (object?)chunk.SymbolId ?? DBNull.Value;
+                kindParam.Value = chunk.Kind;
+                nameParam.Value = (object?)chunk.Name ?? DBNull.Value;
+                stableParam.Value = chunk.StableKey;
+                startParam.Value = chunk.StartLine;
+                endParam.Value = chunk.EndLine;
+                hashParam.Value = chunk.TextHash;
+                tokensParam.Value = chunk.TokenEstimate;
+                reducedParam.Value = chunk.ReducedTokenEstimate;
+                sigParam.Value = (object?)chunk.Signature ?? DBNull.Value;
+                outlineParam.Value = (object?)chunk.Outline ?? DBNull.Value;
+                await command.ExecuteNonQueryAsync(cancellationToken);
+
+                if (ftsDelete is not null && ftsInsert is not null)
+                {
+                    ftsDelete.Parameters["$id"].Value = chunk.ChunkId;
+                    await ftsDelete.ExecuteNonQueryAsync(cancellationToken);
+
+                    ftsInsert.Parameters["$id"].Value = chunk.ChunkId;
+                    ftsInsert.Parameters["$path"].Value = chunk.FilePath;
+                    ftsInsert.Parameters["$name"].Value = (object?)chunk.Name ?? DBNull.Value;
+                    ftsInsert.Parameters["$symbols"].Value = (object?)chunk.SymbolsText ?? DBNull.Value;
+                    ftsInsert.Parameters["$sig"].Value = (object?)chunk.Signature ?? DBNull.Value;
+                    ftsInsert.Parameters["$comments"].Value = (object?)chunk.Comments ?? DBNull.Value;
+                    ftsInsert.Parameters["$body"].Value = (object?)chunk.Body ?? DBNull.Value;
+                    await ftsInsert.ExecuteNonQueryAsync(cancellationToken);
+                }
+            }
+        }
+        finally
+        {
+            ftsDelete?.Dispose();
+            ftsInsert?.Dispose();
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -544,6 +621,18 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         // Edges whose evidence is this file but whose endpoints live in other files do not cascade from
         // the node delete below, so remove them explicitly first. Deleting this file's nodes then cascades
         // (ON DELETE CASCADE) to any remaining edges that touch them.
+        // Clear the FTS rows for this file's chunks before the chunks themselves are deleted; the FTS table
+        // is managed manually and does not cascade.
+        if (_ftsAvailable)
+        {
+            await using var ftsCommand = connection.CreateCommand();
+            ftsCommand.Transaction = transaction;
+            ftsCommand.CommandText =
+                "DELETE FROM chunk_fts WHERE chunk_id IN (SELECT chunk_id FROM chunks WHERE file_id = $file);";
+            ftsCommand.Parameters.AddWithValue("$file", fileId.Value);
+            await ftsCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         await using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
@@ -564,10 +653,81 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<SearchHit>> SearchAsync(SearchQuery query, CancellationToken cancellationToken)
+    {
+        if (!_ftsAvailable || string.IsNullOrWhiteSpace(query.Text))
+            return [];
+
+        var match = BuildMatchExpression(query.Text);
+        if (match.Length == 0)
+            return [];
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        // bm25() takes one weight per column in declaration order: chunk_id (unindexed, weight ignored),
+        // path, name, symbols, signature, comments, body. Name/signature/symbols outrank path, which outranks
+        // comments and body. bm25 is lower-is-better, so the score is negated to make higher better.
+        command.CommandText = """
+            SELECT f.chunk_id, files.normalized_path, c.kind, c.name, c.start_line, c.end_line,
+                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7) AS score
+            FROM chunk_fts f
+            JOIN chunks c ON c.chunk_id = f.chunk_id
+            JOIN files ON files.file_id = c.file_id
+            WHERE chunk_fts MATCH $match
+            ORDER BY score DESC
+            LIMIT $limit;
+            """;
+        command.Parameters.AddWithValue("$match", match);
+        command.Parameters.AddWithValue("$limit", query.Limit);
+
+        var hits = new List<SearchHit>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            hits.Add(new SearchHit(
+                ChunkId: reader.GetString(0),
+                FilePath: reader.GetString(1),
+                Kind: reader.GetString(2),
+                Name: reader.IsDBNull(3) ? null : reader.GetString(3),
+                StartLine: reader.GetInt32(4),
+                EndLine: reader.GetInt32(5),
+                Score: reader.GetDouble(6)));
+        }
+
+        return hits;
+    }
+
+    /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _connectionFactory.ClearPool();
         return ValueTask.CompletedTask;
+    }
+
+    // Build a safe FTS5 MATCH expression from free text. Each whitespace-separated run of letters/digits
+    // becomes a quoted term (double quotes doubled per FTS5 escaping); terms are OR-ed for recall. Quoting
+    // every term keeps user punctuation from being parsed as FTS5 operators.
+    private static string BuildMatchExpression(string text)
+    {
+        var terms = new List<string>();
+        var current = new StringBuilder();
+        foreach (var ch in text)
+        {
+            if (char.IsLetterOrDigit(ch) || ch == '_')
+            {
+                current.Append(ch);
+            }
+            else if (current.Length > 0)
+            {
+                terms.Add(current.ToString());
+                current.Clear();
+            }
+        }
+
+        if (current.Length > 0)
+            terms.Add(current.ToString());
+
+        return string.Join(" OR ", terms.Select(t => $"\"{t.Replace("\"", "\"\"", StringComparison.Ordinal)}\""));
     }
 
     // Derives a stable, bounded edge id from the components of the unique edge index so re-indexing the same

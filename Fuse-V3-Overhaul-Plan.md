@@ -12,7 +12,7 @@ Phase 0 - Foundation
 Phase 1 - SQLite schema and store
 - [x] P1.1 WorkspaceIndexStore + schema creation/migration (drop-and-rebuild below version 10)
 - [x] P1.2 Table models + transactional upsert/delete; reuse FuseStorePaths and WAL patterns
-- [ ] P1.3 FTS5 indexing + search
+- [x] P1.3 FTS5 indexing + search
 - [ ] P1.4 Fuse.Indexing.Tests: insert files/symbols/chunks, FTS finds OrderService, reindex changed file, edges persist
 
 Phase 2 - Syntax-level semantic batch
@@ -1468,5 +1468,13 @@ The single most important thing remains: build the resolved semantic graph and e
 - Blockers/issues: xUnit 2.9.2 `IAsyncLifetime` uses `Task` (not v3 `ValueTask`); fixed the lifecycle method return types.
 - Lessons: Records carry the natural key (normalized path) rather than the DB `file_id`, and the store resolves the integer FK per batch; this keeps the per-table upsert methods order-tolerant (files first). `DeleteFileDataAsync` deletes evidence-only edges explicitly before deleting the file's nodes, because the node delete cascades only edges whose endpoints are this file's nodes. `ChunkRecord` already carries `Body`/`Comments`/`SymbolsText` (relationally unused) so P1.3 FTS can populate them without a record change.
 - Time: ~30 min
+
+### P1.3 FTS5 indexing + search - 2026-06-26 09:34
+- Status: done
+- Result: Added `WorkspaceIndexSchema.CreateFtsDdl` (the `chunk_fts` FTS5 virtual table over path/name/symbols/signature/comments/body, created separately from the relational schema). Store now probes FTS5 at init (`TryCreateFtsAsync`, exposes `FullTextSearchAvailable`), populates `chunk_fts` inside `UpsertChunksAsync` (delete-then-insert per chunk_id so re-index does not duplicate), clears FTS rows in `DeleteFileDataAsync`, and implements `SearchAsync` (`SearchQuery`/`SearchHit`) with positional `bm25()` weights (name/signature/symbols > path > comments/body), negated to higher-is-better, plus a safe MATCH-expression builder. Updated the migrator to drop virtual tables first so their shadow tables do not error on rebuild. Added `WorkspaceIndexFtsTests` (5 tests). New solution test total 634 (Fuse.Indexing.Tests 9 -> 14).
+- Verification: `dotnet build Fuse.slnx -c Release` green; `dotnet test tests/Fuse.Indexing.Tests` 14 passed (FTS confirmed available in the bundled e_sqlite3); `dotnet format Fuse.slnx --verify-no-changes` clean.
+- Blockers/issues: None. FTS5 is present in `SQLitePCLRaw.bundle_e_sqlite3`, so the availability test passes locally; the publish smoke test (P11.1) must confirm it under self-contained publish.
+- Lessons: FTS5 standalone tables do not cascade and must be maintained manually on upsert and delete. The `bm25()` weight list needs one entry per declared column including the UNINDEXED `chunk_id` (weight 0). `bm25()` is lower-is-better, so scores are negated. Dropping a virtual table removes its shadow tables, so the migrator must drop virtual tables before the generic `DROP ... IF EXISTS` sweep.
+- Time: ~25 min
 
 

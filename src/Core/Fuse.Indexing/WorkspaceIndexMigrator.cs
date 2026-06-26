@@ -61,20 +61,27 @@ public static class WorkspaceIndexMigrator
         SqliteTransaction transaction,
         CancellationToken cancellationToken)
     {
-        var names = new List<(string Type, string Name)>();
+        var objects = new List<(string Type, string Name, bool IsVirtual)>();
         await using (var query = connection.CreateCommand())
         {
             query.Transaction = transaction;
             query.CommandText =
-                "SELECT type, name FROM sqlite_master " +
+                "SELECT type, name, sql FROM sqlite_master " +
                 "WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' AND name <> 'schema_version';";
             await using var reader = await query.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
-                names.Add((reader.GetString(0), reader.GetString(1)));
+            {
+                var sql = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                var isVirtual = sql.StartsWith("CREATE VIRTUAL", StringComparison.OrdinalIgnoreCase);
+                objects.Add((reader.GetString(0), reader.GetString(1), isVirtual));
+            }
         }
 
         await ExecuteAsync(connection, transaction, "PRAGMA foreign_keys = OFF;", cancellationToken);
-        foreach (var (type, name) in names)
+        // Drop virtual (for example FTS5) tables first: that removes their backing shadow tables, so the
+        // remaining DROP ... IF EXISTS for those shadows becomes a harmless no-op rather than an
+        // "use DROP TABLE to delete the fts5 table" error.
+        foreach (var (type, name, _) in objects.OrderByDescending(o => o.IsVirtual))
         {
             var quoted = name.Replace("\"", "\"\"", StringComparison.Ordinal);
             await ExecuteAsync(connection, transaction, $"DROP {type.ToUpperInvariant()} IF EXISTS \"{quoted}\";", cancellationToken);

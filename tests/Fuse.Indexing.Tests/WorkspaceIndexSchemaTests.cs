@@ -64,6 +64,33 @@ public sealed class WorkspaceIndexSchemaTests : IDisposable
         Assert.True(await TableExistsAsync("edges"), "edges table should exist after rebuild");
     }
 
+    [Fact]
+    public async Task InitializeRecreatesMissingTableAtCurrentVersion()
+    {
+        // Simulate a database created at the target version before a table was added to the schema: the version
+        // is already current, so migration is skipped, but the ensure-tables step must still recreate it.
+        await using (var first = new WorkspaceIndexStore(_databasePath))
+            await first.InitializeAsync(CancellationToken.None);
+
+        await using (var connection = new SqliteConnection($"Data Source={_databasePath}"))
+        {
+            await connection.OpenAsync(CancellationToken.None);
+            await using var command = connection.CreateCommand();
+            command.CommandText = "DROP TABLE index_meta;";
+            await command.ExecuteNonQueryAsync(CancellationToken.None);
+        }
+
+        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+
+        await using var store = new WorkspaceIndexStore(_databasePath);
+        await store.InitializeAsync(CancellationToken.None);
+
+        Assert.True(await TableExistsAsync("index_meta"), "ensure-tables should recreate a dropped table at the current version");
+        // And writing to it succeeds (the regression: SetMeta failed with 'no such table: index_meta').
+        await store.SetMetaAsync("index_mode", "semantic", CancellationToken.None);
+        Assert.Equal("semantic", await store.GetMetaAsync("index_mode", CancellationToken.None));
+    }
+
     private async Task<bool> TableExistsAsync(string name)
     {
         await using var connection = new SqliteConnection($"Data Source={_databasePath}");

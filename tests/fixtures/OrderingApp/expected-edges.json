@@ -14,6 +14,11 @@
     { "from": "service:IHostedService", "to": "type:OrderingApp.Ordering.OrderDispatcher", "type": "hosted_service" },
     { "from": "service:IPipelineBehavior", "to": "type:OrderingApp.Ordering.LoggingBehavior", "type": "pipeline_behavior" },
     { "from": "type:OrderingApp.Data.OrderingDbContext", "to": "type:OrderingApp.Data.OrderEntity", "type": "ef_entity" },
-    { "from": "type:OrderingApp.Data.OrderEntity", "to": "type:OrderingApp.Data.OrderEntityConfiguration", "type": "ef_configures" }
+    { "from": "type:OrderingApp.Data.OrderEntity", "to": "type:OrderingApp.Data.OrderEntityConfiguration", "type": "ef_configures" },
+    { "from": "type:OrderingApp.Ordering.IClock", "to": "type:OrderingApp.Ordering.SystemClock", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Ordering.IOrderService", "to": "type:OrderingApp.Ordering.OrderServiceLogger", "type": "di_decorates" },
+    { "from": "route:GET:/health", "to": "method:OrderingApp.Api.HealthEndpoints.Check", "type": "route_handles" },
+    { "from": "service:gRPC", "to": "type:OrderingApp.Api.GreeterService", "type": "grpc_endpoint" },
+    { "from": "service:SignalR", "to": "type:OrderingApp.Api.ChatHub", "type": "signalr_endpoint" }
   ]
 }

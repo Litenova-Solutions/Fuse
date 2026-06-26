@@ -30,7 +30,7 @@ The store is a single SQLite file at `.fuse/fuse.db` in WAL mode. Nodes, edges, 
 
 A query enters as a localization, resolve, context, or review request. The retrieval engine generates candidates from several sources (exact resolution of a named route, service, request, or config; full-text hits; path matches; changed files from a git base), normalizes their scores, and expands the seed set through the typed edges with per-edge weights and pruning. The result is a context plan: an ordered set of files, each with a role, a render tier, a token estimate, and a provenance chain explaining why it was included.
 
-Resolve is the deterministic core: it looks up a node by name or constructed id and follows one typed edge (for example `di_resolves_to`, `mediatr_handles`, `route_handles`, `hosted_service`, `pipeline_behavior`, `ef_entity`, or `ef_configures`) to its target, with no source bodies. Review seeds the plan with the changed files as must-keep and expands the blast radius (callers, DI consumers, route and request handlers, options consumers, tests).
+Resolve is the deterministic core: it looks up a node by name or constructed id and follows one typed edge (for example `di_resolves_to`, `di_decorates`, `mediatr_handles`, `route_handles`, `hosted_service`, `pipeline_behavior`, `ef_entity`, `ef_configures`, `grpc_endpoint`, or `signalr_endpoint`) to its target, with no source bodies. Review seeds the plan with the changed files as must-keep and expands the blast radius (callers, DI consumers, route and request handlers, options consumers, tests).
 
 ## Rendering phase
 

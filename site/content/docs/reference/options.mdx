@@ -1,178 +1,128 @@
 ---
 title: Options
-description: The canonical reference for every Fuse command-line flag, grouped by function, with types and defaults.
+description: The command-line flags each Fuse V3 command accepts, with types and defaults.
 ---
 
-Fuse is configured through command-line flags. This page is the canonical list: every flag, its type, its default, and what it does. The shared flags apply to `fuse`, `fuse dotnet`, and `fuse wiki`; the .NET-specific flags apply only to `fuse dotnet`. The commands `fuse init`, `fuse mcp install`, `fuse mcp serve`, and `fuse reduce` take no flags from this set (`fuse reduce` has its own `--files`/`--stdin` options, documented in [Commands](/docs/reference/commands)).
+Fuse V3 commands take a workspace path argument and a small set of per-command flags. This page lists the flags for each command. The commands themselves, and when to reach for each, are in [Commands](/docs/reference/commands); the MCP tool parameters are in [Tools](/docs/reference/mcp-tools).
 
-This page is for engineers and maintainers who need exact flag behavior and defaults. For task-oriented usage, follow the guide links at the end of each relevant section.
+This page is for engineers and maintainers who need exact flag behavior and defaults. Types use these conventions: `bool` is a switch, `int` is a whole number, `string` is a single value, and `string[]` is a repeatable or space-separated list.
 
-## Purpose and Scope
+## Purpose and scope
 
-This page documents flags only. It does not explain the pipeline (see [Core Concepts](/docs/concepts/how-fuse-works)), the configuration file (see [Configuration Keys](/docs/reference/configuration-keys)), or the output format (see [Output Specification](/docs/reference/output-specification)). Where a flag has a config-file equivalent, the config file is the lower-precedence source: an explicit flag always wins. Precedence and the supported keys are in the [Configuration Keys reference](/docs/reference/configuration-keys).
+The read commands build the persistent index on first use, so most commands take only the workspace path plus the flags that shape their query or output. Token budgets are honored by the plan, and secret redaction runs before any source reaches the payload (it is always on; there is no flag to disable it).
 
-Types in the tables use these conventions: `bool` is a switch, `int` is a whole number, `string` is a single value, `string[]` is a comma-separated list, and `glob[]` is a comma-separated list of glob patterns.
-
-## Directory Options
+## fuse index
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--directory` | string | Current directory | Path to the directory to process. |
-| `--output` | string | `Documents/Fuse` | Path to the output directory. |
-| `--exclude-directories` | string[] | None | Directory names to exclude from scanning (for example, `Migrations`, `wwwroot`). |
+| `path` | string | `.` | Workspace directory to index. |
+| `--force` | bool | `false` | Force a full re-index instead of an incremental update. |
 
-## Output Options
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--name` | string | None (auto-generated) | Output file name without extension. When unset, the name is generated from the project, a timestamp, and a token estimate. |
-| `--overwrite` | bool | `true` | Overwrite the output file when it already exists. |
-
-## Search Options
+## fuse map
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--recursive` | bool | `true` | Search subdirectories recursively. |
-| `--max-file-size` | int (KB) | `0` | Maximum file size in KB to process. `0` means unlimited. |
-| `--ignore-binary` | bool | `true` | Skip binary files during collection. |
-| `--parallelism` | int | Processor count | Maximum degree of parallelism for pipeline stages. |
+| `path` | string | `.` | Workspace directory to map. |
+| `--detail` | string | `all` | What to include: `symbols`, `routes`, or `all`. |
+| `--max-rows` | int | `200` | Maximum rows per section. |
 
-## Content Options
+## fuse localize
 
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--include-metadata` | bool | `false` | Include file metadata (size, dates) in output entries. |
-| `--respect-gitignore` | bool | `true` | Apply `.gitignore` rules found in the directory tree. |
-
-## Token and Output Options
+Supply `--task` for an open-ended query, or one of the named flags to seed candidates from a specific node.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--max-tokens` | int | None | Hard cap on the total payload. For a scoped run (`--query` or `--focus`) the packer reserves room for the manifest, route and project maps, redaction report, pattern summary, and any preamble, so the complete output fits the budget rather than overrunning it by the size of that framing. The single most-relevant file is always emitted, even if it alone exceeds the cap. |
-| `--split-tokens` | int | `800000` | Split output into multiple parts when this per-part token count is exceeded. |
-| `--show-token-count` | bool | `true` | Display the final token count after fusion completes. |
-| `--track-top-token-files` | bool | `false` | Display the top token-consuming files after fusion. |
-| `--no-manifest` | bool | `false` | Omit the manifest header from output. |
-| `--toc` | bool | `false` | Emit a table of contents (directory tree, symbol outline, per-file token costs) instead of file bodies. A cheap first call for surveying a codebase before fetching files. |
-| `--git-stats` | bool | `false` | Include git churn and last-modified statistics in the manifest. |
-| `--provenance` | bool | `false` | Annotate entries with dependency inclusion provenance. |
-| `--dedup-headers` | bool | `false` | Replace identical leading comment headers shared by two or more files with a marker, emitted once in a preamble. |
-| `--dedup-bodies` | bool | `false` | Replace member bodies that are byte-identical across two or more files (after whitespace normalization) with a marker referencing the canonical copy, emitted once. The member signature is always preserved. |
-| `--session` | string | None | Session id for session-delta emission: files whose identical content was already emitted under this id are omitted on later runs, with a note listing them. Primarily for the MCP server. |
-| `--format` | xml \| markdown \| json \| compact | `xml` | Output format. |
-| `--tokenizer` | string | `o200k_base` | Tokenizer model or encoding name. |
-| `--report` | string | None | Write a machine-readable JSON run report to a file path, or to stdout with `-`. |
+| `path` | string | `.` | Workspace directory. |
+| `--task` | string | None | Free-text task or query to localize. |
+| `--route` | string | None | A route to resolve, for example `POST /api/orders/{id}`. |
+| `--symbol` | string | None | A symbol to focus on. |
+| `--service` | string | None | A service to resolve to its implementation. |
+| `--request` | string | None | A request or command to resolve to its handler. |
+| `--config` | string | None | A config section to resolve to its options type. |
+| `--changed-since` | string | None | A git base ref whose changed files seed the candidates. |
+| `--max-candidates` | int | `50` | Maximum candidates to return. |
 
-The supported tokenizer names are listed in the [Tokenizers reference](/docs/reference/tokenizers). The format details, including the compact envelope, the header-dedup preamble, and the JSON run report, are in the [Output Specification](/docs/reference/output-specification).
+## fuse resolve
 
-## Security Options
+Supply exactly one of the five.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--no-redact` | bool | `false` | Disable secret redaction. Redaction is on by default. |
-| `--redact-report` | bool | `false` | Append a redaction count summary to the output. |
+| `path` | string | `.` | Workspace directory. |
+| `--service` | string | None | Resolve a service to its implementation. |
+| `--request` | string | None | Resolve a request or command to its handler. |
+| `--route` | string | None | Resolve a route to its handler. |
+| `--config` | string | None | Resolve a config section to its options type. |
+| `--symbol` | string | None | Resolve a symbol name to its declaration. |
 
-The kinds of secret Fuse detects are listed in the [Secret Redaction Kinds reference](/docs/reference/secret-redaction-kinds). Redaction is best-effort pattern and entropy matching; it lowers accidental exposure but does not guarantee every secret is removed. Do not rely on it for compliance or secret scanning.
-
-## Exclusion Options
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--exclude-files` | string[] | None | Specific file names to exclude (for example, `appsettings.Development.json`). |
-| `--exclude-patterns` | glob[] | None | Glob patterns for files to exclude (for example, `**/Migrations/**`, `**/*.min.js`). |
-| `--exclude-empty-files` | bool | `true` | Skip zero-byte files during collection. |
-| `--exclude-auto-generated` | bool | `true` | Skip files containing an auto-generated marker in the first few lines. |
-| `--changed-since` | string (git ref) | None | Scope fusion to files changed since this git ref (branch, commit, or `HEAD~N`). |
-| `--include-dependents` | bool | `true` | Include first-degree dependents of changed files when scoping by git ref. |
-| `--review` | bool | `false` | With `--changed-since`, prepend a review map: each changed file's diff hunks paired with its direct callers. |
-
-## Extension Options
+## fuse context
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--include-extensions` | string[] | None | Additional extensions to include alongside template defaults (for example, `.txt,.log`). |
-| `--exclude-extensions` | string[] | None | Extensions to remove from template defaults (for example, `.xml,.md`). |
-| `--only-extensions` | string[] | None | Fuse only these extensions, ignoring all template defaults. |
+| `path` | string | `.` | Workspace directory. |
+| `--seed` | string[] | None | A named seed (symbol, service, request, or config section). Repeatable. |
+| `--route` | string[] | None | A route seed, for example `POST /api/orders/{id}`. Repeatable. |
+| `--depth` | int | `2` | Graph expansion depth. |
+| `--max-tokens` | int | None | Token budget; must-keep seeds are always included. |
+| `--format` | string | `xml` | Output format: `xml`, `markdown`, or `json`. |
+| `--plan-only` | bool | `false` | Print the plan without rendering source bodies. |
 
-`--only-extensions` overrides template defaults entirely. It cannot combine with a template: when it is set, the template's extension list is not applied.
-
-## Test Project Options
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--exclude-test-projects` | bool | `false` | Exclude common test project directories. |
-
-## Cache and Watch Options
+## fuse review
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--no-cache` | bool | `false` | Disable per-file reduction caching. |
-| `--clear-cache` | bool | `false` | Clear the `reduction` namespace in `.fuse/fuse.db` before running. |
-| `--index` | bool | `false` | Cache per-file analysis, relevance tokens, and optional vectors on disk (`.fuse/fuse.db`) so repeated scoped runs reuse them. Enabled automatically in watch mode and the MCP server. |
-| `--watch` | bool | `false` | Watch for file changes and re-run fusion after edits settle. Disabled automatically when stdio is redirected (MCP). |
+| `path` | string | `.` | Workspace directory. |
+| `--changed-since` | string | `HEAD` | Git base ref to diff against (branch, commit, or `HEAD~N`). |
+| `--max-tokens` | int | None | Token budget; changed files are always kept. |
+| `--include-tests` | bool | `true` | Include related test files in the blast radius. |
+| `--format` | string | `xml` | Output format: `xml`, `markdown`, or `json`. |
+| `--plan-only` | bool | `false` | Print the plan without rendering source bodies. |
 
-## DotNet-Only Options
-
-These flags apply only to `fuse dotnet`.
-
-### C# Reduction
-
-A single `--level` flag drives C# structural reduction. It takes one of five enum values and replaces the former cluster of per-category C# reduction switches.
+## fuse find
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--level` | none \| standard \| aggressive \| skeleton \| publicApi | `none` | C# structural reduction level. See the per-level transform table below. |
+| `query` | string | required | The name, path fragment, or text to find. |
+| `--path` | string | `.` | Workspace directory. |
+| `--kind` | string | `all` | Restrict to one kind: `symbol`, `path`, `text`, or `all`. |
+
+## fuse diagnostics
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `path` | string | `.` | Workspace directory whose index state to report. |
+
+## fuse reduce
+
+Compact a known set of files or piped content without walking a directory. Pass `--files` or `--stdin`, not both.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--files` | string[] | None | File paths to reduce (space-separated). Mutually exclusive with `--stdin`. |
+| `--stdin` | bool | `false` | Read content to reduce from standard input. Mutually exclusive with `--files`. |
+| `--ext` | string | `.cs` | Extension that selects the reducer for `--stdin` content (for example `.cs`, `.ts`, `.py`). |
+| `--level` | string | `standard` | Reduction level: `none`, `standard`, `aggressive`, `skeleton`, or `publicApi`. |
+| `--directory` | string | `.` | Base directory for resolving relative `--files` paths. |
+| `--max-tokens` | int | `0` | Maximum tokens the reduced output may use (`0` means no limit). |
+
+The reduction levels and what each does to C# are in [Reduction levels](/docs/concepts/reduction-levels).
+
+## Reduction levels
+
+A single `--level` value drives C# structural reduction wherever it applies (`fuse reduce`, and the render tier `fuse context` picks per file).
 
 | Level | What it does to C# |
 |-------|--------------------|
-| `none` | No C# structural reduction. Whitespace trim and condense and the orthogonal flags below still apply. |
-| `standard` | Removes C# comments, `using` directives, namespace wrappers, and `#region` directives. |
-| `aggressive` | The `standard` removals plus aggressive whitespace and syntax compression (remove attributes and redundant keywords, compress properties). |
-| `skeleton` | Emits structural skeletons (type and member signatures), bodies removed. |
+| `none` | No structural reduction; whitespace trim only. |
+| `standard` | Removes comments, `using` directives, namespace wrappers, and `#region` directives. |
+| `aggressive` | The `standard` removals plus whitespace and syntax compression. |
+| `skeleton` | Emits type and member signatures, bodies removed. |
 | `publicApi` | Like `skeleton`, but keeps only public and protected members. |
 
-These flags are orthogonal to `--level`: they are not folded into the level and apply at any level.
+## Other commands
 
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--minify-xml-files` | bool | `true` | Minify XML files such as `.csproj` and `.xml`. |
-| `--minify-html-and-razor` | bool | `true` | Minify HTML and Razor files. |
-| `--collapse-generated` | bool | `false` | Collapse EF Core migration and model-snapshot bodies to their signatures, dropping the large generated method bodies. |
-
-### Structure and Annotation
-
-These flags are also orthogonal to `--level`.
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--semantic-markers` | bool | `false` | Prepend structural annotation comments to each file entry. |
-| `--route-map` | bool | `false` | Prepend an ASP.NET route map to the output. |
-| `--project-graph` | bool | `false` | Prepend a solution and project reference graph to the output. |
-| `--pattern-summary` | bool | `false` | Detect and append a cross-codebase pattern summary to the output. |
-
-The detected patterns are listed in the [Pattern Detectors reference](/docs/reference/pattern-detectors).
-
-### Test Projects
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--exclude-unit-test-projects` | bool | `false` | Exclude only unit test project directories, keeping integration tests and benchmarks. |
-
-### Scoping
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--focus` | string | None | Type name, filename, or relative directory to scope the fusion around. A `Type.Member` seed scopes the seed file to that member (symbol-level scoping). |
-| `--query` | string | None | Search query to scope fusion to the most relevant files. For C# the query ranks at member granularity and emits a thin host-type skeleton with the matched members in full and the rest collapsed to signatures (symbol-level retrieval). |
-| `--query-top` | int | `10` | Number of top-ranked files to seed query scoping. |
-| `--depth` | int | `1` | Dependency traversal depth for focus or query scoping. Valid range 1 to 10. |
-
-The three scoping modes (`--focus`, `--changed-since`, and `--query`) are mutually exclusive: a single fusion uses at most one. The [Scoping to What Matters](/docs/concepts/scoping) guide explains each mode, and [Reducing Tokens](/docs/concepts/reduction-levels) covers the reduction flags in practice.
-
-## What This Does Not Cover
-
-This page does not cover the commands themselves (see [Commands](/docs/reference/commands)), the configuration file format (see [Configuration Keys](/docs/reference/configuration-keys)), or the templates that supply the default extension lists (see [Templates](/docs/reference/templates)).
+`fuse init`, `fuse mcp install`, `fuse mcp serve`, `fuse host`, and `fuse models` take no query flags from this set. See [Commands](/docs/reference/commands) for their behavior.
 
 ## Next
 
-Continue to the [Configuration Keys reference](/docs/reference/configuration-keys) to set defaults in a file, or to the [Scoping to What Matters](/docs/concepts/scoping) guide for scoped fusions.
+Continue to the [Configuration keys reference](/docs/reference/configuration-keys) to set defaults in a file, or to [Scoping](/docs/concepts/scoping) for how localize, resolve, and review seed the graph.

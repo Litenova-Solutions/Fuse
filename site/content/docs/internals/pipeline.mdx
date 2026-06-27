@@ -26,6 +26,8 @@ The semantic indexer discovers the workspace (a `.sln`, `.slnx`, the `.csproj` s
 
 The store is a single SQLite file at `.fuse/fuse.db` in WAL mode. Nodes, edges, symbols, chunks, routes, DI registrations, and options bindings are relational tables; an FTS5 virtual table backs full-text search. Re-indexing a changed file clears its prior rows and re-extracts, so the graph stays consistent without a full rebuild.
 
+The syntax tier is provider-driven. A language-provider seam (`ILanguageSyntaxProvider`) claims a set of file extensions and extracts symbols and chunks with no compiler, and the indexer selects a provider by extension and drives the file scan from the registered providers' extensions, rather than hardwiring one language. C# is one provider (the Roslyn-syntax extractor behind the seam), and a second language registers a provider without changing the shared indexer; the typed-graph (semantic) tier remains C#/Roslyn. This is what lets a non-C# file index, full-text-search, and localize through the same pipeline.
+
 ## Retrieval phase
 
 A query enters as a localization, resolve, context, or review request. The retrieval engine generates candidates from several sources (exact resolution of a named route, service, request, or config; full-text hits; path matches; changed files from a git base), normalizes their scores, and expands the seed set through the typed edges with per-edge weights and pruning. The result is a context plan: an ordered set of files, each with a role, a render tier, a token estimate, and a provenance chain explaining why it was included.

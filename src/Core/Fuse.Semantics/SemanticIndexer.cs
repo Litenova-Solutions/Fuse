@@ -26,6 +26,11 @@ public sealed class SemanticIndexer
     private readonly FileHashService _hashService;
     private readonly SemanticAnalysisRunner _analysisRunner;
     private readonly ITextEmbedder? _embedder;
+    private readonly LanguageSyntaxProviderRegistry _syntaxProviders;
+
+    // Non-source file extensions the scanner still needs for project discovery and config indexing, beyond the
+    // source extensions the language providers claim.
+    private static readonly string[] ConfigExtensions = [".csproj", ".props", ".targets", ".json"];
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SemanticIndexer" /> class.
@@ -59,6 +64,10 @@ public sealed class SemanticIndexer
         _hashService = hashService;
         _analysisRunner = analysisRunner;
         _embedder = embedder;
+        // The syntax tier is provider-driven: C# behind the seam (unchanged behavior), plus a second-language
+        // syntax spike. Built internally so the existing constructor and its callers are unaffected; a later
+        // change can make the provider set injectable for an external language plugin.
+        _syntaxProviders = new LanguageSyntaxProviderRegistry([new CSharpSyntaxProvider(syntaxSymbols), new PythonSyntaxProvider()]);
     }
 
     /// <summary>
@@ -76,7 +85,10 @@ public sealed class SemanticIndexer
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
         var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
-        var files = await _scanner.ScanAsync(new FileScanRequest(root), cancellationToken);
+        // Scan the extensions the registered language providers claim, plus the .NET config files needed for
+        // discovery, so a non-C# spike language is surfaced to the indexer without hardwiring its extension.
+        var scanExtensions = _syntaxProviders.Extensions.Concat(ConfigExtensions).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var files = await _scanner.ScanAsync(new FileScanRequest(root, scanExtensions), cancellationToken);
 
         SemanticIndexResult result = snapshot.SemanticLoadSucceeded
             ? await IndexSemanticAsync(root, store, files, snapshot, cancellationToken)
@@ -122,13 +134,15 @@ public sealed class SemanticIndexer
             [new IndexedFileRecord(normalizedPath, normalizedPath, info.Extension, info.Length, info.LastWriteTimeUtc.Ticks, hash)],
             cancellationToken);
 
-        if (!string.Equals(info.Extension, ".cs", StringComparison.OrdinalIgnoreCase))
+        var provider = _syntaxProviders.ForExtension(info.Extension);
+        if (provider is null)
             return 0;
 
-        var extracted = _syntaxSymbols.Extract(normalizedPath, content);
+        var extracted = provider.Extract(normalizedPath, content);
         await store.UpsertSymbolsAsync(extracted.Symbols, cancellationToken);
         await store.UpsertChunksAsync(extracted.Chunks, cancellationToken);
-        await store.UpsertRoutesAsync(_routeExtractor.Extract(normalizedPath, content), cancellationToken);
+        if (string.Equals(info.Extension, ".cs", StringComparison.OrdinalIgnoreCase))
+            await store.UpsertRoutesAsync(_routeExtractor.Extract(normalizedPath, content), cancellationToken);
         return extracted.Symbols.Count;
     }
 
@@ -200,14 +214,18 @@ public sealed class SemanticIndexer
         foreach (var file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (file.Extension != ".cs")
+            // Select the language provider by extension; a file no provider claims (a config file) is skipped.
+            var provider = _syntaxProviders.ForExtension(file.Extension);
+            if (provider is null)
                 continue;
 
             var content = await File.ReadAllTextAsync(Path.Combine(root, file.Path), cancellationToken);
-            var extracted = _syntaxSymbols.Extract(file.NormalizedPath, content);
+            var extracted = provider.Extract(file.NormalizedPath, content);
             symbols.AddRange(extracted.Symbols);
             chunks.AddRange(extracted.Chunks);
-            routes.AddRange(_routeExtractor.Extract(file.NormalizedPath, content));
+            // Route extraction is a C# web concern; a future provider would register its own route detector.
+            if (file.Extension == ".cs")
+                routes.AddRange(_routeExtractor.Extract(file.NormalizedPath, content));
         }
 
         await store.UpsertSymbolsAsync(symbols, cancellationToken);

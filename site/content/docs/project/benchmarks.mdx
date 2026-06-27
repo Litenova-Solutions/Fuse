@@ -202,6 +202,10 @@ Localization can optionally expand the selected candidates one hop through the t
 
 On this corpus expansion buys almost no recall (plus 0.2 points) for a real precision cost, because only two repositories carry a graph and the changed-files-only ground truth scores the blast radius as noise. So the default stays off (byte-identical to S5) and expansion is offered as an explicit discovery operating point; its value shows where a graph exists, as the fixture demonstrates, and is bounded here by the mostly-syntax corpus.
 
+### Multi-language readiness (S10)
+
+The syntax-tier indexer is now provider-driven: a language-provider seam claims file extensions and extracts symbols and chunks with no compiler, and the indexer selects a provider by extension. C# is the existing Roslyn-syntax extractor behind the seam (unchanged), and a minimal Python spike provider is registered alongside. The readiness baseline is a no-regression check plus a spike: Suite A is unchanged after the refactor (22 of 22 wiring edges, recall and precision 1.0) and corpus localize is unchanged (recall 18.9 percent, `localize.s10.json`), while a mixed-language workspace test confirms a Python file indexes to symbols and chunks and is full-text-searchable end to end, including by an identifier subword (so the S1 subword feature carries to the spike language for free). The retrieval features all operate over the language-agnostic symbol, chunk, and edge tables, so they carry to a new language without rework. A `language` tag through the index and a semantic-tier (typed-graph) provider seam are the remaining multi-language foundation work.
+
 Findings, including the known gap:
 
 - Recall tracks the signal in the title. When the title names identifiers that appear in the code (identifier-rich, 41 percent after R1), localization does best; when the title is a domain phrase (27 percent), a route or API description, or a formatting note, it does worse. This is the expected shape of a title-only, no-base task.

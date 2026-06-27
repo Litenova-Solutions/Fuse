@@ -103,6 +103,20 @@ function Get-CsFiles($repoPath) {
         }
 }
 
+# Score a returned file set against a ground-truth change set: recall and precision of the acquired
+# paths over the truth. Both sides are slash-normalized; the acquired side is deduplicated (a tool that
+# returns the same path twice is not rewarded for it). Deterministic: the same inputs in any order give
+# the same recall, precision, acquired count, and hit count. Shared by the peer-comparison layer (Layer 6)
+# so its scoring is one tested implementation rather than copied inline.
+function Score-Set($acquired, $truth) {
+    $acq = @($acquired | ForEach-Object { $_ -replace '\\','/' } | Sort-Object -Unique)
+    $tr = @($truth | ForEach-Object { $_ -replace '\\','/' })
+    $hit = @($tr | Where-Object { $acq -contains $_ })
+    $recall = if ($tr.Count) { [math]::Round($hit.Count / $tr.Count, 3) } else { 0 }
+    $prec = if ($acq.Count) { [math]::Round($hit.Count / $acq.Count, 3) } else { 0 }
+    return @{ recall = $recall; precision = $prec; acquired = $acq.Count; hits = $hit.Count }
+}
+
 # Body-integrity for one fused file: fraction of source string literals that survive byte-intact, and
 # (when -ParseCheck) whether the output still parses. Returns the parsed JSON object.
 function Get-BodyIntegrity($sourceDir, $fusedFile, [switch]$ParseCheck) {

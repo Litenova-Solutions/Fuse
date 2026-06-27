@@ -90,6 +90,10 @@ public sealed class LocalizeCommand
     [CliOption(Name = "--strict", Description = "Refuse an insufficient request and return only a navigation map (best-effort by default).")]
     public bool Strict { get; set; }
 
+    /// <summary>Whether to enrich the selected candidates with their typed-graph neighbors for discovery.</summary>
+    [CliOption(Name = "--expand", Description = "Enrich the selected candidates with their typed-graph neighbors (widens recall, pressures precision).")]
+    public bool Expand { get; set; }
+
     /// <summary>
     ///     Runs the localize command.
     /// </summary>
@@ -110,7 +114,7 @@ public sealed class LocalizeCommand
 
         var request = new LocalizationRequest(
             root, Query: Task, ChangedSince: ChangedSince, Route: Route, Focus: Symbol, Service: Service,
-            Request: Request, ConfigSection: Config, MaxCandidates: MaxCandidates, Strict: Strict);
+            Request: Request, ConfigSection: Config, MaxCandidates: MaxCandidates, Strict: Strict, ExpandGraph: Expand);
         var result = await new SemanticRetrievalEngine(store, _changeSource, _embedder).LocalizeAsync(request, context.CancellationToken);
 
         _consoleUI.WriteResult(LocalizationFormatter.Format(result));

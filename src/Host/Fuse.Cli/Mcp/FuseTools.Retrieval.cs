@@ -30,6 +30,7 @@ public sealed partial class FuseTools
     /// <param name="changedSince">A git base ref whose changed files seed candidates.</param>
     /// <param name="maxCandidates">The maximum candidates to return.</param>
     /// <param name="strict">When true, an insufficient request is refused and only a navigation map is returned; off by default (best-effort).</param>
+    /// <param name="expand">When true, the selected candidates are enriched with their typed-graph neighbors for discovery; off by default.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>Ranked candidates with reasons and token costs, or a navigation map when the request is not confident.</returns>
     [McpServerTool(Name = "fuse_localize", ReadOnly = true)]
@@ -48,6 +49,7 @@ public sealed partial class FuseTools
         [Description("A git base ref whose changed files seed the candidates.")] string? changedSince = null,
         [Description("Maximum candidates to return.")] int maxCandidates = 50,
         [Description("Strict signal-sufficiency: when an insufficient request has no clear anchor, refuse and return only a navigation map instead of a low-confidence guess. Off by default (best-effort).")] bool strict = false,
+        [Description("Expand the selected candidates with their typed-graph neighbors (implementers, callers, config) for discovery. Off by default; widens recall but pressures precision.")] bool expand = false,
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetFullPath(path);
@@ -55,7 +57,7 @@ public sealed partial class FuseTools
         var engine = new SemanticRetrievalEngine(store, changeSource, embedder);
         var requestModel = new LocalizationRequest(
             root, Query: task, ChangedSince: changedSince, Route: route, Focus: symbol, Service: service,
-            Request: request, ConfigSection: config, MaxCandidates: maxCandidates, Strict: strict);
+            Request: request, ConfigSection: config, MaxCandidates: maxCandidates, Strict: strict, ExpandGraph: expand);
         var result = await engine.LocalizeAsync(requestModel, cancellationToken);
         return LocalizationFormatter.Format(result);
     }

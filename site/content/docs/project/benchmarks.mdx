@@ -190,6 +190,18 @@ The bridges lift recall and precision again, drop false-rejection to 5.1 percent
 
 After scoring, a dependency-centrality prior multiplies each candidate's score by a small capped factor (at most plus ten percent) proportional to its file's normalized node degree, so a widely-depended-on file outranks a leaf for an otherwise-tied query, bounded so it cannot promote a near-zero-score file. It is computed over the semantic graph, so in syntax mode (no edges) it is a no-op. The prior is verified by unit tests on a crafted graph, but corpus-wide localize is unchanged from S2 (`localize.s5.json`): the four syntax repositories have no edges and the two partial ones barely move, so the prior's effect is bounded by the mostly-syntax corpus, not by the prior. The git co-change half of this item is deferred: the co-change table has no collector yet, so a git-history miner is a separate piece of work.
 
+### Graph-aware discovery (S7, opt-in)
+
+Localization can optionally expand the selected candidates one hop through the typed graph, so a query that lexically hits only an interface also returns its implementation and a caller even when those share no vocabulary with the query (verified on an interface-to-implementation fixture). The expansion is bounded (top two seeds, depth one, at most five new neighbors) and a no-op in syntax mode. It is off by default and enabled per request (the `expand` option), because the structural blast radius widens recall but pressures precision. Both operating points are recorded:
+
+| Metric | Default (off, `localize.s7.json`) | Expansion on (`localize.s7-expand.json`) |
+|--------|----------------------------------:|-----------------------------------------:|
+| overall recall | 18.9% | 19.1% |
+| precision | 11.9% | 10.8% |
+| median returned tokens | 1,098 | 1,352 |
+
+On this corpus expansion buys almost no recall (plus 0.2 points) for a real precision cost, because only two repositories carry a graph and the changed-files-only ground truth scores the blast radius as noise. So the default stays off (byte-identical to S5) and expansion is offered as an explicit discovery operating point; its value shows where a graph exists, as the fixture demonstrates, and is bounded here by the mostly-syntax corpus.
+
 Findings, including the known gap:
 
 - Recall tracks the signal in the title. When the title names identifiers that appear in the code (identifier-rich, 41 percent after R1), localization does best; when the title is a domain phrase (27 percent), a route or API description, or a formatting note, it does worse. This is the expected shape of a title-only, no-base task.

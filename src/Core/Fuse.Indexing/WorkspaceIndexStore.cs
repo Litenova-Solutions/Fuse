@@ -387,8 +387,8 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             ftsInsert = connection.CreateCommand();
             ftsInsert.Transaction = transaction;
             ftsInsert.CommandText = """
-                INSERT INTO chunk_fts(chunk_id, path, name, symbols, signature, comments, body)
-                VALUES($id, $path, $name, $symbols, $sig, $comments, $body);
+                INSERT INTO chunk_fts(chunk_id, path, name, symbols, signature, comments, body, subtokens)
+                VALUES($id, $path, $name, $symbols, $sig, $comments, $body, $subtokens);
                 """;
             ftsInsert.Parameters.Add("$id", SqliteType.Text);
             ftsInsert.Parameters.Add("$path", SqliteType.Text);
@@ -397,6 +397,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             ftsInsert.Parameters.Add("$sig", SqliteType.Text);
             ftsInsert.Parameters.Add("$comments", SqliteType.Text);
             ftsInsert.Parameters.Add("$body", SqliteType.Text);
+            ftsInsert.Parameters.Add("$subtokens", SqliteType.Text);
         }
 
         try
@@ -434,6 +435,10 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
                     ftsInsert.Parameters["$sig"].Value = (object?)chunk.Signature ?? DBNull.Value;
                     ftsInsert.Parameters["$comments"].Value = (object?)chunk.Comments ?? DBNull.Value;
                     ftsInsert.Parameters["$body"].Value = (object?)chunk.Body ?? DBNull.Value;
+                    // The subtokens field is the subword expansion of the chunk's identifiers (name, declared
+                    // symbols, signature), computed in C# so a prose query word matches a compound name.
+                    var subtokens = IdentifierSplitter.Expand(chunk.Name, chunk.SymbolsText, chunk.Signature);
+                    ftsInsert.Parameters["$subtokens"].Value = subtokens.Length == 0 ? DBNull.Value : subtokens;
                     await ftsInsert.ExecuteNonQueryAsync(cancellationToken);
                 }
             }
@@ -712,11 +717,13 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         // bm25() takes one weight per column in declaration order: chunk_id (unindexed, weight ignored),
-        // path, name, symbols, signature, comments, body. Name/signature/symbols outrank path, which outranks
-        // comments and body. bm25 is lower-is-better, so the score is negated to make higher better.
+        // path, name, symbols, signature, comments, body, subtokens. Name/signature/symbols outrank path, which
+        // outranks comments and body. The subtokens column (subword expansion of identifiers) is weighted below
+        // the exact name but above the body, so an exact name match still wins over a subword match. bm25 is
+        // lower-is-better, so the score is negated to make higher better.
         command.CommandText = """
             SELECT f.chunk_id, files.normalized_path, c.kind, c.name, c.start_line, c.end_line,
-                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7) AS score
+                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7, 0.9) AS score
             FROM chunk_fts f
             JOIN chunks c ON c.chunk_id = f.chunk_id
             JOIN files ON files.file_id = c.file_id
@@ -1109,7 +1116,23 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         if (current.Length > 0)
             terms.Add(current.ToString());
 
-        return string.Join(" OR ", terms.Select(t => $"\"{t.Replace("\"", "\"\"", StringComparison.Ordinal)}\""));
+        // Expand each raw term with its subword parts so a compound query term (or a single prose word) matches
+        // the subtokens column: "ApplyRoundingMode" adds apply, rounding, mode; "rounding" already matches the
+        // subtokens of "ApplyRoundingMode". The raw term is kept so an exact name match still ranks first.
+        var expanded = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var term in terms)
+        {
+            if (seen.Add(term))
+                expanded.Add(term);
+            foreach (var part in IdentifierSplitter.Split(term))
+            {
+                if (seen.Add(part))
+                    expanded.Add(part);
+            }
+        }
+
+        return string.Join(" OR ", expanded.Select(t => $"\"{t.Replace("\"", "\"\"", StringComparison.Ordinal)}\""));
     }
 
     // Derives a stable, bounded edge id from the components of the unique edge index so re-indexing the same

@@ -46,6 +46,59 @@ public sealed class WorkspaceIndexFtsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SearchFindsCompoundNameBySingleSubword()
+    {
+        // S1: a prose query word matches a compound identifier through the subtokens field. "rounding" must
+        // find ApplyRoundingMode even though unicode61 treats the whole name as one opaque token.
+        await _store.UpsertFilesAsync(
+            [new IndexedFileRecord("src/PriceCalculator.cs", "src/PriceCalculator.cs", ".cs", 80, 1, "hp")],
+            CancellationToken.None);
+        await _store.UpsertChunksAsync(
+            [new ChunkRecord("chunk:Price", "src/PriceCalculator.cs", "method", "kp", 1, 10, "thp", 30, 12,
+                Name: "ApplyRoundingMode", Signature: "decimal ApplyRoundingMode(decimal value)")],
+            CancellationToken.None);
+
+        var hits = await _store.SearchAsync(new SearchQuery("rounding"), CancellationToken.None);
+
+        Assert.Contains(hits, h => h.FilePath == "src/PriceCalculator.cs");
+    }
+
+    [Fact]
+    public async Task ExactNameStillRanksAboveSubwordMatch()
+    {
+        await SeedAsync();
+        // Add a file whose name only contains "Order" as a subword of a compound, so the exact "OrderService"
+        // declaration must still rank first for the query "OrderService".
+        await _store.UpsertFilesAsync(
+            [new IndexedFileRecord("src/OrderProcessor.cs", "src/OrderProcessor.cs", ".cs", 90, 1, "hop")],
+            CancellationToken.None);
+        await _store.UpsertChunksAsync(
+            [new ChunkRecord("chunk:OrderProcessor", "src/OrderProcessor.cs", "type", "kop", 1, 15, "thop", 40, 18,
+                Name: "OrderProcessor", Signature: "public class OrderProcessor")],
+            CancellationToken.None);
+
+        var hits = await _store.SearchAsync(new SearchQuery("OrderService"), CancellationToken.None);
+
+        Assert.NotEmpty(hits);
+        Assert.Equal("src/OrderService.cs", hits[0].FilePath);
+    }
+
+    [Fact]
+    public async Task SearchFindsSnakeCaseAndDigitSubwords()
+    {
+        await _store.UpsertFilesAsync(
+            [new IndexedFileRecord("src/Hashing.cs", "src/Hashing.cs", ".cs", 70, 1, "hh")],
+            CancellationToken.None);
+        await _store.UpsertChunksAsync(
+            [new ChunkRecord("chunk:Hash", "src/Hashing.cs", "method", "kh", 1, 8, "thh", 20, 10,
+                Name: "compute_sha256_digest")],
+            CancellationToken.None);
+
+        Assert.Contains(await _store.SearchAsync(new SearchQuery("digest"), CancellationToken.None), h => h.FilePath == "src/Hashing.cs");
+        Assert.Contains(await _store.SearchAsync(new SearchQuery("sha"), CancellationToken.None), h => h.FilePath == "src/Hashing.cs");
+    }
+
+    [Fact]
     public async Task SearchReturnsEmptyForUnmatchedQuery()
     {
         await SeedAsync();

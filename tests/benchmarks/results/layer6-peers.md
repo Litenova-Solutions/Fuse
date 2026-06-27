@@ -7,26 +7,28 @@ Recall is read together with tokens. Peer published numbers are ignored; only ha
 figures appear here. CodeGraph index build is setup, excluded from the reported token cost.
 
 - Budget: 50000 tokens (fuse --max-tokens; codegraph --max-files 15).
-- Arms: fuse, codegraph.
-- PRs sampled (6): AutoMapper#4608, eShopOnWeb#949, FluentValidation#2158, MediatR#1171, NewtonsoftJson#1159, Serilog#1452.
+- Arms: fuse, codegraph, coa, serena.
+- PRs sampled (12): eShopOnWeb#949, eShopOnWeb#878, eShopOnWeb#876, NodaTime#621, NodaTime#620, NodaTime#571, Scrutor#6, Scrutor#4, Scrutor#2, Specification#502, Specification#196, Specification#188.
+- Per-arm sample sizes (rows produced): fuse 12, codegraph 12, coa 4, serena 4.
+- Model-driven arms (coa, serena) run one claude rollout per PR via claude-haiku-4-5-20251001; tool-dependent and not byte-reproducible. Bounded to 1 PR(s)/repo when ModelPerRepo is set, so their sample is smaller than the deterministic arms by design (a larger model-driven scale is a separate compute budget).
 
 ## Aggregate (mean over sampled PRs)
 
 | Arm | Mean recall | Mean precision | Mean tokens |
 |-----|------------:|---------------:|------------:|
-| fuse | 21% | 7% | 19,753 |
-| codegraph | 12% | 10% | 4,456 |
+| fuse | 19% | 19% | 10,717 |
+| codegraph | 9% | 11% | 3,582 |
+| coa | 9% | 1% | 3,382 |
+| serena | 34% | 27% | 1,538 |
 
 ## Per repo (mean recall, mean tokens)
 
-| Repo | fuse recall | codegraph recall |
-|------|------:|------:|
-| AutoMapper | 0% | 0% |
-| eShopOnWeb | 12% | 0% |
-| FluentValidation | 11% | 22% |
-| MediatR | 100% | 50% |
-| NewtonsoftJson | 0% | 0% |
-| Serilog | 0% | 0% |
+| Repo | fuse recall | codegraph recall | coa recall | serena recall |
+|------|------:|------:|------:|------:|
+| eShopOnWeb | 12% | 0% | 12% | 12% |
+| NodaTime | 36% | 9% | 22% | 22% |
+| Scrutor | 7% | 7% | 0% | 100% |
+| Specification | 20% | 20% | 0% | 0% |
 
 ## How to read this
 

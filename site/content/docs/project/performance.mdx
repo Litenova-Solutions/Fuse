@@ -48,6 +48,19 @@ The `performance` suite (`fuse eval performance`, `performance.json`) indexes a 
 
 Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. The cold index of the same repository took about 64 seconds, which includes the MSBuild workspace load attempt; cold index is paid once and amortized over every warm call.
 
+### Cold start: syntax-first, then semantic in the background (A4)
+
+The cold index is dominated by the MSBuild workspace load, not by the syntax extraction. A4 makes the first read serve the syntax tier immediately and upgrade to the full semantic graph in the background: a first call runs a syntax-first pass (no MSBuild, no embedding) that produces a usable full-text and symbol index, sets the index mode to `syntax`, and flags `semantic_pending` so a caller knows the graph is not yet present; the host then runs the full semantic pass on a background store and clears the flag when it lands. Per-file syntax extraction runs in parallel (bounded to the processor count) with a positionally identical, deterministic output.
+
+Measured on NodaTime (512 files, 7,657 symbols, restore on) with `fuse eval performance --repo NodaTime --restore` (`performance.json`):
+
+| Cold-start stage | Time |
+|------------------|-----:|
+| Syntax tier served (first answer, no MSBuild, no embedding) | about 20 seconds |
+| Full semantic pass (background, MSBuild + embedding) | about 70 seconds |
+
+So the first answer no longer waits on the MSBuild load: time to a usable syntax-tier index drops from about 70 seconds (the full pass) to about 20 seconds, a 3.5x reduction. The residual 20 seconds is the file scan, the parallel parse, and the full-text index construction (the subword, stem, and comment fields computed per chunk), plus first-call JIT, not MSBuild. Closing the rest to a few seconds is tied to the resident-Roslyn-workspace work (sharing the MSBuild evaluation and a warmed process across calls), which is deferred with the dependency-scoped incremental-edge freshness (S6) as a focused follow-up. The explicit `fuse index` command and the `fuse_index` tool stay synchronous full-semantic passes, since those are deliberate "build the index" calls where waiting is expected.
+
 Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. The numbers above run through an in-process warm store; the `fuse mcp serve` host holds the same store resident, so a resident session sees the same warm latencies after its one-time startup. Earlier cold-versus-warm timings on the retired V2 fusion surface do not transfer to V3 and are not carried forward.
 
 ## What This Does Not Cover

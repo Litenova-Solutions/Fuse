@@ -33,6 +33,14 @@ public sealed class SemanticIndexer
     private static readonly string[] ConfigExtensions = [".csproj", ".props", ".targets", ".json"];
 
     /// <summary>
+    ///     The index-store meta key that flags a syntax-first index whose semantic upgrade has not yet landed.
+    ///     <c>"1"</c> means the cross-file semantic graph is still being computed in the background; <c>"0"</c>
+    ///     (or absent) means the recorded mode is final. A caller can read this to know whether to wait for or
+    ///     re-query the semantic tier.
+    /// </summary>
+    public const string SemanticPendingMetaKey = "semantic_pending";
+
+    /// <summary>
     ///     Initializes a new instance of the <see cref="SemanticIndexer" /> class.
     /// </summary>
     /// <param name="discoverer">The workspace discoverer.</param>
@@ -85,17 +93,73 @@ public sealed class SemanticIndexer
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
         var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
-        // Scan the extensions the registered language providers claim, plus the .NET config files needed for
-        // discovery, so a non-C# spike language is surfaced to the indexer without hardwiring its extension.
-        var scanExtensions = _syntaxProviders.Extensions.Concat(ConfigExtensions).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        var files = await _scanner.ScanAsync(new FileScanRequest(root, scanExtensions), cancellationToken);
+        var files = await ScanFilesAsync(root, cancellationToken);
 
         SemanticIndexResult result = snapshot.SemanticLoadSucceeded
             ? await IndexSemanticAsync(root, store, files, snapshot, cancellationToken)
             : await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
 
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
+        // A full pass is the final word on the mode: clear any syntax-first pending flag a prior fast pass set.
+        await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
         return result;
+    }
+
+    /// <summary>
+    ///     Indexes the workspace at the syntax tier only, skipping the MSBuild/Roslyn load, so a first call
+    ///     serves context in a few seconds instead of waiting for the full semantic load. Sets the index mode to
+    ///     <c>syntax</c> and flags <see cref="SemanticPendingMetaKey" /> so a caller knows the semantic graph is
+    ///     not yet present; pair it with <see cref="UpgradeToSemanticAsync" /> in the background.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="store">The index store to write to.</param>
+    /// <param name="cancellationToken">A token to cancel the index.</param>
+    /// <returns>A syntax-tier index summary.</returns>
+    /// <remarks>
+    ///     The cold index time is dominated by the MSBuild evaluation, not the syntax extraction, so the
+    ///     syntax-first pass is the cold-start fix: it produces a usable full-text and symbol index immediately,
+    ///     and the cross-file semantic graph (DI, route, MediatR, EF wiring) lands when the background upgrade
+    ///     completes and clears the pending flag.
+    /// </remarks>
+    public async Task<SemanticIndexResult> IndexSyntaxFirstAsync(
+        string rootDirectory,
+        IWorkspaceIndexStore store,
+        CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var files = await ScanFilesAsync(root, cancellationToken);
+        var snapshot = new RoslynWorkspaceSnapshot(
+            SemanticLoadSucceeded: false,
+            Projects: [],
+            Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-first", "Syntax-tier index served first; the semantic graph upgrades in the background.")]);
+
+        var result = await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken, embed: false);
+        await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
+        await store.SetMetaAsync(SemanticPendingMetaKey, "1", cancellationToken);
+        return result;
+    }
+
+    /// <summary>
+    ///     Upgrades a syntax-first index to the full semantic graph by running the complete indexing pass, then
+    ///     clearing <see cref="SemanticPendingMetaKey" />. Intended to run in the background after
+    ///     <see cref="IndexSyntaxFirstAsync" /> served the first call.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="store">The index store to write to (a fresh store handle, since the foreground store is disposed).</param>
+    /// <param name="cancellationToken">A token to cancel the upgrade.</param>
+    /// <returns>The full index summary (semantic, partial, or syntax if the load could not improve on syntax).</returns>
+    public Task<SemanticIndexResult> UpgradeToSemanticAsync(
+        string rootDirectory,
+        IWorkspaceIndexStore store,
+        CancellationToken cancellationToken) =>
+        IndexAsync(rootDirectory, store, cancellationToken);
+
+    // Scans the extensions the registered language providers claim, plus the .NET config files needed for
+    // discovery, so a non-C# spike language is surfaced to the indexer without hardwiring its extension.
+    private async Task<IReadOnlyList<IndexedFileRecord>> ScanFilesAsync(string root, CancellationToken cancellationToken)
+    {
+        var scanExtensions = _syntaxProviders.Extensions.Concat(ConfigExtensions).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        return await _scanner.ScanAsync(new FileScanRequest(root, scanExtensions), cancellationToken);
     }
 
     /// <summary>
@@ -205,33 +269,54 @@ public sealed class SemanticIndexer
         IWorkspaceIndexStore store,
         IReadOnlyList<IndexedFileRecord> files,
         RoslynWorkspaceSnapshot snapshot,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool embed = true)
     {
         await store.UpsertFilesAsync(files, cancellationToken);
 
-        var symbols = new List<SymbolRecord>();
-        var (chunks, routes) = (new List<ChunkRecord>(), new List<RouteRecord>());
-        foreach (var file in files)
+        // Extract per file in parallel (file read plus stateless syntax parse, the bulk of the syntax-tier cost)
+        // and collect results positionally, so the flattened output is byte-identical to a sequential pass.
+        var perFile = new (List<SymbolRecord> Symbols, List<ChunkRecord> Chunks, List<RouteRecord> Routes)?[files.Count];
+        var parallelOptions = new ParallelOptions
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            CancellationToken = cancellationToken,
+            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount)
+        };
+        await Parallel.ForEachAsync(Enumerable.Range(0, files.Count), parallelOptions, async (i, ct) =>
+        {
+            var file = files[i];
             // Select the language provider by extension; a file no provider claims (a config file) is skipped.
             var provider = _syntaxProviders.ForExtension(file.Extension);
             if (provider is null)
-                continue;
+                return;
 
-            var content = await File.ReadAllTextAsync(Path.Combine(root, file.Path), cancellationToken);
+            var content = await File.ReadAllTextAsync(Path.Combine(root, file.Path), ct);
             var extracted = provider.Extract(file.NormalizedPath, content);
-            symbols.AddRange(extracted.Symbols);
-            chunks.AddRange(extracted.Chunks);
             // Route extraction is a C# web concern; a future provider would register its own route detector.
-            if (file.Extension == ".cs")
-                routes.AddRange(_routeExtractor.Extract(file.NormalizedPath, content));
+            var fileRoutes = file.Extension == ".cs"
+                ? _routeExtractor.Extract(file.NormalizedPath, content).ToList()
+                : [];
+            perFile[i] = (extracted.Symbols.ToList(), extracted.Chunks.ToList(), fileRoutes);
+        });
+
+        var symbols = new List<SymbolRecord>();
+        var (chunks, routes) = (new List<ChunkRecord>(), new List<RouteRecord>());
+        foreach (var entry in perFile)
+        {
+            if (entry is not { } e)
+                continue;
+            symbols.AddRange(e.Symbols);
+            chunks.AddRange(e.Chunks);
+            routes.AddRange(e.Routes);
         }
 
         await store.UpsertSymbolsAsync(symbols, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
         await store.UpsertRoutesAsync(routes, cancellationToken);
-        await EmbedAndPersistAsync(store, chunks, cancellationToken);
+        // The syntax-first fast pass skips embedding so it serves in a few seconds; the background semantic
+        // upgrade (a full pass) does the embedding, so dense lands together with the graph.
+        if (embed)
+            await EmbedAndPersistAsync(store, chunks, cancellationToken);
 
         return new SemanticIndexResult("syntax", files.Count, 0, symbols.Count, chunks.Count, routes.Count, snapshot.Diagnostics);
     }

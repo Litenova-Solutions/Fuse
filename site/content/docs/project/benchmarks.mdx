@@ -151,7 +151,23 @@ This reframes the headline. Bare-title recall is no longer the measure for this 
 | False-rejection on answerable | 8.1% (8 of 99) | <= 10% |
 | Precision when confident | 21.3% (18 tasks) | >= 20% |
 
-The cutoff trades recall for precision as designed: graded states over the 108 PRs are confident 18, partial 73, insufficient 17, and the returned-set recall falls to 16.4 percent at a median 956 returned tokens (from 31.0 percent at 4,642) because a confident result returns only its leading cluster and a partial result a capped best-effort set. Subword identifier indexing (the next item) widens recall back under this cutoff. Every number holds with no model present.
+The cutoff trades recall for precision as designed: graded states over the 108 PRs are confident 18, partial 73, insufficient 17, and the returned-set recall falls to 16.4 percent at a median 956 returned tokens (from 31.0 percent at 4,642) because a confident result returns only its leading cluster and a partial result a capped best-effort set. Subword identifier indexing (next) widens recall back under this cutoff. Every number holds with no model present.
+
+### Subword identifier indexing (S1)
+
+The default full-text tokenizer treats `ApplyRoundingMode` as one opaque token, so the prose word `rounding` does not match it. S1 closes that gap deterministically and offline (`localize.s1.json`): at index time every identifier in a chunk's name, declared symbols, and signature is split on camelCase, snake_case, acronym, and letter/digit boundaries into a dedicated full-text subtokens column (computed in C#, no tokenizer plugin, weighted below the exact name and above the body), and the query is split the same way before it hits the index. So `rounding` now finds `ApplyRoundingMode`, while an exact name match still ranks first. The schema version bumps and the index rebuilds on the next run.
+
+Measured over the same 108 PRs against the S3 baseline (the correct comparison, since S1 is S3 plus subwords), every recall bucket gains at improved precision:
+
+| Metric | S3 | + Subwords (S1) |
+|--------|---:|----------------:|
+| overall returned-set recall | 16.4% | 18.3% |
+| identifier-rich | 27% | 30% |
+| natural-language domain | 15% | 17% |
+| precision | 9.7% | 10.7% |
+| false-rejection on answerable | 8.1% | 7.1% |
+
+Subwords lift recall and precision together because they find the right file, not just more files, and the extra matches pull a few previously-insufficient queries into a usable answer (false-rejection falls). Precision when confident is 19.4 percent (from 21.3, a within-noise move on 18 tasks at the widened recall). Identifier-rich at 30 percent stays well short of the retired 49 percent lexical floor: that floor was measured at a 20-candidate cap without the S3 cutoff, over a corpus that here loads mostly syntax (2 partial, 4 syntax). The subword field is the lever; the graded cutoff and the syntax-mostly corpus are the ceiling. Every number holds with no model present.
 
 Findings, including the known gap:
 

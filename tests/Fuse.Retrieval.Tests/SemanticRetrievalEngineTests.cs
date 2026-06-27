@@ -36,8 +36,8 @@ public sealed class SemanticRetrievalEngineTests : IAsyncLifetime
     {
         var engine = new SemanticRetrievalEngine(_store);
 
-        // A query that names one file's symbol stands clear of the rest: confident, tight set, no navigation map.
-        var result = await engine.LocalizeAsync(new LocalizationRequest(".", Query: "OrderService"), CancellationToken.None);
+        // An exact symbol anchor resolves to one clear winner: confident, tight set, no navigation map.
+        var result = await engine.LocalizeAsync(new LocalizationRequest(".", Focus: "OrderService"), CancellationToken.None);
 
         Assert.Equal(SignalState.Confident, result.State);
         Assert.Contains(result.Candidates, c => c.Path == "src/OrderService.cs");
@@ -92,9 +92,9 @@ public sealed class SemanticRetrievalEngineTests : IAsyncLifetime
         Assert.Empty(refused.Candidates);
         Assert.NotNull(refused.Navigation);
 
-        // Anchored (a query that names a clear winner) under strict: answered with the tight set.
+        // Anchored (an exact symbol) under strict: answered with the tight set.
         var answered = await engine.LocalizeAsync(
-            new LocalizationRequest(".", Query: "OrderService", Strict: true), CancellationToken.None);
+            new LocalizationRequest(".", Focus: "OrderService", Strict: true), CancellationToken.None);
         Assert.Equal(SignalState.Confident, answered.State);
         Assert.NotEmpty(answered.Candidates);
     }

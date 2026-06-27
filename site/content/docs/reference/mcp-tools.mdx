@@ -18,6 +18,7 @@ Choosing a tool:
 - Use `fuse_localize` for open-ended tasks.
 - Use `fuse_context` after localize or resolve, unless you want one-shot context.
 - Use `fuse_find` for exact text, path, or symbol lookup.
+- Use `fuse_neighbors` to explore iteratively: the graph neighborhood of a file, the callers and implementers of a symbol, or the central files of an area.
 
 ## fuse_index
 
@@ -129,6 +130,20 @@ Exact lookup: a symbol by name, a file by path fragment, or text by full-text se
 | `query` | string | required | The name, path fragment, or text to find |
 | `path` | string | `.` | Workspace directory |
 | `kind` | string | `all` | Restrict to `symbol`, `path`, `text`, or `all` |
+
+## fuse_neighbors
+
+Iterative exploration primitives, ranked and bounded with provenance and no source bodies. Specify exactly one of `file`, `symbol`, or `centralIn`. Chain these calls to turn a weak first guess into a strong few-call funnel.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | `.` | Workspace directory |
+| `file` | string | null | A file whose graph neighborhood to return (callers, implementers, consumers, config, plus same-folder cohesion) |
+| `symbol` | string | null | A symbol whose callers and implementers to return (incoming typed edges) |
+| `centralIn` | string | null | An area (folder prefix, or empty for the whole workspace) whose structurally central files to return |
+| `limit` | int | 20 | Maximum results to return |
+
+The neighborhood falls back to same-folder cohesion where the graph is sparse, so a result is never empty; central files are ranked by node degree and are empty in syntax mode (no edges). These primitives compose the structural priors and graph expansion into operations shaped for exploration.
 
 ## fuse_reduce
 

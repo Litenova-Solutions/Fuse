@@ -16,13 +16,14 @@ public sealed class McpServeIntegrationTests
         "fuse_index",
         "fuse_localize",
         "fuse_map",
+        "fuse_neighbors",
         "fuse_reduce",
         "fuse_resolve",
         "fuse_review",
     ];
 
     [Fact]
-    public async Task StdioServer_ListsTheEightV3Tools_AndFuseMapReturnsIndexedSymbols()
+    public async Task StdioServer_ListsTheNineV3Tools_AndFuseMapReturnsIndexedSymbols()
     {
         using var fixture = new McpFixtureProject();
         fixture.AddFile("Services/WidgetService.cs", """

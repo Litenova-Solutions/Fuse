@@ -27,6 +27,10 @@ A candidate carries a node id (for exact and graph candidates) or a file path (f
 
 Candidates that point at the same node or file are grouped and their source scores combined with a noisy-or rule: the combined score is one minus the product of one minus each source score. Corroboration from several sources raises the score toward but never past one, and a single-source candidate keeps its own weight. Grouping is by node id, so a symbol-level candidate stays distinct from a file-level one while duplicate file candidates (a full-text hit and a path hit for the same file) merge. The output is ranked by score, then by path for stability.
 
+## Structural priors
+
+After scoring, a structural prior nudges ambiguous candidates by where they sit in the graph, not just what they match. The dependency-centrality prior multiplies a candidate's score by a small, capped factor (at most plus ten percent) proportional to its file's normalized node degree, so a widely-depended-on file outranks a leaf for an otherwise-tied query. The multiplier is on the existing score, so it tunes the ranking and cannot promote an irrelevant (near-zero score) file on centrality alone. It is computed over the semantic node and edge tables, so in syntax mode (no edges) it is a no-op and scoring is unchanged; it moves results only where a real graph exists (partial or semantic mode).
+
 ## Typed graph expansion
 
 From the scored seeds, expansion walks the edges to a configured depth. Edges are typed and weighted: a strong, deterministic edge (a route to its action, a request to its handler, a service to its implementation) carries more weight than a weaker structural or co-change edge, and a neighbor's score is its parent's score times the edge weight. Expansion admits the highest-scoring candidate first and prunes low-scoring branches, so the seed and its nearest semantic neighborhood survive while distant, weakly connected files are cut. Each file is included once, by the highest-scoring chain that reaches it, and the chain is recorded as that file's provenance.

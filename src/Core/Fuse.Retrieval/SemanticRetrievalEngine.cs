@@ -71,9 +71,12 @@ public sealed class SemanticRetrievalEngine
                 State: SignalState.Insufficient, Navigation: navigation);
         }
 
-        // Step 2: generate, score, and grade the candidate distribution into the signal-sufficiency contract.
+        // Step 2: generate, score, blend the structural priors, and grade the distribution into the contract.
         var candidates = await _candidateGenerator.GenerateAsync(request, cancellationToken);
         var scored = _scorer.Score(candidates);
+        // Dependency-centrality prior: a widely-depended-on file outranks a leaf for an otherwise-tied query. A
+        // small capped multiplier, empty (no-op) in syntax mode where the graph has no edges.
+        scored = await new GraphCentralityPrior(_store).ApplyAsync(scored, cancellationToken);
         var state = SignalGrader.Grade(scored);
 
         // Select the returned set by state. Confident returns only the leading cluster (the precision win); partial

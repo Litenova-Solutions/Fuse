@@ -186,6 +186,10 @@ Measured over the same 108 PRs against the S1 baseline:
 
 The bridges lift recall and precision again, drop false-rejection to 5.1 percent, and bring precision when confident back over the 20 percent target. The natural-language-domain bucket, which comments were expected to help most, is flat at 17 percent here: in this corpus the PR titles share little stemmed vocabulary with the code's comments, so the gain lands on the identifier-rich and test buckets instead. An honest corpus limit, not an engine ceiling. Every number holds with no model present.
 
+### A structural prior: dependency centrality (S5)
+
+After scoring, a dependency-centrality prior multiplies each candidate's score by a small capped factor (at most plus ten percent) proportional to its file's normalized node degree, so a widely-depended-on file outranks a leaf for an otherwise-tied query, bounded so it cannot promote a near-zero-score file. It is computed over the semantic graph, so in syntax mode (no edges) it is a no-op. The prior is verified by unit tests on a crafted graph, but corpus-wide localize is unchanged from S2 (`localize.s5.json`): the four syntax repositories have no edges and the two partial ones barely move, so the prior's effect is bounded by the mostly-syntax corpus, not by the prior. The git co-change half of this item is deferred: the co-change table has no collector yet, so a git-history miner is a separate piece of work.
+
 Findings, including the known gap:
 
 - Recall tracks the signal in the title. When the title names identifiers that appear in the code (identifier-rich, 41 percent after R1), localization does best; when the title is a domain phrase (27 percent), a route or API description, or a formatting note, it does worse. This is the expected shape of a title-only, no-base task.

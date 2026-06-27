@@ -1,0 +1,79 @@
+---
+title: Messaging
+description: The internal source of truth for how Fuse is described, so the landing page, the README, and every public surface stay consistent and honest.
+---
+
+This page is the reference the landing page, the README, and any launch material draw from. It is internal-facing: it states what Fuse is, what leads and what is demoted, how deep the mechanism goes on which page, and the honesty rules that govern every claim. Edit this first, then update the surfaces to match.
+
+## The one-sentence pitch
+
+Fuse makes your AI coding assistant faster, cheaper, and more accurate on your .NET codebase.
+
+## The benefit, in plain terms
+
+Lead with what a developer feels, not how it works:
+
+- **More accurate.** The assistant answers questions about how the code is actually wired (which service implements an interface, which handler runs a request, which action a route hits) instead of guessing from file names.
+- **Cheaper.** A pull request's context arrives in roughly a thousand tokens instead of thousands of files, so each turn costs less.
+- **Faster.** Once the index is warm, answers come back in milliseconds.
+
+These three (accuracy, cost, speed) are the top-of-funnel message. Everything else is support.
+
+## Message hierarchy
+
+What leads, in order:
+
+1. The outcome: a better AI assistant on your code (accuracy, cost, speed).
+2. The concrete hook: it understands .NET wiring deterministically, not by guessing.
+3. The proof: honest, reproducible benchmarks (linked, not front-loaded).
+
+What is demoted:
+
+- **Raw token-reduction percentages.** Token efficiency is real and measured, but "we cut N percent of tokens" is a mechanism statement, not an outcome. It belongs in the benchmarks and reference pages, not the hero. The hero says "a PR's context in about a thousand tokens," which a developer feels, rather than a reduction ratio.
+- **Internal architecture (the semantic graph, BM25F, the signal-sufficiency contract).** These are the reasons the benefit is true; they live in the concept, reference, and internals pages for readers who go looking.
+
+## Surface versus depth (the layering rule)
+
+Top-of-funnel pages (the landing page, the docs overview) stay abstract and simple: the outcome a developer feels, one runnable example, install in a copy-paste block. Most developers do not want dependency-injection-graph theory before they know whether the tool helps them.
+
+The depth lives one click away:
+
+- **Concepts** explain the ideas (scoping, the semantic graph, the refuse-and-route contract) in plain language.
+- **Reference** is dense and precise (the tool verbs, the configuration keys, the response shapes).
+- **Internals** is for contributors and the deeply curious (the pipeline, the scoring, the caching schema).
+
+The rule: a claim on the surface must be backed by a page in the depth, and the depth must never leak onto the surface.
+
+## Differentiation (capability, not a scoreboard)
+
+State how Fuse differs as a capability difference, not a measured win. Do not write "Fuse beats X" anywhere a reproducible head-to-head does not back it (see the honesty pillar).
+
+- **Versus grep and plain full-text search.** Grep finds where a string appears. Fuse resolves what is wired to what (an interface to its registered implementation, a request to its handler, a route to its action) through a typed graph, and ranks files by relevance to a task rather than by string frequency.
+- **Versus whole-repo packers.** A packer concatenates the repository (or a directory) and lets the model sort it out. Fuse scopes to the files a task needs and reduces them, so the context is smaller and on-target rather than a large dump.
+- **Versus embedding-only RAG.** Pure vector search retrieves by surface similarity and cannot answer a structural question (what implements this, what calls that). Fuse uses embeddings as one channel blended with lexical matching and the deterministic graph, so a structural question gets a structural answer.
+- **Versus tree-sitter graph tools.** A tree-sitter graph is language-broad but shallow: it sees syntax, not types, so it cannot follow a dependency-injection registration or an options binding. Fuse resolves those deterministically on .NET via Roslyn, and offers tree-sitter-class breadth as the syntax tier for other languages.
+- **Versus code-search MCP servers.** A search server returns ranked paths or snippets for the model to open. Fuse returns scoped, reduced source with provenance (why each file is here), shaped for an agent to act on in one step.
+
+## The .NET-first wedge
+
+The surface message is the benefit (faster, cheaper, more accurate). The wedge underneath is how it is true: Fuse is the clear best at .NET agent context because it resolves .NET wiring deterministically with Roslyn. Other languages are supported at the syntax tier (token-efficient context and localization), with the deepest support on .NET. Present breadth honestly: broad coverage, deepest on .NET, not "every language equally."
+
+## Honesty is the brand
+
+This is non-negotiable and is itself part of the pitch (a tool that tells you when it cannot answer well is more trustworthy):
+
+- **Every number is sourced.** Quote only figures recorded in `tests/benchmarks/results`, and link the [benchmarks page](/docs/project/benchmarks). Never round up or fabricate.
+- **Weaknesses are published.** The open-ended-from-a-vague-title case is the weakest mode, and the benchmarks page says so. The corpus mostly loads in syntax or partial mode in the current environment, which bounds several numbers; that is stated, not hidden.
+- **No head-to-head win before it is measured apples-to-apples.** The peer comparison (Fuse versus CodeGraph, coa-codesearch, Serena) ships only on the [benchmarks page](/docs/project/benchmarks) with the exact reproduction command, with omitted peers marked omitted and small samples flagged. Marketing surfaces link to it; they do not restate a ranking the harness has not earned.
+- **Refuse-and-route is part of the trust story.** When a request lacks a usable anchor, Fuse returns a navigation map and asks for a better query rather than guessing, and that behavior is presented as a feature, not an apology.
+
+## The numbers that may be quoted (sourced)
+
+Use these exact, recorded figures; re-verify against `tests/benchmarks/results` before quoting, and prefer the outcome framing over the raw ratio.
+
+- Change-impact context (`review.json`, A3 corpus, 53 PRs): a PR's scoped context in a median 958 returned tokens at 100 percent changed-file recall and 79.8 percent precision.
+- .NET wiring resolution (Suite A, `semantics.json`): the extracted graph matches the hand-built edge ground truth exactly on the wiring fixture (22 of 22 edges, recall and precision 1.0).
+- Warm latency (`performance.json`): warm localize and resolve in tens of milliseconds or less once the index is warm.
+- Token reduction (`reduction.json`): the Roslyn skeleton keeps essentially all public API while removing roughly 37 to 55 percent of tokens at skeleton level (a support number, not the headline).
+
+State the weak number too when completeness matters: open-ended localization from a bare title is about 15 percent changed-file recall on the current corpus (`localize.json`), which is why the contract refuses low-signal input and routes it to a better query.

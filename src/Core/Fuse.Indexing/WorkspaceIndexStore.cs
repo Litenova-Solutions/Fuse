@@ -387,8 +387,8 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             ftsInsert = connection.CreateCommand();
             ftsInsert.Transaction = transaction;
             ftsInsert.CommandText = """
-                INSERT INTO chunk_fts(chunk_id, path, name, symbols, signature, comments, body, subtokens)
-                VALUES($id, $path, $name, $symbols, $sig, $comments, $body, $subtokens);
+                INSERT INTO chunk_fts(chunk_id, path, name, symbols, signature, comments, body, subtokens, stems)
+                VALUES($id, $path, $name, $symbols, $sig, $comments, $body, $subtokens, $stems);
                 """;
             ftsInsert.Parameters.Add("$id", SqliteType.Text);
             ftsInsert.Parameters.Add("$path", SqliteType.Text);
@@ -398,6 +398,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             ftsInsert.Parameters.Add("$comments", SqliteType.Text);
             ftsInsert.Parameters.Add("$body", SqliteType.Text);
             ftsInsert.Parameters.Add("$subtokens", SqliteType.Text);
+            ftsInsert.Parameters.Add("$stems", SqliteType.Text);
         }
 
         try
@@ -439,6 +440,10 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
                     // symbols, signature), computed in C# so a prose query word matches a compound name.
                     var subtokens = IdentifierSplitter.Expand(chunk.Name, chunk.SymbolsText, chunk.Signature);
                     ftsInsert.Parameters["$subtokens"].Value = subtokens.Length == 0 ? DBNull.Value : subtokens;
+                    // The stems field is the Porter-stemmed form of the chunk's identifiers and comment prose, so
+                    // an inflected query word (rounds, rounded) matches an inflected code or comment word (rounding).
+                    var stems = PorterStemmer.Expand(chunk.Name, chunk.SymbolsText, chunk.Signature, chunk.Comments);
+                    ftsInsert.Parameters["$stems"].Value = stems.Length == 0 ? DBNull.Value : stems;
                     await ftsInsert.ExecuteNonQueryAsync(cancellationToken);
                 }
             }
@@ -717,13 +722,14 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         // bm25() takes one weight per column in declaration order: chunk_id (unindexed, weight ignored),
-        // path, name, symbols, signature, comments, body, subtokens. Name/signature/symbols outrank path, which
-        // outranks comments and body. The subtokens column (subword expansion of identifiers) is weighted below
-        // the exact name but above the body, so an exact name match still wins over a subword match. bm25 is
-        // lower-is-better, so the score is negated to make higher better.
+        // path, name, symbols, signature, comments, body, subtokens, stems. Name/signature/symbols outrank path,
+        // which outranks comments and body. The subtokens column (subword expansion of identifiers) is weighted
+        // below the exact name but above the body, so an exact name match still wins over a subword match. The
+        // stems column (Porter-stemmed identifiers and comments) is weighted lowest, as a fuzzy inflection bridge.
+        // bm25 is lower-is-better, so the score is negated to make higher better.
         command.CommandText = """
             SELECT f.chunk_id, files.normalized_path, c.kind, c.name, c.start_line, c.end_line,
-                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7, 0.9) AS score
+                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7, 0.9, 0.5) AS score
             FROM chunk_fts f
             JOIN chunks c ON c.chunk_id = f.chunk_id
             JOIN files ON files.file_id = c.file_id
@@ -1125,10 +1131,16 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         {
             if (seen.Add(term))
                 expanded.Add(term);
+            // Subword parts match the subtokens column; the Porter stem of each part matches the stems column,
+            // so an inflected query word (rounds) reaches an inflected indexed word (rounding). The raw term is
+            // kept first so an exact name match still ranks above the subword and stemmed bridges.
             foreach (var part in IdentifierSplitter.Split(term))
             {
                 if (seen.Add(part))
                     expanded.Add(part);
+                var stem = PorterStemmer.Stem(part);
+                if (seen.Add(stem))
+                    expanded.Add(stem);
             }
         }
 

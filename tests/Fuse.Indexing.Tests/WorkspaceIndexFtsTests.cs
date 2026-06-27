@@ -99,6 +99,39 @@ public sealed class WorkspaceIndexFtsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SearchMatchesAcrossInflectionByStemming()
+    {
+        // S2: a stemmed query word matches an inflected code word. "calculate" finds a chunk named Calculation.
+        await _store.UpsertFilesAsync(
+            [new IndexedFileRecord("src/Calc.cs", "src/Calc.cs", ".cs", 60, 1, "hc")],
+            CancellationToken.None);
+        await _store.UpsertChunksAsync(
+            [new ChunkRecord("chunk:Calc", "src/Calc.cs", "type", "kc", 1, 8, "thc", 20, 10, Name: "Calculation")],
+            CancellationToken.None);
+
+        var hits = await _store.SearchAsync(new SearchQuery("calculate"), CancellationToken.None);
+
+        Assert.Contains(hits, h => h.FilePath == "src/Calc.cs");
+    }
+
+    [Fact]
+    public async Task SearchFindsFileByCommentProse()
+    {
+        // S2: a term that appears only in a comment localizes the file through the weighted comments field.
+        await _store.UpsertFilesAsync(
+            [new IndexedFileRecord("src/Widget.cs", "src/Widget.cs", ".cs", 60, 1, "hw")],
+            CancellationToken.None);
+        await _store.UpsertChunksAsync(
+            [new ChunkRecord("chunk:Widget", "src/Widget.cs", "type", "kw", 1, 8, "thw", 20, 10,
+                Name: "Widget", Comments: "handles the warranty refund workflow")],
+            CancellationToken.None);
+
+        var hits = await _store.SearchAsync(new SearchQuery("warranty"), CancellationToken.None);
+
+        Assert.Contains(hits, h => h.FilePath == "src/Widget.cs");
+    }
+
+    [Fact]
     public async Task SearchReturnsEmptyForUnmatchedQuery()
     {
         await SeedAsync();

@@ -122,6 +122,7 @@ public sealed class SyntaxSymbolExtractor
                 Name: chunk.SymbolName,
                 Signature: signature,
                 Body: chunk.Content,
+                Comments: NullIfEmpty(CommentExtractor.Extract(chunk.Content)),
                 SymbolsText: chunk.ParentType is null ? chunk.SymbolName : $"{chunk.ParentType} {chunk.SymbolName}"));
         }
 
@@ -216,6 +217,8 @@ public sealed class SyntaxSymbolExtractor
 
     private static string HashEstimate(string text) =>
         new FileHashService().ComputeHash(System.Text.Encoding.UTF8.GetBytes(text));
+
+    private static string? NullIfEmpty(string value) => string.IsNullOrEmpty(value) ? null : value;
 }
 
 /// <summary>

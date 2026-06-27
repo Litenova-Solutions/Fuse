@@ -27,6 +27,7 @@ public sealed class SemanticIndexer
     private readonly SemanticAnalysisRunner _analysisRunner;
     private readonly ITextEmbedder? _embedder;
     private readonly LanguageSyntaxProviderRegistry _syntaxProviders;
+    private readonly GitCoChangeCollector _coChangeCollector = new();
 
     // Non-source file extensions the scanner still needs for project discovery and config indexing, beyond the
     // source extensions the language providers claim.
@@ -102,6 +103,19 @@ public sealed class SemanticIndexer
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         // A full pass is the final word on the mode: clear any syntax-first pending flag a prior fast pass set.
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
+
+        // Mine git co-change couplings so the open-ended scorer can recover sibling files of a multi-file change.
+        // Best-effort and bounded (a commit cap, wide commits skipped); a non-repository or a git failure is a
+        // no-op, so it never breaks indexing. Only the full pass mines; the syntax-first fast path skips it.
+        try
+        {
+            await _coChangeCollector.CollectAndStoreAsync(root, store, cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Co-change is an optional prior; a mining or write failure must not fail the index.
+        }
+
         return result;
     }
 

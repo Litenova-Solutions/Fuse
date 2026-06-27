@@ -169,13 +169,21 @@ public sealed partial class FuseTools
         return store;
     }
 
+    /// <summary>
+    ///     Whether a cold read serves the syntax tier first and upgrades to the semantic graph in the background.
+    ///     Enabled only by the long-lived <c>mcp serve</c> host (which owns the background task's lifetime); a
+    ///     short-lived in-process caller indexes synchronously so no background task outlives it.
+    /// </summary>
+    public static bool BackgroundSemanticUpgradeEnabled { get; set; }
+
     // Guards against launching more than one background semantic upgrade per workspace root at a time.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> SemanticUpgrades =
         new(StringComparer.OrdinalIgnoreCase);
 
     // Opens the store and builds the index on first use, so read tools work without an explicit fuse_index call.
-    // Cold start serves the syntax tier in a few seconds (A4), then upgrades to the semantic graph in the
-    // background, so the first read does not block on the MSBuild load.
+    // In the long-lived serve host, cold start serves the syntax tier in a few seconds (A4), then upgrades to the
+    // semantic graph in the background so the first read does not block on the MSBuild load. In a short-lived
+    // in-process caller the index is built synchronously, so no background task outlives the call.
     private static async Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
     {
         var root = Path.GetFullPath(path);
@@ -184,8 +192,15 @@ public sealed partial class FuseTools
         if (state.FileCount == 0)
         {
             await EnsureDenseModelAsync(cancellationToken);
-            await indexer.IndexSyntaxFirstAsync(root, store, cancellationToken);
-            ScheduleSemanticUpgrade(indexer, root);
+            if (BackgroundSemanticUpgradeEnabled)
+            {
+                await indexer.IndexSyntaxFirstAsync(root, store, cancellationToken);
+                ScheduleSemanticUpgrade(indexer, root);
+            }
+            else
+            {
+                await indexer.IndexAsync(root, store, cancellationToken);
+            }
         }
         return store;
     }

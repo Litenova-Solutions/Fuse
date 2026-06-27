@@ -34,6 +34,35 @@ public sealed class MultiLanguageSeamTests
     }
 
     [Fact]
+    public void JavaScriptProviderExtractsDeclarationsAndArrowFunctions()
+    {
+        // A5 breadth: the offline JS/TS provider extracts class and function declarations plus arrow-function
+        // and function-expression assignments, marking exported declarations as the module's public API.
+        var provider = new JavaScriptSyntaxProvider();
+        const string source = """
+            export class BasketService {
+            }
+            export function computeTotal(items) {
+              return 0;
+            }
+            const applyDiscount = (price) => price * 0.9;
+            let _internal = function () { return 1; };
+            """;
+
+        var result = provider.Extract("src/basket.ts", source);
+
+        Assert.Contains(result.Symbols, s => s.Name == "BasketService" && s.Kind == "class" && s.IsPublicApi);
+        Assert.Contains(result.Symbols, s => s.Name == "computeTotal" && s.Kind == "function" && s.IsPublicApi);
+        Assert.Contains(result.Symbols, s => s.Name == "applyDiscount" && s.Kind == "function");
+        Assert.Contains(result.Symbols, s => s.Name == "_internal" && !s.IsPublicApi);
+        Assert.Equal(result.Symbols.Count, result.Chunks.Count);
+        // The provider claims the common JS/TS extensions.
+        Assert.Contains(".ts", provider.Extensions);
+        Assert.Contains(".tsx", provider.Extensions);
+        Assert.Contains(".js", provider.Extensions);
+    }
+
+    [Fact]
     public void RegistrySelectsProviderByExtensionAndReportsExtensions()
     {
         var registry = new LanguageSyntaxProviderRegistry([new CSharpSyntaxProvider(new SyntaxSymbolExtractor()), new PythonSyntaxProvider()]);

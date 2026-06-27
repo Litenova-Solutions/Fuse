@@ -76,7 +76,7 @@ public sealed class SemanticIndexer
         // The syntax tier is provider-driven: C# behind the seam (unchanged behavior), plus a second-language
         // syntax spike. Built internally so the existing constructor and its callers are unaffected; a later
         // change can make the provider set injectable for an external language plugin.
-        _syntaxProviders = new LanguageSyntaxProviderRegistry([new CSharpSyntaxProvider(syntaxSymbols), new PythonSyntaxProvider()]);
+        _syntaxProviders = new LanguageSyntaxProviderRegistry([new CSharpSyntaxProvider(syntaxSymbols), new PythonSyntaxProvider(), new JavaScriptSyntaxProvider()]);
     }
 
     /// <summary>

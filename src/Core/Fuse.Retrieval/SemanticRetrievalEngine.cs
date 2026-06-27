@@ -27,6 +27,12 @@ public sealed class SemanticRetrievalEngine
     private const string PartialAsk =
         "No candidate stands clear; this is a low-confidence best effort. Refine with a symbol, route, service, request, config section, or git base.";
 
+    // Graph-aware discovery bounds: expand only the top seeds, one hop, and admit at most this many new neighbor
+    // files, so a single weak seed cannot pull in a large subtree.
+    private const int GraphSeedCount = 2;
+    private const int GraphExpansionDepth = 1;
+    private const int GraphMaxNeighbors = 5;
+
     private readonly IWorkspaceIndexStore _store;
     private readonly IChangeSource? _changeSource;
     private readonly CandidateGenerator _candidateGenerator;
@@ -89,6 +95,12 @@ public sealed class SemanticRetrievalEngine
             SignalState.Partial => scored.Take(PartialCandidateLimit).ToList(),
             _ => request.Strict ? [] : scored.Take(PartialCandidateLimit).ToList(),
         };
+        // Graph-aware discovery (opt-in): enrich the selected set with the typed-graph neighbors of its seeds (the
+        // implementers, callers, and configuration of what was matched), at a decayed score and bounded by seed
+        // count, depth, and neighbor cap. Off by default because the blast radius widens recall but pressures
+        // precision; a no-op in syntax mode and when nothing was selected (strict refusal).
+        if (request.ExpandGraph)
+            selected = await ExpandSeedsThroughGraphAsync(selected, cancellationToken);
         selected = selected.Take(request.MaxCandidates).ToList();
 
         var warnings = new List<string>();
@@ -115,6 +127,63 @@ public sealed class SemanticRetrievalEngine
         }
 
         return new LocalizationResult(localized, warnings, LowSignal: false, SuggestedInput: null, State: state, Navigation: navigationMap);
+    }
+
+    // Graph-aware discovery: expand the top seeds one hop through the typed semantic graph and admit a capped
+    // set of new neighbor files at their decayed expansion score, so a weak lexical hit on one file pulls in its
+    // implementers, callers, and configuration. Bounded by seed count, depth, and neighbor cap. In syntax mode
+    // the graph has no edges, so expansion returns only the seeds and the set is unchanged.
+    private async Task<IReadOnlyList<ScoredCandidate>> ExpandSeedsThroughGraphAsync(
+        IReadOnlyList<ScoredCandidate> scored, CancellationToken cancellationToken)
+    {
+        if (scored.Count == 0)
+            return scored;
+
+        // A node candidate seeds itself; a file-only (lexical) candidate seeds the nodes its file declares, so a
+        // text hit can still traverse the graph.
+        var seeds = new List<ScoredCandidate>();
+        foreach (var candidate in scored.Take(GraphSeedCount))
+        {
+            if (!string.IsNullOrEmpty(candidate.NodeId))
+            {
+                seeds.Add(candidate);
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(candidate.FilePath))
+                continue;
+            foreach (var node in await _store.GetNodesByFileAsync(candidate.FilePath, cancellationToken))
+                seeds.Add(candidate with { NodeId = node.NodeId });
+        }
+
+        if (seeds.Count == 0)
+            return scored;
+
+        var expanded = await _expansion.ExpandAsync(seeds, GraphExpansionDepth, ExpansionThreshold, cancellationToken);
+
+        var present = new HashSet<string>(
+            scored.Where(c => !string.IsNullOrEmpty(c.FilePath)).Select(c => c.FilePath), StringComparer.Ordinal);
+        var additions = new List<ScoredCandidate>();
+        foreach (var node in expanded
+            .Where(n => n.Hop > 0 && !string.IsNullOrEmpty(n.FilePath) && !present.Contains(n.FilePath!))
+            .OrderByDescending(n => n.Score))
+        {
+            if (additions.Count >= GraphMaxNeighbors)
+                break;
+            if (!present.Add(node.FilePath!))
+                continue;
+            additions.Add(new ScoredCandidate(
+                node.NodeId, node.FilePath!, node.Kind, node.Score, [CandidateSource.GraphNeighbor],
+                [$"graph neighbor: {string.Join(' ', node.Provenance)}".Trim()], 0));
+        }
+
+        if (additions.Count == 0)
+            return scored;
+
+        return scored.Concat(additions)
+            .OrderByDescending(c => c.Score)
+            .ThenBy(c => c.FilePath, StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>

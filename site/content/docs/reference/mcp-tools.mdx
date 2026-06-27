@@ -55,6 +55,7 @@ Localize a task to ranked candidate files and symbols. Returns candidates with r
 | `changedSince` | string | null | A git base ref whose changed files seed the candidates |
 | `maxCandidates` | int | 50 | Maximum candidates to return |
 | `strict` | bool | false | Refuse an insufficient request and return only a navigation map, instead of a low-confidence best-effort guess |
+| `expand` | bool | false | Enrich the selected candidates with their typed-graph neighbors (implementers, callers, config) for discovery; widens recall but pressures precision |
 
 ### The graded response
 

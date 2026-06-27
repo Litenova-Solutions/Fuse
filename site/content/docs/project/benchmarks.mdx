@@ -169,6 +169,23 @@ Measured over the same 108 PRs against the S3 baseline (the correct comparison, 
 
 Subwords lift recall and precision together because they find the right file, not just more files, and the extra matches pull a few previously-insufficient queries into a usable answer (false-rejection falls). Precision when confident is 19.4 percent (from 21.3, a within-noise move on 18 tasks at the widened recall). Identifier-rich at 30 percent stays well short of the retired 49 percent lexical floor: that floor was measured at a 20-candidate cap without the S3 cutoff, over a corpus that here loads mostly syntax (2 partial, 4 syntax). The subword field is the lever; the graded cutoff and the syntax-mostly corpus are the ceiling. Every number holds with no model present.
 
+### Stemming and a comment bridge (S2)
+
+S2 adds two more deterministic, offline vocabulary bridges that compose with subwords (`localize.s2.json`). A Porter-stemmed `stems` full-text column (computed in C#, query terms stemmed the same way, weighted lowest as a fuzzy bridge) collapses inflected variants, so `calculate` finds `Calculation` and `rounds` finds `rounding`; only letters are stemmed, so code tokens and digits pass through unchanged. A weighted `comments` field, fed by a comment extractor that pulls the prose out of line, block, XML-doc, and hash comments, indexes the developer's own vocabulary above body weight, because that is the vocabulary a natural-language query is written in. The schema version bumps and the index rebuilds on the next run.
+
+Measured over the same 108 PRs against the S1 baseline:
+
+| Metric | S1 | + Stemming/comments (S2) |
+|--------|---:|-------------------------:|
+| overall returned-set recall | 18.3% | 18.8% |
+| precision | 10.7% | 11.7% |
+| identifier-rich | 30% | 32% |
+| test-only | 31% | 36% |
+| false-rejection on answerable | 7.1% | 5.1% |
+| precision when confident | 19.4% | 23.3% |
+
+The bridges lift recall and precision again, drop false-rejection to 5.1 percent, and bring precision when confident back over the 20 percent target. The natural-language-domain bucket, which comments were expected to help most, is flat at 17 percent here: in this corpus the PR titles share little stemmed vocabulary with the code's comments, so the gain lands on the identifier-rich and test buckets instead. An honest corpus limit, not an engine ceiling. Every number holds with no model present.
+
 Findings, including the known gap:
 
 - Recall tracks the signal in the title. When the title names identifiers that appear in the code (identifier-rich, 41 percent after R1), localization does best; when the title is a domain phrase (27 percent), a route or API description, or a formatting note, it does worse. This is the expected shape of a title-only, no-base task.

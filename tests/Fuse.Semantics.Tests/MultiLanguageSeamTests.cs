@@ -69,6 +69,14 @@ public sealed class MultiLanguageSeamTests
             // The non-C# file is full-text searchable, including by an identifier subword (S1 over the seam).
             var hits = await store.SearchAsync(new SearchQuery("compute"), CancellationToken.None);
             Assert.Contains(hits, h => h.FilePath.EndsWith("pricing.py", StringComparison.Ordinal));
+
+            // S10b: each file is tagged with its provider's language, so retrieval can filter or blend by language.
+            var csharpFiles = await store.GetFilesByLanguageAsync("csharp", CancellationToken.None);
+            var pythonFiles = await store.GetFilesByLanguageAsync("python", CancellationToken.None);
+            Assert.Contains(csharpFiles, p => p.EndsWith("Widget.cs", StringComparison.Ordinal));
+            Assert.DoesNotContain(csharpFiles, p => p.EndsWith("pricing.py", StringComparison.Ordinal));
+            Assert.Contains(pythonFiles, p => p.EndsWith("pricing.py", StringComparison.Ordinal));
+            Assert.DoesNotContain(pythonFiles, p => p.EndsWith("Widget.cs", StringComparison.Ordinal));
         }
 
         TryDelete(root, databasePath);

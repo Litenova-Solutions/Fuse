@@ -151,13 +151,13 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO files(path, normalized_path, extension, size_bytes, mtime_utc_ticks, content_hash,
-                              project_id, is_generated, is_test, indexed_at_utc)
-            VALUES($path, $norm, $ext, $size, $mtime, $hash, $project, $generated, $test, $indexed)
+                              project_id, is_generated, is_test, language, indexed_at_utc)
+            VALUES($path, $norm, $ext, $size, $mtime, $hash, $project, $generated, $test, $language, $indexed)
             ON CONFLICT(normalized_path) DO UPDATE SET
               path = excluded.path, extension = excluded.extension, size_bytes = excluded.size_bytes,
               mtime_utc_ticks = excluded.mtime_utc_ticks, content_hash = excluded.content_hash,
               project_id = excluded.project_id, is_generated = excluded.is_generated,
-              is_test = excluded.is_test, indexed_at_utc = excluded.indexed_at_utc;
+              is_test = excluded.is_test, language = excluded.language, indexed_at_utc = excluded.indexed_at_utc;
             """;
         var pathParam = command.Parameters.Add("$path", SqliteType.Text);
         var normParam = command.Parameters.Add("$norm", SqliteType.Text);
@@ -168,6 +168,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         var projectParam = command.Parameters.Add("$project", SqliteType.Integer);
         var generatedParam = command.Parameters.Add("$generated", SqliteType.Integer);
         var testParam = command.Parameters.Add("$test", SqliteType.Integer);
+        var languageParam = command.Parameters.Add("$language", SqliteType.Text);
         var indexedParam = command.Parameters.Add("$indexed", SqliteType.Text);
 
         foreach (var file in files)
@@ -181,6 +182,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             projectParam.Value = (object?)await ResolveProjectIdAsync(connection, transaction, file.ProjectPath, projectIds, cancellationToken) ?? DBNull.Value;
             generatedParam.Value = file.IsGenerated ? 1 : 0;
             testParam.Value = file.IsTest ? 1 : 0;
+            languageParam.Value = (object?)file.Language ?? DBNull.Value;
             indexedParam.Value = (file.IndexedAtUtc ?? DateTimeOffset.UtcNow).ToString("o");
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -1017,6 +1019,21 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         }
 
         return embeddings;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetFilesByLanguageAsync(string language, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT normalized_path FROM files WHERE language = $lang ORDER BY normalized_path;";
+        command.Parameters.AddWithValue("$lang", language);
+
+        var paths = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            paths.Add(reader.GetString(0));
+        return paths;
     }
 
     /// <inheritdoc />

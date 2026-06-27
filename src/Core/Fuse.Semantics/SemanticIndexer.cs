@@ -208,11 +208,11 @@ public sealed class SemanticIndexer
         var info = new FileInfo(absolute);
         var content = await File.ReadAllTextAsync(absolute, cancellationToken);
         var hash = _hashService.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        var provider = _syntaxProviders.ForExtension(info.Extension);
         await store.UpsertFilesAsync(
-            [new IndexedFileRecord(normalizedPath, normalizedPath, info.Extension, info.Length, info.LastWriteTimeUtc.Ticks, hash)],
+            [new IndexedFileRecord(normalizedPath, normalizedPath, info.Extension, info.Length, info.LastWriteTimeUtc.Ticks, hash, Language: provider?.Language)],
             cancellationToken);
 
-        var provider = _syntaxProviders.ForExtension(info.Extension);
         if (provider is null)
             return 0;
 
@@ -236,9 +236,10 @@ public sealed class SemanticIndexer
 
         var fileToProject = BuildFileProjectMap(root, snapshot);
         var linkedFiles = files
-            .Select(f => fileToProject.TryGetValue(f.NormalizedPath, out var projectPath)
+            .Select(f => (fileToProject.TryGetValue(f.NormalizedPath, out var projectPath)
                 ? f with { ProjectPath = projectPath }
-                : f)
+                : f) with
+            { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
             .ToList();
         await store.UpsertFilesAsync(linkedFiles, cancellationToken);
 
@@ -286,7 +287,12 @@ public sealed class SemanticIndexer
         CancellationToken cancellationToken,
         bool embed = true)
     {
-        await store.UpsertFilesAsync(files, cancellationToken);
+        // Tag each file with its language from the provider that claims its extension (S10b), so retrieval can
+        // filter or blend by language; a file no provider claims (a config file) stays untagged.
+        var taggedFiles = files
+            .Select(f => f with { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
+            .ToList();
+        await store.UpsertFilesAsync(taggedFiles, cancellationToken);
 
         // Extract per file in parallel (file read plus stateless syntax parse, the bulk of the syntax-tier cost)
         // and collect results positionally, so the flattened output is byte-identical to a sequential pass.

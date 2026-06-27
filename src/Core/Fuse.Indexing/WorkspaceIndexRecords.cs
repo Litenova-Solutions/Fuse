@@ -24,7 +24,8 @@ public sealed record IndexedFileRecord(
     string? ProjectPath = null,
     bool IsGenerated = false,
     bool IsTest = false,
-    DateTimeOffset? IndexedAtUtc = null);
+    DateTimeOffset? IndexedAtUtc = null,
+    string? Language = null);
 
 /// <summary>
 ///     A project tracked by the index. Identity is the project path.

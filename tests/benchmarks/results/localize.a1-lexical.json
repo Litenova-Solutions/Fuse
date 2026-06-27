@@ -4,13 +4,13 @@
   "generated": null,
   "scorecard": {
     "taskCount": 53,
-    "recall": 0.15062178387650083,
-    "recallCiLow": 0.0891887200849465,
-    "recallCiHigh": 0.21707200032671733,
-    "precision": 0.08742138364779874,
-    "f1": 0.11063173869621151,
-    "medianTokens": 1087,
-    "meanTokens": 1963.2075471698113,
+    "recall": 0.13289056331509164,
+    "recallCiLow": 0.07664345612458821,
+    "recallCiHigh": 0.19373111165563997,
+    "precision": 0.08993710691823897,
+    "f1": 0.10727386584241771,
+    "medianTokens": 835,
+    "meanTokens": 1614.622641509434,
     "lowSignalF1": 1
   },
   "tasks": [
@@ -18,19 +18,20 @@
       "id": "NodaTime#621",
       "repo": "NodaTime",
       "category": "identifier-rich",
-      "recall": 0,
-      "precision": 0,
-      "tokens": 2487,
-      "latencyMs": 196,
+      "recall": 0.1111111111111111,
+      "precision": 0.1,
+      "tokens": 4681,
+      "latencyMs": 115,
       "hit": {
-        "hits": [],
+        "hits": [
+          "src/NodaTime/DateTimeZone.cs"
+        ],
         "misses": [
           "src/NodaTime.Test/DateIntervalTest.cs",
           "src/NodaTime.Test/LocalTimeTest.cs",
           "src/NodaTime.Test/TimeZones/BclDateTimeZoneSourceTest.cs",
           "src/NodaTime.Test/TimeZones/DateTimeZoneCacheTest.cs",
           "src/NodaTime/DateInterval.cs",
-          "src/NodaTime/DateTimeZone.cs",
           "src/NodaTime/IDateTimeZoneProvider.cs",
           "src/NodaTime/LocalTime.cs",
           "src/NodaTime/TimeZones/DateTimeZoneCache.cs"
@@ -38,7 +39,13 @@
         "extras": [
           "src/NodaTime/Period.cs",
           "src/NodaTime.Test/PeriodTest.cs",
-          "src/NodaTime/OffsetDateTime.cs"
+          "src/NodaTime/TimeZones/ZoneEqualityComparer.cs",
+          "src/NodaTime.Test/TimeZones/ZoneEqualityComparerTest.cs",
+          "src/NodaTime/OffsetDateTime.cs",
+          "src/NodaTime/ZonedDateTime.cs",
+          "src/NodaTime.Test/PeriodBuilderTest.cs",
+          "src/NodaTime/Utility/ReferenceEqualityComparer.cs",
+          "src/NodaTime.Test/TimeZones/ZoneIntervalTest.cs"
         ]
       }
     },
@@ -48,29 +55,29 @@
       "category": "identifier-rich",
       "recall": 0.2857142857142857,
       "precision": 0.2,
-      "tokens": 1806,
-      "latencyMs": 110,
+      "tokens": 2669,
+      "latencyMs": 84,
       "hit": {
         "hits": [
-          "src/NodaTime.Test/TimeZones/BclDateTimeZoneSourceTest.cs",
-          "src/NodaTime/DateTimeZone.cs"
+          "src/NodaTime/DateTimeZone.cs",
+          "src/NodaTime/TimeZones/DateTimeZoneCache.cs"
         ],
         "misses": [
           "src/NodaTime.Test/LocalTimeTest.cs",
+          "src/NodaTime.Test/TimeZones/BclDateTimeZoneSourceTest.cs",
           "src/NodaTime.Test/TimeZones/DateTimeZoneCacheTest.cs",
           "src/NodaTime/IDateTimeZoneProvider.cs",
-          "src/NodaTime/LocalTime.cs",
-          "src/NodaTime/TimeZones/DateTimeZoneCache.cs"
+          "src/NodaTime/LocalTime.cs"
         ],
         "extras": [
           "src/NodaTime/TimeZones/ZoneEqualityComparer.cs",
-          "src/NodaTime.Test/DateTimeZoneTest.Ids.cs",
           "src/NodaTime.Test/TimeZones/ZoneEqualityComparerTest.cs",
+          "src/NodaTime.Test/DateTimeZoneTest.cs",
+          "src/NodaTime.Test/DateTimeZoneTest.Ids.cs",
           "src/NodaTime.Test/TimeZones/BclDateTimeZoneTest.cs",
           "src/NodaTime.Benchmarks/NodaTimeTests/UtcZonedDateTimeBenchmarks.cs",
-          "src/NodaTime.Test/TimeZones/TzdbDateTimeZoneSourceTest.cs",
-          "src/NodaTime.Test/DateTimeZoneTest.cs",
-          "src/NodaTime/TimeZones/FixedDateTimeZone.cs"
+          "src/NodaTime/TimeZones/FixedDateTimeZone.cs",
+          "src/NodaTime/ZonedDateTime.cs"
         ]
       }
     },
@@ -80,8 +87,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 6212,
-      "latencyMs": 100,
+      "tokens": 6547,
+      "latencyMs": 69,
       "hit": {
         "hits": [],
         "misses": [
@@ -90,16 +97,16 @@
           "build/SummarizeBenchmarks/Properties/AssemblyInfo.cs"
         ],
         "extras": [
-          "src/NodaTime.Benchmarks/BclTests/DateTimeOffsetBenchmarks.cs",
-          "src/NodaTime.Benchmarks/NodaTimeTests/LocalDateBenchmarks.cs",
-          "src/NodaTime.Benchmarks/NodaTimeTests/OffsetDateTimeBenchmarks.cs",
-          "build/BenchmarkUploader/BenchmarkProtos.cs",
-          "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs",
-          "src/NodaTime.Benchmarks/BclTests/UtcDateTimeBenchmarks.cs",
-          "build/BenchmarkUploader/BenchmarkRepository.cs",
           "src/NodaTime/TimeZones/ZoneEqualityComparer.cs",
           "src/NodaTime/CalendarSystem.cs",
-          "src/NodaTime.Test/TimeZones/ZoneEqualityComparerTest.cs"
+          "src/NodaTime.Test/TimeZones/ZoneEqualityComparerTest.cs",
+          "src/NodaTime.Benchmarks/NodaTimeTests/LocalDateBenchmarks.cs",
+          "src/NodaTime.Benchmarks/BclTests/DateTimeOffsetBenchmarks.cs",
+          "src/NodaTime.Benchmarks/NodaTimeTests/OffsetDateTimeBenchmarks.cs",
+          "build/BenchmarkUploader/BenchmarkProtos.cs",
+          "build/BenchmarkUploader/BenchmarkRepository.cs",
+          "build/BenchmarkUploader/BenchmarkUploader.csproj",
+          "build/BenchmarkUploader/BriefJsonModel.cs"
         ]
       }
     },
@@ -107,26 +114,27 @@
       "id": "NodaTime#558",
       "repo": "NodaTime",
       "category": "nl-domain",
-      "recall": 0.75,
-      "precision": 0.3,
-      "tokens": 2093,
-      "latencyMs": 91,
+      "recall": 0.5,
+      "precision": 0.2,
+      "tokens": 2244,
+      "latencyMs": 50,
       "hit": {
         "hits": [
           "src/NodaTime.Test/DateTimeZoneTest.GetZoneIntervals.cs",
-          "src/NodaTime/DateTimeZone.cs",
-          "src/NodaTime/TimeZones/ZoneEqualityComparer.cs"
+          "src/NodaTime/DateTimeZone.cs"
         ],
         "misses": [
-          "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs"
+          "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs",
+          "src/NodaTime/TimeZones/ZoneEqualityComparer.cs"
         ],
         "extras": [
-          "src/NodaTime/TimeZones/PartialZoneIntervalMap.cs",
           "src/NodaTime.Test/ZonedDateTimeTest.cs",
-          "src/NodaTime/TimeZones/CachingZoneIntervalMap.cs",
           "src/NodaTime/TimeZones/ZoneYearOffset.cs",
-          "src/NodaTime/TimeZones/SingleZoneIntervalMap.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/DateTimeZoneBuilder.cs",
+          "src/NodaTime/TimeZones/PartialZoneIntervalMap.cs",
+          "src/NodaTime/TimeZones/ZoneInterval.cs",
+          "src/NodaTime.Demo/ZonedDateTimeDemo.cs",
+          "src/NodaTime/DateInterval.cs",
+          "src/NodaTime/TimeZones/ZoneRecurrence.cs",
           "src/NodaTime.Test/TimeZones/ZoneIntervalTest.cs"
         ]
       }
@@ -137,8 +145,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 831,
-      "latencyMs": 75,
+      "tokens": 599,
+      "latencyMs": 34,
       "hit": {
         "hits": [],
         "misses": [
@@ -149,13 +157,13 @@
           "src/NodaTime.TzdbCompiler/Tzdb/IoExtensions.cs",
           "src/NodaTime.Test/Extensions/ClockExtensionsTest.cs",
           "src/NodaTime.Test/Extensions/StopwatchExtensionsTest.cs",
-          "src/NodaTime.NzdPrinter/Program.cs",
           "src/NodaTime/Extensions/ClockExtensions.cs",
           "src/NodaTime/Extensions/StopwatchExtensions.cs",
           "src/NodaTime.Test/Extensions/DateTimeExtensionsTest.cs",
           "src/NodaTime.Test/Extensions/TimeSpanExtensionsTest.cs",
-          "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
-          "src/NodaTime/Extensions/DateTimeExtensions.cs"
+          "src/NodaTime/Extensions/DateTimeExtensions.cs",
+          "src/NodaTime/Extensions/TimeSpanExtensions.cs",
+          "src/NodaTime/Extensions/DateTimeOffsetExtensions.cs"
         ]
       }
     },
@@ -165,8 +173,8 @@
       "category": "identifier-rich",
       "recall": 0,
       "precision": 0,
-      "tokens": 7700,
-      "latencyMs": 86,
+      "tokens": 7952,
+      "latencyMs": 41,
       "hit": {
         "hits": [],
         "misses": [
@@ -193,16 +201,16 @@
           "src/NodaTime.Web/TrivialDependencyResolver.cs"
         ],
         "extras": [
-          "build/BenchmarkUploader/BriefJsonModel.cs",
-          "src/NodaTime.Test/Text/CompositePatternBuilderPatternTest.cs",
-          "build/BenchmarkUploader/BenchmarkProtos.cs",
-          "src/NodaTime.Test/TimeZones/BclDateTimeZoneTest.cs",
           "src/NodaTime.Test/TimeZones/BclDateTimeZoneTest.LinuxAdjustmentRules.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/DateTimeZoneBuilder.cs",
+          "build/BenchmarkUploader/BriefJsonModel.cs",
+          "build/BenchmarkUploader/BenchmarkProtos.cs",
           "src/NodaTime/Globalization/NodaFormatInfo.cs",
           "src/NodaTime.Demo/PeriodBuilderDemo.cs",
           "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs",
-          "build/BenchmarkUploader/BenchmarkRepository.cs"
+          "src/NodaTime.Test/TimeZones/BclDateTimeZoneTest.cs",
+          "build/NullableApiReviewer/Program.cs",
+          "build/BenchmarkUploader/BenchmarkRepository.cs",
+          "src/NodaTime/PeriodBuilder.cs"
         ]
       }
     },
@@ -212,8 +220,8 @@
       "category": "identifier-rich",
       "recall": 0.8,
       "precision": 0.4,
-      "tokens": 1231,
-      "latencyMs": 102,
+      "tokens": 1059,
+      "latencyMs": 47,
       "hit": {
         "hits": [
           "src/NodaTime.TzValidate.NodaDump/Options.cs",
@@ -225,12 +233,12 @@
           "src/NodaTime.TzdbCompiler/Tzdb/TzdbDatabase.cs"
         ],
         "extras": [
-          "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
           "src/NodaTime.TzValidate.NzdCompatibility/ZoneDumper.cs",
-          "src/NodaTime.Test/TimeZones/TzTestHelper.cs",
-          "src/NodaTime.Test/TimeZones/TzdbDateTimeZoneSourceTest.cs",
+          "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
           "src/NodaTime.TzValidate.NzdCompatibility/UserErrorException.cs",
-          "src/NodaTime.TzValidate.NzdCompatibility/Program.cs"
+          "src/NodaTime.TzValidate.NzdCompatibility/Program.cs",
+          "src/NodaTime.Test/LocalTimeTest.Operators.cs",
+          "src/NodaTime.Test/LocalDateTest.PeriodArithmetic.cs"
         ]
       }
     },
@@ -239,9 +247,9 @@
       "repo": "NodaTime",
       "category": "nl-domain",
       "recall": 0.5,
-      "precision": 0.1,
-      "tokens": 7232,
-      "latencyMs": 41,
+      "precision": 0.3333333333333333,
+      "tokens": 678,
+      "latencyMs": 15,
       "hit": {
         "hits": [
           "src/NodaTime.TzValidate.NodaDump/Options.cs"
@@ -251,14 +259,7 @@
         ],
         "extras": [
           "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
-          "lib/commandline/CommandLineText.cs",
-          "src/NodaTime.TzdbCompiler/CompilerOptions.cs",
-          "lib/commandline/CommandLine.cs",
-          "src/NodaTime/TimeZones/ZoneEqualityComparer.cs",
-          "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs",
-          "src/NodaTime.TzValidate.NzdCompatibility/ZoneDumper.cs",
-          "src/NodaTime/DateTimeZone.cs",
-          "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs"
+          "src/NodaTime.TzdbCompiler/CompilerOptions.cs"
         ]
       }
     },
@@ -268,8 +269,8 @@
       "category": "test-only",
       "recall": 0,
       "precision": 0,
-      "tokens": 4861,
-      "latencyMs": 91,
+      "tokens": 1694,
+      "latencyMs": 48,
       "hit": {
         "hits": [],
         "misses": [
@@ -278,16 +279,16 @@
           "src/NodaTime.TzdbCompiler.Test/Program.cs"
         ],
         "extras": [
-          "src/NodaTime.Test/Globalization/NodaFormatInfoTest.cs",
-          "src/NodaTime.Test/TestHelper.cs",
           "src/NodaTime.Test/TimeZones/BclDateTimeZoneTest.cs",
-          "src/NodaTime.Test/Text/FormatHelperTest.cs",
-          "build/BenchmarkUploader/BenchmarkProtos.cs",
+          "src/NodaTime.Test/Globalization/NodaFormatInfoTest.cs",
           "src/NodaTime.Test/LocalTimeTest.Operators.cs",
           "src/NodaTime.Benchmarks.Custom/ConcurrentNewString.cs",
+          "src/NodaTime.Test/TestHelper.cs",
+          "src/NodaTime.Test/Text/FormatHelperTest.cs",
           "src/NodaTime.Test/TimeZones/TzTestHelper.cs",
           "src/NodaTime.TzValidate.NodaDump/UserErrorException.cs",
-          "src/NodaTime.TzValidate.NzdCompatibility/UserErrorException.cs"
+          "src/NodaTime.TzValidate.NzdCompatibility/UserErrorException.cs",
+          "src/NodaTime/Text/FormatHelper.cs"
         ]
       }
     },
@@ -295,31 +296,33 @@
       "id": "NodaTime#525",
       "repo": "NodaTime",
       "category": "identifier-rich",
-      "recall": 0.5454545454545454,
-      "precision": 0.6,
-      "tokens": 5960,
-      "latencyMs": 63,
+      "recall": 0.36363636363636365,
+      "precision": 0.4,
+      "tokens": 5184,
+      "latencyMs": 40,
       "hit": {
         "hits": [
           "src/NodaTime.Benchmarks/NodaTimeTests/Calendars/SimpleWeekYearRuleBenchmarks.cs",
           "src/NodaTime.Test/Calendars/SimpleWeekYearRuleTest.cs",
-          "src/NodaTime/Calendars/IWeekYearRule.cs",
           "src/NodaTime/Calendars/SimpleWeekYearRule.cs",
-          "src/NodaTime/Calendars/WeekYearRules.cs",
-          "src/NodaTime/LocalDate.cs"
+          "src/NodaTime/Calendars/WeekYearRules.cs"
         ],
         "misses": [
           "src/NodaTime.Test/Calendars/BclWeekYearRuleTest.cs",
           "src/NodaTime.Test/Calendars/IsoCalendarSystemTest.cs",
           "src/NodaTime.TzValidate.NodaDump/Options.cs",
           "src/NodaTime.TzValidate.NodaDump/Program.cs",
-          "src/NodaTime/Calendars/BclWeekYearRule.cs"
+          "src/NodaTime/Calendars/BclWeekYearRule.cs",
+          "src/NodaTime/Calendars/IWeekYearRule.cs",
+          "src/NodaTime/LocalDate.cs"
         ],
         "extras": [
           "src/NodaTime.Test/Calendars/WeekYearRulesTest.cs",
           "lib/commandline/CommandLine.cs",
           "lib/commandline/CommandLineText.cs",
-          "src/NodaTime.Benchmarks.Custom/ConcurrencyCommandBase.cs"
+          "src/NodaTime.Benchmarks.Custom/ConcurrencyCommandBase.cs",
+          "src/NodaTime.Benchmarks/NodaTimeTests/StandardDaylightAlternatingMapBenchmarks.cs",
+          "src/NodaTime.Test/TimeZones/StandardDaylightAlternatingMapTest.cs"
         ]
       }
     },
@@ -329,8 +332,8 @@
       "category": "nl-domain",
       "recall": 0.5,
       "precision": 0.1,
-      "tokens": 6377,
-      "latencyMs": 44,
+      "tokens": 4569,
+      "latencyMs": 25,
       "hit": {
         "hits": [
           "src/NodaTime.TzValidate.NodaDump/Options.cs"
@@ -339,15 +342,15 @@
           "src/NodaTime.TzValidate.NodaDump/Program.cs"
         ],
         "extras": [
-          "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
           "src/NodaTime.TzdbCompiler/CompilerOptions.cs",
-          "src/NodaTime.TzdbCompiler/Program.cs",
+          "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
           "src/NodaTime.TzdbCompiler/Tzdb/FileSource.cs",
           "src/NodaTime.Tools.Common/FileUtility.cs",
+          "src/NodaTime.TzdbCompiler/Program.cs",
           "src/NodaTime/TimeZones/IO/DateTimeZoneWriter.cs",
           "src/NodaTime.Demo/XmlSchemaDemo.XmlSchemaClassGeneratorAssemblyCreator.cs",
-          "lib/commandline/CommandLineText.cs",
-          "build/BenchmarkUploader/BenchmarkProtos.cs"
+          "lib/commandline/CommandLine.cs",
+          "src/NodaTime/Fields/TimePeriodField.cs"
         ]
       }
     },
@@ -357,8 +360,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 3405,
-      "latencyMs": 73,
+      "tokens": 1616,
+      "latencyMs": 37,
       "hit": {
         "hits": [],
         "misses": [
@@ -374,16 +377,16 @@
           "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs"
         ],
         "extras": [
-          "src/NodaTime.TzdbCompiler.Test/Tzdb/TzdbZoneInfoParserTest.cs",
           "src/NodaTime/Calendars/FixedMonthYearMonthDayCalculator.cs",
-          "src/NodaTime/TimeZones/TzdbZoneLocation.cs",
-          "src/NodaTime/TimeZones/TzdbZone1970Location.cs",
           "src/NodaTime.Test/TimeZones/FixedDateTimeZoneTest.cs",
           "src/NodaTime/Text/FixedFormatInfoPatternParser.cs",
           "src/NodaTime/TimeZones/FixedDateTimeZone.cs",
           "src/NodaTime.Test/Calendars/IslamicCalendarSystemTest.cs",
-          "src/NodaTime/Text/TextErrorMessages.cs",
-          "src/NodaTime.Test/TimeZones/TzdbDateTimeZoneSourceTest.cs"
+          "src/NodaTime.TzdbCompiler.Test/Tzdb/TzdbZoneInfoParserTest.cs",
+          "src/NodaTime/TimeZones/TzdbZoneLocation.cs",
+          "src/NodaTime/TimeZones/TzdbZone1970Location.cs",
+          "src/NodaTime/Fields/FixedLengthDatePeriodField.cs",
+          "src/NodaTime.Test/TimeZones/BclDateTimeZoneTest.cs"
         ]
       }
     },
@@ -393,8 +396,8 @@
       "category": "test-only",
       "recall": 0,
       "precision": 0,
-      "tokens": 2602,
-      "latencyMs": 76,
+      "tokens": 1858,
+      "latencyMs": 42,
       "hit": {
         "hits": [],
         "misses": [
@@ -402,16 +405,16 @@
           "src/NodaTime.Test/Calendars/UmAlQuraYearMonthDayCalculatorTest.cs"
         ],
         "extras": [
-          "src/NodaTime.Test/Text/InstantPatternTest.cs",
           "src/NodaTime.Test/Text/AnnualDatePatternTest.cs",
-          "src/NodaTime.Test/TimeZones/BclDateTimeZoneTest.LinuxAdjustmentRules.cs",
-          "src/NodaTime.Benchmarks/NodaTimeTests/InstantBenchmarks.cs",
-          "src/NodaTime.Test/Text/OffsetPatternTest.cs",
-          "src/NodaTime.Test/Text/OffsetDatePatternTest.cs",
           "src/NodaTime.Test/Text/YearMonthPatternTest.cs",
-          "src/NodaTime.Test/Text/OffsetTimePatternTest.cs",
+          "src/NodaTime.Test/Text/OffsetPatternTest.cs",
           "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs",
-          "src/NodaTime.Benchmarks/BclTests/DateTimeOffsetBenchmarks.cs"
+          "src/NodaTime.Benchmarks/BclTests/DateTimeOffsetBenchmarks.cs",
+          "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs",
+          "src/NodaTime.Benchmarks/BclTests/UtcDateTimeBenchmarks.cs",
+          "src/NodaTime.Benchmarks/NodaTimeTests/BclDateTimeZoneBenchmarks.cs",
+          "src/NodaTime.Benchmarks/NodaTimeTests/DateIntervalBenchmarks.cs",
+          "src/NodaTime.Benchmarks/NodaTimeTests/DurationBenchmarks.cs"
         ]
       }
     },
@@ -421,8 +424,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 2277,
-      "latencyMs": 49,
+      "tokens": 2383,
+      "latencyMs": 28,
       "hit": {
         "hits": [],
         "misses": [
@@ -433,15 +436,15 @@
         ],
         "extras": [
           "src/NodaTime.Test/Xml/XmlSchemaTest.cs",
-          "src/NodaTime/Xml/XmlSerializationSettings.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/CldrWindowsZonesParser.cs",
-          "src/NodaTime.Demo/XmlSchemaDemo.XmlCodeExporterAssemblyCreator.cs",
-          "src/NodaTime.Test/YearMonthTest.XmlSerialization.cs",
           "src/NodaTime.Test/TimeZones/FixedDateTimeZoneTest.cs",
           "src/NodaTime/TimeZones/FixedDateTimeZone.cs",
           "src/NodaTime/Xml/XmlSchemaDefinition.cs",
+          "src/NodaTime/Xml/XmlSerializationSettings.cs",
+          "src/NodaTime.Demo/XmlSchemaDemo.XmlCodeExporterAssemblyCreator.cs",
           "src/NodaTime.Demo/XmlSchemaDemo.XmlSchemaClassGeneratorAssemblyCreator.cs",
-          "src/NodaTime.Demo/XmlSchemaDemo.cs"
+          "src/NodaTime.Demo/XmlSchemaDemo.cs",
+          "src/NodaTime.Test/YearMonthTest.XmlSerialization.cs",
+          "src/NodaTime/Calendars/FixedMonthYearMonthDayCalculator.cs"
         ]
       }
     },
@@ -451,8 +454,8 @@
       "category": "identifier-rich",
       "recall": 0.5,
       "precision": 0.2,
-      "tokens": 1985,
-      "latencyMs": 69,
+      "tokens": 1861,
+      "latencyMs": 40,
       "hit": {
         "hits": [
           "src/NodaTime.TzdbCompiler/CompilerOptions.cs",
@@ -463,14 +466,14 @@
           "src/NodaTime/Extensions/DateTimeZoneProviderExtensions.cs"
         ],
         "extras": [
-          "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs",
+          "src/NodaTime.TzdbCompiler/Tzdb/ZoneTransition.cs",
+          "src/NodaTime.TzdbCompiler/Tzdb/FileSource.cs",
           "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoParser.cs",
           "src/NodaTime.TzdbCompiler/Tzdb/TzdbDatabase.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/ZoneTransition.cs",
           "src/NodaTime.TzdbCompiler/Tzdb/TzdbStreamWriter.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/FileSource.cs",
-          "src/NodaTime.TzdbCompiler.Test/Tzdb/TzdbZoneInfoParserTest.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/Tokens.cs"
+          "src/NodaTime.TzdbCompiler/Tzdb/Tokens.cs",
+          "src/NodaTime.TzdbCompiler.Test/Tzdb/TokensTest.cs",
+          "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs"
         ]
       }
     },
@@ -480,8 +483,8 @@
       "category": "nl-domain",
       "recall": 0.5,
       "precision": 0.1,
-      "tokens": 3024,
-      "latencyMs": 66,
+      "tokens": 1742,
+      "latencyMs": 34,
       "hit": {
         "hits": [
           "src/NodaTime.TzValidate.NodaDump/Options.cs"
@@ -490,15 +493,15 @@
           "src/NodaTime.TzValidate.NodaDump/Program.cs"
         ],
         "extras": [
-          "src/NodaTime/Utility/HashCodeHelper.cs",
           "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs",
           "src/NodaTime.TzValidate.NzdCompatibility/ZoneDumper.cs",
           "src/NodaTime.TzdbCompiler/Tzdb/ZoneLine.cs",
           "src/NodaTime.TzdbCompiler/Tzdb/RuleLine.cs",
-          "src/NodaTime/TimeZones/IO/TzdbStreamData.cs",
-          "src/NodaTime/TimeZones/StandardDaylightAlternatingMap.cs",
+          "src/NodaTime/Utility/HashCodeHelper.cs",
           "src/NodaTime/TimeZones/TzdbZone1970Location.cs",
-          "src/NodaTime/ZonedDateTime.cs"
+          "src/NodaTime/TimeZones/StandardDaylightAlternatingMap.cs",
+          "src/NodaTime.TzdbCompiler.Test/Tzdb/TokensTest.cs",
+          "src/NodaTime.Tools.DumpTimeZoneInfo/Program.cs"
         ]
       }
     },
@@ -508,8 +511,8 @@
       "category": "nl-domain",
       "recall": 0.3333333333333333,
       "precision": 0.3,
-      "tokens": 2642,
-      "latencyMs": 72,
+      "tokens": 2684,
+      "latencyMs": 36,
       "hit": {
         "hits": [
           "src/NodaTime.Test/Calendars/UmAlQuraYearMonthDayCalculatorTest.cs",
@@ -525,13 +528,13 @@
           "src/NodaTime/Calendars/PersianYearMonthDayCalculator.cs"
         ],
         "extras": [
-          "src/NodaTime.Test/Calendars/BclCalendars.cs",
           "src/NodaTime/CalendarOrdinal.cs",
+          "src/NodaTime.Test/Calendars/BclCalendars.cs",
           "src/NodaTime/TimeZones/PrecalculatedDateTimeZone.cs",
           "src/NodaTime.Test/TimeZones/PrecalculatedDateTimeZoneTest.cs",
           "src/NodaTime/Calendars/SimpleWeekYearRule.cs",
-          "src/NodaTime.Test/Calendars/YearMonthDayCalculatorTest.cs",
-          "src/NodaTime.Test/YearMonthDayCalendarTest.cs"
+          "src/NodaTime.Test/Globalization/NodaFormatInfoTest.cs",
+          "src/NodaTime.Benchmarks.Custom/ConcurrentPatternFormat.cs"
         ]
       }
     },
@@ -542,7 +545,7 @@
       "recall": 0.5,
       "precision": 0.1,
       "tokens": 1450,
-      "latencyMs": 59,
+      "latencyMs": 33,
       "hit": {
         "hits": [
           "src/NodaTime.TzValidate.NodaDump/Program.cs"
@@ -569,8 +572,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 921,
-      "latencyMs": 23,
+      "tokens": 0,
+      "latencyMs": 3,
       "hit": {
         "hits": [],
         "misses": [
@@ -581,10 +584,7 @@
           "src/Scrutor/ReflectionExtensions.cs",
           "src/Scrutor/ServiceTypeSelector.cs"
         ],
-        "extras": [
-          "test/Scrutor.Tests/ScanningTests.cs",
-          "src/Scrutor/RegistrationStrategy.cs"
-        ]
+        "extras": []
       }
     },
     {
@@ -592,9 +592,9 @@
       "repo": "Scrutor",
       "category": "identifier-rich",
       "recall": 0.2,
-      "precision": 0.5,
-      "tokens": 964,
-      "latencyMs": 6,
+      "precision": 1,
+      "tokens": 388,
+      "latencyMs": 11,
       "hit": {
         "hits": [
           "src/Scrutor/ReflectionExtensions.cs"
@@ -605,23 +605,19 @@
           "src/Scrutor/ServiceTypeSelector.cs",
           "test/Scrutor.Tests/ScanningTests.cs"
         ],
-        "extras": [
-          "test/Scrutor.Tests/DecorationTests.cs"
-        ]
+        "extras": []
       }
     },
     {
       "id": "Scrutor#2",
       "repo": "Scrutor",
       "category": "nl-domain",
-      "recall": 0.08333333333333333,
-      "precision": 0.3333333333333333,
-      "tokens": 1420,
-      "latencyMs": 3,
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 1,
       "hit": {
-        "hits": [
-          "test/Scrutor.Tests/ScanningTests.cs"
-        ],
+        "hits": [],
         "misses": [
           "src/Scrutor/AssemblySelector.cs",
           "src/Scrutor/AttributeSelector.cs",
@@ -633,12 +629,10 @@
           "src/Scrutor/ServiceCollectionExtensions.cs",
           "src/Scrutor/ServiceDescriptorAttribute.cs",
           "src/Scrutor/ServiceTypeSelector.cs",
+          "test/Scrutor.Tests/ScanningTests.cs",
           "test/Scrutor.Tests/ServiceCollectionExtensions.cs"
         ],
-        "extras": [
-          "src/Scrutor/IImplementationTypeFilter.cs",
-          "src/Scrutor/ImplementationTypeFilter.cs"
-        ]
+        "extras": []
       }
     },
     {
@@ -647,8 +641,8 @@
       "category": "formatting",
       "recall": 0,
       "precision": 0,
-      "tokens": 661,
-      "latencyMs": 27,
+      "tokens": 792,
+      "latencyMs": 3,
       "hit": {
         "hits": [],
         "misses": [
@@ -659,13 +653,13 @@
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/IntegrationTest.cs",
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/TestFactory.cs",
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/TestDbContext.cs",
-          "tests/Ardalis.Specification.Tests/Builders/Builder_Skip.cs",
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Address.cs",
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Company.cs",
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Country.cs",
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Product.cs",
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Store.cs",
-          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Repository.cs"
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Repository.cs",
+          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Fixture/Data/Bar.cs"
         ]
       }
     },
@@ -675,8 +669,8 @@
       "category": "identifier-rich",
       "recall": 0,
       "precision": 0,
-      "tokens": 3810,
-      "latencyMs": 24,
+      "tokens": 3886,
+      "latencyMs": 16,
       "hit": {
         "hits": [],
         "misses": [
@@ -692,8 +686,8 @@
           "src/Ardalis.Specification.EntityFrameworkCore/RepositoryBaseOfT.cs",
           "src/Ardalis.Specification.EntityFrameworkCore/ContextFactoryRepositoryBaseOfT.cs",
           "src/Ardalis.Specification/IRepositoryBase.cs",
-          "samples/Ardalis.Sample.Domain/Specs/CustomerByIdSpec.cs",
-          "tests/Ardalis.Specification.EntityFramework6.Tests/Repositories/Repository_FirstTests.cs"
+          "samples/Ardalis.Sample.Domain/Filters/BaseFilter.cs",
+          "src/Ardalis.Specification.EntityFramework6/Evaluators/OrderEvaluator.cs"
         ]
       }
     },
@@ -703,8 +697,8 @@
       "category": "test-only",
       "recall": 0,
       "precision": 0,
-      "tokens": 601,
-      "latencyMs": 30,
+      "tokens": 612,
+      "latencyMs": 17,
       "hit": {
         "hits": [],
         "misses": [
@@ -733,15 +727,15 @@
         ],
         "extras": [
           "tests/Ardalis.Specification.EntityFramework6.Tests/Evaluators/IncludeEvaluatorTests.cs",
-          "tests/Ardalis.Specification.Benchmarks/Benchmark3_DbQuery.cs",
-          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/IncludeEvaluatorTests.cs",
           "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/IncludeStringEvaluatorCustomSpecTests.cs",
           "tests/Ardalis.Specification.Benchmarks/Data/Company.cs",
+          "tests/Ardalis.Specification.Benchmarks/Benchmark3_DbQuery.cs",
+          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/IncludeStringEvaluatorTests.cs",
+          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/IncludeEvaluatorTests.cs",
+          "tests/Ardalis.Specification.Benchmarks/Benchmark0_SpecSize.cs",
           "tests/Ardalis.Specification.Benchmarks/Benchmark4_Include.cs",
           "tests/Ardalis.Specification.Benchmarks/Benchmark5_IncludeEvaluator.cs",
-          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/IncludeStringEvaluatorTests.cs",
-          "tests/Ardalis.Specification.Benchmarks/Benchmark0_SpecSize.cs",
-          "tests/Ardalis.Specification.Tests/Expressions/IncludeExpressionInfoTests.cs"
+          "tests/Ardalis.Specification.Benchmarks/Data/Store.cs"
         ]
       }
     },
@@ -752,7 +746,7 @@
       "recall": 0,
       "precision": 0,
       "tokens": 4709,
-      "latencyMs": 12,
+      "latencyMs": 7,
       "hit": {
         "hits": [],
         "misses": [
@@ -779,8 +773,8 @@
           "samples/Ardalis.Sample.App3/RepositoryBase.cs",
           "src/Ardalis.Specification.EntityFramework6/RepositoryBaseOfT.cs",
           "src/Ardalis.Specification.EntityFrameworkCore/RepositoryBaseOfT.cs",
-          "tests/Ardalis.Specification.EntityFramework6.Tests/Repositories/Repository_AnyTests.cs",
           "src/Ardalis.Specification.EntityFrameworkCore/ContextFactoryRepositoryBaseOfT.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Repositories/Repository_AnyTests.cs",
           "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Repositories/Repository_AnyTests.cs",
           "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/SearchExtension.cs"
         ]
@@ -793,7 +787,7 @@
       "recall": 0,
       "precision": 0,
       "tokens": 479,
-      "latencyMs": 18,
+      "latencyMs": 11,
       "hit": {
         "hits": [],
         "misses": [
@@ -814,8 +808,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 2203,
-      "latencyMs": 12,
+      "tokens": 2338,
+      "latencyMs": 6,
       "hit": {
         "hits": [],
         "misses": [
@@ -825,15 +819,15 @@
         ],
         "extras": [
           "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/SearchExtension.cs",
-          "src/Ardalis.Specification/IRepositoryBase.cs",
-          "tests/Ardalis.Specification.Tests/Builders/Builder_Where.cs",
-          "tests/Ardalis.Specification.Tests/Builders/Builder_Skip.cs",
+          "samples/Ardalis.Sample.App1/Program.cs",
           "src/Ardalis.Specification/Builders/SpecificationBuilder.cs",
-          "tests/Ardalis.Specification.Tests/Builders/Builder_Search.cs",
           "src/Ardalis.Specification/Builders/Builder_Cache.cs",
           "src/Ardalis.Specification/Builders/Builder_Flags.cs",
           "src/Ardalis.Specification/Builders/Builder_Include.cs",
-          "src/Ardalis.Specification/Builders/Builder_Order.cs"
+          "src/Ardalis.Specification/Builders/Builder_Order.cs",
+          "src/Ardalis.Specification/Builders/Builder_Paging.cs",
+          "src/Ardalis.Specification/Builders/Builder_PostProcessing.cs",
+          "src/Ardalis.Specification/Builders/Builder_Search.cs"
         ]
       }
     },
@@ -843,8 +837,8 @@
       "category": "formatting",
       "recall": 0,
       "precision": 0,
-      "tokens": 2970,
-      "latencyMs": 18,
+      "tokens": 2561,
+      "latencyMs": 11,
       "hit": {
         "hits": [],
         "misses": [
@@ -873,12 +867,12 @@
           "samples/Ardalis.Sample.App3/IRepository.cs",
           "samples/Ardalis.Sample.App3/Pagination.cs",
           "samples/Ardalis.Sample.App3/RepositoryBase.cs",
-          "samples/Ardalis.Sample.App1/Program.cs",
-          "tests/Ardalis.Specification.EntityFramework6.Tests/Repositories/Repository_AnyTests.cs",
+          "samples/Ardalis.Sample.App3/IReadRepository.cs",
           "samples/Ardalis.Sample.Domain/Customer.cs",
-          "samples/Ardalis.Sample.App3/Program.cs",
-          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Repositories/Repository_AnyTests.cs",
-          "src/Ardalis.Specification.EntityFramework6/RepositoryBaseOfT.cs"
+          "src/Ardalis.Specification/Exceptions/ConcurrentSelectorsException.cs",
+          "src/Ardalis.Specification/Exceptions/DuplicateSkipException.cs",
+          "src/Ardalis.Specification/Exceptions/DuplicateTakeException.cs",
+          "tests/Ardalis.Specification.Tests/Exceptions/ConcurrentSelectorsExceptionTests.cs"
         ]
       }
     },
@@ -888,8 +882,8 @@
       "category": "identifier-rich",
       "recall": 0,
       "precision": 0,
-      "tokens": 1732,
-      "latencyMs": 24,
+      "tokens": 1171,
+      "latencyMs": 14,
       "hit": {
         "hits": [],
         "misses": [
@@ -917,14 +911,14 @@
         "extras": [
           "src/Ardalis.Specification/Expressions/IncludeExpressionInfo.cs",
           "src/Ardalis.Specification.EntityFramework6/Extensions/IncludeExtensions.cs",
-          "tests/Ardalis.Specification.Tests/Expressions/IncludeExpressionInfoTests.cs",
           "src/Ardalis.Specification.EntityFramework6/Extensions/SearchExtension.cs",
+          "tests/Ardalis.Specification.Tests/Expressions/IncludeExpressionInfoTests.cs",
           "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/IncludeEvaluator.cs",
           "src/Ardalis.Specification.EntityFramework6/Extensions/ParameterReplacerVisitor.cs",
-          "tests/Ardalis.Specification.Tests/Builders/Builder_Include.cs",
-          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/IncludeEvaluatorTests.cs",
           "tests/Ardalis.Specification.Benchmarks/Benchmark5_IncludeEvaluator.cs",
-          "src/Ardalis.Specification/Specification.cs"
+          "src/Ardalis.Specification/Builders/Builder_Include.cs",
+          "tests/Ardalis.Specification.Benchmarks/Benchmark4_Include.cs",
+          "tests/Ardalis.Specification.Tests/Builders/Builder_Include.cs"
         ]
       }
     },
@@ -934,8 +928,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 419,
-      "latencyMs": 16,
+      "tokens": 343,
+      "latencyMs": 12,
       "hit": {
         "hits": [],
         "misses": [
@@ -948,8 +942,7 @@
         ],
         "extras": [
           "src/Ardalis.Specification/ISpecification.cs",
-          "src/Ardalis.Specification/Validators/ISpecificationValidator.cs",
-          "src/Ardalis.Specification/Evaluators/ISpecificationEvaluator.cs"
+          "src/Ardalis.Specification/Validators/ISpecificationValidator.cs"
         ]
       }
     },
@@ -959,8 +952,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 3903,
-      "latencyMs": 43,
+      "tokens": 4606,
+      "latencyMs": 14,
       "hit": {
         "hits": [],
         "misses": [
@@ -969,15 +962,15 @@
         ],
         "extras": [
           "tests/Ardalis.Specification.EntityFramework6.Tests/Repositories/Repository_FirstTests.cs",
-          "src/Ardalis.Specification.EntityFramework6/RepositoryBaseOfT.cs",
-          "src/Ardalis.Specification.EntityFrameworkCore/RepositoryBaseOfT.cs",
-          "samples/Ardalis.Sample.App3/RepositoryBase.cs",
           "src/Ardalis.Specification.EntityFrameworkCore/ContextFactoryRepositoryBaseOfT.cs",
-          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Repository.cs",
+          "samples/Ardalis.Sample.App3/RepositoryBase.cs",
+          "src/Ardalis.Specification.EntityFramework6/RepositoryBaseOfT.cs",
+          "samples/Ardalis.Sample.App3/IRepository.cs",
+          "src/Ardalis.Specification.EntityFrameworkCore/RepositoryBaseOfT.cs",
           "src/Ardalis.Specification/IRepositoryBase.cs",
-          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Fixture/Repository.cs",
-          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Repositories/Repository_FirstTests.cs",
-          "samples/Ardalis.Sample.App3/IRepository.cs"
+          "samples/Ardalis.Sample.App3/IReadRepository.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Repositories/Repository_AnyTests.cs",
+          "src/Ardalis.Specification/IReadRepositoryBase.cs"
         ]
       }
     },
@@ -987,8 +980,8 @@
       "category": "test-only",
       "recall": 0,
       "precision": 0,
-      "tokens": 310,
-      "latencyMs": 15,
+      "tokens": 253,
+      "latencyMs": 10,
       "hit": {
         "hits": [],
         "misses": [
@@ -1003,7 +996,6 @@
         ],
         "extras": [
           "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/IntegrationTest.cs",
-          "tests/Ardalis.Specification.Tests/Exceptions/SelectorNotFoundExceptionTests.cs",
           "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Fixture/IntegrationTest.cs"
         ]
       }
@@ -1015,7 +1007,7 @@
       "recall": 0,
       "precision": 0,
       "tokens": 0,
-      "latencyMs": 7,
+      "latencyMs": 3,
       "hit": {
         "hits": [],
         "misses": [
@@ -1044,8 +1036,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 1033,
-      "latencyMs": 15,
+      "tokens": 532,
+      "latencyMs": 5,
       "hit": {
         "hits": [],
         "misses": [
@@ -1057,13 +1049,13 @@
           "src/Ardalis.Specification/Expressions/IncludeExpressionInfo.cs",
           "src/Ardalis.Specification/Expressions/SearchExpressionInfo.cs",
           "src/Ardalis.Specification/Expressions/WhereExpressionInfo.cs",
-          "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/SearchExtension.cs",
-          "tests/Ardalis.Specification.Tests/Expressions/IncludeExpressionInfoTests.cs",
-          "src/Ardalis.Specification.EntityFramework6/Extensions/ParameterReplacerVisitor.cs",
           "src/Ardalis.Specification/Expressions/OrderExpressionInfo.cs",
-          "tests/Ardalis.Specification.Benchmarks/Benchmark0_SpecSize.cs",
           "src/Ardalis.Specification/Internals/SearchExpressionComparer.cs",
-          "tests/Ardalis.Specification.Tests/Expressions/OrderExpressionInfoTests.cs"
+          "tests/Ardalis.Specification.Tests/Expressions/IncludeExpressionInfoTests.cs",
+          "tests/Ardalis.Specification.Tests/Expressions/OrderExpressionInfoTests.cs",
+          "tests/Ardalis.Specification.Tests/Expressions/SearchExpressionInfoTests.cs",
+          "tests/Ardalis.Specification.Tests/Expressions/WhereExpressionInfoTests.cs",
+          "tests/Ardalis.Specification.Tests/Internals/SearchExpressionComparerTests.cs"
         ]
       }
     },
@@ -1073,8 +1065,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 1763,
-      "latencyMs": 20,
+      "tokens": 2098,
+      "latencyMs": 10,
       "hit": {
         "hits": [],
         "misses": [
@@ -1094,16 +1086,16 @@
           "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/PostsGroupedByIdSpec.cs"
         ],
         "extras": [
-          "tests/Ardalis.Specification.Tests/Builders/Builder_Skip.cs",
-          "tests/Ardalis.Specification.Tests/Builders/Builder_Where.cs",
-          "src/Ardalis.Specification/Builders/Builder_Include.cs",
-          "tests/Ardalis.Specification.Tests/Builders/Builder_Cache.cs",
-          "src/Ardalis.Specification/Builders/Builder_Flags.cs",
+          "src/Ardalis.Specification/Builders/IncludableSpecificationBuilder.cs",
+          "src/Ardalis.Specification/Builders/SpecificationBuilder.cs",
           "src/Ardalis.Specification/Builders/Builder_Cache.cs",
+          "src/Ardalis.Specification/Builders/Builder_Flags.cs",
+          "src/Ardalis.Specification/Builders/Builder_Include.cs",
           "src/Ardalis.Specification/Builders/Builder_Order.cs",
           "src/Ardalis.Specification/Builders/Builder_Paging.cs",
           "src/Ardalis.Specification/Builders/Builder_PostProcessing.cs",
-          "src/Ardalis.Specification/Builders/IncludableSpecificationBuilder.cs"
+          "src/Ardalis.Specification/Builders/Builder_Search.cs",
+          "src/Ardalis.Specification/Builders/Builder_Select.cs"
         ]
       }
     },
@@ -1113,8 +1105,8 @@
       "category": "nl-domain",
       "recall": 0.375,
       "precision": 0.3,
-      "tokens": 931,
-      "latencyMs": 28,
+      "tokens": 835,
+      "latencyMs": 15,
       "hit": {
         "hits": [
           "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
@@ -1131,11 +1123,11 @@
         "extras": [
           "src/Web/ViewModels/Manage/RemoveLoginViewModel.cs",
           "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketRemoveEmptyItems.cs",
-          "tests/UnitTests/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
-          "src/Web/Controllers/ManageController.cs",
-          "src/BlazorAdmin/Services/ToastService.cs",
           "src/PublicApi/CatalogBrandEndpoints/CatalogBrandListEndpoint.cs",
-          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.AuthenticateResponse.cs"
+          "src/BlazorAdmin/Services/ToastService.cs",
+          "src/Web/Controllers/ManageController.cs",
+          "src/ApplicationCore/Entities/CatalogBrand.cs",
+          "src/BlazorShared/Models/CatalogBrand.cs"
         ]
       }
     },
@@ -1145,8 +1137,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 644,
-      "latencyMs": 10,
+      "tokens": 675,
+      "latencyMs": 6,
       "hit": {
         "hits": [],
         "misses": [
@@ -1160,16 +1152,16 @@
           "src/Web/ViewModels/OrderViewModel.cs"
         ],
         "extras": [
-          "src/BlazorAdmin/Services/ToastService.cs",
           "src/Infrastructure/Data/Migrations/20211026175614_FixBuyerId.Designer.cs",
           "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.Designer.cs",
           "src/Infrastructure/Data/Migrations/20211026175614_FixBuyerId.cs",
           "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.cs",
+          "src/BlazorAdmin/Services/ToastService.cs",
           "src/Web/Controllers/ManageController.cs",
-          "src/BlazorShared/Models/ErrorDetails.cs",
           "tests/FunctionalTests/PublicApi/ApiTestFixture.cs",
           "tests/FunctionalTests/Web/WebTestFixture.cs",
-          "src/ApplicationCore/Interfaces/IAppLogger.cs"
+          "src/ApplicationCore/Interfaces/IAppLogger.cs",
+          "src/Infrastructure/Logging/LoggerAdapter.cs"
         ]
       }
     },
@@ -1179,8 +1171,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 821,
-      "latencyMs": 13,
+      "tokens": 614,
+      "latencyMs": 9,
       "hit": {
         "hits": [],
         "misses": [
@@ -1193,16 +1185,16 @@
           "src/Web/ViewModels/OrderViewModel.cs"
         ],
         "extras": [
-          "src/BlazorShared/BaseUrlConfiguration.cs",
-          "src/Web/Views/Manage/ManageNavPages.cs",
-          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
-          "src/Infrastructure/Data/FileItem.cs",
-          "src/ApplicationCore/Entities/BuyerAggregate/Buyer.cs",
-          "src/BlazorShared/Attributes/EndpointAttribute.cs",
-          "src/ApplicationCore/Entities/CatalogItem.cs",
-          "src/BlazorShared/Models/LookupData.cs",
           "src/Infrastructure/Data/Migrations/20211026175614_FixBuyerId.Designer.cs",
-          "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.Designer.cs"
+          "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.Designer.cs",
+          "src/Infrastructure/Data/Migrations/20211026175614_FixBuyerId.cs",
+          "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.cs",
+          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
+          "src/ApplicationCore/Interfaces/IEmailSender.cs",
+          "src/ApplicationCore/Interfaces/IUriComposer.cs",
+          "src/Web/Controllers/ManageController.cs",
+          "src/BlazorShared/Authorization/ClaimValue.cs",
+          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.ClaimValue.cs"
         ]
       }
     },
@@ -1212,8 +1204,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 180,
-      "latencyMs": 10,
+      "tokens": 63,
+      "latencyMs": 7,
       "hit": {
         "hits": [],
         "misses": [
@@ -1222,8 +1214,7 @@
         ],
         "extras": [
           "src/Web/ViewModels/Manage/RemoveLoginViewModel.cs",
-          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketRemoveEmptyItems.cs",
-          "src/ApplicationCore/Entities/BasketAggregate/Basket.cs"
+          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketRemoveEmptyItems.cs"
         ]
       }
     },
@@ -1232,9 +1223,9 @@
       "repo": "eShopOnWeb",
       "category": "nl-domain",
       "recall": 0.0625,
-      "precision": 0.1,
-      "tokens": 639,
-      "latencyMs": 11,
+      "precision": 0.3333333333333333,
+      "tokens": 219,
+      "latencyMs": 4,
       "hit": {
         "hits": [
           "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.cs"
@@ -1258,14 +1249,7 @@
         ],
         "extras": [
           "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.UpdateCatalogItemResponse.cs",
-          "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.UpdateCatalogItemRequest.cs",
-          "src/ApplicationCore/Extensions/JsonExtensions.cs",
-          "src/BlazorAdmin/Services/HttpService.cs",
-          "tests/PublicApiIntegrationTests/CatalogItemEndpoints/CreateCatalogItemEndpointTest.cs",
-          "tests/UnitTests/ApplicationCore/Extensions/JsonExtensions.cs",
-          "src/BlazorShared/Models/CatalogBrandResponse.cs",
-          "src/Web/Interfaces/ICatalogItemViewModelService.cs",
-          "src/Web/Services/CatalogItemViewModelService.cs"
+          "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.UpdateCatalogItemRequest.cs"
         ]
       }
     },
@@ -1275,8 +1259,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 347,
-      "latencyMs": 3,
+      "tokens": 0,
+      "latencyMs": 4,
       "hit": {
         "hits": [],
         "misses": [
@@ -1289,40 +1273,28 @@
           "src/Web/Controllers/FileController.cs",
           "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/CreateEndpoint.cs"
         ],
-        "extras": [
-          "src/BlazorAdmin/Services/ToastService.cs",
-          "src/ApplicationCore/Entities/CatalogItem.cs",
-          "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs"
-        ]
+        "extras": []
       }
     },
     {
       "id": "eShopOnWeb#322",
       "repo": "eShopOnWeb",
       "category": "nl-domain",
-      "recall": 0.25,
-      "precision": 0.1,
-      "tokens": 550,
-      "latencyMs": 11,
+      "recall": 0,
+      "precision": 0,
+      "tokens": 51,
+      "latencyMs": 8,
       "hit": {
-        "hits": [
-          "src/ApplicationCore/Services/BasketService.cs"
-        ],
+        "hits": [],
         "misses": [
           "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
           "src/ApplicationCore/Interfaces/IBasketService.cs",
+          "src/ApplicationCore/Services/BasketService.cs",
           "src/Web/Pages/Basket/Index.cshtml.cs"
         ],
         "extras": [
           "src/Web/SlugifyParameterTransformer.cs",
-          "src/ApplicationCore/Entities/BasketAggregate/BasketItem.cs",
-          "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
-          "src/Web/Pages/Basket/BasketItemViewModel.cs",
-          "src/Web/ViewModels/Manage/ShowRecoveryCodesViewModel.cs",
-          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketAddItem.cs",
-          ".vscode/extensions.json",
-          ".vscode/launch.json",
-          ".vscode/tasks.json"
+          "src/Web/ViewModels/Manage/ShowRecoveryCodesViewModel.cs"
         ]
       }
     },
@@ -1330,28 +1302,30 @@
       "id": "eShopOnWeb#300",
       "repo": "eShopOnWeb",
       "category": "nl-domain",
-      "recall": 0.7142857142857143,
-      "precision": 0.5,
-      "tokens": 837,
-      "latencyMs": 13,
+      "recall": 0.42857142857142855,
+      "precision": 0.3,
+      "tokens": 721,
+      "latencyMs": 12,
       "hit": {
         "hits": [
           "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
           "src/ApplicationCore/Services/BasketService.cs",
-          "tests/IntegrationTests/Repositories/BasketRepositoryTests/SetQuantities.cs",
-          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketAddItem.cs",
           "src/ApplicationCore/Interfaces/IBasketService.cs"
         ],
         "misses": [
+          "tests/IntegrationTests/Repositories/BasketRepositoryTests/SetQuantities.cs",
+          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketAddItem.cs",
           "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
           "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
         ],
         "extras": [
           "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketRemoveEmptyItems.cs",
-          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketTotalItems.cs",
           "src/Web/Pages/Basket/BasketItemViewModel.cs",
-          "src/Web/Pages/Basket/Checkout.cshtml.cs",
-          "src/Web/ViewModels/Manage/RemoveLoginViewModel.cs"
+          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketTotalItems.cs",
+          "src/Web/ViewModels/Manage/RemoveLoginViewModel.cs",
+          "src/Web/Pages/Basket/BasketViewModel.cs",
+          "tests/FunctionalTests/Web/Pages/Basket/IndexTest.cs",
+          "src/Web/Pages/Shared/Components/BasketComponent/Basket.cs"
         ]
       }
     },
@@ -1361,8 +1335,8 @@
       "category": "identifier-rich",
       "recall": 0,
       "precision": 0,
-      "tokens": 545,
-      "latencyMs": 16,
+      "tokens": 470,
+      "latencyMs": 17,
       "hit": {
         "hits": [],
         "misses": [
@@ -1377,9 +1351,9 @@
           "src/Infrastructure/Data/Config/OrderConfiguration.cs",
           "src/ApplicationCore/Entities/BaseEntity.cs",
           "src/Infrastructure/Data/Config/OrderItemConfiguration.cs",
-          "src/Web/Configuration/ConfigureCoreServices.cs",
           "src/Web/ViewModels/Manage/RemoveLoginViewModel.cs",
-          "src/ApplicationCore/Services/BasketService.cs"
+          "tests/FunctionalTests/Web/Controllers/OrderControllerIndex.cs",
+          "src/ApplicationCore/Extensions/JsonExtensions.cs"
         ]
       }
     },
@@ -1389,8 +1363,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 370,
-      "latencyMs": 21,
+      "tokens": 367,
+      "latencyMs": 8,
       "hit": {
         "hits": [],
         "misses": [
@@ -1399,16 +1373,16 @@
           "src/Infrastructure/Data/CatalogContext.cs"
         ],
         "extras": [
-          "src/Web/Configuration/ConfigureCookieSettings.cs",
-          "src/Infrastructure/Data/Config/CatalogTypeConfiguration.cs",
-          "src/Infrastructure/Data/Config/CatalogBrandConfiguration.cs",
-          "src/Infrastructure/Data/Config/OrderConfiguration.cs",
-          "src/Infrastructure/Data/Config/CatalogItemConfiguration.cs",
           "src/Web/ViewModels/Manage/ChangePasswordViewModel.cs",
           "src/BlazorShared/BaseUrlConfiguration.cs",
           "src/Infrastructure/Data/Config/BasketConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogTypeConfiguration.cs",
+          "src/Infrastructure/Data/Config/OrderConfiguration.cs",
           "src/Infrastructure/Data/Config/BasketItemConfiguration.cs",
-          "src/Infrastructure/Data/Config/OrderItemConfiguration.cs"
+          "src/Infrastructure/Data/Config/CatalogBrandConfiguration.cs",
+          "src/Infrastructure/Data/Config/CatalogItemConfiguration.cs",
+          "src/Infrastructure/Data/Config/OrderItemConfiguration.cs",
+          "src/ApplicationCore/Extensions/JsonExtensions.cs"
         ]
       }
     },
@@ -1418,8 +1392,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 568,
-      "latencyMs": 11,
+      "tokens": 108,
+      "latencyMs": 7,
       "hit": {
         "hits": [],
         "misses": [
@@ -1438,16 +1412,7 @@
           "src/Web/Startup.cs"
         ],
         "extras": [
-          "src/Web/Controllers/UserController.cs",
-          "src/Infrastructure/Dependencies.cs",
-          "tests/FunctionalTests/PublicApi/ApiTestFixture.cs",
-          "tests/IntegrationTests/Repositories/OrderRepositoryTests/GetById.cs",
-          "tests/FunctionalTests/Web/WebTestFixture.cs",
-          "src/Infrastructure/Identity/AppIdentityDbContextSeed.cs",
-          "src/ApplicationCore/Constants/AuthorizationConstants.cs",
-          "tests/UnitTests/ApplicationCore/Specifications/CustomerOrdersWithItemsSpecification.cs",
-          "src/BlazorShared/Authorization/UserInfo.cs",
-          "src/Infrastructure/Identity/ApplicationUser.cs"
+          "src/Web/Controllers/UserController.cs"
         ]
       }
     },
@@ -1457,8 +1422,8 @@
       "category": "identifier-rich",
       "recall": 0,
       "precision": 0,
-      "tokens": 781,
-      "latencyMs": 10,
+      "tokens": 912,
+      "latencyMs": 8,
       "hit": {
         "hits": [],
         "misses": [
@@ -1468,16 +1433,16 @@
           "src/Infrastructure/Data/SpecificationEvaluator.cs"
         ],
         "extras": [
-          "src/BlazorShared/Authorization/UserInfo.cs",
           "src/Web/Areas/Identity/Pages/Account/Register.cshtml.cs",
           "src/BlazorShared/Models/CatalogBrandResponse.cs",
-          "src/ApplicationCore/Entities/BuyerAggregate/Buyer.cs",
           "src/BlazorShared/Models/CatalogTypeResponse.cs",
-          "tests/UnitTests/ApplicationCore/Entities/OrderTests/OrderTotal.cs",
-          "src/Infrastructure/Data/Config/OrderConfiguration.cs",
           "src/BlazorShared/Models/CatalogItem.cs",
           "src/BlazorAdmin/Helpers/ToastComponent.cs",
-          "tests/FunctionalTests/Web/WebPageHelpers.cs"
+          "src/BlazorShared/Authorization/UserInfo.cs",
+          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.UserInfo.cs",
+          "src/Web/Areas/Identity/Pages/Account/Login.cshtml.cs",
+          "src/Web/ViewModels/Manage/IndexViewModel.cs",
+          "tests/UnitTests/ApplicationCore/Entities/OrderTests/OrderTotal.cs"
         ]
       }
     },
@@ -1487,8 +1452,8 @@
       "category": "route-api",
       "recall": 0,
       "precision": 0,
-      "tokens": 922,
-      "latencyMs": 12,
+      "tokens": 645,
+      "latencyMs": 10,
       "hit": {
         "hits": [],
         "misses": [
@@ -1501,13 +1466,13 @@
           "src/BlazorAdmin/JavaScript/Route.cs",
           "src/Web/Areas/Identity/Pages/Account/Login.cshtml.cs",
           "src/Web/Controllers/UserController.cs",
-          "src/Web/Controllers/ManageController.cs",
           "tests/FunctionalTests/PublicApi/ApiTestFixture.cs",
-          "tests/FunctionalTests/Web/Pages/Basket/CheckoutTest.cs",
           "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.cs",
           "tests/FunctionalTests/Web/WebTestFixture.cs",
           "src/Web/ViewModels/Account/LoginWith2faViewModel.cs",
-          "src/BlazorAdmin/JavaScript/JSInteropConstants.cs"
+          "tests/FunctionalTests/Web/Pages/Basket/BasketPageCheckout.cs",
+          "tests/FunctionalTests/Web/Pages/Basket/IndexTest.cs",
+          "src/Web/ViewModels/Account/LoginViewModel.cs"
         ]
       }
     },
@@ -1517,8 +1482,8 @@
       "category": "nl-domain",
       "recall": 0,
       "precision": 0,
-      "tokens": 1087,
-      "latencyMs": 11,
+      "tokens": 1046,
+      "latencyMs": 9,
       "hit": {
         "hits": [],
         "misses": [
@@ -1527,15 +1492,15 @@
         ],
         "extras": [
           "src/Web/ViewModels/PaginationInfoViewModel.cs",
-          "src/ApplicationCore/Services/BasketService.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
-          "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.UpdateCatalogItemResponse.cs",
           "tests/FunctionalTests/Web/Controllers/AccountControllerSignIn.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
           "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
+          "src/ApplicationCore/Services/BasketService.cs",
+          "src/Web/Controllers/ManageController.cs",
+          "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.Designer.cs",
+          "src/BlazorShared/Models/ErrorDetails.cs",
           "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.cs",
-          "src/ApplicationCore/Entities/CatalogItem.cs",
-          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketAddItem.cs",
-          "src/Web/Pages/Basket/Index.cshtml.cs"
+          "src/ApplicationCore/Entities/OrderAggregate/Order.cs"
         ]
       }
     },
@@ -1545,8 +1510,8 @@
       "category": "formatting",
       "recall": 0,
       "precision": 0,
-      "tokens": 617,
-      "latencyMs": 11,
+      "tokens": 589,
+      "latencyMs": 10,
       "hit": {
         "hits": [],
         "misses": [
@@ -1559,14 +1524,14 @@
         "extras": [
           "tests/UnitTests/Builders/OrderBuilder.cs",
           "tests/PublicApiIntegrationTests/ProgramTest.cs",
-          "tests/PublicApiIntegrationTests/CatalogItemEndpoints/CreateCatalogItemEndpointTest.cs",
-          "tests/UnitTests/Builders/AddressBuilder.cs",
-          "tests/FunctionalTests/Web/Pages/Basket/CheckoutTest.cs",
-          "tests/FunctionalTests/Web/Pages/Basket/IndexTest.cs",
           "tests/UnitTests/ApplicationCore/Extensions/TestChild.cs",
           "tests/UnitTests/ApplicationCore/Extensions/TestParent.cs",
           "tests/UnitTests/Builders/BasketBuilder.cs",
-          "tests/FunctionalTests/Web/WebTestFixture.cs"
+          "tests/FunctionalTests/Web/Pages/Basket/CheckoutTest.cs",
+          "tests/FunctionalTests/Web/Pages/Basket/IndexTest.cs",
+          "tests/UnitTests/Builders/AddressBuilder.cs",
+          "tests/FunctionalTests/Web/WebTestFixture.cs",
+          "tests/FunctionalTests/PublicApi/ApiTestFixture.cs"
         ]
       }
     },
@@ -1576,8 +1541,8 @@
       "category": "nl-domain",
       "recall": 0.3333333333333333,
       "precision": 0.1,
-      "tokens": 537,
-      "latencyMs": 10,
+      "tokens": 339,
+      "latencyMs": 5,
       "hit": {
         "hits": [
           "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs"
@@ -1587,15 +1552,15 @@
           "src/Infrastructure/Data/Migrations/20190601014740_UpdatingDefaultDataTypes.cs"
         ],
         "extras": [
-          "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.cs",
           "src/Infrastructure/Data/Migrations/20201202111507_InitialModel.cs",
           "src/Infrastructure/Data/Migrations/20211026175614_FixBuyerId.cs",
           "src/Infrastructure/Identity/Migrations/20201202111612_InitialIdentityModel.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
+          "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.cs",
           "src/Infrastructure/Data/Migrations/20211026175614_FixBuyerId.Designer.cs",
           "src/Infrastructure/Data/Migrations/20211231093753_FixShipToAddress.Designer.cs",
           "src/Infrastructure/Data/Migrations/20201202111507_InitialModel.Designer.cs",
-          "src/Infrastructure/Identity/Migrations/20201202111612_InitialIdentityModel.Designer.cs"
+          "src/Infrastructure/Identity/Migrations/20201202111612_InitialIdentityModel.Designer.cs",
+          "src/Infrastructure/Identity/Migrations/AppIdentityDbContextModelSnapshot.cs"
         ]
       }
     },
@@ -1605,8 +1570,8 @@
       "category": "identifier-rich",
       "recall": 0,
       "precision": 0,
-      "tokens": 478,
-      "latencyMs": 16,
+      "tokens": 576,
+      "latencyMs": 10,
       "hit": {
         "hits": [],
         "misses": [
@@ -1615,16 +1580,16 @@
           "src/Infrastructure/Data/SpecificationEvaluator.cs"
         ],
         "extras": [
-          "tests/UnitTests/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
-          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
-          "tests/UnitTests/ApplicationCore/Specifications/CatalogFilterSpecification.cs",
-          "src/PublicApi/CustomSchemaFilters.cs",
-          "src/ApplicationCore/Specifications/CatalogFilterSpecification.cs",
           "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.cs",
-          "src/Web/ViewModels/CatalogIndexViewModel.cs",
-          "src/Web/ViewModels/PaginationInfoViewModel.cs",
-          "tests/UnitTests/ApplicationCore/Specifications/CatalogItemsSpecification.cs",
-          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.AuthenticateRequest.cs"
+          "src/PublicApi/CustomSchemaFilters.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+          "tests/UnitTests/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
+          "src/ApplicationCore/Specifications/CatalogFilterSpecification.cs",
+          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.AuthenticateRequest.cs",
+          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.AuthenticateResponse.cs",
+          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.ClaimValue.cs",
+          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.UserInfo.cs",
+          "src/Web/Configuration/RevokeAuthenticationEvents.cs"
         ]
       }
     },
@@ -1634,8 +1599,8 @@
       "category": "identifier-rich",
       "recall": 0.75,
       "precision": 0.3,
-      "tokens": 1123,
-      "latencyMs": 15,
+      "tokens": 1107,
+      "latencyMs": 10,
       "hit": {
         "hits": [
           "src/ApplicationCore/Services/BasketService.cs",
@@ -1647,12 +1612,12 @@
         ],
         "extras": [
           "src/ApplicationCore/Services/UriComposer.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
           "src/ApplicationCore/Interfaces/IUriComposer.cs",
+          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
+          "src/ApplicationCore/Interfaces/IBasketService.cs",
           "src/Web/Services/BasketViewModelService.cs",
           "src/ApplicationCore/Services/OrderService.cs",
-          "src/ApplicationCore/Interfaces/IBasketService.cs",
-          "src/Web/Pages/Basket/Checkout.cshtml.cs"
+          "src/Web/Services/CatalogViewModelService.cs"
         ]
       }
     }
@@ -1665,15 +1630,15 @@
     "restore eShopOnWeb: restored 0, failed 0",
     "index modes: partial 2, syntax 2",
     "bucket formatting: n 3, mean recall 0%",
-    "bucket identifier-rich: n 15, mean recall 21%",
-    "bucket nl-domain: n 29, mean recall 17%",
+    "bucket identifier-rich: n 15, mean recall 20%",
+    "bucket nl-domain: n 29, mean recall 14%",
     "bucket no-signal: n 1, mean recall 0%",
     "bucket route-api: n 1, mean recall 0%",
     "bucket test-only: n 4, mean recall 0%",
-    "graded states: confident 9, partial 43, insufficient 1",
-    "false-rejection on answerable: 0/52 (0.0%)",
-    "precision when answered (confident\u002Bpartial): 8.9% over 52 tasks",
-    "precision when confident: 9.3% over 9 tasks",
+    "graded states: confident 9, partial 40, insufficient 4",
+    "false-rejection on answerable: 3/52 (5.8%)",
+    "precision when answered (confident\u002Bpartial): 9.7% over 49 tasks",
+    "precision when confident: 18.5% over 9 tasks",
     "low-signal detection: tp 1, fp 0, fn 0 (precision 100%, recall 100%)"
   ]
 }

@@ -4,6 +4,7 @@ using Fuse.Collection.Templates;
 using Fuse.Fusion;
 using Fuse.Indexing;
 using Fuse.Plugins.Abstractions.Options;
+using Fuse.Plugins.Rerank.Onnx;
 using Fuse.Reduction.Caching;
 using Fuse.Semantics;
 using ModelContextProtocol.Server;
@@ -40,6 +41,7 @@ public sealed partial class FuseTools
         if (!Directory.Exists(root))
             return $"Error: Directory not found: {root}";
 
+        await EnsureDenseModelAsync(cancellationToken);
         await using var store = await OpenStoreAsync(root, cancellationToken);
         var result = await indexer.IndexAsync(root, store, cancellationToken);
         return $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects, " +
@@ -174,9 +176,17 @@ public sealed partial class FuseTools
         var store = await OpenStoreAsync(root, cancellationToken);
         var state = await store.GetStateAsync(cancellationToken);
         if (state.FileCount == 0)
+        {
+            await EnsureDenseModelAsync(cancellationToken);
             await indexer.IndexAsync(root, store, cancellationToken);
+        }
         return store;
     }
+
+    // Provisions the bundled dense model once (fetch-and-cache) before the first index, so the dense channel is
+    // on by default. Idempotent and offline-safe: a present model is a no-op, a failed fetch falls back to lexical.
+    private static Task EnsureDenseModelAsync(CancellationToken cancellationToken) =>
+        DenseModelProvisioner.EnsureModelAsync(progress: null, logger: null, cancellationToken);
 
     private static MapDetail ParseDetail(string detail) => detail.Trim().ToLowerInvariant() switch
     {

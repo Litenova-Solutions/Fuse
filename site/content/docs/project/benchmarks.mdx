@@ -117,7 +117,23 @@ On the V3.1 A3 rebuilt corpus (53 PRs, title only, no model, restore on), the ba
 | False-rejection on answerable | 5.8% (3 of 52) |
 | Precision when confident | 18.5% (9 tasks) |
 
-By bucket: identifier-rich 20 percent (n 15), natural-language domain 14 percent (n 29), formatting and route/API and test-only 0 percent (small n). Localize main-checkout index modes are partial 2, syntax 2 (NodaTime and Specification partial; Scrutor's NU1507 nesting conflict and eShopOnWeb's main checkout fall to syntax). This is the honest open-ended baseline the dense channel (A1) and the graph-dependent priors are measured against next. The contract metrics (low-signal F1, false-rejection) hold on the rebuilt corpus.
+By bucket: identifier-rich 20 percent (n 15), natural-language domain 14 percent (n 29), formatting and route/API and test-only 0 percent (small n). Localize main-checkout index modes are partial 2, syntax 2 (NodaTime and Specification partial; Scrutor's NU1507 nesting conflict and eShopOnWeb's main checkout fall to syntax). The table above is the lexical fallback (the dense channel disabled), the A/B comparator for dense-by-default below. The contract metrics (low-signal F1, false-rejection) hold on the rebuilt corpus.
+
+### A1: dense by default
+
+The dense channel is now on by default (the old "no model present" floor is retired). A small local embedding model (all-MiniLM-L6-v2, about 23 MB) is fetched once and cached on the first index, then every later run and all query-time work is fully offline; the query string is embedded as written, never paraphrased. When the model is genuinely absent (offline first run, or the fetch blocked) the path falls back to the deterministic lexical floor. The A/B over the rebuilt corpus (53 PRs, title only, restore on) is the lexical fallback (`localize.a1-lexical.json`) versus dense by default (`localize.json`):
+
+| Metric | Lexical fallback | Dense by default |
+|--------|-----------------:|-----------------:|
+| Overall changed-file recall | 13.3% | 15.1% |
+| natural-language domain bucket | 14% | 17% |
+| identifier-rich bucket | 20% | 21% |
+| Precision (returned set) | 9.0% | 8.7% |
+| False-rejection on answerable | 5.8% (3 of 52) | 0.0% (0 of 52) |
+| Precision when confident | 18.5% (9 tasks) | 9.3% (9 tasks) |
+| Median returned tokens | 835 | 1,087 |
+
+Dense lifts the natural-language-domain bucket (the bucket it targets, prose titles that share no tokens with the code) from 14 to 17 percent and overall recall from 13.3 to 15.1 percent, and it removes the false rejections entirely (5.8 to 0.0 percent): every answerable query now carries some dense signal, so fewer are downgraded to insufficient (graded states move from confident 9 / partial 40 / insufficient 4 to confident 9 / partial 43 / insufficient 1). The trade is precision when confident, which falls from 18.5 to 9.3 percent: dense pulls a few semantically-near-but-wrong files into the answered set on this small, mostly-syntax corpus, which is the recall-versus-precision pressure the plan flags for every recall lever. Reported straight: dense by default is a recall and false-rejection win at a precision-when-confident cost here; the graded cutoff and the learned ranker are the counterweights, and a semantic-mode-richer corpus is expected to widen the gain. The model fetch is one-time; with the model absent the run is byte-identical to the lexical fallback column.
 
 The remainder of this section (the R1, R2, R3, and S-series tables below) was recorded on the prior 108-PR corpus and is retained for the methodology; the numbers are not directly comparable to the rebuilt-corpus baseline above.
 

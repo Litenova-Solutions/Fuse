@@ -16,7 +16,7 @@ public static class WorkspaceIndexSchema
     ///     The current schema version. The existing cache database carries a lower or absent version,
     ///     so it is dropped and rebuilt on the first V3 run.
     /// </summary>
-    public const int TargetVersion = 13;
+    public const int TargetVersion = 14;
 
     /// <summary>
     ///     Database-level pragmas applied once at schema creation. WAL journaling and
@@ -49,11 +49,13 @@ public static class WorkspaceIndexSchema
           project_id INTEGER NULL,
           is_generated INTEGER NOT NULL DEFAULT 0,
           is_test INTEGER NOT NULL DEFAULT 0,
+          language TEXT NULL,
           indexed_at_utc TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_files_hash ON files(content_hash);
         CREATE INDEX IF NOT EXISTS idx_files_project ON files(project_id);
         CREATE INDEX IF NOT EXISTS idx_files_extension ON files(extension);
+        CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);
 
         CREATE TABLE IF NOT EXISTS projects(
           project_id INTEGER PRIMARY KEY,

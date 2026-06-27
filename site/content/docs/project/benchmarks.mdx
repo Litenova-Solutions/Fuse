@@ -271,6 +271,20 @@ The peer layer (A2) gives each tool the PR title and scores the returned file se
 
 Read this carefully, because the aggregate hides a sampling difference. The deterministic arms (fuse, codegraph) ran all 12 sampled PRs; the model-driven arms (coa, serena) ran one claude rollout per PR and were bounded to 1 PR per repository (4 PRs total) to keep the rollout compute affordable, so their column is a smaller, different sample. On the deterministic 12-PR comparison, Fuse leads CodeGraph decisively on recall (19 versus 9 percent) at higher precision. On the four shared model-driven PRs, the honest reading is that Serena's higher aggregate is dominated by a single tiny-repo outlier: on Scrutor#6 (a 2-file change in a 45-file repo) Serena's symbol search returns the whole repo and scores 100 percent recall, while on the two substantive PRs (eShopOnWeb#949, NodaTime#621) Fuse leads or ties Serena (38 versus 12 percent, 33 versus 22 percent). coa returns a long ranked path list (102 files on NodaTime#621), so its recall is moderate but its precision is near zero. The token columns are not directly comparable: Fuse and CodeGraph return source the agent reads directly, while coa and Serena return path or snippet lists the agent would still open. The model-driven arms are not byte-reproducible and the per-rollout setup time is captured as `setup_ms`; a full 50-to-100-PR model-driven run remains a larger compute budget. This is a small sample with Fuse on its C# home field, reported straight, and no single arm-versus-arm point should be over-read.
 
+Reproduce the head-to-head (the deterministic arms run with no extra setup; the model-driven arms are env-gated and run only when their binary is present, otherwise they are recorded as omitted, never stubbed):
+
+```bash
+# Fuse and CodeGraph only (deterministic, all sampled PRs)
+pwsh -File tests/benchmarks/harness/layer6-peers.ps1
+
+# Add coa-codesearch and Serena (model-driven, one claude rollout per PR, bounded per repo)
+COA_CODESEARCH_EXE=/path/to/COA.CodeSearch.McpServer.exe \
+SERENA_CMD=uvx \
+pwsh -File tests/benchmarks/harness/layer6-peers.ps1 -PerRepo 4 -ModelPerRepo 1
+```
+
+The run writes `tests/benchmarks/results/layer6-peers.json` with every arm's per-PR rows, sample size, and `setup_ms`. Where Fuse does not lead is stated above and in the file: on a tiny repo a whole-repo symbol dump can out-recall a scoped result, and a pure path-list search returns fewer tokens because it returns paths, not source. A full 50-to-100-PR model-driven run is the remaining work; until it exists, no broader ranking is claimed.
+
 ## Suite E: Token Reduction and Fidelity (offline continuity)
 
 Suite E is the offline continuity layer. For each repository it counts the raw o200k_base tokens of the C# files, reduces them at each level through the shipped reduction path, counts the reduced tokens, and at skeleton level checks how many public and protected types and methods survive. Fidelity is counted by parsing the raw source with Roslyn as an independent ground truth, so the measure is not circular. Run with `fuse eval reduce`.

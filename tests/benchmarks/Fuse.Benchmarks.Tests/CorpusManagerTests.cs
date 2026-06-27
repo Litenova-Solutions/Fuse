@@ -82,7 +82,7 @@ public sealed class CorpusManagerTests
         var manifest = manager.LoadManifest();
 
         Assert.Equal("o200k_base", manifest.Tokenizer);
-        Assert.Contains(manifest.Repos, r => r.Name == "MediatR" && r.Commit is { Length: > 0 });
+        Assert.Contains(manifest.Repos, r => r.Name == "Scrutor" && r.Commit is { Length: > 0 });
     }
 
     [Fact]
@@ -96,14 +96,15 @@ public sealed class CorpusManagerTests
         var dataset = manager.LoadDataset("dotnet-prs-v1");
 
         var allTasks = dataset.Repos.SelectMany(r => r.Tasks).ToList();
-        Assert.Equal(108, allTasks.Count);
+        Assert.Equal(53, allTasks.Count);
         Assert.All(allTasks, t =>
         {
             Assert.NotEmpty(t.GroundTruth.Files);
             Assert.False(string.IsNullOrEmpty(t.Category));
         });
-        // The six corpus repositories are all represented.
-        Assert.Equal(6, dataset.Repos.Count);
+        // The four corpus repositories with merge-PR history are all represented (SampleShop is a
+        // local fixture with no merge history, so it contributes no PR tasks).
+        Assert.Equal(4, dataset.Repos.Count);
     }
 
     [Fact]

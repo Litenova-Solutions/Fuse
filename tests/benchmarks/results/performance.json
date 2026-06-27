@@ -9,18 +9,19 @@
     "recallCiHigh": 0,
     "precision": 0,
     "f1": 0,
-    "medianTokens": 19.8624,
-    "meanTokens": 64187,
+    "medianTokens": 60.8746,
+    "meanTokens": 69747,
     "lowSignalF1": 0
   },
   "tasks": [],
   "notes": [
-    "repo AutoMapper, index mode syntax, 518 files, 17924 symbols",
-    "cold index: 64,187 ms",
-    "warm localize (25x): P50 19.9 ms, P95 21.9 ms",
-    "warm resolve (25x): P50 0.0 ms, P95 0.0 ms",
-    "warm review plan (25x): P50 98.2 ms, P95 102.5 ms",
-    "incremental re-index of src/TestApp/Program.cs (25x): P50 176.7 ms, P95 185.9 ms",
+    "cold start: syntax-tier served in 19,852 ms (mode syntax, semantic_pending=1); semantic-ready after a further 94,924 ms (mode syntax, semantic_pending=0)",
+    "repo NodaTime, index mode syntax, 512 files, 7657 symbols",
+    "cold index (full semantic pass): 69,747 ms",
+    "warm localize (25x): P50 60.9 ms, P95 71.2 ms",
+    "warm resolve (25x): P50 0.0 ms, P95 0.1 ms",
+    "warm review plan (25x): P50 109.9 ms, P95 130.5 ms",
+    "incremental re-index of src/NodaTime/IClock.cs (25x): P50 22.8 ms, P95 24.8 ms",
     "note: timings are environment-dependent; incremental re-index updates the file\u0027s syntax rows, not cross-file semantic edges."
   ]
 }

@@ -63,6 +63,65 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
+    ///     Iterative exploration primitives: the graph neighborhood of a file, the callers and implementers of a
+    ///     symbol, or the structurally central files of an area. Ranked, bounded, and body-free, for chaining.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="file">A file whose graph neighborhood to return.</param>
+    /// <param name="symbol">A symbol whose callers and implementers to return.</param>
+    /// <param name="centralIn">An area (folder prefix, or empty for the whole workspace) whose central files to return.</param>
+    /// <param name="limit">The maximum results to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The ranked exploration items with provenance and no bodies.</returns>
+    [McpServerTool(Name = "fuse_neighbors", ReadOnly = true)]
+    [Description("Iterative exploration primitives (no bodies): the graph neighborhood of a file (callers, implementers, consumers, config, plus same-folder cohesion), the callers and implementers of a symbol, or the structurally central files of an area. Chain these to turn a weak first guess into a strong few-call funnel.")]
+    public static async Task<string> FuseNeighborsAsync(
+        SemanticIndexer indexer,
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("A file whose graph neighborhood to return.")] string? file = null,
+        [Description("A symbol whose callers and implementers to return.")] string? symbol = null,
+        [Description("An area (folder prefix, or empty for the whole workspace) whose central files to return.")] string? centralIn = null,
+        [Description("Maximum results to return.")] int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var explorer = new GraphNeighborhoodExplorer(store);
+
+        string mode;
+        IReadOnlyList<ExploredItem> items;
+        if (!string.IsNullOrWhiteSpace(file))
+        {
+            mode = $"neighborhood of {file}";
+            items = await explorer.NeighborhoodAsync(file, limit, cancellationToken);
+        }
+        else if (!string.IsNullOrWhiteSpace(symbol))
+        {
+            mode = $"callers and implementers of {symbol}";
+            items = await explorer.CallersAndImplementersAsync(symbol, limit, cancellationToken);
+        }
+        else if (centralIn is not null)
+        {
+            mode = centralIn.Length == 0 ? "central files (workspace)" : $"central files in {centralIn}";
+            items = await explorer.CentralFilesAsync(centralIn, limit, cancellationToken);
+        }
+        else
+        {
+            return "Error: specify one of file, symbol, or centralIn.";
+        }
+
+        var builder = new StringBuilder();
+        builder.AppendLine($"neighbors ({mode}): {items.Count}");
+        foreach (var item in items)
+        {
+            var symbolPart = item.Symbol is null ? string.Empty : $"  {item.Symbol}";
+            builder.AppendLine($"  {item.Path}{symbolPart}  [{item.Reason}]");
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
     ///     Deterministically resolves .NET wiring to its target(s): no source bodies.
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>

@@ -114,8 +114,26 @@ public sealed class McpServeIntegrationTests
 
         public void Dispose()
         {
-            if (Directory.Exists(ProjectPath))
-                Directory.Delete(ProjectPath, recursive: true);
+            // The serve subprocess may run a background semantic upgrade that holds the index db open briefly; on
+            // shutdown the OS releases that handle a moment after the process is signalled, so retry the delete
+            // through the transient IOException rather than failing teardown on the race.
+            for (var attempt = 0; attempt < 10; attempt++)
+            {
+                try
+                {
+                    if (Directory.Exists(ProjectPath))
+                        Directory.Delete(ProjectPath, recursive: true);
+                    return;
+                }
+                catch (IOException)
+                {
+                    Thread.Sleep(100);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    Thread.Sleep(100);
+                }
+            }
         }
     }
 }

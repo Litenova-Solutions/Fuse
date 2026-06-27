@@ -39,6 +39,12 @@ public sealed class McpServeCommand
     /// </remarks>
     public async Task RunAsync(CliContext context)
     {
+        // Syntax-first cold start with a background semantic upgrade (A4) is opt-in: FUSE_BG_UPGRADE truthy
+        // enables it. The default indexes synchronously on the first read (the proven-stable path), so no
+        // detached background task outlives a request; making it the default is deferred with the resident-Roslyn-
+        // workspace work that lets the host manage the background task's lifetime cleanly.
+        FuseTools.BackgroundSemanticUpgradeEnabled = BackgroundUpgradeOptIn();
+
         var builder = Host.CreateApplicationBuilder();
 
         builder.Logging.ClearProviders();
@@ -85,5 +91,17 @@ public sealed class McpServeCommand
             .WithResources<FuseResources>();
 
         await builder.Build().RunAsync(context.CancellationToken);
+    }
+
+    // The background semantic upgrade is opt-in: FUSE_BG_UPGRADE set to a truthy value (1/true/yes/on) enables
+    // the syntax-first cold start; otherwise the first read indexes synchronously.
+    private static bool BackgroundUpgradeOptIn()
+    {
+        var value = Environment.GetEnvironmentVariable("FUSE_BG_UPGRADE");
+        return value is not null
+               && (value.Equals("1", StringComparison.Ordinal)
+                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
     }
 }

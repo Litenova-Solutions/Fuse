@@ -1019,6 +1019,88 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         return embeddings;
     }
 
+    /// <inheritdoc />
+    public async Task UpsertCoChangesAsync(IReadOnlyList<CoChangeRecord> records, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        // A re-mine is authoritative, so clear the prior table before writing the fresh set.
+        await using (var clear = connection.CreateCommand())
+        {
+            clear.Transaction = transaction;
+            clear.CommandText = "DELETE FROM git_cochange;";
+            await clear.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            "INSERT OR REPLACE INTO git_cochange(path_a, path_b, count, pmi, jaccard, last_seen_utc) " +
+            "VALUES($a, $b, $count, $pmi, $jaccard, $last);";
+        var aParam = command.Parameters.Add("$a", SqliteType.Text);
+        var bParam = command.Parameters.Add("$b", SqliteType.Text);
+        var countParam = command.Parameters.Add("$count", SqliteType.Integer);
+        var pmiParam = command.Parameters.Add("$pmi", SqliteType.Real);
+        var jaccardParam = command.Parameters.Add("$jaccard", SqliteType.Real);
+        var lastParam = command.Parameters.Add("$last", SqliteType.Text);
+
+        foreach (var record in records)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            aParam.Value = record.PathA;
+            bParam.Value = record.PathB;
+            countParam.Value = record.Count;
+            pmiParam.Value = record.Pmi;
+            jaccardParam.Value = record.Jaccard;
+            lastParam.Value = (object?)record.LastSeenUtc ?? DBNull.Value;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<CoChangeRecord>> GetCoChangesForAsync(
+        IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken)
+    {
+        if (normalizedPaths.Count == 0)
+            return [];
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+
+        // A parameterized IN list over the (small) seed set, matching either column of the pair.
+        var names = new List<string>(normalizedPaths.Count);
+        var i = 0;
+        foreach (var path in normalizedPaths)
+        {
+            var name = $"$p{i++}";
+            names.Add(name);
+            command.Parameters.AddWithValue(name, path);
+        }
+
+        var inList = string.Join(", ", names);
+        command.CommandText =
+            $"SELECT path_a, path_b, count, pmi, jaccard, last_seen_utc FROM git_cochange " +
+            $"WHERE path_a IN ({inList}) OR path_b IN ({inList});";
+
+        var results = new List<CoChangeRecord>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new CoChangeRecord(
+                PathA: reader.GetString(0),
+                PathB: reader.GetString(1),
+                Count: reader.GetInt32(2),
+                Pmi: reader.GetDouble(3),
+                Jaccard: reader.GetDouble(4),
+                LastSeenUtc: reader.IsDBNull(5) ? null : reader.GetString(5)));
+        }
+
+        return results;
+    }
+
     // Embedding vectors are stored as a packed little-endian float32 blob; Buffer.BlockCopy is the fast,
     // allocation-light round trip and SQLite stores the bytes verbatim.
     private static byte[] ToBlob(float[] vector)

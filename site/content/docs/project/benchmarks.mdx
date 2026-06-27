@@ -19,20 +19,22 @@ The benchmark is four suites run by a C# eval driver in `tests/benchmarks/Fuse.B
 
 Fuse's semantic graph is strongest when the corpus loads with a full MSBuild semantic workspace. A full load needs a restored workspace (a `project.assets.json` from `dotnet restore`); without one, indexing falls back to syntax mode and every semantic suite reads a thin graph. The harness can now restore each checkout before indexing with the `--restore` flag (see Reproduce), and records the achieved index mode per repository so the reader can see which mode produced which number.
 
-In the current benchmark environment, restore lifts only the two repositories whose pinned commit still restores on the installed SDK: NewtonsoftJson and the eShopOnWeb application reach partial mode (the semantic graph), while AutoMapper, FluentValidation, MediatR, and Serilog fail to restore on this SDK because their pinned-era build (central package management with an inline-versioned SourceLink, or an older target framework) does not resolve against the newer SDK. Those four stay in syntax mode. This is a corpus-pinning limit, not an engine limit: where a repository restores, it loads semantically. The full semantic graph is exercised on eShopOnWeb (partial mode) and on the in-repo wiring fixture (Suite A). Read the deterministic moat (Suite A) as the semantic ceiling and the corpus suites as what the achieved modes deliver today.
+V3.1 (item A3) rebuilt the corpus to repositories that restore and index in semantic or partial mode on the .NET 10 SDK, replacing the prior set whose pinned commits fell back to syntax. The result is that the semantic moat is now visible in our own numbers: review (Suite B) reaches partial or semantic mode on 28 of 53 PRs, where the prior corpus reached partial on only 12 of 48. Where a repository restores, it loads semantically; the deterministic moat (Suite A) remains the semantic ceiling.
+
+**What A3 re-ran.** The corpus was rebuilt and Suites A, B, and C were re-run on it (2026-06-27). The agent (Suite D), token-reduction (Suite E), R4 adjudicated review, and peer-comparison tables further down this page were recorded on the prior corpus and are labelled as such; they are re-run on the rebuilt corpus in later V3.1 items (A1 dense, A2 peers, A4 cold-start). No prior-corpus number is presented as a rebuilt-corpus number.
 
 ## The Corpus
 
-The corpus is five open-source .NET libraries and one open-source ASP.NET Core application, all pinned by commit, counted with the `o200k_base` encoding. The application (eShopOnWeb) is the only non-library: it carries DI wiring, MVC and Razor Pages, EF Core, and config sprawl that the clean library APIs do not exercise, so it tests external validity beyond tidy public surfaces. PR ground truth (`prs.json`) is reconstructed from merge history, dropping merged PRs whose titles are misleading maintenance (a CI tweak or a dependency or version bump over an unrelated C# diff), since a title-only scope cannot find their change sets.
+The corpus is three open-source .NET libraries and one open-source ASP.NET Core application, all pinned by commit and chosen to restore on the .NET 10 SDK, plus the in-repo SampleShop fixture, counted with the `o200k_base` encoding. The application (eShopOnWeb) is the only non-library: it carries DI wiring, MVC and Razor Pages, EF Core, and config sprawl that the clean library APIs do not exercise, so it tests external validity beyond tidy public surfaces. PR ground truth (`prs.json`, 53 PRs reconstructed from merge history) drops merged PRs whose titles are misleading maintenance (a CI tweak or a dependency or version bump over an unrelated C# diff), since a title-only scope cannot find their change sets.
 
-| Repository | Size | C# files |
-|------------|------|---------:|
-| MediatR | small | 152 |
-| FluentValidation | small to mid | 218 |
-| AutoMapper | mid | 511 |
-| Newtonsoft.Json | large | 945 |
-| Serilog | small to mid | 216 |
-| eShopOnWeb (application) | mid | 254 |
+| Repository | Size | C# files | PRs |
+|------------|------|---------:|----:|
+| Scrutor | micro | 45 | 3 |
+| Ardalis.Specification | small to mid | 233 | 14 |
+| NodaTime | mid | 488 | 18 |
+| eShopOnWeb (application) | mid | 254 | 18 |
+
+One corpus-pinning caveat is recorded honestly: Scrutor uses central package management with two NuGet sources, and nested under Fuse's repository NuGet config it triggers a deterministic NU1507 source-mapping conflict and restores to syntax. NodaTime and Ardalis.Specification restore clean; eShopOnWeb restores per-PR-worktree (Suite B) but its main checkout (Suite C) loads syntax, so the localize index-mode distribution is lower than review's.
 
 ## Reproduce
 
@@ -70,23 +72,21 @@ This is the suite that runs on the full semantic graph (the fixture loads with a
 
 ## Suite B: Change Impact and Review
 
-Suite B measures whether `fuse review` scopes a real merged PR to the files it touches plus the semantic blast radius around them. The sample is 48 real merged pull requests, 8 per repository across the six repositories, at a 25,000-token budget. Changed files are seeded as must-keep, so the question this suite answers is precision: beyond the files the PR changed, what else does review return, and is it relevant.
+Suite B measures whether `fuse review` scopes a real merged PR to the files it touches plus the semantic blast radius around them. On the V3.1 A3 rebuilt corpus the sample is 53 real merged pull requests across the four repositories, at a 25,000-token budget with `--restore` on (each PR's worktree is restored before indexing). Changed files are seeded as must-keep, so the question this suite answers is precision: beyond the files the PR changed, what else does review return, and is it relevant.
 
 | Metric | Value |
 |--------|------:|
 | Changed-file recall | 100% |
-| Precision | 89.6% |
-| F1 | 0.95 |
-| Median returned tokens | 874 |
-| Mean returned tokens | 3,196 |
+| Precision | 79.8% |
+| F1 | 0.89 |
+| Median returned tokens | 958 |
+| Mean returned tokens | 1,095 |
 
-Index modes over the 48 PRs: partial 12, syntax 36.
+Index modes over the 53 PRs: partial 27, semantic 1, syntax 25. Because review restores each PR's worktree (outside the repository tree, so no nested NuGet-config conflict), a majority of PRs load in partial or semantic mode, and the moat is exercised rather than hidden in syntax. Versus a grep baseline (rank the repository's C# files by title-token matches, admit to the budget), review wins decisively: grep reaches 53 percent changed-file recall at 14 percent precision. The prior-corpus recording (48 PRs, precision 89.6 percent at partial 12 of 48) is superseded by this run; the lower aggregate precision here reflects more PRs loading semantically, where review adds the wiring and support files a reviewer wants and the changed-files-only truth counts them against it.
 
-With `--restore` on the application (eShopOnWeb), the per-PR worktree restores and review runs in partial mode on 15 of 18 PRs (`review.restore.json`): changed-file recall 1.0 at 64 percent precision in a median 587 returned tokens. The lower precision here is the semantic blast radius working as intended on an application: review pulls in the wiring and support files a reviewer wants, which the changed-files-only truth counts against it. This is the same effect the per-PR examples below show, now across the application's PR set in restored mode.
+### R4: Adjudicated support set, grep baseline, and two budgets (prior corpus)
 
-### R4: Adjudicated support set, grep baseline, and two budgets
-
-Changed-file recall is 100 percent by construction, so it does not test blast radius. R4 adds three things (`review.r4.json`, all 108 PRs, budgets 25,000 and 50,000): a grep baseline to beat, two budgets to read the precision-recall curve, and an adjudicated reading set (the support files a reviewer must read beyond the changed files) for a curated pilot of PRs.
+These R4 figures were recorded on the prior corpus and are retained for the adjudicated-set methodology; they are re-run on the rebuilt corpus in a later V3.1 item. Changed-file recall is 100 percent by construction, so it does not test blast radius. R4 adds three things (`review.r4.json`, all 108 PRs, budgets 25,000 and 50,000): a grep baseline to beat, two budgets to read the precision-recall curve, and an adjudicated reading set (the support files a reviewer must read beyond the changed files) for a curated pilot of PRs.
 
 | Truth / arm (25,000 budget) | Recall | Precision | Median tokens |
 |------|------:|------:|------:|
@@ -98,21 +98,30 @@ Review beats the grep baseline decisively on both axes (100 versus 51 percent re
 
 Findings, including the boundary:
 
-- Changed-file recall is 100 percent by construction, since the changed files are seeded as must-keep. The signal in this suite is precision (89.6 percent) and F1 (0.95): review rarely returns a file the change did not touch or pull in.
-- Review delivers a PR's context compactly. The median PR is scoped in 874 returned tokens, the mean in 3,196. This is where token efficiency lives in V3: a rendering and transport property of the scoped review output, not a separate reduction claim.
+- Changed-file recall is 100 percent by construction, since the changed files are seeded as must-keep. The signal in this suite is precision (79.8 percent on the rebuilt corpus) and F1 (0.89): review rarely returns a file the change did not touch or pull in.
+- Review delivers a PR's context compactly. The median PR is scoped in 958 returned tokens, the mean in 1,095. This is where token efficiency lives in V3: a rendering and transport property of the scoped review output, not a separate reduction claim.
 - The semantic blast radius shows up on the application, not the libraries. On eShopOnWeb (partial mode) review adds files beyond the changed set through the semantic graph, which lowers precision where the extra files are the wiring a reviewer would want: eShopOnWeb#322 scopes at 21 percent precision, eShopOnWeb#300 at 35 percent. The library repos load in syntax mode and scope tightly to the changed files, which is why aggregate precision stays high. The honest reading: the partial-mode application is where the blast radius is exercised, and there the wider set is the point, not noise.
 
 ## Suite C: Open-Ended Localization (the weakest mode)
 
-Suite C is the open-ended floor. It gives `fuse localize` only a PR title, with no Git base, and asks it to find the changed files from the title text alone over 108 PRs. This is the hardest mode and the one where Fuse is weakest.
+Suite C is the open-ended floor. It gives `fuse localize` only a PR title, with no Git base, and asks it to find the changed files from the title text alone. This is the hardest mode and the one where Fuse is weakest.
+
+On the V3.1 A3 rebuilt corpus (53 PRs, title only, no model, restore on), the baseline is:
 
 | Metric | Value |
 |--------|------:|
-| Changed-file recall | 27.3% (95% CI 21.5 to 33.4) |
-| Precision | 8.4% |
-| Median returned tokens | 2,658 |
+| Changed-file recall | 13.1% (95% CI 7 to 19) |
+| Precision | 8.8% |
+| Median returned tokens | 835 |
+| Low-signal detection F1 | 1.00 |
+| False-rejection on answerable | 5.8% (3 of 52) |
+| Precision when confident | 18.5% (9 tasks) |
 
-By signal bucket (how much the title tells the engine where to look):
+By bucket: identifier-rich 20 percent (n 15), natural-language domain 14 percent (n 29), formatting and route/API and test-only 0 percent (small n). Localize main-checkout index modes are partial 2, syntax 2 (NodaTime and Specification partial; Scrutor's NU1507 nesting conflict and eShopOnWeb's main checkout fall to syntax). This is the honest open-ended baseline the dense channel (A1) and the graph-dependent priors are measured against next. The contract metrics (low-signal F1, false-rejection) hold on the rebuilt corpus.
+
+The remainder of this section (the R1, R2, R3, and S-series tables below) was recorded on the prior 108-PR corpus and is retained for the methodology; the numbers are not directly comparable to the rebuilt-corpus baseline above.
+
+By signal bucket on the prior corpus (how much the title tells the engine where to look):
 
 | Bucket | Mean recall |
 |--------|------------:|

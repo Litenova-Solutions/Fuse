@@ -29,16 +29,45 @@ its path, so a task lands on the file that declares a concept rather than one th
 mentions it. The lexical channel is a field-weighted BM25 ranker whose rank is carried
 through to the score (a stronger lexical match ranks higher, not just present), with one
 round of pseudo-relevance feedback that pulls in files sharing the vocabulary of the top
-hits. When a local embedding model is present and dense indexing is enabled (`FUSE_DENSE`),
-an optional dense channel ranks files by embedding similarity, so a prose task that shares
-no words with the code still finds the right file; with no model the path stays lexical and
-offline. Feed the candidate file paths to `fuse_context` to fetch their bodies. It
+hits. A dense channel is on by default: a small local embedding model (fetched once and
+cached, then fully offline) ranks files by embedding similarity, so a prose task that shares
+no words with the code still finds the right file. The query string is embedded as written,
+never rephrased by a model. When the model is genuinely absent the path falls back to the
+deterministic lexical floor. Feed the candidate file paths to `fuse_context` to fetch their bodies. It
 needs no prior knowledge of a change, which makes it the honest default for one-call
 context: in the
 [Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
 a scoped localize call reached 49 percent of the files the real pull requests touched at a
 50,000-token budget, in about 37,000 tokens against roughly 425,000 for a whole-repository
 packer dump. When a git base is available, the review mode below reaches higher recall.
+
+## The Signal-Sufficiency Contract: Refuse and Route
+
+Fuse runs as an MCP server in a loop with a model, so it does not have to win a vague
+one-shot query. When a request lacks a usable anchor, the honest answer is not a
+low-precision list, it is to **refuse and route**: hand back the partial structure Fuse did
+see and ask for a sharper input. The calling model, which is exploring the code anyway, then
+issues a better-anchored query. Localization grades every request into one of three states
+from the candidate score distribution, with no model:
+
+| State | Meaning | What you get |
+|-------|---------|--------------|
+| Confident | A candidate or a tight cluster stands clear of the rest | The tight set; this is where precision is won |
+| Partial | Some signal, no clear winner | A small best-effort set, flagged low-confidence, plus a navigation map of refinement options |
+| Insufficient | No usable anchor (a no-signal title, or a near-empty, near-uniform distribution) | A navigation map and an explicit ask, instead of a guess |
+
+The grade is computed from fixed thresholds, so the same scores always grade the same way.
+A refusal is never a closed door: the **navigation map** carries the top candidate areas
+(namespaces or folders), entry-point files and routes, and the nearest indexed symbols to
+the request's terms, built from the language-agnostic symbol, route, and file tables. An
+agent that does not yet know the right symbol uses the map to find its next probe.
+
+Strictness is opt-in with a graceful default. The default is best-effort-plus-flag, so a
+client that cannot refine still gets the partial set with a low-confidence flag. Passing
+`strict` (the `--strict` flag, or `strict: true` to `fuse_localize`) hard-requires an
+anchor: an insufficient request returns only the navigation map, no file list. The
+no-signal classifier (a merge, dependency-bump, or CI title with no code reference) abstains
+in both modes, because a title that names no code can only return noise.
 
 ## Resolve: Scope by Wiring
 

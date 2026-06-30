@@ -159,36 +159,36 @@ def compose():
         [("Edge recall", 100, "100%", "fuse"),
          ("Edge precision", 100, "100%", "fuse")],
         100,
-        "Every wiring edge in the fixture resolved correctly: 10 of 10, recall and precision 1.0 (Suite A).",
+        "Every wiring edge in the fixture resolved correctly: 22 of 22, recall and precision 1.0 (Suite A).",
         fuse=TEAL, fuse2=TEAL2)
     y = card(
         y, "02", "Scoping a Change",
-        "fuse review over 48 real merged pull requests, 25,000-token budget.",
+        "fuse review over 53 real merged pull requests, 25,000-token budget.",
         ["Changed files are kept as must-keep and the semantic blast radius is added: callers, DI consumers, handlers, tests.",
-         "Recall is read with tokens: the whole review arrives in a median 874 tokens."],
+         "Recall is read with tokens: the whole review arrives in a median 958 tokens."],
         [("Changed-file recall", 100, "100%", "fuse"),
-         ("Blast-radius precision", 90, "90%", "fuse")],
+         ("Blast-radius precision", 80, "80%", "fuse")],
         100,
-        "100% of changed files kept at 90% precision, a median 874 returned tokens per review (Suite B).")
+        "100% of changed files kept at 79.8% precision, a median 958 returned tokens per review; a grep baseline reaches 53% recall at 14% precision (Suite B).")
     y = card(
         y, "03", "Localizing From a Task Title",
-        "fuse localize recall by title signal, no git base, 108 pull requests.",
+        "fuse localize recall by title signal, no git base, 53 PRs on the rebuilt corpus, dense on by default.",
         ["The hardest mode: a sentence with no diff. Identifier-rich titles localize; vague ones do not.",
-         "An honest floor, not a headline. Low-signal titles are not yet flagged, a known gap."],
-        [("Identifier-rich titles", 40, "40%", "fuse"),
-         ("Natural-language titles", 23, "23%", "fuse"),
-         ("Overall", 27, "27%", "fuse")],
+         "On a no-signal title Fuse refuses and hands back a navigation map instead of guessing (correct-refusal 100%)."],
+        [("Identifier-rich titles", 21, "21%", "fuse"),
+         ("Natural-language titles", 17, "17%", "fuse"),
+         ("Overall", 15, "15%", "fuse")],
         100,
-        "27% overall recall (40% on identifier-rich titles). The weakest mode, reported straight (Suite C).")
+        "About 15% overall recall (21% on identifier-rich titles), offline and dense by default. The weakest mode, bounded by a mostly-syntax corpus, reported straight (Suite C).")
     y = card(
         y, "04", "Helping a Real Agent",
-        "Claude Code (sonnet-4-6) gathering a change's files: bare tools versus the Fuse MCP. 6 PRs.",
+        "Claude Code (sonnet-4-6) gathering a change's files: bare tools versus the Fuse MCP. 12 PRs.",
         ["Model-dependent and a small sample (wide confidence interval); read recall together with tokens.",
-         "When a title names the wiring, the Fuse arm reaches the files in a few calls (MediatR: 100% in 4 calls)."],
-        [("Bare tools", 211850, "212K tokens", "base"),
-         ("Fuse MCP", 135012, "135K tokens", "fuse")],
-        232000,
-        "Fuse gathered context at a median 135K tokens versus 212K for bare tools, at comparable recall on a small sample (fuse 21%, native 27%). Model-dependent (Suite D).",
+         "Tokens are now comparable across arms, so the difference is recall: the Fuse arm reaches more of the files."],
+        [("Fuse MCP recall", 30, "30%", "fuse"),
+         ("Bare tools recall", 26, "26%", "base")],
+        100,
+        "Fuse reached 30% of a change's files versus 26% for bare tools, at comparable token cost (median ~211K vs ~209K), on a small, model-dependent 12-PR sample (Suite D).",
         fuse=TEAL, fuse2=TEAL2, illustrative=True)
     return y
 

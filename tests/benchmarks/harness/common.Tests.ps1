@@ -52,3 +52,50 @@ Describe "Test-PrTitleRelevant" {
         }
     }
 }
+
+# Score-Set is the peer-comparison scorer (Layer 6, A2): recall and precision of an acquired file set over
+# the ground-truth change set. The peer claim rests on this number, so it must be deterministic and fair.
+Describe "Score-Set (peer-comparison scoring)" {
+
+    It "scores a perfect set as recall 1, precision 1" {
+        $r = Score-Set @('a.cs','b.cs') @('a.cs','b.cs')
+        $r.recall | Should Be 1
+        $r.precision | Should Be 1
+        $r.hits | Should Be 2
+    }
+
+    It "computes partial recall and precision" {
+        # Acquired 3 files, 2 of which are in a 2-file truth: recall 1.0, precision 2/3.
+        $r = Score-Set @('a.cs','b.cs','x.cs') @('a.cs','b.cs')
+        $r.recall | Should Be 1
+        $r.precision | Should Be 0.667
+        $r.acquired | Should Be 3
+    }
+
+    It "is order-independent (deterministic for fixed inputs)" {
+        $a = Score-Set @('b.cs','a.cs','c.cs') @('a.cs','b.cs')
+        $b = Score-Set @('c.cs','a.cs','b.cs') @('b.cs','a.cs')
+        $a.recall | Should Be $b.recall
+        $a.precision | Should Be $b.precision
+    }
+
+    It "deduplicates acquired paths so a repeat is not rewarded" {
+        # 'a.cs' twice plus one noise file is two unique acquired, one hit: precision 1/2, not 1/3 or 1/1.
+        $r = Score-Set @('a.cs','a.cs','x.cs') @('a.cs')
+        $r.acquired | Should Be 2
+        $r.precision | Should Be 0.5
+        $r.recall | Should Be 1
+    }
+
+    It "normalizes backslashes so path separators do not split a match" {
+        $r = Score-Set @('src\a.cs') @('src/a.cs')
+        $r.recall | Should Be 1
+        $r.hits | Should Be 1
+    }
+
+    It "scores an empty acquired set as zero without error" {
+        $r = Score-Set @() @('a.cs')
+        $r.recall | Should Be 0
+        $r.precision | Should Be 0
+    }
+}

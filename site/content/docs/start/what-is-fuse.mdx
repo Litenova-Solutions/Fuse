@@ -83,7 +83,7 @@ a commit-pinned corpus of real .NET libraries, the default and `aggressive` redu
 **skeleton** render tier, which keeps signatures and drops bodies, removes 39 to 56 percent
 for an architecture-level view.
 
-![Fuse benchmark results across MediatR, FluentValidation, AutoMapper, Newtonsoft.Json, and Serilog: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with Roslyn structural analysis, one scoped call replacing at least seven grep-and-open round-trips, and that call delivering a task's context in about 11 times fewer tokens than a generic packer.](/fuse-benchmarks.png)
+![Fuse benchmark results on the benchmark corpus (Scrutor, Ardalis.Specification, NodaTime, eShopOnWeb): resolving .NET wiring at 22 of 22 edges (recall and precision 1.0), scoping a change at 100 percent changed-file recall and 79.8 percent precision in a median 958 tokens, localizing from a bare title at about 15 percent recall (the weakest mode, reported straight), and helping a real agent reach 30 percent of a change's files versus 26 percent for bare tools at comparable token cost.](/fuse-benchmarks.svg)
 
 Every number comes from a harness anyone can rerun against the same pinned commits.
 See [Benchmarks](/docs/project/benchmarks) for the method and the full results,

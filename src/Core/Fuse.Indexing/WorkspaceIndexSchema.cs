@@ -16,7 +16,7 @@ public static class WorkspaceIndexSchema
     ///     The current schema version. The existing cache database carries a lower or absent version,
     ///     so it is dropped and rebuilt on the first V3 run.
     /// </summary>
-    public const int TargetVersion = 11;
+    public const int TargetVersion = 14;
 
     /// <summary>
     ///     Database-level pragmas applied once at schema creation. WAL journaling and
@@ -49,11 +49,13 @@ public static class WorkspaceIndexSchema
           project_id INTEGER NULL,
           is_generated INTEGER NOT NULL DEFAULT 0,
           is_test INTEGER NOT NULL DEFAULT 0,
+          language TEXT NULL,
           indexed_at_utc TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_files_hash ON files(content_hash);
         CREATE INDEX IF NOT EXISTS idx_files_project ON files(project_id);
         CREATE INDEX IF NOT EXISTS idx_files_extension ON files(extension);
+        CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);
 
         CREATE TABLE IF NOT EXISTS projects(
           project_id INTEGER PRIMARY KEY,
@@ -220,11 +222,16 @@ public static class WorkspaceIndexSchema
     /// <remarks>
     ///     Column order matters: the relevance weights in the search query (see the store's search path)
     ///     are positional. <c>chunk_id</c> is unindexed and used only to join hits back to the
-    ///     <c>chunks</c> table.
+    ///     <c>chunks</c> table. <c>subtokens</c> holds the subword expansion of the chunk's identifiers
+    ///     (computed in C# by <see cref="IdentifierSplitter" /> and stored as text), so a prose query word
+    ///     matches a compound name; it is weighted below the exact name but above the body. <c>stems</c> holds
+    ///     the Porter-stemmed form of the chunk's identifiers and comments (computed in C# by
+    ///     <see cref="PorterStemmer" />), so an inflected query word matches an inflected code or comment word;
+    ///     it is weighted low, as a fuzzy bridge.
     /// </remarks>
     public const string CreateFtsDdl =
         "CREATE VIRTUAL TABLE IF NOT EXISTS chunk_fts USING fts5(" +
         "  chunk_id UNINDEXED," +
-        "  path, name, symbols, signature, comments, body," +
+        "  path, name, symbols, signature, comments, body, subtokens, stems," +
         "  tokenize = 'unicode61');";
 }

@@ -15,7 +15,7 @@ namespace Fuse.Plugins.Rerank.Onnx;
 /// <remarks>
 ///     The model loads lazily on the first rerank and is then reused across calls (ONNX Runtime sessions are
 ///     safe for concurrent inference). When the model is absent or fails to load the reranker reports
-///     unavailable and callers keep the lexical ordering, so this never removes the no-model floor. Both the
+///     unavailable and callers keep the lexical ordering, so retrieval stays on the lexical path when no model is present. Both the
 ///     lexical and dense signals are min-max normalized over the pool before blending, so the blend is free of
 ///     each signal's raw scale.
 /// </remarks>

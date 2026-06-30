@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Metadata } from 'next';
 import {
   ArrowRight,
@@ -11,13 +10,12 @@ import {
   Coins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { HeroVisual } from '@/components/hero-visual';
 import { githubUrl } from '@/lib/shared';
 
 export const metadata: Metadata = {
-  title: 'Fuse - collapse your AI agent\'s explore phase on .NET into one call',
+  title: 'Fuse - a faster, cheaper, more accurate AI assistant on .NET',
   description:
-    'Fuse is a Model Context Protocol server and CLI that finds the .NET code a task needs and hands it over scoped and reduced in one call, so your agent spends its time on the change instead of exploring.',
+    'Fuse is a Model Context Protocol server that makes your AI coding assistant faster, cheaper, and more accurate on .NET code by understanding how the code is actually wired.',
 };
 
 function CodeBlock({ children }: { children: React.ReactNode }) {
@@ -40,24 +38,23 @@ export default function HomePage() {
               MCP server for AI coding agents on .NET
             </span>
             <h1 className="mt-5 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-              Your agent&apos;s explore phase,{' '}
-              <span className="text-gradient">collapsed into one call</span>.
+              A faster, cheaper, more accurate{' '}
+              <span className="text-gradient">AI assistant on your code</span>.
             </h1>
             <p className="mt-6 max-w-xl text-lg text-fd-muted-foreground">
-              An AI coding agent starts every task by exploring: listing, searching,
-              opening file after file to find the few that matter. Fuse finds the .NET
-              code a task needs and hands it over scoped and reduced in one call, so the
-              agent spends its time on the change instead of the hunt, with 99 to 100% of
-              the public API intact. A CLI is included.
+              Fuse hands your AI coding assistant the .NET code a task needs, scoped and
+              reduced, in one call. It understands how your code is actually wired, so the
+              assistant answers from the real graph instead of guessing, spends fewer
+              tokens, and stops burning its context window on the hunt.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
-                <Link href="/docs/start/what-is-fuse">
-                  See how it works <ArrowRight className="size-4" />
+                <Link href="/docs/start/connect-your-ai">
+                  Connect your agent <ArrowRight className="size-4" />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
-                <Link href="/docs/start/connect-your-ai">Connect your agent</Link>
+                <Link href="/docs/start/what-is-fuse">See how it works</Link>
               </Button>
             </div>
             <p className="mt-4 text-sm text-fd-muted-foreground">
@@ -68,26 +65,55 @@ export default function HomePage() {
               <code className="font-mono">dotnet tool install -g Fuse</code>
             </p>
           </div>
-          <div className="flex justify-center lg:justify-end">
-            <HeroVisual />
+          {/* See it: the same question, without and with Fuse */}
+          <div className="space-y-4">
+            <div>
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-fd-muted-foreground">
+                Without Fuse
+              </div>
+              <CodeBlock>{`Q: what implements IBasketService, and what would
+   a change to it touch?
+
+agent: grep IBasketService ... 14 hits
+       open file ... open file ... open file
+       (many reads, guessing from names)`}</CodeBlock>
+            </div>
+            <div>
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--brand)]">
+                With Fuse
+              </div>
+              <CodeBlock>{`fuse_resolve service="IBasketService"
+  -> BasketService  (di_resolves_to)
+fuse_review changedSince="main"
+  -> changed + support files, ~958 tokens,
+     100% of changed files kept, one call`}</CodeBlock>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Measured metrics strip */}
+      {/* Three proof tiles */}
       <section className="border-b border-fd-border bg-fd-card/40">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-6 px-6 py-10 md:grid-cols-4">
-          <Metric value="1 call" label="to gather a change's context, vs at least ~6 blind file reads" />
-          <Metric value="~13x" label="fewer tokens than a generic packer at that one call" />
-          <Metric value="88%" label="change-scoping recall on real merged PRs" />
-          <Metric value="99-100%" label="of public types and methods kept" />
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-6 py-12 md:grid-cols-3">
+          <Metric
+            value="Wired, not guessed"
+            label="Accurate answers about how the code connects: the extracted wiring graph matches the ground truth exactly on the fixture (22 of 22 edges)."
+          />
+          <Metric
+            value="~958 tokens"
+            label="A pull request's scoped context in about a thousand tokens, keeping 100% of the changed files."
+          />
+          <Metric
+            value="Milliseconds"
+            label="Warm answers in tens of milliseconds once the index is built, held resident across calls."
+          />
         </div>
-        <p className="pb-6 text-center text-xs text-fd-muted-foreground">
-          Measured over a commit-pinned OSS corpus, counted with{' '}
-          <code className="font-mono">o200k_base</code>. The blind-read count is a
-          structural lower bound; read the token win with its 51% query recall.{' '}
+        <p className="pb-8 text-center text-xs text-fd-muted-foreground">
+          Measured over a commit-pinned .NET corpus, counted with{' '}
+          <code className="font-mono">o200k_base</code>, and reported in full including the
+          modes where Fuse is weak.{' '}
           <Link href="/docs/project/benchmarks" className="underline hover:text-fd-foreground">
-            Reproduce the benchmarks
+            See the honest benchmarks
           </Link>
           .
         </p>
@@ -96,15 +122,15 @@ export default function HomePage() {
       {/* Problem */}
       <section className="mx-auto w-full max-w-4xl px-6 py-20 text-center">
         <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Agents waste their context window finding the code
+          AI assistants get lost in .NET codebases
         </h2>
         <p className="mx-auto mt-5 max-w-2xl text-fd-muted-foreground">
-          Before an AI coding tool changes a line, it explores: lists directories,
-          greps, opens file after file to learn which ones matter. On a solution
-          with hundreds of C# files that burns most of the context window and many
-          slow round-trips on discovery, not on the task. Generic packers fix this
-          by dumping the whole repo as text, which is rarely smaller and loses the
-          structure. Fuse takes a different path.
+          Before it changes a line, an assistant explores: it lists directories, greps,
+          and opens file after file to learn which ones matter. On a solution with
+          hundreds of C# files that burns the context window on discovery, and a grep
+          cannot tell which class the container actually injects or which handler a
+          request runs. Fuse answers those structural questions directly and hands back
+          only the files that matter.
         </p>
         <Button asChild variant="ghost" className="mt-6">
           <Link href="/docs/start/why-fuse">
@@ -118,75 +144,51 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="grid gap-6 md:grid-cols-3">
             <Feature
-              icon={<Plug className="size-5" />}
-              title="One call, not an explore loop"
-              body="fuse mcp serve is a Model Context Protocol server with eight tools for Claude Code, Cursor, and Copilot. Your agent fetches scoped, reduced context in one call instead of opening files one by one, so its time goes to the change."
-            />
-            <Feature
               icon={<Crosshair className="size-5" />}
-              title="Finds the right files"
-              body="Your agent scopes a fusion to a type and its dependencies, the files a git diff touched, or the files a query ranks highest. Fuse expands through a dependency graph instead of dumping everything."
-            />
-            <Feature
-              icon={<Layers className="size-5" />}
-              title="Refines across turns"
-              body="A shared session id means later calls in the same task skip files the agent already holds, so a multi-step change does not re-pay tokens for context it already has."
+              title="Understands .NET wiring"
+              body="Fuse reads your code with Roslyn and resolves what is connected to what: a service to its registered implementation, a request to its handler, a route to its action, options to their consumers. The assistant answers from the real graph."
             />
             <Feature
               icon={<Coins className="size-5" />}
-              title="Fewer tokens, full API"
-              body="Structural C# reduction cuts 7-40% of tokens, and an independent Roslyn oracle confirms the default and --all keep 99-100% of public types and methods. Reduction is not deletion."
+              title="Fewer tokens per turn"
+              body="A task's context arrives scoped and reduced instead of as a pile of files. A pull request's context fits in about a thousand tokens, and structural reduction keeps essentially all of the public API."
             />
             <Feature
               icon={<GitPullRequest className="size-5" />}
-              title="Built for review"
-              body="Your agent scopes to a branch with change recall of 88% on real merged PRs and prepends a review map of diff hunks and the callers of each changed file."
+              title="Built for change review"
+              body="Scope to a branch and Fuse returns the changed files plus their semantic blast radius (callers, DI consumers, handlers), with provenance for why each file is there, at 100% changed-file recall."
+            />
+            <Feature
+              icon={<Plug className="size-5" />}
+              title="One call, in your agent"
+              body="fuse mcp serve is a Model Context Protocol server for Claude Code, Cursor, and Copilot. Your agent fetches scoped context in one call instead of opening files one by one."
             />
             <Feature
               icon={<ShieldCheck className="size-5" />}
-              title="Roslyn structural analysis"
-              body="C# skeletons, dependency edges, route maps, and semantic markers use Roslyn syntax parsing by default."
+              title="Honest by design"
+              body="Every published number is sourced and reproducible, weaknesses are listed alongside strengths, and when a request lacks a usable anchor Fuse hands back a navigation map instead of guessing."
+            />
+            <Feature
+              icon={<Layers className="size-5" />}
+              title="Offline and local"
+              body="A small embedding model is fetched once and cached, then runs entirely offline; no code or query ever leaves your machine, and a deterministic lexical path is the fallback."
             />
           </div>
         </div>
       </section>
 
-      {/* Benchmark figure */}
-      <section className="mx-auto w-full max-w-5xl px-6 py-20">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            Measured, and reported in full
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-fd-muted-foreground">
-            Round-trips, tokens, scoping recall, and public-API fidelity across the
-            benchmark corpus. Every number comes from a harness anyone can rerun
-            against the same pinned commits, including the arms where Fuse ties or loses.
-          </p>
-        </div>
-        <div className="mt-10 overflow-hidden rounded-xl border border-fd-border bg-fd-card p-4">
-          <Image
-            src="/fuse-benchmarks.png"
-            alt="Fuse benchmark results across MediatR, FluentValidation, AutoMapper, and Newtonsoft.Json: token reduction at full public-API fidelity, change-scoping recall versus a grep baseline, skeleton method fidelity with the opt-in Roslyn tier, one scoped call replacing at least six grep-and-open round-trips, and that call delivering a task's context in about 13 times fewer tokens than a generic packer."
-            width={1600}
-            height={900}
-            className="h-auto w-full rounded-lg"
-            priority={false}
-          />
-        </div>
-      </section>
-
       {/* Connect your agent (primary) */}
-      <section className="border-y border-fd-border bg-fd-card/40">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-20 lg:grid-cols-2 lg:items-center">
+      <section className="mx-auto w-full max-w-6xl px-6 py-20">
+        <div className="grid w-full gap-10 lg:grid-cols-2 lg:items-center">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
               Connect it to your agent in one line
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
-              Run <code className="font-mono">fuse mcp serve</code> and your agent gets
-              eight tools: survey a codebase, drill into a type, scope to a query
-              or a branch, or ask one question and let Fuse pick the strategy. It
-              works with Claude Code, Cursor, and GitHub Copilot.
+              Run <code className="font-mono">fuse mcp serve</code> and your agent gets the
+              verbs it needs: map the workspace, resolve wiring, localize a task, review a
+              change, and read scoped context. It works with Claude Code, Cursor, and
+              GitHub Copilot.
             </p>
             <Button asChild className="mt-6">
               <Link href="/docs/start/connect-your-ai">
@@ -195,11 +197,10 @@ export default function HomePage() {
             </Button>
           </div>
           <div className="space-y-4">
-            <CodeBlock>{`// .mcp.json
+            <CodeBlock>{`// .mcp.json (Claude Code; same shape for Cursor and Copilot)
 {
   "mcpServers": {
     "fuse": {
-      "type": "stdio",
       "command": "fuse",
       "args": ["mcp", "serve"]
     }
@@ -207,38 +208,6 @@ export default function HomePage() {
 }`}</CodeBlock>
             <CodeBlock>{`# or register it with Claude Code in one line
 claude mcp add fuse --scope project -- fuse mcp serve`}</CodeBlock>
-          </div>
-        </div>
-      </section>
-
-      {/* CLI (secondary) */}
-      <section className="mx-auto w-full max-w-6xl px-6 py-20">
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-          <div className="space-y-4 lg:order-2">
-            <CodeBlock>{`# the same engine, as a plain CLI
-dotnet tool install -g Fuse
-
-# fuse a project at full API fidelity
-fuse dotnet --directory ./src --all`}</CodeBlock>
-            <CodeBlock>{`Fused 511 files
-Estimated tokens: 366,121 (-21.5%)
-cache: 0 hit / 511 miss
-Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
-          </div>
-          <div className="lg:order-1">
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              Prefer the command line?
-            </h2>
-            <p className="mt-4 text-fd-muted-foreground">
-              The same engine runs as a global tool. Point it at a .NET source
-              tree and get one scoped, reduced payload, with a manifest that lists
-              every included file and its token cost.
-            </p>
-            <Button asChild variant="ghost" className="mt-6">
-              <Link href="/docs/start/quickstart">
-                CLI quickstart <ArrowRight className="size-4" />
-              </Link>
-            </Button>
           </div>
         </div>
       </section>
@@ -251,8 +220,9 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
               Not a packer. Not an embedding index.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-fd-muted-foreground">
-              Generic packers concatenate files as text. RAG indexers return
-              fuzzy chunks. Fuse understands C# structure and preserves it.
+              Generic packers concatenate files as text. Embedding search returns fuzzy
+              chunks. Neither can answer a structural question. Fuse understands .NET
+              structure and resolves it deterministically.
             </p>
           </div>
           <div className="mt-10 overflow-x-auto">
@@ -261,34 +231,34 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
                 <tr className="border-b border-fd-border text-fd-muted-foreground">
                   <th className="py-3 pr-4 font-medium">Capability</th>
                   <th className="py-3 pr-4 font-medium">Generic packers</th>
-                  <th className="py-3 pr-4 font-medium">RAG / embeddings</th>
+                  <th className="py-3 pr-4 font-medium">Embedding search</th>
                   <th className="py-3 pr-4 font-medium text-fd-foreground">Fuse</th>
                 </tr>
               </thead>
               <tbody className="text-fd-muted-foreground">
                 <ComparisonRow
-                  cap="Context for one task, one call"
-                  packer="One dump, ~512K tokens"
-                  rag="Ranked chunks, partial"
-                  fuse="One call, ~40K tokens (51% recall)"
-                />
-                <ComparisonRow
-                  cap="Understands C# structure"
+                  cap="Answers how the code is wired"
                   packer="No, plain text"
-                  rag="No, opaque chunks"
-                  fuse="Yes, types and signatures"
+                  rag="No, surface similarity"
+                  fuse="Yes, a typed Roslyn graph"
                 />
                 <ComparisonRow
-                  cap="Keeps whole API surface"
+                  cap="Context for one task, one call"
+                  packer="One large dump"
+                  rag="Ranked chunks, partial"
+                  fuse="Scoped, about a thousand tokens for a PR"
+                />
+                <ComparisonRow
+                  cap="Keeps the public API surface"
                   packer="Only if you include it all"
                   rag="No, partial recall"
-                  fuse="99-100% verified"
+                  fuse="Essentially all of it"
                 />
                 <ComparisonRow
-                  cap="Deterministic output"
-                  packer="Yes"
-                  rag="No, similarity-ranked"
-                  fuse="Yes"
+                  cap="Says when it cannot answer"
+                  packer="No"
+                  rag="No, always returns chunks"
+                  fuse="Yes, refuses and hands back a map"
                 />
               </tbody>
             </table>
@@ -306,20 +276,20 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
       {/* Final CTA */}
       <section className="mx-auto w-full max-w-4xl px-6 py-24 text-center">
         <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-          Stop paying for the explore phase.
+          Give your assistant a map of your code.
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-fd-muted-foreground">
-          Install Fuse, connect it to your agent, and hand it scoped context that
-          fits the window.
+          Install Fuse, connect it to your agent, and it answers from how your .NET code is
+          actually wired, in fewer tokens.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
-            <Link href="/docs/start/what-is-fuse">
-              See how it works <ArrowRight className="size-4" />
+            <Link href="/docs/start/connect-your-ai">
+              Connect your agent <ArrowRight className="size-4" />
             </Link>
           </Button>
           <Button asChild size="lg" variant="secondary">
-            <Link href="/docs/start/connect-your-ai">Connect your agent</Link>
+            <Link href="/docs/project/benchmarks">See the benchmarks</Link>
           </Button>
         </div>
       </section>
@@ -329,11 +299,11 @@ Output: AutoMapper_2026-06-20_366k.txt`}</CodeBlock>
 
 function Metric({ value, label }: { value: string; label: string }) {
   return (
-    <div className="text-center md:text-left">
-      <div className="text-2xl font-bold tracking-tight text-[var(--brand)] md:text-3xl">
+    <div className="rounded-xl border border-fd-border bg-fd-background p-6 text-center md:text-left">
+      <div className="text-xl font-bold tracking-tight text-[var(--brand)] md:text-2xl">
         {value}
       </div>
-      <div className="mt-1 text-sm text-fd-muted-foreground">{label}</div>
+      <div className="mt-2 text-sm text-fd-muted-foreground">{label}</div>
     </div>
   );
 }

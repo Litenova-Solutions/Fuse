@@ -4,6 +4,7 @@ using Fuse.Collection.Templates;
 using Fuse.Fusion;
 using Fuse.Indexing;
 using Fuse.Plugins.Abstractions.Options;
+using Fuse.Plugins.Rerank.Onnx;
 using Fuse.Reduction.Caching;
 using Fuse.Semantics;
 using ModelContextProtocol.Server;
@@ -40,6 +41,7 @@ public sealed partial class FuseTools
         if (!Directory.Exists(root))
             return $"Error: Directory not found: {root}";
 
+        await EnsureDenseModelAsync(cancellationToken);
         await using var store = await OpenStoreAsync(root, cancellationToken);
         var result = await indexer.IndexAsync(root, store, cancellationToken);
         return $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects, " +
@@ -167,16 +169,74 @@ public sealed partial class FuseTools
         return store;
     }
 
+    /// <summary>
+    ///     Whether a cold read serves the syntax tier first and upgrades to the semantic graph in the background.
+    ///     Enabled only by the long-lived <c>mcp serve</c> host (which owns the background task's lifetime); a
+    ///     short-lived in-process caller indexes synchronously so no background task outlives it.
+    /// </summary>
+    public static bool BackgroundSemanticUpgradeEnabled { get; set; }
+
+    // Guards against launching more than one background semantic upgrade per workspace root at a time.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> SemanticUpgrades =
+        new(StringComparer.OrdinalIgnoreCase);
+
     // Opens the store and builds the index on first use, so read tools work without an explicit fuse_index call.
+    // In the long-lived serve host, cold start serves the syntax tier in a few seconds, then upgrades to the
+    // semantic graph in the background so the first read does not block on the MSBuild load. In a short-lived
+    // in-process caller the index is built synchronously, so no background task outlives the call.
     private static async Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
     {
         var root = Path.GetFullPath(path);
         var store = await OpenStoreAsync(root, cancellationToken);
         var state = await store.GetStateAsync(cancellationToken);
         if (state.FileCount == 0)
-            await indexer.IndexAsync(root, store, cancellationToken);
+        {
+            await EnsureDenseModelAsync(cancellationToken);
+            if (BackgroundSemanticUpgradeEnabled)
+            {
+                await indexer.IndexSyntaxFirstAsync(root, store, cancellationToken);
+                ScheduleSemanticUpgrade(indexer, root);
+            }
+            else
+            {
+                await indexer.IndexAsync(root, store, cancellationToken);
+            }
+        }
         return store;
     }
+
+    // Runs the semantic upgrade in the background on its own store handle (the foreground store is disposed when
+    // the tool returns). Fire-and-forget by design: a failure must not crash the server, and the syntax-tier
+    // index already served the call. Guarded so two concurrent cold calls do not both upgrade the same root.
+    private static void ScheduleSemanticUpgrade(SemanticIndexer indexer, string root)
+    {
+        if (!SemanticUpgrades.TryAdd(root, 0))
+            return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+                await using var store = new WorkspaceIndexStore(databasePath);
+                await store.InitializeAsync(CancellationToken.None);
+                await indexer.UpgradeToSemanticAsync(root, store, CancellationToken.None);
+            }
+            catch
+            {
+                // The syntax-tier index remains usable; a later explicit fuse_index can retry the upgrade.
+            }
+            finally
+            {
+                SemanticUpgrades.TryRemove(root, out _);
+            }
+        });
+    }
+
+    // Provisions the bundled dense model once (fetch-and-cache) before the first index, so the dense channel is
+    // on by default. Idempotent and offline-safe: a present model is a no-op, a failed fetch falls back to lexical.
+    private static Task EnsureDenseModelAsync(CancellationToken cancellationToken) =>
+        DenseModelProvisioner.EnsureModelAsync(progress: null, logger: null, cancellationToken);
 
     private static MapDetail ParseDetail(string detail) => detail.Trim().ToLowerInvariant() switch
     {

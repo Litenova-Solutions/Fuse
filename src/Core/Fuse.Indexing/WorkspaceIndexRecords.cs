@@ -14,6 +14,7 @@ namespace Fuse.Indexing;
 /// <param name="IsGenerated">Whether the file is generated.</param>
 /// <param name="IsTest">Whether the file is a test file.</param>
 /// <param name="IndexedAtUtc">When the file was indexed; defaults to now at insert.</param>
+/// <param name="Language">The language tag from the selecting syntax provider (for example <c>csharp</c>, <c>python</c>), or null when no provider claims the extension.</param>
 public sealed record IndexedFileRecord(
     string Path,
     string NormalizedPath,
@@ -24,7 +25,8 @@ public sealed record IndexedFileRecord(
     string? ProjectPath = null,
     bool IsGenerated = false,
     bool IsTest = false,
-    DateTimeOffset? IndexedAtUtc = null);
+    DateTimeOffset? IndexedAtUtc = null,
+    string? Language = null);
 
 /// <summary>
 ///     A project tracked by the index. Identity is the project path.
@@ -166,6 +168,25 @@ public sealed record ChunkEmbedding(
     string FilePath,
     string? Name,
     float[] Vector);
+
+/// <summary>
+///     A git co-change relationship between two files: how often they changed in the same commit, and the
+///     strength of that coupling. The pair is stored once with <see cref="PathA" /> ordinally before
+///     <see cref="PathB" />, so a lookup checks both columns.
+/// </summary>
+/// <param name="PathA">One file's normalized (forward-slash, repo-relative) path; ordinally the smaller of the pair.</param>
+/// <param name="PathB">The other file's normalized path; ordinally the larger of the pair.</param>
+/// <param name="Count">The number of mined commits in which both files changed together.</param>
+/// <param name="Pmi">Pointwise mutual information of the pair (log2), a co-occurrence-strength signal.</param>
+/// <param name="Jaccard">The Jaccard coefficient of the two files' commit sets, in <c>[0, 1]</c>.</param>
+/// <param name="LastSeenUtc">The ISO-8601 date of the most recent commit in which both changed, when known.</param>
+public sealed record CoChangeRecord(
+    string PathA,
+    string PathB,
+    int Count,
+    double Pmi,
+    double Jaccard,
+    string? LastSeenUtc);
 
 /// <summary>
 ///     A typed, weighted edge between two semantic nodes.

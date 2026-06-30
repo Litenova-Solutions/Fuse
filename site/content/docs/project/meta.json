@@ -4,6 +4,7 @@
   "pages": [
     "benchmarks",
     "performance",
+    "messaging",
     "roadmap",
     "changelog",
     "contributing"

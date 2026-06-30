@@ -1,47 +1,34 @@
 {
-  "$comment": "Pinned corpus for Fuse benchmark layers 1 and 2. Reproduction: harness clones each repo and checks out the exact commit below. Token counts use the o200k_base encoding (the encoding Fuse uses by default). Ratios transfer across models; absolute token counts do not.",
+  "$comment": "Pinned corpus for Fuse benchmark layers 1 and 2. Reproduction: harness clones each repo and checks out the exact commit below. Token counts use the o200k_base encoding (the encoding Fuse uses by default). Ratios transfer across models; absolute token counts do not. V3.1 (A3): the corpus was rebuilt to repositories that restore and index in semantic or partial mode on the .NET 10 SDK, replacing the prior set whose pinned commits fell back to syntax-only under central-package-management and SDK drift.",
   "tokenizer": "o200k_base",
-  "generated": "2026-06-20",
+  "generated": "2026-06-27",
   "repos": [
     {
-      "name": "MediatR",
-      "size": "small",
-      "url": "https://github.com/jbogard/MediatR.git",
-      "commit": "1fd25f5beb40aafd6859d9225a37d0c4f5062cfa",
-      "committed": "2026-06-12",
-      "cs_files": 152
+      "name": "Scrutor",
+      "size": "micro",
+      "url": "https://github.com/khellang/Scrutor.git",
+      "commit": "7f315dab5b0f7134a6be58941db1da8c904507e2",
+      "committed": "2025-11-24",
+      "cs_files": 45,
+      "note": "Assembly scanning and decoration extensions for Microsoft.Extensions.DependencyInjection. Restores clean on .NET 10 (global.json pins 10.0.100, latestFeature). Squash-merge history yields few PRs; included for its dense DI-registration and decoration wiring, the heart of the semantic moat."
     },
     {
-      "name": "FluentValidation",
+      "name": "Specification",
       "size": "small-mid",
-      "url": "https://github.com/FluentValidation/FluentValidation.git",
-      "commit": "943979089b55664ceb8390547ea1eb84ee99252a",
-      "committed": "2026-06-04",
-      "cs_files": 218
+      "url": "https://github.com/ardalis/Specification.git",
+      "commit": "d2fcf351a97b4887829bddac424a12d8a3eaf9fe",
+      "committed": "2025-11-25",
+      "cs_files": 233,
+      "note": "Ardalis.Specification: the specification pattern over EF Core. Restores clean on .NET 10 (no global.json). Rich merge-PR history and EF Core DbContext/entity wiring."
     },
     {
-      "name": "AutoMapper",
+      "name": "NodaTime",
       "size": "mid",
-      "url": "https://github.com/AutoMapper/AutoMapper.git",
-      "commit": "fed6e64393a68837896c90128a6a2b9a76eededc",
-      "committed": "2026-06-12",
-      "cs_files": 511
-    },
-    {
-      "name": "NewtonsoftJson",
-      "size": "large",
-      "url": "https://github.com/JamesNK/Newtonsoft.Json.git",
-      "commit": "4f73e74372445108d2c1bda37b36e6f5e43402e0",
-      "committed": "2026-03-18",
-      "cs_files": 945
-    },
-    {
-      "name": "Serilog",
-      "size": "small-mid",
-      "url": "https://github.com/serilog/serilog.git",
-      "commit": "6d9fc0b84e004418f2677b5961b9c8970349d0be",
-      "committed": "2026-06-15",
-      "cs_files": 216
+      "url": "https://github.com/nodatime/nodatime.git",
+      "commit": "59692eaa575cbbf8437f8f6ad94338bd25c2d4c3",
+      "committed": "2026-06-11",
+      "cs_files": 488,
+      "note": "A date and time library for .NET. Restores clean on .NET 10 (global.json pins 10.0.101, latestMinor). Large merge-PR history; the solution is src/NodaTime.slnx."
     },
     {
       "name": "eShopOnWeb",
@@ -51,7 +38,7 @@
       "committed": "2025-01-13",
       "cs_files": 254,
       "license": "MIT",
-      "note": "ASP.NET Core reference application (MVC, Razor Pages, Blazor admin, EF Core, DI wiring). The only application in the corpus; every other repo is a library. Included to test external validity beyond clean public-API libraries."
+      "note": "ASP.NET Core reference application (MVC, Razor Pages, Blazor admin, EF Core, DI wiring). The only application in the corpus; every other repo is a library. Included to test external validity beyond clean public-API libraries, and the repo that exercises the full semantic blast radius (partial mode)."
     },
     {
       "name": "SampleShop",

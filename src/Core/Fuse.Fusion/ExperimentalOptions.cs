@@ -107,7 +107,7 @@ public sealed record ExperimentalOptions
     public bool SketchHugeFiles { get; init; }
 
     /// <summary>
-    ///     Whether the packer downgrades before it drops (P1): when the full reduced set would exceed the token
+    ///     Whether the packer downgrades before it drops: when the full reduced set would exceed the token
     ///     budget, the lower-relevance tail that would otherwise be cut is replaced with a compact structural
     ///     sketch instead, so a would-be-dropped file stays present as a navigable outline. Recall counts file
     ///     presence, so this targets the multi-file-truncation failure mode directly. Applies to query and focus

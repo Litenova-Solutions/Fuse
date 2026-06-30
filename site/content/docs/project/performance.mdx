@@ -11,7 +11,7 @@ This page is for engineers tuning a Fuse run and maintainers comparing builds. W
 
 Fuse analyzes each source file with Roslyn and stores the result in a persistent index. The index is built once and then read warm across calls: the MCP server (`fuse mcp serve`) and the host process hold the index resident, so a scoped call reuses the stored analysis instead of re-parsing the file. The cost of analysis is paid on the first pass and amortized over every later call that touches an unchanged file.
 
-The store keys files by content hash, so an unchanged file's analysis is reused across runs. Single-file incremental re-index (clearing and re-analyzing only the changed file rather than rebuilding) is a design goal that is not yet wired or timed: a re-index currently runs a full pass. Measuring the incremental path is the remaining piece of the performance work.
+The store keys files by content hash, so an unchanged file's analysis is reused across runs. Single-file incremental re-index clears and re-extracts only the changed file's syntax rows (symbols, chunks, full-text, routes) rather than rebuilding; it does not recompute the cross-file semantic edges, which a full re-index refreshes. Its latency is in the warm-latency table below.
 
 Persistent cache and index data live in a single SQLite database at `.fuse/fuse.db` in WAL mode. Key derivation and store layout are documented in [Caching Internals](/docs/internals/caching-internals).
 
@@ -21,7 +21,7 @@ Fuse runs in two shapes. One-shot commands pay a fixed cost on every invocation:
 
 ## What Token Cost Looks Like on V3
 
-V3 frames token cost as a transport property of the scoped output, not as a standalone reduction ratio. The concrete figure is from the change-impact suite: `fuse review` delivers a real merged PR's context in a median 874 returned tokens (mean 3,196) at 89.6 percent precision. That is the efficiency number to cite for V3; see [Benchmarks](/docs/project/benchmarks) for the suite, the sample, and the index-mode distribution behind it.
+V3 frames token cost as a transport property of the scoped output, not as a standalone reduction ratio. The concrete figure is from the change-impact suite: `fuse review` delivers a real merged PR's context in a median 958 returned tokens (mean 1,095) at 79.8 percent precision. That is the efficiency number to cite for V3; see [Benchmarks](/docs/project/benchmarks) for the suite, the sample, and the index-mode distribution behind it.
 
 ## Distribution
 
@@ -37,18 +37,31 @@ Self-contained packages include the .NET runtime and do not require a separate S
 
 ## Measured Warm Latency
 
-The `performance` suite (`fuse eval performance`, `performance.json`) indexes a present corpus repository once (the cold index) and then runs each operation repeatedly over the warm index, reporting P50 and P95. On AutoMapper (518 files, 17,924 symbols, syntax index mode):
+The `performance` suite (`fuse eval performance`, `performance.json`) indexes a present corpus repository once (the cold index) and then runs each operation repeatedly over the warm index, reporting P50 and P95. On NodaTime (512 files, 7,657 symbols):
 
 | Operation | P50 | P95 | Target |
 |-----------|----:|----:|-------:|
 | Warm resolve (symbol) | sub-millisecond | sub-millisecond | under 100 ms |
-| Warm localize (query, 20 candidates) | 20 ms | 22 ms | under 500 ms |
-| Warm review plan (25K budget, vs HEAD~1) | 98 ms | 103 ms | under 2 s |
-| Single-file incremental re-index | 177 ms | 186 ms | under 1 s |
+| Warm localize (query, 20 candidates) | 61 ms | 71 ms | under 500 ms |
+| Warm review plan (25K budget, vs HEAD~1) | 110 ms | 131 ms | under 2 s |
+| Single-file incremental re-index | 23 ms | 25 ms | under 1 s |
 
-Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. The cold index of the same repository took about 64 seconds, which includes the MSBuild workspace load attempt; cold index is paid once and amortized over every warm call.
+Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. The cold index of the same repository took about 70 seconds, which includes the MSBuild workspace load; cold index is paid once and amortized over every warm call.
 
-Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. The numbers above run through an in-process warm store; the `fuse mcp serve` host holds the same store resident, so a resident session sees the same warm latencies after its one-time startup. Earlier cold-versus-warm timings on the retired V2 fusion surface do not transfer to V3 and are not carried forward.
+### Cold start: syntax-first, then semantic in the background
+
+The cold index is dominated by the MSBuild workspace load, not by the syntax extraction. The `mcp serve` host can serve the syntax tier on the first read (no MSBuild, no embedding) and upgrade to the full semantic graph in the background: the first pass produces a usable full-text and symbol index, sets the index mode to `syntax`, and flags `semantic_pending` so a caller knows the graph is not yet present; the host then runs the full semantic pass on a background store and clears the flag when it lands. Per-file syntax extraction runs in parallel (bounded to the processor count) with deterministic output. This background upgrade is opt-in (`FUSE_BG_UPGRADE=1`); by default the first read indexes synchronously.
+
+Measured on NodaTime (512 files, 7,657 symbols, restore on) with `fuse eval performance --repo NodaTime --restore` (`performance.json`):
+
+| Cold-start stage | Time |
+|------------------|-----:|
+| Syntax tier served (first answer, no MSBuild, no embedding) | about 20 seconds |
+| Full semantic pass (background, MSBuild + embedding) | about 70 seconds |
+
+With the syntax-first path the first answer does not wait on the MSBuild load: time to a usable syntax-tier index is about 20 seconds versus about 70 seconds for the full pass, a 3.5x reduction. The residual 20 seconds is the file scan, the parallel parse, and the full-text index construction (the subword, stem, and comment fields computed per chunk), plus first-call JIT, not MSBuild. The explicit `fuse index` command and the `fuse_index` tool stay synchronous full-semantic passes, since those are deliberate build-the-index calls where waiting is expected.
+
+Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. The numbers above run through an in-process warm store; the `fuse mcp serve` host holds the same store resident, so a resident session sees the same warm latencies after its one-time startup.
 
 ## What This Does Not Cover
 

@@ -62,6 +62,29 @@ public sealed class PerformanceSuite : IEvalSuite
             if (options.Restore)
                 await manager.RestoreAsync(repo.Path, cancellationToken);
 
+            // Cold-start (A4): time the syntax-first pass that serves a first call, separately from the full
+            // semantic load, on a throwaway store, so "time to first syntax-tier answer" and "time to
+            // semantic-ready" are reported as distinct numbers.
+            var coldStartPath = Path.Combine(Path.GetTempPath(), "fuse-eval-coldstart", Guid.NewGuid().ToString("N"), "fuse.db");
+            try
+            {
+                await using var coldStore = new WorkspaceIndexStore(coldStartPath);
+                await coldStore.InitializeAsync(cancellationToken);
+                var syntaxWatch = Stopwatch.StartNew();
+                var syntaxFirst = await _indexer.IndexSyntaxFirstAsync(repo.Path, coldStore, cancellationToken);
+                syntaxWatch.Stop();
+                var pending = await coldStore.GetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, cancellationToken);
+                var upgradeWatch = Stopwatch.StartNew();
+                var upgraded = await _indexer.UpgradeToSemanticAsync(repo.Path, coldStore, cancellationToken);
+                upgradeWatch.Stop();
+                var cleared = await coldStore.GetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, cancellationToken);
+                notes.Add($"cold start: syntax-tier served in {syntaxWatch.ElapsedMilliseconds:N0} ms (mode {syntaxFirst.Mode}, semantic_pending={pending}); semantic-ready after a further {upgradeWatch.ElapsedMilliseconds:N0} ms (mode {upgraded.Mode}, semantic_pending={cleared})");
+            }
+            finally
+            {
+                TryDeleteStore(coldStartPath);
+            }
+
             await using var store = new WorkspaceIndexStore(databasePath);
             await store.InitializeAsync(cancellationToken);
 
@@ -69,7 +92,7 @@ public sealed class PerformanceSuite : IEvalSuite
             var index = await _indexer.IndexAsync(repo.Path, store, cancellationToken);
             coldWatch.Stop();
             notes.Add($"repo {repo.Name}, index mode {index.Mode}, {index.FileCount} files, {index.SymbolCount} symbols");
-            notes.Add($"cold index: {coldWatch.ElapsedMilliseconds:N0} ms");
+            notes.Add($"cold index (full semantic pass): {coldWatch.ElapsedMilliseconds:N0} ms");
 
             // Warm operations over the persistent index. Use the most common indexed symbol as a realistic,
             // repo-agnostic resolve and localize target.

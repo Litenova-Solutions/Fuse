@@ -24,10 +24,12 @@
   <ItemGroup>
     <!-- MessagePack arrives only as a transitive of StreamJsonRpc (the UI host transport) and flows into every
          project that references Fuse.Cli, including the test projects. It is never exercised: the host uses the
-         System.Text.Json formatter, not the MessagePack formatter, so the MessagePack deserialization advisory
-         (GHSA-hv8m-jj95-wg3x) is unreachable. Suppressed repo-wide with that documented intent rather than
-         pinning a 3.x MessagePack that StreamJsonRpc 2.x does not accept. -->
+         System.Text.Json formatter, not the MessagePack formatter, so the MessagePack deserialization advisories
+         are unreachable. Suppressed repo-wide with that documented intent rather than pinning a 3.x MessagePack
+         that StreamJsonRpc 2.x does not accept. GHSA-hv8m-jj95-wg3x is the moderate untrusted-data advisory;
+         GHSA-vh6j-jc39-fggf is the high-severity advisory on the same package and code path. -->
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-hv8m-jj95-wg3x" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-vh6j-jc39-fggf" />
     <!-- Microsoft.Build.Tasks.Core 17.7.2 arrives only as a reference-only transitive of
          Microsoft.CodeAnalysis.Workspaces.MSBuild. At runtime the real MSBuild assemblies are
          resolved from the installed SDK via MSBuildLocator.RegisterDefaults(), not this restored

@@ -28,7 +28,9 @@ jobs:
         run: |
           # Keep in sync with NuGetAuditSuppress entries in Directory.Build.props.
           $suppressedAdvisories = @(
-            'https://github.com/advisories/GHSA-hv8m-jj95-wg3x'
+            'https://github.com/advisories/GHSA-hv8m-jj95-wg3x',
+            'https://github.com/advisories/GHSA-vh6j-jc39-fggf',
+            'https://github.com/advisories/GHSA-h4j7-5rxr-p4wc'
           )
           $failed = $false
           Get-ChildItem -Path src -Recurse -Filter *.csproj | ForEach-Object {

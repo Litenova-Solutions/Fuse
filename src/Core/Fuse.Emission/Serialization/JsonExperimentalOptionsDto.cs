@@ -60,7 +60,7 @@ public sealed class JsonExperimentalOptionsDto
 
     /// <summary>
     ///     Whether the lower-relevance tail that would exceed the budget was downgraded to a sketch instead of
-    ///     dropped (P1).
+    ///     dropped.
     /// </summary>
     public bool DowngradeBeforeDrop { get; set; }
 

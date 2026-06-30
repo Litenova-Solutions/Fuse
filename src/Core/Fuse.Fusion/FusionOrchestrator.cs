@@ -169,7 +169,7 @@ public sealed class FusionOrchestrator
             LogAnalysisIndexStats(analysisIndex);
             LogStageComplete("scoping", stageTimer.ElapsedMilliseconds, filterResult.Files.Count, ResolveScopingMode(request));
 
-            // Build the explicit context plan (A1): assign each selected file a role and reduction tier once,
+            // Build the explicit context plan: assign each selected file a role and reduction tier once,
             // instead of inferring seed versus neighbour from the provenance chain length downstream. The plan
             // drives the per-file reduction tier below. Tiered emission (query and focus only) reduces
             // dependency-expanded neighbours to signature skeletons so each costs fewer tokens and the

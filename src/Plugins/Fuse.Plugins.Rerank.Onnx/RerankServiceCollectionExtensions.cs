@@ -56,38 +56,29 @@ public static class RerankServiceCollectionExtensions
     }
 
     /// <summary>
-    ///     Registers <see cref="OnnxTextEmbedder" /> as the <see cref="ITextEmbedder" /> when dense indexing is
-    ///     opted into (<c>FUSE_DENSE</c> truthy) and the bi-encoder model is present in the user-data cache;
-    ///     otherwise registers nothing, so indexing persists no embeddings and retrieval stays on the lexical
-    ///     floor.
+    ///     Registers <see cref="OnnxTextEmbedder" /> as the <see cref="ITextEmbedder" /> so the indexer persists
+    ///     a vector per chunk and the dense retrieval channel is on by default. Registers nothing only when the
+    ///     dense channel is explicitly opted out of (<c>FUSE_DENSE</c> falsy), in which case indexing and
+    ///     retrieval stay byte-identical to a build without dense.
     /// </summary>
     /// <param name="services">The service collection to add to.</param>
     /// <returns>The same <paramref name="services" /> instance for chaining.</returns>
     /// <remarks>
-    ///     Unlike the lazy reranker, the embedder is used eagerly at index time to persist a vector per chunk,
-    ///     which is a real indexing cost. It is therefore gated on an explicit opt-in (<c>FUSE_DENSE</c>) in
-    ///     addition to model presence, so downloading the model for the reranker alone does not silently slow
-    ///     indexing. When unregistered, indexing and retrieval are byte-identical to a build without dense.
+    ///     Dense is on by default: the bundled embedding model is fetched once and cached on first index (see
+    ///     <see cref="DenseModelProvisioner" />), and all query-time work is offline. The embedder is registered
+    ///     even when the model file is not yet present, because it loads lazily and reports unavailable until the
+    ///     model is cached, so registration is safe before provisioning runs. When the model is genuinely absent
+    ///     (offline, fetch blocked) the embedder stays unavailable and the deterministic lexical path is the
+    ///     graceful fallback. The no-rewrite rule is unchanged: the query string is embedded, never paraphrased.
     /// </remarks>
     public static IServiceCollection AddOnnxTextEmbedder(this IServiceCollection services)
     {
-        if (!IsDenseEnabled() || !RerankModelLocator.IsModelPresent())
+        if (!DenseModelProvisioner.IsDenseEnabled)
             return services;
 
         services.AddSingleton<ITextEmbedder>(provider =>
             OnnxTextEmbedder.CreateDefault(provider.GetService<ILogger<OnnxTextEmbedder>>()));
 
         return services;
-    }
-
-    // Dense indexing is opt-in: FUSE_DENSE set to 1/true/yes/on (case-insensitive) enables it.
-    private static bool IsDenseEnabled()
-    {
-        var value = Environment.GetEnvironmentVariable("FUSE_DENSE");
-        return value is not null
-               && (value.Equals("1", StringComparison.Ordinal)
-                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
-                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
-                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -24,11 +24,23 @@
 #   coa       : coa-codesearch text_search over a built Lucene index (one call), via headless claude
 #               restricted to its search tool. Env-gated on $env:COA_CODESEARCH_EXE (the built
 #               COA.CodeSearch.McpServer host); omitted with a notice when unset (omit, never stub).
+#   serena    : Serena (oraios/serena) symbol/pattern search over its LSP-backed project index, one
+#               rollout via headless claude restricted to its tools. Env-gated on $env:SERENA_CMD (the
+#               serena launcher, e.g. uvx); omitted with a notice when unset. Like coa it is MCP-only
+#               and model-driven, so it carries the model-pinned, not-byte-reproducible note.
+#
+# A2 (V3.1) scaling note: the deterministic arms (fuse, codegraph) run at whatever sample is requested and
+# are reproducible. The model-driven arms (coa, serena) drive one claude rollout per PR (MCP server start,
+# per-project index, one search), which is expensive and not byte-reproducible, so a full 50-to-100-PR
+# model-driven run is a larger compute budget (the same ceiling Suite D carries). Use -ModelPerRepo to cap
+# the model arms to a smaller per-repo sample than the deterministic arms; both per-arm sample sizes are
+# recorded so a reader never mistakes a bounded model run for the full deterministic one.
 #
 # Usage:
 #   pwsh -File tests/benchmarks/harness/layer6-peers.ps1                 # default sample, available peers
 #   pwsh -File tests/benchmarks/harness/layer6-peers.ps1 -PerRepo 3 -Full
 #   $env:COA_CODESEARCH_EXE = 'C:/path/COA.CodeSearch.McpServer.exe'; pwsh -File layer6-peers.ps1
+#   $env:SERENA_CMD = 'uvx'; pwsh -File layer6-peers.ps1 -PerRepo 4 -ModelPerRepo 1
 
 param(
     [int]$PerRepo = 2,
@@ -37,7 +49,10 @@ param(
     [string[]]$Arms,
     [int]$Budget = 50000,
     [int]$CodegraphMaxFiles = 15,
-    # Pinned model for the coa driver call (coa is MCP-only).
+    # Per-repo cap for the model-driven arms (coa, serena). 0 means use $PerRepo for them too. Lower this to
+    # bound the claude-rollout compute while still scaling the deterministic arms (fuse, codegraph).
+    [int]$ModelPerRepo = 0,
+    # Pinned model for the coa/serena driver call (both are MCP-only).
     [string]$Model = 'claude-haiku-4-5-20251001'
 )
 
@@ -55,11 +70,19 @@ $haveFuse      = Test-Path $Fuse
 $haveCodegraph = [bool](Get-Command codegraph -ErrorAction SilentlyContinue)
 $coaExe        = $env:COA_CODESEARCH_EXE
 $haveCoa       = $coaExe -and (Test-Path $coaExe) -and (Get-Command claude -ErrorAction SilentlyContinue)
+# Serena launcher: $env:SERENA_CMD is the executable (e.g. uvx); $env:SERENA_ARGS (optional, space-split)
+# overrides the default uvx-from-git invocation so a locally installed serena can be used instead.
+$serenaCmd     = $env:SERENA_CMD
+$haveSerena    = $serenaCmd -and (Get-Command $serenaCmd -ErrorAction SilentlyContinue) -and (Get-Command claude -ErrorAction SilentlyContinue)
+
+# Model-driven arms drive a claude rollout per PR; the deterministic arms do not.
+$modelArms = @('coa', 'serena')
 
 $allArms = @()
 if ($haveFuse)      { $allArms += 'fuse' }      else { Write-Warning "fuse.exe not built; fuse arm omitted." }
 if ($haveCodegraph) { $allArms += 'codegraph' } else { Write-Warning "codegraph not installed; codegraph arm omitted." }
 if ($haveCoa)       { $allArms += 'coa' }       else { Write-Warning "coa-codesearch not configured (set COA_CODESEARCH_EXE); coa arm omitted." }
+if ($haveSerena)    { $allArms += 'serena' }    else { Write-Warning "serena not configured (set SERENA_CMD, e.g. uvx); serena arm omitted." }
 if (-not $allArms) { Write-Warning "No peers available; nothing to run."; return }
 
 if ($Repos) { $Repos = @($Repos | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
@@ -80,6 +103,19 @@ foreach ($grp in ($prs | Group-Object repo)) {
 }
 Write-Host "Sampled PRs ($($sampled.Count)): $((@($sampled | ForEach-Object { "$($_.repo)#$($_.pr)" })) -join ', ')" -ForegroundColor Cyan
 
+# Model-driven arms (coa, serena) are bounded to ModelPerRepo PRs per repo when set, so the deterministic
+# arms can scale wide while the costly claude-rollout arms stay affordable. The bounded set is the first
+# ModelPerRepo PRs of each repo from the already-sampled set (deterministic order, so it is reproducible).
+$modelPrKeys = New-Object System.Collections.Generic.HashSet[string]
+if ($ModelPerRepo -gt 0) {
+    foreach ($grp in ($sampled | Group-Object repo)) {
+        foreach ($p in ($grp.Group | Select-Object -First $ModelPerRepo)) { [void]$modelPrKeys.Add("$($grp.Name)#$($p.pr)") }
+    }
+    Write-Host "Model arms ($($modelArms -join ', ')) capped to $ModelPerRepo PR(s)/repo: $($modelPrKeys.Count) rollouts/arm" -ForegroundColor Cyan
+} else {
+    foreach ($p in $sampled) { [void]$modelPrKeys.Add("$($p.repo)#$($p.pr)") }
+}
+
 function Get-TokensOf([string]$path) { if (Test-Path $path) { return (Get-Tokens $path) } else { return 0 } }
 
 # Token count over many files at once, piping paths via stdin (same approach as layer4's Get-TokensMulti).
@@ -88,16 +124,6 @@ function Get-TokensMulti6($paths) {
     if ($list.Count -eq 0) { return 0 }
     $json = ($list -join "`n") | & $TokenCount --stdin-list | ConvertFrom-Json
     return [int]$json.total
-}
-
-# Score a returned file set against the truth.
-function Score-Set($acquired, $truth) {
-    $acq = @($acquired | ForEach-Object { $_ -replace '\\','/' } | Sort-Object -Unique)
-    $tr = @($truth | ForEach-Object { $_ -replace '\\','/' })
-    $hit = @($tr | Where-Object { $acq -contains $_ })
-    $recall = if ($tr.Count) { [math]::Round($hit.Count / $tr.Count, 3) } else { 0 }
-    $prec = if ($acq.Count) { [math]::Round($hit.Count / $acq.Count, 3) } else { 0 }
-    return @{ recall = $recall; precision = $prec; acquired = $acq.Count; hits = $hit.Count }
 }
 
 function Get-FuseFiles($outDir) {
@@ -127,6 +153,9 @@ foreach ($grp in ($sampled | Group-Object repo)) {
         }
 
         foreach ($arm in $armsToRun) {
+            # Skip a model-driven arm on PRs outside its bounded sample (keeps the costly rollouts affordable
+            # while the deterministic arms scale wide). The row is simply not produced, never stubbed.
+            if (($modelArms -contains $arm) -and -not $modelPrKeys.Contains("$($grp.Name)#$($prItem.pr)")) { continue }
             $files = @(); $tokens = 0; $setupMs = $null
             try {
                 switch ($arm) {
@@ -198,6 +227,51 @@ foreach ($grp in ($sampled | Group-Object repo)) {
                         [string]$accum | Set-Content $coaTxt
                         $tokens = (Get-TokensOf $coaTxt)
                     }
+                    'serena' {
+                        # serena is MCP-only: drive one rollout via headless claude restricted to its tools.
+                        # Default invocation is uvx-from-git; $env:SERENA_ARGS overrides it (space-split) for a
+                        # locally installed serena. The per-project LSP index is built by the server on activate.
+                        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+                        $serenaArgs = if ($env:SERENA_ARGS) {
+                            @($env:SERENA_ARGS -split '\s+' | Where-Object { $_ })
+                        } else {
+                            @('--from', 'git+https://github.com/oraios/serena', 'serena')
+                        }
+                        $serenaArgs += @('start-mcp-server', '--project', $wtFull, '--transport', 'stdio',
+                                         '--context', 'ide-assistant', '--enable-web-dashboard', 'false')
+                        $cfg = Join-Path $ResultsDir ".out6/serena.mcp.$tag.json"
+                        @{ mcpServers = @{ serena = @{ command = $serenaCmd; args = $serenaArgs } } } | ConvertTo-Json -Depth 6 | Set-Content $cfg
+                        $serenaStream = Join-Path $ResultsDir ".out6/$tag.serena.jsonl"
+                        $prompt = "Search this workspace for the code relevant to: $q. Use your symbol and pattern search tools. Return the repo-relative paths of the most relevant files as a bullet list."
+                        $serenaArgv = @('-p', $prompt, '--model', $Model, '--output-format','stream-json','--verbose',
+                                        '--permission-mode','default','--max-turns','10','--allowedTools','mcp__serena',
+                                        '--mcp-config', $cfg, '--strict-mcp-config')
+                        $null = Invoke-ClaudeBounded $serenaArgv $serenaStream $wtFull $CoaRolloutTimeoutSec
+                        $sw.Stop(); $setupMs = $sw.ElapsedMilliseconds
+                        $set = New-Object System.Collections.Generic.HashSet[string]
+                        $accum = ''
+                        foreach ($ln in (Get-Content $serenaStream -ErrorAction SilentlyContinue)) {
+                            if (-not $ln.Trim()) { continue }
+                            try { $o = $ln | ConvertFrom-Json } catch { continue }
+                            if ($o.type -eq 'user' -and $o.message.content) {
+                                foreach ($c in $o.message.content) {
+                                    if ($c.type -eq 'tool_result') {
+                                        $t = if ($c.content -is [string]) { $c.content } else { ($c.content | ForEach-Object { $_.text }) -join "`n" }
+                                        $accum += "`n$t"
+                                    }
+                                }
+                            }
+                            # serena reports its file list in the final assistant text too; capture it.
+                            if ($o.type -eq 'assistant' -and $o.message.content) {
+                                foreach ($c in $o.message.content) { if ($c.type -eq 'text') { $accum += "`n$($c.text)" } }
+                            }
+                        }
+                        foreach ($m in [regex]::Matches([string]$accum, '([A-Za-z0-9_./\\-]+\.cs)')) { [void]$set.Add(($m.Groups[1].Value -replace '\\','/' -replace "^$([regex]::Escape(($wtFull -replace '\\','/')))/?", '')) }
+                        $files = @($set)
+                        $serenaTxt = Join-Path $ResultsDir ".out6/$tag.serena.result.txt"
+                        [string]$accum | Set-Content $serenaTxt
+                        $tokens = (Get-TokensOf $serenaTxt)
+                    }
                 }
             } catch { Write-Warning "  $arm failed: $_" }
 
@@ -234,7 +308,10 @@ $md += ''
 $md += "- Budget: $Budget tokens (fuse --max-tokens; codegraph --max-files $CodegraphMaxFiles)."
 $md += "- Arms: $($armsToRun -join ', ')."
 $md += "- PRs sampled ($($sampled.Count)): $((@($sampled | ForEach-Object { "$($_.repo)#$($_.pr)" })) -join ', ')."
-if ($armsToRun -contains 'coa') { $md += "- coa arm is model-driven (one text_search call via $Model); tool-dependent and not byte-reproducible." }
+$md += '- Per-arm sample sizes (rows produced): ' + (($armsToRun | ForEach-Object { $a = $_; "$a $((@($rows | Where-Object { $_.arm -eq $a })).Count)" }) -join ', ') + '.'
+if ($armsToRun | Where-Object { $modelArms -contains $_ }) {
+    $md += "- Model-driven arms ($((@($armsToRun | Where-Object { $modelArms -contains $_ })) -join ', ')) run one claude rollout per PR via $Model; tool-dependent and not byte-reproducible. Bounded to $ModelPerRepo PR(s)/repo when ModelPerRepo is set, so their sample is smaller than the deterministic arms by design (a larger model-driven scale is a separate compute budget)."
+}
 $md += ''
 $md += '## Aggregate (mean over sampled PRs)'
 $md += ''

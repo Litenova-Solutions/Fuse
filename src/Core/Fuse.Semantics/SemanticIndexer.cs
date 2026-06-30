@@ -26,6 +26,20 @@ public sealed class SemanticIndexer
     private readonly FileHashService _hashService;
     private readonly SemanticAnalysisRunner _analysisRunner;
     private readonly ITextEmbedder? _embedder;
+    private readonly LanguageSyntaxProviderRegistry _syntaxProviders;
+    private readonly GitCoChangeCollector _coChangeCollector = new();
+
+    // Non-source file extensions the scanner still needs for project discovery and config indexing, beyond the
+    // source extensions the language providers claim.
+    private static readonly string[] ConfigExtensions = [".csproj", ".props", ".targets", ".json"];
+
+    /// <summary>
+    ///     The index-store meta key that flags a syntax-first index whose semantic upgrade has not yet landed.
+    ///     <c>"1"</c> means the cross-file semantic graph is still being computed in the background; <c>"0"</c>
+    ///     (or absent) means the recorded mode is final. A caller can read this to know whether to wait for or
+    ///     re-query the semantic tier.
+    /// </summary>
+    public const string SemanticPendingMetaKey = "semantic_pending";
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SemanticIndexer" /> class.
@@ -59,6 +73,10 @@ public sealed class SemanticIndexer
         _hashService = hashService;
         _analysisRunner = analysisRunner;
         _embedder = embedder;
+        // The syntax tier is provider-driven: C# behind the seam (unchanged behavior), plus a second-language
+        // syntax spike. Built internally so the existing constructor and its callers are unaffected; a later
+        // change can make the provider set injectable for an external language plugin.
+        _syntaxProviders = new LanguageSyntaxProviderRegistry([new CSharpSyntaxProvider(syntaxSymbols), new PythonSyntaxProvider(), new JavaScriptSyntaxProvider()]);
     }
 
     /// <summary>
@@ -76,14 +94,86 @@ public sealed class SemanticIndexer
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
         var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
-        var files = await _scanner.ScanAsync(new FileScanRequest(root), cancellationToken);
+        var files = await ScanFilesAsync(root, cancellationToken);
 
         SemanticIndexResult result = snapshot.SemanticLoadSucceeded
             ? await IndexSemanticAsync(root, store, files, snapshot, cancellationToken)
             : await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
 
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
+        // A full pass is the final word on the mode: clear any syntax-first pending flag a prior fast pass set.
+        await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
+
+        // Mine git co-change couplings so the open-ended scorer can recover sibling files of a multi-file change.
+        // Best-effort and bounded (a commit cap, wide commits skipped); a non-repository or a git failure is a
+        // no-op, so it never breaks indexing. Only the full pass mines; the syntax-first fast path skips it.
+        try
+        {
+            await _coChangeCollector.CollectAndStoreAsync(root, store, cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Co-change is an optional prior; a mining or write failure must not fail the index.
+        }
+
         return result;
+    }
+
+    /// <summary>
+    ///     Indexes the workspace at the syntax tier only, skipping the MSBuild/Roslyn load, so a first call
+    ///     serves context in a few seconds instead of waiting for the full semantic load. Sets the index mode to
+    ///     <c>syntax</c> and flags <see cref="SemanticPendingMetaKey" /> so a caller knows the semantic graph is
+    ///     not yet present; pair it with <see cref="UpgradeToSemanticAsync" /> in the background.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="store">The index store to write to.</param>
+    /// <param name="cancellationToken">A token to cancel the index.</param>
+    /// <returns>A syntax-tier index summary.</returns>
+    /// <remarks>
+    ///     The cold index time is dominated by the MSBuild evaluation, not the syntax extraction, so the
+    ///     syntax-first pass is the cold-start fix: it produces a usable full-text and symbol index immediately,
+    ///     and the cross-file semantic graph (DI, route, MediatR, EF wiring) lands when the background upgrade
+    ///     completes and clears the pending flag.
+    /// </remarks>
+    public async Task<SemanticIndexResult> IndexSyntaxFirstAsync(
+        string rootDirectory,
+        IWorkspaceIndexStore store,
+        CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var files = await ScanFilesAsync(root, cancellationToken);
+        var snapshot = new RoslynWorkspaceSnapshot(
+            SemanticLoadSucceeded: false,
+            Projects: [],
+            Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-first", "Syntax-tier index served first; the semantic graph upgrades in the background.")]);
+
+        var result = await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken, embed: false);
+        await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
+        await store.SetMetaAsync(SemanticPendingMetaKey, "1", cancellationToken);
+        return result;
+    }
+
+    /// <summary>
+    ///     Upgrades a syntax-first index to the full semantic graph by running the complete indexing pass, then
+    ///     clearing <see cref="SemanticPendingMetaKey" />. Intended to run in the background after
+    ///     <see cref="IndexSyntaxFirstAsync" /> served the first call.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="store">The index store to write to (a fresh store handle, since the foreground store is disposed).</param>
+    /// <param name="cancellationToken">A token to cancel the upgrade.</param>
+    /// <returns>The full index summary (semantic, partial, or syntax if the load could not improve on syntax).</returns>
+    public Task<SemanticIndexResult> UpgradeToSemanticAsync(
+        string rootDirectory,
+        IWorkspaceIndexStore store,
+        CancellationToken cancellationToken) =>
+        IndexAsync(rootDirectory, store, cancellationToken);
+
+    // Scans the extensions the registered language providers claim, plus the .NET config files needed for
+    // discovery, so a non-C# spike language is surfaced to the indexer without hardwiring its extension.
+    private async Task<IReadOnlyList<IndexedFileRecord>> ScanFilesAsync(string root, CancellationToken cancellationToken)
+    {
+        var scanExtensions = _syntaxProviders.Extensions.Concat(ConfigExtensions).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        return await _scanner.ScanAsync(new FileScanRequest(root, scanExtensions), cancellationToken);
     }
 
     /// <summary>
@@ -118,17 +208,19 @@ public sealed class SemanticIndexer
         var info = new FileInfo(absolute);
         var content = await File.ReadAllTextAsync(absolute, cancellationToken);
         var hash = _hashService.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        var provider = _syntaxProviders.ForExtension(info.Extension);
         await store.UpsertFilesAsync(
-            [new IndexedFileRecord(normalizedPath, normalizedPath, info.Extension, info.Length, info.LastWriteTimeUtc.Ticks, hash)],
+            [new IndexedFileRecord(normalizedPath, normalizedPath, info.Extension, info.Length, info.LastWriteTimeUtc.Ticks, hash, Language: provider?.Language)],
             cancellationToken);
 
-        if (!string.Equals(info.Extension, ".cs", StringComparison.OrdinalIgnoreCase))
+        if (provider is null)
             return 0;
 
-        var extracted = _syntaxSymbols.Extract(normalizedPath, content);
+        var extracted = provider.Extract(normalizedPath, content);
         await store.UpsertSymbolsAsync(extracted.Symbols, cancellationToken);
         await store.UpsertChunksAsync(extracted.Chunks, cancellationToken);
-        await store.UpsertRoutesAsync(_routeExtractor.Extract(normalizedPath, content), cancellationToken);
+        if (string.Equals(info.Extension, ".cs", StringComparison.OrdinalIgnoreCase))
+            await store.UpsertRoutesAsync(_routeExtractor.Extract(normalizedPath, content), cancellationToken);
         return extracted.Symbols.Count;
     }
 
@@ -144,9 +236,10 @@ public sealed class SemanticIndexer
 
         var fileToProject = BuildFileProjectMap(root, snapshot);
         var linkedFiles = files
-            .Select(f => fileToProject.TryGetValue(f.NormalizedPath, out var projectPath)
+            .Select(f => (fileToProject.TryGetValue(f.NormalizedPath, out var projectPath)
                 ? f with { ProjectPath = projectPath }
-                : f)
+                : f) with
+            { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
             .ToList();
         await store.UpsertFilesAsync(linkedFiles, cancellationToken);
 
@@ -191,35 +284,65 @@ public sealed class SemanticIndexer
         IWorkspaceIndexStore store,
         IReadOnlyList<IndexedFileRecord> files,
         RoslynWorkspaceSnapshot snapshot,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool embed = true)
     {
-        await store.UpsertFilesAsync(files, cancellationToken);
+        // Tag each file with its language from the provider that claims its extension, so retrieval can
+        // filter or blend by language; a file no provider claims (a config file) stays untagged.
+        var taggedFiles = files
+            .Select(f => f with { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
+            .ToList();
+        await store.UpsertFilesAsync(taggedFiles, cancellationToken);
+
+        // Extract per file in parallel (file read plus stateless syntax parse, the bulk of the syntax-tier cost)
+        // and collect results positionally, so the flattened output is byte-identical to a sequential pass.
+        var perFile = new (List<SymbolRecord> Symbols, List<ChunkRecord> Chunks, List<RouteRecord> Routes)?[files.Count];
+        var parallelOptions = new ParallelOptions
+        {
+            CancellationToken = cancellationToken,
+            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount)
+        };
+        await Parallel.ForEachAsync(Enumerable.Range(0, files.Count), parallelOptions, async (i, ct) =>
+        {
+            var file = files[i];
+            // Select the language provider by extension; a file no provider claims (a config file) is skipped.
+            var provider = _syntaxProviders.ForExtension(file.Extension);
+            if (provider is null)
+                return;
+
+            var content = await File.ReadAllTextAsync(Path.Combine(root, file.Path), ct);
+            var extracted = provider.Extract(file.NormalizedPath, content);
+            // Route extraction is a C# web concern; a future provider would register its own route detector.
+            var fileRoutes = file.Extension == ".cs"
+                ? _routeExtractor.Extract(file.NormalizedPath, content).ToList()
+                : [];
+            perFile[i] = (extracted.Symbols.ToList(), extracted.Chunks.ToList(), fileRoutes);
+        });
 
         var symbols = new List<SymbolRecord>();
         var (chunks, routes) = (new List<ChunkRecord>(), new List<RouteRecord>());
-        foreach (var file in files)
+        foreach (var entry in perFile)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (file.Extension != ".cs")
+            if (entry is not { } e)
                 continue;
-
-            var content = await File.ReadAllTextAsync(Path.Combine(root, file.Path), cancellationToken);
-            var extracted = _syntaxSymbols.Extract(file.NormalizedPath, content);
-            symbols.AddRange(extracted.Symbols);
-            chunks.AddRange(extracted.Chunks);
-            routes.AddRange(_routeExtractor.Extract(file.NormalizedPath, content));
+            symbols.AddRange(e.Symbols);
+            chunks.AddRange(e.Chunks);
+            routes.AddRange(e.Routes);
         }
 
         await store.UpsertSymbolsAsync(symbols, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
         await store.UpsertRoutesAsync(routes, cancellationToken);
-        await EmbedAndPersistAsync(store, chunks, cancellationToken);
+        // The syntax-first fast pass skips embedding so it serves in a few seconds; the background semantic
+        // upgrade (a full pass) does the embedding, so dense lands together with the graph.
+        if (embed)
+            await EmbedAndPersistAsync(store, chunks, cancellationToken);
 
         return new SemanticIndexResult("syntax", files.Count, 0, symbols.Count, chunks.Count, routes.Count, snapshot.Diagnostics);
     }
 
     // Embeds each chunk's text representation (name, signature, body) and persists the vectors, when a text
-    // embedder is available. A no-op when no model is present, which keeps the no-model floor: the index still
+    // embedder is available. A no-op when no model is present, which keeps retrieval lexical when no model is present: the index still
     // builds and retrieval stays lexical. Per-chunk text is truncated so tokenization cost stays bounded.
     private async Task EmbedAndPersistAsync(IWorkspaceIndexStore store, IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken)
     {

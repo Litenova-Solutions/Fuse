@@ -112,9 +112,9 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Skip checkouts that index below semantic mode instead of scoring the fallback.")]
     public bool RequireSemantic { get; set; }
 
-    /// <summary>When set and a dense model is cached, add the dense (embedding) retrieval channel to localization.</summary>
-    [CliOption(Required = false, Description = "Add the dense embedding retrieval channel (requires a cached model).")]
-    public bool Dense { get; set; }
+    /// <summary>When set, force the deterministic lexical fallback (no dense channel), the A/B comparator for dense-by-default.</summary>
+    [CliOption(Required = false, Description = "Force the lexical fallback (disable the dense embedding channel), the A/B comparator for dense-by-default.")]
+    public bool Lexical { get; set; }
 
     /// <summary>When greater than zero, the semantics suite samples this many predicted edges per type over the corpus for adjudication.</summary>
     [CliOption(Required = false, Description = "Sample N predicted edges per type over the corpus (semantics adjudication).")]
@@ -143,7 +143,7 @@ public sealed class EvalCommand
             Rollouts: Rollouts,
             Restore: Restore,
             RequireSemantic: RequireSemantic,
-            Embedder: Dense ? _embedder : null,
+            Embedder: Lexical ? null : _embedder,
             CorpusSample: CorpusSample,
             Log: _consoleUI.WriteStep);
 

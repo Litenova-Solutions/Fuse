@@ -19,6 +19,7 @@ public sealed partial class FuseTools
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
     /// <param name="changeSource">The change source for resolving a git base ref.</param>
+    /// <param name="embedder">An optional text embedder; when present, a dense retrieval channel is added.</param>
     /// <param name="path">The workspace directory.</param>
     /// <param name="task">The free-text task or query.</param>
     /// <param name="route">A route to resolve.</param>
@@ -28,8 +29,10 @@ public sealed partial class FuseTools
     /// <param name="config">A config section to resolve.</param>
     /// <param name="changedSince">A git base ref whose changed files seed candidates.</param>
     /// <param name="maxCandidates">The maximum candidates to return.</param>
+    /// <param name="strict">When true, an insufficient request is refused and only a navigation map is returned; off by default (best-effort).</param>
+    /// <param name="expand">When true, the selected candidates are enriched with their typed-graph neighbors for discovery; off by default.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
-    /// <returns>Ranked candidates with reasons and token costs.</returns>
+    /// <returns>Ranked candidates with reasons and token costs, or a navigation map when the request is not confident.</returns>
     [McpServerTool(Name = "fuse_localize", ReadOnly = true)]
     [Description("Localize a task to ranked candidate files and symbols (no bodies). The cheap first step of an iterative workflow; follow with fuse_context to read selected seeds.")]
     public static async Task<string> FuseLocalizeAsync(
@@ -45,6 +48,8 @@ public sealed partial class FuseTools
         [Description("A config section to resolve to its options type.")] string? config = null,
         [Description("A git base ref whose changed files seed the candidates.")] string? changedSince = null,
         [Description("Maximum candidates to return.")] int maxCandidates = 50,
+        [Description("Strict signal-sufficiency: when an insufficient request has no clear anchor, refuse and return only a navigation map instead of a low-confidence guess. Off by default (best-effort).")] bool strict = false,
+        [Description("Expand the selected candidates with their typed-graph neighbors (implementers, callers, config) for discovery. Off by default; widens recall but pressures precision.")] bool expand = false,
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetFullPath(path);
@@ -52,20 +57,66 @@ public sealed partial class FuseTools
         var engine = new SemanticRetrievalEngine(store, changeSource, embedder);
         var requestModel = new LocalizationRequest(
             root, Query: task, ChangedSince: changedSince, Route: route, Focus: symbol, Service: service,
-            Request: request, ConfigSection: config, MaxCandidates: maxCandidates);
+            Request: request, ConfigSection: config, MaxCandidates: maxCandidates, Strict: strict, ExpandGraph: expand);
         var result = await engine.LocalizeAsync(requestModel, cancellationToken);
+        return LocalizationFormatter.Format(result);
+    }
 
-        var builder = new StringBuilder();
-        builder.AppendLine($"localize: {result.Candidates.Count} candidates");
-        foreach (var candidate in result.Candidates)
+    /// <summary>
+    ///     Iterative exploration primitives: the graph neighborhood of a file, the callers and implementers of a
+    ///     symbol, or the structurally central files of an area. Ranked, bounded, and body-free, for chaining.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="file">A file whose graph neighborhood to return.</param>
+    /// <param name="symbol">A symbol whose callers and implementers to return.</param>
+    /// <param name="centralIn">An area (folder prefix, or empty for the whole workspace) whose central files to return.</param>
+    /// <param name="limit">The maximum results to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The ranked exploration items with provenance and no bodies.</returns>
+    [McpServerTool(Name = "fuse_neighbors", ReadOnly = true)]
+    [Description("Iterative exploration primitives (no bodies): the graph neighborhood of a file (callers, implementers, consumers, config, plus same-folder cohesion), the callers and implementers of a symbol, or the structurally central files of an area. Chain these to turn a weak first guess into a strong few-call funnel.")]
+    public static async Task<string> FuseNeighborsAsync(
+        SemanticIndexer indexer,
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("A file whose graph neighborhood to return.")] string? file = null,
+        [Description("A symbol whose callers and implementers to return.")] string? symbol = null,
+        [Description("An area (folder prefix, or empty for the whole workspace) whose central files to return.")] string? centralIn = null,
+        [Description("Maximum results to return.")] int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var explorer = new GraphNeighborhoodExplorer(store);
+
+        string mode;
+        IReadOnlyList<ExploredItem> items;
+        if (!string.IsNullOrWhiteSpace(file))
         {
-            builder.AppendLine($"  {candidate.Score:F3}  {candidate.Path}  (~{candidate.EstimatedTokens} tokens)");
-            foreach (var reason in candidate.Reasons)
-                builder.AppendLine($"        {reason}");
+            mode = $"neighborhood of {file}";
+            items = await explorer.NeighborhoodAsync(file, limit, cancellationToken);
+        }
+        else if (!string.IsNullOrWhiteSpace(symbol))
+        {
+            mode = $"callers and implementers of {symbol}";
+            items = await explorer.CallersAndImplementersAsync(symbol, limit, cancellationToken);
+        }
+        else if (centralIn is not null)
+        {
+            mode = centralIn.Length == 0 ? "central files (workspace)" : $"central files in {centralIn}";
+            items = await explorer.CentralFilesAsync(centralIn, limit, cancellationToken);
+        }
+        else
+        {
+            return "Error: specify one of file, symbol, or centralIn.";
         }
 
-        foreach (var warning in result.Warnings)
-            builder.AppendLine($"  ! {warning}");
+        var builder = new StringBuilder();
+        builder.AppendLine($"neighbors ({mode}): {items.Count}");
+        foreach (var item in items)
+        {
+            var symbolPart = item.Symbol is null ? string.Empty : $"  {item.Symbol}";
+            builder.AppendLine($"  {item.Path}{symbolPart}  [{item.Reason}]");
+        }
 
         return builder.ToString();
     }

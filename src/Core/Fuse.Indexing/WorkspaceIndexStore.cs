@@ -151,13 +151,13 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO files(path, normalized_path, extension, size_bytes, mtime_utc_ticks, content_hash,
-                              project_id, is_generated, is_test, indexed_at_utc)
-            VALUES($path, $norm, $ext, $size, $mtime, $hash, $project, $generated, $test, $indexed)
+                              project_id, is_generated, is_test, language, indexed_at_utc)
+            VALUES($path, $norm, $ext, $size, $mtime, $hash, $project, $generated, $test, $language, $indexed)
             ON CONFLICT(normalized_path) DO UPDATE SET
               path = excluded.path, extension = excluded.extension, size_bytes = excluded.size_bytes,
               mtime_utc_ticks = excluded.mtime_utc_ticks, content_hash = excluded.content_hash,
               project_id = excluded.project_id, is_generated = excluded.is_generated,
-              is_test = excluded.is_test, indexed_at_utc = excluded.indexed_at_utc;
+              is_test = excluded.is_test, language = excluded.language, indexed_at_utc = excluded.indexed_at_utc;
             """;
         var pathParam = command.Parameters.Add("$path", SqliteType.Text);
         var normParam = command.Parameters.Add("$norm", SqliteType.Text);
@@ -168,6 +168,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         var projectParam = command.Parameters.Add("$project", SqliteType.Integer);
         var generatedParam = command.Parameters.Add("$generated", SqliteType.Integer);
         var testParam = command.Parameters.Add("$test", SqliteType.Integer);
+        var languageParam = command.Parameters.Add("$language", SqliteType.Text);
         var indexedParam = command.Parameters.Add("$indexed", SqliteType.Text);
 
         foreach (var file in files)
@@ -181,6 +182,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             projectParam.Value = (object?)await ResolveProjectIdAsync(connection, transaction, file.ProjectPath, projectIds, cancellationToken) ?? DBNull.Value;
             generatedParam.Value = file.IsGenerated ? 1 : 0;
             testParam.Value = file.IsTest ? 1 : 0;
+            languageParam.Value = (object?)file.Language ?? DBNull.Value;
             indexedParam.Value = (file.IndexedAtUtc ?? DateTimeOffset.UtcNow).ToString("o");
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -387,8 +389,8 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             ftsInsert = connection.CreateCommand();
             ftsInsert.Transaction = transaction;
             ftsInsert.CommandText = """
-                INSERT INTO chunk_fts(chunk_id, path, name, symbols, signature, comments, body)
-                VALUES($id, $path, $name, $symbols, $sig, $comments, $body);
+                INSERT INTO chunk_fts(chunk_id, path, name, symbols, signature, comments, body, subtokens, stems)
+                VALUES($id, $path, $name, $symbols, $sig, $comments, $body, $subtokens, $stems);
                 """;
             ftsInsert.Parameters.Add("$id", SqliteType.Text);
             ftsInsert.Parameters.Add("$path", SqliteType.Text);
@@ -397,6 +399,8 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             ftsInsert.Parameters.Add("$sig", SqliteType.Text);
             ftsInsert.Parameters.Add("$comments", SqliteType.Text);
             ftsInsert.Parameters.Add("$body", SqliteType.Text);
+            ftsInsert.Parameters.Add("$subtokens", SqliteType.Text);
+            ftsInsert.Parameters.Add("$stems", SqliteType.Text);
         }
 
         try
@@ -434,6 +438,14 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
                     ftsInsert.Parameters["$sig"].Value = (object?)chunk.Signature ?? DBNull.Value;
                     ftsInsert.Parameters["$comments"].Value = (object?)chunk.Comments ?? DBNull.Value;
                     ftsInsert.Parameters["$body"].Value = (object?)chunk.Body ?? DBNull.Value;
+                    // The subtokens field is the subword expansion of the chunk's identifiers (name, declared
+                    // symbols, signature), computed in C# so a prose query word matches a compound name.
+                    var subtokens = IdentifierSplitter.Expand(chunk.Name, chunk.SymbolsText, chunk.Signature);
+                    ftsInsert.Parameters["$subtokens"].Value = subtokens.Length == 0 ? DBNull.Value : subtokens;
+                    // The stems field is the Porter-stemmed form of the chunk's identifiers and comment prose, so
+                    // an inflected query word (rounds, rounded) matches an inflected code or comment word (rounding).
+                    var stems = PorterStemmer.Expand(chunk.Name, chunk.SymbolsText, chunk.Signature, chunk.Comments);
+                    ftsInsert.Parameters["$stems"].Value = stems.Length == 0 ? DBNull.Value : stems;
                     await ftsInsert.ExecuteNonQueryAsync(cancellationToken);
                 }
             }
@@ -712,11 +724,14 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         // bm25() takes one weight per column in declaration order: chunk_id (unindexed, weight ignored),
-        // path, name, symbols, signature, comments, body. Name/signature/symbols outrank path, which outranks
-        // comments and body. bm25 is lower-is-better, so the score is negated to make higher better.
+        // path, name, symbols, signature, comments, body, subtokens, stems. Name/signature/symbols outrank path,
+        // which outranks comments and body. The subtokens column (subword expansion of identifiers) is weighted
+        // below the exact name but above the body, so an exact name match still wins over a subword match. The
+        // stems column (Porter-stemmed identifiers and comments) is weighted lowest, as a fuzzy inflection bridge.
+        // bm25 is lower-is-better, so the score is negated to make higher better.
         command.CommandText = """
             SELECT f.chunk_id, files.normalized_path, c.kind, c.name, c.start_line, c.end_line,
-                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7) AS score
+                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7, 0.9, 0.5) AS score
             FROM chunk_fts f
             JOIN chunks c ON c.chunk_id = f.chunk_id
             JOIN files ON files.file_id = c.file_id
@@ -1006,6 +1021,103 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         return embeddings;
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetFilesByLanguageAsync(string language, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT normalized_path FROM files WHERE language = $lang ORDER BY normalized_path;";
+        command.Parameters.AddWithValue("$lang", language);
+
+        var paths = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            paths.Add(reader.GetString(0));
+        return paths;
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertCoChangesAsync(IReadOnlyList<CoChangeRecord> records, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        // A re-mine is authoritative, so clear the prior table before writing the fresh set.
+        await using (var clear = connection.CreateCommand())
+        {
+            clear.Transaction = transaction;
+            clear.CommandText = "DELETE FROM git_cochange;";
+            await clear.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            "INSERT OR REPLACE INTO git_cochange(path_a, path_b, count, pmi, jaccard, last_seen_utc) " +
+            "VALUES($a, $b, $count, $pmi, $jaccard, $last);";
+        var aParam = command.Parameters.Add("$a", SqliteType.Text);
+        var bParam = command.Parameters.Add("$b", SqliteType.Text);
+        var countParam = command.Parameters.Add("$count", SqliteType.Integer);
+        var pmiParam = command.Parameters.Add("$pmi", SqliteType.Real);
+        var jaccardParam = command.Parameters.Add("$jaccard", SqliteType.Real);
+        var lastParam = command.Parameters.Add("$last", SqliteType.Text);
+
+        foreach (var record in records)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            aParam.Value = record.PathA;
+            bParam.Value = record.PathB;
+            countParam.Value = record.Count;
+            pmiParam.Value = record.Pmi;
+            jaccardParam.Value = record.Jaccard;
+            lastParam.Value = (object?)record.LastSeenUtc ?? DBNull.Value;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<CoChangeRecord>> GetCoChangesForAsync(
+        IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken)
+    {
+        if (normalizedPaths.Count == 0)
+            return [];
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+
+        // A parameterized IN list over the (small) seed set, matching either column of the pair.
+        var names = new List<string>(normalizedPaths.Count);
+        var i = 0;
+        foreach (var path in normalizedPaths)
+        {
+            var name = $"$p{i++}";
+            names.Add(name);
+            command.Parameters.AddWithValue(name, path);
+        }
+
+        var inList = string.Join(", ", names);
+        command.CommandText =
+            $"SELECT path_a, path_b, count, pmi, jaccard, last_seen_utc FROM git_cochange " +
+            $"WHERE path_a IN ({inList}) OR path_b IN ({inList});";
+
+        var results = new List<CoChangeRecord>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new CoChangeRecord(
+                PathA: reader.GetString(0),
+                PathB: reader.GetString(1),
+                Count: reader.GetInt32(2),
+                Pmi: reader.GetDouble(3),
+                Jaccard: reader.GetDouble(4),
+                LastSeenUtc: reader.IsDBNull(5) ? null : reader.GetString(5)));
+        }
+
+        return results;
+    }
+
     // Embedding vectors are stored as a packed little-endian float32 blob; Buffer.BlockCopy is the fast,
     // allocation-light round trip and SQLite stores the bytes verbatim.
     private static byte[] ToBlob(float[] vector)
@@ -1109,7 +1221,29 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         if (current.Length > 0)
             terms.Add(current.ToString());
 
-        return string.Join(" OR ", terms.Select(t => $"\"{t.Replace("\"", "\"\"", StringComparison.Ordinal)}\""));
+        // Expand each raw term with its subword parts so a compound query term (or a single prose word) matches
+        // the subtokens column: "ApplyRoundingMode" adds apply, rounding, mode; "rounding" already matches the
+        // subtokens of "ApplyRoundingMode". The raw term is kept so an exact name match still ranks first.
+        var expanded = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var term in terms)
+        {
+            if (seen.Add(term))
+                expanded.Add(term);
+            // Subword parts match the subtokens column; the Porter stem of each part matches the stems column,
+            // so an inflected query word (rounds) reaches an inflected indexed word (rounding). The raw term is
+            // kept first so an exact name match still ranks above the subword and stemmed bridges.
+            foreach (var part in IdentifierSplitter.Split(term))
+            {
+                if (seen.Add(part))
+                    expanded.Add(part);
+                var stem = PorterStemmer.Stem(part);
+                if (seen.Add(stem))
+                    expanded.Add(stem);
+            }
+        }
+
+        return string.Join(" OR ", expanded.Select(t => $"\"{t.Replace("\"", "\"\"", StringComparison.Ordinal)}\""));
     }
 
     // Derives a stable, bounded edge id from the components of the unique edge index so re-indexing the same

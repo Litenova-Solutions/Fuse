@@ -53,6 +53,68 @@ public sealed class SemanticIndexerTests : IAsyncLifetime
         Assert.True(await CountAsync("SELECT count(*) FROM symbols WHERE name = 'OrderService';") > 0);
     }
 
+    [Fact]
+    public async Task IndexSyntaxFirstAsync_ServesSyntaxTierAndFlagsPending()
+    {
+        // A4 cold-start: the syntax-first pass produces a usable symbol/full-text index without the MSBuild load,
+        // and flags the semantic upgrade as pending so a caller knows the graph is not yet present.
+        var indexer = CreateIndexer();
+
+        var result = await indexer.IndexSyntaxFirstAsync(_projectRoot, _store, CancellationToken.None);
+
+        Assert.Equal("syntax", result.Mode);
+        Assert.True(result.SymbolCount > 0);
+        Assert.Equal("1", await _store.GetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, CancellationToken.None));
+        Assert.Equal("syntax", (await _store.GetStateAsync(CancellationToken.None)).Mode);
+    }
+
+    [Fact]
+    public async Task UpgradeToSemanticAsync_ClearsPendingFlagAndLandsTheGraph()
+    {
+        var indexer = CreateIndexer();
+        await indexer.IndexSyntaxFirstAsync(_projectRoot, _store, CancellationToken.None);
+        Assert.Equal("1", await _store.GetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, CancellationToken.None));
+
+        var upgraded = await indexer.UpgradeToSemanticAsync(_projectRoot, _store, CancellationToken.None);
+
+        Assert.True(upgraded.Mode is "semantic" or "partial", $"expected semantic or partial, got {upgraded.Mode}");
+        Assert.Equal("0", await _store.GetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task IndexSyntaxFirstAsync_IsDeterministic_AcrossParallelRuns()
+    {
+        // Parallel per-file extraction must produce a positionally identical symbol stream across runs.
+        var indexer = CreateIndexer();
+        await indexer.IndexSyntaxFirstAsync(_projectRoot, _store, CancellationToken.None);
+        var first = await SymbolIdSequenceAsync(_databasePath);
+
+        var secondPath = Path.Combine(Path.GetTempPath(), "fuse-semantic-index-tests", Guid.NewGuid().ToString("N"), "fuse.db");
+        await using (var secondStore = new WorkspaceIndexStore(secondPath))
+        {
+            await secondStore.InitializeAsync(CancellationToken.None);
+            await indexer.IndexSyntaxFirstAsync(_projectRoot, secondStore, CancellationToken.None);
+        }
+        var second = await SymbolIdSequenceAsync(secondPath);
+
+        Assert.NotEmpty(first);
+        Assert.Equal(first, second);
+        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={secondPath}"));
+    }
+
+    private static async Task<List<string>> SymbolIdSequenceAsync(string databasePath)
+    {
+        await using var connection = new SqliteConnection($"Data Source={databasePath}");
+        await connection.OpenAsync(CancellationToken.None);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT symbol_id FROM symbols ORDER BY rowid;";
+        var ids = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        while (await reader.ReadAsync(CancellationToken.None))
+            ids.Add(reader.GetString(0));
+        return ids;
+    }
+
     private SemanticIndexer CreateIndexer()
     {
         var fileSystem = new PhysicalFileSystem();

@@ -41,14 +41,33 @@ One scoped localize call is the measured shape of one-call context: in the
 tokens (49 percent recall of the changed files) against roughly 425,000 tokens for a
 generic-packer dump at the same single call.
 
-## When the Question Has No Signal
+## When the Answer Is Not Confident: Refine and Retry
 
-If the question names no code (a merge note, a dependency bump, or an empty query with no
-route, symbol, or base), `fuse_localize` declines rather than guessing: it returns a
-low-signal verdict and suggests a next input (a git base, a route, or a symbol) instead of
-full-text candidates. Declining beats returning files a vague title cannot actually point
-at. Provide one of the structured inputs (a `route`, `symbol`, `service`, `request`,
-`config`, or `changedSince` base) and call again.
+`fuse_localize` grades its answer. When a candidate stands clear it returns a confident
+tight set. When it does not, it refuses to guess and instead hands back a **navigation map**
+so you can sharpen the question and call again:
+
+```text
+localize [insufficient]: 0 candidates
+  navigation map (refine your query):
+    areas: src/Ordering/Application, src/Ordering/Domain
+    entry points: Program.cs, GET /api/orders
+    nearest symbols: OrderService, PriceCalculator, DiscountPolicy
+    ask: No candidate stands clear. Provide a symbol, route, service, request, config section, git base, or a narrower description.
+```
+
+The map is the next step, not a dead end: read the areas and nearest symbols, pick the one
+that fits, and reissue the call with a structured input. Here the `DiscountPolicy` symbol is
+the obvious probe:
+
+```text
+fuse_localize(path="C:/Projects/MyApp/src", symbol="DiscountPolicy")
+```
+
+A title that names no code at all (a merge note, a dependency bump, or an empty query)
+abstains outright, because it can only return noise. By default the contract still returns a
+best-effort set on a partial or insufficient result, so a one-shot client is never stranded;
+pass `strict: true` to hard-require an anchor and get only the map until you provide one.
 
 ## Then Fetch the Bodies
 

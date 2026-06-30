@@ -19,6 +19,17 @@ namespace Fuse.Retrieval;
 /// <param name="MaxTokens">An optional token budget for packing.</param>
 /// <param name="IncludeTests">Whether test files are eligible.</param>
 /// <param name="IncludeConfig">Whether config files are eligible.</param>
+/// <param name="Strict">
+///     When true, the signal-sufficiency contract hard-requires an anchor: an insufficient request is refused
+///     (no file list, only the navigation map). The default (false) is best-effort-plus-flag, so a client that
+///     cannot refine still receives the partial set with a low-confidence flag.
+/// </param>
+/// <param name="ExpandGraph">
+///     When true, the selected candidates are enriched with their typed-graph neighbors (implementers, callers,
+///     configuration) at a decayed score, for discovery. Off by default: expansion adds the structural blast
+///     radius, which widens recall but pressures precision, so it is an explicit operating point rather than the
+///     default. A no-op in syntax mode where the graph has no edges.
+/// </param>
 public sealed record LocalizationRequest(
     string RootDirectory,
     string? Query = null,
@@ -34,7 +45,9 @@ public sealed record LocalizationRequest(
     int Depth = 2,
     int? MaxTokens = null,
     bool IncludeTests = true,
-    bool IncludeConfig = true);
+    bool IncludeConfig = true,
+    bool Strict = false,
+    bool ExpandGraph = false);
 
 /// <summary>
 ///     A candidate file or symbol produced by a candidate generator, before scoring and graph expansion.
@@ -95,6 +108,9 @@ public enum CandidateSource
 
     /// <summary>A git co-change neighbor.</summary>
     Cochange,
+
+    /// <summary>A neighbor pulled in by expanding a seed through the typed semantic graph.</summary>
+    GraphNeighbor,
 }
 
 /// <summary>
@@ -121,6 +137,7 @@ public static class CandidateSourceWeights
         CandidateSource.FtsPath => 0.70,
         CandidateSource.FtsBody => 0.55,
         CandidateSource.Cochange => 0.45,
+        CandidateSource.GraphNeighbor => 0.40,
         _ => 0.50,
     };
 }

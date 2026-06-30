@@ -3,7 +3,7 @@ using Fuse.Plugins.Abstractions.Options;
 namespace Fuse.Fusion;
 
 /// <summary>
-///     Builds the explicit <see cref="ContextPlan" /> for a scoped result (architecture enabler A1): it assigns
+///     Builds the explicit <see cref="ContextPlan" /> for a scoped result: it assigns
 ///     each selected file a role and a reduction tier once, replacing the former inline inference of seed versus
 ///     neighbour from the provenance chain length and the separate tiered-level resolver.
 /// </summary>

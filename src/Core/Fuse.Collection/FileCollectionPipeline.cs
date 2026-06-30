@@ -91,14 +91,17 @@ public sealed class FileCollectionPipeline
 
         var rootDirectory = Path.GetFullPath(options.SourceDirectory);
 
-        // Skip file reparse points (symlinks) during enumeration; one extra stat per candidate. Directory
-        // junctions are not reparse points on the files reached through them, so paths under a junctioned
-        // directory can still pass IsPathUnderRoot. That partial mitigation is accepted for the hot path.
+        // Skip file reparse points (symlinks) during enumeration; one extra stat per candidate. A file reached by
+        // descending through a symlinked or junctioned directory also escapes the root even though its lexical
+        // path looks under root, so reject any file with a reparse-point ancestor directory between it and the
+        // root (cached per directory, so each is stat'd at most once).
+        var reparseDirectoryCache = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         var filePaths = _fileSystem
             .EnumerateFiles(options.SourceDirectory, "*.*", searchOption)
             .Select(Path.GetFullPath)
             .Where(path => IsPathUnderRoot(rootDirectory, path))
             .Where(path => !HasReparsePointAttribute(_fileSystem.GetFileInfo(path)))
+            .Where(path => !CrossesReparsePointDirectory(rootDirectory, path, reparseDirectoryCache))
             .Select((path, index) => (path, index))
             .ToArray();
 
@@ -175,7 +178,42 @@ public sealed class FileCollectionPipeline
     }
 
     // Directory enumeration can follow junctions and symlinks; skip reparse-point entries themselves.
-    // See the comment on the enumeration query for the junction limitation.
     private static bool HasReparsePointAttribute(FileInfo fileInfo) =>
         fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
+
+    // True when any ancestor directory strictly between the file and the collection root is a reparse point (a
+    // directory symlink or junction). Such a file was reached by descending through the link, so it escapes the
+    // root even though its lexical path is under it. Cached per directory so each is stat'd at most once; a
+    // non-existent or inaccessible directory is treated as not-a-reparse-point, which leaves an in-memory or fake
+    // file system (whose paths are not on disk) unaffected.
+    private static bool CrossesReparsePointDirectory(string rootDirectory, string filePath, Dictionary<string, bool> cache)
+    {
+        var directory = Path.GetDirectoryName(filePath);
+        while (directory is not null
+               && directory.Length > rootDirectory.Length
+               && directory.StartsWith(rootDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!cache.TryGetValue(directory, out var isReparse))
+            {
+                try
+                {
+                    var info = new DirectoryInfo(directory);
+                    isReparse = info.Exists && info.Attributes.HasFlag(FileAttributes.ReparsePoint);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    isReparse = false;
+                }
+
+                cache[directory] = isReparse;
+            }
+
+            if (isReparse)
+                return true;
+
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        return false;
+    }
 }

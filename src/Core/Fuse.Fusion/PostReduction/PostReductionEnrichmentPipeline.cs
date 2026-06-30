@@ -336,7 +336,7 @@ public sealed class PostReductionEnrichmentPipeline
         {
             // Prepend to the FIRST part: the route and project maps are an overview header for the whole output,
             // so a reader meets them before any file body. Multipart output previously prepended them to the
-            // last part, where they trailed the content (P2).
+            // last part, where they trailed the content.
             var firstPath = generatedPaths[0];
             var existing = await _fileSystem.ReadAllTextAsync(firstPath);
             await _fileSystem.WriteAllTextAsync(firstPath, prefix + "\n" + existing);

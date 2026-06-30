@@ -1,4 +1,3 @@
-localize: 3 candidates
-  0.925  src/IOrderService.cs
-  0.779  src/OrderService.cs
-  0.700  src/OrdersController.cs
+localize: 2 candidates
+  1.000  src/IOrderService.cs
+  0.894  src/OrderService.cs

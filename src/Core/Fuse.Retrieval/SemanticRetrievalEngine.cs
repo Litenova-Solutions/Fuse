@@ -16,6 +16,23 @@ public sealed class SemanticRetrievalEngine
 {
     private const double ExpansionThreshold = 0.10;
 
+    // The most candidates a non-confident (partial or best-effort insufficient) result returns. Smaller than the
+    // request cap so a low-confidence answer is a short, scannable set rather than a long, noisy one; the
+    // confident path returns only its leading cluster, which is typically smaller still.
+    private const int PartialCandidateLimit = 10;
+
+    private const string InsufficientAsk =
+        "No candidate stands clear. Provide a symbol, route, service, request, config section, git base, or a narrower description.";
+
+    private const string PartialAsk =
+        "No candidate stands clear; this is a low-confidence best effort. Refine with a symbol, route, service, request, config section, or git base.";
+
+    // Graph-aware discovery bounds: expand only the top seeds, one hop, and admit at most this many new neighbor
+    // files, so a single weak seed cannot pull in a large subtree.
+    private const int GraphSeedCount = 2;
+    private const int GraphExpansionDepth = 1;
+    private const int GraphMaxNeighbors = 5;
+
     private readonly IWorkspaceIndexStore _store;
     private readonly IChangeSource? _changeSource;
     private readonly CandidateGenerator _candidateGenerator;
@@ -45,32 +62,131 @@ public sealed class SemanticRetrievalEngine
     /// <returns>The ranked candidates and any warnings.</returns>
     public async Task<LocalizationResult> LocalizeAsync(LocalizationRequest request, CancellationToken cancellationToken)
     {
-        // Detect a request that carries no usable scoping signal (merge/dependency/CI noise, or an empty query
-        // with no structured input) and abstain with a suggestion rather than returning candidates a title
-        // cannot support. This is the honest answer where recall is bounded by the input, not the engine.
+        // Step 1: the low-signal classifier. A request that carries no usable scoping signal (merge/dependency/CI
+        // noise, or an empty query with no structured input) names no code, so generating candidates would only
+        // return junk. Refuse and route: hand back the structural map and ask for an anchor. This is the
+        // insufficient state by classification, kept distinct from the score-distribution insufficiency below so
+        // the low-signal detection metric (which scores this classifier) is not contaminated by weak-match cases.
         var verdict = QuerySignalClassifier.Classify(request);
         if (verdict.IsLowSignal)
         {
-            var suggestion = verdict.Suggestion ?? "Provide a route, symbol, service, request, config section, or a git base.";
-            return new LocalizationResult([], [$"Low signal: {suggestion}"], LowSignal: true, SuggestedInput: suggestion);
+            var ask = verdict.Suggestion ?? InsufficientAsk;
+            var navigation = await new NavigationMapBuilder(_store).BuildAsync(request, [], ask, cancellationToken);
+            return new LocalizationResult(
+                [], [$"Low signal: {ask}"], LowSignal: true, SuggestedInput: ask,
+                State: SignalState.Insufficient, Navigation: navigation);
         }
 
+        // Step 2: generate, score, blend the structural priors, and grade the distribution into the contract.
         var candidates = await _candidateGenerator.GenerateAsync(request, cancellationToken);
         var scored = _scorer.Score(candidates);
+        // Dependency-centrality prior: a widely-depended-on file outranks a leaf for an otherwise-tied query. A
+        // small capped multiplier, empty (no-op) in syntax mode where the graph has no edges.
+        scored = await new GraphCentralityPrior(_store).ApplyAsync(scored, cancellationToken);
+        // Git co-change prior: a file that historically changes alongside a strong hit is nudged up, recovering
+        // the sibling files of a multi-file change. Capped multiplier, empty (no-op) when no co-change was mined.
+        scored = await new GitCoChangePrior(_store).ApplyAsync(scored, cancellationToken);
+        var state = SignalGrader.Grade(scored);
 
-        var localized = new List<LocalizedCandidate>(scored.Count);
-        foreach (var candidate in scored.Take(request.MaxCandidates))
+        // Select the returned set by state. Confident returns only the leading cluster (the precision win); partial
+        // returns a small flagged best-effort set; insufficient returns nothing under strict mode (a hard anchor
+        // requirement) and a best-effort set under the graceful default, so a client that cannot refine still gets
+        // something. The LowSignal flag stays false here: this is a graded outcome, not a no-signal title.
+        IReadOnlyList<ScoredCandidate> selected = state switch
+        {
+            SignalState.Confident => SignalGrader.LeadingCluster(scored),
+            SignalState.Partial => scored.Take(PartialCandidateLimit).ToList(),
+            _ => request.Strict ? [] : scored.Take(PartialCandidateLimit).ToList(),
+        };
+        // Graph-aware discovery (opt-in): enrich the selected set with the typed-graph neighbors of its seeds (the
+        // implementers, callers, and configuration of what was matched), at a decayed score and bounded by seed
+        // count, depth, and neighbor cap. Off by default because the blast radius widens recall but pressures
+        // precision; a no-op in syntax mode and when nothing was selected (strict refusal).
+        if (request.ExpandGraph)
+            selected = await ExpandSeedsThroughGraphAsync(selected, cancellationToken);
+        selected = selected.Take(request.MaxCandidates).ToList();
+
+        var warnings = new List<string>();
+        NavigationMap? navigationMap = null;
+        if (state != SignalState.Confident)
+        {
+            var ask = state == SignalState.Insufficient ? InsufficientAsk : PartialAsk;
+            navigationMap = await new NavigationMapBuilder(_store).BuildAsync(request, scored, ask, cancellationToken);
+            warnings.Add(state switch
+            {
+                SignalState.Insufficient when request.Strict => $"Insufficient signal (strict): refused, no candidates returned. {ask}",
+                SignalState.Insufficient when selected.Count == 0 => $"Insufficient signal: no candidate cleared the bar. {ask}",
+                SignalState.Insufficient => $"Insufficient signal: returning a best-effort set, low confidence. {ask}",
+                _ => $"Partial signal: returning a best-effort set, low confidence. {ask}",
+            });
+        }
+
+        var localized = new List<LocalizedCandidate>(selected.Count);
+        foreach (var candidate in selected)
         {
             var tokens = await _store.GetFileTokenEstimateAsync(candidate.FilePath, cancellationToken);
             localized.Add(new LocalizedCandidate(
                 candidate.FilePath, candidate.NodeId, candidate.Kind, candidate.Score, tokens, candidate.Reasons));
         }
 
-        var warnings = new List<string>();
-        if (localized.Count == 0)
-            warnings.Add("Low signal: no candidates found. Provide a route, symbol, service, request, config section, or a git base.");
+        return new LocalizationResult(localized, warnings, LowSignal: false, SuggestedInput: null, State: state, Navigation: navigationMap);
+    }
 
-        return new LocalizationResult(localized, warnings);
+    // Graph-aware discovery: expand the top seeds one hop through the typed semantic graph and admit a capped
+    // set of new neighbor files at their decayed expansion score, so a weak lexical hit on one file pulls in its
+    // implementers, callers, and configuration. Bounded by seed count, depth, and neighbor cap. In syntax mode
+    // the graph has no edges, so expansion returns only the seeds and the set is unchanged.
+    private async Task<IReadOnlyList<ScoredCandidate>> ExpandSeedsThroughGraphAsync(
+        IReadOnlyList<ScoredCandidate> scored, CancellationToken cancellationToken)
+    {
+        if (scored.Count == 0)
+            return scored;
+
+        // A node candidate seeds itself; a file-only (lexical) candidate seeds the nodes its file declares, so a
+        // text hit can still traverse the graph.
+        var seeds = new List<ScoredCandidate>();
+        foreach (var candidate in scored.Take(GraphSeedCount))
+        {
+            if (!string.IsNullOrEmpty(candidate.NodeId))
+            {
+                seeds.Add(candidate);
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(candidate.FilePath))
+                continue;
+            foreach (var node in await _store.GetNodesByFileAsync(candidate.FilePath, cancellationToken))
+                seeds.Add(candidate with { NodeId = node.NodeId });
+        }
+
+        if (seeds.Count == 0)
+            return scored;
+
+        var expanded = await _expansion.ExpandAsync(seeds, GraphExpansionDepth, ExpansionThreshold, cancellationToken);
+
+        var present = new HashSet<string>(
+            scored.Where(c => !string.IsNullOrEmpty(c.FilePath)).Select(c => c.FilePath), StringComparer.Ordinal);
+        var additions = new List<ScoredCandidate>();
+        foreach (var node in expanded
+            .Where(n => n.Hop > 0 && !string.IsNullOrEmpty(n.FilePath) && !present.Contains(n.FilePath!))
+            .OrderByDescending(n => n.Score))
+        {
+            if (additions.Count >= GraphMaxNeighbors)
+                break;
+            if (!present.Add(node.FilePath!))
+                continue;
+            additions.Add(new ScoredCandidate(
+                node.NodeId, node.FilePath!, node.Kind, node.Score, [CandidateSource.GraphNeighbor],
+                [$"graph neighbor: {string.Join(' ', node.Provenance)}".Trim()], 0));
+        }
+
+        if (additions.Count == 0)
+            return scored;
+
+        return scored.Concat(additions)
+            .OrderByDescending(c => c.Score)
+            .ThenBy(c => c.FilePath, StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>

@@ -55,6 +55,18 @@ public sealed class DenseCandidateGeneratorTests : IAsyncLifetime
         Assert.Empty(candidates);
     }
 
+    [Fact]
+    public async Task EmbedsTheRawQueryVerbatim_NeverARewrite()
+    {
+        // A1 no-rewrite rule: the dense channel embeds the caller's query string as-is. No model rephrases or
+        // paraphrases it; the engine bridges vocabulary with retrieval, not a generated rewrite.
+        var embedder = new FakeEmbedder(query: [1f, 0f]);
+        await new DenseCandidateGenerator(_store, embedder)
+            .GenerateAsync(new LocalizationRequest(".", Query: "discount rounding is off at checkout"), CancellationToken.None);
+
+        Assert.Equal("discount rounding is off at checkout", embedder.LastEmbedded, StringComparer.Ordinal);
+    }
+
     private async Task SeedAsync()
     {
         await _store.UpsertFilesAsync(
@@ -98,6 +110,14 @@ public sealed class DenseCandidateGeneratorTests : IAsyncLifetime
     {
         public bool IsAvailable => available;
         public int Dimension => query.Length;
-        public float[] Embed(string text) => query;
+
+        // The exact text last passed to Embed, so a test can assert the raw query is embedded verbatim.
+        public string? LastEmbedded { get; private set; }
+
+        public float[] Embed(string text)
+        {
+            LastEmbedded = text;
+            return query;
+        }
     }
 }

@@ -1,6 +1,6 @@
 # Fuse V3 Plan: the path to the crown
 
-The first V3 wave shipped a Roslyn-backed .NET semantic context engine with a warm persistent index, an 8-tool MCP surface, a five-suite C# benchmark, and a rewritten docs site. Its plan, execution record, and full progress log are archived in [Fuse-V3-Overhaul-History.md](Fuse-V3-Overhaul-History.md) (and PR #20).
+The first V3 wave shipped a Roslyn-backed .NET semantic context engine with a warm persistent index, an 8-tool MCP surface, a five-suite C# benchmark, and a rewritten docs site. Its plan, execution record, and full progress log are archived in [v3-overhaul-history.md](v3-overhaul-history.md) (and PR #20).
 
 This plan is the next V3 wave: the path to the most performant .NET context engine available. Dominate the axes that are the moat (semantic wiring resolution, change review with a base), reach parity or better where Fuse is currently weak (open-ended localization), and prove it head to head and end to end. Items are ordered by leverage: result per item, not effort. The honest ceilings where "best of everything" genuinely trades off are stated at the end.
 

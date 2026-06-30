@@ -14,6 +14,7 @@ namespace Fuse.Indexing;
 /// <param name="IsGenerated">Whether the file is generated.</param>
 /// <param name="IsTest">Whether the file is a test file.</param>
 /// <param name="IndexedAtUtc">When the file was indexed; defaults to now at insert.</param>
+/// <param name="Language">The language tag from the selecting syntax provider (for example <c>csharp</c>, <c>python</c>), or null when no provider claims the extension.</param>
 public sealed record IndexedFileRecord(
     string Path,
     string NormalizedPath,

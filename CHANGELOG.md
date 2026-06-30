@@ -2,6 +2,30 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 3.0 is a product overhaul; backward compatibility with 2.x output, commands, and the MCP tool surface is not a goal.
 
+## [3.1.0] - 2026-06-30
+
+Fuse 3.1 sharpens the .NET semantic engine on the modes where 3.0 was weakest: open-ended discovery, language breadth, and first-call latency. Dense retrieval is now on by default and fully offline, the open-ended path refuses and routes instead of guessing on a vague request, and more of the codebase's own vocabulary is searchable without a model. The numbers behind every claim are on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
+
+### Added
+
+- **Dense retrieval, on by default and offline.** A small local embedding model (all-MiniLM-L6-v2, about 23 MB) is fetched once and cached on the first index; every later run and all query-time work is offline, and the query is embedded as written, never paraphrased. It blends with the lexical and graph signals so a prose task finds a file by meaning. When the model is genuinely absent the path falls back to the deterministic lexical floor. Opt out with `FUSE_DENSE` set to a falsy value.
+- **Signal-sufficiency contract on the open-ended path.** `fuse_localize` now grades every request from the candidate score distribution into confident (return the tight set), partial (a small flagged set plus a navigation map), or insufficient (refuse and return only a navigation map and an explicit ask for a symbol, route, service, request, config section, or git base). On a no-signal title Fuse hands back a map instead of guessing. A `strict` option hard-requires an anchor; the default stays best-effort so a one-shot client is never stranded.
+- **Offline vocabulary bridges.** Identifier subword indexing (so the prose word `rounding` matches `ApplyRoundingMode`), Porter stemming, and a weighted comment field make the codebase's own vocabulary searchable without a model.
+- **Structural ranking signals.** A dependency-centrality prior and a git co-change prior (mined from a bounded git-history window at index time) nudge ambiguous candidates by where a file sits in the graph and which files it historically changes with. Both are capped so they tune rather than dominate.
+- **Iterative exploration tool.** `fuse_neighbors` returns the graph neighborhood of a file, the callers and implementers of a symbol, or the structurally central files of an area, ranked, bounded, and body-free.
+- **Multi-language breadth.** A provider seam drives the syntax tier; Python and JavaScript/TypeScript are supported at the syntax tier (token-efficient context and search) alongside C#. Each indexed file carries a `language` tag so retrieval can filter or blend by language. The deep typed graph remains .NET-only.
+- **Opt-in fast cold start.** In the `mcp serve` host, `FUSE_BG_UPGRADE=1` serves the syntax tier on the first read (no MSBuild wait) and upgrades to the full semantic graph in the background; the first answer drops from about 70 seconds to about 20 seconds on a mid-size repository.
+
+### Changed
+
+- **Open-ended localization is a graded contract, not a fixed candidate list.** Precision when the engine answers is up and false rejections on answerable queries are down; bare-title recall is no longer the headline for this path (the contract metrics are). With a git base, the routed mode remains change-impact review, which is where recall and precision are strongest.
+- **Persistent index schema bumped to version 14.** The index rebuilds on the first run after upgrade (it adds the subword, stem, and comment full-text fields and the file language tag). No action is needed; the rebuild is automatic.
+- **Benchmark corpus rebuilt and peer comparison expanded.** The corpus now uses repositories that restore and index in semantic or partial mode on the .NET 10 SDK, and the peer comparison runs Fuse against CodeGraph, coa-codesearch, and Serena head-to-head. The benchmarks page and the docs are rewritten as current-state snapshots.
+
+### Fixed
+
+- **Directory walk no longer escapes the collection root through a symlinked or junctioned directory.** A file reached by descending through a reparse-point directory that points outside the root is now excluded, matching the existing handling for file symlinks.
+
 ## [3.0.0] - 2026-06-26
 
 Fuse 3.0 turns Fuse from a token-reduction context optimizer into a Roslyn-backed .NET semantic context engine for AI agents. It maintains a warm, persistent semantic index of a workspace and serves precise, provenance-backed context from it: which implementation is injected, which endpoint handles a route, which handler processes a request, which options type binds a config section, and what a git diff semantically impacts. Token reduction is now a rendering and transport feature, not the product.

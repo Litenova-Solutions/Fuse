@@ -11,7 +11,7 @@ namespace Fuse.Plugins.Rerank.Onnx;
 /// <remarks>
 ///     The model loads lazily on first use and is then reused (ONNX Runtime sessions are safe for concurrent
 ///     inference). When the model is absent or fails to load, <see cref="IsAvailable" /> reports false and the
-///     retrieval path stays lexical, so this never removes the no-model floor.
+///     retrieval path stays lexical, so retrieval stays on the lexical path when no model is present.
 /// </remarks>
 public sealed class OnnxTextEmbedder : ITextEmbedder, IDisposable
 {

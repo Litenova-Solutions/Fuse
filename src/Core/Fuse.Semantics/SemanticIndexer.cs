@@ -287,7 +287,7 @@ public sealed class SemanticIndexer
         CancellationToken cancellationToken,
         bool embed = true)
     {
-        // Tag each file with its language from the provider that claims its extension (S10b), so retrieval can
+        // Tag each file with its language from the provider that claims its extension, so retrieval can
         // filter or blend by language; a file no provider claims (a config file) stays untagged.
         var taggedFiles = files
             .Select(f => f with { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
@@ -342,7 +342,7 @@ public sealed class SemanticIndexer
     }
 
     // Embeds each chunk's text representation (name, signature, body) and persists the vectors, when a text
-    // embedder is available. A no-op when no model is present, which keeps the no-model floor: the index still
+    // embedder is available. A no-op when no model is present, which keeps retrieval lexical when no model is present: the index still
     // builds and retrieval stays lexical. Per-chunk text is truncated so tokenization cost stays bounded.
     private async Task EmbedAndPersistAsync(IWorkspaceIndexStore store, IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken)
     {

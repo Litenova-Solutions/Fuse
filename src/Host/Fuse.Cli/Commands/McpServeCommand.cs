@@ -39,7 +39,7 @@ public sealed class McpServeCommand
     /// </remarks>
     public async Task RunAsync(CliContext context)
     {
-        // Syntax-first cold start with a background semantic upgrade (A4) is opt-in: FUSE_BG_UPGRADE truthy
+        // Syntax-first cold start with a background semantic upgrade is opt-in: FUSE_BG_UPGRADE truthy
         // enables it. The default indexes synchronously on the first read (the proven-stable path), so no
         // detached background task outlives a request; making it the default is deferred with the resident-Roslyn-
         // workspace work that lets the host manage the background task's lifetime cleanly.

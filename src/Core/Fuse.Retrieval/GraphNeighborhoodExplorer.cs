@@ -12,7 +12,7 @@ namespace Fuse.Retrieval;
 ///     Built over the language-agnostic node, edge, and file tables, so the primitives carry to any indexed
 ///     language. They expose the same typed graph that resolution and review use; where the graph is sparse
 ///     (syntax mode) the neighborhood falls back to same-folder cohesion so the result is never empty. Co-change
-///     neighbors are not yet included because the co-change table has no collector; see the S5 deferral.
+///     neighbors are not part of this neighborhood view; the co-change signal is applied in the open-ended scorer.
 /// </remarks>
 public sealed class GraphNeighborhoodExplorer
 {

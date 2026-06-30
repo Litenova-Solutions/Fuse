@@ -10,7 +10,7 @@ namespace Fuse.Retrieval;
 /// </summary>
 /// <remarks>
 ///     Optional and model-gated: when no embedder is available (no model present, offline) or the index holds no
-///     embeddings, the generator returns nothing and retrieval stays lexical, preserving the no-model floor.
+///     embeddings, the generator returns nothing and retrieval stays lexical when no model is present.
 ///     The workspace's embeddings are loaded once and cached on the instance, so repeated queries against the
 ///     same index (the warm path) do not re-read the store. Vectors are unit length, so cosine is a dot product.
 /// </remarks>

@@ -13,7 +13,7 @@ namespace Fuse.Plugins.Rerank.Onnx;
 ///     A cross-encoder is the more accurate reranker family but costs one model run per candidate (its score is
 ///     pair-specific, so no document-side embedding can be cached). The model loads lazily on the first rerank
 ///     and is reused across calls; when it is absent or fails to load the reranker reports unavailable and the
-///     lexical ordering is kept, so this never removes the no-model floor. The cross-encoder logit and the
+///     lexical ordering is kept, so retrieval stays on the lexical path when no model is present. The cross-encoder logit and the
 ///     lexical score are min-max normalized over the pool before blending, so neither signal's raw scale leaks
 ///     into the blend.
 /// </remarks>

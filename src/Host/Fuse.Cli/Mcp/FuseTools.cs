@@ -181,7 +181,7 @@ public sealed partial class FuseTools
         new(StringComparer.OrdinalIgnoreCase);
 
     // Opens the store and builds the index on first use, so read tools work without an explicit fuse_index call.
-    // In the long-lived serve host, cold start serves the syntax tier in a few seconds (A4), then upgrades to the
+    // In the long-lived serve host, cold start serves the syntax tier in a few seconds, then upgrades to the
     // semantic graph in the background so the first read does not block on the MSBuild load. In a short-lived
     // in-process caller the index is built synchronously, so no background task outlives the call.
     private static async Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)

@@ -34,7 +34,7 @@ public static class FuseServiceCollectionExtensions
         services.AddCSharpRoslyn();
         services.AddFormatReducers();
         // Registers the dense reranker only when its model is cached; absent a model the query path stays
-        // lexical, so the no-model floor is preserved.
+        // lexical, so retrieval stays on the lexical path.
         services.AddOnnxDenseReranker();
         // Registers the text embedder only when its model is cached, so the indexer persists per-chunk vectors
         // and the dense candidate channel turns on; absent a model, indexing and retrieval stay lexical.

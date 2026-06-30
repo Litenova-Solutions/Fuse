@@ -22,7 +22,7 @@ public static class DenseModelProvisioner
     /// <summary>
     ///     Whether the dense channel is enabled. Dense is on by default; it is disabled only when
     ///     <c>FUSE_DENSE</c> is explicitly set to a falsy value (<c>0</c>, <c>false</c>, <c>no</c>, or <c>off</c>,
-    ///     case-insensitive). This is the retired no-model floor: absent an explicit opt-out, Fuse provisions and
+    ///     case-insensitive). Absent an explicit opt-out, Fuse provisions and
     ///     uses the bundled embedding model.
     /// </summary>
     public static bool IsDenseEnabled

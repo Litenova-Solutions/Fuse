@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Fuse.Fusion;
 
 /// <summary>
-///     The query-mode scoping pipeline (A2): builds the relevance index, runs ranking with pseudo-relevance
+///     The query-mode scoping pipeline: builds the relevance index, runs ranking with pseudo-relevance
 ///     feedback, multi-query fusion, the distributional thesaurus, member-level retrieval, the git churn prior,
 ///     and dense rerank, then promotes seeds and expands the dependency graph. Extracted from
 ///     <see cref="FusionOrchestrator" /> so the query path is testable in isolation; behavior is unchanged.
@@ -168,7 +168,7 @@ public sealed class QueryScopingPipeline
             freshIndex.Index(documents, postingsStore);
             return freshIndex;
         });
-        // Rank a candidate pool (A4): wider than the seed set so a reranking stage has room to reorder. The
+        // Rank a candidate pool: wider than the seed set so a reranking stage has room to reorder. The
         // lexical default keeps the pool equal to the seed count, so behavior is unchanged.
         var candidateTopK = request.Query!.ResolvedCandidateTopK;
         var seedTopK = request.Query.ResolvedSeedTopK;
@@ -314,7 +314,7 @@ public sealed class QueryScopingPipeline
         // query-to-document similarity, so a semantically matching file is promoted to a seed even when it
         // shares fewer query words. Optional and gated: when no reranker is registered (no model, offline, or
         // the assembly is absent) or the flag is off, the pool keeps its lexical order, which is the guaranteed
-        // no-model floor. The text embedded per candidate is its declared symbols, path, and a content sketch.
+        // lexical fallback when no model is present. The text embedded per candidate is its declared symbols, path, and a content sketch.
         if (experimental.DenseRerank && _reranker is { IsAvailable: true } reranker && ranked.Count > 1)
         {
             var rerankText = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

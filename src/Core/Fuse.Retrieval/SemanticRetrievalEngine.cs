@@ -62,7 +62,7 @@ public sealed class SemanticRetrievalEngine
     /// <returns>The ranked candidates and any warnings.</returns>
     public async Task<LocalizationResult> LocalizeAsync(LocalizationRequest request, CancellationToken cancellationToken)
     {
-        // Step 1: the R3 binary classifier. A request that carries no usable scoping signal (merge/dependency/CI
+        // Step 1: the low-signal classifier. A request that carries no usable scoping signal (merge/dependency/CI
         // noise, or an empty query with no structured input) names no code, so generating candidates would only
         // return junk. Refuse and route: hand back the structural map and ask for an anchor. This is the
         // insufficient state by classification, kept distinct from the score-distribution insufficiency below so
@@ -91,7 +91,7 @@ public sealed class SemanticRetrievalEngine
         // Select the returned set by state. Confident returns only the leading cluster (the precision win); partial
         // returns a small flagged best-effort set; insufficient returns nothing under strict mode (a hard anchor
         // requirement) and a best-effort set under the graceful default, so a client that cannot refine still gets
-        // something. The R3 LowSignal flag stays false here: this is a graded outcome, not a no-signal title.
+        // something. The LowSignal flag stays false here: this is a graded outcome, not a no-signal title.
         IReadOnlyList<ScoredCandidate> selected = state switch
         {
             SignalState.Confident => SignalGrader.LeadingCluster(scored),

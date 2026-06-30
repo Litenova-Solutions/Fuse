@@ -4,7 +4,7 @@ using Fuse.Plugins.Abstractions.Options;
 namespace Fuse.Fusion;
 
 /// <summary>
-///     The role a planned file plays in a scoped result (architecture enabler A1). The role is made explicit at
+///     The role a planned file plays in a scoped result. The role is made explicit at
 ///     planning time instead of being inferred downstream from a provenance chain's length, so reduction,
 ///     packing, and emission can read it directly.
 /// </summary>
@@ -41,7 +41,7 @@ internal sealed record PlannedFile(
     bool MustKeep);
 
 /// <summary>
-///     The explicit plan for a scoped result (A1): one <see cref="PlannedFile" /> per selected file, carrying the
+///     The explicit plan for a scoped result: one <see cref="PlannedFile" /> per selected file, carrying the
 ///     role and reduction tier that were previously inferred ad hoc from the provenance chain length. Built once
 ///     after scoping and consumed by the reduction stage (per-file tier) and available to packing and emission.
 /// </summary>

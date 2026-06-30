@@ -94,7 +94,7 @@ public sealed record ReviewRequest(
 /// <param name="LowSignal">
 ///     Whether the request carried no usable scoping signal (merge or dependency or CI noise, or an empty
 ///     query with no route, symbol, service, request, config, or base), so localization abstained rather than
-///     returning candidates a title cannot support. This is the R3 binary classifier verdict; the graded
+///     returning candidates a title cannot support. This is the low-signal classifier verdict; the graded
 ///     <see cref="State" /> is the richer signal-sufficiency outcome.
 /// </param>
 /// <param name="SuggestedInput">When <see cref="LowSignal" /> is true, a suggested next input to provide.</param>

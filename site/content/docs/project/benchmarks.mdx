@@ -176,9 +176,9 @@ This reframes the headline. Bare-title recall is no longer the measure for this 
 
 | Metric | Value | Target |
 |--------|------:|-------:|
-| Correct-refusal on no-signal | 100% (low-signal F1 1.0) | >= 90% |
-| False-rejection on answerable | 8.1% (8 of 99) | <= 10% |
-| Precision when confident | 21.3% (18 tasks) | >= 20% |
+| Correct-refusal on no-signal | 100% (low-signal F1 1.0) | at least 90% |
+| False-rejection on answerable | 8.1% (8 of 99) | at most 10% |
+| Precision when confident | 21.3% (18 tasks) | at least 20% |
 
 The cutoff trades recall for precision as designed: graded states over the 108 PRs are confident 18, partial 73, insufficient 17, and the returned-set recall falls to 16.4 percent at a median 956 returned tokens (from 31.0 percent at 4,642) because a confident result returns only its leading cluster and a partial result a capped best-effort set. Subword identifier indexing (next) widens recall back under this cutoff. Every number holds with no model present.
 

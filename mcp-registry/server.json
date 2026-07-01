@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Litenova-Solutions/fuse",
   "title": "Fuse",
-  "description": "A .NET semantic context engine for AI agents: index, map, localize, resolve, context, review, find, reduce. Resolves DI/route/MediatR/options wiring and PR change impact from a warm Roslyn-backed index.",
-  "version": "3.0.0",
+  "description": "A .NET semantic context engine for AI agents: index, map, localize, resolve, review, reduce code.",
+  "version": "3.1.0",
   "repository": {
     "url": "https://github.com/Litenova-Solutions/Fuse",
     "source": "github",
@@ -15,7 +15,7 @@
       "registryType": "nuget",
       "registryBaseUrl": "https://api.nuget.org/v3/index.json",
       "identifier": "Fuse",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "runtimeHint": "dnx",
       "transport": {
         "type": "stdio"

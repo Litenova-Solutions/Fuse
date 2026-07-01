@@ -25,6 +25,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Catch schema regressions (for example the registry's 100-char description cap) on the PR/tag
+      # before we spend minutes waiting on NuGet, instead of a 422 at the publish step.
+      - name: Validate manifest
+        run: |
+          set -euo pipefail
+          desc="$(jq -r '.description' mcp-registry/server.json)"
+          len="${#desc}"
+          if (( len > 100 )); then
+            echo "::error::server.json description is ${len} chars; the registry caps it at 100."
+            exit 1
+          fi
+          echo "Manifest description length ${len}/100 - OK."
+
       - name: Resolve package version
         run: |
           set -euo pipefail
@@ -75,9 +88,17 @@ jobs:
         run: |
           set -uo pipefail
           for attempt in $(seq 1 5); do
-            if ../mcp-publisher publish; then
+            output="$(../mcp-publisher publish 2>&1)" && status=0 || status=$?
+            echo "$output"
+            if [[ $status -eq 0 ]]; then
               echo "Published to MCP Registry on attempt ${attempt}."
               exit 0
+            fi
+            # A schema/validation rejection (HTTP 422) is permanent; retrying cannot fix a bad
+            # manifest, so fail fast instead of sleeping through all five attempts.
+            if echo "$output" | grep -qE 'status 422|validation failed'; then
+              echo "::error::mcp-publisher rejected the manifest (validation error); not retrying."
+              exit 1
             fi
             echo "Publish attempt ${attempt}/5 failed; sleeping 30s before retry..."
             sleep 30

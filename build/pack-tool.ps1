@@ -1,5 +1,7 @@
 param(
-    [string]$Version = "2.0.0",
+    # Empty means read the single source of truth in Directory.Build.props, so a local pack is correctly
+    # versioned without passing anything. CI passes the file version explicitly after verifying it matches the tag.
+    [string]$Version = "",
     [string[]]$Rids = @("win-x64", "linux-x64", "osx-x64")
 )
 
@@ -7,6 +9,14 @@ $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 
 $root = Split-Path -Parent $PSScriptRoot
+
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $propsPath = Join-Path $root "Directory.Build.props"
+    $Version = ([xml](Get-Content $propsPath)).Project.PropertyGroup.Version |
+        Where-Object { $_ } | Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace($Version)) { throw "No <Version> found in $propsPath" }
+    Write-Host "Using version $Version from Directory.Build.props"
+}
 $cliProject = Join-Path $root "src/Host/Fuse.Cli/Fuse.Cli.csproj"
 $outputDir = Join-Path $root "src/Host/Fuse.Cli/nupkg"
 $runtimeRoot = Join-Path $root "artifacts/runtime"

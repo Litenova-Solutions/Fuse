@@ -230,4 +230,15 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The summed reduced token estimate, or 0 when the file has no chunks.</returns>
     Task<int> GetFileTokenEstimateAsync(string normalizedPath, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns the content hash of each of the given files, keyed by normalized path.
+    /// </summary>
+    /// <param name="normalizedPaths">The normalized file paths to look up.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>
+    ///     A map from normalized path to content hash; a path with no indexed file is omitted. Used to collapse
+    ///     byte-identical duplicates (for example copies that escaped exclusion) to one canonical result.
+    /// </returns>
+    Task<IReadOnlyDictionary<string, string>> GetContentHashesAsync(IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken);
 }

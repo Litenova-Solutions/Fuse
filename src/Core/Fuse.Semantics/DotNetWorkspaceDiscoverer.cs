@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using Fuse.Collection;
+
 namespace Fuse.Semantics;
 
 /// <summary>
@@ -7,14 +10,13 @@ namespace Fuse.Semantics;
 /// <remarks>
 ///     Discovery order is solution, then projects, then syntax-only fallback. A single solution is preferred
 ///     when exactly one exists (a <c>.sln</c> ahead of a <c>.slnx</c>); otherwise all projects are indexed, or
-///     loose source files when no project exists. Build and tooling directories (<c>bin</c>, <c>obj</c>,
-///     <c>.git</c>, <c>.fuse</c>, <c>.vs</c>, <c>.claude</c>, <c>node_modules</c>) are pruned during the walk;
-///     <c>.claude</c> in particular holds Claude Code worktrees that are duplicate checkouts of the repo.
+///     loose source files when no project exists. Build and tooling directories are pruned during the walk from
+///     the shared <see cref="WorkspaceExclusions" /> set (plus the repository's <c>.fuseignore</c>), and any
+///     nested version-control root is pruned too, so Claude Code worktrees and other embedded checkouts under
+///     the root are never enumerated.
 /// </remarks>
 public sealed class DotNetWorkspaceDiscoverer
 {
-    private static readonly HashSet<string> IgnoredDirectories =
-        new(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".git", ".fuse", ".vs", ".claude", "node_modules" };
 
     /// <summary>
     ///     Discovers the workspace under a root directory.
@@ -25,10 +27,11 @@ public sealed class DotNetWorkspaceDiscoverer
     public Task<WorkspaceDiscoveryResult> DiscoverAsync(string root, CancellationToken cancellationToken)
     {
         var fullRoot = Path.GetFullPath(root);
+        var ignored = new HashSet<string>(WorkspaceExclusions.LoadDirectoryNames(fullRoot), StringComparer.OrdinalIgnoreCase);
         var solutions = new List<string>();
         var solutionsX = new List<string>();
         var projects = new List<string>();
-        foreach (var file in EnumerateFiles(fullRoot, cancellationToken))
+        foreach (var file in EnumerateFiles(fullRoot, ignored, cancellationToken))
         {
             switch (Path.GetExtension(file).ToLowerInvariant())
             {
@@ -46,9 +49,15 @@ public sealed class DotNetWorkspaceDiscoverer
 
         projects.Sort(StringComparer.OrdinalIgnoreCase);
 
+        // Collapse byte-identical solution copies (a duplicated checkout or backup) so an extra copy cannot flip
+        // the single-solution decision into projects mode. Combined with nested-VCS pruning above, this makes the
+        // mode robust to duplication rather than amplifying it.
+        var uniqueSolutions = DedupeCopies(solutions);
+        var uniqueSolutionsX = DedupeCopies(solutionsX);
+
         // Prefer a single solution: a unique .sln first, otherwise a unique .slnx when no .sln is present.
-        var solution = solutions.Count == 1 ? solutions[0]
-            : solutions.Count == 0 && solutionsX.Count == 1 ? solutionsX[0]
+        var solution = uniqueSolutions.Count == 1 ? uniqueSolutions[0]
+            : uniqueSolutions.Count == 0 && uniqueSolutionsX.Count == 1 ? uniqueSolutionsX[0]
             : null;
 
         WorkspaceDiscoveryResult result;
@@ -62,9 +71,48 @@ public sealed class DotNetWorkspaceDiscoverer
         return Task.FromResult(result);
     }
 
-    // Recursive file walk that prunes ignored directories so build trees are never enumerated.
-    private static IEnumerable<string> EnumerateFiles(string directory, CancellationToken cancellationToken)
+    // Keeps one path per distinct file content, preferring the shallowest then lexicographically-first path, so a
+    // duplicated copy of a solution collapses to its canonical location. Empty files are never collapsed: they
+    // carry no identity, and two distinct-but-empty solutions must remain distinct (ambiguous, projects mode).
+    // An unreadable file is kept as-is rather than dropped.
+    private static List<string> DedupeCopies(IReadOnlyList<string> paths)
     {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<string>();
+        foreach (var path in paths
+                     .OrderBy(p => p.Count(c => c is '/' or '\\'))
+                     .ThenBy(p => p, StringComparer.OrdinalIgnoreCase))
+        {
+            byte[] bytes;
+            try
+            {
+                bytes = File.ReadAllBytes(path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                result.Add(path);
+                continue;
+            }
+
+            if (bytes.Length == 0)
+            {
+                result.Add(path);
+                continue;
+            }
+
+            if (seen.Add(Convert.ToHexString(SHA256.HashData(bytes))))
+                result.Add(path);
+        }
+
+        return result;
+    }
+
+    // Recursive file walk that prunes ignored directories (so build trees are never enumerated) and any nested
+    // version-control root below the top level (a worktree, submodule, or embedded clone), which is a separate
+    // checkout whose files must not be indexed as part of this workspace.
+    private static IEnumerable<string> EnumerateFiles(string directory, HashSet<string> ignoredDirectories, CancellationToken cancellationToken)
+    {
+        var root = directory;
         var stack = new Stack<string>();
         stack.Push(directory);
 
@@ -90,8 +138,12 @@ public sealed class DotNetWorkspaceDiscoverer
             foreach (var subdirectory in subdirectories)
             {
                 var name = Path.GetFileName(subdirectory);
-                if (!IgnoredDirectories.Contains(name))
-                    stack.Push(subdirectory);
+                if (ignoredDirectories.Contains(name))
+                    continue;
+                // Skip a nested VCS root (contains .git); the top-level root's own .git is already excluded by name.
+                if (!string.Equals(subdirectory, root, StringComparison.OrdinalIgnoreCase) && WorkspaceExclusions.IsVcsRoot(subdirectory))
+                    continue;
+                stack.Push(subdirectory);
             }
 
             string[] files;

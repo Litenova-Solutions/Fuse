@@ -107,6 +107,39 @@ public sealed class DotNetWorkspaceDiscovererTests : IDisposable
         Assert.DoesNotContain(result.ProjectPaths, p => p.Contains(".claude", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task IgnoresNestedRepositoryRoots()
+    {
+        // A nested checkout anywhere (not just under .claude) is a separate repo; its .git marks it, and its
+        // projects must not be discovered even though the directory has no excluded name.
+        Write("App.sln", "");
+        Write("src/App/App.csproj", "<Project/>");
+        Write("external/Lib/.git", "gitdir: /elsewhere");
+        Write("external/Lib/Lib.csproj", "<Project/>");
+        Write("external/Lib/Lib.sln", "");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.Single(result.ProjectPaths);
+        Assert.DoesNotContain(result.ProjectPaths, p => p.Contains("external", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CollapsesIdenticalSolutionCopies()
+    {
+        // Two byte-identical .sln copies (a duplicated tree not under a VCS root) must not flip the single-solution
+        // decision into projects mode; they collapse to one canonical solution.
+        Write("App.sln", "Microsoft Visual Studio Solution File, Format Version 12.00");
+        Write("backup/App.sln", "Microsoft Visual Studio Solution File, Format Version 12.00");
+        Write("src/App/App.csproj", "<Project/>");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.NotNull(result.SolutionPath);
+    }
+
     private void Write(string relativePath, string content)
     {
         var full = Path.Combine(_root, relativePath.Replace('/', Path.DirectorySeparatorChar));

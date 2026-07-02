@@ -2,5 +2,7 @@ node_modules/
 dist/
 *.vsix
 .vscode-test/
-host/
+# The bundled per-platform host staged by scripts/package-platform.mjs. Anchored to the extension root so it
+# does not also shadow src/host (a bare "host/" would silently ignore new files added under src/host).
+/host/
 

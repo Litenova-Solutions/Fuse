@@ -59,13 +59,36 @@ public sealed record GraphDto(
     IReadOnlyList<GraphEdgeDto> Edges,
     string Detail);
 
+/// <summary>The indexed file count for one language, projected for the index panel.</summary>
+/// <param name="Language">The language tag (for example <c>csharp</c>), or <c>unknown</c>.</param>
+/// <param name="Count">The number of indexed files carrying the tag.</param>
+public sealed record LanguageCountDto(string Language, int Count);
+
 /// <summary>
-///     The result of the <c>fuse/index</c> method: the warm-index state after collecting and building the graph.
+///     The result of the <c>fuse/index</c> method: the semantic index summary the panel shows after building or
+///     refreshing the workspace index.
 /// </summary>
 /// <param name="IndexState">A coarse state label (<c>Warm</c>, <c>Indexing</c>, or <c>NotIndexed</c>).</param>
-/// <param name="FileCount">The number of source files indexed.</param>
+/// <param name="FileCount">The number of indexed files.</param>
 /// <param name="ElapsedMs">Wall-clock milliseconds the index build took.</param>
-public sealed record IndexResultDto(string IndexState, int FileCount, long ElapsedMs);
+/// <param name="Mode">The index tier: <c>semantic</c> (full typed graph), <c>partial</c>, or <c>syntax</c>.</param>
+/// <param name="SymbolCount">The number of indexed symbols.</param>
+/// <param name="RouteCount">The number of indexed routes.</param>
+/// <param name="SchemaVersion">The on-disk index schema version.</param>
+/// <param name="FullTextSearch">Whether full-text search (FTS5) is available.</param>
+/// <param name="FuseVersion">The Fuse build that wrote the index.</param>
+/// <param name="Languages">The indexed file count per language, most files first.</param>
+public sealed record IndexResultDto(
+    string IndexState,
+    int FileCount,
+    long ElapsedMs,
+    string Mode,
+    int SymbolCount,
+    int RouteCount,
+    int SchemaVersion,
+    bool FullTextSearch,
+    string FuseVersion,
+    IReadOnlyList<LanguageCountDto> Languages);
 
 /// <summary>
 ///     One emitted file in a scope result: the path the scope included and its token cost, for the scope-result

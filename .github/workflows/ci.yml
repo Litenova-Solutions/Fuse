@@ -20,6 +20,10 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Verify version consistency
+        shell: pwsh
+        run: ./build/verify-version.ps1
+
       - name: Restore
         run: dotnet restore Fuse.slnx
 

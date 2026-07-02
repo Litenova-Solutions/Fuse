@@ -34,10 +34,21 @@ export class HostSupervisor {
     this.log(`Starting host: ${executable} host --directory ${this.root}`);
     this.process = spawn(executable, ["host", "--directory", this.root], { stdio: ["ignore", "pipe", "pipe"] });
     this.process.stderr?.on("data", (d: Buffer) => this.log(d.toString().trimEnd()));
+    // A spawn failure (for example the executable is not on PATH) arrives as an error event, not an exception.
+    this.process.on("error", (err) => this.log(`Fuse host process error: ${err.message}`));
     this.process.on("exit", (code) => this.onExit(code));
 
     const endpoint = endpointFor(this.root);
-    const client = await this.connectWithBackoff(endpoint);
+    let client: HostClient;
+    try {
+      client = await this.connectWithBackoff(endpoint);
+    } catch (err) {
+      // We gave up waiting; do not leave an orphaned host squatting the pipe (a later attempt would connect to
+      // this stale process instead of a fresh one).
+      this.process?.kill();
+      this.process = undefined;
+      throw err;
+    }
 
     const handshake = await client.handshake();
     if (handshake.protocolVersion !== PROTOCOL_VERSION) {
@@ -57,18 +68,26 @@ export class HostSupervisor {
     return client;
   }
 
-  // Retries the connection while the freshly spawned host creates its transport, with a short linear backoff.
+  // Retries the connection while the freshly spawned host starts and creates its transport. A cold .NET host
+  // under load (a debugger attached, other extensions busy) can take several seconds, so wait against a generous
+  // deadline rather than a fixed short count, and bail out early if the host process exits before it serves.
   private async connectWithBackoff(endpoint: string): Promise<HostClient> {
+    const deadline = Date.now() + 15000;
     let lastError: unknown;
-    for (let attempt = 0; attempt < 30 && !this.disposed; attempt++) {
+    let attempt = 0;
+    while (!this.disposed && Date.now() < deadline) {
+      if (this.process && this.process.exitCode !== null) {
+        throw new Error(`Fuse host exited (code ${this.process.exitCode}) before it began serving.`);
+      }
       try {
         return await HostClient.connect(endpoint);
       } catch (err) {
         lastError = err;
-        await delay(100);
+        attempt++;
+        await delay(Math.min(500, 100 + attempt * 25));
       }
     }
-    throw new Error(`Could not connect to the Fuse host at ${endpoint}: ${String(lastError)}`);
+    throw new Error(`Could not connect to the Fuse host at ${endpoint} within 15s: ${String(lastError)}`);
   }
 
   private onExit(code: number | null): void {

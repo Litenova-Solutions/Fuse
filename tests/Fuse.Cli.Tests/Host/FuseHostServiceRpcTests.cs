@@ -1,4 +1,5 @@
 using System.IO.Pipelines;
+using System.Text.Json;
 using Fuse.Cli.Rpc;
 using Fuse.Collection;
 using Fuse.Collection.FileSystem;
@@ -49,6 +50,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         var clientFormatter = new SystemTextJsonFormatter();
         clientFormatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        // Mirror the real vscode-jsonrpc extension client, which reads camelCase field names (protocol.ts).
+        clientFormatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         using var clientRpc = new JsonRpc(
             new HeaderDelimitedMessageHandler(clientToServer.Writer, serverToClient.Reader, clientFormatter));
         clientRpc.StartListening();
@@ -69,6 +72,33 @@ public sealed class FuseHostServiceRpcTests : IDisposable
     }
 
     [Fact]
+    public async Task Handshake_SerializesCamelCaseOnTheWire_ForACamelCaseClient()
+    {
+        // The VS Code extension's vscode-jsonrpc client reads camelCase field names (see protocol.ts). A client
+        // configured that way must deserialize a real ProtocolVersion, not the default 0: if the host emits
+        // PascalCase, every field reads as its default and the extension reports an opaque "host undefined"
+        // protocol mismatch. This is the cross-formatter contract the same-formatter test above cannot see.
+        var clientToServer = new Pipe();
+        var serverToClient = new Pipe();
+
+        using var serverRpc = FuseHostConnection.Attach(clientToServer.Reader, serverToClient.Writer, NewService());
+
+        var clientFormatter = new SystemTextJsonFormatter();
+        clientFormatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        // Mirror the real vscode-jsonrpc extension client, which reads camelCase field names (protocol.ts).
+        clientFormatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        using var clientRpc = new JsonRpc(
+            new HeaderDelimitedMessageHandler(clientToServer.Writer, serverToClient.Reader, clientFormatter));
+        clientRpc.StartListening();
+
+        var handshake = await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
+
+        Assert.Equal(FuseHostService.ProtocolVersion, handshake.ProtocolVersion);
+        Assert.False(string.IsNullOrWhiteSpace(handshake.HostVersion));
+        Assert.False(string.IsNullOrWhiteSpace(handshake.SessionToken));
+    }
+
+    [Fact]
     public async Task Stats_WithoutSessionToken_RejectsOverTheWire()
     {
         var clientToServer = new Pipe();
@@ -78,6 +108,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         var clientFormatter = new SystemTextJsonFormatter();
         clientFormatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        // Mirror the real vscode-jsonrpc extension client, which reads camelCase field names (protocol.ts).
+        clientFormatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         using var clientRpc = new JsonRpc(
             new HeaderDelimitedMessageHandler(clientToServer.Writer, serverToClient.Reader, clientFormatter));
         clientRpc.StartListening();
@@ -99,6 +131,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         var clientFormatter = new SystemTextJsonFormatter();
         clientFormatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        // Mirror the real vscode-jsonrpc extension client, which reads camelCase field names (protocol.ts).
+        clientFormatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         using var clientRpc = new JsonRpc(
             new HeaderDelimitedMessageHandler(clientToServer.Writer, serverToClient.Reader, clientFormatter));
         clientRpc.StartListening();
@@ -371,6 +405,8 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         var clientFormatter = new SystemTextJsonFormatter();
         clientFormatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        // Mirror the real vscode-jsonrpc extension client, which reads camelCase field names (protocol.ts).
+        clientFormatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         using var clientRpc = new JsonRpc(
             new HeaderDelimitedMessageHandler(clientToServer.Writer, serverToClient.Reader, clientFormatter));
         var invalidated = new TaskCompletionSource();

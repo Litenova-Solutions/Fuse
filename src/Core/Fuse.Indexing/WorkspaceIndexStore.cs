@@ -34,6 +34,12 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         _logger = logger;
     }
 
+    /// <summary>
+    ///     The <c>index_meta</c> key under which the indexer stamps the Fuse build that wrote the index, so a
+    ///     later run can detect an incompatible upgrade and rebuild.
+    /// </summary>
+    public const string FuseVersionMetaKey = "fuse_version";
+
     /// <summary>The absolute path to the index database file.</summary>
     public string DatabasePath => _connectionFactory.DatabasePath;
 
@@ -55,6 +61,24 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         // additive schema change made within the same schema version, where migration is skipped because the
         // on-disk version already equals the target.
         await EnsureTablesAsync(connection, cancellationToken);
+
+        // Version-drift self-heal: if the index was written by a Fuse whose major.minor differs from this
+        // build, its extraction contract may have changed, so drop and rebuild the schema. The store is then
+        // empty and the next index pass repopulates it. Gated to major.minor so a patch upgrade does not force
+        // a costly reindex, and skipped when no version was stamped (a pre-stamp index) so it is not wiped
+        // blindly. This runs after EnsureTables so index_meta exists to read the stamp from.
+        var storedVersion = await ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
+        if (!FuseBuildInfo.IsCompatible(storedVersion))
+        {
+            _logger?.LogInformation(
+                "Index at {DatabasePath} was built by Fuse {StoredVersion}; rebuilding for {CurrentVersion}.",
+                _connectionFactory.DatabasePath,
+                storedVersion,
+                FuseBuildInfo.Current);
+            await WorkspaceIndexMigrator.RebuildAsync(connection, cancellationToken);
+            _schemaVersion = WorkspaceIndexSchema.TargetVersion;
+        }
+
         _ftsAvailable = await TryCreateFtsAsync(connection, cancellationToken);
         _initialized = true;
         _logger?.LogDebug(

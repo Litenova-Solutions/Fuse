@@ -60,7 +60,10 @@ public sealed class DiagnosticsCommand
         await using var store = new WorkspaceIndexStore(databasePath);
         await store.InitializeAsync(context.CancellationToken);
         var state = await store.GetStateAsync(context.CancellationToken);
+        var indexedBy = await store.GetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, context.CancellationToken);
 
+        builder.AppendLine($"fuse version: {FuseBuildInfo.Current}");
+        builder.AppendLine($"indexed by: {indexedBy ?? "(unknown; pre-stamp or rebuilt)"}");
         builder.AppendLine($"schema version: {state.SchemaVersion}");
         builder.AppendLine($"status: {state.Status}");
         builder.AppendLine($"index mode: {state.Mode ?? "(never indexed)"}");

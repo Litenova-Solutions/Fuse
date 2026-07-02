@@ -28,15 +28,28 @@ public static class WorkspaceIndexMigrator
         if (currentVersion >= WorkspaceIndexSchema.TargetVersion)
             return currentVersion;
 
-        await using (var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken))
-        {
-            await DropAllObjectsAsync(connection, transaction, cancellationToken);
-            await ExecuteAsync(connection, transaction, WorkspaceIndexSchema.CreateTablesDdl, cancellationToken);
-            await SetVersionAsync(connection, transaction, WorkspaceIndexSchema.TargetVersion, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-
+        await RebuildAsync(connection, cancellationToken);
         return WorkspaceIndexSchema.TargetVersion;
+    }
+
+    /// <summary>
+    ///     Drops every Fuse-owned table and recreates the schema at <see cref="WorkspaceIndexSchema.TargetVersion" />.
+    /// </summary>
+    /// <param name="connection">An open connection to the index database.</param>
+    /// <param name="cancellationToken">A token to cancel the rebuild.</param>
+    /// <returns>A task that completes when the schema has been rebuilt.</returns>
+    /// <remarks>
+    ///     Used both by <see cref="MigrateAsync" /> on a schema-version bump and by the store when the index was
+    ///     written by an incompatible Fuse build (see <see cref="FuseBuildInfo.IsCompatible" />). The rebuild
+    ///     empties the index; the caller re-indexes to repopulate it.
+    /// </remarks>
+    public static async Task RebuildAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        await DropAllObjectsAsync(connection, transaction, cancellationToken);
+        await ExecuteAsync(connection, transaction, WorkspaceIndexSchema.CreateTablesDdl, cancellationToken);
+        await SetVersionAsync(connection, transaction, WorkspaceIndexSchema.TargetVersion, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private static async Task EnsureVersionTableAsync(SqliteConnection connection, CancellationToken cancellationToken)

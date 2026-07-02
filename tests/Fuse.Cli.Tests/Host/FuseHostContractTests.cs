@@ -21,6 +21,25 @@ public sealed class FuseHostContractTests
     }
 
     [Fact]
+    public void IndexResult_SerializesRichSummaryCamelCase()
+    {
+        var index = new IndexResultDto(
+            "Warm", 128, 940, "semantic", 512, 7, 14, true, "3.2.0",
+            [new LanguageCountDto("csharp", 120), new LanguageCountDto("python", 8)]);
+
+        var json = JsonSerializer.Serialize(index, FuseHostJsonContext.Default.IndexResultDto);
+
+        Assert.Contains("\"indexState\":\"Warm\"", json);
+        Assert.Contains("\"mode\":\"semantic\"", json);
+        Assert.Contains("\"symbolCount\":512", json);
+        Assert.Contains("\"routeCount\":7", json);
+        Assert.Contains("\"schemaVersion\":14", json);
+        Assert.Contains("\"fullTextSearch\":true", json);
+        Assert.Contains("\"fuseVersion\":\"3.2.0\"", json);
+        Assert.Contains("\"languages\":[{\"language\":\"csharp\",\"count\":120}", json);
+    }
+
+    [Fact]
     public void Stats_RoundTripsThroughSourceGenContext()
     {
         var original = new FuseHostStats("3.0.0", 4242, 1500, 123_456_789);

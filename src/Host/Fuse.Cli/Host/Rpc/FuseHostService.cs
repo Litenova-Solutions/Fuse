@@ -1,16 +1,14 @@
 using System.Diagnostics;
 using System.Reflection;
-using Fuse.Cli.Mcp;
-using Fuse.Collection;
 using Fuse.Collection.FileSystem;
-using Fuse.Collection.Templates;
-using Fuse.Emission.Models;
-using Fuse.Fusion;
-using Fuse.Fusion.Scoping;
-using Fuse.Plugins.Abstractions;
-using Fuse.Plugins.Abstractions.Dependencies;
+using Fuse.Context;
+using Fuse.Indexing;
 using Fuse.Plugins.Abstractions.Reducers;
+using Fuse.Reduction;
+using Fuse.Reduction.Caching;
 using Fuse.Reduction.Security;
+using Fuse.Retrieval;
+using Fuse.Semantics;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
@@ -18,16 +16,15 @@ namespace Fuse.Cli.Rpc;
 
 /// <summary>
 ///     The JSON-RPC surface the VS Code extension calls over the UI transport. One instance is shared by the
-///     connection for a single repository root and delegates every measurement to the warm engine, so the UI and
-///     the MCP agent read the same data. This first milestone exposes the lifecycle and health methods
-///     (handshake, stats, shutdown); the engine-data projections (<c>fuse/index</c>, <c>fuse/graph</c>,
-///     <c>fuse/scope</c>, <c>fuse/explain</c>, <c>fuse/diagnostics</c>) are layered on this same service.
+///     connection for a single repository root and reads the V3 semantic index (the same
+///     <see cref="WorkspaceIndexStore" /> and <see cref="SemanticRetrievalEngine" /> the MCP tools use), so the
+///     UI and the agent see identical data.
 /// </summary>
 /// <remarks>
 ///     Method names use the <c>fuse/</c> namespace to match the wire protocol the extension's <c>protocol.ts</c>
 ///     mirrors. A random session token is generated at host start, returned from <c>fuse/handshake</c>, and
-///     required on every other RPC method. The service never throws across the wire for an expected condition; it returns a typed DTO so the
-///     client can render a clear state rather than parse an error.
+///     required on every other RPC method. The service never throws across the wire for an expected condition; it
+///     returns a typed DTO so the client can render a clear state rather than parse an error.
 /// </remarks>
 public sealed class FuseHostService : IDisposable
 {
@@ -35,17 +32,14 @@ public sealed class FuseHostService : IDisposable
     ///     The wire protocol version. Bumped on any breaking change to a DTO or method shape so a stale extension
     ///     and a newer host detect the mismatch at handshake instead of failing later on a serialization error.
     /// </summary>
-    public const int ProtocolVersion = 2;
+    public const int ProtocolVersion = 3;
+
+    private const int ListLimit = 100_000;
 
     private readonly ILogger<FuseHostService> _logger;
-    private readonly FusionOrchestrator _orchestrator;
-    private readonly IExplainService _explainService;
-    private readonly ProjectTemplateRegistry _templateRegistry;
-    private readonly FileCollectionPipeline _collectionPipeline;
-    private readonly DependencyGraphBuilder _graphBuilder;
-    private readonly Func<ISourceContentProvider> _contentProviderFactory;
-    private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
-    private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
+    private readonly SemanticIndexer _indexer;
+    private readonly IChangeSource _changeSource;
+    private readonly ContentReductionPipeline _reductionPipeline;
     private readonly ISecretRedactor _redactor;
     private readonly IGeneratedCodeDetector _generatedCodeDetector;
     private readonly string _sessionToken;
@@ -57,38 +51,23 @@ public sealed class FuseHostService : IDisposable
     /// <summary>
     ///     Initializes a new instance of the <see cref="FuseHostService" /> class.
     /// </summary>
-    /// <param name="orchestrator">The fusion orchestrator, shared with the MCP server and the CLI.</param>
-    /// <param name="explainService">The unified explain service for plan previews.</param>
-    /// <param name="templateRegistry">The project-template registry that supplies the .NET fusion defaults.</param>
-    /// <param name="collectionPipeline">The file collection pipeline used to enumerate the source tree for the graph.</param>
-    /// <param name="graphBuilder">The dependency-graph builder, shared with the engine.</param>
-    /// <param name="contentProviderFactory">Factory for a per-call source content provider.</param>
-    /// <param name="dependencyExtractors">Per-extension referenced-type extractors.</param>
-    /// <param name="typeNameLocators">Per-extension declared-type locators.</param>
+    /// <param name="indexer">The semantic indexer that builds and refreshes the workspace index.</param>
+    /// <param name="changeSource">The git change source for review (changes) scoping.</param>
+    /// <param name="reductionPipeline">The reduction pipeline used to render context payloads.</param>
     /// <param name="redactor">The secret redactor, used read-only to locate secret spans for diagnostics.</param>
-    /// <param name="generatedCodeDetector">Detects machine-generated C# for editor diagnostics.</param>
+    /// <param name="generatedCodeDetector">Detects machine-generated C# (for example EF Core migrations) for diagnostics.</param>
     /// <param name="logger">The logger for host-side diagnostics, routed away from the transport stream.</param>
     public FuseHostService(
-        FusionOrchestrator orchestrator,
-        IExplainService explainService,
-        ProjectTemplateRegistry templateRegistry,
-        FileCollectionPipeline collectionPipeline,
-        DependencyGraphBuilder graphBuilder,
-        Func<ISourceContentProvider> contentProviderFactory,
-        CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
-        CapabilityRegistry<ITypeNameLocator> typeNameLocators,
+        SemanticIndexer indexer,
+        IChangeSource changeSource,
+        ContentReductionPipeline reductionPipeline,
         ISecretRedactor redactor,
         IGeneratedCodeDetector generatedCodeDetector,
         ILogger<FuseHostService> logger)
     {
-        _orchestrator = orchestrator;
-        _explainService = explainService;
-        _templateRegistry = templateRegistry;
-        _collectionPipeline = collectionPipeline;
-        _graphBuilder = graphBuilder;
-        _contentProviderFactory = contentProviderFactory;
-        _dependencyExtractors = dependencyExtractors;
-        _typeNameLocators = typeNameLocators;
+        _indexer = indexer;
+        _changeSource = changeSource;
+        _reductionPipeline = reductionPipeline;
         _redactor = redactor;
         _generatedCodeDetector = generatedCodeDetector;
         _logger = logger;
@@ -135,18 +114,14 @@ public sealed class FuseHostService : IDisposable
     }
 
     /// <summary>
-    ///     Warms the engine for a repository root: collects the source tree and builds the analysis index and
-    ///     dependency graph once through the shared orchestrator, so subsequent scoping calls pay only ranking
-    ///     and emission. Returns the resulting index state and file count.
+    ///     Builds or refreshes the semantic index for a repository root and returns its summary: the tier
+    ///     (semantic, partial, or syntax), file/symbol/route counts, per-language breakdown, full-text-search
+    ///     availability, schema version, and the Fuse build that wrote it. A cold index is built once; a warm one
+    ///     is reported without rebuilding.
     /// </summary>
     /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root to index.</param>
-    /// <returns>The warm-index state, the number of files considered, and the wall-clock build time.</returns>
-    /// <remarks>
-    ///     This runs the same in-memory .NET fusion path the MCP server uses (persistent index on), so the warm
-    ///     state it builds is shared with the agent surface. A missing directory returns the
-    ///     <c>NotIndexed</c> state rather than throwing across the wire.
-    /// </remarks>
+    /// <returns>The index summary the extension's index panel renders.</returns>
     /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/index")]
     public async Task<IndexResultDto> IndexAsync(string sessionToken, string root)
@@ -156,41 +131,56 @@ public sealed class FuseHostService : IDisposable
         if (!Directory.Exists(resolved))
         {
             _logger.LogWarning("Index requested for missing directory {Root}.", resolved);
-            return new IndexResultDto("NotIndexed", 0, 0);
+            return new IndexResultDto("NotIndexed", 0, 0, "none", 0, 0, 0, false, FuseBuildInfo.Current, []);
         }
 
-        var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
-        var result = await _orchestrator.FuseAsync(builder.Build());
-        _logger.LogInformation("Indexed {Root}: {Count} files in {Ms} ms.",
-            resolved, result.TotalFileCount, (long)result.Duration.TotalMilliseconds);
-        return new IndexResultDto("Warm", result.TotalFileCount, (long)result.Duration.TotalMilliseconds);
+        await using var store = await OpenStoreAsync(resolved);
+        var state = await store.GetStateAsync(CancellationToken.None);
+        long elapsedMs = 0;
+        if (state.FileCount == 0)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            await _indexer.IndexAsync(resolved, store, CancellationToken.None);
+            elapsedMs = stopwatch.ElapsedMilliseconds;
+            state = await store.GetStateAsync(CancellationToken.None);
+        }
+
+        var routeCount = await store.GetRouteCountAsync(CancellationToken.None);
+        var languages = (await store.GetLanguageCountsAsync(CancellationToken.None))
+            .Select(l => new LanguageCountDto(l.Language, l.Count))
+            .ToList();
+        var fuseVersion = await store.GetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, CancellationToken.None)
+                          ?? FuseBuildInfo.Current;
+
+        _logger.LogInformation("Index {Root}: [{Mode}] {Files} files, {Symbols} symbols, {Routes} routes.",
+            resolved, state.Mode, state.FileCount, state.SymbolCount, routeCount);
+        return new IndexResultDto(
+            state.FileCount > 0 ? "Warm" : "NotIndexed",
+            state.FileCount,
+            elapsedMs,
+            state.Mode ?? "none",
+            state.SymbolCount,
+            routeCount,
+            state.SchemaVersion,
+            store.FullTextSearchAvailable,
+            fuseVersion,
+            languages);
     }
 
     /// <summary>
-    ///     Projects the dependency graph for a repository root: nodes are files (or directories at the coarser
-    ///     level of detail) with PageRank centrality and an estimated token cost, and edges are file-to-file
-    ///     references. The webview sizes nodes by centrality, colors them by token cost, and styles edges by kind.
+    ///     Projects the semantic dependency graph for a repository root: nodes are files with the symbols they
+    ///     declare, a degree-based centrality, and an estimated token cost; edges are the typed dependency edges
+    ///     resolved to file pairs. An optional scope overlay tags each node with the role a fusion would give it.
     /// </summary>
     /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root.</param>
-    /// <param name="detail">
-    ///     <c>Files</c> for a node per file, or <c>Directories</c> for directory supernodes (file nodes folded
-    ///     into their directory and edges aggregated), so a large repository does not ship its whole file graph.
-    /// </param>
-    /// <param name="scopeMode">
-    ///     Optional scoping mode (<c>focus</c>, <c>search</c>, or <c>changes</c>) to project a subgraph around a
-    ///     seed, query, or change set instead of the whole repository; <c>null</c> projects the full graph.
-    /// </param>
-    /// <param name="seed">The focus seed (a type name, file, or path) when <paramref name="scopeMode" /> is <c>focus</c>.</param>
+    /// <param name="detail"><c>Files</c> for a node per file, or <c>Directories</c> for directory supernodes.</param>
+    /// <param name="scopeMode">Optional scoping mode (<c>focus</c>, <c>search</c>, <c>changes</c>) for a role overlay.</param>
+    /// <param name="seed">The focus seed when <paramref name="scopeMode" /> is <c>focus</c>.</param>
     /// <param name="query">The search query when <paramref name="scopeMode" /> is <c>search</c>.</param>
-    /// <param name="since">The Git base ref when <paramref name="scopeMode" /> is <c>changes</c>.</param>
-    /// <param name="directory">Optional subdirectory under <paramref name="root" /> to restrict the projection to.</param>
+    /// <param name="since">The git base ref when <paramref name="scopeMode" /> is <c>changes</c>.</param>
+    /// <param name="directory">Optional subdirectory to restrict a file-level projection to.</param>
     /// <returns>The graph nodes and edges at the requested level of detail.</returns>
-    /// <remarks>
-    ///     The token cost is a cheap size-based estimate (bytes divided by four), sufficient for relative node
-    ///     coloring; it is not the exact o200k count the emission path reports. Uses the same collection pipeline
-    ///     and dependency-graph builder as the engine, so the projection matches what scoping traverses.
-    /// </remarks>
     /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/graph")]
     public async Task<GraphDto> GraphAsync(
@@ -199,57 +189,60 @@ public sealed class FuseHostService : IDisposable
     {
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         var resolved = Path.GetFullPath(root);
-        // A directory filter expands one supernode: it forces file-level nodes restricted to that subtree, so a
-        // large repository ships its directory graph first and a directory's files only when the user expands it.
         var expandDirectory = !string.IsNullOrWhiteSpace(directory);
         var directories = !expandDirectory && string.Equals(detail, "Directories", StringComparison.OrdinalIgnoreCase);
         if (!Directory.Exists(resolved))
             return new GraphDto([], [], directories ? "Directories" : "Files");
 
-        var request = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved).Build();
-        var collection = await _collectionPipeline.CollectAsync(request.Collection);
-        var graph = await _graphBuilder.BuildAsync(
-            collection.Files, _contentProviderFactory(), _dependencyExtractors, _typeNameLocators);
-        var centrality = GraphCentrality.Compute(graph);
+        await using var store = await OpenStoreAsync(resolved);
+        await EnsureIndexedAsync(store, resolved);
 
-        // Estimate per-file token cost from byte length (bytes / 4), a cheap relative signal for node coloring.
-        var tokenByPath = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in collection.Files)
-            tokenByPath[file.NormalizedRelativePath] = (int)(file.FileInfo.Length / 4);
+        var files = await store.FindFilesByPathAsync(string.Empty, ListLimit, CancellationToken.None);
+        var tokenByPath = await store.GetFileTokenEstimatesAsync(CancellationToken.None);
+        var edges = await store.GetFileDependencyEdgesAsync(CancellationToken.None);
 
-        // Optional scope overlay: when a scope is supplied, run it and tag each node with the role the context
-        // plan gave that file (Seed, Dependency, Changed), so the webview can recolor by role to show exactly
-        // what a fusion would include. The roles apply at file granularity (they do not aggregate to directories).
-        var roleByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Declared symbol names per file, for the node label and hover.
+        var typesByPath = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var symbol in await store.ListSymbolsAsync(ListLimit, CancellationToken.None))
+        {
+            if (!typesByPath.TryGetValue(symbol.FilePath, out var names))
+                typesByPath[symbol.FilePath] = names = [];
+            if (names.Count < 25 && !names.Contains(symbol.Name))
+                names.Add(symbol.Name);
+        }
+
+        // Degree-based centrality: a file's in+out edge count, normalized to [0, 1] by the busiest file.
+        var degree = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var edge in edges)
+        {
+            degree[edge.FromPath] = degree.GetValueOrDefault(edge.FromPath) + 1;
+            degree[edge.ToPath] = degree.GetValueOrDefault(edge.ToPath) + 1;
+        }
+        var maxDegree = degree.Count == 0 ? 1 : degree.Values.Max();
+
+        // Optional scope overlay: tag each file with the role a fusion would give it, so the webview recolors.
+        var roleByPath = new Dictionary<string, string>(StringComparer.Ordinal);
         if (!string.IsNullOrWhiteSpace(scopeMode))
         {
-            var scopeBuilder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
-            FusionScopeDescriptor.ApplyMode(scopeBuilder, scopeMode, seed, query, since);
-            var scoped = await _orchestrator.FuseAsync(scopeBuilder.Build());
-            foreach (var planned in scoped.Plan)
-                roleByPath[planned.Path] = planned.Role;
+            var (_, plan) = await PlanScopeAsync(store, resolved, scopeMode!, seed, query, since, 0);
+            foreach (var item in plan.Items)
+                roleByPath[item.Path] = item.Role;
         }
 
-        var fileNodes = new List<GraphNodeDto>(graph.DeclaredTypes.Count);
-        foreach (var (path, types) in graph.DeclaredTypes)
-        {
-            fileNodes.Add(new GraphNodeDto(
-                path,
-                types,
-                centrality.TryGetValue(path, out var c) ? Math.Round(c, 4) : 0.0,
-                tokenByPath.GetValueOrDefault(path),
-                roleByPath.GetValueOrDefault(path)));
-        }
+        var fileNodes = files.Select(f => new GraphNodeDto(
+            f.NormalizedPath,
+            typesByPath.GetValueOrDefault(f.NormalizedPath, []),
+            Math.Round(degree.GetValueOrDefault(f.NormalizedPath) / (double)maxDegree, 4),
+            tokenByPath.GetValueOrDefault(f.NormalizedPath),
+            roleByPath.GetValueOrDefault(f.NormalizedPath))).ToList();
 
-        var fileEdges = new List<GraphEdgeDto>();
-        foreach (var (from, targets) in graph.FileReferences)
-            foreach (var to in targets)
-                fileEdges.Add(new GraphEdgeDto(from, to, 1.0, "reference"));
+        var fileEdges = edges
+            .GroupBy(e => (e.FromPath, e.ToPath))
+            .Select(g => new GraphEdgeDto(g.Key.FromPath, g.Key.ToPath, g.Count(), g.First().Kind))
+            .ToList();
 
         if (expandDirectory)
         {
-            // Restrict to the requested directory subtree (the supernode the user expanded) and the edges among
-            // its files, so an expand ships one directory's file graph rather than the whole repository.
             var prefix = directory!.Replace('\\', '/').TrimEnd('/') + "/";
             bool Under(string p) => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
             var subNodes = fileNodes.Where(n => Under(n.Path)).ToList();
@@ -264,9 +257,9 @@ public sealed class FuseHostService : IDisposable
         return AggregateToDirectories(fileNodes, fileEdges);
     }
 
-    // Folds the file graph into directory supernodes: a node per directory (token cost summed, centrality summed
-    // for relative sizing) and one edge per distinct cross-directory reference, so a large repository ships a
-    // small graph that the webview expands on demand. Mirrors the engine's directory-level table of contents.
+    // Folds the file graph into directory supernodes: a node per directory (token cost and centrality summed for
+    // relative sizing) and one edge per distinct cross-directory reference, so a large repository ships a small
+    // graph the webview expands on demand.
     private static GraphDto AggregateToDirectories(IReadOnlyList<GraphNodeDto> fileNodes, IReadOnlyList<GraphEdgeDto> fileEdges)
     {
         static string DirectoryOf(string path)
@@ -298,18 +291,17 @@ public sealed class FuseHostService : IDisposable
     }
 
     /// <summary>
-    ///     Runs a scoped fusion through the shared orchestrator and returns the emitted file plan plus a path to
-    ///     the written payload, so the extension can populate the scope-result panel and open the payload
-    ///     read-only. The same orchestrator path the MCP agent uses, so the UI and the agent see identical scopes.
+    ///     Plans and emits a scoped context payload from the semantic index, and returns the included files with
+    ///     their token costs plus a path to the written payload the extension opens read-only.
     /// </summary>
     /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root.</param>
     /// <param name="mode">The scoping mode: <c>focus</c>, <c>changes</c>, or anything else for <c>search</c>.</param>
-    /// <param name="seed">The focus seed (type or file) when <paramref name="mode" /> is <c>focus</c>.</param>
+    /// <param name="seed">The focus seed (symbol or file) when <paramref name="mode" /> is <c>focus</c>.</param>
     /// <param name="query">The search query when <paramref name="mode" /> is <c>search</c>.</param>
     /// <param name="since">The git base when <paramref name="mode" /> is <c>changes</c>.</param>
     /// <param name="maxTokens">The token budget for the emitted payload, or <c>0</c> for unbounded.</param>
-    /// <returns>The emitted files with token costs, the total tokens, and the payload file path.</returns>
+    /// <returns>The included files with token costs, the total tokens, and the payload file path.</returns>
     /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
     [JsonRpcMethod("fuse/scope")]
     public async Task<ScopeResultDto> ScopeAsync(
@@ -320,143 +312,40 @@ public sealed class FuseHostService : IDisposable
         if (!Directory.Exists(resolved))
             return new ScopeResultDto((mode ?? "search").Trim().ToLowerInvariant(), [], 0, null);
 
-        var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
-        builder.WithEmissionOptions(new EmissionOptions
-        {
-            MaxTokens = maxTokens > 0 ? maxTokens : null,
-            ShowTokenCount = false,
-            IncludeManifest = true,
-        });
+        await using var store = await OpenStoreAsync(resolved);
+        await EnsureIndexedAsync(store, resolved);
 
-        var normalizedMode = FusionScopeDescriptor.ApplyMode(builder, mode, seed, query, since);
-        var result = await _orchestrator.FuseAsync(builder.Build());
+        var (normalizedMode, plan) = await PlanScopeAsync(store, resolved, mode, seed, query, since, maxTokens);
 
         string? payloadPath = null;
-        if (!string.IsNullOrEmpty(result.InMemoryContent))
+        if (plan.Items.Count > 0)
         {
-            // Write the payload to a user-private file the extension opens read-only. The name is unique per
-            // call (a GUID) so concurrent scopes on the same root and mode do not contend on one file; tracked
-            // paths are deleted on shutdown and dispose.
+            var renderer = new SemanticContextRenderer(_reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
+            var rendered = await renderer.RenderAsync(plan, resolved, CancellationToken.None);
+            var content = SemanticContextEmitter.Emit(plan, rendered, ContextOutputFormat.Xml, resolved);
+
             var dir = PayloadDirectory;
             Directory.CreateDirectory(dir);
-            payloadPath = Path.Combine(
-                dir, $"{HostEndpoint.PipeName(resolved)}-{normalizedMode}-{Guid.NewGuid():N}.fuse.xml");
-            await File.WriteAllTextAsync(payloadPath, result.InMemoryContent);
+            payloadPath = Path.Combine(dir, $"{HostEndpoint.PipeName(resolved)}-{normalizedMode}-{Guid.NewGuid():N}.fuse.xml");
+            await File.WriteAllTextAsync(payloadPath, content);
             RestrictPayloadPermissions(payloadPath);
             lock (_payloadLock)
                 _payloadPaths.Add(payloadPath);
         }
 
-        var files = result.EmittedFileTokens
-            .Select(f => new ScopeFileDto(f.Path, (int)f.Count))
+        var files = plan.Items
+            .Select(i => new ScopeFileDto(i.Path, i.EstimatedTokens))
+            .OrderByDescending(f => f.TokenCost)
             .ToList();
 
         _logger.LogInformation("Scope {Mode} on {Root}: {Files} files, {Tokens} tokens.",
-            normalizedMode, resolved, files.Count, result.TotalTokens);
-        return new ScopeResultDto(normalizedMode, files, result.TotalTokens, payloadPath);
+            normalizedMode, resolved, files.Count, plan.EstimatedTokens);
+        return new ScopeResultDto(normalizedMode, files, plan.EstimatedTokens, payloadPath);
     }
 
     /// <summary>
-    ///     Scans the repository for context diagnostics. Currently returns secret findings with precise editor
-    ///     ranges, computed read-only with the same redactor the reduction path uses, so the editor underlines
-    ///     exactly the literal that emitted output would redact. Hotspot and graph-gap diagnostics are layered on
-    ///     this method in later increments.
-    /// </summary>
-    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
-    /// <param name="root">The absolute repository root.</param>
-    /// <returns>The detected secrets with their precise line and character ranges.</returns>
-    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
-    [JsonRpcMethod("fuse/diagnostics")]
-    public async Task<DiagnosticsDto> DiagnosticsAsync(string sessionToken, string root)
-    {
-        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
-        var resolved = Path.GetFullPath(root);
-        if (!Directory.Exists(resolved))
-            return new DiagnosticsDto([], [], [], []);
-
-        var request = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved).Build();
-        var collection = await _collectionPipeline.CollectAsync(request.Collection);
-        var contentProvider = _contentProviderFactory();
-
-        var secrets = new List<SecretDiagnosticDto>();
-        var generated = new List<string>();
-        foreach (var file in collection.Files)
-        {
-            var content = await contentProvider.GetContentAsync(file);
-
-            // Flag generated C# (EF Core migrations and model snapshots, rarely worth reading) for an editor hint.
-            if (file.IsCSharp && _generatedCodeDetector.IsGenerated(content))
-                generated.Add(file.NormalizedRelativePath);
-
-            var spans = _redactor.FindSecretSpans(content);
-            if (spans.Count == 0)
-                continue;
-
-            // Convert each character span to a zero-based line and column range once per file, walking the
-            // content's newline offsets so a multi-line file maps spans without rescanning from the start.
-            var lineStarts = ComputeLineStarts(content);
-            foreach (var span in spans)
-            {
-                var (startLine, startCol) = OffsetToLineColumn(lineStarts, span.Start);
-                var (endLine, endCol) = OffsetToLineColumn(lineStarts, span.Start + span.Length);
-                secrets.Add(new SecretDiagnosticDto(
-                    file.NormalizedRelativePath, span.Kind, startLine, startCol, endLine, endCol));
-            }
-        }
-
-        // Token hotspots and graph gaps from the dependency graph: hotspots are the most token-expensive files
-        // (the budget pressure), gaps are files with no inbound or outbound type reference (often dead or
-        // reflection-only code the syntax graph cannot see).
-        var graph = await _graphBuilder.BuildAsync(collection.Files, contentProvider, _dependencyExtractors, _typeNameLocators);
-        var hotspots = collection.Files
-            .Select(f => new HotspotDiagnosticDto(f.NormalizedRelativePath, (int)(f.FileInfo.Length / 4)))
-            .OrderByDescending(h => h.TokenCost)
-            .Take(20)
-            .ToList();
-
-        var connected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (from, targets) in graph.FileReferences)
-        {
-            if (targets.Count > 0)
-                connected.Add(from);
-            foreach (var to in targets)
-                connected.Add(to);
-        }
-        var graphGaps = graph.DeclaredTypes.Keys
-            .Where(p => !connected.Contains(p))
-            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        _logger.LogInformation("Diagnostics on {Root}: {Secrets} secrets, {Hotspots} hotspots, {Gaps} gaps, {Generated} generated.",
-            resolved, secrets.Count, hotspots.Count, graphGaps.Count, generated.Count);
-        return new DiagnosticsDto(secrets, hotspots, graphGaps, generated);
-    }
-
-    // The character offset at which each line starts, so an offset maps to a line by binary search.
-    private static int[] ComputeLineStarts(string content)
-    {
-        var starts = new List<int> { 0 };
-        for (var i = 0; i < content.Length; i++)
-            if (content[i] == '\n')
-                starts.Add(i + 1);
-        return [.. starts];
-    }
-
-    // Maps a character offset to a zero-based (line, column) using the precomputed line-start table.
-    private static (int Line, int Column) OffsetToLineColumn(int[] lineStarts, int offset)
-    {
-        var line = Array.BinarySearch(lineStarts, offset);
-        if (line < 0)
-            line = ~line - 1; // the insertion point minus one is the line whose start is at or before the offset
-        line = Math.Clamp(line, 0, lineStarts.Length - 1);
-        return (line, offset - lineStarts[line]);
-    }
-
-    /// <summary>
-    ///     Explains what a scoped fusion would include without writing a payload: returns the context plan
-    ///     (each planned file's role, reduction tier, and relevance score) the same orchestrator builds for a
-    ///     real scope, so the extension's scope-result and explainer panels can show why a file is in and at what
-    ///     fidelity before fetching anything.
+    ///     Explains what a scoped fusion would include without writing a payload: returns each planned file's
+    ///     role, render tier, and score from the semantic context plan.
     /// </summary>
     /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root.</param>
@@ -475,15 +364,96 @@ public sealed class FuseHostService : IDisposable
         if (!Directory.Exists(resolved))
             return new ExplainResultDto((mode ?? "search").Trim().ToLowerInvariant(), []);
 
-        var builder = FuseToolHelpers.CreateDotNetBuilder(_templateRegistry, resolved);
-        var normalizedMode = FusionScopeDescriptor.ApplyMode(builder, mode, seed, query, since);
-        var planResult = await _explainService.PlanAsync(builder.Build(), normalizedMode);
-        var files = planResult.FusionResult.Plan
-            .Select(p => new ExplainFileDto(p.Path, p.Role, p.Tier, p.Score))
+        await using var store = await OpenStoreAsync(resolved);
+        await EnsureIndexedAsync(store, resolved);
+
+        var (normalizedMode, plan) = await PlanScopeAsync(store, resolved, mode, seed, query, since, 0);
+        var files = plan.Items
+            .Select(i => new ExplainFileDto(i.Path, i.Role, i.Tier.ToString(), i.Score))
             .ToList();
 
         _logger.LogInformation("Explain {Mode} on {Root}: {Files} planned files.", normalizedMode, resolved, files.Count);
         return new ExplainResultDto(normalizedMode, files);
+    }
+
+    /// <summary>
+    ///     Scans the repository for context diagnostics from the semantic index: secret findings with precise
+    ///     editor ranges (computed read-only with the same redactor the reduction path uses), the most
+    ///     token-expensive files, files with no dependency edge, and files flagged as generated.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <returns>The detected secrets, hotspots, graph gaps, and generated files.</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    [JsonRpcMethod("fuse/diagnostics")]
+    public async Task<DiagnosticsDto> DiagnosticsAsync(string sessionToken, string root)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        var resolved = Path.GetFullPath(root);
+        if (!Directory.Exists(resolved))
+            return new DiagnosticsDto([], [], [], []);
+
+        await using var store = await OpenStoreAsync(resolved);
+        await EnsureIndexedAsync(store, resolved);
+
+        var files = await store.FindFilesByPathAsync(string.Empty, ListLimit, CancellationToken.None);
+
+        // Read each indexed file's content once to locate the secret spans the reduction path would redact (mapped
+        // to zero-based editor ranges) and to flag machine-generated C#. Read failures skip the file.
+        var secrets = new List<SecretDiagnosticDto>();
+        var generated = new List<string>();
+        foreach (var file in files)
+        {
+            string content;
+            try
+            {
+                content = await File.ReadAllTextAsync(Path.Combine(resolved, file.NormalizedPath.Replace('/', Path.DirectorySeparatorChar)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            if (string.Equals(file.Extension, ".cs", StringComparison.OrdinalIgnoreCase) && _generatedCodeDetector.IsGenerated(content))
+                generated.Add(file.NormalizedPath);
+
+            var spans = _redactor.FindSecretSpans(content);
+            if (spans.Count == 0)
+                continue;
+
+            var lineStarts = ComputeLineStarts(content);
+            foreach (var span in spans)
+            {
+                var (startLine, startCol) = OffsetToLineColumn(lineStarts, span.Start);
+                var (endLine, endCol) = OffsetToLineColumn(lineStarts, span.Start + span.Length);
+                secrets.Add(new SecretDiagnosticDto(file.NormalizedPath, span.Kind, startLine, startCol, endLine, endCol));
+            }
+        }
+
+        var tokenByPath = await store.GetFileTokenEstimatesAsync(CancellationToken.None);
+        var hotspots = tokenByPath
+            .Select(kv => new HotspotDiagnosticDto(kv.Key, kv.Value))
+            .OrderByDescending(h => h.TokenCost)
+            .Take(20)
+            .ToList();
+
+        // Graph gaps: indexed files that no typed dependency edge touches (often reflection-only or dead code the
+        // syntax tier cannot connect).
+        var connected = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var edge in await store.GetFileDependencyEdgesAsync(CancellationToken.None))
+        {
+            connected.Add(edge.FromPath);
+            connected.Add(edge.ToPath);
+        }
+        var graphGaps = files
+            .Select(f => f.NormalizedPath)
+            .Where(p => !connected.Contains(p))
+            .OrderBy(p => p, StringComparer.Ordinal)
+            .ToList();
+
+        _logger.LogInformation("Diagnostics on {Root}: {Secrets} secrets, {Hotspots} hotspots, {Gaps} gaps, {Generated} generated.",
+            resolved, secrets.Count, hotspots.Count, graphGaps.Count, generated.Count);
+        return new DiagnosticsDto(secrets, hotspots, graphGaps, generated);
     }
 
     /// <summary>
@@ -506,6 +476,83 @@ public sealed class FuseHostService : IDisposable
     ///     when the host service is disposed.
     /// </summary>
     public void Dispose() => DeleteTrackedPayloads();
+
+    // Opens (and migrates) the semantic index store for a repository root, without indexing.
+    private static async Task<WorkspaceIndexStore> OpenStoreAsync(string root)
+    {
+        var store = new WorkspaceIndexStore(FuseStorePaths.ResolveDatabasePath(root));
+        await store.InitializeAsync(CancellationToken.None);
+        return store;
+    }
+
+    // Builds the index on first use so a cold store serves data; a warm store is left as-is.
+    private async Task EnsureIndexedAsync(WorkspaceIndexStore store, string root)
+    {
+        var state = await store.GetStateAsync(CancellationToken.None);
+        if (state.FileCount == 0)
+            await _indexer.IndexAsync(root, store, CancellationToken.None);
+    }
+
+    // Plans a scoped context payload for a mode: focus (a symbol or file seed), changes (a git review), or search
+    // (localize the query, then build context from the located files). Shared by scope and explain.
+    private async Task<(string Mode, ContextPlan Plan)> PlanScopeAsync(
+        WorkspaceIndexStore store, string root, string mode, string? seed, string? query, string? since, int maxTokens)
+    {
+        var engine = new SemanticRetrievalEngine(store, _changeSource);
+        var normalized = (mode ?? "search").Trim().ToLowerInvariant();
+        int? budget = maxTokens > 0 ? maxTokens : null;
+
+        switch (normalized)
+        {
+            case "changes":
+                return ("changes", await engine.ReviewAsync(
+                    new ReviewRequest(root, string.IsNullOrWhiteSpace(since) ? "HEAD" : since!, MaxTokens: budget),
+                    CancellationToken.None));
+
+            case "focus":
+                var seeds = new List<ContextSeed>();
+                if (!string.IsNullOrWhiteSpace(seed))
+                    seeds.Add(new ContextSeed(LooksLikePath(seed!) ? ContextSeedKind.File : ContextSeedKind.Symbol, seed!));
+                return ("focus", await engine.PlanContextAsync(
+                    new ContextRequest(root, seeds, MaxTokens: budget), CancellationToken.None));
+
+            default:
+                var located = await engine.LocalizeAsync(new LocalizationRequest(root, Query: query), CancellationToken.None);
+                var fileSeeds = located.Candidates
+                    .Where(c => !string.IsNullOrEmpty(c.Path))
+                    .Select(c => new ContextSeed(ContextSeedKind.File, c.Path))
+                    .ToList();
+                return ("search", await engine.PlanContextAsync(
+                    new ContextRequest(root, fileSeeds, MaxTokens: budget), CancellationToken.None));
+        }
+    }
+
+    // A focus seed is treated as a file when it looks like a path (a separator or a known source extension),
+    // otherwise as a symbol name.
+    private static bool LooksLikePath(string seed) =>
+        seed.Contains('/', StringComparison.Ordinal)
+        || seed.Contains('\\', StringComparison.Ordinal)
+        || Path.HasExtension(seed);
+
+    // The character offset at which each line starts, so an offset maps to a line by binary search.
+    private static int[] ComputeLineStarts(string content)
+    {
+        var starts = new List<int> { 0 };
+        for (var i = 0; i < content.Length; i++)
+            if (content[i] == '\n')
+                starts.Add(i + 1);
+        return [.. starts];
+    }
+
+    // Maps a character offset to a zero-based (line, column) using the precomputed line-start table.
+    private static (int Line, int Column) OffsetToLineColumn(int[] lineStarts, int offset)
+    {
+        var line = Array.BinarySearch(lineStarts, offset);
+        if (line < 0)
+            line = ~line - 1;
+        line = Math.Clamp(line, 0, lineStarts.Length - 1);
+        return (line, offset - lineStarts[line]);
+    }
 
     private static string PayloadDirectory =>
         Path.Combine(

@@ -2,6 +2,14 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 3.0 is a product overhaul; backward compatibility with 2.x output, commands, and the MCP tool surface is not a goal.
 
+## [3.1.2] - 2026-07-02
+
+### Added
+
+- **Update awareness for the CLI and MCP server.** A cache-first, throttled (once a day), offline-safe check tells you when a newer Fuse is on NuGet. `fuse mcp serve` prints the notice to stderr and `fuse index` to the console; both read a local cache instantly and refresh it in the background, so nothing waits on the network. Disable with `FUSE_UPDATE_CHECK=0`.
+- **Opt-in auto-update between sessions.** Set `FUSE_AUTO_UPDATE=1` and the MCP server, on finding a newer version, launches the detached updater to apply after the session exits, so the next spawn is current. It never stops sibling sessions and never updates mid-session.
+- **Scheduled updates** are documented as a one-line Task Scheduler (Windows) or cron (POSIX) entry that runs `fuse update` on a cadence, for fully hands-off upgrades.
+
 ## [3.1.1] - 2026-07-01
 
 ### Added

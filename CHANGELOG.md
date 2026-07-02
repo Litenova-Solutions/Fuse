@@ -19,6 +19,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- **Indexing descended into Claude Code worktrees.** `.claude` is now pruned during discovery and scanning, alongside `bin`, `obj`, `.git`, and `node_modules`. Claude Code creates full duplicate checkouts of the repo under `.claude/worktrees/`, so retrieval was returning copies of every source file (for example ten `fuse_localize` candidates that were all worktree duplicates). The real tree is indexed once again.
 - **VS Code host handshake serialized PascalCase, breaking the extension.** The `fuse host` JSON-RPC endpoint applied the source-generated context as a resolver but not its camelCase naming policy, so the wire emitted `ProtocolVersion` where the extension's `vscode-jsonrpc` client reads `protocolVersion`. Every field deserialized as its default, surfacing as an opaque "Fuse host protocol mismatch: host undefined". The host now sets the camelCase policy on the formatter, and a cross-formatter regression test (a camelCase client, matching the extension) guards it; the prior same-formatter test could not see the casing.
 
 ## [3.1.0] - 2026-06-30

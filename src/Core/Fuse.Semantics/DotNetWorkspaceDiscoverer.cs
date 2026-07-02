@@ -8,12 +8,13 @@ namespace Fuse.Semantics;
 ///     Discovery order is solution, then projects, then syntax-only fallback. A single solution is preferred
 ///     when exactly one exists (a <c>.sln</c> ahead of a <c>.slnx</c>); otherwise all projects are indexed, or
 ///     loose source files when no project exists. Build and tooling directories (<c>bin</c>, <c>obj</c>,
-///     <c>.git</c>, <c>.fuse</c>, <c>.vs</c>, <c>node_modules</c>) are pruned during the walk.
+///     <c>.git</c>, <c>.fuse</c>, <c>.vs</c>, <c>.claude</c>, <c>node_modules</c>) are pruned during the walk;
+///     <c>.claude</c> in particular holds Claude Code worktrees that are duplicate checkouts of the repo.
 /// </remarks>
 public sealed class DotNetWorkspaceDiscoverer
 {
     private static readonly HashSet<string> IgnoredDirectories =
-        new(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".git", ".fuse", ".vs", "node_modules" };
+        new(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".git", ".fuse", ".vs", ".claude", "node_modules" };
 
     /// <summary>
     ///     Discovers the workspace under a root directory.

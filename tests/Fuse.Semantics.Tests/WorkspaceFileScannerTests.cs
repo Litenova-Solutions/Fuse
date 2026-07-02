@@ -60,6 +60,22 @@ public sealed class WorkspaceFileScannerTests : IDisposable
     }
 
     [Fact]
+    public async Task ScanExcludesClaudeWorktrees()
+    {
+        // A Claude Code worktree is a full duplicate of the repo under .claude/worktrees; its sources must not
+        // be indexed, or retrieval returns copies of every file (the reported .claude/worktrees pollution).
+        var worktree = Path.Combine(_root, ".claude", "worktrees", "wf_1", "src");
+        Directory.CreateDirectory(worktree);
+        File.WriteAllText(Path.Combine(worktree, "OrderService.cs"), "namespace App; public class OrderService { }");
+
+        var scanner = CreateScanner();
+
+        var records = await scanner.ScanAsync(new FileScanRequest(_root), CancellationToken.None);
+
+        Assert.DoesNotContain(records, r => r.NormalizedPath.Contains(".claude", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ScanProducesStableHashForUnchangedFile()
     {
         var scanner = CreateScanner();

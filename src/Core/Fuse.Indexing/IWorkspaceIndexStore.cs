@@ -82,6 +82,21 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>The matching files' normalized paths; empty when none carry the tag.</returns>
     Task<IReadOnlyList<string>> GetFilesByLanguageAsync(string language, CancellationToken cancellationToken);
 
+    /// <summary>Returns the number of indexed routes.</summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The route count.</returns>
+    Task<int> GetRouteCountAsync(CancellationToken cancellationToken);
+
+    /// <summary>Returns the indexed file count per language tag, most files first.</summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The per-language counts; files with no tag are grouped under <c>unknown</c>.</returns>
+    Task<IReadOnlyList<LanguageCount>> GetLanguageCountsAsync(CancellationToken cancellationToken);
+
+    /// <summary>Returns the typed dependency edges resolved to distinct file pairs, for a graph projection.</summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The file-to-file edges (self-edges excluded).</returns>
+    Task<IReadOnlyList<FileDependencyEdge>> GetFileDependencyEdgesAsync(CancellationToken cancellationToken);
+
     /// <summary>Replaces the persisted git co-change table with a freshly mined set of file-pair couplings.</summary>
     /// <param name="records">The co-change pairs to store; the table is cleared first so a re-mine is authoritative.</param>
     /// <param name="cancellationToken">A token to cancel the write.</param>
@@ -230,6 +245,11 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The summed reduced token estimate, or 0 when the file has no chunks.</returns>
     Task<int> GetFileTokenEstimateAsync(string normalizedPath, CancellationToken cancellationToken);
+
+    /// <summary>Returns the estimated reduced token cost of every indexed file, keyed by normalized path.</summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>A map from normalized path to summed reduced token estimate (0 for files with no chunks).</returns>
+    Task<IReadOnlyDictionary<string, int>> GetFileTokenEstimatesAsync(CancellationToken cancellationToken);
 
     /// <summary>
     ///     Returns the content hash of each of the given files, keyed by normalized path.

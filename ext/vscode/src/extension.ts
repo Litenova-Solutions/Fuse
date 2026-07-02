@@ -171,6 +171,7 @@ async function warmAndProject(
     const rss = `${Math.round(stats.workingSetBytes / (1024 * 1024))} MB`;
     statusBar.setState(`warm (${index.fileCount})`, `Fuse host ${stats.hostVersion}, RSS ${rss}`);
     indexStatus.update([
+      new StatusRow("Fuse version", stats.hostVersion),
       new StatusRow("State", index.indexState),
       new StatusRow("Files", String(index.fileCount)),
       new StatusRow("Index time", `${index.elapsedMs} ms`),

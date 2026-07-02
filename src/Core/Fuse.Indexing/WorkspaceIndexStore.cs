@@ -987,6 +987,34 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string>> GetContentHashesAsync(
+        IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var names = normalizedPaths.Distinct(StringComparer.Ordinal).ToList();
+        if (names.Count == 0)
+            return result;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        // A parameterized IN list over the (small) candidate set; the caller passes at most the candidate cap.
+        var placeholders = new string[names.Count];
+        for (var i = 0; i < names.Count; i++)
+        {
+            placeholders[i] = "$p" + i;
+            command.Parameters.AddWithValue(placeholders[i], names[i]);
+        }
+
+        command.CommandText =
+            $"SELECT normalized_path, content_hash FROM files WHERE normalized_path IN ({string.Join(',', placeholders)});";
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            result[reader.GetString(0)] = reader.GetString(1);
+
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task UpsertEmbeddingsAsync(IReadOnlyList<ChunkEmbeddingRecord> embeddings, CancellationToken cancellationToken)
     {
         if (embeddings.Count == 0)

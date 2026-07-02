@@ -76,6 +76,23 @@ public sealed class WorkspaceFileScannerTests : IDisposable
     }
 
     [Fact]
+    public async Task ScanExcludesNestedRepository()
+    {
+        // A nested checkout (a directory carrying its own .git) is a separate repo; its sources must not be
+        // collected as part of this workspace, regardless of the directory's name.
+        var nested = Path.Combine(_root, "external", "Lib");
+        Directory.CreateDirectory(nested);
+        File.WriteAllText(Path.Combine(nested, ".git"), "gitdir: /elsewhere/.git/worktrees/lib");
+        File.WriteAllText(Path.Combine(nested, "Lib.cs"), "namespace Lib; public class Lib { }");
+
+        var scanner = CreateScanner();
+
+        var records = await scanner.ScanAsync(new FileScanRequest(_root), CancellationToken.None);
+
+        Assert.DoesNotContain(records, r => r.NormalizedPath.Contains("external/Lib", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ScanProducesStableHashForUnchangedFile()
     {
         var scanner = CreateScanner();

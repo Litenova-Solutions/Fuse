@@ -19,11 +19,7 @@ Verify it:
 fuse --help
 ```
 
-Update later with:
-
-```bash
-dotnet tool update -g Fuse
-```
+Update later with `fuse update` (see [Staying up to date](#staying-up-to-date)).
 
 **Requirements:** the .NET SDK 10.0 or later. Git change scoping also needs the
 `git` executable on your PATH.
@@ -83,6 +79,48 @@ On any OS:
 dotnet pack src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release
 dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
 ```
+
+## Staying up to date
+
+Use `fuse update`, not a bare `dotnet tool update`. A running Fuse (an MCP server
+or an editor host) locks its own files on Windows, so a direct update fails with
+"Access is denied". `fuse update` stops the running hosts and hands the upgrade to
+a detached step that waits for the current process to exit before replacing the
+files:
+
+```bash
+fuse update
+```
+
+**You will be told when an update is available.** The CLI and the MCP server do a
+cache-first, once-a-day, offline-safe check against NuGet and print a one-line
+notice when a newer version exists. It never blocks a command. Turn it off with
+`FUSE_UPDATE_CHECK=0`.
+
+**Auto-update between sessions (opt-in).** Set `FUSE_AUTO_UPDATE=1` and the MCP
+server applies a newer version after the current session exits, so the next spawn
+is current. It never interrupts a running session:
+
+```bash
+# in your MCP client's environment for the fuse server
+FUSE_AUTO_UPDATE=1
+```
+
+**Fully scheduled (optional).** Run `fuse update` on a cadence:
+
+```powershell
+# Windows: a weekly task
+schtasks /create /tn "Fuse update" /tr "fuse update" /sc weekly /d SUN /st 09:00
+```
+
+```bash
+# POSIX: a weekly cron entry (crontab -e)
+0 9 * * 0 fuse update
+```
+
+The **VS Code extension updates itself** through the Marketplace or Open VSX like
+any extension, and its bundled host updates with it, so extension users need none
+of the above.
 
 ## Next
 

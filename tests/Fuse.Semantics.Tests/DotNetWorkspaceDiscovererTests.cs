@@ -89,6 +89,24 @@ public sealed class DotNetWorkspaceDiscovererTests : IDisposable
         Assert.DoesNotContain(result.ProjectPaths, p => p.Contains("obj", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task IgnoresClaudeWorktrees()
+    {
+        // Claude Code creates full duplicate checkouts under .claude/worktrees; discovery must not descend into
+        // them, or a single-solution repo looks like a multi-solution one and the projects are indexed in copies.
+        Write("App.sln", "");
+        Write("src/App/App.csproj", "<Project/>");
+        Write(".claude/worktrees/wf_1/App.sln", "");
+        Write(".claude/worktrees/wf_1/src/App/App.csproj", "<Project/>");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.EndsWith("App.sln", result.SolutionPath);
+        Assert.Single(result.ProjectPaths);
+        Assert.DoesNotContain(result.ProjectPaths, p => p.Contains(".claude", StringComparison.OrdinalIgnoreCase));
+    }
+
     private void Write(string relativePath, string content)
     {
         var full = Path.Combine(_root, relativePath.Replace('/', Path.DirectorySeparatorChar));

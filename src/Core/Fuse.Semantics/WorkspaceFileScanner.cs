@@ -20,7 +20,9 @@ public sealed class WorkspaceFileScanner
     private const int ContentPrefixBytes = 2048;
 
     private static readonly string[] DefaultExtensions = [".cs", ".csproj", ".props", ".targets", ".json"];
-    private static readonly string[] ExcludedDirectories = ["bin", "obj", ".git", ".fuse", ".vs", "node_modules"];
+    // .claude holds Claude Code's tooling, including git worktrees under .claude/worktrees that are full
+    // duplicate checkouts of the repo; indexing them pollutes retrieval with copies of every source file.
+    private static readonly string[] ExcludedDirectories = ["bin", "obj", ".git", ".fuse", ".vs", ".claude", "node_modules"];
 
     private readonly FileCollectionPipeline _pipeline;
     private readonly FileHashService _hashService;

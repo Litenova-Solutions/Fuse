@@ -23,12 +23,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Extract version from tag
+      - name: Verify version and read from codebase
         id: version
-        shell: bash
+        shell: pwsh
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # The codebase is the source of truth; fail the release if the tag does not match it.
+          ./build/verify-version.ps1 -Tag "${{ github.ref_name }}"
+          $v = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version |
+               Where-Object { $_ } | Select-Object -First 1
+          "version=$v" >> $env:GITHUB_OUTPUT
 
       - name: Install Linux publish prerequisites
         run: |

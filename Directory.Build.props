@@ -1,6 +1,10 @@
 <Project>
   <PropertyGroup>
     <RepoRoot Condition="'$(RepoRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))</RepoRoot>
+    <!-- Single source of truth for the product version, applied to every Fuse assembly so the CLI, the host,
+         and FuseBuildInfo (the index version stamp) all report the same number. The release tag must match this
+         (enforced by build/verify-version.ps1); bump every package in lockstep with build/set-version.ps1. -->
+    <Version>3.1.1</Version>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>

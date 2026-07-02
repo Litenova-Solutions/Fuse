@@ -26,11 +26,13 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Extract version from tag
+      - name: Verify version and read from codebase
         id: version
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
+          ./build/verify-version.ps1 -Tag "${{ github.ref_name }}"
+          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version |
+                     Where-Object { $_ } | Select-Object -First 1
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
       - name: Publish self-contained win-x64
@@ -85,9 +87,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang zlib1g-dev
 
-      - name: Extract version from tag
+      - name: Verify version and read from codebase
         id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        shell: pwsh
+        run: |
+          ./build/verify-version.ps1 -Tag "${{ github.ref_name }}"
+          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version |
+                     Where-Object { $_ } | Select-Object -First 1
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
       - name: Publish self-contained linux-x64
         run: |

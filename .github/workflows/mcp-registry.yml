@@ -38,20 +38,16 @@ jobs:
           fi
           echo "Manifest description length ${len}/100 - OK."
 
-      - name: Resolve package version
+      # server.json is the source of truth for the version (see build/set-version.ps1). On a tag, fail if the
+      # manifest does not match it; on manual dispatch, just check cross-package consistency. Then read the
+      # published version from the manifest itself, no tag rewrite.
+      - name: Verify version and read from manifest
+        shell: pwsh
         run: |
-          set -euo pipefail
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-            jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' \
-              mcp-registry/server.json > mcp-registry/server.tmp
-            mv mcp-registry/server.tmp mcp-registry/server.json
-            echo "server.json version set from tag to $VERSION"
-          else
-            VERSION="$(jq -r '.version' mcp-registry/server.json)"
-            echo "No tag; using server.json version $VERSION"
-          fi
-          echo "PKG_VERSION=$VERSION" >> "$GITHUB_ENV"
+          if ("${{ github.ref_type }}" -eq "tag") { ./build/verify-version.ps1 -Tag "${{ github.ref_name }}" }
+          else { ./build/verify-version.ps1 }
+          $v = (Get-Content mcp-registry/server.json -Raw | ConvertFrom-Json).version
+          "PKG_VERSION=$v" >> $env:GITHUB_ENV
 
       - name: Install mcp-publisher
         run: |

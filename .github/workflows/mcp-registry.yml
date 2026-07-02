@@ -53,51 +53,52 @@ jobs:
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
 
-      # The registry validates that the NuGet package version exists before it will accept the
-      # server.json. NuGet push and indexing lag the tag push by minutes, so poll the flat
-      # container until the version is live (or warn and try anyway). Prevents the
-      # "version X does not exist in the registry ... wait for validation" 400 on fresh releases.
+      # The registry validates the package against NuGet's REGISTRATION index, which lags the flat-container by
+      # minutes. Polling the flat-container (as before) let the job proceed too early and 400 with "version does
+      # not exist ... wait for validation". Poll the registration index instead, since that is what the registry
+      # actually checks, so publish only runs once the version is visible where it matters.
       - name: Wait for NuGet to index the package version
         run: |
           set -uo pipefail
-          PKG_ID="fuse"  # NuGet flat-container paths use the lowercase package id
-          URL="https://api.nuget.org/v3-flatcontainer/${PKG_ID}/index.json"
-          echo "Waiting for ${PKG_ID} ${PKG_VERSION} to be indexed on NuGet..."
+          PKG_ID="fuse"  # NuGet paths use the lowercase package id
+          URL="https://api.nuget.org/v3/registration5-gz-semver2/${PKG_ID}/index.json"
+          echo "Waiting for ${PKG_ID} ${PKG_VERSION} in the NuGet registration index..."
           for attempt in $(seq 1 30); do
-            if curl -sf "$URL" | jq -e --arg v "$PKG_VERSION" '.versions | index($v)' >/dev/null 2>&1; then
-              echo "Found ${PKG_ID} ${PKG_VERSION} on NuGet (attempt ${attempt})."
+            if curl -s --compressed "$URL" | grep -q "\"${PKG_VERSION}\""; then
+              echo "Found ${PKG_ID} ${PKG_VERSION} in the registration index (attempt ${attempt})."
               exit 0
             fi
             echo "Not indexed yet (attempt ${attempt}/30); sleeping 20s..."
             sleep 20
           done
-          echo "::warning::${PKG_ID} ${PKG_VERSION} not indexed on NuGet after ~10 minutes; attempting publish anyway."
+          echo "::warning::${PKG_ID} ${PKG_VERSION} not in the registration index after ~10 minutes; attempting publish anyway."
 
       - name: Authenticate to MCP Registry (GitHub OIDC)
         working-directory: mcp-registry
         run: ../mcp-publisher login github-oidc
 
-      # Retry to cover the brief window where NuGet's flat container lists the version but the
-      # registry's own package check has not caught up yet.
+      # Retry to cover the window where NuGet's registration index lists the version but the registry's own
+      # package check has not caught up yet (a transient 400 "version does not exist ... wait for validation").
       - name: Publish server to MCP Registry
         working-directory: mcp-registry
         run: |
           set -uo pipefail
-          for attempt in $(seq 1 5); do
+          for attempt in $(seq 1 8); do
             output="$(../mcp-publisher publish 2>&1)" && status=0 || status=$?
             echo "$output"
             if [[ $status -eq 0 ]]; then
               echo "Published to MCP Registry on attempt ${attempt}."
               exit 0
             fi
-            # A schema/validation rejection (HTTP 422) is permanent; retrying cannot fix a bad
-            # manifest, so fail fast instead of sleeping through all five attempts.
-            if echo "$output" | grep -qE 'status 422|validation failed'; then
-              echo "::error::mcp-publisher rejected the manifest (validation error); not retrying."
+            # Only a schema/manifest rejection (HTTP 422) is permanent; retrying cannot fix a bad manifest, so
+            # fail fast on that. The NuGet-not-yet-visible error is a 400 whose message also says "validation
+            # failed", so match strictly on the 422 status, not that phrase, or a transient error aborts the run.
+            if echo "$output" | grep -qE 'status 422'; then
+              echo "::error::mcp-publisher rejected the manifest (schema validation, HTTP 422); not retrying."
               exit 1
             fi
-            echo "Publish attempt ${attempt}/5 failed; sleeping 30s before retry..."
+            echo "Publish attempt ${attempt}/8 failed; sleeping 30s before retry..."
             sleep 30
           done
-          echo "::error::mcp-publisher publish failed after 5 attempts."
+          echo "::error::mcp-publisher publish failed after 8 attempts."
           exit 1

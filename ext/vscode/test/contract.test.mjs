@@ -19,6 +19,7 @@ function assertKeys(obj, keys, label) {
 test("handshake shape", () => {
   assertKeys(fixtures.handshake, ["hostVersion", "protocolVersion", "sessionToken"], "handshake");
   assert.equal(typeof fixtures.handshake.protocolVersion, "number");
+  assert.equal(fixtures.handshake.protocolVersion, 3); // must match PROTOCOL_VERSION in protocol.ts
   assert.equal(typeof fixtures.handshake.sessionToken, "string");
   assert.ok(fixtures.handshake.sessionToken.length > 0);
 });
@@ -35,7 +36,11 @@ test("graph node and edge shapes", () => {
 });
 
 test("index shape", () => {
-  assertKeys(fixtures.index, ["indexState", "fileCount", "elapsedMs"], "index");
+  assertKeys(
+    fixtures.index,
+    ["indexState", "fileCount", "elapsedMs", "mode", "symbolCount", "routeCount", "schemaVersion", "fullTextSearch", "fuseVersion", "languages"],
+    "index");
+  assertKeys(fixtures.index.languages[0], ["language", "count"], "index language");
 });
 
 test("scope shape", () => {

@@ -12,8 +12,11 @@ in the agent and native editor surfaces for yourself.
 
 ## Install
 
-Install the **Fuse** extension from the VS Code Marketplace, or install a VSIX from a
-release. You also need the `fuse` global tool on your PATH (see [Install](/docs/start/install)):
+Install the **Fuse** extension from the VS Code Marketplace, or install a platform VSIX
+from a release. The platform VSIX bundles a self-contained `fuse` host, so it runs with no
+global install. The Marketplace build resolves the host in this order: the `fuse.host.path`
+setting, then a bundled host, then `fuse` on your PATH. To use the PATH fallback, install
+the global tool (see [Install](/docs/start/install)):
 
 ```bash
 dotnet tool install -g Fuse
@@ -21,13 +24,22 @@ dotnet tool install -g Fuse
 
 The extension spawns `fuse host` automatically when you open a workspace. Set
 `fuse.host.path` in VS Code settings to point at a specific `fuse` executable when the
-global tool is not on PATH.
+global tool is not on PATH, or to test a local build.
+
+### Upgrading
+
+Update the global tool with `fuse update` (it stops the running hosts, updates once the
+current process exits, and prints a reload hint), or `dotnet tool update -g Fuse`. After
+any host or extension upgrade, **reload the VS Code window** so the extension re-handshakes
+with the new host. A running editor keeps talking to the host it started; a reload is what
+picks up a new tool surface.
 
 ## What It Shows
 
 - **Index panel** with warm-index state, file count, index time, and host memory.
 - **Token Hotspots** ranked by estimated token cost; click to open a file.
 - **Scope Result** after a scoping command: the files a fusion includes, with token costs.
+- **Explain** panel: why the current scope selected what it did.
 - **Dependency Graph** webview (Cytoscape, bundled, offline): nodes sized by centrality,
   colored by token cost.
 - **Secret diagnostics**: detected secrets underlined at their exact range in the editor
@@ -41,10 +53,19 @@ global tool is not on PATH.
 | Fuse: Search | Run query scoping and show the result. |
 | Fuse: Focus Here | Scope around the current editor selection or explorer item. |
 | Fuse: Changes Since Branch | Scope to files changed since a git ref, plus dependents. |
+| Fuse: Explain Scope | Explain why the current scope selected what it did. |
 | Fuse: Show Dependency Graph | Open the graph webview for the workspace. |
 | Fuse: Restart Host | Restart the background `fuse host` process. |
 
 Focus Here is also on the editor and explorer context menus.
+
+## Settings
+
+| Setting | Default | What it does |
+|---------|---------|--------------|
+| `fuse.host.path` | `""` | Path to the `fuse` host executable. Empty uses the bundled host, then `fuse` on PATH. |
+| `fuse.autoIndexThreshold` | `2000` | Auto-index a workspace with at most this many files on open; above it, index on demand. |
+| `fuse.showTokenLens` | `false` | Show a CodeLens at the top of each file with its Fuse token cost and graph centrality. |
 
 ## The Host Process
 
@@ -62,13 +83,28 @@ For trust boundaries and local exposure, see [Host RPC](/docs/internals/host-rpc
 ## Connect Your Agent Too
 
 The extension and MCP server complement each other. Register MCP once so your agent can
-call the eleven `fuse_*` tools:
+call the nine `fuse_*` tools:
 
 ```bash
 fuse mcp install --rules
 ```
 
 See [Connect to your AI](/docs/start/connect-your-ai) for per-client setup.
+
+## Troubleshooting
+
+- **"Fuse host protocol mismatch" or the panels stay empty.** The extension could not
+  complete the handshake with the host. Confirm the host runs (`fuse --version`), update
+  both sides to the latest (`fuse update`), and reload the VS Code window. Versions 3.1.0
+  and earlier had a host serialization bug that surfaced as this message; upgrade to 3.1.1
+  or later.
+- **"command 'fuse host' not found" or nothing happens on open.** The host is not resolved.
+  Install the global tool (`dotnet tool install -g Fuse`) or set `fuse.host.path` to a
+  `fuse` executable.
+- **Changes not reflected after an upgrade.** Reload the window. A running editor keeps its
+  existing host connection until reload.
+- **Inspect the host log.** Open the Output panel and pick the **Fuse** channel; it logs the
+  host command line, the connected host version, and any host stderr.
 
 ## Next
 

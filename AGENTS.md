@@ -40,6 +40,7 @@ Build first, then test with `--no-build`. CI verifies build, test, format, and a
 - External-process arguments are bounded. Commands built from a variable-length path or id list (for example the git invocations in `GitStatsProvider` and `GitChangeDetector`) must chunk the list or pass it via stdin. A single concatenated command line overflows the OS limit on large repos and silently degrades to empty results.
 - Tests must actually run. When adding a test, confirm the test command discovers and executes it (the count goes up). The extension contract suite is wired through `ext/vscode/package.json` `test:contract`; a test placed where that script does not reach is dead. A green gate that ran zero new tests is not coverage.
 - Behavior changes are not silent. A change that alters throw or propagation behavior (for example SQLite flush exhaustion swallowing instead of rethrowing) is a behavior change; call it out, do not fold it into an "add logging" change.
+- Upgrades degrade to a clear message or a rebuild, never an opaque failure. Renaming or removing an MCP tool must keep the old name registered as a deprecation shim (in `FuseDeprecatedTools`) that returns an actionable message naming the replacement, for one major version; a client that cached the old surface across an upgrade must not see a bare `Unknown tool`. A change to the index extraction contract must either bump `WorkspaceIndexSchema.TargetVersion` or ride the Fuse-version stamp (`fuse_version` in `index_meta`, compared by `FuseBuildInfo.IsCompatible`), so a stale on-disk index rebuilds itself rather than serving stale data. The changelog entry names the reload or rebuild.
 
 ## MCP Tools
 
@@ -62,6 +63,8 @@ All numbers come from `tests/benchmarks/results` (the recorded data) and the ben
 
 - Branch off `main`; open a PR via `gh` when verified. Do not merge, self-approve, or enable auto-merge; leave merges to reviewers.
 - Keep build, test, and format green. New public API without XML docs is incomplete.
+- The product version lives in the codebase, not in the git tag. `Directory.Build.props` `<Version>` is the single source of truth for every .NET assembly; the VS Code extension (`ext/vscode/package.json`), the MCP registry manifest (`mcp-registry/server.json`), and the docs site (`site/package.json`) carry the same number. Bump all of them with `build/set-version.ps1 <version>`, never by hand one at a time. `build/verify-version.ps1` fails CI if the packages disagree, and on a release it fails if the tag does not match the codebase version.
+- One tag releases everything. The flow is: run `build/set-version.ps1 X.Y.Z`, commit, then push a matching `vX.Y.Z` tag. That single tag triggers the NuGet publish (`publish.yml`), the GitHub release binaries (`release.yml`), the MCP registry (`mcp-registry.yml`), and the VS Code extension (`ext-release.yml`, which builds the six platform VSIXes and publishes them to the VS Code Marketplace and Open VSX when the `VSCE_PAT` / `OVSX_PAT` secrets are set, otherwise it just uploads the VSIXes as artifacts). Every one of these verifies the tag against the codebase version first, so a mismatched tag fails the release rather than shipping the wrong number. There is no separate extension tag; the old `ext-v*` trigger is retired.
 
 ## Writing Style (docs and prose)
 

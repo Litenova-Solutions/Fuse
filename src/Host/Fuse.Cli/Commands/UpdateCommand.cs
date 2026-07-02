@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using DotMake.CommandLine;
 using Fuse.Cli.Services;
 using Fuse.Indexing;
@@ -54,85 +53,20 @@ public sealed class UpdateCommand
     {
         _consoleUI.WriteStep($"Current Fuse version: {FuseBuildInfo.Current}");
 
-        StopOtherFuseProcesses();
-
-        var arguments = ToolUpdatePlanner.BuildDotnetArguments(TargetVersion);
-        var isWindows = OperatingSystem.IsWindows();
-        var workDirectory = Path.Combine(Path.GetTempPath(), "fuse-update");
-        Directory.CreateDirectory(workDirectory);
-        var scriptPath = Path.Combine(workDirectory, isWindows ? "update.ps1" : "update.sh");
-        var logPath = Path.Combine(workDirectory, "update.log");
-        var script = ToolUpdatePlanner.BuildUpdaterScript(isWindows, Environment.ProcessId, arguments, logPath);
-        File.WriteAllText(scriptPath, script);
-
-        try
-        {
-            LaunchDetached(scriptPath, isWindows);
-        }
-        catch (Exception ex)
+        // Explicit update: stop the other running hosts so they release their file locks, then hand off to the
+        // detached updater that waits for this process to exit before replacing the tool files.
+        var result = new ToolUpdateLauncher().Launch(TargetVersion, stopOtherHosts: true, _consoleUI.WriteStep);
+        if (!result.Launched)
         {
             // Falling back to a manual instruction is better than a stack trace: the user can still update by hand.
-            _consoleUI.WriteError($"Could not launch the updater ({ex.Message}). Run 'dotnet {arguments}' from a plain terminal with no Fuse process running.");
+            _consoleUI.WriteError($"Could not launch the updater ({result.Error}). Run 'dotnet {result.DotnetArguments}' from a plain terminal with no Fuse process running.");
             return Task.CompletedTask;
         }
 
         _consoleUI.WriteSuccess("Update launched. It runs once this process exits.");
-        _consoleUI.WriteStep($"Command: dotnet {arguments}");
-        _consoleUI.WriteStep($"Log: {logPath}");
+        _consoleUI.WriteStep($"Command: dotnet {result.DotnetArguments}");
+        _consoleUI.WriteStep($"Log: {result.LogPath}");
         _consoleUI.WriteStep("Reload your editor window afterward so its MCP client picks up the new tool surface.");
         return Task.CompletedTask;
-    }
-
-    // Stop the other running Fuse processes (the long-lived hosts an editor spawns) so they release their file
-    // locks before the update. This process is excluded: the updater waits for it to exit on its own.
-    private void StopOtherFuseProcesses()
-    {
-        var selfId = Environment.ProcessId;
-        Process[] others;
-        try
-        {
-            others = Process.GetProcessesByName("fuse").Where(p => p.Id != selfId).ToArray();
-        }
-        catch (Exception)
-        {
-            // Process enumeration can fail under restricted environments; the update can still proceed.
-            return;
-        }
-
-        foreach (var process in others)
-        {
-            try
-            {
-                process.Kill(entireProcessTree: true);
-                _consoleUI.WriteStep($"Stopped running Fuse host (pid {process.Id}).");
-            }
-            catch (Exception)
-            {
-                // A host that already exited or that we cannot stop is not fatal; the updater still tries.
-            }
-            finally
-            {
-                process.Dispose();
-            }
-        }
-    }
-
-    // Launch the updater so it outlives this process. On Windows, PowerShell runs the .ps1 hidden; on POSIX,
-    // /bin/sh runs the script and the child continues after the parent exits.
-    private static void LaunchDetached(string scriptPath, bool isWindows)
-    {
-        var startInfo = isWindows
-            ? new ProcessStartInfo("powershell", $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\"")
-            {
-                UseShellExecute = true,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden,
-            }
-            : new ProcessStartInfo("/bin/sh", $"\"{scriptPath}\"")
-            {
-                UseShellExecute = false,
-            };
-
-        Process.Start(startInfo);
     }
 }

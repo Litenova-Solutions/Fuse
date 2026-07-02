@@ -104,6 +104,9 @@ public sealed class SemanticRetrievalEngine
         // precision; a no-op in syntax mode and when nothing was selected (strict refusal).
         if (request.ExpandGraph)
             selected = await ExpandSeedsThroughGraphAsync(selected, cancellationToken);
+        // Never return two copies of the same file: collapse byte-identical candidates to the highest-scored one.
+        // A safety net for any duplication that escapes index-time exclusion (worktrees, backups, vendored copies).
+        selected = await DeduplicateByContentAsync(selected, cancellationToken);
         selected = selected.Take(request.MaxCandidates).ToList();
 
         var warnings = new List<string>();
@@ -130,6 +133,42 @@ public sealed class SemanticRetrievalEngine
         }
 
         return new LocalizationResult(localized, warnings, LowSignal: false, SuggestedInput: null, State: state, Navigation: navigationMap);
+    }
+
+    // Collapses candidates whose files are byte-identical (same content hash) to the first, which is the
+    // highest-scored one in the incoming order. Candidates with no file or no indexed hash pass through. Keeps
+    // retrieval from ever surfacing N copies of one file, independent of how the duplication got into the index.
+    private async Task<IReadOnlyList<ScoredCandidate>> DeduplicateByContentAsync(
+        IReadOnlyList<ScoredCandidate> candidates, CancellationToken cancellationToken)
+    {
+        if (candidates.Count < 2)
+            return candidates;
+
+        var paths = candidates
+            .Where(c => !string.IsNullOrEmpty(c.FilePath))
+            .Select(c => c.FilePath)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (paths.Count == 0)
+            return candidates;
+
+        var hashes = await _store.GetContentHashesAsync(paths, cancellationToken);
+        var seenHashes = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<ScoredCandidate>(candidates.Count);
+        foreach (var candidate in candidates)
+        {
+            if (!string.IsNullOrEmpty(candidate.FilePath)
+                && hashes.TryGetValue(candidate.FilePath, out var hash)
+                && !string.IsNullOrEmpty(hash)
+                && !seenHashes.Add(hash))
+            {
+                continue; // A byte-identical file is already represented by a higher-scored candidate.
+            }
+
+            result.Add(candidate);
+        }
+
+        return result;
     }
 
     // Graph-aware discovery: expand the top seeds one hop through the typed semantic graph and admit a capped

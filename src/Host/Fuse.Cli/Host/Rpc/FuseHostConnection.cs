@@ -1,4 +1,5 @@
 using System.IO.Pipelines;
+using System.Text.Json;
 using StreamJsonRpc;
 
 namespace Fuse.Cli.Rpc;
@@ -25,6 +26,11 @@ public static class FuseHostConnection
         var formatter = new SystemTextJsonFormatter();
         // Reflection-free serialization: route DTOs through the source-generated context (project invariant).
         formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        // The camelCase policy from FuseHostJsonContext's [JsonSourceGenerationOptions] is a property of the
+        // options doing the serialization, not baked into the borrowed resolver. StreamJsonRpc serializes through
+        // the formatter's own options, so the policy must be set here too, or the wire emits PascalCase and the
+        // camelCase vscode-jsonrpc client reads every field as undefined (an opaque "protocol mismatch").
+        formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 
         var handler = new HeaderDelimitedMessageHandler(writer, reader, formatter);
         var rpc = new JsonRpc(handler);

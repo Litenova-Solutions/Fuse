@@ -143,7 +143,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output);
+  // Fire-and-forget: connecting to a cold host can take several seconds, so do not block activation on it. The
+  // status bar shows progress and warmAndProject surfaces any failure through the output channel.
+  void warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output);
 }
 
 // Starts (or reuses) the host, indexes the root, and projects the results into the status bar and trees.

@@ -2,6 +2,27 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 3.0 is a product overhaul; backward compatibility with 2.x output, commands, and the MCP tool surface is not a goal.
 
+## [3.1.1] - 2026-07-01
+
+### Added
+
+- **`fuse update` command.** Updates the global tool with the process-lock choreography a bare `dotnet tool update` cannot do on its own: it stops the running Fuse hosts that hold the file locks (for example the one an editor extension spawns), then hands the update to a small detached script that waits for the current process to exit before replacing the tool files. This works around the fact that a running .NET global tool locks its own files on Windows. Reload the editor window afterward so its MCP client re-handshakes with the new tool surface.
+- **Deprecation shims for the retired V2 MCP tool names.** `fuse_toc`, `fuse_skeleton`, `fuse_search`, `fuse_focus`, `fuse_changes`, `fuse_ask`, `fuse_dotnet`, and `fuse_generic` are registered again as thin tools that return an actionable message naming the V3 replacement. A client that cached the old tool surface and was upgraded underneath now gets clear guidance instead of an opaque `Unknown tool` error. They will be removed in the next major.
+
+### Changed
+
+- **The index self-heals on an incompatible upgrade.** The index records the Fuse build that wrote it; when a later run's `major.minor` differs, the index rebuilds automatically before it is read, so a minor upgrade never serves stale extraction. A patch release keeps the contract and does not force a rebuild. `fuse diagnostics` reports both the running version and the version that built the index.
+
+### Changed
+
+- **The product version is owned by the codebase, not the git tag.** `Directory.Build.props` `<Version>` is the single source of truth for every .NET assembly, and the VS Code extension, the MCP registry manifest, and the docs site carry the same number. `build/set-version.ps1` bumps all of them at once and `build/verify-version.ps1` fails CI on any drift, or on a release tag that does not match. This also fixes the index version stamp: `FuseBuildInfo` now reports the real product version (previously the non-CLI assemblies were left at 1.0.0), so the version-drift self-heal and `fuse diagnostics` report correctly.
+
+### Fixed
+
+- **Indexing is defensive against duplicate and foreign content.** The trigger was Claude Code writing full duplicate checkouts under `.claude/worktrees/`, so `fuse_localize` returned ten candidates that were all worktree copies. The fix is layered rather than a single name: (1) discovery prunes any nested version-control root (git worktree, submodule, or embedded clone) anywhere under the workspace, not just `.claude`; (2) for a git repository the file set now comes from git itself (tracked plus untracked-but-not-ignored), so other worktrees and ignored trees are excluded by construction, with the directory walk as the fallback; (3) the excluded-directory set is shared by the scanner and the .NET discoverer, widened to the common tooling, build, and dependency directories, and extensible per repository through a `.fuseignore` file; (4) byte-identical solution copies no longer flip discovery into projects mode; and (5) retrieval collapses byte-identical files, so a query never returns several copies of one source file even if duplication reaches the index.
+- **VS Code host connection gave up too early and orphaned the host.** The extension waited only about three seconds for a freshly spawned host to create its named pipe, so a cold .NET host under load (a debugger attached, other extensions busy) surfaced as `connect ENOENT`, and the supervisor left the still-starting host orphaned on the pipe. The connect now waits against a generous deadline, bails out early if the host process exits before it serves, kills the host if it does give up so no orphan squats the pipe, and reports a spawn error. Activation no longer blocks on the connect.
+- **VS Code host handshake serialized PascalCase, breaking the extension.** The `fuse host` JSON-RPC endpoint applied the source-generated context as a resolver but not its camelCase naming policy, so the wire emitted `ProtocolVersion` where the extension's `vscode-jsonrpc` client reads `protocolVersion`. Every field deserialized as its default, surfacing as an opaque "Fuse host protocol mismatch: host undefined". The host now sets the camelCase policy on the formatter, and a cross-formatter regression test (a camelCase client, matching the extension) guards it; the prior same-formatter test could not see the casing.
+
 ## [3.1.0] - 2026-06-30
 
 Fuse 3.1 sharpens the .NET semantic engine on the modes where 3.0 was weakest: open-ended discovery, language breadth, and first-call latency. Dense retrieval is now on by default and fully offline, the open-ended path refuses and routes instead of guessing on a vague request, and more of the codebase's own vocabulary is searchable without a model. The numbers behind every claim are on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).

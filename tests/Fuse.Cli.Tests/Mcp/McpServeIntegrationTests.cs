@@ -9,7 +9,7 @@ namespace Fuse.Cli.Tests.Mcp;
 /// </summary>
 public sealed class McpServeIntegrationTests
 {
-    private static readonly string[] ExpectedToolNames =
+    private static readonly string[] ExpectedV3ToolNames =
     [
         "fuse_context",
         "fuse_find",
@@ -22,8 +22,22 @@ public sealed class McpServeIntegrationTests
         "fuse_review",
     ];
 
+    // The retired V2 names are re-registered as deprecation shims (FuseDeprecatedTools) so a client that cached
+    // the old surface across an upgrade gets an actionable message instead of an Unknown tool error.
+    private static readonly string[] ExpectedDeprecatedToolNames =
+    [
+        "fuse_ask",
+        "fuse_changes",
+        "fuse_dotnet",
+        "fuse_focus",
+        "fuse_generic",
+        "fuse_search",
+        "fuse_skeleton",
+        "fuse_toc",
+    ];
+
     [Fact]
-    public async Task StdioServer_ListsTheNineV3Tools_AndFuseMapReturnsIndexedSymbols()
+    public async Task StdioServer_ListsV3ToolsAndDeprecationShims_AndFuseMapReturnsIndexedSymbols()
     {
         using var fixture = new McpFixtureProject();
         fixture.AddFile("Services/WidgetService.cs", """
@@ -44,7 +58,8 @@ public sealed class McpServeIntegrationTests
         await using var client = await McpClient.CreateAsync(transport, cancellationToken: TestCancellation);
 
         var tools = await client.ListToolsAsync(cancellationToken: TestCancellation);
-        Assert.Equal(ExpectedToolNames, tools.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
+        var expected = ExpectedV3ToolNames.Concat(ExpectedDeprecatedToolNames).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        Assert.Equal(expected, tools.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
 
         // fuse_map builds the index on first use (the fixture is a git repo, so the store stays inside it).
         var result = await client.CallToolAsync(

@@ -96,12 +96,24 @@ public sealed class FileCollectionPipeline
         // path looks under root, so reject any file with a reparse-point ancestor directory between it and the
         // root (cached per directory, so each is stat'd at most once).
         var reparseDirectoryCache = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        var filePaths = _fileSystem
-            .EnumerateFiles(options.SourceDirectory, "*.*", searchOption)
+        var nestedRepositoryCache = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+        // A caller-supplied candidate set (for example a git-native file listing) replaces the directory walk but
+        // still passes every filter below. Its relative entries resolve against the root; only existing files
+        // survive, so a stale listing degrades the set rather than throwing.
+        var candidateSource = options.CandidateFiles is { Count: > 0 }
+            ? options.CandidateFiles
+                .Select(path => Path.IsPathRooted(path) ? path : Path.Combine(rootDirectory, path))
+                .Where(path => _fileSystem.GetFileInfo(path).Exists)
+            : _fileSystem.EnumerateFiles(options.SourceDirectory, "*.*", searchOption);
+
+        var filePaths = candidateSource
             .Select(Path.GetFullPath)
             .Where(path => IsPathUnderRoot(rootDirectory, path))
             .Where(path => !HasReparsePointAttribute(_fileSystem.GetFileInfo(path)))
             .Where(path => !CrossesReparsePointDirectory(rootDirectory, path, reparseDirectoryCache))
+            .Where(path => !options.ExcludeNestedRepositories
+                           || !CrossesNestedRepository(rootDirectory, path, nestedRepositoryCache))
             .Select((path, index) => (path, index))
             .ToArray();
 
@@ -175,6 +187,32 @@ public sealed class FileCollectionPipeline
         var relativePath = Path.GetRelativePath(rootDirectory, fullPath);
         return !relativePath.StartsWith("..", StringComparison.Ordinal)
             && !Path.IsPathRooted(relativePath);
+    }
+
+    // True when any ancestor directory strictly between the file and the collection root is a nested version-
+    // control root (a git worktree, submodule, or embedded clone). Such a file belongs to a different checkout
+    // and must not be collected as part of this workspace. Mirrors the reparse-point walk: the root's own .git is
+    // never considered (the loop stops above the root), and each directory is stat'd at most once via the cache.
+    private static bool CrossesNestedRepository(string rootDirectory, string filePath, Dictionary<string, bool> cache)
+    {
+        var directory = Path.GetDirectoryName(filePath);
+        while (directory is not null
+               && directory.Length > rootDirectory.Length
+               && directory.StartsWith(rootDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!cache.TryGetValue(directory, out var isRepo))
+            {
+                isRepo = WorkspaceExclusions.IsVcsRoot(directory);
+                cache[directory] = isRepo;
+            }
+
+            if (isRepo)
+                return true;
+
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        return false;
     }
 
     // Directory enumeration can follow junctions and symlinks; skip reparse-point entries themselves.

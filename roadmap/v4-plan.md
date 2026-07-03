@@ -222,20 +222,21 @@ Phase 1: the trustworthy floor
 
 Phase 2: the oracle
 - [x] R5 The persisted reference index: calls, references, and tests edges (added, finding 7)
-- [ ] R2 `fuse_impact`: blast radius before the edit (served from R5, not live SymbolFinder)
-- [ ] R1 `fuse_check`: speculative diagnostics as repair packets, and Suite F (false-green and
+- [x] R2 `fuse_impact`: blast radius before the edit (served from R5, not live SymbolFinder)
+- [x] R1 `fuse_check`: speculative diagnostics as repair packets, and Suite F (false-green and
       false-red both gated)
 - [x] R6 Repair packets and the API-shape oracle: `fuse_signatures` (added)
-- [ ] R7 `fuse_refactor`: compiler-executed rename and change-signature, staged as a diff (added)
-- [x] R4 Rebuild the agent benchmark to measure the loop, not the payload (amended: task set
-      and native plus LSP-armed baselines land in Phase 1; wall-clock recorded)
-- [ ] R3 Collapse the tool surface around the oracle (shim-compatible; amended: typed union,
-      ambient availability header, seven live tools)
+- [~] R7 `fuse_refactor`: rename done (part 1); change-signature DEFERRED TO 4.1 (no clean public
+      Roslyn ChangeSignature API; a hand-rolled rewriter is high-risk and low-frequency, see scope decision)
+- [x] R4 Rebuild the agent benchmark to measure the loop, not the payload (harness done; the recorded
+      model-driven numbers are the 4.0 finish-line run, see scope decision)
+- [~] R3 Collapse the tool surface around the oracle: availability header done; the typed-union router
+      collapse DEFERRED TO 4.1 (low or negative value against fourteen coherent tools, see scope decision)
 
 Phase 3: the moonshot
 - [x] M1 The speculative staging area: changeset lifecycle, diagnose, covering-test selection
       (re-scoped: in-process execution removed, not gated; see M2)
-- [ ] M2 Out-of-proc emit-and-run test execution (added; stretch, pre-agreed to slip to 4.1)
+- [ ] M2 Out-of-proc emit-and-run test execution DEFERRED TO 4.1 (added; stretch, pre-agreed to slip)
 
 Phase 4: retrieval bets (gate satisfied: N4's localize re-run is recorded in `results/localize.tier1.json`;
 the re-run showed tier-1 does not move localize recall, so V1/V2 are not warranted by the evidence as recall
@@ -245,8 +246,8 @@ levers and are left unticked per the plan's pre-agreed re-scope, not merely defe
 - [ ] V2 Per-repo learned ranking from git history, temporal-split guarded (added) [not warranted: same]
 
 Go-to-market (manual, after Phase 2)
-- [ ] G1 The latency demo and launch publish (honest only after R1/R2; amended: verification
-      parity, and the three-pane demo once R7 exists)
+- [~] G1 The latency demo and launch docs are in 4.0 scope (written after R4's numbers); the actual
+      publish (tag, NuGet, Marketplace) is a maintainer action, not autonomous
 - [ ] G2 The analyzer contribution program and a public coverage table
 
 ---
@@ -378,6 +379,35 @@ three gates green at every commit.
    V2 follows the same gate.
 6. **G1 (launch).** Write the latency-demo and launch docs from the recorded `performance.json` and
    the oracle results. Do not tag, publish, or cut the release; that is a maintainer action.
+
+### Scope decision (2026-07-03, session 2): the 4.0 finish line
+
+After weighing value against cost, the 4.0 finish line is drawn deliberately narrow, and the rest
+moves to a 4.1 backlog. The reasoning: the entire v4 thesis is that the oracle collapses the agent's
+edit-verify loop (fewer build-gated turns), a claim Suite D showed token-reduction alone does not
+deliver. That claim is still theory. R4's recorded numbers are the experiment that confirms or
+refutes it, so they are the one remaining item with release-defining value. Everything else is either
+low-frequency, low or negative value, plan-deferred, or evidence-killed.
+
+**4.0 finish line (do these):**
+1. **R4 recorded numbers.** Run `FUSE_LOOP_RUN=1 fuse eval loop` for real, record `results/loop.json`.
+   This is the go/no-go signal on the release story, not a box to tick. Read the result before G1.
+2. **G1 launch docs.** Written after R4, from `results/performance.json` and the oracle results and
+   whatever R4 actually shows (honest either way). No tag, no publish.
+
+**Deferred to 4.1 (do NOT spend 4.0 time on these):**
+- **R7 part 2, change-signature.** Rename (the workhorse) shipped; change-signature is the tail case
+  and hits a hard API wall (no clean public `ChangeSignature`). Poor risk/reward now.
+- **R3 typed-union router.** Surface aesthetics; fourteen coherent, documented tools may beat a
+  router that hides them. Possibly negative value. Reconsider only with a concrete UX complaint.
+- **M2 out-of-proc test execution.** The plan already pre-agreed this stretch item slips; safe
+  sandboxing is hard and its false-green gate may be unmeetable.
+- **V1/V2 retrieval bets.** Evidence-killed: the tier-1 re-run showed no recall lift (15.0 vs 14.9).
+  Reconsider only if a fresh re-run over a richer graph shows a real lift.
+- **G1 publish** (tag, NuGet, GitHub release, MCP registry, Marketplace): a maintainer action.
+
+If R4 shows the loop does not collapse, that is a release-shaping finding: reposition the 4.0 claims
+before any launch, do not paper over it.
 
 ### Standing constraints for the finish (unchanged)
 

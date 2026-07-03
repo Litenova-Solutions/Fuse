@@ -13,8 +13,9 @@ namespace Fuse.Cli.Commands;
 ///     Runs Fuse's evaluation suites. A thin entry point that delegates to the <c>Fuse.Benchmarks</c>
 ///     library, which owns the typed suites: <c>semantics</c> (Suite A, semantic graph vs edge gold),
 ///     <c>review</c> (Suite B, change-impact recall/precision over PR ground truth), <c>localize</c>
-///     (Suite C, open-ended localization by signal bucket), and <c>agent</c> (Suite D, agent context
-///     sufficiency via the Claude Code CLI).
+///     (Suite C, open-ended localization by signal bucket), <c>ranking</c> (the ranking regression suite:
+///     MRR, recall@k, nDCG@k for the lexical channel and the shipping default), and <c>agent</c> (Suite D,
+///     agent context sufficiency via the Claude Code CLI).
 /// </summary>
 /// <remarks>
 ///     Corpus-bound suites (review/localize/agent) skip gracefully when the pinned corpus is absent, so
@@ -23,7 +24,7 @@ namespace Fuse.Cli.Commands;
 /// </remarks>
 [CliCommand(
     Name = "eval",
-    Description = "Run Fuse evaluation suites (semantics, review, localize, agent, reduce, performance).",
+    Description = "Run Fuse evaluation suites (semantics, review, localize, ranking, agent, reduce, performance).",
     ShortFormAutoGenerate = CliNameAutoGenerate.None,
     Parent = typeof(FuseCliCommand))]
 public sealed class EvalCommand
@@ -68,8 +69,8 @@ public sealed class EvalCommand
         _embedder = embedder;
     }
 
-    /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, or <c>agent</c>.</summary>
-    [CliArgument(Description = "The suite to run: semantics, review, localize, agent, reduce, performance.")]
+    /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, <c>ranking</c>, or <c>agent</c>.</summary>
+    [CliArgument(Description = "The suite to run: semantics, review, localize, ranking, agent, reduce, performance.")]
     public string Suite { get; set; } = "semantics";
 
     /// <summary>The benchmark root holding corpus.json, prs.json, and results. Defaults to tests/benchmarks under the current directory.</summary>
@@ -150,7 +151,7 @@ public sealed class EvalCommand
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());
         if (suite is null)
         {
-            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, agent, reduce, performance.");
+            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, ranking, agent, reduce, performance.");
             return;
         }
 
@@ -169,6 +170,7 @@ public sealed class EvalCommand
         "semantics" => new SemanticResolutionSuite(_indexer),
         "review" => new ChangeImpactSuite(_indexer, _changeSource),
         "localize" => new LocalizationSuite(_indexer, _changeSource),
+        "ranking" => new RankingSuite(_indexer, _changeSource),
         "agent" => new AgentSuite(_indexer),
         "performance" => new PerformanceSuite(_indexer, _changeSource),
         "reduce" => new ReductionSuite((dir, files, level, ct) =>

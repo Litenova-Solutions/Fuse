@@ -211,7 +211,7 @@ Governance (first; complete before Phase 1)
 Phase 1: the trustworthy floor
 - [ ] N4 Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as
       product work; the spike is a two-mechanism bake-off, run as item zero)
-- [ ] N1 Fix the lexical weight inversion; land the ranking regression suite (amended: the
+- [x] N1 Fix the lexical weight inversion; land the ranking regression suite (amended: the
       suite gates the priors too and re-adjudicates the A6 co-change regression)
 - [ ] N2 One lexical ranker; purge stale results (amended: `agent.json` and the superseded a1
       doc citations join the sweep)
@@ -1579,6 +1579,54 @@ MediatR, and most of the OSS set) is the core justification for the mechanism sw
 knows what the real build does; a separate design-time load does not.
 
 **Time.** ~2 session-hours (mostly the 16-repo clone+build+index sweep).
+
+### 2026-07-03 N1: Fix the lexical weight inversion; land the ranking suite
+
+**Status.** Done.
+
+**Result.** Corrected the FTS5 `bm25` weight vector at `WorkspaceIndexStore.SearchAsync` from
+`(0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7, 0.9, 0.5)` (path highest, the inversion) to
+`(0, 2.0, 5.0, 4.0, 3.0, 1.5, 1.0, 2.5, 0.7)`: name > symbols > signature > subtokens > path >
+comments > body > stems, matching the documented intent so a symbol-name match beats a folder-name
+match. Added MRR, recall@k, and nDCG@k to `Metrics.cs` (ported from the legacy `layer-ranking.ps1`,
+so N5 can delete the PowerShell copy). Added `RankingSuite` (`Name = "ranking"`, registered in
+`EvalCommand.BuildSuite`, all three help/error strings updated) scoring three configurations over
+the same index: lexical isolation (no embedder, priors off), shipping default, and
+default-without-co-change. Added `EnableCentralityPrior`/`EnableCoChangePrior` toggles to
+`LocalizationRequest` (default true) and gated the two priors in the engine on them.
+
+Recorded `results/ranking.json` on the corpus (index modes partial 2, syntax 2):
+- lexical: MRR 0.187, recall@1 3.0, recall@5 10.7, recall@10 12.6 percent, nDCG@10 0.117.
+- default (dense plus priors): MRR 0.197, recall@1 4.0, recall@5 10.4, recall@10 15.0 percent, nDCG@10 0.139.
+- default-no-cochange: MRR 0.208, recall@10 15.0 percent, nDCG@10 0.141.
+- A6 co-change delta (on minus off): MRR -0.011, recall@10 0.0.
+
+**A6 decision.** The suite weakly confirms finding 9's direction (co-change on is MRR-negative,
+recall-flat), but the delta is within CI on a mostly-syntax corpus where the graph is thin. Per the
+no-unmeasured-confidence principle, the co-change default is held ON and the flip decision is
+deferred to N4's richer-tier localize re-run (the plan's own gating point for the index-mode-ceiling
+hypothesis), rather than flipping a default on a -0.011 MRR delta within noise. The suite now exists
+to make that later decision on strong evidence.
+
+**Tests.** Added `WorkspaceIndexSearchRankingTests` (a "widget" query hitting a symbol name outranks
+the same term in a folder path) and six `MetricsTests` for MRR/recall@k/nDCG on hand-built rankings.
+Discovered-suite count rises (`fuse eval ranking` is live and in `--help`); Benchmarks.Tests 39 to
+45, Indexing.Tests +1.
+
+**Verification.** Three gates green (build 0 errors, all test suites pass, format clean).
+`fuse eval ranking` writes `results/ranking.json`. Docs updated: `internals/scoping-internals.mdx`
+(the weight ordering and the suite), `project/benchmarks.mdx` (the ranking gate), `AGENTS.md`
+(eval-suite list and a ranking-results bullet), `CHANGELOG.md`.
+
+**Blockers.** None. The full localize before/after precision re-run is deferred to N4 (which re-runs
+`localize.json` under the best tier); running it now on the pre-N4 syntax corpus would not test the
+hypothesis and would contend for the same corpus.
+
+**Lessons.** The inversion was a one-line literal that had shipped unmeasured; the suite is the real
+deliverable. On a mostly-syntax corpus the priors barely move ranking, which is itself the evidence
+that Phase 4's retrieval bets are correctly gated on N4.
+
+**Time.** ~1.5 session-hours.
 
 ### 2026-07-03 plan revision (external review pass)
 

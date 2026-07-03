@@ -1,0 +1,123 @@
+{
+  "suite": "reduce",
+  "description": "Token reduction and public-API fidelity over the corpus (offline continuity layer).",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 4,
+    "recall": 0.9859559380534401,
+    "recallCiLow": 0.9784617546818453,
+    "recallCiHigh": 0.9934501214250349,
+    "precision": 0.4166983183554174,
+    "f1": 0,
+    "medianTokens": 56382.5,
+    "meanTokens": 161469.5,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "NodaTime",
+      "repo": "NodaTime",
+      "category": "reduction",
+      "recall": 0.9941291585127201,
+      "precision": 0.38128342570615126,
+      "tokens": 509609,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 336/336",
+          "methods 1696/1708"
+        ],
+        "misses": [
+          "For",
+          "TestComparerStruct",
+          "TestCompareToClass",
+          "TestCompareToStruct",
+          "TestNonGenericCompareTo",
+          "TestEqualsClass",
+          "TestEqualsStruct",
+          "TestOperatorComparison",
+          "TestOperatorComparisonEquality",
+          "TestOperatorEquality"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor",
+      "repo": "Scrutor",
+      "category": "reduction",
+      "recall": 0.9811320754716981,
+      "precision": 0.42488010179113245,
+      "tokens": 23504,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 107/107",
+          "methods 101/105"
+        ],
+        "misses": [
+          "GetDecoratedServices",
+          "GetRequiredDecoratedService",
+          "FromType",
+          "FromAssemblyOf"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "Specification",
+      "repo": "Specification",
+      "category": "reduction",
+      "recall": 0.9757914338919925,
+      "precision": 0.43905857662181913,
+      "tokens": 74838,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 188/188",
+          "methods 336/349"
+        ],
+        "misses": [
+          "GetQuery",
+          "FindAsync",
+          "ProjectToFirstOrDefaultAsync",
+          "ProjectToListAsync",
+          "ToListAsync",
+          "ToEnumerableAsync",
+          "ThenInclude",
+          "GetByIdAsync",
+          "ApplySingleLike",
+          "ApplyLikesAsOrGroup"
+        ],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb",
+      "repo": "eShopOnWeb",
+      "category": "reduction",
+      "recall": 0.9927710843373494,
+      "precision": 0.4215711693025668,
+      "tokens": 37927,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "types 226/226",
+          "methods 186/189"
+        ],
+        "misses": [
+          "FromJson",
+          "HttpDelete",
+          "HttpPut"
+        ],
+        "extras": []
+      }
+    }
+  ],
+  "notes": [
+    "NodaTime: 488 files, raw 823,655 tokens; reduction by level: standard 41%, aggressive 46%, skeleton 38%, publicApi 60%; skeleton fidelity types 336/336, methods 1696/1708",
+    "Scrutor: 45 files, raw 40,868 tokens; reduction by level: standard 33%, aggressive 37%, skeleton 42%, publicApi 53%; skeleton fidelity types 107/107, methods 101/105",
+    "Specification: 233 files, raw 133,415 tokens; reduction by level: standard 25%, aggressive 30%, skeleton 44%, publicApi 49%; skeleton fidelity types 188/188, methods 336/349",
+    "eShopOnWeb: 250 files, raw 65,569 tokens; reduction by level: standard 11%, aggressive 16%, skeleton 42%, publicApi 47%; skeleton fidelity types 226/226, methods 186/189"
+  ]
+}

@@ -496,8 +496,8 @@ head-to-head claim is made that the harness does not back.
   overall changed-file recall about 15 percent at 8.1 percent precision, median 1,033 tokens; by
   bucket identifier-rich 21 percent, natural-language domain 17 percent. Contract metrics:
   low-signal detection F1 1.0, false-rejection on answerable queries 0.0 percent, precision when
-  confident 9.3 percent. Dense lifts recall over the lexical fallback (13.3 to 15.1 percent
-  overall). The acknowledged ceiling: the localize main checkout loads mostly syntax (partial 2,
+  confident 5.6 percent over the 9 confident tasks (the 9.3 was the superseded a1 run). Dense
+  lifts recall over the lexical fallback (13.3 to 14.9 percent overall). The acknowledged ceiling: the localize main checkout loads mostly syntax (partial 2,
   syntax 2), so the graph-dependent recall is barely exercised. Whether recall is bounded by index
   mode is a hypothesis the harness has not yet tested with semantic mode on; v4 N4 forces that
   test.
@@ -515,13 +515,14 @@ head-to-head claim is made that the harness does not back.
   dominated by a tiny-repo outlier on its 4-PR sample; on the substantive PRs Fuse leads or ties.
   No head-to-head ranking is claimed beyond this caveated reading.
 - **Suite E, token reduction and fidelity (offline)**: the Roslyn skeleton keeps every public and
-  protected type and 99 to 100 percent of public methods while removing 37 to 55 percent of tokens
+  protected type and 99 to 100 percent of public methods while removing 38 to 44 percent of tokens
   at skeleton level and 47 to 60 percent at public-API level. Fidelity is counted by parsing raw
   source with Roslyn as independent ground truth, so it is not circular.
 - **Warm latency and cold start (`performance.json`, NodaTime, syntax mode)**: cold syntax tier
-  about 19.9 s, semantic-ready after a further about 94.9 s; cold full semantic index about
-  69.7 s. Warm localize P50 60.9 / P95 71.2 ms; resolve sub-millisecond; review plan P50 109.9 ms;
-  single-file incremental re-index P50 22.8 ms. Timings are environment-dependent.
+  about 18.3 s, semantic-ready after a further about 83.3 s; cold full pass about 58.2 s (NodaTime's
+  main checkout loads syntax under the current loader, so this is the syntax pass; the N4 bake-off
+  confirms it). Warm localize P50 41.6 / P95 54.6 ms; resolve sub-millisecond; review plan P50
+  116.6 ms; single-file incremental re-index P50 24.2 ms. Timings are environment-dependent.
 
 Honest gaps stated in the docs: the model-driven peer comparison at full scale (50 to 100 PRs) and
 full task resolution (apply a patch, run a test oracle, score pass@1 across arms) are

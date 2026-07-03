@@ -12,6 +12,11 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.14.0" />
     <PackageVersion Include="Microsoft.Build.Locator" Version="1.7.8" />
+    <!-- N4 tier-1 build capture. Referenced ONLY by the out-of-process Fuse.BuildCaptureWorker (never by the
+         parent process that hosts MSBuildWorkspace), because the two Roslyn-loading closures conflict in one
+         process; the worker uses build capture and never invokes MSBuildWorkspace, so its 4.8 floor resolves to
+         this repo's 4.14 without breaking anything. -->
+    <PackageVersion Include="Basic.CompilerLog.Util" Version="0.9.47" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.27.0" />

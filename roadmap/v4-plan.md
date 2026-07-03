@@ -2302,6 +2302,37 @@ build's inputs), and the abstention contract handles the non-oracle case honestl
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 M1 (down-payment): covering-test selection over R5 tests edges
+
+**Status.** The covering-test selection primitive is done and green. The M1 box stays unticked: the full
+changeset-session lifecycle (create/apply/diagnose/promote/discard over the resident workspace, with per-branch
+isolation) remains, and its selection-recall benchmark over corpus PRs with test oracles is bounded by index
+mode (most corpus repos load syntax, so they carry no tests edges to select over, the same ceiling the other
+corpus suites hit). This lands the one deterministic, independently-useful M1 piece that R5 unblocked.
+
+**Result.** Added `GraphNeighborhoodExplorer.CoveringTestsAsync`: given a symbol, it returns the test types
+that reach it through an incoming R5 `tests` edge. Because R5's tests edges are DI-resolved (a test injecting
+`IOrderService` carries an edge to the registered `OrderService`), the covering set follows the wiring, not the
+literal type name. `fuse_impact` now lists these covering tests as a distinct section, separate from the blast
+radius, so an agent can run just that subset with its own `--filter`. It is labeled a lower bound bounded by
+R5 edge completeness (a test reached only through reflection or a source generator has no edge and is not
+selected), never "all the tests".
+
+**Tests.** `GraphNeighborhoodExplorerTests`: a change to `OrderService` selects the test carrying the tests
+edge and not the controller that only injects it (blast radius is not coverage); a symbol with no incoming
+tests edge selects nothing. The pre-existing central-files ranking test still holds (the added tests edge
+leaves `IOrderService` highest-degree on the ordinal tiebreak).
+
+**Verification.** Three gates green (build 0 errors, full suite exit 0, format exit 0). The primitive is a pure
+reverse-edge query filtered to the `tests` kind, so it adds no tool to the surface and no schema change; it
+enriches the existing `fuse_impact` (R2) output.
+
+**Remaining M1 work.** The changeset lifecycle and staging area (the stateful propose/verify/select/promote/
+discard sessions over the resident workspace), and the selection-recall benchmark once a semantic corpus load
+makes tests edges available at scale. In-process execution stays out of M1 by design (moved to M2, stretch).
+
+**Time.** ~0.75 session-hours.
+
 ### 2026-07-03 Release gate: version bump to 4.0.0 (no tag)
 
 **Status.** Done. The tag is deliberately not cut; per the working conventions the release is triggered by

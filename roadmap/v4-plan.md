@@ -249,6 +249,90 @@ Go-to-market (manual, after Phase 2)
 
 ---
 
+## Re-plan: actual state and forward sequence (2026-07-03)
+
+This section records the state after the first execution session and re-sequences the remaining
+work around two blockers discovered during it. It supersedes the flat Sequencing section for
+planning purposes; the per-item Why/How/Tests/Docs/Kill-risk below are unchanged.
+
+### State snapshot
+
+| Item | State | Note |
+|------|-------|------|
+| L1 license, L2 DCO | done | governance complete, gates green |
+| N4 bake-off spike | done | build-capture ladder chosen; `results/n4-bakeoff.json`; 65 percent build-success is the oracle coverage ceiling |
+| N1 ranking suite + weight fix | done | `fuse eval ranking`, `results/ranking.json` |
+| N2 purge + citations | part 1 done | results archived, reduce/performance regenerated, citations fixed; in-memory `Bm25RelevanceIndex` deletion deferred (non-shipping path, heavy test coupling) |
+| N5 harness retirement | done | one C# harness plus the one peer-script exception; drifts fixed |
+| N6 freshness contract | done | reconcile-on-open plus stale-as-of stamp |
+| N4 tier-1 build capture | mechanism validated, integration blocked | see blocker B1 |
+| N4 part 1 `fuse doctor` | done | per-project load-tier reporting |
+| N3 resident oracle | part 1 done | supervised background upgrade (finding 5); resident workspace and incremental semantic reindex remain, see blocker B2 |
+| R6 `fuse_signatures` | part 1 done | API-shape oracle from the symbol store; repair-packet half rides R1 |
+| R5, R2, R1, R7 | not started | blocked on B1/B2 |
+| R4 loop suite | not started | task-set curation is unblocked data work; the LSP-armed and model arms need provisioned models |
+| R3 tool reshape | not started | additive router plus shims; best done once the oracle tools it reshapes around exist |
+| M1, M2 | not started | depend on R1/R5 |
+| V1, V2 | not started | gated on N4's localize re-run (B1) |
+| G1, G2 | not started | G1 needs R1/R2/R7; G2's recipe/table is partly unblocked docs |
+
+### The two substrate blockers
+
+**B1: N4 tier-1 build capture cannot share a process with MSBuildWorkspace.** The mechanism is
+proven (a `BuildCaptureLoader` spike rehydrated a real compilation from a binary log via
+Basic.CompilerLog.Util 0.9.47 against Roslyn 4.14, validated on the SampleShop fixture). But adding
+that library to the assembly that also hosts the `MSBuildWorkspace` loader breaks MSBuildWorkspace
+with "Unable to load one or more of the requested types" (a Roslyn/Workspaces assembly-version
+conflict: MSBuildLocator requires the SDK-resolved assemblies, the library brings its own closure).
+A separate project does not fix it (the final app output still holds both closures). **Resolution:**
+run build capture in a separate worker process. Because a live `Compilation` cannot cross a process
+boundary, the worker must run the semantic extraction (the wiring analyzers over the rehydrated
+compilation) and serialize the resulting nodes/edges/symbols/routes back to the parent, which writes
+them to the store. This means extracting the compilation-to-graph extraction pipeline into an
+assembly the worker can reference without MSBuildWorkspace.
+
+**B2: N3 resident workspace has no consumer until the oracle tools exist.** Holding one loaded
+compilation resident (MSBuild evaluation paid once) and incrementally updating it is in-process and
+free of the B1 conflict, but its payoff is realized by R1/R2 forking the resident compilation. Built
+in isolation it is untested-in-anger infrastructure. So N3's remaining halves are best built
+together with the first oracle tool that consumes them.
+
+### Forward sequence (re-sequenced around the blockers)
+
+The original order assumed N4 and N3 were single large items landing before Phase 2. They are each
+now split, and the true critical path runs through B1's worker. Realistic multi-session order:
+
+1. **N4 tier-1 worker (unblocks B1).** Extract the compilation-to-graph extraction into an assembly
+   with no MSBuildWorkspace dependency; add a `fuse build-capture` worker subcommand that reads a
+   binlog, runs extraction, and writes serialized graph data to stdout or the store; have
+   `SemanticIndexer` invoke it out of process (bounded args, per the invariant) as tier 1, falling
+   back to MSBuildWorkspace (tier 2) then syntax (tier 3). Wire the tier into `fuse doctor` (already
+   reports the tier) and the availability header. Then N4 tier-2 (bounded auto-restore) as salvage.
+2. **N4 recall re-run.** Re-run `localize.json` and `review.json` with tier-1 on; record. This is
+   the gate for Phase 4 and the honesty check on the "recall is bounded by index mode" hypothesis.
+3. **N3 resident workspace plus incremental semantic reindex**, landed with R5's first consumer.
+4. **R5** (references/tests edges at index time; schema `TargetVersion` bump), then **R2**
+   (`fuse_impact` over R5), then **R1** (`fuse_check` speculative fork over the resident compilation)
+   plus Suite F, then **R6 part 2** (repair packets on R1's diagnostics), then **R7**
+   (`fuse_refactor` over R5's call sites), then **R4** (loop suite; curate the task set and record
+   the native/LSP baselines early, in parallel), then **R3** (fold the surface around the now-real
+   oracle tools, with shims and the ambient availability header).
+5. **M1** (changeset lifecycle plus covering-test selection over R5), then **M2** (out-of-proc
+   emit-and-run; stretch, may slip to 4.1).
+6. **Phase 4 V1 then V2**, only after step 2's re-run is recorded.
+7. **G1** (after R1/R2/R7), **G2** (recipe and coverage table; the docs half is startable anytime).
+
+### Release-gate deltas
+
+Satisfied now: gate 9 (L1), gate 10 (L2), and gate 8 in part (current-corpus citations, archive
+move done). Outstanding and gated on the above: gates 5 and 6 (Suite F false-green/false-red, M1)
+need R1/R5; gate 6a (N6 contract test) is satisfied for the reconcile path; gates 3 and 4
+(protocol/schema bumps) apply when R5 bumps `TargetVersion` and when the oracle tools add RPC DTOs;
+gate 7 (version bump to 4.0.0 via `build/set-version.ps1`) is a release-time step, not yet done. The
+tag is not cut; a single open PR (#24) holds the work.
+
+---
+
 ## Governance
 
 L1 and L2 are the first v4 execution items, before the N4 bake-off and before any Phase 1

@@ -16,9 +16,9 @@ namespace Fuse.Cli.Mcp;
 /// </summary>
 /// <remarks>
 ///     Each method maps to an MCP tool whose name is set by <see cref="McpServerToolAttribute" /> (for example
-///     <c>fuse_resolve</c>). The eleven tools (index, map, localize, resolve, context, review, find, neighbors,
-///     signatures, impact, reduce) work over the persistent semantic index; read tools build the index on first
-///     use. Tools return errors as descriptive strings rather than throwing.
+///     <c>fuse_resolve</c>). The twelve tools (index, map, localize, resolve, context, review, find, neighbors,
+///     signatures, impact, check, reduce) work over the persistent semantic index; read tools build the index on
+///     first use. Tools return errors as descriptive strings rather than throwing.
 /// </remarks>
 [McpServerToolType]
 public sealed partial class FuseTools

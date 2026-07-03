@@ -145,6 +145,16 @@ Iterative exploration primitives, ranked and bounded with provenance and no sour
 
 The neighborhood falls back to same-folder cohesion where the graph is sparse, so a result is never empty; central files are ranked by node degree and are empty in syntax mode (no edges). These primitives compose the structural priors and graph expansion into operations shaped for exploration.
 
+## fuse_check
+
+Speculatively typecheck a proposed single-file edit: the compiler errors and warnings the change would produce, without writing the file or running `dotnet build`. This is the oracle tool that replaces a build round-trip with a sub-second-class in-memory typecheck. It is oracle-grade: it answers only when the repository builds and is captured at tier-1 (via the out-of-process build-capture worker, configured with `FUSE_BUILD_CAPTURE_WORKER`), and otherwise abstains with a concrete reason ("cannot verify: ...") rather than guessing green. The patch is applied to the rehydrated compilation in memory; no disk write, no second build. Note: the first cut re-captures per check, so latency tracks a build; the resident-compilation fast path (sub-second warm forks) is future work.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | `.` | Workspace directory |
+| `file` | string | required | The repo-relative path of the file being changed |
+| `content` | string | required | The proposed full new content of that file |
+
 ## fuse_impact
 
 Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, enumerated from the persisted semantic graph (the R5 reference edges plus the wiring edges). No source bodies. The exact signature-change break set (which call sites would no longer bind) is an oracle-grade answer that needs a tier-1 load; until one is available the tool reports it as unavailable rather than guessing, and returns the graph-grade blast radius. Reverse traversal is the store's incoming-edge query, so the result is deduped by source node.

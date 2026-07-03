@@ -2269,6 +2269,39 @@ not an open-ended-recall lever. That is a more accurate positioning than the pre
 
 **Time.** ~0.5 session-hour (plus the background eval run).
 
+### 2026-07-03 R1 (part 1): fuse_check speculative typecheck
+
+**Status.** Done and green (functional). Box left unticked: Suite F (agreement rate, false-green/false-red,
+release-gated) and the resident-compilation fast path remain.
+
+**Result.** Added `fuse_check`: it typechecks a proposed single-file edit against the tier-1 build-captured
+compilation and returns the compiler errors/warnings the change would produce, with no disk write and no second
+`dotnet build`. The worker gained a `--check <target> <file> <newContentFile>` mode (new content via a file, not
+a bounded arg): it builds, rehydrates, replaces the target file's syntax tree with the proposed content
+(`ReplaceSyntaxTree`), and returns the changed document's diagnostics as a source-generated `CheckResult`.
+`BuildCaptureClient.CheckAsync` spawns it; the `fuse_check` tool resolves the build target, calls it, and
+abstains ("cannot verify: ...") when the worker is unconfigured or the repo does not build, never guessing green
+(the availability contract). MCP surface now twelve tools.
+
+**Tests.** `BuildCaptureCheckTests`: a patch introducing a type error is reported (an Error diagnostic), and a
+clean patch is clean (tolerant of a transient second-build abstention). Tool registration in the integration
+name array. Full suite green.
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). External-process
+args bounded (new content via a file); JSON source-generated; no protocol/schema change.
+
+**Remaining R1 work.** (a) Suite F: over the PR corpus, compare `fuse_check` diagnostics against `dotnet build`,
+recording the agreement rate and the false-green and false-red rates (both near-zero on tier-1 is release gate 5).
+(b) The resident-compilation fast path: the first cut re-captures (rebuilds) per check, so latency tracks a build;
+holding the captured compilation resident (N3) gives the sub-second warm forks the crown table targets. R6 part 2
+(repair packets on these diagnostics) also rides on this.
+
+**Lessons.** With tier-1 build capture proven, R1 reduces to applying the patch to the rehydrated immutable
+compilation and reading diagnostics; the oracle correctness is structural (the compilation shares the real
+build's inputs), and the abstention contract handles the non-oracle case honestly.
+
+**Time.** ~1.5 session-hours.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

@@ -1,0 +1,163 @@
+{
+  "suite": "checkgate",
+  "description": "Suite F: fuse_check false-green and false-red rates over known-good and known-bad edits.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 8,
+    "recall": 1,
+    "recallCiLow": 0,
+    "recallCiHigh": 0,
+    "precision": 1,
+    "f1": 1,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "good-equivalent-rewrite",
+      "repo": "checkgate",
+      "category": "good",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "good-equivalent-rewrite"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "good-added-overload",
+      "repo": "checkgate",
+      "category": "good",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "good-added-overload"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "bad-missing-member",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-missing-member"
+        ],
+        "misses": [],
+        "extras": [
+          "CS1061"
+        ]
+      }
+    },
+    {
+      "id": "bad-wrong-return-type",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-wrong-return-type"
+        ],
+        "misses": [],
+        "extras": [
+          "CS0029"
+        ]
+      }
+    },
+    {
+      "id": "bad-undefined-type",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-undefined-type"
+        ],
+        "misses": [],
+        "extras": [
+          "CS0246"
+        ]
+      }
+    },
+    {
+      "id": "bad-syntax-error",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-syntax-error"
+        ],
+        "misses": [],
+        "extras": [
+          "CS1513"
+        ]
+      }
+    },
+    {
+      "id": "good-comment-only",
+      "repo": "checkgate",
+      "category": "good",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "good-comment-only"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "bad-init-only-assignment",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-init-only-assignment"
+        ],
+        "misses": [],
+        "extras": [
+          "CS8852"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "In-process core: a raw-Roslyn compilation, one document replaced per case, classified with the shipped CheckResult.IsClean rule.",
+    "cases 8: correct 8, false-green 0, false-red 0, abstained 0.",
+    "false-green rate 0.0%, false-red rate 0.0% (over 8 verified).",
+    "GATE: PASS (no false green, no false red among verified checks).",
+    "Tier-1 arm: skipped (no FUSE_BUILD_CAPTURE_WORKER); the worker path is covered by BuildCaptureCheckTests when provisioned."
+  ]
+}

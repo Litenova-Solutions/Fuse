@@ -7,13 +7,14 @@ Fuse is a Roslyn-backed .NET semantic context engine with a warm persistent inde
 
 Three readers are served below. A stakeholder can read the suite headlines and the honest-reporting section. A new engineer can follow the reproduction steps and run a suite. A maintainer can read each suite's method, sample, index-mode distribution, and the cases where Fuse is weak.
 
-The benchmark is five suites run by a C# eval driver in `tests/benchmarks/Fuse.Benchmarks`, each reproduced with `fuse eval <suite>` and each writing its scorecard to `tests/benchmarks/results/<suite>.json`:
+The benchmark is six suites run by a C# eval driver in `tests/benchmarks/Fuse.Benchmarks`, each reproduced with `fuse eval <suite>` and each writing its scorecard to `tests/benchmarks/results/<suite>.json`:
 
 - Suite A, semantic resolution: does the extracted graph match a hand-built edge ground truth. Deterministic.
 - Suite B, change impact and review: does `fuse review` scope a real merged PR to the files it touches plus their semantic blast radius. Deterministic.
 - Suite C, open-ended localization: given only a PR title and no Git base, does `fuse localize` find the changed files. Deterministic, and the weakest mode.
 - Suite D, agent context sufficiency: under a real model, does an agent gather the task's files with the Fuse MCP tools. Model-dependent and not byte-reproducible.
 - Suite E, token reduction and fidelity: how far each reduction level cuts tokens, and how much of the public API the skeleton keeps. Deterministic and offline.
+- Suite F, `fuse_check` honesty: over known-good and known-bad single-file edits, how often the speculative typecheck reports a broken edit clean (a false green) or a valid edit broken (a false red). Deterministic and offline.
 
 ## An honest caveat on index mode
 
@@ -43,6 +44,7 @@ fuse eval semantics
 fuse eval review
 fuse eval localize
 fuse eval ranking
+fuse eval checkgate
 fuse eval agent
 fuse eval reduce
 ```
@@ -165,6 +167,10 @@ The run writes `tests/benchmarks/results/layer6-peers.json` with every arm's per
 ## Suite E: token reduction and fidelity
 
 Suite E counts, for each repository, the raw `o200k_base` tokens of the C# files, reduces them at each level through the shipped reduction path, counts the reduced tokens, and at skeleton level checks how many public and protected types and methods survive. Fidelity is counted by parsing the raw source with Roslyn as an independent ground truth, so the measure is not circular. Run with `fuse eval reduce`.
+
+## Suite F: the fuse_check honesty gate
+
+`fuse_check` is only useful if it does not lie. There are two ways it can. A false green reports a broken edit clean, and that is the dangerous one: it would let an agent commit a change that does not build. A false red reports a valid edit broken, which is cheaper but wastes an agent's turn chasing a phantom error. Suite F measures both. It builds a small self-contained compilation with raw Roslyn (no MSBuild, so it runs everywhere), then applies a battery of single-file edits each with a known-correct verdict: equivalent rewrites, an added valid overload, and a comment-only change that must stay clean; a call to a missing member, a wrong return type, an undefined type, a syntax error, and an assignment to an init-only property that must each be flagged. Each edit replaces one document's syntax tree and is classified with the exact `CheckResult.IsClean` rule the shipped worker applies, so the gate measures the classification contract the tool ships. An abstention (the compiler could not run) counts as neither a false green nor a false red, because abstaining is the honest answer when the oracle cannot know. Run with `fuse eval checkgate`; it writes `results/checkgate.json`. The current result is 8 of 8 edits classified correctly, zero false green and zero false red. The tier-1 end-to-end path (the out-of-process build-capture worker) is exercised by `BuildCaptureCheckTests` when a worker is provisioned; the offline gate is the in-process classification measure and records the tier-1 arm as skipped when no worker is configured, rather than fabricating a number for it.
 
 | Repository | Raw tokens | Standard | Aggressive | Skeleton | Public API | Skeleton fidelity (types / methods) |
 |------------|-----------:|---------:|-----------:|---------:|-----------:|-------------------------------------|

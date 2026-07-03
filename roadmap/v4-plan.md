@@ -1990,6 +1990,37 @@ is what keeps them apart, and the validation is that the parent's MSBuildWorkspa
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 R5 (part 1): persisted type-level reference edges
+
+**Status.** Part 1 done (`references` edges). Box left unticked: R5's `tests` edges (test method to the
+symbols it references, with DI resolving interface references to registered implementations) are part 2.
+
+**Result.** Added `ReferenceEdgeAnalyzer` to the in-process semantic analyzer set: for each source type it
+resolves the source types its declaration references (through the semantic model, so only bound references
+count) and emits one deduped `references` edge per (referencing type, referenced type) pair, at the
+references weight (0.15), never a self-loop. This runs in the existing `IndexSemanticAsync` pipeline on any
+repo that loads semantically today (no worker or resident workspace needed), so it is unblocked. Bumped
+`WorkspaceIndexSchema.TargetVersion` 14 to 15 (a stale index has no reference edges; the bump forces a
+rebuild). Finding 7 cleanup: `references` now has a producer; the dead `calls` weight is removed from
+`EdgeWeightProvider` (no producer; R5 uses `references` as the use-edge name); the `tests` weight is
+retained for M1 with a comment that its producer is R5 part 2.
+
+**Tests.** `ReferenceEdgeAnalyzerTests` over the OrderingApp fixture: references edges exist, are deduped,
+never self-loop, carry weight 0.15 with both endpoints materialized as nodes, and `OrderService` references
+another source type. Semantics.Tests rise accordingly; full suite green.
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). Suite A
+(wiring ground truth) is unaffected because it checks specific wiring edge types, not `references`.
+
+**Blockers.** R5 part 2 (tests edges with DI resolution) is the remaining half; it feeds M1's covering-test
+selection. Member-level references (finer than type-level) are deferred as a row-volume tradeoff, per the
+plan's kill-risk (type granularity is enough for `fuse_impact`'s answer).
+
+**Lessons.** Type-level `references` is a bounded, in-process producer that unblocks R2 without the worker or
+resident workspace; resolving references through the semantic model (not a textual scan) keeps them exact.
+
+**Time.** ~1.5 session-hours.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

@@ -10,6 +10,10 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" />
+    <!-- Pinned so the build-capture worker (which pulls Basic.CompilerLog's floor dependency on VisualBasic 4.8)
+         resolves VisualBasic to 4.14, matching CodeAnalysis.Common 4.14; a 4.8 VB assembly over a 4.14 Common
+         throws TypeLoadException. The worker never compiles VB; the pin is purely for version consistency. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic" Version="4.14.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.14.0" />
     <PackageVersion Include="Microsoft.Build.Locator" Version="1.7.8" />
     <!-- N4 tier-1 build capture. Referenced ONLY by the out-of-process Fuse.BuildCaptureWorker (never by the

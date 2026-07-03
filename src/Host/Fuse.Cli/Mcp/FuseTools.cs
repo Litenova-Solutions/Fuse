@@ -202,6 +202,14 @@ public sealed partial class FuseTools
                 await indexer.IndexAsync(root, store, cancellationToken);
             }
         }
+        else
+        {
+            // Freshness contract (N6): a warm store may have been built at first call and then gone stale as the
+            // agent edited files. Reconcile dirty known files (edited or deleted) before answering, so no read
+            // tool serves silently stale data. A bulk change degrades to a stale-as-of stamp (see the reconciler),
+            // which the availability header and fuse doctor report; it never silently serves the old index.
+            await indexer.ReconcileDirtyFilesAsync(root, store, cancellationToken);
+        }
         return store;
     }
 

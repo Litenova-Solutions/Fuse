@@ -216,7 +216,7 @@ Phase 1: the trustworthy floor
 - [ ] N2 One lexical ranker; purge stale results (amended: `agent.json` and the superseded a1
       doc citations join the sweep)
 - [x] N5 Retire the legacy harness and obsolete code paths; migrate to one established form
-- [ ] N6 The freshness contract: no read tool serves silently stale data (added, finding 6)
+- [x] N6 The freshness contract: no read tool serves silently stale data (added, finding 6)
 - [ ] N3 The resident oracle by default (promotes v3.2 W1; amended: the reindex trigger is
       named, resident memory is measured)
 
@@ -1699,6 +1699,43 @@ this item and not warranted while the one script is documented and bounded.
 XML summary had drifted, which is exactly the class of silent doc/reality gap N5 targets.
 
 **Time.** ~1 session-hour.
+
+### 2026-07-03 N6: the freshness contract (stamp + reconcile-on-open floor)
+
+**Status.** Done for the short-lived reconcile-on-open path and the stale-as-of stamp. The
+resident-daemon watcher-fed reconcile queue and the semantic (cross-file edge) increment ride with
+N3 (as the plan sequences); this item ships the severable floor that protects the syntax tier today.
+
+**Result.** Added `WorkspaceIndexStore.GetAllFileHashesAsync` and
+`SemanticIndexer.ReconcileDirtyFilesAsync`: on a warm read the store's known files are hashed against
+their on-disk content, edited files are re-indexed and deleted files removed before the read answers.
+A bulk change above a storm threshold (300 dirty files) records a stale-as-of stamp
+(`stale_dirty_count` in `index_meta`) instead of reconciling one file at a time. Wired into both MCP
+`OpenIndexedAsync` helpers (`FuseTools`, `FuseResources`), so every read tool and resource reconciles
+on open. This also gives the single-file incremental re-index (`ReindexFileAsync`) a real product
+caller for the first time (finding 6's corollary).
+
+**Tests.** `FreshnessReconcileTests`: edit-then-reconcile finds the added symbol and drops the
+deleted file's symbol (fresh), and a no-change reconcile is a no-op that stamps `0`. Semantics.Tests
+97 to 99.
+
+**Verification.** Three gates green (build 0 errors, tests pass, format clean). No RPC DTO changed
+(no protocol bump). The new `stale_dirty_count` meta key is additive metadata, not an extraction
+contract change, so no `WorkspaceIndexSchema.TargetVersion` bump is needed. Docs: `internals/operator.mdx`
+(the freshness-after-an-edit behavior), `project/performance.mdx` (incremental re-index now backs the
+reconcile), `AGENTS.md` (a new change-safety invariant).
+
+**Blockers.** None for the floor. Two deferred-to-N3 pieces are named honestly above: the daemon
+watcher (so a resident server reconciles without paying a hash sweep per call) and the semantic
+cross-file edge increment. The explicit availability-header surfacing of the stamp rides R3; until
+then the stamp lives in `index_meta` and is readable by `fuse doctor`.
+
+**Lessons.** Reconcile-on-open makes the common case (a few edited files) fresh by construction,
+which is the correctness win; the storm stamp is the honest fallback for bulk changes. Surfacing the
+stamp on the answer is blocked on R3's header, so the floor records it in metadata rather than
+inventing throwaway plumbing.
+
+**Time.** ~1.5 session-hours.
 
 ### 2026-07-03 plan revision (external review pass)
 

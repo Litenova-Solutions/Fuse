@@ -261,4 +261,16 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     ///     byte-identical duplicates (for example copies that escaped exclusion) to one canonical result.
     /// </returns>
     Task<IReadOnlyDictionary<string, string>> GetContentHashesAsync(IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns the content hash of every indexed file, keyed by normalized path.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>A map from normalized path to content hash for all files currently in the index.</returns>
+    /// <remarks>
+    ///     Used by the freshness reconcile pass (the N6 contract): the reconciler hashes the current on-disk
+    ///     content of each known file and compares it to the stored hash to find files edited or deleted since
+    ///     the index was written, so a read tool reconciles them before answering rather than serving stale data.
+    /// </remarks>
+    Task<IReadOnlyDictionary<string, string>> GetAllFileHashesAsync(CancellationToken cancellationToken);
 }

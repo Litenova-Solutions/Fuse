@@ -156,6 +156,9 @@ public sealed class FuseResources
         var state = await store.GetStateAsync(cancellationToken);
         if (state.FileCount == 0)
             await indexer.IndexAsync(root, store, cancellationToken);
+        else
+            // Freshness contract (N6): reconcile dirty known files before serving a resource read.
+            await indexer.ReconcileDirtyFilesAsync(root, store, cancellationToken);
         return store;
     }
 }

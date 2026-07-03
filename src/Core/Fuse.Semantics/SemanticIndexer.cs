@@ -228,6 +228,80 @@ public sealed class SemanticIndexer
         return extracted.Symbols.Count;
     }
 
+    /// <summary>The metadata key recording the dirty-file count when a freshness reconcile degraded to a stamp.</summary>
+    public const string StaleAsOfMetaKey = "stale_dirty_count";
+
+    // Storm protection: above this many dirty files (a bulk change such as a branch switch or a large pull), skip
+    // the per-file reconcile that would otherwise thrash the index one file at a time and instead stamp the result
+    // stale, so a caller re-runs a full index rather than paying a reconcile storm on every read.
+    private const int MaxReconcileFiles = 300;
+
+    /// <summary>
+    ///     Reconciles the index against the current on-disk content of its known files: the N6 freshness contract.
+    ///     Files edited since the index was written are re-indexed (syntax rows) and deleted files are removed, so a
+    ///     read tool serves fresh data rather than an index frozen at first call. When the number of dirty files
+    ///     exceeds a storm threshold the pass does not reconcile; it records a stale-as-of stamp instead, so a bulk
+    ///     change degrades to an explicit "run a full index" signal rather than a reconcile storm.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="store">The index store to reconcile.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The freshness outcome (files checked, reconciled, remaining dirty, and whether it was stamped stale).</returns>
+    /// <remarks>
+    ///     This detects modified and deleted known files via a content-hash comparison; it does not discover new
+    ///     files added on disk since the last full index (that needs a directory walk, which a full
+    ///     <see cref="IndexAsync" /> performs). Cross-file semantic edges are not recomputed here (see
+    ///     <see cref="ReindexFileAsync" />); the resident-workspace path recomputes the affected neighborhood.
+    /// </remarks>
+    public async Task<FreshnessResult> ReconcileDirtyFilesAsync(
+        string rootDirectory, IWorkspaceIndexStore store, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var stored = await store.GetAllFileHashesAsync(cancellationToken);
+        if (stored.Count == 0)
+            return new FreshnessResult(0, 0, 0, Stamped: false);
+
+        var dirty = new List<string>();
+        foreach (var (normalizedPath, storedHash) in stored)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var absolute = Path.Combine(root, normalizedPath.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(absolute))
+            {
+                dirty.Add(normalizedPath); // deleted on disk
+                continue;
+            }
+
+            var currentHash = _hashService.ComputeHash(await File.ReadAllBytesAsync(absolute, cancellationToken));
+            if (!string.Equals(currentHash, storedHash, StringComparison.Ordinal))
+                dirty.Add(normalizedPath); // edited on disk
+        }
+
+        if (dirty.Count == 0)
+        {
+            await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
+            return new FreshnessResult(stored.Count, 0, 0, Stamped: false);
+        }
+
+        if (dirty.Count > MaxReconcileFiles)
+        {
+            // Storm: do not reconcile one-by-one. Stamp the count so the availability header (and fuse doctor)
+            // reports the answer as stale-as-of and the caller runs a full index.
+            await store.SetMetaAsync(StaleAsOfMetaKey, dirty.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken);
+            return new FreshnessResult(stored.Count, 0, dirty.Count, Stamped: true);
+        }
+
+        var reconciled = 0;
+        foreach (var path in dirty)
+        {
+            await ReindexFileAsync(root, path, store, cancellationToken);
+            reconciled++;
+        }
+
+        await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
+        return new FreshnessResult(stored.Count, reconciled, 0, Stamped: false);
+    }
+
     private async Task<SemanticIndexResult> IndexSemanticAsync(
         string root,
         IWorkspaceIndexStore store,
@@ -501,3 +575,18 @@ public sealed record SemanticIndexResult(
     int ChunkCount,
     int RouteCount,
     IReadOnlyList<DiagnosticRecord> Diagnostics);
+
+/// <summary>
+///     The outcome of a freshness reconcile pass (the N6 contract): how many known files were checked against
+///     their on-disk content, how many were reconciled, how many remain dirty, and whether the pass degraded to a
+///     stale-as-of stamp instead of reconciling (a bulk change above the storm threshold).
+/// </summary>
+/// <param name="Checked">The number of known files whose on-disk hash was compared.</param>
+/// <param name="Reconciled">The number of dirty files re-indexed (or removed) by this pass.</param>
+/// <param name="DirtyRemaining">The number of dirty files left unreconciled (nonzero only when stamped).</param>
+/// <param name="Stamped">Whether the result is stamped stale-as-of rather than reconciled (storm protection).</param>
+public sealed record FreshnessResult(int Checked, int Reconciled, int DirtyRemaining, bool Stamped)
+{
+    /// <summary>Whether the index is fresh after this pass (nothing dirty remains).</summary>
+    public bool IsFresh => DirtyRemaining == 0;
+}

@@ -2143,6 +2143,31 @@ Basic.CompilerLog, never the MSBuild loader, so both closures coexist.
 
 **Time.** ~1 session-hour.
 
+### 2026-07-03 N4 tier-1 (part 4): worker emits the serialized graph bundle
+
+**Status.** Done and green. N4 box still unticked: parent ingest, indexer wiring, and worker packaging remain.
+
+**Result.** The worker now carries the full extracted graph (symbols, nodes, edges, routes, DI registrations,
+options bindings) per project in `CapturedProject` and serializes it as source-generated JSON on stdout (all
+record types added to `BuildCaptureJsonContext`, honoring the source-gen-only invariant). A round-trip test
+pins the contract, so the parent-side ingest will read exactly what the worker wrote.
+
+**Tests.** `CaptureBundleSerializationTests`: a bundle with a symbol, two nodes, a di_resolves_to edge, and a
+route round-trips with fields intact. Full suite green.
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean).
+
+**Remaining tier-1 work.** Parent (SemanticIndexer) spawns the worker (bounded args), deserializes the bundle,
+and writes symbols/nodes/edges/routes/DI/options to the store as the tier-1 path (the parent still does its own
+file scan, syntax chunks, and embeddings); package the worker exe with the global tool and locate it at
+runtime; then the recall re-run. Serialization (this part) and extraction (part 3) are done, so the parent
+ingest is a store-write over deserialized records.
+
+**Lessons.** The Fuse.Indexing record types serialize cleanly under source-gen with no attributes needed, so
+the worker-to-parent contract is just those records plus a thin envelope.
+
+**Time.** ~1 session-hour.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

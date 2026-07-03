@@ -74,7 +74,7 @@ public sealed class BuildCaptureRehydrator
                 FilePath: call.ProjectFilePath ?? "",
                 AssemblyName: compilation.AssemblyName,
                 Compilation: compilation);
-            var symbolCount = symbolExtractor.Extract(loaded, projectDir, cancellationToken).Count();
+            var symbols = symbolExtractor.Extract(loaded, projectDir, cancellationToken);
             var graph = analyzers.Run(new SemanticAnalysisContext(loaded, projectDir), cancellationToken);
 
             projects.Add(new CapturedProject(
@@ -83,9 +83,15 @@ public sealed class BuildCaptureRehydrator
                 AssemblyName: compilation.AssemblyName,
                 ErrorCount: errorCount,
                 TypeCount: typeCount,
-                SymbolCount: symbolCount,
+                SymbolCount: symbols.Count,
                 NodeCount: graph.Nodes.Count,
-                EdgeCount: graph.Edges.Count));
+                EdgeCount: graph.Edges.Count,
+                Symbols: symbols,
+                Nodes: graph.Nodes,
+                Edges: graph.Edges,
+                Routes: graph.Routes,
+                DiRegistrations: graph.DiRegistrations,
+                OptionsBindings: graph.OptionsBindings));
         }
 
         return projects.Count == 0
@@ -164,9 +170,21 @@ public sealed class BuildCaptureRehydrator
 /// <param name="SymbolCount">The number of symbols Fuse's semantic extractor produced from the compilation.</param>
 /// <param name="NodeCount">The number of semantic-graph nodes the wiring analyzers produced.</param>
 /// <param name="EdgeCount">The number of semantic-graph edges the wiring analyzers produced.</param>
+/// <param name="Symbols">The extracted symbol records (the tier-1 graph bundle the parent ingests).</param>
+/// <param name="Nodes">The semantic-graph node records.</param>
+/// <param name="Edges">The semantic-graph edge records.</param>
+/// <param name="Routes">The route records.</param>
+/// <param name="DiRegistrations">The DI registration records.</param>
+/// <param name="OptionsBindings">The options binding records.</param>
 public sealed record CapturedProject(
     string Name, string FilePath, string? AssemblyName, int ErrorCount, int TypeCount,
-    int SymbolCount = 0, int NodeCount = 0, int EdgeCount = 0);
+    int SymbolCount = 0, int NodeCount = 0, int EdgeCount = 0,
+    IReadOnlyList<Fuse.Indexing.SymbolRecord>? Symbols = null,
+    IReadOnlyList<Fuse.Indexing.NodeRecord>? Nodes = null,
+    IReadOnlyList<Fuse.Indexing.SemanticEdgeRecord>? Edges = null,
+    IReadOnlyList<Fuse.Indexing.RouteRecord>? Routes = null,
+    IReadOnlyList<Fuse.Indexing.DiRegistrationRecord>? DiRegistrations = null,
+    IReadOnlyList<Fuse.Indexing.OptionsBindingRecord>? OptionsBindings = null);
 
 /// <summary>The outcome of a build capture.</summary>
 /// <param name="Succeeded">Whether the build succeeded and at least one C# compilation was rehydrated.</param>

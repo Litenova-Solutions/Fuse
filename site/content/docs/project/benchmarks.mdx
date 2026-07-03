@@ -42,9 +42,12 @@ Run a suite by name:
 fuse eval semantics
 fuse eval review
 fuse eval localize
+fuse eval ranking
 fuse eval agent
 fuse eval reduce
 ```
+
+There is one harness: the `Fuse.Benchmarks` C# library behind `fuse eval`. The legacy PowerShell layer scripts were retired (v4 N5); the one documented exception is the peer comparison (`harness/layer6-peers.ps1`), which orchestrates external MCP servers.
 
 To index the corpus semantically, add `--restore`, which runs `dotnet restore` on each checkout (or, for review and agent, each PR worktree) before indexing so MSBuild and Roslyn can load it:
 
@@ -186,4 +189,4 @@ Suite A is the clean, deterministic claim: with a semantic workspace, Fuse resol
 
 ## Related pages
 
-The warm-index model and how to think about Fuse's speed are in [Performance and Benchmarking](/docs/project/performance). The retrieval mechanism is in [Retrieval Internals](/docs/internals/scoping-internals). The scoping modes are in [Scoping To What Matters](/docs/concepts/scoping). The harness, corpus manifest, PR ground truth, and the five suites live in `tests/benchmarks` and its readme.
+The warm-index model and how to think about Fuse's speed are in [Performance and Benchmarking](/docs/project/performance). The retrieval mechanism is in [Retrieval Internals](/docs/internals/scoping-internals). The scoping modes are in [Scoping To What Matters](/docs/concepts/scoping). The single C# harness, corpus manifest, PR ground truth, and the suites live in `tests/benchmarks` and its readme.

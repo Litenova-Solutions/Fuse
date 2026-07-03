@@ -215,7 +215,7 @@ Phase 1: the trustworthy floor
       suite gates the priors too and re-adjudicates the A6 co-change regression)
 - [ ] N2 One lexical ranker; purge stale results (amended: `agent.json` and the superseded a1
       doc citations join the sweep)
-- [ ] N5 Retire the legacy harness and obsolete code paths; migrate to one established form
+- [x] N5 Retire the legacy harness and obsolete code paths; migrate to one established form
 - [ ] N6 The freshness contract: no read tool serves silently stale data (added, finding 6)
 - [ ] N3 The resident oracle by default (promotes v3.2 W1; amended: the reindex trigger is
       named, resident memory is measured)
@@ -1669,6 +1669,36 @@ describing the migration). Gates: no C# changed in this part, so build/test rema
 regenerating and rewriting it was the highest-value part of the sweep.
 
 **Time.** ~1.5 session-hours.
+
+### 2026-07-03 N5: retire the legacy harness; fix drifts
+
+**Status.** Done.
+
+**Result.** Deleted the superseded PowerShell layer scripts (`layer1`, `layer2a`, `layer2b`,
+`layer4-scenario`, `layer5-agent`, `layer-latency`, `layer-ranking`, `run-all`, `setup-corpus`,
+`gen-prs`, `check-regressions`, `smoke`, `calibrate-tokenizers`, `bootstrap-ci`), keeping only
+`harness/layer6-peers.ps1` (the documented external-MCP-server peer exception the plan permits) and
+its `common.ps1`/`common.Tests.ps1`. Their metrics are already ported: ranking (MRR/recall@k/nDCG)
+to `Metrics`/`RankingSuite` (N1), the layer suites to the C# `IEvalSuite` set, and corpus/PR setup
+to `CorpusManager`. Fixed drifts: `FuseTools` XML summary corrected from "eight tools" (omitting
+`fuse_neighbors`) to nine; `OrderingApp` added to `corpus.json` as a fixture-only entry (the Suite A
+wiring ground truth, no PR history); the legacy `reduction.json` was archived under N2. Rewrote the
+benchmark readme and swept `benchmarks.mdx`, `AGENTS.md`, and `overview.md` to describe one harness
+and one command surface (`fuse eval`).
+
+**Verification.** Three gates green (build 0 errors, all tests pass including Benchmarks.Tests 45 and
+CorpusManagerTests with `OrderingApp` in the manifest, format clean). CI does not reference the
+deleted scripts (checked `.github/`), so nothing breaks. Port-parity for the deleted scripts'
+metrics is covered by the existing C# suite and `Metrics` tests.
+
+**Blockers.** None. The peer harness stays in PowerShell as the single documented exception the
+plan explicitly allows (external-MCP orchestration); a full C# `PeersSuite` port is out of scope for
+this item and not warranted while the one script is documented and bounded.
+
+**Lessons.** The integration-test tool-name array was already correct at nine; only the human-facing
+XML summary had drifted, which is exactly the class of silent doc/reality gap N5 targets.
+
+**Time.** ~1 session-hour.
 
 ### 2026-07-03 plan revision (external review pass)
 

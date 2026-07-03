@@ -46,6 +46,13 @@
       "local": "tests/fixtures/SampleShop",
       "note": "In-repo fixture included for ASP.NET route fidelity, which the library repos above do not exercise.",
       "cs_files": 7
+    },
+    {
+      "name": "OrderingApp",
+      "size": "micro (in-repo)",
+      "local": "tests/fixtures/OrderingApp",
+      "note": "In-repo wiring fixture; the hand-built edge ground truth for Suite A (semantic resolution). Fixture-only: it is not a cloned repo and carries no PR history, so it is exercised by the semantics suite, not the corpus PR suites (review/localize).",
+      "cs_files": 19
     }
   ]
 }

@@ -546,14 +546,14 @@ dependency-bump, config-ci, formatting, route-api, test-only, identifier-rich, n
 no-signal is treated as low-signal (the honest answer there is to abstain). Metrics include a
 deterministic percentile bootstrap CI (seed 1469, 2000 iterations) for small-N confidence.
 
-Two harnesses currently coexist: the C# `Fuse.Benchmarks` library driven by `fuse eval`
-(the authoritative one), and a legacy PowerShell harness (`harness/layerN.ps1`, `run-all.ps1`)
-that still owns a few metrics and the peer run. The peer harness (`harness/layer6-peers.ps1`)
-runs fuse versus codegraph (offline graph) versus coa-codesearch (Lucene, MCP) versus serena
-(LSP-backed); deterministic arms scale to any sample, model-driven arms run one bounded claude
-rollout per PR (haiku-4-5). Peers are omitted, never stubbed, when absent; all MCP calls are
-bounded with a wall-clock backstop and process-tree kill so no server orphans. The v4 plan (N5)
-consolidates onto the single C# harness.
+There is one harness: the C# `Fuse.Benchmarks` library driven by `fuse eval` (v4 N5 retired the
+legacy PowerShell layer scripts and folded their metrics into the C# suites and `CorpusManager`).
+The single documented exception is the peer comparison, whose orchestration of external MCP servers
+stays in `harness/layer6-peers.ps1` (with `harness/common.ps1`): it runs fuse versus codegraph
+(offline graph) versus coa-codesearch (Lucene, MCP) versus serena (LSP-backed); deterministic arms
+scale to any sample, model-driven arms run one bounded claude rollout per PR (haiku-4-5). Peers are
+omitted, never stubbed, when absent; all MCP calls are bounded with a wall-clock backstop and
+process-tree kill so no server orphans.
 
 ---
 

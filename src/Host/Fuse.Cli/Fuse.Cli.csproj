@@ -11,7 +11,7 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>fuse</ToolCommandName>
         <PackageId>Fuse</PackageId>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/Litenova-Solutions/Fuse</PackageProjectUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>mcp;dotnet-tool;llm;codebase;context;fusion;csharp;token-reduction</PackageTags>

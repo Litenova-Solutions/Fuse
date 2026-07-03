@@ -200,7 +200,7 @@ head = [
 ]
 foot = [
     f'<text x="{PAD}" y="{H-20}" font-family="{MONO}" font-size="11" fill="{FAINT}">'
-    f'github.com/Litenova-Solutions/Fuse  .  MIT  .  o200k_base tokens  .  four suites reproducible via fuse eval, tests/benchmarks/results</text>',
+    f'github.com/Litenova-Solutions/Fuse  .  Apache 2.0  .  o200k_base tokens  .  four suites reproducible via fuse eval, tests/benchmarks/results</text>',
     "</svg>",
 ]
 path = sys.argv[1] if len(sys.argv) > 1 else "fuse-benchmarks.svg"

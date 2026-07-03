@@ -37,6 +37,10 @@ The core libraries do not depend on the host, and language-specific behavior liv
 
 Support for a language is a matter of registering its plugin, so adding one does not require changes to the core pipeline. The [Language Plugin guide](/docs/internals/extending/language-plugin) gives the step-by-step process for adding a reducer, skeleton extractor, and the other capabilities a language plugin provides.
 
+## License
+
+Fuse is licensed under the Apache License, Version 2.0 (see the `LICENSE` file at the repository root, and `NOTICE` for attribution). Contributions are accepted under the same license. The project migrated from MIT to Apache 2.0 in the 4.0 release; the change adds an explicit patent grant and is a license-header change only, with no API break.
+
 ## What This Does Not Cover
 
 This page covers the contribution workflow and layout. It does not restate the C# conventions, the XML documentation standard, or the dependency injection lifetimes in full; those live in the repository contributing guide and AGENTS.md. The performance and AOT build steps are covered in [Performance and Benchmarking](/docs/project/performance).

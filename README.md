@@ -21,7 +21,7 @@
   <a href="https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml"><img src="https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <a href="https://registry.modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-registry-6d4aff" alt="MCP Registry"></a>
   <a href="https://dotnet.microsoft.com/download"><img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white" alt=".NET 10"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Litenova-Solutions/Fuse?color=6d4aff" alt="License: MIT"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Litenova-Solutions/Fuse?color=6d4aff" alt="License: Apache 2.0"></a>
 </p>
 
 ---
@@ -163,4 +163,4 @@ Contribution workflow: [Contributing](https://fuse.codes/docs/project/contributi
 
 ## License
 
-MIT. Copyright (c) 2026 Litenova Solutions. See [LICENSE](LICENSE).
+Apache 2.0. Copyright (c) 2026 Litenova Solutions. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

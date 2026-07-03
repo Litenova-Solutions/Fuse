@@ -206,7 +206,7 @@ and PR carries the new license and sign-off contract.
 
 Governance (first; complete before Phase 1)
 - [x] L1 Migrate the project license from MIT to Apache 2.0
-- [ ] L2 Adopt the Developer Certificate of Origin (DCO)
+- [x] L2 Adopt the Developer Certificate of Origin (DCO)
 
 Phase 1: the trustworthy floor
 - [ ] N4 Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as
@@ -1509,6 +1509,36 @@ no per-file MIT header to sweep. Apache-2.0 is compatible with the MIT/Apache de
 no NOTICE attribution beyond the model note was required.
 
 **Time.** ~1 session-hour.
+
+### 2026-07-03 L2: Adopt the Developer Certificate of Origin
+
+**Status.** Done.
+
+**Result.** Added `DCO.txt` (canonical Developer Certificate of Origin 1.1 text) at the repo root.
+Documented the sign-off requirement in `CONTRIBUTING.md` and the docs contributing page
+(`git commit -s`, the `Signed-off-by` trailer, why DCO over a CLA, grandfathering). Added a
+pull-request template (`.github/PULL_REQUEST_TEMPLATE.md`) with a required sign-off checkbox and the
+three verification gates. Enabled the check as a CI workflow (`.github/workflows/dco.yml`) rather
+than the GitHub App, since app installation is not scriptable here: it inspects only the commits a
+PR adds (`base..head`), skips merge commits, and fails with an actionable message
+(`git rebase --signoff`) when a commit's trailer does not match its author. Every v4 commit from L1
+forward already carries a sign-off (verified on L1). Changelog entry under 4.0.0.
+
+**Verification.** Three gates green (build 0 errors, tests pass, format clean; L2 touches no C#).
+The DCO workflow's sign-off matching was validated locally against this branch's commits with the
+same `git show -s --format` logic the workflow runs. The check will exercise end to end on this
+PR (release-gate item 10 confirms it on a test PR).
+
+**Blockers.** The DCO GitHub App cannot be installed from this non-interactive session; the
+equivalent CI check the plan permits is used instead. If the maintainer prefers the hosted DCO bot,
+it can be enabled in repo settings and the workflow removed; behavior is equivalent.
+
+**Lessons.** A CI-check implementation is strictly more portable than the app (no external
+dependency, runs on forks), at the cost of not offering the app's one-click "set sign-off" web
+button. The author-match rule (trailer name+email equals commit author) is the same rule the app
+enforces.
+
+**Time.** ~0.5 session-hour.
 
 ### 2026-07-03 plan revision (external review pass)
 

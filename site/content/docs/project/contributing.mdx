@@ -37,9 +37,17 @@ The core libraries do not depend on the host, and language-specific behavior liv
 
 Support for a language is a matter of registering its plugin, so adding one does not require changes to the core pipeline. The [Language Plugin guide](/docs/internals/extending/language-plugin) gives the step-by-step process for adding a reducer, skeleton extractor, and the other capabilities a language plugin provides.
 
-## License
+## License and Sign-off
 
 Fuse is licensed under the Apache License, Version 2.0 (see the `LICENSE` file at the repository root, and `NOTICE` for attribution). Contributions are accepted under the same license. The project migrated from MIT to Apache 2.0 in the 4.0 release; the change adds an explicit patent grant and is a license-header change only, with no API break.
+
+Every commit must carry a Developer Certificate of Origin (DCO) sign-off. Add it with `git commit -s`, or write the trailer by hand as the last line of the commit message:
+
+```
+Signed-off-by: Your Name <you@example.com>
+```
+
+The name and email must match the commit author. The sign-off certifies the DCO 1.1 statement in `DCO.txt` (the same certificate the Linux kernel, Kubernetes, and the Apache Software Foundation use): you attest that you have the right to submit the change under the project license. A DCO check runs on every pull request and fails if any commit in the pull request is missing a matching trailer. Commits merged before the DCO was adopted are grandfathered; the check inspects only the commits a pull request adds. Fuse uses the DCO instead of a Contributor License Agreement, so there is no separate signature step.
 
 ## What This Does Not Cover
 

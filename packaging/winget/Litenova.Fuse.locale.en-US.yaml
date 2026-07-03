@@ -7,7 +7,7 @@ PublisherSupportUrl: https://github.com/Litenova-Solutions/Fuse/issues
 PackageName: Fuse
 PackageUrl: https://fuse.codes
 Moniker: fuse
-License: MIT
+License: Apache-2.0
 LicenseUrl: https://github.com/Litenova-Solutions/Fuse/blob/main/LICENSE
 ShortDescription: A .NET-native codebase context optimizer for AI-assisted development.
 Description: >-

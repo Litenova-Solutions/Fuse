@@ -205,7 +205,7 @@ MIT; Apache 2.0 and DCO land as the opening moves on the v4 branch so every subs
 and PR carries the new license and sign-off contract.
 
 Governance (first; complete before Phase 1)
-- [ ] L1 Migrate the project license from MIT to Apache 2.0
+- [x] L1 Migrate the project license from MIT to Apache 2.0
 - [ ] L2 Adopt the Developer Certificate of Origin (DCO)
 
 Phase 1: the trustworthy floor
@@ -1476,6 +1476,39 @@ diagnosis the agent must request.
 
 Append a timestamped entry per item as it lands (Status / Result / Verification / Blockers /
 Lessons / Time). The first item entry goes here. Plan revisions are logged below them.
+
+### 2026-07-03 L1: Migrate license from MIT to Apache 2.0
+
+**Status.** Done.
+
+**Result.** `LICENSE` replaced with the full Apache License 2.0 text plus the appendix, retaining
+the Litenova Solutions 2026 copyright. Added a `NOTICE` file (Apache convention; records that the
+runtime-fetched all-MiniLM-L6-v2 model is itself Apache-2.0 and downloaded on demand, not
+redistributed). Every Fuse-owned license expression moved to `Apache-2.0`:
+`Directory.Build.props` (new `PackageLicenseExpression`, the repo-wide default),
+`src/Host/Fuse.Cli/Fuse.Cli.csproj`, `ext/vscode/package.json`, `build/pack-tool.ps1` nuspec,
+and `packaging/winget/Litenova.Fuse.locale.en-US.yaml`. Badges and footers updated in `README.md`,
+the benchmark figure (`assets/fuse-benchmarks.svg`, `assets/fuse-benchmarks-chart.py`,
+`site/public/fuse-benchmarks.svg`). Docs contributing page and root `CONTRIBUTING.md` now name the
+Apache license; `CHANGELOG.md` carries the 4.0.0 migration note for downstream packagers.
+`build/verify-version.ps1` gained a license-consistency assertion (LICENSE is Apache, and the three
+declared license expressions read `Apache-2.0`), so a stray MIT claim now fails CI.
+`mcp-registry/server.json` declares no license field, so it had no MIT claim to migrate.
+
+**Verification.** Three gates green: `dotnet build Fuse.slnx -c Release` (0 errors),
+`dotnet test Fuse.slnx -c Release --no-build` (all suites pass), `dotnet format --verify-no-changes`
+(clean). `build/verify-version.ps1` passes (version + new license check). Repo-wide grep over
+owned artifacts (`src`, `assets`, `packaging`, `build`, `ext`, `README.md`, `CONTRIBUTING.md`,
+`mcp-registry`) finds no remaining MIT claim; `site/package-lock.json` MIT entries are third-party
+dependencies and correctly untouched.
+
+**Blockers.** None.
+
+**Lessons.** The only Fuse-owned MIT claims were metadata and prose, not source headers; there was
+no per-file MIT header to sweep. Apache-2.0 is compatible with the MIT/Apache dependency graph, so
+no NOTICE attribution beyond the model note was required.
+
+**Time.** ~1 session-hour.
 
 ### 2026-07-03 plan revision (external review pass)
 

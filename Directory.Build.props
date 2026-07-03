@@ -12,6 +12,10 @@
     <Authors>Litenova Solutions</Authors>
     <Company>Litenova Solutions</Company>
     <Copyright>Copyright © Litenova Solutions 2026</Copyright>
+    <!-- SPDX license expression stamped into every packable assembly; the LICENSE file holds the full text.
+         The 4.0 release migrated from MIT to Apache-2.0 (see CHANGELOG). Keep in lockstep with the LICENSE
+         file, the VS Code extension manifest, the winget locale, and the pack-tool nuspec. -->
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/Litenova-Solutions/Fuse.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <!-- The VS Threading analyzers (VSTHRD*) arrive transitively through StreamJsonRpc (the UI host transport)

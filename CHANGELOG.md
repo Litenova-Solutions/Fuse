@@ -2,6 +2,14 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 3.0 is a product overhaul; backward compatibility with 2.x output, commands, and the MCP tool surface is not a goal.
 
+## [Unreleased] - 4.0.0
+
+The compiler-oracle release. See `roadmap/v4-plan.md` for the full item breakdown.
+
+### Changed
+
+- **License migrated from MIT to Apache 2.0 (L1).** The project now ships under the Apache License, Version 2.0. Apache 2.0 adds an explicit patent grant and a termination-on-litigation clause, the standard pairing for compiler-adjacent tooling that third parties embed. This is a license-header change only, with no API break. Downstream packagers should update the SPDX expression they record for Fuse from `MIT` to `Apache-2.0`. A `NOTICE` file is added per Apache convention; the runtime-fetched all-MiniLM-L6-v2 embedding model is itself Apache-2.0 and is downloaded on demand, not redistributed.
+
 ## [3.2.0] - 2026-07-02
 
 ### Changed

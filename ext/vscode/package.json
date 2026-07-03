@@ -4,7 +4,7 @@
   "description": "Warm Fuse engine in VS Code: index status, token hotspots, dependency graph, scoping, and secret diagnostics. The human-facing twin of the Fuse MCP server.",
   "version": "3.2.0",
   "publisher": "litenova",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.90.0"

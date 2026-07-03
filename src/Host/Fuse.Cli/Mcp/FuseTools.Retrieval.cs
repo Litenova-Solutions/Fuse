@@ -178,6 +178,56 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
+    ///     Blast radius for a symbol before an edit: the callers, implementers, consumers, and referencing types a
+    ///     change to it would touch, enumerated from the persisted semantic graph (R5's reference edges plus the
+    ///     wiring edges). The precise signature-change break set requires an oracle-grade load and is reported as
+    ///     unavailable otherwise, per the availability contract.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="symbol">The symbol whose blast radius to compute.</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="limit">The maximum impacted items to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The impacted files and symbols with the edge that connects them, plus an availability note.</returns>
+    [McpServerTool(Name = "fuse_impact", ReadOnly = true)]
+    [Description("Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, from the persisted semantic graph. No bodies. The exact signature-change break set (which call sites would no longer bind) needs an oracle-grade (tier-1) load and is reported unavailable otherwise, rather than guessed.")]
+    public static async Task<string> FuseImpactAsync(
+        SemanticIndexer indexer,
+        [Description("The symbol (simple or qualified name) whose blast radius to compute.")] string symbol,
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("Maximum impacted items to return.")] int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            return "Error: provide a symbol name.";
+
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
+        var explorer = new GraphNeighborhoodExplorer(store);
+        var impact = await explorer.CallersAndImplementersAsync(symbol, limit, cancellationToken);
+
+        var builder = new StringBuilder();
+        builder.AppendLine($"impact of {symbol}: {impact.Count} impacted (index mode {mode})");
+        foreach (var item in impact)
+        {
+            var symbolPart = item.Symbol is null ? string.Empty : $"  {item.Symbol}";
+            builder.AppendLine($"  {item.Path}{symbolPart}  [{item.Reason}]");
+        }
+
+        if (impact.Count == 0 && mode == "syntax")
+            builder.AppendLine("  (no edges: syntax mode has no semantic graph; run fuse_index on a semantically loadable checkout)");
+
+        // Availability contract: the exact signature-change break set is an oracle-grade answer (a bind-check
+        // against a resident compilation). No tier-1 load exists yet, so it is reported unavailable, not guessed.
+        builder.AppendLine();
+        builder.AppendLine(
+            "signature-change break set: unavailable (needs an oracle-grade tier-1 load; the enumeration above is " +
+            "the graph-grade blast radius from the persisted reference and wiring edges).");
+
+        return builder.ToString();
+    }
+
+    /// <summary>
     ///     Deterministically resolves .NET wiring to its target(s): no source bodies.
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>

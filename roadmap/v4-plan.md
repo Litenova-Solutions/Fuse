@@ -2021,6 +2021,36 @@ resident workspace; resolving references through the semantic model (not a textu
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 R2 (part 1): fuse_impact blast radius
+
+**Status.** Part 1 done (graph-grade blast-radius enumeration). Box left unticked: the tier-1
+signature-change bind-check (which call sites no longer bind) needs a resident oracle-grade compilation
+and is reported unavailable per the availability contract.
+
+**Result.** Added the `fuse_impact` MCP tool. It resolves a symbol and returns its blast radius (callers,
+implementers, consumers, referencing types) from the persisted semantic graph, reusing
+`GraphNeighborhoodExplorer.CallersAndImplementersAsync` over incoming edges, which now include R5's
+`references` edges. This is unblocked precisely because R5 part 1 landed the reference substrate. The
+response states the index mode and reports the signature-change break set as unavailable (oracle-grade,
+tier-1) rather than guessing, honoring the plan's rule that oracle tools abstain below tier 1. Additive
+(no shim, no protocol change); the MCP surface is now eleven tools, with the integration-test array,
+summary, and server instructions updated together.
+
+**Tests.** `McpServeIntegrationTests` tool-name array includes `fuse_impact` (registration and resolution
+verified end to end); the enumeration logic is covered by the existing `GraphNeighborhoodExplorer` tests.
+
+**Verification.** Three gates green (clean build 0 errors, full suite green on re-run after a known
+Fusion concurrency-test flake, format clean). Docs: `reference/mcp-tools.mdx`, `AGENTS.md` (eleven-tool
+list).
+
+**Blockers.** The bind-check half is blocked on the resident oracle-grade compilation (N3 resident
+workspace plus N4 tier-1), the same substrate the other oracle tools need.
+
+**Lessons.** R5's reference edges made R2's enumeration a pure store read, so the tool ships graph-grade
+today and gains the precise break-set for free once the resident compilation exists.
+
+**Time.** ~1 session-hour.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

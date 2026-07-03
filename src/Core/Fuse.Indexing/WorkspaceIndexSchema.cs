@@ -16,7 +16,12 @@ public static class WorkspaceIndexSchema
     ///     The current schema version. The existing cache database carries a lower or absent version,
     ///     so it is dropped and rebuilt on the first V3 run.
     /// </summary>
-    public const int TargetVersion = 14;
+    /// <remarks>
+    ///     Version 15 (v4 R5): the semantic analyzers now emit type-level <c>references</c> edges. That is an
+    ///     extraction-contract change (a stale index has no reference edges), so the version bump forces a
+    ///     rebuild rather than serving an index missing the new edges.
+    /// </remarks>
+    public const int TargetVersion = 15;
 
     /// <summary>
     ///     Database-level pragmas applied once at schema creation. WAL journaling and

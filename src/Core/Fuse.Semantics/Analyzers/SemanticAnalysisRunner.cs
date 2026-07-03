@@ -41,6 +41,7 @@ public sealed class SemanticAnalysisRunner
             new PipelineBehaviorAnalyzer(),
             new EfCoreAnalyzer(),
             new EndpointAnalyzer(),
+            new ReferenceEdgeAnalyzer(),
         ]);
     }
 

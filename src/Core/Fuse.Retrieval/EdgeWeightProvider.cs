@@ -28,11 +28,15 @@ public sealed class EdgeWeightProvider
         ["di_injects"] = 0.75,
         ["options_consumes"] = 0.75,
         ["sends_request"] = 0.70,
+        // "tests" is weighted for the test-impact traversal M1 uses; its producer is R5 part 2 (test-to-symbol
+        // edges with DI resolution). Until then no analyzer emits it, so the weight is inert rather than wrong.
         ["tests"] = 0.65,
-        ["calls"] = 0.60,
         ["cochanges"] = 0.45,
         ["project_references"] = 0.30,
         ["path_proximity"] = 0.20,
+        // "references" is produced by ReferenceEdgeAnalyzer (R5): a type-level use edge, the weakest structural
+        // signal. The former "calls" weight was removed (finding 7): no analyzer emitted it, and R5 chose
+        // "references" as the edge name for use edges rather than a separate call graph.
         ["references"] = 0.15,
     };
 

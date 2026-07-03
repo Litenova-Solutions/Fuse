@@ -293,8 +293,9 @@ weights: DiffChangedFile and RouteExact 1.00; Symbol/Service/Request/StackTrace 
 neighbor files at decayed scores. `EdgeWeightProvider` gives per-edge traversal weights with
 HopDecay 0.65: route_handles 1.00, mediatr_handles 0.95, di_resolves_to 0.95, implements 0.90,
 di_depends_on_impl 0.85, options_binds 0.85, config_impacts 0.80, inherits 0.75, di_injects 0.75,
-options_consumes 0.75, sends_request 0.70, tests 0.65, calls 0.60, cochanges 0.45,
-project_references 0.30, path_proximity 0.20, references 0.15. `GraphNeighborhoodExplorer`
+options_consumes 0.75, sends_request 0.70, tests 0.65 (producer lands in v4 R5 part 2), cochanges
+0.45, project_references 0.30, path_proximity 0.20, references 0.15 (produced by the v4 R5
+`ReferenceEdgeAnalyzer`; the former `calls` weight was removed as dead, finding 7). `GraphNeighborhoodExplorer`
 provides standalone navigation primitives (neighborhood, callers/implementers, central files),
 with a same-folder cohesion fallback in syntax mode.
 

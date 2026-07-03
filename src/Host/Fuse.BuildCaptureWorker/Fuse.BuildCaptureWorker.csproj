@@ -17,5 +17,9 @@
   <ItemGroup>
     <PackageReference Include="Basic.CompilerLog.Util" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <!-- Version-consistency pin only (never used to compile VB): Basic.CompilerLog's floor dependency on
+         VisualBasic 4.8 must resolve to 4.14 to match CodeAnalysis.Common 4.14, or a mismatched VB assembly
+         throws TypeLoadException at runtime. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" />
   </ItemGroup>
 </Project>

@@ -1770,13 +1770,27 @@ this part builds the availability surface that the tier-1 mechanism will populat
 
 **Tier-1 dependency de-risk (2026-07-03, recorded for the next session).** `Basic.CompilerLog.Util`
 (the binlog-rehydration library, jaredpar) is available on nuget.org at 0.9.47 and restores cleanly
-under this repo's central package management. The one caveat, to resolve before wiring it in: 0.9.47
-declares a dependency on Microsoft.CodeAnalysis 4.8.0 while this repo pins Roslyn 4.14.0, so the
-restore raises NU1608 version-constraint warnings and the runtime compatibility of the 4.8-built
-library against 4.14 assemblies must be validated (read a real binlog, produce a compilation, confirm
-no MissingMethod at runtime) before it is committed. The speculative package reference was reverted
-so the tree stays clean until that validation is done; the mechanism decision (build-capture) is
-already recorded in `results/n4-bakeoff.json`.
+under this repo's central package management. It ships a net10.0 target.
+
+**Tier-1 mechanism VALIDATED, integration BLOCKED (2026-07-03, recorded from a spike).** A working
+`BuildCaptureLoader` was written and validated end to end: it runs `dotnet build -bl` (bounded args,
+default configuration), reads the binary log with `CompilerCallReaderUtil.Create` +
+`reader.ReadAllCompilationData()`, and rehydrates a Roslyn `Compilation` via
+`data.GetCompilationAfterGenerators(ct)`. An integration test built the in-repo SampleShop solution
+and confirmed the rehydrated compilation contains the real `SampleShop.SecretsHolder` type. So the
+API and runtime compatibility of the 0.9.47 net10.0 build against Roslyn 4.14 are proven; the tier-1
+mechanism works.
+
+The blocker: adding `Basic.CompilerLog.Util` to the `Fuse.Semantics` assembly (which also hosts the
+`MSBuildWorkspace`-based `RoslynWorkspaceLoader`) breaks the MSBuildWorkspace load with
+"Unable to load one or more of the requested types" (a Roslyn/Workspaces assembly-version conflict:
+the library pulls its own CodeAnalysis.Workspaces closure into the output, which collides with the
+SDK-resolved assemblies `MSBuildLocator`/`MSBuildWorkspace` require). The two Roslyn-loading
+mechanisms cannot share one process/assembly closure as-is. The spike was reverted to keep the tree
+green. Resolution for the tier-1 landing: run build-capture out of process (a small child worker that
+emits the rehydrated data), or isolate it in a separate assembly loaded in its own `AssemblyLoadContext`
+so its CodeAnalysis closure does not collide with MSBuildWorkspace's SDK-resolved assemblies. This is
+the concrete next step for N4 tier-1; the mechanism itself is no longer a question.
 
 **Blockers.** None for part 1. Tier-1/tier-2 are large, self-contained follow-on work (binlog
 integration is a new capability), deliberately not rushed to keep the gates and the no-silent-change

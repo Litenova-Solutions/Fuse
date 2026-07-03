@@ -11,6 +11,7 @@ public sealed class McpServeIntegrationTests
 {
     private static readonly string[] ExpectedV3ToolNames =
     [
+        "fuse_changeset",
         "fuse_check",
         "fuse_context",
         "fuse_find",

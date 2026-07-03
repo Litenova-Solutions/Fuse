@@ -95,6 +95,7 @@ public sealed class McpServeCommand
                     "- fuse_impact: Blast radius for a symbol (callers, implementers, referencers) before an edit.\n" +
                     "- fuse_check: Speculatively typecheck a proposed single-file edit (oracle-grade; abstains otherwise).\n" +
                     "- fuse_refactor: Compiler-executed solution-wide rename, staged as a diff (abstains on a partial load).\n" +
+                    "- fuse_changeset: Speculative staging area (create/stage/diagnose/select/promote/discard); nothing is written until an explicit promote.\n" +
                     "- fuse_reduce: Compact a known set of files or raw content.";
             })
             .WithStdioServerTransport()

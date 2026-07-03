@@ -355,6 +355,121 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
+    ///     The speculative staging area (M1): stage single-file edits into a changeset session, diagnose them
+    ///     with the speculative typecheck, select the covering tests, then promote the diff or discard it. The
+    ///     working tree is touched only on an explicit promote.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use, for the select operation).</param>
+    /// <param name="op">The lifecycle operation: create, stage, list, diagnose, select, promote, or discard.</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="session">The session id (required for every op except create).</param>
+    /// <param name="file">The repo-relative file path (for stage).</param>
+    /// <param name="content">The proposed full new content of the file (for stage).</param>
+    /// <param name="limit">The maximum covering tests to return (for select).</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The operation's result, or an error/abstention string.</returns>
+    [McpServerTool(Name = "fuse_changeset", ReadOnly = false)]
+    [Description("Speculative staging area (propose, verify, select, commit): stage single-file edits into a changeset session, diagnose them with the speculative typecheck (fuse_check), select the tests that cover the changed symbols (from the persisted graph), then promote the diff to the working tree or discard it. Nothing is written until an explicit promote. op is one of: create, stage, list, diagnose, select, promote, discard.")]
+    public static async Task<string> FuseChangesetAsync(
+        SemanticIndexer indexer,
+        [Description("The lifecycle operation: create, stage, list, diagnose, select, promote, or discard.")] string op = "",
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("The session id (required for every op except create).")] string? session = null,
+        [Description("The repo-relative file path (for stage).")] string? file = null,
+        [Description("The proposed full new content of the file (for stage).")] string? content = null,
+        [Description("Maximum covering tests to return (for select).")] int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var root = Path.GetFullPath(path);
+        var store = FuseTools.ChangesetSessions;
+        switch (op.Trim().ToLowerInvariant())
+        {
+            case "create":
+                return $"session {store.Create(root)} created. Stage edits, then diagnose/select, then promote or discard.";
+
+            case "stage":
+                if (string.IsNullOrWhiteSpace(session) || string.IsNullOrWhiteSpace(file) || content is null)
+                    return "Error: stage needs session, file, and content.";
+                return store.Stage(session, file, content)
+                    ? $"staged {file} in session {session} (not written to disk)."
+                    : $"unknown session {session}.";
+
+            case "list":
+                var staged = session is null ? null : store.StagedFiles(session);
+                return staged is null ? $"unknown session {session}." : $"staged in {session}: {string.Join(", ", staged)}";
+
+            case "diagnose":
+                if (string.IsNullOrWhiteSpace(session))
+                    return "Error: diagnose needs session.";
+                var target = await DiscoverBuildTargetAsync(root, cancellationToken);
+                if (target is null)
+                    return "cannot verify: no solution or project found to build. fuse_changeset diagnose abstains.";
+                var diagnoses = await store.DiagnoseAsync(
+                    session, target, new Fuse.Semantics.BuildCaptureClient(), TimeSpan.FromMinutes(10), cancellationToken);
+                if (diagnoses is null)
+                    return $"unknown session {session}.";
+                return RenderDiagnoses(diagnoses);
+
+            case "select":
+                if (string.IsNullOrWhiteSpace(session))
+                    return "Error: select needs session.";
+                await using (var idx = await OpenIndexedAsync(indexer, path, cancellationToken))
+                {
+                    var tests = await store.SelectCoveringTestsAsync(session, idx, new GraphNeighborhoodExplorer(idx), limit, cancellationToken);
+                    if (tests is null)
+                        return $"unknown session {session}.";
+                    return tests.Count == 0
+                        ? "covering tests: 0 (a lower bound from R5 tests edges; none reached the changed symbols)"
+                        : $"covering tests ({tests.Count}, a lower bound; run with your own --filter):\n  " + string.Join("\n  ", tests);
+                }
+
+            case "promote":
+                if (string.IsNullOrWhiteSpace(session))
+                    return "Error: promote needs session.";
+                var written = await store.PromoteAsync(session, cancellationToken);
+                return written is null
+                    ? $"unknown session {session}."
+                    : $"promoted session {session}: wrote {written.Count} file(s) to the working tree: {string.Join(", ", written)}";
+
+            case "discard":
+                if (string.IsNullOrWhiteSpace(session))
+                    return "Error: discard needs session.";
+                return store.Discard(session)
+                    ? $"discarded session {session}; the working tree is untouched."
+                    : $"unknown session {session}.";
+
+            default:
+                return "Error: op must be one of create, stage, list, diagnose, select, promote, discard.";
+        }
+    }
+
+    private static async Task<string?> DiscoverBuildTargetAsync(string root, CancellationToken cancellationToken)
+    {
+        var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
+        return discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
+    }
+
+    private static string RenderDiagnoses(IReadOnlyList<Fuse.Retrieval.ChangesetDiagnosis> diagnoses)
+    {
+        var builder = new StringBuilder();
+        foreach (var d in diagnoses)
+        {
+            if (!d.Check.Verified)
+                builder.AppendLine($"{d.File}: cannot verify ({d.Check.Reason}).");
+            else if (d.Check.IsClean)
+                builder.AppendLine($"{d.File}: clean (no errors in the changed document).");
+            else
+            {
+                builder.AppendLine($"{d.File}: {d.Check.Diagnostics.Count} diagnostic(s):");
+                foreach (var diag in d.Check.Diagnostics)
+                    builder.AppendLine($"  {diag.Severity} {diag.Id} at line {diag.Line}: {diag.Message}");
+            }
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
     ///     Deterministically resolves .NET wiring to its target(s): no source bodies.
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>

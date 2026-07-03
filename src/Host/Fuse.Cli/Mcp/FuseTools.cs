@@ -16,9 +16,9 @@ namespace Fuse.Cli.Mcp;
 /// </summary>
 /// <remarks>
 ///     Each method maps to an MCP tool whose name is set by <see cref="McpServerToolAttribute" /> (for example
-///     <c>fuse_resolve</c>). The thirteen tools (index, map, localize, resolve, context, review, find, neighbors,
-///     signatures, impact, check, refactor, reduce) work over the persistent semantic index; read tools build the
-///     index on first use. Tools return errors as descriptive strings rather than throwing.
+///     <c>fuse_resolve</c>). The fourteen tools (index, map, localize, resolve, context, review, find, neighbors,
+///     signatures, impact, check, refactor, changeset, reduce) work over the persistent semantic index; read
+///     tools build the index on first use. Tools return errors as descriptive strings rather than throwing.
 /// </remarks>
 [McpServerToolType]
 public sealed partial class FuseTools
@@ -183,6 +183,13 @@ public sealed partial class FuseTools
     ///     short-lived in-process caller behaves and tests can drive it directly.
     /// </summary>
     public static SemanticUpgradeSupervisor UpgradeSupervisor { get; set; } = new();
+
+    /// <summary>
+    ///     The speculative staging area for <c>fuse_changeset</c> (M1). Sessions persist across MCP calls in the
+    ///     long-lived serve host, so an agent can create a changeset, stage edits, diagnose and select, then
+    ///     promote or discard across separate tool calls. Held in memory, keyed by an opaque session id.
+    /// </summary>
+    public static Fuse.Retrieval.ChangesetSessionStore ChangesetSessions { get; } = new();
 
     // Opens the store and builds the index on first use, so read tools work without an explicit fuse_index call.
     // In the long-lived serve host, cold start serves the syntax tier in a few seconds, then upgrades to the

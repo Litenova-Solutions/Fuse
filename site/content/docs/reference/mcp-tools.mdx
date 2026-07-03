@@ -185,6 +185,21 @@ Batch exact-signature lookup: for a set of symbol names (simple or fully qualifi
 | `path` | string | `.` | Workspace directory |
 | `limitPerName` | int | 5 | Maximum matches to return per requested name |
 
+## fuse_changeset
+
+The speculative staging area: propose a changeset, verify it, select its tests, then commit or abandon it, all without touching the working tree until you choose to. An agent creates a session, stages one or more single-file edits into it, diagnoses them with the speculative typecheck (`fuse_check`), selects the tests that cover the changed symbols (from the persisted `tests` edges), and then either promotes the changeset (which writes the staged edits to the working tree) or discards it (which leaves the tree untouched). Two changesets over the same base are isolated: staging into one never affects the other. The edit-verify loop becomes propose-oracle-commit. This first cut re-captures the build per diagnose (no resident compilation yet), so diagnose latency tracks a build; in-process test execution is out of scope by design (the select operation returns the covering set to run with your own `dotnet test --filter`).
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `op` | string | required | The lifecycle operation: `create`, `stage`, `list`, `diagnose`, `select`, `promote`, or `discard` |
+| `path` | string | `.` | Workspace directory |
+| `session` | string | null | The session id (required for every op except `create`) |
+| `file` | string | null | The repo-relative file path (for `stage`) |
+| `content` | string | null | The proposed full new content of the file (for `stage`) |
+| `limit` | int | 50 | Maximum covering tests to return (for `select`) |
+
+Only `promote` writes to disk, and only when called. A `discard` (or never promoting) leaves the working tree exactly as it was.
+
 ## fuse_reduce
 
 Compact a specific set of files (or raw content) by running Fuse's reduction, without collecting a whole directory. Pass `files` or `content` with `extension`.

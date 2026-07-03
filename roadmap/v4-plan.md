@@ -2168,6 +2168,37 @@ the worker-to-parent contract is just those records plus a thin envelope.
 
 **Time.** ~1 session-hour.
 
+### 2026-07-03 N4 tier-1 (part 5): parent consumes the worker across the process boundary
+
+**Status.** Done and green. N4 box still unticked: the indexer tier-1 write path and worker packaging remain.
+
+**Result.** Moved the capture DTO (`CaptureResult`, `CapturedProject`) and its source-generated JSON context to
+the shared `Fuse.Indexing` assembly, so the parent deserializes the worker's output without referencing the
+worker's Basic.CompilerLog closure. Added `BuildCaptureClient` in `Fuse.Semantics`: it spawns the worker
+(bounded args), reads the graph bundle from stdout, and deserializes it, degrading to a concrete failure so the
+caller falls back a tier when the worker is unconfigured, times out, or emits no parseable output. The worker is
+located via `FUSE_BUILD_CAPTURE_WORKER`.
+
+**Tests.** `BuildCaptureClientTests`: the parent spawns the worker on a self-contained project and reads back the
+extracted `Widget` symbol (the full cross-process round-trip), and an unconfigured client reports unavailable.
+Full suite green.
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). External-process
+args are a fixed bounded list; JSON is source-generated; both invariants held.
+
+**Remaining tier-1 work.** Wire `BuildCaptureClient` into `SemanticIndexer.IndexAsync` as the tier-1 write path
+(on a successful capture, write the bundle's symbols/nodes/edges/routes/DI/options to the store, with the parent
+still doing its file scan, syntax chunks, and embeddings; fall back to MSBuildWorkspace then syntax); package the
+worker exe with the global tool. Then the recall re-run (the Phase 4 gate). All five tier-1 crux risks
+(mechanism, isolation, extraction-in-worker, serialization, cross-process consumption) are now proven; the
+indexer write path is a store-write over deserialized records.
+
+**Lessons.** Putting the DTO in the shared assembly (not the worker) is what lets the parent read the worker's
+output without pulling the conflicting closure; the process boundary is the isolation, the shared DTO is the
+contract.
+
+**Time.** ~1.5 session-hours.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

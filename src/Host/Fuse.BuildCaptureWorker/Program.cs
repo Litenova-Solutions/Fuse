@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Fuse.BuildCaptureWorker;
+using Fuse.Indexing;
 
 // The build-capture worker: a standalone process the main Fuse process spawns for N4 tier-1, so the
 // Basic.CompilerLog Roslyn closure never shares a process with the parent's MSBuildWorkspace.

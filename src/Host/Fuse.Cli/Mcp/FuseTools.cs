@@ -176,9 +176,13 @@ public sealed partial class FuseTools
     /// </summary>
     public static bool BackgroundSemanticUpgradeEnabled { get; set; }
 
-    // Guards against launching more than one background semantic upgrade per workspace root at a time.
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> SemanticUpgrades =
-        new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    ///     Owns the background semantic-upgrade jobs' lifetime (N3, finding 5): deduped per root, failures logged,
+    ///     and cancelled and drained on host shutdown so none is orphaned. The serve host sets this to a
+    ///     supervisor with a stderr sink and disposes it on shutdown; the default keeps a plain instance so a
+    ///     short-lived in-process caller behaves and tests can drive it directly.
+    /// </summary>
+    public static SemanticUpgradeSupervisor UpgradeSupervisor { get; set; } = new();
 
     // Opens the store and builds the index on first use, so read tools work without an explicit fuse_index call.
     // In the long-lived serve host, cold start serves the syntax tier in a few seconds, then upgrades to the
@@ -214,32 +218,19 @@ public sealed partial class FuseTools
     }
 
     // Runs the semantic upgrade in the background on its own store handle (the foreground store is disposed when
-    // the tool returns). Fire-and-forget by design: a failure must not crash the server, and the syntax-tier
-    // index already served the call. Guarded so two concurrent cold calls do not both upgrade the same root.
+    // the tool returns), supervised by UpgradeSupervisor: deduped per root, cancellable, its failure logged not
+    // swallowed, and drained on host shutdown so no task is orphaned (N3, finding 5).
     private static void ScheduleSemanticUpgrade(SemanticIndexer indexer, string root)
     {
-        if (!SemanticUpgrades.TryAdd(root, 0))
-            return;
-
-        _ = Task.Run(async () =>
+        UpgradeSupervisor.Schedule(root, async cancellationToken =>
         {
-            try
-            {
-                var databasePath = FuseStorePaths.ResolveDatabasePath(root);
-                await using var store = new WorkspaceIndexStore(databasePath);
-                await store.InitializeAsync(CancellationToken.None);
-                await indexer.UpgradeToSemanticAsync(root, store, CancellationToken.None);
-            }
-            catch
-            {
-                // The syntax-tier index remains usable; a later explicit fuse_index can retry the upgrade.
-            }
-            finally
-            {
-                SemanticUpgrades.TryRemove(root, out _);
-            }
+            var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+            await using var store = new WorkspaceIndexStore(databasePath);
+            await store.InitializeAsync(cancellationToken);
+            await indexer.UpgradeToSemanticAsync(root, store, cancellationToken);
         });
     }
+
 
     // Provisions the bundled dense model once (fetch-and-cache) before the first index, so the dense channel is
     // on by default. Idempotent and offline-safe: a present model is a no-op, a failed fetch falls back to lexical.

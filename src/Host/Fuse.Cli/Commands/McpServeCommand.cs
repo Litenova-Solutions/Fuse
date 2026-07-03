@@ -44,6 +44,9 @@ public sealed class McpServeCommand
         // detached background task outlives a request; making it the default is deferred with the resident-Roslyn-
         // workspace work that lets the host manage the background task's lifetime cleanly.
         FuseTools.BackgroundSemanticUpgradeEnabled = BackgroundUpgradeOptIn();
+        // The resident host owns the background semantic-upgrade jobs' lifetime (N3): failures go to stderr (never
+        // the JSON-RPC stdout), and shutdown drains them so none is orphaned. Replaces the old fire-and-forget path.
+        FuseTools.UpgradeSupervisor = new Mcp.SemanticUpgradeSupervisor(Console.Error.WriteLine);
 
         // Tell the client (or auto-apply, when FUSE_AUTO_UPDATE is set) that a newer Fuse is available. Writes to
         // stderr so it never corrupts the JSON-RPC stream on stdout; cache-first, so it does not delay serving.
@@ -98,7 +101,15 @@ public sealed class McpServeCommand
             .WithTools<FuseDeprecatedTools>()
             .WithResources<FuseResources>();
 
-        await builder.Build().RunAsync(context.CancellationToken);
+        try
+        {
+            await builder.Build().RunAsync(context.CancellationToken);
+        }
+        finally
+        {
+            // Cancel and drain in-flight background semantic upgrades so shutdown leaves no orphaned task.
+            await FuseTools.UpgradeSupervisor.DisposeAsync();
+        }
     }
 
     // The background semantic upgrade is opt-in: FUSE_BG_UPGRADE set to a truthy value (1/true/yes/on) enables

@@ -1837,6 +1837,37 @@ compiler-execution tools are not.
 
 **Time.** ~1 session-hour.
 
+### 2026-07-03 N3 (part 1): supervised background semantic upgrade
+
+**Status.** Part 1 done (the upgrade lifecycle, finding 5). Box left unticked: N3's resident workspace
+(hold one loaded compilation, MSBuild evaluation paid once) and the dependency-scoped incremental
+semantic reindex remain, and are the substrate the Phase 2 oracle tools consume.
+
+**Result.** Replaced the fire-and-forget `Task.Run` in `FuseTools.ScheduleSemanticUpgrade` (which
+swallowed exceptions and could outlive the host) with a `SemanticUpgradeSupervisor`: deduped per
+root, each job run under a shared cancellation token, failures logged (to stderr in the serve host)
+rather than swallowed, and a bounded cancel-and-drain on host shutdown so no task is orphaned. The
+serve host installs the supervisor with a stderr sink and disposes it in a `finally` around the host
+run, so the drain always happens.
+
+**Tests.** `SemanticUpgradeSupervisorTests`: per-root dedup, cancel-and-drain observes cancellation
+and leaves nothing running, schedule-after-dispose is refused, and a failing job is logged not
+swallowed. Cli.Tests 78 to 82.
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). No RPC
+DTO or schema change. Docs: `project/performance.mdx` (the supervised-upgrade behavior).
+
+**Blockers for the rest of N3.** The resident workspace and the incremental semantic reindex are the
+remaining work; they are in-process (MSBuildWorkspace, no assembly conflict, unlike N4 tier-1), but
+their payoff is realized by the Phase 2 oracle tools (R1/R2 fork the resident compilation), which
+gates their value. This part fixes the shipped lifecycle defect independently.
+
+**Lessons.** The lifecycle defect (finding 5) is severable from the resident-workspace architecture
+and worth fixing on its own: it is a real correctness issue (orphaned task, swallowed failure) in the
+shipping opt-in path today.
+
+**Time.** ~1 session-hour.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

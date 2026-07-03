@@ -1,0 +1,228 @@
+{
+  "suite": "n4-bakeoff",
+  "description": "N4 build-capture bake-off spike: MSBuildWorkspace vs build-capture ladder tier over the corpus plus popular OSS .NET repos. Decides N4's mechanism.",
+  "generated": "2026-07-03",
+  "environment": {
+    "os": "Windows 11",
+    "sdk": "10.0.109 (global.json pins 10.0.100 latestFeature)",
+    "dense": "off (FUSE_DENSE=0) for the loader probe"
+  },
+  "methodology": "For each repo: (a) MSBuildWorkspace = the current loader's achieved index mode via `fuse index --force` (semantic|partial|syntax); (b) build-capture ladder = tier-1 is achievable iff the repo's own `dotnet build -c Release -bl` succeeds, because a successful C# build emits Csc invocations in the binlog that CSharpCommandLineParser rehydrates into exact compilations, so mechanism (b)'s tier-1 rate equals the plain build-success rate. Corpus repos use their pinned checkout; OSS repos are shallow-cloned at HEAD. Clone failures are environmental (unwrapped git clone under GitHub rate-limiting) and are excluded from the tier distribution, not counted as a mechanism outcome.",
+  "summary": {
+    "evaluable_repos": 17,
+    "clone_failed_excluded": [
+      "Refit",
+      "CommunityToolkit.dotnet",
+      "CleanArchitecture"
+    ],
+    "mechanism_a_msbuildworkspace": {
+      "semantic": 2,
+      "partial": 2,
+      "syntax": 13,
+      "oracle_grade_semantic_pct": 12
+    },
+    "mechanism_b_build_capture": {
+      "build_succeeds": 11,
+      "of": 17,
+      "build_success_rate_pct": 65,
+      "tier1_achievable": 11,
+      "note": "tier-1 by construction wherever the build succeeds"
+    },
+    "on_buildable_repos": {
+      "count": 11,
+      "mechanism_a_semantic": 2,
+      "mechanism_a_partial": 1,
+      "mechanism_a_syntax": 8,
+      "mechanism_b_tier1": 11
+    },
+    "cutoff": {
+      "target": "tier-1 on >=80% of repos whose dotnet build succeeds",
+      "mechanism_b": "11/11 = 100% (passes)",
+      "mechanism_a_semantic_on_buildable": "2/11 (fails)"
+    },
+    "oracle_coverage_ceiling_pct": 65,
+    "decision": "Adopt the build-capture ladder (mechanism b). It reaches tier-1 on 100% of buildable repos vs 12% semantic for MSBuildWorkspace overall (18% on buildable repos). The 65% build-success rate is the published oracle coverage ceiling in this environment; the 35% that fail to build (NU1507 CPM source-mapping, NETSDK1045 SDK skew, MSB4018 MSBuild task load, CS0104/CS2007 compile errors) get graph-grade retrieval plus abstention, never a guess."
+  },
+  "repos": [
+    {
+      "name": "Scrutor",
+      "group": "corpus",
+      "clone": "ok",
+      "msbuild_workspace_tier": "partial",
+      "build_succeeds": false,
+      "build_capture_tier": "tier2/3",
+      "reason": "NU1507"
+    },
+    {
+      "name": "Specification",
+      "group": "corpus",
+      "clone": "ok",
+      "msbuild_workspace_tier": "partial",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "eShopOnWeb",
+      "group": "corpus",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": false,
+      "build_capture_tier": "tier2/3",
+      "reason": "CS0104"
+    },
+    {
+      "name": "NodaTime",
+      "group": "corpus",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "serilog",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "semantic",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "Polly",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "FluentValidation",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "semantic",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "MediatR",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "Newtonsoft.Json",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "RestSharp",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "Dapper",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": false,
+      "build_capture_tier": "tier2/3",
+      "reason": "MSB4018"
+    },
+    {
+      "name": "Humanizer",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": false,
+      "build_capture_tier": "tier2/3",
+      "reason": "NETSDK1045"
+    },
+    {
+      "name": "AutoFixture",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "Refit",
+      "group": "oss",
+      "clone": "failed",
+      "msbuild_workspace_tier": "n/a",
+      "build_succeeds": false,
+      "build_capture_tier": "n/a",
+      "reason": "clone failed"
+    },
+    {
+      "name": "quartznet",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "StackExchange.Redis",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": false,
+      "build_capture_tier": "tier2/3",
+      "reason": "MSB4018"
+    },
+    {
+      "name": "AutoMapper",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": true,
+      "build_capture_tier": "tier1",
+      "reason": ""
+    },
+    {
+      "name": "CommunityToolkit.dotnet",
+      "group": "oss",
+      "clone": "failed",
+      "msbuild_workspace_tier": "n/a",
+      "build_succeeds": false,
+      "build_capture_tier": "n/a",
+      "reason": "clone failed"
+    },
+    {
+      "name": "CleanArchitecture",
+      "group": "oss",
+      "clone": "failed",
+      "msbuild_workspace_tier": "n/a",
+      "build_succeeds": false,
+      "build_capture_tier": "n/a",
+      "reason": "clone failed"
+    },
+    {
+      "name": "Nancy",
+      "group": "oss",
+      "clone": "ok",
+      "msbuild_workspace_tier": "syntax",
+      "build_succeeds": false,
+      "build_capture_tier": "tier2/3",
+      "reason": "CS2007"
+    }
+  ]
+}

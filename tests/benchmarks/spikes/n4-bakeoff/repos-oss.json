@@ -1,0 +1,18 @@
+[
+  { "name": "serilog", "url": "https://github.com/serilog/serilog.git" },
+  { "name": "Polly", "url": "https://github.com/App-vNext/Polly.git" },
+  { "name": "FluentValidation", "url": "https://github.com/FluentValidation/FluentValidation.git" },
+  { "name": "MediatR", "url": "https://github.com/jbogard/MediatR.git" },
+  { "name": "Newtonsoft.Json", "url": "https://github.com/JamesNK/Newtonsoft.Json.git" },
+  { "name": "RestSharp", "url": "https://github.com/restsharp/RestSharp.git" },
+  { "name": "Dapper", "url": "https://github.com/DapperLib/Dapper.git" },
+  { "name": "Humanizer", "url": "https://github.com/Humanizr/Humanizer.git" },
+  { "name": "AutoFixture", "url": "https://github.com/AutoFixture/AutoFixture.git" },
+  { "name": "Refit", "url": "https://github.com/reactiveui/refit.git" },
+  { "name": "quartznet", "url": "https://github.com/quartznet/quartznet.git" },
+  { "name": "StackExchange.Redis", "url": "https://github.com/StackExchange/StackExchange.Redis.git" },
+  { "name": "AutoMapper", "url": "https://github.com/AutoMapper/AutoMapper.git" },
+  { "name": "CommunityToolkit.dotnet", "url": "https://github.com/CommunityToolkit/dotnet.git" },
+  { "name": "CleanArchitecture", "url": "https://github.com/ardalis/CleanArchitecture.git" },
+  { "name": "Nancy", "url": "https://github.com/NancyFx/Nancy.git" }
+]

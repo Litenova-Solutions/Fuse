@@ -2302,6 +2302,37 @@ build's inputs), and the abstention contract handles the non-oracle case honestl
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 R7 (part 1): fuse_refactor compiler-executed rename
+
+**Status.** Done and green (rename). Box left unticked: the second operation (change-signature) and the
+staged-diff re-check-through-R1 loop remain.
+
+**Result.** Added `RenameRefactorer` (parent-side, MSBuildWorkspace plus Roslyn's `Renamer`) and the
+`fuse_refactor` MCP tool. It opens the solution, resolves the named symbol, renames it and every reference
+via `Renamer.RenameSymbolAsync`, and returns the change as a staged per-file diff without touching the
+working tree. Roslyn semantics mean a same-named unrelated symbol is not renamed, the correctness a textual
+rename cannot promise. Oracle-shaped: it abstains (with a reason) when the solution does not load cleanly or a
+project produces no compilation, because a partial rename is worse than none. Runs in the parent (no
+Basic.CompilerLog), so MSBuildWorkspace is unaffected. MCP surface now thirteen tools.
+
+**Tests.** `RenameRefactorerTests`: renaming the fixture's `SecretsHolder` stages a diff mentioning the new
+name (or abstains cleanly if the solution does not load here), and an unknown symbol abstains. Tool
+registration in the integration name array. Full suite green.
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). The staged diff
+is line-level (accurate for rename, which preserves line structure) since Fuse.Semantics does not depend on
+Fuse.Fusion's unified-diff generator.
+
+**Remaining R7 work.** Change-signature (the second operation: `SymbolFinder` call sites plus a per-site
+rewriter, over R5's reference edges), and wiring the staged diff through `fuse_check` (R1) so an
+incompleteness surfaces as a diagnostic. The hard-capped two-operation scope holds; change-signature is part 2.
+
+**Lessons.** Rename belongs parent-side over MSBuildWorkspace (the Renamer needs a Workspace Solution, which
+build capture does not produce); the completeness abstention (all projects loaded) is the oracle-grade gate
+for rename, distinct from the build-exactness gate that matters for `fuse_check`.
+
+**Time.** ~1.5 session-hours.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

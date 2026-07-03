@@ -2109,6 +2109,40 @@ total gated iterations.
 
 **Time.** ~0.75 session-hour.
 
+### 2026-07-03 N4 tier-1 (part 3): semantic extraction runs in the worker
+
+**Status.** Crux de-risked and green. N4 box still unticked: serialization of the graph bundle and the parent
+ingest/wiring remain.
+
+**Result.** The `fuse-build-capture` worker now references `Fuse.Semantics` and runs Fuse's semantic
+extraction over each rehydrated compilation: `SemanticSymbolExtractor.Extract` plus the wiring analyzers
+(`SemanticAnalysisRunner.CreateDefault().Run`), reporting symbol, node, and edge counts per project. This
+answers the last open question about the out-of-process design: Fuse's analyzers run fine over a
+build-capture compilation in the worker with no MSBuildWorkspace conflict, because the worker references the
+MSBuild loader's assembly (transitively via Fuse.Semantics) but never invokes it (it calls only
+Basic.CompilerLog plus the analyzers, which are plain Roslyn).
+
+**Tests.** `BuildCaptureRehydratorTests` now asserts the worker produces symbols (SymbolCount >= 1) from the
+rehydrated compilation of a self-contained project, in addition to the type count. Full suite green,
+including the parent's MSBuildWorkspace-dependent Semantics tests (unaffected: the parent process does not
+reference Basic.CompilerLog).
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). The VisualBasic
+4.14 pin keeps the worker's Roslyn closure consistent now that it pulls the fuller Fuse.Semantics graph.
+
+**Remaining tier-1 work (now pure assembly, not a research question).** (a) Serialize the extracted bundle
+(symbols, chunks, nodes, edges, routes, DI registrations, options bindings) as source-generated JSON on the
+worker's stdout. (b) `SemanticIndexer` spawns the worker (bounded args), deserializes the bundle, and writes
+it to the store as the tier-1 path, falling back to MSBuildWorkspace (tier 2) then syntax (tier 3). (c)
+Package the worker exe with the global tool and locate it at runtime. (d) The localize/review recall re-run,
+the Phase 4 gate. The crux (extraction-in-worker) is proven, so this is mechanical.
+
+**Lessons.** Referencing Fuse.Semantics in the worker was safe because the conflict is triggered by invoking
+MSBuildWorkspace, not by its assembly being present; the worker calls the analyzers (plain Roslyn) and
+Basic.CompilerLog, never the MSBuild loader, so both closures coexist.
+
+**Time.** ~1 session-hour.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

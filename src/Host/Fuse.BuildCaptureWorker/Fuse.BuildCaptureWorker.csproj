@@ -22,4 +22,11 @@
          throws TypeLoadException at runtime. -->
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The worker runs Fuse's semantic extraction (symbol extraction plus the wiring analyzers) over the
+         rehydrated compilation. This pulls MSBuildWorkspace assemblies transitively, but the worker never calls
+         MSBuildWorkspace (only Basic.CompilerLog plus the analyzers, which are plain Roslyn), so the process-level
+         conflict that blocks the two loaders in one process does not arise. -->
+    <ProjectReference Include="..\..\Core\Fuse.Semantics\Fuse.Semantics.csproj" />
+  </ItemGroup>
 </Project>

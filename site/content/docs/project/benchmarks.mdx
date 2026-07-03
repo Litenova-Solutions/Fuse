@@ -7,7 +7,7 @@ Fuse is a Roslyn-backed .NET semantic context engine with a warm persistent inde
 
 Three readers are served below. A stakeholder can read the suite headlines and the honest-reporting section. A new engineer can follow the reproduction steps and run a suite. A maintainer can read each suite's method, sample, index-mode distribution, and the cases where Fuse is weak.
 
-The benchmark is six suites run by a C# eval driver in `tests/benchmarks/Fuse.Benchmarks`, each reproduced with `fuse eval <suite>` and each writing its scorecard to `tests/benchmarks/results/<suite>.json`:
+The benchmark is seven suites run by a C# eval driver in `tests/benchmarks/Fuse.Benchmarks`, each reproduced with `fuse eval <suite>` and each writing its scorecard to `tests/benchmarks/results/<suite>.json`:
 
 - Suite A, semantic resolution: does the extracted graph match a hand-built edge ground truth. Deterministic.
 - Suite B, change impact and review: does `fuse review` scope a real merged PR to the files it touches plus their semantic blast radius. Deterministic.
@@ -15,6 +15,7 @@ The benchmark is six suites run by a C# eval driver in `tests/benchmarks/Fuse.Be
 - Suite D, agent context sufficiency: under a real model, does an agent gather the task's files with the Fuse MCP tools. Model-dependent and not byte-reproducible.
 - Suite E, token reduction and fidelity: how far each reduction level cuts tokens, and how much of the public API the skeleton keeps. Deterministic and offline.
 - Suite F, `fuse_check` honesty: over known-good and known-bad single-file edits, how often the speculative typecheck reports a broken edit clean (a false green) or a valid edit broken (a false red). Deterministic and offline.
+- Suite R4, the loop metric: how many build-gated turns an agent takes to reach green, per toolbox. Model-dependent; the harness and its deterministic turn classifier are the deliverable, and the numbers are recorded from an opt-in provisioned run.
 
 ## An honest caveat on index mode
 
@@ -45,6 +46,7 @@ fuse eval review
 fuse eval localize
 fuse eval ranking
 fuse eval checkgate
+fuse eval loop
 fuse eval agent
 fuse eval reduce
 ```
@@ -123,6 +125,12 @@ The signal-sufficiency contract is why the precision metrics hold despite the lo
 ## Ranking regression (the ranking gate)
 
 A field-weight inversion once shipped on the localize hot path (the FTS5 `path` column was weighted highest, so a folder-name match outranked a symbol-name match) because nothing measured ranking. The ranking suite closes that gap. Run with `fuse eval ranking`, it scores the retrieval ranking with MRR, recall@k, and nDCG@k against changed-file ground truth in three configurations over the same index: the base channels in isolation (no embedder, both structural priors off), the shipping default (embedder if present, both priors on), and the shipping default with the git co-change prior off (isolating that prior's ranking effect, the A6 re-adjudication). It writes `results/ranking.json` and is the required gate on any change to field weights, tokenization, query expansion, or priors. The corrected weight ordering (name and signature and symbols above path, path above comments and body, subtokens below the exact name but above the body, stems lowest) is documented in [Retrieval Internals](/docs/internals/scoping-internals). Like the other corpus suites, the ranking numbers are bounded by index mode; the deliverable is the guarded metric, so a future reweighting cannot regress ranking unmeasured.
+
+## Suite R4: the loop metric (model-dependent, harness-first)
+
+Suite D showed that per-payload token reduction does not change the cumulative token cost of a session, so the metric that matters is not the payload but the loop: how many build-gated turns an agent takes to reach a green build. Suite R4 measures that. One Claude Code CLI driver resolves each task (edit, verify, repeat) in two arms, `native` (filesystem plus `dotnet build`/`dotnet test`) and `fuse` (the fuse MCP tools, so a verify can be a speculative `fuse_check` instead of a `dotnet build` round-trip), and the run records, per arm, whether it reached green, the number of build-gated turns to green, and the total build invocations. The claim under test is that the fuse arm reaches green in fewer build-gated turns.
+
+Following the plan, R4 is harness-first: the harness is the deliverable, and the numbers are recorded from an explicit, provisioned run. The deterministic core, turn classification (`LoopTranscriptClassifier`, which maps a stream-json transcript to the ordered build, test, edit, and read turns) and the metric computation (`LoopMetrics`), is unit-tested and runs offline. The model-driven arms are opt-in: a bare `fuse eval loop` records the harness state and the task set it would sample without spending model time, and only `FUSE_LOOP_RUN=1` (with the `claude` CLI present) launches the rollouts. This is deliberate, because a loop rollout drives a real model per task per arm and must never fire silently, especially inside a host where the CLI is already on PATH. Run with `fuse eval loop`; it writes `results/loop.json`.
 
 ## Suite D: agent context sufficiency (model-dependent)
 

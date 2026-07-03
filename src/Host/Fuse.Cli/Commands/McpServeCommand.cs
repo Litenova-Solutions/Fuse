@@ -45,6 +45,10 @@ public sealed class McpServeCommand
         // workspace work that lets the host manage the background task's lifetime cleanly.
         FuseTools.BackgroundSemanticUpgradeEnabled = BackgroundUpgradeOptIn();
 
+        // Tell the client (or auto-apply, when FUSE_AUTO_UPDATE is set) that a newer Fuse is available. Writes to
+        // stderr so it never corrupts the JSON-RPC stream on stdout; cache-first, so it does not delay serving.
+        FuseUpdatePrompt.Emit(Console.Error.WriteLine, allowAutoUpdate: true);
+
         var builder = Host.CreateApplicationBuilder();
 
         builder.Logging.ClearProviders();

@@ -62,6 +62,10 @@ public sealed class IndexCommand
             return;
         }
 
+        // Surface an available update (cache-first, no auto-update on a one-shot CLI command). The background
+        // refresh overlaps the indexing pass, so the cache is warm for the next run.
+        FuseUpdatePrompt.Emit(_consoleUI.WriteStep, allowAutoUpdate: false);
+
         var databasePath = FuseStorePaths.ResolveDatabasePath(root);
         _consoleUI.WriteStep($"Indexing {root}");
         _consoleUI.WriteStep($"Store: {databasePath}");

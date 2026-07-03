@@ -3,7 +3,7 @@
   "name": "io.github.Litenova-Solutions/fuse",
   "title": "Fuse",
   "description": "A .NET semantic context engine for AI agents: index, map, localize, resolve, review, reduce code.",
-  "version": "3.1.1",
+  "version": "3.2.0",
   "repository": {
     "url": "https://github.com/Litenova-Solutions/Fuse",
     "source": "github",
@@ -15,7 +15,7 @@
       "registryType": "nuget",
       "registryBaseUrl": "https://api.nuget.org/v3/index.json",
       "identifier": "Fuse",
-      "version": "3.1.1",
+      "version": "3.2.0",
       "runtimeHint": "dnx",
       "transport": {
         "type": "stdio"

@@ -1,6 +1,21 @@
 namespace Fuse.Indexing;
 
 /// <summary>
+///     The indexed file count for one language tag.
+/// </summary>
+/// <param name="Language">The language tag (for example <c>csharp</c>), or <c>unknown</c> for untagged files.</param>
+/// <param name="Count">The number of indexed files carrying the tag.</param>
+public sealed record LanguageCount(string Language, int Count);
+
+/// <summary>
+///     A typed dependency edge resolved to the file level: the two files its endpoints live in and the edge type.
+/// </summary>
+/// <param name="FromPath">The normalized path of the file the edge originates in.</param>
+/// <param name="ToPath">The normalized path of the file the edge points to.</param>
+/// <param name="Kind">The edge type (for example <c>di_injects</c>, <c>calls</c>, <c>route_handles</c>).</param>
+public sealed record FileDependencyEdge(string FromPath, string ToPath, string Kind);
+
+/// <summary>
 ///     A file tracked by the index. Identity is the normalized path; the integer <c>file_id</c> is
 ///     assigned by the store and preserved across re-index via upsert.
 /// </summary>

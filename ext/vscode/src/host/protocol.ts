@@ -4,7 +4,7 @@
 // parses the same fixtures, so any drift on either side fails a test. Keep this file in lockstep with the DTOs.
 
 /** Wire protocol version; must equal FuseHostService.ProtocolVersion on the host. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** Result of `fuse/handshake`: host package version, the wire protocol version to match, and the session token for later RPC calls. */
 export interface FuseHostHandshake {
@@ -45,11 +45,25 @@ export interface GraphDto {
   detail: "Files" | "Directories";
 }
 
-/** Result of `fuse/index`: the warm-index state after collecting and building the graph. */
+/** The indexed file count for one language, for the index panel. */
+export interface LanguageCountDto {
+  language: string;
+  count: number;
+}
+
+/** Result of `fuse/index`: the semantic index summary the panel shows after building or refreshing the index. */
 export interface IndexResultDto {
   indexState: "Warm" | "Indexing" | "NotIndexed";
   fileCount: number;
   elapsedMs: number;
+  /** The index tier: `semantic` (full typed graph), `partial`, or `syntax`. */
+  mode: string;
+  symbolCount: number;
+  routeCount: number;
+  schemaVersion: number;
+  fullTextSearch: boolean;
+  fuseVersion: string;
+  languages: LanguageCountDto[];
 }
 
 /** One emitted file in a scope result: the included path and its token cost. */

@@ -1,4 +1,4 @@
-# Fuse V3.3 Plan: the compiler oracle (one release, three phases)
+# Fuse V4 Plan: the compiler oracle (one release, three phases)
 
 V3 built the .NET semantic moat (wiring resolution, change-impact review, hybrid retrieval,
 abstention, warm millisecond latency); its record is in [v3-plan.md](v3-plan.md). V3.1
@@ -8,7 +8,7 @@ migration (protocol 3) and the rich index panel, but left two of its highest-val
 only partly landed: the resident Roslyn workspace with dependency-scoped freshness (W1) and
 semantic-mode corpus coverage (W4). Those are picked up here.
 
-V3.3 is a single release that does one strategic thing: it stops Fuse being a retrieval tool
+V4 is a single release that does one strategic thing: it stops Fuse being a retrieval tool
 that happens to hold a Roslyn compilation and makes it the .NET agent's ground-truth oracle,
 the tool that answers the questions only a compiler can answer, at edit speed. The one-line
 pitch: Fuse gives your agent the compiler. This plan derives from an adversarial critique and
@@ -17,6 +17,12 @@ its own rationale (the "Why" paragraph) capturing that analysis. For the full st
 project (architecture, algorithms with their real constants, measured results, known issues,
 and roadmap history) read [overview.md](overview.md), which any reader can use to orient before
 this plan.
+
+Revision note (2026-07-03, plan rename). This document was renamed from `v3.3-plan.md` to
+`v4-plan.md` and re-versioned to 4.0.0: the compiler-oracle scope and the R3 tool-surface
+reshape warrant a major bump, and the release now includes governance items L1 (MIT to Apache
+2.0) and L2 (Developer Certificate of Origin). The 2026-07-03 technical revision below is
+unchanged in substance.
 
 Revision note (2026-07-03). This plan was re-verified against the live tree and the recorded
 results by an external review pass. That pass confirmed all five original findings, added four
@@ -29,9 +35,9 @@ ladder, and M1's in-process test execution is removed from scope rather than gat
 modern .NET cannot deliver the in-process isolation the original gate assumed.
 
 The release is organized in three phases (Floor, Oracle, Moonshot) plus a gated retrieval
-addendum (Phase 4). Everything ships under one version, 3.3.0, and the release gate below
+addendum (Phase 4). Everything ships under one version, 4.0.0, and the release gate below
 states exactly what must be green for the tag, including the stretch item (M2) that is
-pre-agreed to slip to 3.4 if its gate is not met.
+pre-agreed to slip to 4.1 if its gate is not met.
 
 The honesty conventions are unchanged: every number sourced to `tests/benchmarks/results`,
 weaknesses published, no head-to-head claim the harness does not back, plain ASCII prose.
@@ -137,7 +143,7 @@ provenance drift).
 
 ---
 
-## Where V3.3 starts (recorded 3.2.0 result)
+## Where V4 starts (recorded 3.2.0 result)
 
 All from `tests/benchmarks/results`, counted with `o200k_base`, on the current corpus
 (Scrutor, Ardalis.Specification, NodaTime, eShopOnWeb, plus the SampleShop and OrderingApp
@@ -169,9 +175,9 @@ fixtures).
 
 ---
 
-## The crown for V3.3 (measurable target per axis)
+## The crown for V4 (measurable target per axis)
 
-| Axis | Today (3.2.0) | V3.3 target |
+| Axis | Today (3.2.0) | V4 target |
 |------|---------------|-------------|
 | Semantic load on real repos | main checkout loads mostly syntax/partial | semantic or partial on the majority of localize main checkouts, with `fuse doctor` naming every downgrade |
 | Cold start to first answer | about 20 s syntax, opt-in upgrade | first answer in a few seconds, on by default, MSBuild evaluation shared in a resident workspace |
@@ -194,7 +200,13 @@ Each item lands engine plus tests plus website docs plus a benchmark in one chan
 three gates, and follows the conventions below. The one-item rule is amended for this release:
 an item may be harness-first, where the new benchmark is the deliverable and the engine change
 is nil (N1's ranking suite, R4's loop suite). Sequencing is by leverage and by what unblocks
-measurement.
+measurement. **L1 and L2 run first**, before any other v4 item: the 3.2.0 release ships under
+MIT; Apache 2.0 and DCO land as the opening moves on the v4 branch so every subsequent commit
+and PR carries the new license and sign-off contract.
+
+Governance (first; complete before Phase 1)
+- [ ] L1 Migrate the project license from MIT to Apache 2.0
+- [ ] L2 Adopt the Developer Certificate of Origin (DCO)
 
 Phase 1: the trustworthy floor
 - [ ] N1 Fix the lexical weight inversion; land the ranking regression suite (amended: the
@@ -223,7 +235,7 @@ Phase 2: the oracle
 Phase 3: the moonshot
 - [ ] M1 The speculative staging area: changeset lifecycle, diagnose, covering-test selection
       (re-scoped: in-process execution removed, not gated; see M2)
-- [ ] M2 Out-of-proc emit-and-run test execution (added; stretch, pre-agreed to slip to 3.4)
+- [ ] M2 Out-of-proc emit-and-run test execution (added; stretch, pre-agreed to slip to 4.1)
 
 Phase 4: retrieval bets (gated on N4's localize re-run being recorded first)
 - [ ] V1 Graph verbalization: deterministic natural-language cards in the dense and lexical
@@ -849,12 +861,12 @@ replacement, never a bare "Unknown tool." Update the `ServerInstructions` block 
 [McpServeCommand.cs](../src/Host/Fuse.Cli/Commands/McpServeCommand.cs) (lines 75 to 91) and both
 name arrays in [McpServeIntegrationTests.cs](../tests/Fuse.Cli.Tests/Mcp/McpServeIntegrationTests.cs).
 
-**Versioning note (this is why R3 is safe in a 3.3 minor).** The change-safety invariant is
+**Versioning note (this is why R3 fits a 4.0 major).** The change-safety invariant is
 about never showing a client a bare "Unknown tool" across an upgrade; it is satisfied by the
 shims, which every folded name gets. Because the reshape is additive (new live tools) plus
 shims (old names still resolve to an actionable message), no existing client actually breaks.
 The clean removal of the shims is deferred to the next major, per the invariant. This is how
-the whole reshape rides a minor bump without violating the convention. See the release-gate
+the whole reshape rides a major bump without violating the convention. See the release-gate
 section for the hard line: if any shim is dropped rather than kept, the release is a major, not
 a minor.
 
@@ -951,7 +963,7 @@ is not achievable: modern .NET has no AppDomain isolation and no code-access sec
 statics, the filesystem, sockets, and `Environment.Exit` all leak, and a single hostile test
 takes down the resident oracle daemon that R1/R2/N3 depend on. That is disqualifying regardless
 of the false-green rate. So in-process execution is removed from M1 rather than gated; the
-execution ambition moves to M2 (out-of-proc) as a stretch item. M1's 3.3 deliverable is the
+execution ambition moves to M2 (out-of-proc) as a stretch item. M1's 4.0 deliverable is the
 changeset lifecycle plus diagnosis plus covering-test selection, which was the original
 fallback, now promoted to the design.
 
@@ -985,7 +997,7 @@ reach it through reflection or a source generator); mitigated by R5's DI-resolve
 reporting selection as best-effort, never as "these are all the tests." Depends on R5; ships
 after it.
 
-### M2. Out-of-proc emit-and-run test execution (added; stretch, may slip to 3.4)
+### M2. Out-of-proc emit-and-run test execution (added; stretch, may slip to 4.1)
 
 **Why.** The execution half of the original M1, redesigned to be buildable. A verified green/red
 verdict on a speculative changeset in seconds, without the `dotnet build` that dominates
@@ -1020,7 +1032,7 @@ tests, "verified 14 of 17 covering, 3 not runnable in isolation."
 **Kill risk, and why M2 is the release's one stretch item.** Emit cost on large dependency
 closures (measure; cache unchanged project emits) and test-host fidelity (tests depending on
 build-produced files are classified out). If the false-green rate on the runnable subset cannot
-be driven near zero, M2 does not ship in 3.3 and slips to 3.4; M1 (lifecycle plus selection) is
+be driven near zero, M2 does not ship in 4.0 and slips to 4.1; M1 (lifecycle plus selection) is
 the floor, is independently useful, and is unaffected. This is the pre-agreed carve-out, moved
 from "in-proc gated" to "out-of-proc stretch."
 
@@ -1029,7 +1041,7 @@ syntax-tier parity across languages is a commodity serena already has via LSP, a
 before the oracle is won spends the moat-building release on catching up to grep-plus. The
 multi-language story that does not dilute is the oracle interface (ask/check/impact) being
 language-agnostic, each language earning entry by binding its real compiler service (TypeScript
-via tsserver next), not a parser approximation. Not in 3.3.
+via tsserver next), not a parser approximation. Not in 4.0.
 
 ---
 
@@ -1078,6 +1090,66 @@ framework) so the recipe is proven, not theoretical.
 
 **Acceptance.** The recipe page ships, the coverage table is published, and at least one seed
 analyzer added via the documented recipe passes Suite A on a new fixture.
+
+---
+
+## Governance
+
+L1 and L2 are the first v4 execution items, before the N4 bake-off and before any Phase 1
+code. The 3.2.0 tag releases the current tree under MIT; governance lands immediately after on
+the v4 line so every subsequent commit and PR is under Apache 2.0 with DCO sign-off. They pair
+with G2: a contribution program needs a license and a provenance contract contributors can
+follow without legal friction.
+
+### L1. Migrate the project license from MIT to Apache 2.0
+
+**Why.** Fuse is moving from a permissive MIT license to Apache 2.0 because the oracle release
+adds patent-sensitive surface (compiler execution, staged diffs, speculative verification) and
+the project is opening a community on-ramp (G2). Apache 2.0 carries an explicit patent grant
+and a termination clause on offensive patent litigation, which is the standard pairing for
+compiler-adjacent tooling that third parties embed in products. MIT stays permissive but offers
+no patent language; staying on MIT while inviting framework-specific analyzer contributions
+creates asymmetric risk for corporate adopters and contributors.
+
+**How.** Replace [LICENSE](../LICENSE) with the Apache 2.0 text, retaining the Litenova Solutions
+copyright line and adding the standard Apache 2.0 appendix. Update every license expression and
+badge: `Directory.Build.props` and each `.csproj` `PackageLicenseExpression`, `README.md` and
+the docs site license references, NuGet package metadata, the VS Code extension
+(`ext/vscode/package.json`), and `mcp-registry/server.json`. Audit third-party dependencies and
+the benchmark corpus for license compatibility (Apache 2.0 is compatible with MIT dependencies;
+confirm no copyleft conflict in bundled native assets). Add a `NOTICE` file if any bundled
+dependency requires attribution beyond the SPDX expression. Record the change in `CHANGELOG.md`
+under 4.0.0 with a plain migration note for downstream packagers (license header change only,
+no API break).
+
+**Acceptance.** `LICENSE` is Apache 2.0; `build/verify-version.ps1` and a repo-wide grep find no
+remaining MIT license claims on Fuse-owned artifacts; CI green; the contributing page names the
+new license.
+
+### L2. Adopt the Developer Certificate of Origin (DCO)
+
+**Why.** Apache 2.0 projects need a lightweight provenance contract so every commit can be
+traced to a contributor who attested they have the right to submit it. A full Contributor
+License Agreement (CLA) re-assigns copyright or grants a broad patent license through a signed
+legal document; it adds onboarding friction and is appropriate mainly when a single company
+needs to relicense the whole tree. The Developer Certificate of Origin (DCO), used by the Linux
+kernel, Kubernetes, and the Apache Software Foundation, is the better fit here: contributors add
+a `Signed-off-by` trailer to each commit attesting the DCO 1.1 statement, GitHub's DCO bot
+blocks merges without it, and no separate signature step is required. DCO plus Apache 2.0 is the
+industry-default pairing for open contributions without CLA overhead.
+
+**How.** Add [DCO.txt](../DCO.txt) (the canonical Developer Certificate of Origin 1.1 text) at
+the repo root. Document the sign-off requirement in `CONTRIBUTING.md` and on the docs
+contributing page (`site/content/docs/project/contributing.mdx`): use `git commit -s` or add
+`Signed-off-by: Name <email>` manually; the sign-off certifies agreement with the DCO text.
+Enable the DCO GitHub App (or equivalent CI check) on the repository so PRs without sign-off on
+every commit fail with an actionable message. Update the PR template (if one exists) to remind
+contributors. Existing commits before the cutover are grandfathered; the check applies from the
+DCO adoption merge forward. Do not adopt a CLA in parallel; one provenance mechanism only.
+
+**Acceptance.** `DCO.txt` is present; contributing docs describe sign-off; the DCO check is
+enabled and verified on a test PR; G2's contribution recipe references the DCO requirement in
+its first step.
 
 ---
 
@@ -1170,23 +1242,23 @@ subtle killer; the strict temporal split is the guard, and the eval is invalid w
 
 ---
 
-## The versioning decision: everything ships as 3.3.0
+## The versioning decision: everything ships as 4.0.0
 
-This release intentionally lands the floor, the oracle, the moonshot's shippable half, and the
-gated retrieval bets under a single minor bump, 3.3.0 (current codebase version is 3.2.0). The
-one item that would normally force a major, R3's tool-surface reshape, is kept minor-safe by
-shipping the new tools additively and keeping a deprecation shim for every folded name, so no
-existing client sees a bare "Unknown tool" across the upgrade. The clean removal of those shims
-is deferred to the next major, per the existing change-safety invariant. M2 (out-of-proc test
-execution) is the one item pre-agreed to slip to 3.4 if its gate does not clear; its slip does
-not hold the tag.
+This release intentionally lands the floor, the oracle, the moonshot's shippable half, the
+gated retrieval bets, and the governance track under a single major bump, 4.0.0 (current
+codebase version is 3.2.0). R3's tool-surface reshape is the primary driver for the major:
+the new oracle tools ship additively and every folded name keeps a deprecation shim for one
+major version, so no existing client sees a bare "Unknown tool" across the upgrade. The clean
+removal of those shims is deferred to 5.0.0, per the existing change-safety invariant. M2
+(out-of-proc test execution) is the one item pre-agreed to slip to 4.1 if its gate does not
+clear; its slip does not hold the tag.
 
-Release gate for the 3.3.0 tag (all must hold):
+Release gate for the 4.0.0 tag (all must hold):
 
 1. The three gates green: `dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release --no-build`, `dotnet format Fuse.slnx --verify-no-changes`.
 2. Every folded tool name in R3 has a working shim; `McpServeIntegrationTests` name arrays
-   pass. If any shim is dropped instead of kept, the release is re-designated 4.0.0, not
-   3.3.0. This is the bright line.
+   pass. If any shim is dropped instead of kept, the release is re-designated 5.0.0, not
+   4.0.0. This is the bright line.
 3. `FuseHostService.ProtocolVersion` and `ext/vscode/src/host/protocol.ts` agree, and the
    contract test passes, if any RPC DTO changed (N3, R1, R2 likely).
 4. `WorkspaceIndexSchema.TargetVersion` bumped or the Fuse-version stamp updated if the index
@@ -1198,15 +1270,19 @@ Release gate for the 3.3.0 tag (all must hold):
    recorded).
 6. M1 (changeset lifecycle plus diagnosis plus covering-test selection) ships. M2 (out-of-proc
    execution) ships only if its false-green rate on the classified-runnable subset is at or near
-   zero; otherwise M2 slips to 3.4 and the changelog names the split. M1 shipping without M2 is
+   zero; otherwise M2 slips to 4.1 and the changelog names the split. M1 shipping without M2 is
    an acceptable tag.
 6a. Every read tool satisfies the N6 freshness contract: fresh data or an explicit
    stale-as-of stamp, never silently stale. The contract test passes.
 7. `build/verify-version.ps1` passes: `Directory.Build.props`, `ext/vscode/package.json`,
-   `mcp-registry/server.json`, and `site/package.json` all read 3.3.0 (set via
-   `build/set-version.ps1 3.3.0`), and the `v3.3.0` tag matches.
+   `mcp-registry/server.json`, and `site/package.json` all read 4.0.0 (set via
+   `build/set-version.ps1 4.0.0`), and the `v4.0.0` tag matches.
 8. Every number quoted in the docs and `AGENTS.md` is sourced to a current-corpus file in
    `tests/benchmarks/results`; N2's archive move is complete.
+9. L1 complete: `LICENSE` is Apache 2.0 and all Fuse-owned license expressions and badges
+   match; no stale MIT claims remain on project artifacts.
+10. L2 complete: `DCO.txt` is present, contributing docs require `Signed-off-by`, and the DCO
+   check is enabled on the repository.
 
 ---
 
@@ -1215,36 +1291,39 @@ Release gate for the 3.3.0 tag (all must hold):
 The phases read as parallel but are largely serial through N4, because R1, R2, R5, and the
 moonshot all require the compilation to actually be loaded. The order (revised 2026-07-03):
 
-0. **The N4 bake-off spike as item zero.** Before anything else, run the two-mechanism spike
-   (hardened MSBuildWorkspace vs the build-capture ladder) on the corpus plus about 20 OSS .NET
-   repos and record the tier distribution. This one measurement decides N4's mechanism and sets
-   whether the oracle can answer often enough to matter; every downstream item's value is the
-   theoretical gain times this load-success rate. In the same early window, curate R4's 10-to-15
-   PR task set and record the native-arm and LSP-arm baselines (pure data work, blocked on
-   nothing, and pre-registering the baseline is what keeps R4 honest).
-1. **N1 first among the code items.** Pure hygiene, blocked on nothing, lands the ranking gate
+0. **L1 then L2 first.** Migrate MIT to Apache 2.0, then adopt DCO with the GitHub check
+   enabled. No other v4 item starts until both are merged. This keeps the 3.2.0 release under
+   MIT and makes every subsequent commit and PR carry the new license and sign-off contract.
+1. **The N4 bake-off spike.** After L1/L2, run the two-mechanism spike (hardened
+   MSBuildWorkspace vs the build-capture ladder) on the corpus plus about 20 OSS .NET repos and
+   record the tier distribution. This one measurement decides N4's mechanism and sets whether
+   the oracle can answer often enough to matter; every downstream item's value is the
+   theoretical gain times this load-success rate. In the same early window, curate R4's
+   10-to-15 PR task set and record the native-arm and LSP-arm baselines (pure data work,
+   blocked on nothing, and pre-registering the baseline is what keeps R4 honest).
+2. **N1 first among the code items.** Pure hygiene, blocked on nothing, lands the ranking gate
    that N2 relies on, and its amended form re-adjudicates the A6 prior regression (finding 9).
-2. **N2 and N5** right after N1, so there is one ranker, one harness, and a clean results
+3. **N2 and N5** right after N1, so there is one ranker, one harness, and a clean results
    directory before any new numbers land. N2's amended sweep includes `agent.json` and the
    superseded a1 doc citations (finding 8).
-3. **N6** rides with N3 (they share the reconcile trigger) but is severable and protects the
+4. **N6** rides with N3 (they share the reconcile trigger) but is severable and protects the
    syntax tier today; ship the stale-as-of stamp path even before the semantic increment lands.
-4. **N4 in full** on the mechanism the spike chose; **N3** in parallel, the resident-workspace
+5. **N4 in full** on the mechanism the spike chose; **N3** in parallel, the resident-workspace
    prerequisite for the whole oracle. N6's semantic reconcile lands on N3.
-5. **R5 before R2.** The persisted reference index is the substrate R2's tens-of-ms target and
+6. **R5 before R2.** The persisted reference index is the substrate R2's tens-of-ms target and
    M1's test selection both assume (finding 7); build it first or R2 silently reverts to
    `SymbolFinder` latency.
-6. **R2**, then **R1** (the harder speculative-fork work), then **R6** (repair packets ride on
+7. **R2**, then **R1** (the harder speculative-fork work), then **R6** (repair packets ride on
    R1's diagnostics), then **R7** (compiler-executed edits, on R5's call sites), then **R4**
    (measures R1/R2/R6/R7/R3 together against the pre-registered baselines), then **R3** (reshape
    once the new oracle tools exist to reshape around, adding the ambient availability header).
-7. **M1** (lifecycle plus selection, on R5) after the oracle tools; **M2** (out-of-proc
-   execution) only if its false-green gate clears, else it slips to 3.4.
-8. **Phase 4 (V1 then V2)** only after N4's localize re-run is recorded, because that re-run is
+8. **M1** (lifecycle plus selection, on R5) after the oracle tools; **M2** (out-of-proc
+   execution) only if its false-green gate clears, else it slips to 4.1.
+9. **Phase 4 (V1 then V2)** only after N4's localize re-run is recorded, because that re-run is
    the test of the index-mode-ceiling hypothesis that gates whether retrieval work is warranted
    at all.
-9. **G1** after R1/R2/R7 (the demo is honest only then, and R7 is the visceral moment). **G2**
-   whenever a person can write the recipe and seed an analyzer.
+10. **G1** after R1/R2/R7 (the demo is honest only then, and R7 is the visceral moment). **G2**
+    whenever a person can write the recipe and seed an analyzer (L1/L2 are already done by then).
 
 ---
 
@@ -1298,7 +1377,7 @@ parts of the agent loop.
   does that, and R4's transcripts measure the fraction of build-gated turns that are API-shape
   errors, which is what sets whether the 20-to-40 percent band is reachable.
 
-The one-sentence version: 3.3 makes Fuse dramatically more efficient at the specific thing
+The one-sentence version: 4.0 makes Fuse dramatically more efficient at the specific thing
 agents burn the most wall-clock on (iterative, multi-file, build-gated edits on a
 semantically-loaded repo), roughly unchanged at pure retrieval until Phase 4's gated bets, and
 the size of the realized win is set less by how fast the oracle is than by how often the repo
@@ -1329,7 +1408,7 @@ loads at oracle grade for the oracle to answer at all (N4's build-capture tier).
   from loop collapse alone). Labeled theory throughout, not quoted as a result anywhere.
 - **In-process test execution does not land; out-of-proc (M2) may not either.** The original
   in-proc design was removed as unachievable (no .NET isolation), not gated. M1 (lifecycle plus
-  selection) is the floor; M2 (out-of-proc execution) is the stretch and slips to 3.4 if its
+  selection) is the floor; M2 (out-of-proc execution) is the stretch and slips to 4.1 if its
   false-green gate does not clear.
 - **The resident workspace is a lifecycle risk, and staleness is a live defect today.** A leaked
   workspace or a stale graph presented as fresh is worse than an honest opt-in; the current MCP
@@ -1360,7 +1439,7 @@ diagnosis the agent must request.
 
 ---
 
-## Reminders and conventions (read before starting a V3.3 item)
+## Reminders and conventions (read before starting a V4 item)
 
 - One item at a time, each as engine plus tests plus website docs (under `site/content/docs`)
   plus a benchmark in a single change, except the two harness-first items (N1's ranking suite,
@@ -1419,7 +1498,7 @@ the recorded results in `tests/benchmarks/results`.
 - M1's in-process test execution was removed from scope (not gated): modern .NET has no
   AppDomain isolation, so in-proc sandboxing is not achievable and a hostile test would kill the
   resident daemon. M1 ships lifecycle plus diagnosis plus selection; execution moves to M2
-  (out-of-proc, stretch, may slip to 3.4).
+  (out-of-proc, stretch, may slip to 4.1).
 - Added items: N6 (freshness contract), R5 (persisted reference index, the substrate R2/M1
   assumed), R6 (repair packets and `fuse_signatures`, the item that actually funds the token
   projection), R7 (`fuse_refactor`, compiler-executed rename and change-signature), M2, and

@@ -11,7 +11,7 @@ current plan can read it top to bottom and know the whole shape of the project.
 Everything here was assembled from the live codebase rather than from memory, so the file and
 line references are real and current as of Fuse version 3.2.0. Where a described behavior is
 being changed, the section says so and points at the item in
-[v3.3-plan.md](v3.3-plan.md).
+[v4-plan.md](v4-plan.md).
 
 Two conventions this project enforces, visible throughout: plain ASCII prose only (no em
 dashes, no smart quotes, no emoji outside code fences), and every performance number sourced to
@@ -51,7 +51,7 @@ it refuses and routes (hands back a navigation map and asks for a symbol, route,
 config, or git base) rather than returning a low-precision guess. The calling model, which is
 exploring anyway, then issues a better-anchored query.
 
-Where this is heading: the v3.3 plan repositions Fuse from a retrieval tool that happens to
+Where this is heading: the v4 plan repositions Fuse from a retrieval tool that happens to
 hold a Roslyn compilation into the .NET agent's ground-truth oracle, the tool that answers the
 questions only a compiler can answer at edit speed. Section 12 summarizes that direction.
 
@@ -88,7 +88,7 @@ and the docs site, all bumped together by `build/set-version.ps1`.
 - `site/` - the documentation website (Next.js + Fumadocs), published at fuse.codes. All prose
   docs are MDX under `site/content/docs`.
 - `ext/vscode/` - the VS Code extension (TypeScript client for the JSON-RPC host).
-- `roadmap/` - the internal engineering plans (v3, v3.1, v3.2, v3.3) and this overview.
+- `roadmap/` - the internal engineering plans (v3, v3.1, v3.2, v4) and this overview.
 - `assets/`, `mcp-registry/` - the benchmark figure and the MCP Registry manifest.
 
 ---
@@ -192,7 +192,7 @@ BM25F relevance (`Scoping/Bm25RelevanceIndex.cs`) is a fielded inverted index wi
 a declared symbol name counts 5x, in the path 3x, in comments 1.5x, versus the body at 1x.
 K1 = 1.2. This is the in-memory BM25F used by the classic fusion path; the persistent index uses
 a separate FTS5 bm25 weighting (section 5), and the two historically did not agree on whether
-path or symbol name should rank highest (section 8, issues 2 and 3). The v3.3 plan retires the
+path or symbol name should rank highest (section 8, issues 2 and 3). The v4 plan retires the
 in-memory ranker and unifies on one weight table (items N1 and N2).
 
 Context planning (`Scoping/ContextPlanBuilder.cs`) labels each file Seed / Dependency / Changed
@@ -258,7 +258,7 @@ Default generators: Exact, Lexical (FTS), Path, Diff, plus Dense when an embedde
   tokenizes the query then adds each term's subword splits and their Porter stems, joined with
   OR, with the raw term kept first so exact-name matches rank highest. Note: the executing
   weight vector currently weights the `path` column highest, which contradicts the adjacent
-  intent comment; v3.3 item N1 corrects this and lands a ranking regression suite so the class
+  intent comment; v4 item N1 corrects this and lands a ranking regression suite so the class
   of bug becomes measurable.
 - **Subword and stem index-time fields**: `subtokens` splits camelCase/snake_case/acronyms;
   `stems` is Porter 1980; the `comments` field is the only source for the comments column and
@@ -315,7 +315,7 @@ Two stages, both model-free and reproducible:
    (candidate areas, entry points, nearest symbols, and an ask). `NavigationMapBuilder` builds a
    real map even for an insufficient result so the refusal is a navigation step, not a wall.
 
-This contract is the load-bearing honesty mechanism of the whole design. The v3.3 plan
+This contract is the load-bearing honesty mechanism of the whole design. The v4 plan
 generalizes it into the oracle's availability contract: when a compiler-backed answer cannot be
 produced (the owning project did not load), the tool says "cannot verify" rather than guessing.
 
@@ -330,7 +330,7 @@ solution/projects via MSBuildWorkspace, and produces loaded projects carrying th
 Any failure (no SDK, unrestored packages) sets `SemanticLoadSucceeded = false` and the caller
 falls back to syntax indexing. This soft fallback is why most cloned repos load partial or
 syntax rather than full semantic today; making it robust is the largest product item in the
-v3.3 plan (N4), because the moat is only as valuable as how often it actually loads.
+v4 plan (N4), because the moat is only as valuable as how often it actually loads.
 
 `SemanticAnalysisRunner.CreateDefault` wires the analyzers in order, each implementing
 `ISemanticAnalyzer.Analyze`:
@@ -350,7 +350,7 @@ v3.3 plan (N4), because the moat is only as valuable as how often it actually lo
 
 These ten analyzers target first-party Microsoft and common-library patterns. Third-party
 containers and frameworks (Autofac, Lamar, Wolverine, FastEndpoints, Carter, source-generated
-DI) are not yet covered; widening that coverage is the community on-ramp in the v3.3 plan (G2).
+DI) are not yet covered; widening that coverage is the community on-ramp in the v4 plan (G2).
 
 The seam story: extraction is provider-driven at the syntax tier (`ILanguageSyntaxProvider`
 claims extensions and extracts symbols/chunks with no compiler; C# is `CSharpSyntaxProvider`,
@@ -373,7 +373,7 @@ cold read serves syntax-first then schedules a fire-and-forget upgrade on a fres
 guarded per root so two cold calls do not both upgrade. It is off by default because a detached
 background task proved easy to orphan and race teardown; the CLI `fuse index` is always a
 synchronous full pass. Documented cold first answer: about 20 s syntax versus about 70 s full.
-The v3.3 plan (N3) makes syntax-first the default, moves the upgrade under a supervised
+The v4 plan (N3) makes syntax-first the default, moves the upgrade under a supervised
 resident-workspace lifecycle, and gives incremental re-index a semantic path so an edited edge
 is fresh within about a second.
 
@@ -417,7 +417,7 @@ A deprecation shim (`FuseDeprecatedTools`) keeps the retired V2 tool names regis
 fuse_skeleton, fuse_search, fuse_focus, fuse_changes, fuse_ask, fuse_dotnet, fuse_generic) as
 no-ops that return an actionable "renamed in V3" message pointing at the replacement, so an
 upgrade never shows a bare "Unknown tool". MCP resources cover the four workflow reads (map,
-localize, context, review) in a fixed-default addressable form. The v3.3 plan (R3) reshapes this
+localize, context, review) in a fixed-default addressable form. The v4 plan (R3) reshapes this
 surface to five oracle-shaped tools (fuse_ask, fuse_check, fuse_impact, fuse_context, fuse_review)
 and keeps a shim for every folded name.
 
@@ -443,28 +443,28 @@ resolved).
 ## 8. Known issues and open questions
 
 These were found while assembling this overview. Each is tagged with its current status and, if
-open, the v3.3 item that addresses it.
+open, the v4 item that addresses it.
 
 1. **Host protocol version drift.** RESOLVED in 3.2.0. Both `FuseHostService.ProtocolVersion` and
-   the TypeScript `PROTOCOL_VERSION` now declare 3, and the contract test guards them. The v3.3
+   the TypeScript `PROTOCOL_VERSION` now declare 3, and the contract test guards them. The v4
    plan proposes generating the TS mirror from the C# source so the invariant becomes a build
    failure rather than a code-review catch, but the immediate drift is gone.
-2. **BM25 weight vector versus intent comment.** OPEN, addressed by v3.3 N1. The FTS5 bm25 column
+2. **BM25 weight vector versus intent comment.** OPEN, addressed by v4 N1. The FTS5 bm25 column
    weight for `path` is the highest, while the adjacent comment and the classic in-memory BM25F
    describe name/signature/symbols as the fields that should outrank path. The literal is what
    executes. N1 corrects the vector to match the documented intent and lands a ranking regression
    suite.
-3. **Two disagreeing lexical rankers.** OPEN, addressed by v3.3 N2. The classic fusion path uses
+3. **Two disagreeing lexical rankers.** OPEN, addressed by v4 N2. The classic fusion path uses
    the in-memory BM25F (symbol boost 5x, path 3x) while the persistent path uses FTS5 bm25 with a
    different weighting. N2 deletes the in-memory ranker and routes the classic query mode through
    the persistent index, leaving one weight table guarded by N1's suite.
-4. **Corpus generational gap in recorded results.** OPEN, addressed by v3.3 N2 and N5. Several
+4. **Corpus generational gap in recorded results.** OPEN, addressed by v4 N2 and N5. Several
    result files still reference the prior 5-library corpus (AutoMapper, FluentValidation, MediatR,
    Newtonsoft, Serilog) that predates the V3.1 rebuild. Under the project's own convention a
    recorded number whose corpus no longer exists is a fabrication with provenance; N2 regenerates
    what is cheap and archives the rest, and N5 removes the parallel legacy harness that produced
    some of them.
-5. **Incremental re-index does not refresh semantic edges.** OPEN, addressed by v3.3 N3.
+5. **Incremental re-index does not refresh semantic edges.** OPEN, addressed by v4 N3.
    `ReindexFileAsync` re-extracts a file's syntax rows only; cross-file graph edges (DI, route,
    MediatR, EF) are recomputed only by a full `IndexAsync`. N3 adds a dependency-scoped semantic
    re-index over a resident compilation.
@@ -486,7 +486,7 @@ head-to-head claim is made that the harness does not back.
   behaviors, minimal-API/gRPC/SignalR, plus precision edge cases (an explicit open generic,
   TryAdd, and a multiple-implementation ambiguity where only the registered impl resolves). This
   is the moat. It is proven in kind on a hand-built fixture; coverage over the diversity of real
-  third-party wiring is the acknowledged gap (section 6 and v3.3 G2).
+  third-party wiring is the acknowledged gap (section 6 and v4 G2).
 - **Suite B, change impact (`review.json`, 53 PRs, 25k budget, --restore)**: changed-file recall
   100 percent (by construction, changed files are must-keep seeds), precision 79.8 percent, F1
   0.89, median 958 and mean 1,095 returned tokens. Index modes across PRs: partial 27, semantic
@@ -499,14 +499,14 @@ head-to-head claim is made that the harness does not back.
   confident 9.3 percent. Dense lifts recall over the lexical fallback (13.3 to 15.1 percent
   overall). The acknowledged ceiling: the localize main checkout loads mostly syntax (partial 2,
   syntax 2), so the graph-dependent recall is barely exercised. Whether recall is bounded by index
-  mode is a hypothesis the harness has not yet tested with semantic mode on; v3.3 N4 forces that
+  mode is a hypothesis the harness has not yet tested with semantic mode on; v4 N4 forces that
   test.
 - **Suite D, agent context sufficiency (`agent.json`, model-dependent, not byte-reproducible)**:
   one Claude Code CLI driver (claude-sonnet-4-6) over 12 PRs in two arms (native file tools, Fuse
   MCP tools), one rollout each. Fuse 30 percent mean file recall at a median 211,502 cumulative
   tokens; native 26 percent at 209,182; precision 44 versus 43 percent. A small, wide-CI sample,
   and the token cost was effectively flat: per-payload reduction did not reduce the session total,
-  because the agent still explores and still runs builds. v3.3 R4 rebuilds this suite to measure
+  because the agent still explores and still runs builds. v4 R4 rebuilds this suite to measure
   iterations-to-green and build-invocations, the metrics the oracle thesis actually moves.
 - **Peer comparison (`layer6-peers.json`, 12 PRs; model-driven arms bounded to 4)**: fuse 19
   percent recall at 19 percent precision, codegraph 9 percent at 11 percent, coa-codesearch 9
@@ -551,7 +551,7 @@ that still owns a few metrics and the peer run. The peer harness (`harness/layer
 runs fuse versus codegraph (offline graph) versus coa-codesearch (Lucene, MCP) versus serena
 (LSP-backed); deterministic arms scale to any sample, model-driven arms run one bounded claude
 rollout per PR (haiku-4-5). Peers are omitted, never stubbed, when absent; all MCP calls are
-bounded with a wall-clock backstop and process-tree kill so no server orphans. The v3.3 plan (N5)
+bounded with a wall-clock backstop and process-tree kill so no server orphans. The v4 plan (N5)
 consolidates onto the single C# harness.
 
 ---
@@ -575,20 +575,22 @@ format), every number sourced, weaknesses published.
 - **v3.2-plan.md**: the warm-server finishing wave. Shipped the host-on-semantic-index migration
   (protocol 3) and the rich index panel. Left two of its highest-value items only partly landed:
   the resident Roslyn workspace with dependency-scoped freshness (W1) and semantic-mode corpus
-  coverage (W4). Those are picked up in v3.3.
-- **v3.3-plan.md** (current forward plan): the compiler-oracle release. Repositions Fuse from a
+  coverage (W4). Those are picked up in v4.
+- **v4-plan.md** (current forward plan): the compiler-oracle release. Repositions Fuse from a
   retrieval tool into the .NET agent's ground-truth oracle, in three phases under one version: a
   trustworthy floor (fix the ranking inversion, unify the rankers, land the resident oracle,
   make semantic mode load on real checkouts, retire the legacy harness), the oracle itself
   (speculative diagnostics, blast radius, a reshaped tool surface, a loop-measuring benchmark),
   and a moonshot (a speculative staging area that typechecks and test-selects a change before it
-  touches disk). Its rationale is summarized in section 12 below and captured in each item's
-  own "Why" paragraph in the plan.
+  touches disk). Governance items L1 (MIT to Apache 2.0) and L2 (DCO) are the first v4 execution items, before
+any engineering phase, so the 3.2.0 release stays MIT and every subsequent commit carries the
+new license and sign-off contract. Its rationale is summarized in
+  section 12 below and captured in each item's own "Why" paragraph in the plan.
 
 The stance the plans keep returning to: open-ended recall is bounded by index mode (whether the
 checkout loads semantically), not by ranking cleverness; the moat is the deterministic wiring
 graph; and the product does not have to win the vague one-shot because it is in a loop with a
-model. The v3.3 plan adds one more: token efficiency per payload is not the product, fewer and
+model. The v4 plan adds one more: token efficiency per payload is not the product, fewer and
 shorter agent iterations is, and the way to get there is to answer the questions the agent would
 otherwise run a build to answer.
 
@@ -596,7 +598,7 @@ otherwise run a build to answer.
 
 ## 12. Where Fuse is going (the thesis)
 
-An adversarial critique and roadmap, now carried into [v3.3-plan.md](v3.3-plan.md), argue one
+An adversarial critique and roadmap, now carried into [v4-plan.md](v4-plan.md), argue one
 thesis:
 
 Fuse should stop being a retrieval tool that happens to hold a Roslyn compilation and become the
@@ -621,5 +623,5 @@ gated on the semantic tier actually loading, so the realized value is the theore
 the load-success rate, and lifting that rate (item N4) is the release's dominant uncertainty.
 
 For the concrete engine work, the way each piece is measured honestly, and the risk that kills
-each one, read [v3.3-plan.md](v3.3-plan.md). Every item there traces its rationale back to the
+each one, read [v4-plan.md](v4-plan.md). Every item there traces its rationale back to the
 analysis in this overview.

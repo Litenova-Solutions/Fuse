@@ -6,7 +6,8 @@ This folder holds the forward plans and the archived execution records for Fuse,
 
 - [v3-plan.md](v3-plan.md): the V3 forward plan (the R0 through R9 wave) that built the .NET semantic moat, hybrid retrieval, abstention, the wider analyzer set, warm latency, and the peer and agent runs. The archived V3 overhaul execution record (the original plan, the design spec, and the full progress log) is kept at the end of this same file for history.
 - [v3.1-plan.md](v3.1-plan.md): the V3.1 wave. Made dense retrieval default and offline, served the first answer fast, added the git co-change signal, widened language breadth at the syntax tier, and rewrote the positioning. Landed A1, A2, A3, A6 in full; A4, A5, S10b, P4 partial; S4 and S9 assessed and deferred.
-- [v3.2-plan.md](v3.2-plan.md): the current forward plan. Finishes the warm-server experience (resident workspace, default cold start, freshness), lifts the corpus index-mode ceiling, makes the semantic-tier seam load-bearing, adds the tree-sitter native engine, and completes the go-to-market assets.
+- [v3.2-plan.md](v3.2-plan.md): the warm-server finishing wave. Shipped the host-on-semantic-index migration (protocol 3) and the rich index panel. Left the resident Roslyn workspace (W1) and semantic-mode corpus coverage (W4) only partly landed; both are picked up in v4.
+- [v4-plan.md](v4-plan.md): the current forward plan. The compiler-oracle release (4.0.0): L1/L2 governance first (Apache 2.0, DCO), then trustworthy floor, oracle tools, moonshot staging, and gated retrieval bets.
 
 ## Conventions
 

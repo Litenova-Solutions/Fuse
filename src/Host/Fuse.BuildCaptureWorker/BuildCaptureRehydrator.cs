@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Basic.CompilerLog.Util;
+using Fuse.Indexing;
 using Fuse.Semantics;
 using Fuse.Semantics.Analyzers;
 using Microsoft.CodeAnalysis;
@@ -167,38 +168,3 @@ public sealed class BuildCaptureRehydrator
 /// <param name="AssemblyName">The output assembly name.</param>
 /// <param name="ErrorCount">The number of compile errors in the rehydrated compilation.</param>
 /// <param name="TypeCount">The number of named types the compilation declares.</param>
-/// <param name="SymbolCount">The number of symbols Fuse's semantic extractor produced from the compilation.</param>
-/// <param name="NodeCount">The number of semantic-graph nodes the wiring analyzers produced.</param>
-/// <param name="EdgeCount">The number of semantic-graph edges the wiring analyzers produced.</param>
-/// <param name="Symbols">The extracted symbol records (the tier-1 graph bundle the parent ingests).</param>
-/// <param name="Nodes">The semantic-graph node records.</param>
-/// <param name="Edges">The semantic-graph edge records.</param>
-/// <param name="Routes">The route records.</param>
-/// <param name="DiRegistrations">The DI registration records.</param>
-/// <param name="OptionsBindings">The options binding records.</param>
-public sealed record CapturedProject(
-    string Name, string FilePath, string? AssemblyName, int ErrorCount, int TypeCount,
-    int SymbolCount = 0, int NodeCount = 0, int EdgeCount = 0,
-    IReadOnlyList<Fuse.Indexing.SymbolRecord>? Symbols = null,
-    IReadOnlyList<Fuse.Indexing.NodeRecord>? Nodes = null,
-    IReadOnlyList<Fuse.Indexing.SemanticEdgeRecord>? Edges = null,
-    IReadOnlyList<Fuse.Indexing.RouteRecord>? Routes = null,
-    IReadOnlyList<Fuse.Indexing.DiRegistrationRecord>? DiRegistrations = null,
-    IReadOnlyList<Fuse.Indexing.OptionsBindingRecord>? OptionsBindings = null);
-
-/// <summary>The outcome of a build capture.</summary>
-/// <param name="Succeeded">Whether the build succeeded and at least one C# compilation was rehydrated.</param>
-/// <param name="Reason">The concrete failure reason when <see cref="Succeeded" /> is false; otherwise null.</param>
-/// <param name="Projects">The rehydrated C# projects; empty on failure.</param>
-public sealed record CaptureResult(bool Succeeded, string? Reason, IReadOnlyList<CapturedProject> Projects)
-{
-    /// <summary>Creates a successful result.</summary>
-    /// <param name="projects">The rehydrated projects.</param>
-    /// <returns>A succeeded result.</returns>
-    public static CaptureResult Ok(IReadOnlyList<CapturedProject> projects) => new(true, null, projects);
-
-    /// <summary>Creates a failed result.</summary>
-    /// <param name="reason">The concrete failure reason.</param>
-    /// <returns>A failed result with no projects.</returns>
-    public static CaptureResult Failed(string reason) => new(false, reason, []);
-}

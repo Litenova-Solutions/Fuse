@@ -145,6 +145,16 @@ Iterative exploration primitives, ranked and bounded with provenance and no sour
 
 The neighborhood falls back to same-folder cohesion where the graph is sparse, so a result is never empty; central files are ranked by node degree and are empty in syntax mode (no edges). These primitives compose the structural priors and graph expansion into operations shaped for exploration.
 
+## fuse_signatures
+
+Batch exact-signature lookup: for a set of symbol names (simple or fully qualified), returns each declared signature, kind, accessibility, containing type, and location from the semantic index, in one call instead of many grep-and-read round-trips. This is the compiler-shaped answer to "what is the exact shape of these members". A signature is recorded at the semantic tier; in syntax mode a symbol may have no recorded signature, and the tool says so per symbol rather than inventing one. A requested name with no match is reported, not silently dropped.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `names` | string[] | required | Symbol names to look up (simple name or fully qualified) |
+| `path` | string | `.` | Workspace directory |
+| `limitPerName` | int | 5 | Maximum matches to return per requested name |
+
 ## fuse_reduce
 
 Compact a specific set of files (or raw content) by running Fuse's reduction, without collecting a whole directory. Pass `files` or `content` with `extension`.

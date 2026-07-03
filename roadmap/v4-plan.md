@@ -1803,6 +1803,40 @@ trust the test-count delta, not just the "0 errors" line.
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 R6 (part 1): fuse_signatures, the API-shape oracle
+
+**Status.** Part 1 done (the `fuse_signatures` tool). Box left unticked: R6's other half (repair
+packets, fix context attached to `fuse_check` diagnostics) rides on R1, which is blocked on the
+resident oracle (N3) and tier-1 load (N4-full).
+
+**Why now (out of sequence, but unblocked).** R1/R2/R5/R7 are blocked on N3/N4-full. Per the plan's
+"move to the next unblocked item" clause, `fuse_signatures` is the one oracle-surface tool that needs
+only the persisted symbol store, not a resident compilation, so it is implementable today.
+
+**Result.** Added `WorkspaceIndexStore.GetSignaturesByNamesAsync` (matches a batch of names by simple
+name or fully qualified name against the `symbols` table, public-API and exact match first) and the
+`fuse_signatures` MCP tool: batch exact signature, kind, accessibility, containing type, and location
+in one call. Abstains per symbol when no signature was recorded (syntax tier) and reports any
+requested name with no match, rather than inventing a shape. Additive (no shim, no RPC/protocol
+change, no schema change: it reads existing columns). The MCP surface is now ten tools; the
+integration-test tool-name array, the `FuseTools` summary, and the server-instructions block are
+updated together.
+
+**Tests.** `WorkspaceIndexSignatureTests`: match by simple name and by FQN return the recorded
+signature; an unknown name returns empty. `McpServeIntegrationTests` tool-name array includes
+`fuse_signatures`.
+
+**Verification.** Three gates green (clean build 0 errors, full test suite exit 0, format clean).
+Docs: `reference/mcp-tools.mdx` (the tool), `AGENTS.md` (ten-tool list).
+
+**Blockers.** None for part 1. The repair-packet half is correctly deferred until R1 exists.
+
+**Lessons.** The `symbols` table already carries `signature`/`accessibility`/`containing_type`, so
+the API-shape oracle is a pure read over existing data, which is why it is unblocked while the
+compiler-execution tools are not.
+
+**Time.** ~1 session-hour.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

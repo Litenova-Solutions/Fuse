@@ -4,6 +4,7 @@
   "pages": [
     "benchmarks",
     "performance",
+    "launch",
     "messaging",
     "roadmap",
     "changelog",

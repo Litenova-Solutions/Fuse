@@ -2,6 +2,25 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 3.0 is a product overhaul; backward compatibility with 2.x output, commands, and the MCP tool surface is not a goal.
 
+## [3.2.0] - 2026-07-02
+
+### Changed
+
+- **The VS Code host runs on the V3 semantic index, not the legacy fusion engine.** The `fuse host` RPC surface (`fuse/index`, `fuse/graph`, `fuse/scope`, `fuse/explain`, `fuse/diagnostics`) is rewritten to read the same `WorkspaceIndexStore` and `SemanticRetrievalEngine` the MCP tools use, so the editor and the agent see identical analysis. The legacy `FusionOrchestrator`, `DependencyGraphBuilder`, and explain service are gone from the host. The wire protocol is bumped to version 3 (`FuseHostService.ProtocolVersion` and the extension's `PROTOCOL_VERSION`); an older extension and a newer host surface the mismatch at handshake.
+- **The index panel shows the full semantic picture.** `fuse/index` now returns the index tier (semantic, partial, or syntax), symbol and route counts, a per-language file breakdown, full-text-search availability, the schema version, and the Fuse build that wrote the index. The extension's Index panel renders all of it.
+
+### Added
+
+- **Host index summary queries.** New store queries back the panel and the graph without per-file round-trips: route count, per-language counts, file-level dependency edges, and a bulk file token-estimate map.
+
+## [3.1.2] - 2026-07-02
+
+### Added
+
+- **Update awareness for the CLI and MCP server.** A cache-first, throttled (once a day), offline-safe check tells you when a newer Fuse is on NuGet. `fuse mcp serve` prints the notice to stderr and `fuse index` to the console; both read a local cache instantly and refresh it in the background, so nothing waits on the network. Disable with `FUSE_UPDATE_CHECK=0`.
+- **Opt-in auto-update between sessions.** Set `FUSE_AUTO_UPDATE=1` and the MCP server, on finding a newer version, launches the detached updater to apply after the session exits, so the next spawn is current. It never stops sibling sessions and never updates mid-session.
+- **Scheduled updates** are documented as a one-line Task Scheduler (Windows) or cron (POSIX) entry that runs `fuse update` on a cadence, for fully hands-off upgrades.
+
 ## [3.1.1] - 2026-07-01
 
 ### Added

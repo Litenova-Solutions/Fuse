@@ -170,9 +170,17 @@ async function warmAndProject(
     const stats = await client.stats();
     const rss = `${Math.round(stats.workingSetBytes / (1024 * 1024))} MB`;
     statusBar.setState(`warm (${index.fileCount})`, `Fuse host ${stats.hostVersion}, RSS ${rss}`);
+    const languages = index.languages.map((l) => `${l.language} ${l.count}`).join(", ");
     indexStatus.update([
+      new StatusRow("Fuse version", index.fuseVersion),
       new StatusRow("State", index.indexState),
+      new StatusRow("Tier", index.mode),
       new StatusRow("Files", String(index.fileCount)),
+      new StatusRow("Symbols", String(index.symbolCount)),
+      new StatusRow("Routes", String(index.routeCount)),
+      new StatusRow("Languages", languages.length > 0 ? languages : "none"),
+      new StatusRow("Full-text search", index.fullTextSearch ? "available" : "unavailable"),
+      new StatusRow("Schema", `v${index.schemaVersion}`),
       new StatusRow("Index time", `${index.elapsedMs} ms`),
       new StatusRow("Host RSS", rss),
     ]);

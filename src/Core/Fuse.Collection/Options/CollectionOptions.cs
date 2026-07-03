@@ -128,6 +128,8 @@ public sealed record CollectionOptions
     /// <param name="excludeTestProjects">Whether to exclude all test project directories.</param>
     /// <param name="excludeUnitTestProjects">Whether to exclude unit test project directories.</param>
     /// <param name="respectGitIgnore">Whether to honor <c>.gitignore</c> rules.</param>
+    /// <param name="candidateFiles">A pre-computed candidate file set to filter instead of walking; null to walk.</param>
+    /// <param name="excludeNestedRepositories">Whether to prune nested version-control roots from the walk.</param>
     public CollectionOptions(
         string sourceDirectory,
         ProjectTemplate? template = null,

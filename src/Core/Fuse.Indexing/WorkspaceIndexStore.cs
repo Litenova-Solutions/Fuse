@@ -987,6 +987,22 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, int>> GetFileTokenEstimatesAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT files.normalized_path, COALESCE(SUM(c.reduced_token_estimate), 0) " +
+            "FROM files LEFT JOIN chunks c ON c.file_id = files.file_id GROUP BY files.file_id, files.normalized_path;";
+
+        var estimates = new Dictionary<string, int>(StringComparer.Ordinal);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            estimates[reader.GetString(0)] = (int)reader.GetInt64(1);
+        return estimates;
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyDictionary<string, string>> GetContentHashesAsync(
         IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken)
     {
@@ -1086,6 +1102,56 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         while (await reader.ReadAsync(cancellationToken))
             paths.Add(reader.GetString(0));
         return paths;
+    }
+
+    /// <inheritdoc />
+    public async Task<int> GetRouteCountAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM routes;";
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is long value ? (int)value : 0;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<LanguageCount>> GetLanguageCountsAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        // Untagged files (an extension no syntax provider claims) group under 'unknown' rather than vanish.
+        command.CommandText =
+            "SELECT COALESCE(NULLIF(language, ''), 'unknown') AS lang, COUNT(*) AS n FROM files GROUP BY lang ORDER BY n DESC, lang;";
+
+        var counts = new List<LanguageCount>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            counts.Add(new LanguageCount(reader.GetString(0), (int)reader.GetInt64(1)));
+        return counts;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<FileDependencyEdge>> GetFileDependencyEdgesAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        // Resolve each typed edge's endpoints to the files they live in, dropping self-edges (endpoints in the
+        // same file) so the projection is a file-to-file graph.
+        command.CommandText = """
+            SELECT ff.normalized_path, tf.normalized_path, e.edge_type
+            FROM edges e
+            JOIN nodes fn ON fn.node_id = e.from_node_id
+            JOIN nodes tn ON tn.node_id = e.to_node_id
+            JOIN files ff ON ff.file_id = fn.file_id
+            JOIN files tf ON tf.file_id = tn.file_id
+            WHERE fn.file_id IS NOT NULL AND tn.file_id IS NOT NULL AND ff.file_id <> tf.file_id;
+            """;
+
+        var edges = new List<FileDependencyEdge>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            edges.Add(new FileDependencyEdge(reader.GetString(0), reader.GetString(1), reader.GetString(2)));
+        return edges;
     }
 
     /// <inheritdoc />

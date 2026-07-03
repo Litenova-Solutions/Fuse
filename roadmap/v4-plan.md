@@ -1952,6 +1952,44 @@ shipping opt-in path today.
 
 **Time.** ~1 session-hour.
 
+### 2026-07-03 N4 tier-1 (part 2): out-of-process build-capture worker foundation
+
+**Status.** Foundation done and green; the B1 blocker is resolved in principle and proven. N4's box
+stays unticked: the worker does not yet run the wiring analyzers or feed the store, and it is not yet
+spawned by the indexer.
+
+**Result.** Added `Fuse.BuildCaptureWorker`, a standalone `fuse-build-capture` executable that runs
+the repository build with a binary log and rehydrates exact compilations via Basic.CompilerLog.Util,
+emitting a source-generated-JSON `CaptureResult` on stdout. This resolves blocker B1: the library is
+referenced only by the worker project (never by the parent process that hosts MSBuildWorkspace), and
+the worker never invokes MSBuildWorkspace, so the two conflicting Roslyn closures never share a
+process. Proven: the full suite is green, including the MSBuildWorkspace-dependent Semantics tests
+(100 pass) alongside the worker's own rehydration test, where the earlier in-assembly integration had
+broken them.
+
+**Tests.** `BuildCaptureRehydratorTests` builds the SampleShop solution and asserts the worker
+rehydrates at least one C# compilation declaring real types (or reports a concrete reason if the
+fixture does not build in the environment, the parent's fallback contract).
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). The
+worker's external-process build invocation uses a fixed bounded argument list per the invariant. JSON
+uses a source-generated context per the invariant.
+
+**Remaining tier-1 work (concrete).** (a) The worker runs the wiring analyzers
+(`SemanticAnalysisRunner`) plus symbol/chunk/route extraction over each rehydrated compilation and
+serializes the graph bundle (files, symbols, chunks, nodes, edges, routes). (b) `SemanticIndexer`
+spawns the worker (bounded args), deserializes the bundle, and writes it to the store as the tier-1
+path, falling back to MSBuildWorkspace (tier 2) then syntax (tier 3). (c) The worker exe is packaged
+with the global tool and located at runtime. (d) Then the localize/review recall re-run (the Phase 4
+gate). Steps (a)/(b) require extracting the compilation-to-records logic from
+`SemanticIndexer.IndexSemanticAsync` into a form the worker can call without MSBuildWorkspace.
+
+**Lessons.** The isolation is process-level, not assembly-level: a separate project still lands both
+Roslyn closures in one app output. The worker being a separate executable (spawned, not referenced)
+is what keeps them apart, and the validation is that the parent's MSBuildWorkspace tests stay green.
+
+**Time.** ~1.5 session-hours.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

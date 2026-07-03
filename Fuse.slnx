@@ -24,6 +24,7 @@
     </Folder>
     <Folder Name="/src/Host/">
       <Project Path="src/Host/Fuse.Cli/Fuse.Cli.csproj" />
+      <Project Path="src/Host/Fuse.BuildCaptureWorker/Fuse.BuildCaptureWorker.csproj" />
     </Folder>
     <Folder Name="/src/Plugins/">
       <Project Path="src/Plugins/Fuse.Plugins.Abstractions/Fuse.Plugins.Abstractions.csproj" />
@@ -63,6 +64,7 @@
     <Project Path="tests/Fuse.Semantics.Tests/Fuse.Semantics.Tests.csproj" />
     <Project Path="tests/Fuse.Retrieval.Tests/Fuse.Retrieval.Tests.csproj" />
     <Project Path="tests/Fuse.Context.Tests/Fuse.Context.Tests.csproj" />
+    <Project Path="tests/Fuse.BuildCaptureWorker.Tests/Fuse.BuildCaptureWorker.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/benchmarks/">
     <Project Path="tests/benchmarks/Fuse.Benchmarks/Fuse.Benchmarks.csproj" />

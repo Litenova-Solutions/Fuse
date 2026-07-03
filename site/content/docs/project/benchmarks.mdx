@@ -132,6 +132,19 @@ Suite D showed that per-payload token reduction does not change the cumulative t
 
 Following the plan, R4 is harness-first: the harness is the deliverable, and the numbers are recorded from an explicit, provisioned run. The deterministic core, turn classification (`LoopTranscriptClassifier`, which maps a stream-json transcript to the ordered build, test, edit, and read turns) and the metric computation (`LoopMetrics`), is unit-tested and runs offline. The model-driven arms are opt-in: a bare `fuse eval loop` records the harness state and the task set it would sample without spending model time, and only `FUSE_LOOP_RUN=1` (with the `claude` CLI present) launches the rollouts. This is deliberate, because a loop rollout drives a real model per task per arm and must never fire silently, especially inside a host where the CLI is already on PATH. Run with `fuse eval loop`; it writes `results/loop.json`.
 
+### Recorded run (`loop.json`)
+
+The first provisioned run used `claude-sonnet-4-6` over 4 PRs (one per corpus repository, `--limit 1 --restore`), producing 7 scored rollouts; one fuse rollout (eShopOnWeb#949) wedged and was omitted rather than stubbed.
+
+| Arm | Tasks (n) | Reached green | Median build-gated iterations to green | Mean build invocations |
+|-----|----------:|--------------:|---------------------------------------:|-----------------------:|
+| native | 4 | 25% (1/4) | 1.0 | 0.8 |
+| fuse | 3 | 0% (0/3) | 0.0 | 0.3 |
+
+Read this honestly: on this run the fuse arm does **not** collapse the loop. It reached green on none of its tasks, while native reached green on one (eShopOnWeb#949, in a single iteration and two builds). The dominant cause is that the corpus does not build in this environment: two of the four repositories restored zero packages, so most tasks cannot reach a green build in either arm regardless of tooling, which is the same build and index-mode ceiling that bounds every other corpus suite here. The fuse arm's lower mean build count (0.3 versus 0.8) is not a win; it ran fewer builds and still never reached green.
+
+The sample is small (4 PRs, one rollout per arm, one model) with a wide confidence interval and one wedged rollout, so this is a directional null, not a settled measurement: the oracle-collapse thesis is neither confirmed nor refuted by it. Confirming or refuting it needs a larger provisioned run over a task set that actually builds in the eval environment. This result is reported as it landed and the launch messaging is positioned against it, not around it.
+
 ## Suite D: agent context sufficiency (model-dependent)
 
 Suite D replaces a structural bound with a real agent. It runs one Claude Code CLI driver, model `claude-sonnet-4-6`, over 12 PRs (two per repository) in two arms (native filesystem Read/Grep/Glob, and the Fuse MCP tools), one rollout each, for 24 rollouts. The run goes through the real `fuse.exe` so the fuse arm's MCP server is correctly wired, with `--restore` so the fuse arm indexes semantically where a repository restores. It measures the file recall of the set the agent gathered and the cumulative tokens it spent.

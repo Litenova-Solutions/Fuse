@@ -58,12 +58,50 @@ public sealed record CaptureResult(bool Succeeded, string? Reason, IReadOnlyList
 }
 
 /// <summary>
+///     One compiler diagnostic from a speculative typecheck (R1 <c>fuse_check</c>): the shape an agent needs to
+///     fix a build error without running <c>dotnet build</c>.
+/// </summary>
+/// <param name="Id">The diagnostic id (for example <c>CS1061</c>).</param>
+/// <param name="Severity">The severity (<c>Error</c>, <c>Warning</c>, <c>Info</c>, <c>Hidden</c>).</param>
+/// <param name="Message">The diagnostic message.</param>
+/// <param name="FilePath">The file the diagnostic is in, when known.</param>
+/// <param name="Line">The 1-based line, when known.</param>
+public sealed record CheckDiagnostic(string Id, string Severity, string Message, string? FilePath, int Line);
+
+/// <summary>
+///     The outcome of a speculative typecheck of a proposed patch against a build-captured compilation (R1). The
+///     patch is applied to the rehydrated compilation in memory (no disk write, no <c>dotnet build</c>); the
+///     diagnostics are those the real compiler would report, because the compilation shares the real build's
+///     inputs (tier-1). When capture is unavailable the result abstains rather than guessing.
+/// </summary>
+/// <param name="Verified">Whether the typecheck ran (a compilation was available and the patch applied).</param>
+/// <param name="Reason">Why the check could not verify (abstention), when <see cref="Verified" /> is false.</param>
+/// <param name="Diagnostics">The compiler diagnostics for the changed document, when verified.</param>
+public sealed record CheckResult(bool Verified, string? Reason, IReadOnlyList<CheckDiagnostic> Diagnostics)
+{
+    /// <summary>Whether the changed document has no error-severity diagnostics (a clean speculative build).</summary>
+    public bool IsClean => Verified && !Diagnostics.Any(d => d.Severity == "Error");
+
+    /// <summary>Creates a verified result.</summary>
+    /// <param name="diagnostics">The compiler diagnostics.</param>
+    /// <returns>A verified result.</returns>
+    public static CheckResult Ok(IReadOnlyList<CheckDiagnostic> diagnostics) => new(true, null, diagnostics);
+
+    /// <summary>Creates an abstention (could not verify).</summary>
+    /// <param name="reason">The concrete reason the check could not verify.</param>
+    /// <returns>An unverified result.</returns>
+    public static CheckResult Abstain(string reason) => new(false, reason, []);
+}
+
+/// <summary>
 ///     Source-generated JSON context for the build-capture worker-to-parent contract, per the project invariant
 ///     that JSON uses a source-generated <see cref="JsonSerializerContext" /> rather than reflection serialization.
 /// </summary>
 [JsonSourceGenerationOptions(WriteIndented = false)]
 [JsonSerializable(typeof(CaptureResult))]
 [JsonSerializable(typeof(CapturedProject))]
+[JsonSerializable(typeof(CheckResult))]
+[JsonSerializable(typeof(CheckDiagnostic))]
 [JsonSerializable(typeof(SymbolRecord))]
 [JsonSerializable(typeof(NodeRecord))]
 [JsonSerializable(typeof(SemanticEdgeRecord))]

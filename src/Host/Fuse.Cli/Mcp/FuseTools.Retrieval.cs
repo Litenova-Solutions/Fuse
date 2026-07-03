@@ -228,6 +228,51 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
+    ///     Speculatively typechecks a proposed single-file edit against the build-captured compilation (R1): the
+    ///     compiler diagnostics the change would produce, without writing the file or running <c>dotnet build</c>.
+    ///     Answers only at oracle-grade (tier-1) load and abstains otherwise, per the availability contract.
+    /// </summary>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="file">The repo-relative path of the file being changed.</param>
+    /// <param name="content">The proposed full new content of that file.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>The diagnostics for the changed document, a clean verdict, or an explicit abstention.</returns>
+    [McpServerTool(Name = "fuse_check", ReadOnly = true)]
+    [Description("Speculatively typecheck a proposed single-file edit: the compiler errors and warnings it would produce, without writing the file or running dotnet build. Oracle-grade: answers only when the repo builds and is captured at tier-1, and abstains with a reason otherwise rather than guessing green.")]
+    public static async Task<string> FuseCheckAsync(
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("The repo-relative path of the file being changed.")] string file = "",
+        [Description("The proposed full new content of that file.")] string content = "",
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(file) || string.IsNullOrEmpty(content))
+            return "Error: provide the changed file path and its proposed new content.";
+
+        var root = Path.GetFullPath(path);
+        var client = new Fuse.Semantics.BuildCaptureClient();
+        if (!client.IsAvailable)
+            return "cannot verify: oracle-grade build capture is not configured (set FUSE_BUILD_CAPTURE_WORKER). fuse_check abstains rather than guessing green.";
+
+        var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
+        var buildTarget = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
+        if (buildTarget is null)
+            return "cannot verify: no solution or project found to build. fuse_check abstains.";
+
+        var result = await client.CheckAsync(buildTarget, file, content, TimeSpan.FromMinutes(10), cancellationToken);
+        if (!result.Verified)
+            return $"cannot verify: {result.Reason}";
+
+        if (result.IsClean)
+            return $"clean: no errors in the changed document {file} (speculative typecheck, no build, no disk write).";
+
+        var builder = new StringBuilder();
+        builder.AppendLine($"diagnostics for {file} (speculative typecheck): {result.Diagnostics.Count}");
+        foreach (var d in result.Diagnostics)
+            builder.AppendLine($"  {d.Severity} {d.Id} at line {d.Line}: {d.Message}");
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
     ///     Deterministically resolves .NET wiring to its target(s): no source bodies.
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>

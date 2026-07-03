@@ -43,6 +43,71 @@ public sealed class BuildCaptureRehydrator
     }
 
     /// <summary>
+    ///     Speculatively typechecks a proposed single-file patch: builds and rehydrates the compilations, replaces
+    ///     the target file's syntax tree with the proposed content in memory, and returns the compiler diagnostics
+    ///     for that document (R1). No disk write of the patch, no second build.
+    /// </summary>
+    /// <param name="buildTarget">The absolute path to the solution or project to build and capture.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="buildTimeout">The maximum time to allow the capture build to run.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>The diagnostics for the changed document, or an abstention when capture is unavailable.</returns>
+    public async Task<CheckResult> CheckAsync(
+        string buildTarget, string relativeFilePath, string newContent, TimeSpan buildTimeout, CancellationToken cancellationToken)
+    {
+        var binlogPath = Path.Combine(Path.GetTempPath(), $"fuse-check-{Guid.NewGuid():N}.binlog");
+        try
+        {
+            var (exitCode, timedOut, firstError) = await RunBuildAsync(buildTarget, binlogPath, buildTimeout, cancellationToken);
+            if (timedOut || exitCode != 0 || !File.Exists(binlogPath))
+                return CheckResult.Abstain(timedOut ? "capture build timed out" : $"capture build did not succeed ({firstError ?? $"exit {exitCode}"}); cannot verify");
+
+            using var reader = CompilerCallReaderUtil.Create(binlogPath);
+            var normalized = relativeFilePath.Replace('\\', '/');
+            foreach (var data in reader.ReadAllCompilationData())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (data.CompilerCall.IsCSharp != true)
+                    continue;
+
+                var compilation = data.GetCompilationAfterGenerators(cancellationToken);
+                var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
+                    t.FilePath.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
+                if (tree is null)
+                    continue; // The changed file is not in this project; try the next.
+
+                var newTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(
+                    newContent, (Microsoft.CodeAnalysis.CSharp.CSharpParseOptions?)tree.Options, tree.FilePath, cancellationToken: cancellationToken);
+                var forked = compilation.ReplaceSyntaxTree(tree, newTree);
+                var diagnostics = forked.GetSemanticModel(newTree)
+                    .GetDiagnostics(cancellationToken: cancellationToken)
+                    .Where(d => d.Severity is Microsoft.CodeAnalysis.DiagnosticSeverity.Error or Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+                    .Select(ToCheckDiagnostic)
+                    .ToList();
+                return CheckResult.Ok(diagnostics);
+            }
+
+            return CheckResult.Abstain($"the changed file '{relativeFilePath}' was not found in any captured C# project");
+        }
+        finally
+        {
+            TryDelete(binlogPath);
+        }
+    }
+
+    private static CheckDiagnostic ToCheckDiagnostic(Microsoft.CodeAnalysis.Diagnostic d)
+    {
+        var span = d.Location.IsInSource ? d.Location.GetLineSpan() : default;
+        return new CheckDiagnostic(
+            Id: d.Id,
+            Severity: d.Severity.ToString(),
+            Message: d.GetMessage(),
+            FilePath: d.Location.IsInSource ? d.Location.SourceTree?.FilePath : null,
+            Line: d.Location.IsInSource ? span.StartLinePosition.Line + 1 : 0);
+    }
+
+    /// <summary>
     ///     Rehydrates the C# compilations recorded in a binary log. Exposed so a test can rehydrate a binlog it
     ///     produced without re-running a build.
     /// </summary>

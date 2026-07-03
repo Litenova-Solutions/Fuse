@@ -11,13 +11,33 @@ using Fuse.Indexing;
 // Output is a single JSON object on stdout: { "succeeded": bool, "reason": string?, "projects": [...] }.
 // Exit code 0 on a successful capture, 1 otherwise; diagnostics go to stderr so stdout stays pure JSON.
 
+var rehydrator = new BuildCaptureRehydrator();
+
+// --check <target> <relativeFilePath> <newContentFile>: speculative typecheck of a proposed single-file patch.
+// The new content is passed via a file (not an argument) so it is never a length-bounded command-line value.
+if (args.Length == 4 && args[0] == "--check")
+{
+    CheckResult check;
+    try
+    {
+        var newContent = await File.ReadAllTextAsync(args[3]);
+        check = await rehydrator.CheckAsync(args[1], args[2], newContent, TimeSpan.FromMinutes(10), CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        check = CheckResult.Abstain($"check error: {ex.Message}");
+    }
+
+    Console.Out.WriteLine(JsonSerializer.Serialize(check, BuildCaptureJsonContext.Default.CheckResult));
+    return check.Verified ? 0 : 1;
+}
+
 if (args.Length < 2 || args[0] is not ("--build" or "--binlog"))
 {
-    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path>)");
+    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --check <target> <file> <newContentFile>)");
     return 2;
 }
 
-var rehydrator = new BuildCaptureRehydrator();
 CaptureResult result;
 try
 {

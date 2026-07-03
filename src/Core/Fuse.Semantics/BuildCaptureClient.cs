@@ -102,4 +102,86 @@ public sealed class BuildCaptureClient
             return CaptureResult.Failed($"could not parse build-capture worker output: {ex.Message}");
         }
     }
+
+    /// <summary>
+    ///     Speculatively typechecks a proposed single-file patch via the worker (R1 <c>fuse_check</c>): the worker
+    ///     builds and rehydrates the compilation, applies the patch in memory, and returns the compiler
+    ///     diagnostics for the changed document.
+    /// </summary>
+    /// <param name="buildTarget">The absolute path to the solution or project to build and capture.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="timeout">The maximum time to allow the worker to run.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>The diagnostics, or an abstention when the worker is unavailable or cannot verify.</returns>
+    public async Task<CheckResult> CheckAsync(
+        string buildTarget, string relativeFilePath, string newContent, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        if (!IsAvailable)
+            return CheckResult.Abstain("build-capture worker not configured (set FUSE_BUILD_CAPTURE_WORKER)");
+
+        var contentFile = Path.Combine(Path.GetTempPath(), $"fuse-check-content-{Guid.NewGuid():N}.cs");
+        await File.WriteAllTextAsync(contentFile, newContent, cancellationToken);
+        try
+        {
+            var psi = new ProcessStartInfo("dotnet")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            // Fixed, bounded argument list; the (unbounded) new content is passed via the temp file, not an arg.
+            psi.ArgumentList.Add(_workerDllPath!);
+            psi.ArgumentList.Add("--check");
+            psi.ArgumentList.Add(buildTarget);
+            psi.ArgumentList.Add(relativeFilePath);
+            psi.ArgumentList.Add(contentFile);
+
+            using var process = new Process { StartInfo = psi };
+            var stdout = new StringBuilder();
+            process.OutputDataReceived += (_, e) => { if (e.Data is not null) stdout.AppendLine(e.Data); };
+            try
+            {
+                process.Start();
+            }
+            catch (Exception ex)
+            {
+                return CheckResult.Abstain($"could not start build-capture worker: {ex.Message}");
+            }
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(timeout);
+            try
+            {
+                await process.WaitForExitAsync(timeoutCts.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { /* best effort */ }
+                return CheckResult.Abstain($"build-capture worker timed out after {timeout.TotalSeconds:F0}s");
+            }
+
+            var outLine = stdout.ToString()
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .LastOrDefault(l => l.StartsWith('{'));
+            if (outLine is null)
+                return CheckResult.Abstain("build-capture worker produced no parseable output");
+
+            try
+            {
+                return JsonSerializer.Deserialize(outLine, BuildCaptureJsonContext.Default.CheckResult)
+                       ?? CheckResult.Abstain("worker output deserialized to null");
+            }
+            catch (JsonException ex)
+            {
+                return CheckResult.Abstain($"could not parse worker output: {ex.Message}");
+            }
+        }
+        finally
+        {
+            try { File.Delete(contentFile); } catch (IOException) { }
+        }
+    }
 }

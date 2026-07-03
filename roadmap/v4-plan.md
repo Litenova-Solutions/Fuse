@@ -1628,6 +1628,48 @@ that Phase 4's retrieval bets are correctly gated on N4.
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 N2 (part 1): purge stale results; citation sweep; regenerate
+
+**Status.** Part 1 done (results purge, citations, regeneration). Part 2 (physical deletion of the
+in-memory ranker) deferred with reason; box left unticked.
+
+**Result.** Archived the legacy PowerShell-harness result files (`layer1`..`layer5`,
+`layer-latency`, `layer-ranking`, `baseline.layer1`, `opt-in-levers.md`), the superseded
+`localize`/`review` dev-iteration snapshots (a1, a6, r1-r3, s1-s10, restore, review.r4,
+review.restore), and the legacy `reduction.json` to `tests/benchmarks/results/archive/`. The
+top-level results directory now holds only current-corpus files plus `localize.a1-lexical.json`
+(the lexical-fallback comparison the corrected dense-lift citation names) and `n4-bakeoff.json`.
+Regenerated `reduce.json` and `performance.json` on the current corpus. Rewrote the Suite E
+reduction table (was the retired 5-library corpus) to the current corpus in `benchmarks.mdx`.
+Corrected finding-8 citations everywhere: precision-when-confident 9.3 to 5.6 percent
+(`localize.json`, 9 confident tasks), dense lift 13.3 to 14.9 percent (not 15.1), skeleton
+reduction 37-55 to 38-44 percent, `reduction.json` to `reduce.json`. Annotated `agent.json`'s notes
+with the directional pre-R4 / retired-corpus caveat. Updated regenerated latency figures in
+AGENTS.md, overview.md, and performance.mdx (warm localize 42 ms P50, cold pass 58 s; NodaTime loads
+syntax under the current loader, consistent with the N4 bake-off).
+
+**Part 2 deferral (surfaced honestly).** N2's headline "delete `Bm25RelevanceIndex` and route the
+classic query mode through FTS5" is deferred. Verified against the tree: no shipping surface
+constructs a classic query-mode `FusionRequest` (`FilterByQueryAsync` is reachable only from the
+fusion test suite), so the in-memory ranker is already non-shipping; the shipping ranker is the
+FTS5 path in `SemanticRetrievalEngine`, unified and guarded by N1's suite. Physically deleting
+`Bm25RelevanceIndex` cascades into `IRelevanceIndex`, `RelevanceIndexCache`,
+`QueryScopingPipeline`, `FusionScopingStage.FilterByQueryAsync`, the DI registration, and dozens of
+coupled fusion tests; doing it mid-release risks destabilizing the 237-test fusion suite for zero
+product benefit. Tracked as a focused cleanup follow-up. Box left unticked to reflect this.
+
+**Verification.** Docs-citation sweep confirms no orphaned references to archived files (the only
+`localize.a1.json`/`reduction.json` mentions left are inside `v4-plan.md`, which is the plan
+describing the migration). Gates: no C# changed in this part, so build/test remain green from N1;
+`fuse eval reduce` and `fuse eval performance` reproduced their result files.
+
+**Blockers.** None for part 1. Part 2 is deferred, not blocked (see above).
+
+**Lessons.** The Suite E doc table was itself a fabrication-with-provenance (retired 5-lib corpus);
+regenerating and rewriting it was the highest-value part of the sweep.
+
+**Time.** ~1.5 session-hours.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

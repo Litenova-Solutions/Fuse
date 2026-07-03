@@ -42,11 +42,11 @@ The `performance` suite (`fuse eval performance`, `performance.json`) indexes a 
 | Operation | P50 | P95 | Target |
 |-----------|----:|----:|-------:|
 | Warm resolve (symbol) | sub-millisecond | sub-millisecond | under 100 ms |
-| Warm localize (query, 20 candidates) | 61 ms | 71 ms | under 500 ms |
-| Warm review plan (25K budget, vs HEAD~1) | 110 ms | 131 ms | under 2 s |
-| Single-file incremental re-index | 23 ms | 25 ms | under 1 s |
+| Warm localize (query, 20 candidates) | 42 ms | 55 ms | under 500 ms |
+| Warm review plan (25K budget, vs HEAD~1) | 117 ms | 136 ms | under 2 s |
+| Single-file incremental re-index | 24 ms | 28 ms | under 1 s |
 
-Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. The cold index of the same repository took about 70 seconds, which includes the MSBuild workspace load; cold index is paid once and amortized over every warm call.
+Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. The cold index of the same repository took about 58 seconds; NodaTime's main checkout loads in syntax mode under the current MSBuildWorkspace loader (see the v4 N4 bake-off), so this is the syntax pass rather than a full semantic load. Cold index is paid once and amortized over every warm call.
 
 ### Cold start: syntax-first, then semantic in the background
 

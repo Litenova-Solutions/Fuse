@@ -25,6 +25,12 @@ The database is created and populated on the first index build. The read command
 
 The index is entirely derived data: deleting it loses nothing that cannot be rebuilt from the source.
 
+## Freshness after an edit
+
+The read tools do not serve an index frozen at first call. When the store is already warm, opening it for a read runs a bounded freshness reconcile: it compares the current on-disk content hash of every known file against the stored hash, re-indexes files that were edited, and removes files that were deleted, before answering. So a symbol added by an edit is found on the next read, and a symbol in a deleted file is gone, with no explicit `fuse index` call.
+
+The reconcile refreshes a file's own rows (symbols, chunks, full-text, routes); cross-file semantic graph edges (DI, routes, MediatR, EF) are recomputed by a full `fuse index`, not by the per-file reconcile. A bulk change (a branch switch or a large pull that dirties many files at once) is not reconciled one file at a time: above a storm threshold the reconcile records a stale-as-of stamp (the dirty-file count in the index metadata) instead, so the answer is reported as stale rather than paying a reconcile storm on every read, and running `fuse index` clears it. New files added on disk since the last full index are picked up by `fuse index`, not by the reconcile, which only tracks files it already knows.
+
 ## Version control
 
 Add `.fuse/` to your repository `.gitignore`. The directory holds derived index data (like `bin/` or `obj/`): it can grow, varies by machine, and is rebuilt on the next run. The Fuse repository ignores `.fuse/` itself; your project should too. Running `fuse init` inside a git repo appends `.fuse/` to `.gitignore` when the entry is missing.

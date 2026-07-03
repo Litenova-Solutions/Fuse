@@ -217,6 +217,24 @@ public sealed partial class FuseTools
         return store;
     }
 
+    // The ambient availability header (R3): one line that tells a client the grade of the answer that follows,
+    // so an oracle read is never mistaken for oracle-grade when it is not. It reports the index mode (semantic,
+    // partial, or syntax), whether tier-1 build capture is configured (the oracle-grade write path), and the
+    // freshness stamp from the N6 reconcile contract (a nonzero stale count means a bulk change outran the
+    // per-read reconcile, so the graph may lag the working tree). Store-backed oracle tools prepend it; the
+    // compiler tools (fuse_check, fuse_refactor) carry their own explicit "cannot verify/rename" abstention,
+    // which is the same signal at higher resolution.
+    internal static async Task<string> OracleAvailabilityHeaderAsync(WorkspaceIndexStore store, CancellationToken cancellationToken)
+    {
+        var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
+        var staleRaw = await store.GetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, cancellationToken);
+        var tier1 = new Fuse.Semantics.BuildCaptureClient().IsAvailable ? "configured" : "not configured";
+        var freshness = int.TryParse(staleRaw, out var stale) && stale > 0
+            ? $"{stale} known file(s) changed since index, results may lag the working tree"
+            : "up to date";
+        return $"availability: index mode {mode}; tier-1 build capture {tier1}; {freshness}.";
+    }
+
     // Runs the semantic upgrade in the background on its own store handle (the foreground store is disposed when
     // the tool returns), supervised by UpgradeSupervisor: deduped per root, cancellable, its failure logged not
     // swallowed, and drained on host shutdown so no task is orphaned (N3, finding 5).

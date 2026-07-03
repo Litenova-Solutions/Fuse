@@ -2302,6 +2302,34 @@ build's inputs), and the abstention contract handles the non-oracle case honestl
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 R3 (part): the ambient availability header
+
+**Status.** Done and green. The R3 box stays unticked: the full tool-surface reshape (the typed-union router
+folding the read tools around the oracle, with the V2 deprecation shims) remains; the shims themselves already
+exist (FuseDeprecatedTools). This lands the honesty half of R3: the ambient grade signal.
+
+**Result.** Added `FuseTools.OracleAvailabilityHeaderAsync`, a shared helper that renders one line stating the
+index mode (semantic, partial, or syntax), whether tier-1 build capture is configured (the oracle-grade write
+path), and the N6 freshness stamp (a nonzero stale count means a bulk change outran the per-read reconcile, so
+the graph may lag the working tree). The two store-backed oracle reads (`fuse_impact`, `fuse_signatures`) now
+prepend it, so a client cannot mistake a syntax-tier or stale answer for an oracle-grade one. The compiler
+tools (`fuse_check`, `fuse_refactor`) already carry their own explicit "cannot verify/rename" abstention, which
+is the same signal at higher resolution, so they are not double-headed.
+
+**Tests.** `OracleAvailabilityHeaderTests`: the header reports the index mode and "up to date" when the stale
+count is zero, a concrete "N known file(s) changed ... may lag the working tree" when nonzero, and "index mode
+unknown" when the meta is absent. The MCP integration test still passes with the header prefixed.
+
+**Verification.** Three gates green (build 0 errors, full suite exit 0 across all projects, format exit 0). The
+header reuses the existing `index_mode` and `stale_dirty_count` metas and `BuildCaptureClient.IsAvailable`; no
+schema change, no new RPC DTO.
+
+**Remaining R3 work.** The typed-union router that reshapes the read surface around the oracle (a single entry
+that dispatches on the input shape), keeping the additive shims. That is the larger, contract-shaping half and
+is best done as its own change with the extension client in the loop.
+
+**Time.** ~0.75 session-hours.
+
 ### 2026-07-03 R1 Suite F: the fuse_check honesty gate (checkgate)
 
 **Status.** Done and green. The R1 box stays unticked: the repair-packet half (R6 part 2, structured fixes

@@ -275,7 +275,7 @@ planning purposes; the per-item Why/How/Tests/Docs/Kill-risk below are unchanged
 | R6 signatures + repair packets | done | `fuse_signatures` (part 1) plus repair packets on `fuse_check` CS1061/CS0246 (part 2); optional `fuse_complete` rides N3 |
 | R2 `fuse_impact` | done | blast radius from R5 + wiring edges; abstains on the exact break set; carries the availability header and covering tests |
 | R1 `fuse_check` | engine + Suite F done | out-of-proc speculative typecheck (abstains unless tier-1); Suite F `results/checkgate.json` 8/8, zero false-green/false-red. Repair packets + resident fast path remain |
-| R7 `fuse_refactor` | part 1 done (rename) | MSBuildWorkspace + Roslyn Renamer, staged as a diff, abstains on partial load; change-signature (part 2) remains |
+| R7 `fuse_refactor` | part 1 done (rename) | MSBuildWorkspace + Roslyn Renamer, staged as a diff, abstains on partial load. Change-signature (part 2) blocked: `Renamer` is in the referenced Workspaces packages, but `ChangeSignature` lives in `Microsoft.CodeAnalysis.Features` with no clean public API; a hand-rolled call-site rewriter would be high-risk and violate the "a partial refactor is worse than none" bar, so it is deferred rather than shipped half-working |
 | R3 tool reshape | part done (availability header) | ambient grade header on the store-backed oracle reads; V2 shims already exist; the typed-union router remains (needs the extension client in the loop) |
 | R4 loop suite | not started | blocked: the model and LSP-armed arms need provisioned models; task-set curation is unblocked data work |
 | M1 | down-payment done | covering-test selection over R5 tests edges (in `fuse_impact`); the changeset-session lifecycle remains |

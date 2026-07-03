@@ -46,6 +46,30 @@ public sealed record SymbolListItem(
     bool IsPublicApi);
 
 /// <summary>
+///     An exact signature lookup result for a symbol, returned by the batch signature query behind
+///     <c>fuse_signatures</c>: the compiler-shaped answer to "what is the exact shape of this member".
+/// </summary>
+/// <param name="Name">The simple symbol name.</param>
+/// <param name="Kind">The symbol kind (type, method, property, and so on).</param>
+/// <param name="FullyQualifiedName">The fully qualified name.</param>
+/// <param name="Signature">The declared signature, when the semantic tier recorded one; null in syntax mode.</param>
+/// <param name="Accessibility">The declared accessibility (public, internal, and so on), when known.</param>
+/// <param name="ContainingType">The declaring type's name, when the symbol is a member.</param>
+/// <param name="FilePath">The declaring file's normalized path.</param>
+/// <param name="StartLine">The 1-based declaration line.</param>
+/// <param name="IsPublicApi">Whether the symbol is part of the public API surface.</param>
+public sealed record SymbolSignature(
+    string Name,
+    string Kind,
+    string FullyQualifiedName,
+    string? Signature,
+    string? Accessibility,
+    string? ContainingType,
+    string FilePath,
+    int StartLine,
+    bool IsPublicApi);
+
+/// <summary>
 ///     A summary of an indexed route, returned by listing queries (for example the workspace map).
 /// </summary>
 /// <param name="RouteId">The route id.</param>

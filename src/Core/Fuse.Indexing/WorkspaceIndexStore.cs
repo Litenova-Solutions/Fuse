@@ -854,6 +854,56 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<SymbolSignature>> GetSignaturesByNamesAsync(
+        IReadOnlyCollection<string> names, int limitPerName, CancellationToken cancellationToken)
+    {
+        var distinct = names
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (distinct.Count == 0)
+            return [];
+
+        var results = new List<SymbolSignature>();
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        // One query per requested name so the per-name limit and ordering (public API and exact-name first) apply
+        // independently; the name count is the caller's small batch, not a variable-length repo-scale list.
+        foreach (var name in distinct)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT s.name, s.kind, s.fully_qualified_name, s.signature, s.accessibility, s.containing_type,
+                       files.normalized_path, s.start_line, s.is_public_api
+                FROM symbols s
+                JOIN files ON files.file_id = s.file_id
+                WHERE s.name = $n COLLATE NOCASE OR s.fully_qualified_name = $n COLLATE NOCASE
+                ORDER BY s.is_public_api DESC, length(s.fully_qualified_name), s.fully_qualified_name COLLATE NOCASE
+                LIMIT $limit;
+                """;
+            command.Parameters.AddWithValue("$n", name);
+            command.Parameters.AddWithValue("$limit", limitPerName);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                results.Add(new SymbolSignature(
+                    Name: reader.GetString(0),
+                    Kind: reader.GetString(1),
+                    FullyQualifiedName: reader.GetString(2),
+                    Signature: reader.IsDBNull(3) ? null : reader.GetString(3),
+                    Accessibility: reader.IsDBNull(4) ? null : reader.GetString(4),
+                    ContainingType: reader.IsDBNull(5) ? null : reader.GetString(5),
+                    FilePath: reader.GetString(6),
+                    StartLine: reader.GetInt32(7),
+                    IsPublicApi: reader.GetInt64(8) != 0));
+            }
+        }
+
+        return results;
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken)
     {
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);

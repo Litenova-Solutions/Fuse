@@ -183,6 +183,22 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>The matching symbol summaries.</returns>
     Task<IReadOnlyList<SymbolListItem>> FindSymbolsByNameAsync(string nameFragment, int limit, CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     Returns exact signature records for a batch of symbol names (matched by simple name or fully qualified
+    ///     name), the store side of <c>fuse_signatures</c>.
+    /// </summary>
+    /// <param name="names">The symbol names to look up (simple or fully qualified).</param>
+    /// <param name="limitPerName">The maximum number of matches to return per requested name.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The matching signatures, public-API and exact-name matches first; empty when nothing matches.</returns>
+    /// <remarks>
+    ///     Serves an agent's most common lookup (the exact shape of N members) from the persisted symbol table in
+    ///     one call instead of many grep-and-read round-trips. The signature is populated in semantic mode; in
+    ///     syntax mode it may be null, and the caller says so rather than implying a signature it does not have.
+    /// </remarks>
+    Task<IReadOnlyList<SymbolSignature>> GetSignaturesByNamesAsync(
+        IReadOnlyCollection<string> names, int limitPerName, CancellationToken cancellationToken);
+
     /// <summary>Sets a key in the index metadata table.</summary>
     /// <param name="key">The metadata key.</param>
     /// <param name="value">The value to store.</param>

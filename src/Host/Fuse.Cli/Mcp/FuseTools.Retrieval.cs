@@ -63,6 +63,62 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
+    ///     Batch exact-signature lookup: for a set of symbol names, returns each declared signature, kind,
+    ///     accessibility, and location from the semantic index in one call. The compiler-shaped answer to the
+    ///     agent's most common question ("what is the exact shape of this member"), replacing many grep-and-read
+    ///     round-trips.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="names">The symbol names to look up (simple or fully qualified).</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="limitPerName">The maximum matches to return per requested name.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The signatures grouped by requested name, with a note for any name that did not match.</returns>
+    [McpServerTool(Name = "fuse_signatures", ReadOnly = true)]
+    [Description("Batch exact signatures for named symbols from the semantic index, in one call instead of many grep-and-read round-trips. Returns the declared signature, kind, accessibility, and location per match. A signature is available at the semantic tier; in syntax mode it may be absent, and the tool says so rather than inventing one.")]
+    public static async Task<string> FuseSignaturesAsync(
+        SemanticIndexer indexer,
+        [Description("Symbol names to look up (simple name or fully qualified).")] string[] names,
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("Maximum matches to return per requested name.")] int limitPerName = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (names is null || names.Length == 0)
+            return "Error: provide one or more symbol names in 'names'.";
+
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var matches = await store.GetSignaturesByNamesAsync(names, limitPerName, cancellationToken);
+
+        var builder = new StringBuilder();
+        foreach (var requested in names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()).Distinct(StringComparer.Ordinal))
+        {
+            var forName = matches
+                .Where(m => string.Equals(m.Name, requested, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(m.FullyQualifiedName, requested, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            builder.AppendLine($"# {requested}");
+            if (forName.Count == 0)
+            {
+                builder.AppendLine("  no match in the index (check the name, or run fuse_index if the file is new).");
+                continue;
+            }
+
+            foreach (var m in forName)
+            {
+                var accessibility = string.IsNullOrEmpty(m.Accessibility) ? "" : m.Accessibility + " ";
+                var signature = string.IsNullOrEmpty(m.Signature)
+                    ? $"{m.Kind} {m.FullyQualifiedName} (no signature recorded; index is syntax-tier for this file)"
+                    : $"{accessibility}{m.Signature}";
+                var container = string.IsNullOrEmpty(m.ContainingType) ? "" : $" in {m.ContainingType}";
+                builder.AppendLine($"  {signature}{container}");
+                builder.AppendLine($"    {m.FilePath}:{m.StartLine} [{m.Kind}{(m.IsPublicApi ? ", public-api" : "")}]");
+            }
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
     ///     Iterative exploration primitives: the graph neighborhood of a file, the callers and implementers of a
     ///     symbol, or the structurally central files of an area. Ranked, bounded, and body-free, for chaining.
     /// </summary>

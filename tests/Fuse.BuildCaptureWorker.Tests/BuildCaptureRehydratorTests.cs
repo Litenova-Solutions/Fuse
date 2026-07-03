@@ -39,9 +39,11 @@ public sealed class BuildCaptureRehydratorTests
                 return;
             }
 
-            // Oracle tier reached out of process: the compilation rehydrated and declares the real Widget type.
+            // Oracle tier reached out of process: the compilation rehydrated and declares the real Widget type,
+            // and Fuse's semantic extraction ran over it in the worker (never MSBuildWorkspace), producing symbols.
             var project = Assert.Single(result.Projects);
             Assert.True(project.TypeCount >= 1, "the rehydrated compilation should declare at least the Widget type");
+            Assert.True(project.SymbolCount >= 1, "the worker's semantic extraction should produce symbols from the rehydrated compilation");
         }
         finally
         {

@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using Basic.CompilerLog.Util;
+using Fuse.Semantics;
+using Fuse.Semantics.Analyzers;
 using Microsoft.CodeAnalysis;
 
 namespace Fuse.BuildCaptureWorker;
@@ -49,6 +51,8 @@ public sealed class BuildCaptureRehydrator
     public CaptureResult RehydrateFromBinlog(string binlogPath, CancellationToken cancellationToken)
     {
         using var reader = CompilerCallReaderUtil.Create(binlogPath);
+        var symbolExtractor = new SemanticSymbolExtractor();
+        var analyzers = SemanticAnalysisRunner.CreateDefault();
         var projects = new List<CapturedProject>();
         foreach (var data in reader.ReadAllCompilationData())
         {
@@ -59,14 +63,29 @@ public sealed class BuildCaptureRehydrator
 
             var compilation = data.GetCompilationAfterGenerators(cancellationToken);
             var errorCount = compilation.GetDiagnostics(cancellationToken)
-                .Count(d => d.Severity == DiagnosticSeverity.Error);
+                .Count(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
             var typeCount = CountTypes(compilation.Assembly.GlobalNamespace);
-            projects.Add(new CapturedProject(
+
+            // Run Fuse's semantic extraction over the rehydrated compilation (never MSBuildWorkspace), the crux of
+            // tier-1: the worker produces the same symbol and wiring-graph data the in-process semantic pass does.
+            var projectDir = Path.GetDirectoryName(call.ProjectFilePath) ?? Directory.GetCurrentDirectory();
+            var loaded = new LoadedProject(
                 Name: Path.GetFileNameWithoutExtension(call.ProjectFilePath) ?? call.ProjectFileName ?? "project",
                 FilePath: call.ProjectFilePath ?? "",
                 AssemblyName: compilation.AssemblyName,
+                Compilation: compilation);
+            var symbolCount = symbolExtractor.Extract(loaded, projectDir, cancellationToken).Count();
+            var graph = analyzers.Run(new SemanticAnalysisContext(loaded, projectDir), cancellationToken);
+
+            projects.Add(new CapturedProject(
+                Name: loaded.Name,
+                FilePath: loaded.FilePath,
+                AssemblyName: compilation.AssemblyName,
                 ErrorCount: errorCount,
-                TypeCount: typeCount));
+                TypeCount: typeCount,
+                SymbolCount: symbolCount,
+                NodeCount: graph.Nodes.Count,
+                EdgeCount: graph.Edges.Count));
         }
 
         return projects.Count == 0
@@ -142,8 +161,12 @@ public sealed class BuildCaptureRehydrator
 /// <param name="AssemblyName">The output assembly name.</param>
 /// <param name="ErrorCount">The number of compile errors in the rehydrated compilation.</param>
 /// <param name="TypeCount">The number of named types the compilation declares.</param>
+/// <param name="SymbolCount">The number of symbols Fuse's semantic extractor produced from the compilation.</param>
+/// <param name="NodeCount">The number of semantic-graph nodes the wiring analyzers produced.</param>
+/// <param name="EdgeCount">The number of semantic-graph edges the wiring analyzers produced.</param>
 public sealed record CapturedProject(
-    string Name, string FilePath, string? AssemblyName, int ErrorCount, int TypeCount);
+    string Name, string FilePath, string? AssemblyName, int ErrorCount, int TypeCount,
+    int SymbolCount = 0, int NodeCount = 0, int EdgeCount = 0);
 
 /// <summary>The outcome of a build capture.</summary>
 /// <param name="Succeeded">Whether the build succeeded and at least one C# compilation was rehydrated.</param>

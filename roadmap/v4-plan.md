@@ -342,6 +342,55 @@ tag is not cut; a single open PR (#24) holds the work.
 
 ---
 
+## Re-plan 2: remaining work, blockers, and the forward goal (2026-07-03, session 2)
+
+After the second execution session the Oracle phase is substantially landed. This section is the
+authoritative list of what is left and the pre-decided way to finish it (no further judgment calls
+needed), so a long autonomous run can execute it end to end.
+
+### Done since re-plan 1
+
+R5, R6 (both parts: `fuse_signatures` plus repair packets on `fuse_check`), R2 (`fuse_impact`), R1
+(`fuse_check` engine plus Suite F, `results/checkgate.json`, 8/8, zero false-green/false-red), R7
+part 1 (`fuse_refactor` rename), R3 part (the ambient availability header), R4 (the loop-metric
+harness, opt-in via `FUSE_LOOP_RUN`), M1 (covering-test selection plus the full `fuse_changeset`
+lifecycle), G2 (the analyzer coverage docs), and the 4.0.0 version bump. Fourteen MCP tools. All
+three gates green at every commit.
+
+### Remaining items and the pre-decided finish
+
+1. **R4 recorded numbers plus the LSP arm.** The harness is done; the numbers need an explicit
+   `FUSE_LOOP_RUN=1` run with the `claude` CLI and a provisioned model. Decision: run it, record
+   `results/loop.json` with real numbers. If a rollout wedges or the model is unavailable, log the
+   partial and continue. LSP arm: add it if an LSP server is on PATH; otherwise log the gap. Never
+   fabricate a number.
+2. **R3 typed-union router.** Additive only: a router entry that dispatches on input shape, keeping
+   every existing tool working and a `FuseDeprecatedTools` shim for any folded name. No `Fuse.Cli.Rpc`
+   or protocol change (the MCP surface is separate). Update the integration name array and docs.
+3. **R7 part 2 (change-signature).** Attempt via a Roslyn call-site rewrite over R5's reference
+   edges. If no trustworthy path exists (no clean public `ChangeSignature` API), abstain and log the
+   blocker; do not ship a half-working rewriter (a partial refactor is worse than none).
+4. **M2 (out-of-proc test execution, stretch).** Attempt the worker-run emit-and-run. If the
+   false-green gate cannot be met, slip to 4.1 with a logged reason, as the plan pre-agreed.
+5. **V1/V2 (Phase 4).** Gated on the tier-1 localize re-run, which showed no lift (15.0 vs 14.9).
+   Decision: re-run localize once more over the richest available graph; implement V1 (graph
+   verbalization) only if recall lifts beyond CI, else log not-warranted with the recorded number.
+   V2 follows the same gate.
+6. **G1 (launch).** Write the latency-demo and launch docs from the recorded `performance.json` and
+   the oracle results. Do not tag, publish, or cut the release; that is a maintainer action.
+
+### Standing constraints for the finish (unchanged)
+
+Plain ASCII prose. Never fabricate or weaken a benchmark number (quote only
+`tests/benchmarks/results/*.json`). Every commit DCO-signed (`git commit -s`). One item per commit
+with engine plus tests plus docs plus the box ticked or a logged blocker. Three gates green after
+each. Bound external-process args. MCP tool changes keep shims; index-contract changes bump
+`WorkspaceIndexSchema.TargetVersion`; `Fuse.Cli.Rpc` changes bump `ProtocolVersion` and
+`ext/vscode/src/host/protocol.ts` together. Never auto-fire an expensive model run without the
+opt-in env. Never merge, self-approve, tag, or publish. Single open PR off `main`.
+
+---
+
 ## Governance
 
 L1 and L2 are the first v4 execution items, before the N4 bake-off and before any Phase 1

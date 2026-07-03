@@ -1,9 +1,9 @@
 ---
 title: Tools Reference
-description: Parameters and defaults for the eight MCP tools the Fuse V3 server exposes to AI clients.
+description: Parameters and defaults for the MCP tools the Fuse server exposes to AI clients.
 ---
 
-The Fuse MCP server exposes eight tools an AI client can call to index a .NET workspace and serve precise, provenance-backed context from a Roslyn-backed semantic graph. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so an agent or its author can choose the right call and supply correct arguments.
+The Fuse MCP server exposes thirteen tools an AI client can call to index a .NET workspace and serve precise, provenance-backed context from a Roslyn-backed semantic graph. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so an agent or its author can choose the right call and supply correct arguments.
 
 This page is for engineers writing agent instructions and for experts who need the exact default of each parameter. For the recommended order in which to call these tools, see [Context for an agent](/docs/scenarios/context-for-an-agent). The equivalent CLI flags are in [Commands Reference](/docs/reference/commands).
 
@@ -144,6 +144,16 @@ Iterative exploration primitives, ranked and bounded with provenance and no sour
 | `limit` | int | 20 | Maximum results to return |
 
 The neighborhood falls back to same-folder cohesion where the graph is sparse, so a result is never empty; central files are ranked by node degree and are empty in syntax mode (no edges). These primitives compose the structural priors and graph expansion into operations shaped for exploration.
+
+## fuse_refactor
+
+Compiler-executed solution-wide rename: renames a symbol and every reference through Roslyn's rename engine and returns the change as a staged diff, never touching the working tree. Because Roslyn drives it, a same-named but unrelated symbol (a local, a different type) is not renamed, which a textual find-and-replace cannot guarantee. It answers only when the whole solution loads cleanly and abstains otherwise, because a partial rename is worse than none. Review the diff and re-check with `fuse_check` before applying; a rename that crosses a boundary Roslyn does not see (an identifier in a string, a reflection call) surfaces there rather than as a silently committed bug. The first cut supports rename; change-signature is future work.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `path` | string | `.` | Workspace directory |
+| `symbol` | string | required | The simple name of the symbol to rename |
+| `newName` | string | required | The new name |
 
 ## fuse_check
 

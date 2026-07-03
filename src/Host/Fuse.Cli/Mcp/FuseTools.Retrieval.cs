@@ -228,6 +228,50 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
+    ///     Compiler-executed solution-wide rename (R7): renames a symbol and every reference through Roslyn and
+    ///     returns the change as a staged diff, never touching the working tree. Answers only when the whole
+    ///     solution loads (a partial rename is worse than none) and abstains otherwise.
+    /// </summary>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="symbol">The simple name of the symbol to rename.</param>
+    /// <param name="newName">The new name.</param>
+    /// <param name="cancellationToken">A token to cancel the rename.</param>
+    /// <returns>The staged per-file diffs, or an explicit abstention.</returns>
+    [McpServerTool(Name = "fuse_refactor", ReadOnly = true)]
+    [Description("Compiler-executed solution-wide rename: rename a symbol and all its references through Roslyn, returned as a staged diff (nothing is written to disk). Roslyn semantics mean a same-named unrelated symbol is not touched. Answers only when the whole solution loads cleanly; abstains otherwise, because a partial rename is worse than none. Review the diff and re-check with fuse_check before applying.")]
+    public static async Task<string> FuseRefactorAsync(
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("The simple name of the symbol to rename.")] string symbol = "",
+        [Description("The new name.")] string newName = "",
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(newName))
+            return "Error: provide the symbol to rename and the new name.";
+
+        var root = Path.GetFullPath(path);
+        var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
+        var target = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
+        if (target is null)
+            return "cannot rename: no solution or project found. fuse_refactor abstains.";
+
+        var result = await new Fuse.Semantics.RenameRefactorer().RenameAsync(target, symbol, newName, cancellationToken);
+        if (!result.Renamed)
+            return $"cannot rename: {result.Reason}";
+
+        var builder = new StringBuilder();
+        builder.AppendLine($"staged rename: {result.OldName} -> {result.NewName} ({result.Diffs.Count} file(s) changed, not written to disk)");
+        foreach (var d in result.Diffs)
+        {
+            builder.AppendLine($"--- {d.FilePath}");
+            builder.AppendLine(d.UnifiedDiff);
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("Review this diff and re-check with fuse_check before applying; a rename crossing a boundary Roslyn does not see (a string, reflection) would surface as a diagnostic there.");
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
     ///     Speculatively typechecks a proposed single-file edit against the build-captured compilation (R1): the
     ///     compiler diagnostics the change would produce, without writing the file or running <c>dotnet build</c>.
     ///     Answers only at oracle-grade (tier-1) load and abstains otherwise, per the availability contract.

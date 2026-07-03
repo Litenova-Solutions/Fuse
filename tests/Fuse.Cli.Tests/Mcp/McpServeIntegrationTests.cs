@@ -20,6 +20,7 @@ public sealed class McpServeIntegrationTests
         "fuse_map",
         "fuse_neighbors",
         "fuse_reduce",
+        "fuse_refactor",
         "fuse_resolve",
         "fuse_review",
         "fuse_signatures",

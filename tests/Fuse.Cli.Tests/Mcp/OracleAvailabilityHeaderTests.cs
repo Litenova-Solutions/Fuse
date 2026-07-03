@@ -1,0 +1,74 @@
+using Fuse.Cli.Mcp;
+using Fuse.Indexing;
+using Fuse.Semantics;
+using Microsoft.Data.Sqlite;
+using Xunit;
+
+namespace Fuse.Cli.Tests.Mcp;
+
+// R3: the ambient availability header. Every store-backed oracle read prepends a one-line grade so a client
+// cannot mistake a syntax-tier or stale answer for an oracle-grade one. These tests pin the header wording
+// against the three facts it reports: index mode, tier-1 build-capture availability, and the N6 freshness stamp.
+public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
+{
+    private readonly string _databasePath =
+        Path.Combine(Path.GetTempPath(), "fuse-avail-header-tests", Guid.NewGuid().ToString("N"), "fuse.db");
+    private WorkspaceIndexStore _store = null!;
+
+    public async Task InitializeAsync()
+    {
+        _store = new WorkspaceIndexStore(_databasePath);
+        await _store.InitializeAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Header_reports_index_mode_and_fresh_when_no_stale_count()
+    {
+        await _store.SetMetaAsync("index_mode", "semantic", CancellationToken.None);
+        await _store.SetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, "0", CancellationToken.None);
+
+        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, CancellationToken.None);
+
+        Assert.Contains("index mode semantic", header);
+        Assert.Contains("up to date", header);
+        Assert.DoesNotContain("may lag", header);
+    }
+
+    [Fact]
+    public async Task Header_reports_a_stale_count_when_files_changed_since_index()
+    {
+        await _store.SetMetaAsync("index_mode", "partial", CancellationToken.None);
+        await _store.SetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, "7", CancellationToken.None);
+
+        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, CancellationToken.None);
+
+        Assert.Contains("index mode partial", header);
+        Assert.Contains("7 known file(s) changed", header);
+        Assert.Contains("may lag the working tree", header);
+    }
+
+    [Fact]
+    public async Task Header_reports_unknown_mode_when_meta_absent()
+    {
+        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, CancellationToken.None);
+
+        Assert.Contains("index mode unknown", header);
+        // Tier-1 build capture is reported either way; without FUSE_BUILD_CAPTURE_WORKER it is not configured.
+        Assert.Contains("tier-1 build capture", header);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _store.DisposeAsync();
+        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        var directory = Path.GetDirectoryName(_databasePath);
+        try
+        {
+            if (directory is not null && Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+        catch (IOException)
+        {
+        }
+    }
+}

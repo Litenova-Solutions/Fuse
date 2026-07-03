@@ -2082,6 +2082,33 @@ cross-project and foreign-key safe: the full node set and DI edges are only avai
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 R4 (part 1): loop-metric computation
+
+**Status.** Part 1 done (the deterministic metric core). Box left unticked: the model-driven suite (curated
+PR set run across the native, LSP-armed, and Fuse arms, three rollouts, CIs) needs provisioned models and
+is the remaining R4 work.
+
+**Result.** Added `LoopMetrics` to `Fuse.Benchmarks`: from a task-resolution transcript (a sequence of
+typed turns) it computes iterations-to-green, build-invocations-per-session (the direct loop-collapse
+measure the oracle thesis moves), wall-clock, and whether green was reached. This is the model-free core the
+plan calls for ("the metric computation is unit-tested against a scripted transcript"), so the deterministic
+sub-metrics stand between the expensive model runs.
+
+**Tests.** `LoopMetricsTests`: build-gated iteration counting, a test turn counting toward green but not
+toward build invocations, and the never-green case. Benchmarks.Tests rise; full suite green.
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean).
+
+**Blockers.** The model and LSP arms need provisioned models and a curated 10-to-15 PR failing-then-passing
+task set; that curation plus the pre-registered native and LSP baselines is the remaining R4 work, on top of
+the existing `TaskResolutionHarness` (patch-apply plus test oracle) which already scores pass@1.
+
+**Lessons.** iterations-to-green counts build-gated turns (build or test), while build-invocations counts only
+build turns; keeping them distinct is what lets R4 attribute a loop-collapse win to fewer builds versus fewer
+total gated iterations.
+
+**Time.** ~0.75 session-hour.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

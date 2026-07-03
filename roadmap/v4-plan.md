@@ -1737,6 +1737,48 @@ inventing throwaway plumbing.
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 N4 (part 1): fuse doctor and per-project load reporting
+
+**Status.** Part 1 done (availability reporting). N4's headline tier-1 build-capture (binlog
+rehydration) and tier-2 auto-restore are NOT yet implemented; the box stays unticked.
+
+**Result.** The loader (`RoslynWorkspaceLoader`) now records a `ProjectLoadReport` per project
+(loaded, loaded-with-compile-errors = graph-grade, or not-loaded with a concrete reason), added to
+`RoslynWorkspaceSnapshot`. `SemanticIndexer.DiagnoseLoadAsync` discovers and loads the workspace
+without writing the index and returns a `LoadDiagnosis` (tier, projects loaded/total, per-project
+reports, load diagnostics). A new read-only `fuse doctor` command surfaces it: it names the achieved
+tier (oracle-grade / graph-grade (partial) / syntax) and the per-project downgrade reason, and states
+plainly whether the oracle tools can answer for the workspace. This is the availability contract the
+plan calls for ("fuse doctor names the concrete reason per project").
+
+**Tests.** `DoctorDiagnoseTests`: a project-less workspace reports the syntax tier with zero projects
+and the `syntax-only` reason. Semantics.Tests 99 to 100.
+
+**Verification.** Three gates green on a clean `--no-incremental` build (a stale incremental
+up-to-date check had initially skipped the test project and masked a missing-using compile error;
+caught and fixed by forcing a clean build, a lesson logged below). One Fusion test flaked once on the
+first full run (temp-dir/parallelism contention) and passed on re-run and on the confirming full run.
+Docs: `reference/commands.mdx` (the command table and a `fuse doctor` section).
+
+**What remains for N4 (the release's dominant item).** Tier 1 (build capture): run `dotnet build -bl`,
+extract Csc invocations, and rehydrate exact compilations via `CSharpCommandLineParser` (the
+Basic.CompilerLog approach), with incremental single-tree swaps. Tier 2 (salvage): bounded
+`dotnet restore` on missing assets and metadata-reference salvage. Then re-run `localize.json` and
+`review.json` with the best tier on (the gate for Phase 4). The N4 bake-off already recorded that this
+mechanism reaches tier-1 on 100 percent of buildable repos vs 12 percent semantic for MSBuildWorkspace;
+this part builds the availability surface that the tier-1 mechanism will populate.
+
+**Blockers.** None for part 1. Tier-1/tier-2 are large, self-contained follow-on work (binlog
+integration is a new capability), deliberately not rushed to keep the gates and the no-silent-change
+discipline intact.
+
+**Lessons.** `dotnet`'s incremental up-to-date check can skip recompiling a test project after a new
+file is added, so a full-solution build can report success while a new test's compile error is
+masked; force `--no-incremental` (or build the test project directly) when adding a test file, and
+trust the test-count delta, not just the "0 errors" line.
+
+**Time.** ~1.5 session-hours.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

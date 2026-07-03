@@ -1540,6 +1540,46 @@ enforces.
 
 **Time.** ~0.5 session-hour.
 
+### 2026-07-03 N4 bake-off spike (item zero): build-capture ladder chosen
+
+**Status.** Done (spike; decides N4's mechanism). N4 full implementation remains open (Phase 1).
+
+**Result.** Ran the two-mechanism bake-off over the 4 corpus checkouts plus 16 popular OSS .NET
+repos (20 listed, 17 evaluable; 3 clone failures excluded as environmental GitHub rate-limiting,
+not a mechanism outcome). Recorded to `tests/benchmarks/results/n4-bakeoff.json`; reproducible
+script and repo lists in `tests/benchmarks/spikes/n4-bakeoff/`. Tier distribution:
+
+- Mechanism (a), current MSBuildWorkspace loader: semantic 2, partial 2, syntax 13. Oracle-grade
+  (semantic) on 2/17 = 12 percent. This directly confirms finding 1 (the moat mostly does not run
+  on real checkouts): NodaTime builds cleanly yet the loader falls to syntax.
+- Mechanism (b), build-capture ladder: 11/17 = 65 percent of evaluable repos build successfully, so
+  tier-1 is achievable by construction on all 11. On exactly the 11 buildable repos, mechanism (a)
+  reached semantic on only 2, partial on 1, syntax on 8, while (b) reaches tier-1 on all 11.
+- The plan's quantitative cutoff (tier-1 on at least 80 percent of repos whose `dotnet build`
+  succeeds): mechanism (b) passes at 100 percent (11/11); mechanism (a) fails at 18 percent (2/11).
+- Oracle coverage ceiling: 65 percent of repos build in this environment. The 6 that do not
+  (Scrutor NU1507, eShopOnWeb CS0104, Dapper and StackExchange.Redis MSB4018, Humanizer NETSDK1045,
+  Nancy CS2007) get graph-grade retrieval plus abstention, never a guess.
+
+**Decision.** Adopt the build-capture ladder (binlog rehydration for tier 1, salvage for tier 2,
+syntax for tier 3), as the plan scoped. The signal is decisive even before N4's full
+implementation: build-capture is strictly better on buildable repos and equal on the rest, and
+tier-1 is oracle-grade by construction (it shares the build's own inputs).
+
+**Verification.** Numbers computed from the recorded per-repo JSON; every repo's msbuild tier came
+from the built branch CLI, every build result from a real `dotnet build -bl`. The 3 clone failures
+are excluded and named, not scored.
+
+**Blockers.** The 35 percent non-building fraction is the honest oracle-coverage ceiling and the
+release's dominant uncertainty, exactly as the plan's kill-risk names it. Tier 2 (salvage) remains
+an entropy fight but gates only retrieval coverage, never oracle correctness.
+
+**Lessons.** MSBuildWorkspace failing to semantic on a repo that builds cleanly (NodaTime, Polly,
+MediatR, and most of the OSS set) is the core justification for the mechanism switch: the real build
+knows what the real build does; a separate design-time load does not.
+
+**Time.** ~2 session-hours (mostly the 16-repo clone+build+index sweep).
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

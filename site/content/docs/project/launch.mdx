@@ -1,0 +1,71 @@
+---
+title: The Oracle in Action
+description: What Fuse 4.0 adds (compiler-grade answers at edit speed), the latency demo, and an honest account of what the loop benchmark does and does not yet show.
+---
+
+Fuse 4.0 turns the warm Roslyn compilation Fuse already holds into an oracle: the tool that answers the questions only a compiler can answer (does this edit typecheck, what breaks if this signature changes, which tests cover this symbol) in milliseconds, without an editor session and without a `dotnet build` round-trip. This page is the launch narrative and the latency demo. Every number is sourced to a file under `tests/benchmarks/results`, and the one claim the release was built to test (that the oracle collapses the agent's edit-verify loop) is reported exactly as it landed, including where it did not land.
+
+## The demo: a whole-solution rename, correct by construction
+
+The demo that lands is a latency demo, not a token demo. Token savings are invisible on screen; a compiler answering while the other pane waits on MSBuild is not.
+
+The task, on eShopOnWeb: rename a method on `IOrderService` and update every call site.
+
+- **Left pane, a stock agent:** grep for the name, edit the interface, edit each call site by hand, run `dotnet build`, read the parse errors, fix the ones it missed, build again. Several build round-trips before green.
+- **Right pane, with Fuse:** `fuse_refactor` performs the rename across the whole solution as a staged diff (the compiler resolves the call sites, not a text match), `fuse_check` returns green on the proposed edit in under a second, and one final real build confirms it.
+
+The honest claim for this moment is precise: **no editor session, whole-solution, multi-file, correct by construction, with abstention.** A compiler-executed rename over a loaded solution updates every reference exactly, and Fuse abstains (returns nothing rather than a guess) when the solution is not loaded to oracle grade. The claim is not "only a compiler can do this": a language server can rename too. The claim is the ergonomics and the correctness guarantee of doing it in one call, over the whole solution, from an agent's tool surface, with an explicit abstention contract when the ground truth is not available.
+
+### The illustrative arithmetic (labeled, not measured)
+
+A rename-and-verify loop that a stock agent runs in about 150 seconds of edit-build-fix-build is the kind of task the oracle shortens. With the fuse arm running the same final verification the native arm runs (verification parity, both paying one real build), the same back-of-envelope model gives roughly 90 to 95 seconds, about **1.6x** on the loop. This figure is illustrative and its arithmetic is shown on purpose. The larger 3-to-4x number that an earlier draft used silently assumed trusted, scoped test selection (booking the fuse arm a cheap test subset while the native arm pays a full test run); the demo does not include that, so it is not claimed. Where a wall-clock number is wanted, use R4's recorded run, below, not this projection.
+
+## The proof: what is measured
+
+These are recorded, reproducible numbers (offline where the suite is deterministic; model-dependent where noted). They are the defensible core of the launch.
+
+### Deterministic wiring resolution (Suite A, `semantics.json`)
+
+On the OrderingApp wiring fixture the extracted graph matches the hand-built edge ground truth exactly: 22 of 22 edges, recall and precision 1.0. This covers dependency-injection registration and constructor injection, MediatR request-to-handler, ASP.NET route-to-action, options binding, EF Core, Scrutor decoration, factory registration, hosted services, pipeline behaviors, minimal-API, gRPC and SignalR, plus the precision edge cases. This is the deterministic moat: the answers do not depend on a model.
+
+### Speculative typecheck with no false greens or false reds (Suite F, `checkgate.json`)
+
+`fuse_check` verifies a proposed single-file edit against the build-captured compilation and reports repair-packet diagnostics, or abstains when the project is not loaded to oracle grade. Over eight cases (equivalent rewrites, an added overload, a comment-only change, and known-bad edits spanning a missing member, a wrong return type, an undefined type, a syntax error, and an init-only reassignment) the gate records **8 of 8 correct, zero false-green, zero false-red, zero incorrect abstentions.** An oracle that says green must not be wrong about it; on this gate it is not.
+
+### Warm latency (`performance.json`)
+
+Measured on NodaTime (512 files, 7,657 symbols), each operation run repeatedly over the warm index:
+
+| Operation | P50 | P95 |
+|-----------|----:|----:|
+| Warm resolve (symbol) | sub-millisecond | sub-millisecond |
+| Warm localize (query, 20 candidates) | 42 ms | 55 ms |
+| Warm review plan (25K budget) | 117 ms | 136 ms |
+| Single-file incremental re-index | 24 ms | 28 ms |
+
+Cold start serves the syntax tier in about 20 seconds and completes a full pass in about 58 seconds (on this checkout the full pass is the syntax pass; NodaTime's main checkout loads in syntax mode under the current loader). Cold index is paid once and amortized over every warm call. Timings are environment-dependent; read them as an order-of-magnitude signal.
+
+## The loop metric, honestly (Suite R4, `loop.json`)
+
+The strategic bet behind 4.0 is that the oracle collapses the agent's edit-verify loop: fewer build-gated turns to a green build, which is the thing Suite D showed per-payload token reduction does not deliver. Suite R4 is the experiment that tests it. It drives one Claude Code CLI per task in two arms (`native`: filesystem plus `dotnet build`/`dotnet test`; `fuse`: the fuse MCP tools, so a verify can be a speculative `fuse_check`) and records, per arm, whether it reached green, the build-gated iterations to green, and the build invocations.
+
+The first provisioned run (`claude-sonnet-4-6`, 4 PRs, one per corpus repository, `--limit 1 --restore`, 7 scored rollouts; one fuse rollout wedged and was omitted rather than stubbed) recorded:
+
+| Arm | Tasks (n) | Reached green | Median iterations to green | Mean build invocations |
+|-----|----------:|--------------:|---------------------------:|-----------------------:|
+| native | 4 | 25% (1/4) | 1.0 | 0.8 |
+| fuse | 3 | 0% (0/3) | 0.0 | 0.3 |
+
+**On this run the fuse arm does not collapse the loop, and 4.0 does not claim it does.** The fuse arm reached green on none of its tasks; native reached green on one (eShopOnWeb#949, in a single iteration and two builds). The dominant cause is that the corpus does not build in this environment: two of the four repositories restored zero packages, so most tasks cannot reach a green build in either arm regardless of tooling, which is the same build and index-mode ceiling that bounds every corpus suite here. The fuse arm's lower mean build count is not a win; it ran fewer builds and still never reached green.
+
+The sample is tiny (4 PRs, one rollout per arm, one model) with a wide confidence interval and one wedged rollout, so this is a directional null, not a settled result. The oracle-collapse thesis is neither confirmed nor refuted by it; confirming or refuting it needs a larger provisioned run over a task set that actually builds in the eval environment. The harness (`fuse eval loop`, with the unit-tested `LoopTranscriptClassifier` and `LoopMetrics`) is the instrument that will answer it, and it is shipped and recording. Until then the launch stands on the measured, defensible claims above (deterministic wiring, a sub-second speculative typecheck with zero false green and zero false red, a correct-by-construction whole-solution rename, and millisecond warm reads), and treats the loop-collapse claim as an open question, reported with its recorded null.
+
+## What is not claimed
+
+- No head-to-head loop-time win over a stock agent or an LSP-driven agent; R4 has not shown one.
+- No claim that only a compiler can rename; a language server can. The claim is whole-solution, one-call, correct-by-construction with abstention.
+- The 1.6x figure above is illustrative arithmetic with its assumptions shown, not a benchmark.
+
+## Publishing
+
+Writing these docs is in 4.0 scope. Cutting the tag and publishing the packages (NuGet, the GitHub release binaries, the MCP registry, the VS Code Marketplace) is a maintainer action, driven by a single `vX.Y.Z` tag as described in the [contributing guide](/docs/project/contributing); it is not performed automatically.

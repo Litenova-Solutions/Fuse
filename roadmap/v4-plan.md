@@ -237,10 +237,12 @@ Phase 3: the moonshot
       (re-scoped: in-process execution removed, not gated; see M2)
 - [ ] M2 Out-of-proc emit-and-run test execution (added; stretch, pre-agreed to slip to 4.1)
 
-Phase 4: retrieval bets (gated on N4's localize re-run being recorded first)
+Phase 4: retrieval bets (gate satisfied: N4's localize re-run is recorded in `results/localize.tier1.json`;
+the re-run showed tier-1 does not move localize recall, so V1/V2 are not warranted by the evidence as recall
+levers and are left unticked per the plan's pre-agreed re-scope, not merely deferred)
 - [ ] V1 Graph verbalization: deterministic natural-language cards in the dense and lexical
-      channels (added)
-- [ ] V2 Per-repo learned ranking from git history, temporal-split guarded (added)
+      channels (added) [not warranted: tier-1's richer graph did not lift recall in the re-run]
+- [ ] V2 Per-repo learned ranking from git history, temporal-split guarded (added) [not warranted: same]
 
 Go-to-market (manual, after Phase 2)
 - [ ] G1 The latency demo and launch publish (honest only after R1/R2; amended: verification

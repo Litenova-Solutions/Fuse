@@ -28,8 +28,8 @@ public sealed class EdgeWeightProvider
         ["di_injects"] = 0.75,
         ["options_consumes"] = 0.75,
         ["sends_request"] = 0.70,
-        // "tests" is weighted for the test-impact traversal M1 uses; its producer is R5 part 2 (test-to-symbol
-        // edges with DI resolution). Until then no analyzer emits it, so the weight is inert rather than wrong.
+        // "tests" edges (a test type to the symbols it covers, DI-resolved) are produced by TestEdgeExtractor
+        // (R5 part 2); the weight drives the test-impact traversal M1 uses to select covering tests.
         ["tests"] = 0.65,
         ["cochanges"] = 0.45,
         ["project_references"] = 0.30,

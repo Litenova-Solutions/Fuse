@@ -219,6 +219,15 @@ public sealed partial class FuseTools
         if (impact.Count == 0 && mode == "syntax")
             builder.AppendLine("  (no edges: syntax mode has no semantic graph; run fuse_index on a semantically loadable checkout)");
 
+        // M1 covering-test selection (down-payment): the tests that reach the symbol through R5's DI-resolved
+        // tests edges, called out distinctly from the blast radius so an agent can run just this subset. Best-
+        // effort and bounded by R5 edge completeness, so it is labeled a lower bound, never "all the tests".
+        var covering = await explorer.CoveringTestsAsync(symbol, limit, cancellationToken);
+        builder.AppendLine();
+        builder.AppendLine($"covering tests: {covering.Count} (a lower bound from R5 tests edges; run with your own --filter)");
+        foreach (var t in covering)
+            builder.AppendLine($"  {t.Path}  {t.Symbol}");
+
         // Availability contract: the exact signature-change break set is an oracle-grade answer (a bind-check
         // against a resident compilation). No tier-1 load exists yet, so it is reported unavailable, not guessed.
         builder.AppendLine();

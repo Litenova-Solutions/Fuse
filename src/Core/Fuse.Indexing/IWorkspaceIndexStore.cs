@@ -199,6 +199,19 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     Task<IReadOnlyList<SymbolSignature>> GetSignaturesByNamesAsync(
         IReadOnlyCollection<string> names, int limitPerName, CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     Returns the member signatures of a type, matched by the member's <c>containing_type</c> against a
+    ///     simple or fully qualified type name. The store side of the R6 repair packet: when a speculative
+    ///     typecheck reports a missing member on a type, this enumerates the members that type actually has so a
+    ///     nearest-name suggestion can be offered.
+    /// </summary>
+    /// <param name="typeName">The declaring type's simple or fully qualified name.</param>
+    /// <param name="limit">The maximum number of members to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The type's member signatures, public-API first; empty when the type is unknown or has no recorded members.</returns>
+    Task<IReadOnlyList<SymbolSignature>> GetMembersOfTypeAsync(
+        string typeName, int limit, CancellationToken cancellationToken);
+
     /// <summary>Sets a key in the index metadata table.</summary>
     /// <param name="key">The metadata key.</param>
     /// <param name="value">The value to store.</param>

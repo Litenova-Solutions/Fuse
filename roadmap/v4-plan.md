@@ -225,7 +225,7 @@ Phase 2: the oracle
 - [ ] R2 `fuse_impact`: blast radius before the edit (served from R5, not live SymbolFinder)
 - [ ] R1 `fuse_check`: speculative diagnostics as repair packets, and Suite F (false-green and
       false-red both gated)
-- [ ] R6 Repair packets and the API-shape oracle: `fuse_signatures` (added)
+- [x] R6 Repair packets and the API-shape oracle: `fuse_signatures` (added)
 - [ ] R7 `fuse_refactor`: compiler-executed rename and change-signature, staged as a diff (added)
 - [ ] R4 Rebuild the agent benchmark to measure the loop, not the payload (amended: task set
       and native plus LSP-armed baselines land in Phase 1; wall-clock recorded)
@@ -272,7 +272,7 @@ planning purposes; the per-item Why/How/Tests/Docs/Kill-risk below are unchanged
 | N4 localize re-run | done | `results/localize.tier1.json`: recall 15.0 vs 14.9 baseline, no lift; re-scopes V1/V2 as not-warranted |
 | N3 resident oracle | part 1 done | supervised background upgrade (finding 5); resident workspace and incremental semantic reindex remain, see blocker B2 |
 | R5 references + tests edges | done | `ReferenceEdgeAnalyzer` (references, weight 0.15) + `TestEdgeExtractor` (DI-resolved tests edges, post-merge); schema TargetVersion 15 |
-| R6 `fuse_signatures` | part 1 done | API-shape oracle from the symbol store; repair-packet half (R6 part 2) rides R1 and remains |
+| R6 signatures + repair packets | done | `fuse_signatures` (part 1) plus repair packets on `fuse_check` CS1061/CS0246 (part 2); optional `fuse_complete` rides N3 |
 | R2 `fuse_impact` | done | blast radius from R5 + wiring edges; abstains on the exact break set; carries the availability header and covering tests |
 | R1 `fuse_check` | engine + Suite F done | out-of-proc speculative typecheck (abstains unless tier-1); Suite F `results/checkgate.json` 8/8, zero false-green/false-red. Repair packets + resident fast path remain |
 | R7 `fuse_refactor` | part 1 done (rename) | MSBuildWorkspace + Roslyn Renamer, staged as a diff, abstains on partial load; change-signature (part 2) remains |
@@ -2308,6 +2308,43 @@ compilation and reading diagnostics; the oracle correctness is structural (the c
 build's inputs), and the abstention contract handles the non-oracle case honestly.
 
 **Time.** ~1.5 session-hours.
+
+### 2026-07-03 R6 part 2: repair packets on fuse_check diagnostics (R6 complete)
+
+**Status.** Done and green. With part 1 (`fuse_signatures`) already shipped, R6 is now complete, so the box is
+ticked. Per the plan, R6 has no standalone result file: its benefit (fewer failed-verify turns) is carried by
+R4, which is blocked on provisioned models; the deliverable here is the engine plus tests plus docs.
+
+**Result.** `fuse_check` now attaches a repair packet to the two API-shape diagnostics an agent most often
+hits. For CS1061 (a member that does not exist) it parses the receiver type and the missing member from the
+message and returns the type's real members, ordered nearest-name first by edit distance; for CS0246 (an
+unknown type) it returns the nearest type names in the index. The packet is built from the persisted symbol
+table (a new `IWorkspaceIndexStore.GetMembersOfTypeAsync`, matching a member's `containing_type` against a
+simple or fully qualified name from either side), so it costs one indexed read, not a re-analysis. A packet is
+added only where a concrete suggestion exists (any other diagnostic returns null), and on a type with no
+indexed members it explains the gap ("may live in a referenced assembly, not in indexed source") rather than
+inventing a candidate.
+
+**Tests.** `RepairPacketBuilderTests`: a CS1061 typo ("GrandTotol") leads with the real "GrandTotal" and lists
+the type's members; a CS0246 typo ("Invoce") suggests "Invoice"; a missing member on an unindexed type
+(System.String) returns no candidate and explains why; an unhandled diagnostic (CS0029) returns no packet.
+`WorkspaceIndexSignatureTests`: `GetMembersOfTypeAsync` matches by simple or fully qualified type name and is
+empty for an unknown type. Full suite green.
+
+**Verification.** Three gates green (build 0 errors, full suite exit 0, format exit 0). No schema change (the
+new query reads existing columns); no RPC DTO change. `fuse_check` gained a DI-injected `SemanticIndexer`
+parameter, which is a service injection, not a client-facing parameter, so the tool's client contract is
+unchanged.
+
+**Lessons.** The store's `containing_type` and a diagnostic's type name can each be simple or fully qualified
+and need not agree; the query matches four ways (exact both, and a '%.'-suffix match against a stored fully
+qualified value) so a lookup in either form succeeds. A first attempt matched only the request's own forms and
+missed a stored fully qualified `containing_type`; a store test caught it before it shipped.
+
+**Remaining.** Optional R6(c) `fuse_complete` (legal members at a location via Roslyn's recommendation service)
+was marked "if cheap" and is not built; it needs a resident compilation (N3) to be cheap, so it rides that.
+
+**Time.** ~1.25 session-hours.
 
 ### 2026-07-03 M1 (down-payment): covering-test selection over R5 tests edges
 

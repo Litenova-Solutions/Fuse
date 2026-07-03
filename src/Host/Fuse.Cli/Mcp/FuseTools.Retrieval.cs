@@ -295,6 +295,7 @@ public sealed partial class FuseTools
     [McpServerTool(Name = "fuse_check", ReadOnly = true)]
     [Description("Speculatively typecheck a proposed single-file edit: the compiler errors and warnings it would produce, without writing the file or running dotnet build. Oracle-grade: answers only when the repo builds and is captured at tier-1, and abstains with a reason otherwise rather than guessing green.")]
     public static async Task<string> FuseCheckAsync(
+        SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("The repo-relative path of the file being changed.")] string file = "",
         [Description("The proposed full new content of that file.")] string content = "",
@@ -324,6 +325,32 @@ public sealed partial class FuseTools
         builder.AppendLine($"diagnostics for {file} (speculative typecheck): {result.Diagnostics.Count}");
         foreach (var d in result.Diagnostics)
             builder.AppendLine($"  {d.Severity} {d.Id} at line {d.Line}: {d.Message}");
+
+        // Repair packets (R6): for the API-shape errors an agent most often hits, attach the fix context (the
+        // receiver type's real members, or the nearest type names) from the persisted symbol table, so the fix
+        // does not cost another round-trip. Best-effort: only diagnostics with a concrete suggestion add a packet.
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var packetBuilder = new RepairPacketBuilder(store);
+        var packets = new List<RepairPacket>();
+        foreach (var d in result.Diagnostics.Where(d => d.Severity == "Error"))
+        {
+            var packet = await packetBuilder.BuildAsync(d, cancellationToken);
+            if (packet is not null)
+                packets.Add(packet);
+        }
+
+        if (packets.Count > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("repair packets:");
+            foreach (var p in packets)
+            {
+                builder.AppendLine($"  [{p.DiagnosticId}] {p.Explanation}");
+                foreach (var m in p.Members.Take(12))
+                    builder.AppendLine($"    {(string.IsNullOrEmpty(m.Signature) ? m.Name : m.Signature)}");
+            }
+        }
+
         return builder.ToString().TrimEnd();
     }
 

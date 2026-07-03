@@ -53,6 +53,21 @@ public sealed class WorkspaceIndexSignatureTests : IAsyncLifetime
     public async Task GetSignatures_returns_empty_for_an_unknown_name()
         => Assert.Empty(await _store.GetSignaturesByNamesAsync(["Nonexistent"], 5, CancellationToken.None));
 
+    [Fact]
+    public async Task GetMembersOfType_returns_the_types_members_by_simple_or_qualified_name()
+    {
+        // R6 repair packet: the member Create belongs to App.OrderService, matched by simple or full type name.
+        var bySimple = await _store.GetMembersOfTypeAsync("OrderService", 10, CancellationToken.None);
+        Assert.Contains(bySimple, m => m.Name == "Create");
+
+        var byFull = await _store.GetMembersOfTypeAsync("App.OrderService", 10, CancellationToken.None);
+        Assert.Contains(byFull, m => m.Name == "Create");
+    }
+
+    [Fact]
+    public async Task GetMembersOfType_is_empty_for_an_unknown_type()
+        => Assert.Empty(await _store.GetMembersOfTypeAsync("NoSuchType", 10, CancellationToken.None));
+
     public async Task DisposeAsync()
     {
         await _store.DisposeAsync();

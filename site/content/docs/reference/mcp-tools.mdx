@@ -145,6 +145,16 @@ Iterative exploration primitives, ranked and bounded with provenance and no sour
 
 The neighborhood falls back to same-folder cohesion where the graph is sparse, so a result is never empty; central files are ranked by node degree and are empty in syntax mode (no edges). These primitives compose the structural priors and graph expansion into operations shaped for exploration.
 
+## fuse_impact
+
+Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, enumerated from the persisted semantic graph (the R5 reference edges plus the wiring edges). No source bodies. The exact signature-change break set (which call sites would no longer bind) is an oracle-grade answer that needs a tier-1 load; until one is available the tool reports it as unavailable rather than guessing, and returns the graph-grade blast radius. Reverse traversal is the store's incoming-edge query, so the result is deduped by source node.
+
+| Parameter | Type | Default | Meaning |
+|-----------|------|---------|---------|
+| `symbol` | string | required | The symbol (simple or qualified name) whose blast radius to compute |
+| `path` | string | `.` | Workspace directory |
+| `limit` | int | 50 | Maximum impacted items to return |
+
 ## fuse_signatures
 
 Batch exact-signature lookup: for a set of symbol names (simple or fully qualified), returns each declared signature, kind, accessibility, containing type, and location from the semantic index, in one call instead of many grep-and-read round-trips. This is the compiler-shaped answer to "what is the exact shape of these members". A signature is recorded at the semantic tier; in syntax mode a symbol may have no recorded signature, and the tool says so per symbol rather than inventing one. A requested name with no match is reported, not silently dropped.

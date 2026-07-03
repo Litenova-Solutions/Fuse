@@ -13,6 +13,7 @@ public sealed class McpServeIntegrationTests
     [
         "fuse_context",
         "fuse_find",
+        "fuse_impact",
         "fuse_index",
         "fuse_localize",
         "fuse_map",

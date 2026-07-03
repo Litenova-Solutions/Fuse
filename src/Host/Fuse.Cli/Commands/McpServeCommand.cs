@@ -92,6 +92,7 @@ public sealed class McpServeCommand
                     "- fuse_review: Diff-first semantic impact and packed context for a change.\n" +
                     "- fuse_find: Exact symbol/path/text lookup.\n" +
                     "- fuse_signatures: Batch exact signatures for named symbols in one call (no grep-and-read round-trips).\n" +
+                    "- fuse_impact: Blast radius for a symbol (callers, implementers, referencers) before an edit.\n" +
                     "- fuse_reduce: Compact a known set of files or raw content.";
             })
             .WithStdioServerTransport()

@@ -209,28 +209,28 @@ Governance (first; complete before Phase 1)
 - [ ] L2 Adopt the Developer Certificate of Origin (DCO)
 
 Phase 1: the trustworthy floor
+- [ ] N4 Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as
+      product work; the spike is a two-mechanism bake-off, run as item zero)
 - [ ] N1 Fix the lexical weight inversion; land the ranking regression suite (amended: the
       suite gates the priors too and re-adjudicates the A6 co-change regression)
 - [ ] N2 One lexical ranker; purge stale results (amended: `agent.json` and the superseded a1
       doc citations join the sweep)
-- [ ] N3 The resident oracle by default (promotes v3.2 W1; amended: the reindex trigger is
-      named, resident memory is measured)
-- [ ] N4 Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as
-      product work; the spike is a two-mechanism bake-off, run as item zero)
 - [ ] N5 Retire the legacy harness and obsolete code paths; migrate to one established form
 - [ ] N6 The freshness contract: no read tool serves silently stale data (added, finding 6)
+- [ ] N3 The resident oracle by default (promotes v3.2 W1; amended: the reindex trigger is
+      named, resident memory is measured)
 
 Phase 2: the oracle
+- [ ] R5 The persisted reference index: calls, references, and tests edges (added, finding 7)
+- [ ] R2 `fuse_impact`: blast radius before the edit (served from R5, not live SymbolFinder)
 - [ ] R1 `fuse_check`: speculative diagnostics as repair packets, and Suite F (false-green and
       false-red both gated)
-- [ ] R2 `fuse_impact`: blast radius before the edit (served from R5, not live SymbolFinder)
-- [ ] R5 The persisted reference index: calls, references, and tests edges (added, finding 7)
 - [ ] R6 Repair packets and the API-shape oracle: `fuse_signatures` (added)
 - [ ] R7 `fuse_refactor`: compiler-executed rename and change-signature, staged as a diff (added)
-- [ ] R3 Collapse the tool surface around the oracle (shim-compatible; amended: typed union,
-      ambient availability header, seven live tools)
 - [ ] R4 Rebuild the agent benchmark to measure the loop, not the payload (amended: task set
       and native plus LSP-armed baselines land in Phase 1; wall-clock recorded)
+- [ ] R3 Collapse the tool surface around the oracle (shim-compatible; amended: typed union,
+      ambient availability header, seven live tools)
 
 Phase 3: the moonshot
 - [ ] M1 The speculative staging area: changeset lifecycle, diagnose, covering-test selection
@@ -249,7 +249,153 @@ Go-to-market (manual, after Phase 2)
 
 ---
 
+## Governance
+
+L1 and L2 are the first v4 execution items, before the N4 bake-off and before any Phase 1
+code. The 3.2.0 tag releases the current tree under MIT; governance lands immediately after on
+the v4 line so every subsequent commit and PR is under Apache 2.0 with DCO sign-off. They pair
+with G2: a contribution program needs a license and a provenance contract contributors can
+follow without legal friction.
+
+### L1. Migrate the project license from MIT to Apache 2.0
+
+**Why.** Fuse is moving from a permissive MIT license to Apache 2.0 because the oracle release
+adds patent-sensitive surface (compiler execution, staged diffs, speculative verification) and
+the project is opening a community on-ramp (G2). Apache 2.0 carries an explicit patent grant
+and a termination clause on offensive patent litigation, which is the standard pairing for
+compiler-adjacent tooling that third parties embed in products. MIT stays permissive but offers
+no patent language; staying on MIT while inviting framework-specific analyzer contributions
+creates asymmetric risk for corporate adopters and contributors.
+
+**How.** Replace [LICENSE](../LICENSE) with the Apache 2.0 text, retaining the Litenova Solutions
+copyright line and adding the standard Apache 2.0 appendix. Update every license expression and
+badge: `Directory.Build.props` and each `.csproj` `PackageLicenseExpression`, `README.md` and
+the docs site license references, NuGet package metadata, the VS Code extension
+(`ext/vscode/package.json`), and `mcp-registry/server.json`. Audit third-party dependencies and
+the benchmark corpus for license compatibility (Apache 2.0 is compatible with MIT dependencies;
+confirm no copyleft conflict in bundled native assets). Add a `NOTICE` file if any bundled
+dependency requires attribution beyond the SPDX expression. Record the change in `CHANGELOG.md`
+under 4.0.0 with a plain migration note for downstream packagers (license header change only,
+no API break).
+
+**Acceptance.** `LICENSE` is Apache 2.0; `build/verify-version.ps1` and a repo-wide grep find no
+remaining MIT license claims on Fuse-owned artifacts; CI green; the contributing page names the
+new license.
+
+### L2. Adopt the Developer Certificate of Origin (DCO)
+
+**Why.** Apache 2.0 projects need a lightweight provenance contract so every commit can be
+traced to a contributor who attested they have the right to submit it. A full Contributor
+License Agreement (CLA) re-assigns copyright or grants a broad patent license through a signed
+legal document; it adds onboarding friction and is appropriate mainly when a single company
+needs to relicense the whole tree. The Developer Certificate of Origin (DCO), used by the Linux
+kernel, Kubernetes, and the Apache Software Foundation, is the better fit here: contributors add
+a `Signed-off-by` trailer to each commit attesting the DCO 1.1 statement, GitHub's DCO bot
+blocks merges without it, and no separate signature step is required. DCO plus Apache 2.0 is the
+industry-default pairing for open contributions without CLA overhead.
+
+**How.** Add [DCO.txt](../DCO.txt) (the canonical Developer Certificate of Origin 1.1 text) at
+the repo root. Document the sign-off requirement in `CONTRIBUTING.md` and on the docs
+contributing page (`site/content/docs/project/contributing.mdx`): use `git commit -s` or add
+`Signed-off-by: Name <email>` manually; the sign-off certifies agreement with the DCO text.
+Enable the DCO GitHub App (or equivalent CI check) on the repository so PRs without sign-off on
+every commit fail with an actionable message. Update the PR template (if one exists) to remind
+contributors. Existing commits before the cutover are grandfathered; the check applies from the
+DCO adoption merge forward. Do not adopt a CLA in parallel; one provenance mechanism only.
+
+**Acceptance.** `DCO.txt` is present; contributing docs describe sign-off; the DCO check is
+enabled and verified on a test PR; G2's contribution recipe references the DCO requirement in
+its first step.
+
+---
+
 ## Phase 1: the trustworthy floor
+
+### N4. Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as product work)
+
+**Why.** Finding 1, the largest defect. If the product is the compilation, then making it load
+on an arbitrary cloned repo with the reliability of `git status` is core engineering, not
+benchmark plumbing. This item also finally tests finding 3's hypothesis: is localize recall
+bounded by index mode.
+
+**Why the mechanism changed (2026-07-03).** As first scoped (harden MSBuildWorkspace with
+restore, salvage, and per-project degradation), this item was an open-ended fight with
+design-time build entropy, and the project has three recorded losses in that fight already:
+v3's R0 could not restore AutoMapper, FluentValidation, MediatR, or Serilog on SDK 10.0.109
+(NU1008, central-package-management and TFM skew); the corpus was rebuilt around that failure
+rather than through it; and Scrutor fails restore today (`localize.json` notes "restore
+Scrutor: restored 0, failed 2", NU1507). The deeper problem: one loader was serving two
+different bars. The retrieval graph tolerates an approximate compilation (missing references
+still resolve most DI and route edges); the oracle cannot, because a compilation that differs
+from the real build in generators, analyzers, Razor output, or defines produces diagnostics
+the build would not produce, in both directions (false greens and false reds). Only the real
+build knows what the real build does, so the oracle tier is captured from the real build.
+
+**How.** A three-tier ladder, reported per project by `fuse doctor` and by the ambient
+availability header (R3):
+
+- **Tier 1, oracle-grade (build capture).** Run the repo's own build once with a binary log
+  (`dotnet build -bl`), extract every Csc invocation, and rehydrate exact compilations from
+  the recorded command lines (references, analyzers, source generators, generated files,
+  defines) via `CSharpCommandLineParser`; this is the approach proven by the Basic.CompilerLog
+  tooling. Everything MSBuildWorkspace fights (Central Package Management, workloads, Razor,
+  custom targets) is handled by construction, because the real build already handled it.
+  Incremental: a source edit swaps one syntax tree into the rehydrated compilation
+  (references are fixed); a project-file or package edit invalidates and re-captures that
+  project with a bounded rebuild. The capture build is the same first build the agent would
+  run anyway, and its one-time cost is comparable to the current full pass (69.7 s recorded
+  for the direct semantic pass on NodaTime, `performance.json`).
+- **Tier 2, graph-grade (salvage).** The original scoping survives here, serving retrieval
+  only, never the oracle: automatic `dotnet restore` with a bounded timeout on missing assets;
+  per-project partial load, so a failed project degrades that project rather than the whole
+  solution (today a solution-open throw at
+  [RoslynWorkspaceLoader.cs:61](../src/Core/Fuse.Semantics/RoslynWorkspaceLoader.cs#L61) drops
+  everything); metadata-reference salvage from the NuGet cache and framework ref packs.
+- **Tier 3, syntax.** Unchanged.
+
+`fuse_check`, `fuse_impact`, and `fuse_refactor` answer only at tier 1 and abstain otherwise
+(the availability contract); localize, resolve, and review use the best tier available. The
+`fuse doctor` command names the concrete reason per project (SDK mismatch, unrestored,
+workload missing, custom targets, build failed). In the harness, pin SDKs and pre-restore in
+`CorpusManager` setup; record the achieved tier distribution.
+
+**Tests.** A repo that builds reaches tier 1, and its rehydrated compilation's diagnostics
+agree with `dotnet build` on the unmodified tree (the structural zero-baseline for Suite F). A
+repo with one failing project degrades that project to tier 2 while the rest stay tier 1. A
+repo missing assets triggers the bounded restore. `fuse doctor` reports the concrete downgrade
+reason per project. A project-file edit invalidates and re-captures only that project. The
+external-process invocations (restore, build) bound their argument lists per the change-safety
+invariant.
+
+**Docs.** `project/benchmarks.mdx` (the tier distribution), `reference/cli.mdx` (`fuse
+doctor`), `AGENTS.md` corpus description, `internals/` (the ladder).
+
+**Benchmark.** The de-risking spike becomes a bake-off, run as item zero of the release: on
+the 4 corpus main checkouts plus about 20 popular OSS .NET repos, measure the tier
+distribution under (a) hardened MSBuildWorkspace alone and (b) the capture ladder, and record
+both, so the mechanism choice is a recorded result rather than an argument. The cutoff is
+quantitative: tier 1 on at least 80 percent of the repos whose plain `dotnet build` succeeds
+in the environment, and tier 2 or better on the majority of the rest. Then re-run
+`localize.json` and `review.json` with the best tier on; this is the first real test of the
+"recall is bounded by index mode" hypothesis.
+
+**Expected result.** For the oracle (theory, made structural by the mechanism): Suite F
+agreement on tier-1 projects should be near 1.0 by construction, because tier 1 shares the
+build's own inputs; residual disagreement isolates incrementality bugs rather than load
+approximation. The gate this imposes is also the honest truth: a repo that cannot build cannot
+be typechecked by any tool, so those repos get tier 2 and an abstention, not a guess, and the
+measured fraction of repos that do not build is published as the oracle's coverage ceiling.
+For retrieval: the graph-dependent numbers (localize recall, co-change and centrality priors)
+move where they were flat, or they do not and the hypothesis is falsified, which re-scopes
+Phase 4 with that knowledge. Either outcome is worth the item.
+
+**Kill risk, and it is still the release's biggest.** For tier 1: repos that do not build at
+all in the eval environment (the recorded corpus history above says this is common; that
+fraction is the measured ceiling of oracle coverage, published, not hidden), and staleness of
+project-level structure between captures (bounded re-capture on project-file change; N6 stamps
+anything older). For tier 2: unchanged from the original scoping, it remains an entropy fight
+with a "good enough" cutoff rather than a done state, which is exactly why it now gates only
+retrieval coverage and never the oracle's correctness.
 
 ### N1. Fix the lexical weight inversion; land the ranking regression suite
 
@@ -346,159 +492,6 @@ superseded a1 run: precision-when-confident is 5.6 percent in the current `local
 9.3, and the dense-lift pairing on current files is 13.3 to 14.9 (`localize.a1-lexical.json`
 vs `localize.json`), not 13.3 to 15.1. AGENTS.md, `overview.md`, and the benchmarks page are
 swept for both.
-
-### N3. The resident oracle by default (promotes v3.2 W1)
-
-**Why.** Finding 5, and the thesis: an oracle that pays 70 seconds of cold start per question
-is not an oracle. V3.2 deferred this because a detached background task in the serve host was
-easy to orphan and to race teardown. The daemon owning its lifecycle fixes both and is the
-prerequisite for dependency-scoped freshness, which R1 and R2 also need.
-
-**How.** Hold one loaded workspace (the `MSBuildWorkspace` or the `LoadedProject` set from
-[RoslynWorkspaceLoader.cs](../src/Core/Fuse.Semantics/RoslynWorkspaceLoader.cs)) resident in
-the `mcp serve` host and, symmetrically, in `fuse host` / `FuseHostService`, with explicit
-lifetime management, so the MSBuild evaluation is paid once. `MSBuildLocator` is already
-registered once per process; extend that to a retained workspace. Make syntax-first cold start
-the default by retiring the `FUSE_BG_UPGRADE` opt-in gate
-([McpServeCommand.cs:46](../src/Host/Fuse.Cli/Commands/McpServeCommand.cs#L46),
-[FuseTools.cs:177](../src/Host/Fuse.Cli/Mcp/FuseTools.cs#L177)) and replacing the
-fire-and-forget `ScheduleSemanticUpgrade` at
-[FuseTools.cs:211](../src/Host/Fuse.Cli/Mcp/FuseTools.cs#L211) with a supervised job owned by
-the resident host, cancellation tied to host shutdown, no orphaned task. Add a semantic path to
-`ReindexFileAsync` ([SemanticIndexer.cs:199](../src/Core/Fuse.Semantics/SemanticIndexer.cs#L199)):
-on a file edit, apply the document change to the resident compilation and re-run the wiring
-analyzers over only the changed file's project and its direct dependents, recomputing only the
-affected edges and clearing `SemanticPendingMetaKey` for that neighborhood.
-
-**Tests.** The resident workspace is reused across two index calls without a second MSBuild
-load (a timing or invariant assertion). The default cold path serves syntax-first then upgrades
-with no orphaned process and no teardown race (the failure mode V3.1 hit). Editing a file to add
-a DI registration makes the new resolve edge appear after the incremental call, not just the
-symbol rows (extends [IncrementalReindexTests.cs](../tests/Fuse.Semantics.Tests/IncrementalReindexTests.cs)).
-An unrelated edge elsewhere is unchanged; the re-analyzed set is bounded to the dependent
-neighborhood; a deleted file's edges are removed. If a DTO or `[JsonRpcMethod]` signature
-changes, bump `FuseHostService.ProtocolVersion`
-([FuseHostService.cs:35](../src/Host/Fuse.Cli/Host/Rpc/FuseHostService.cs#L35)) and
-[protocol.ts](../ext/vscode/src/host/protocol.ts) together and update the contract test.
-
-**Docs.** `project/performance.mdx` (few-seconds cold start, resident workspace, the freshness
-number replacing the syntax-rows-only caveat), `internals/pipeline.mdx`, `internals/operator.mdx`.
-
-**Benchmark.** `performance.json` gains a resident-workspace first-answer number (target a few
-seconds) and an edge-freshness number (edit a DI registration, query resolve, assert the new
-edge within about 1 s), plus a correctness check that the post-incremental graph matches a full
-re-index on the changed neighborhood.
-
-**Expected result.** First answer in a few seconds instead of about 70; edited edges fresh
-within about 1 s instead of never (until full re-index). This is what turns the compilation
-into an oracle rather than a batch tool.
-
-**Kill risk.** Background-upgrade races and orphaned tasks (the reason it is off today), and
-memory growth from a retained compilation. Mitigation: the daemon owns the lifecycle, no
-fire-and-forget in the serve path, upgrade is a supervised job with cancellation tied to the
-host; a compilation memory budget with eviction. Ships only with the lifetime and freshness
-tests green.
-
-**Amendments (findings 6 and 7).** Three. First, the trigger is named as a deliverable:
-nothing in the serve loop calls `ReindexFileAsync` today (its only callers are tests and the
-performance suite), so this item owns the observer, not just the semantic path. The resident
-daemon runs the debounced watcher (the `DebouncedFileWatcher` class exists and is used by
-`fuse host` for broadcast only); `mcp serve` gets the same watcher feeding a reconcile queue;
-short-lived callers reconcile by content hash on open (the store already records
-`content_hash` per file). The freshness contract that consumes this is its own floor item
-(N6). Second, the benchmark records resident memory: `performance.json` gains a
-resident-workspace RSS figure for NodaTime and eShopOnWeb alongside the first-answer number,
-because the kill risk above is currently promised a budget but never a measurement. Third, the
-recorded background-upgrade path costs more total time than the direct pass (19.9 s syntax
-plus a further 94.9 s to semantic-ready, versus 69.7 s direct, `performance.json`); the
-resident workspace should close most of that gap, and the benchmark asserts the syntax-first
-default no longer pays a total-time penalty over the synchronous pass.
-
-### N4. Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as product work)
-
-**Why.** Finding 1, the largest defect. If the product is the compilation, then making it load
-on an arbitrary cloned repo with the reliability of `git status` is core engineering, not
-benchmark plumbing. This item also finally tests finding 3's hypothesis: is localize recall
-bounded by index mode.
-
-**Why the mechanism changed (2026-07-03).** As first scoped (harden MSBuildWorkspace with
-restore, salvage, and per-project degradation), this item was an open-ended fight with
-design-time build entropy, and the project has three recorded losses in that fight already:
-v3's R0 could not restore AutoMapper, FluentValidation, MediatR, or Serilog on SDK 10.0.109
-(NU1008, central-package-management and TFM skew); the corpus was rebuilt around that failure
-rather than through it; and Scrutor fails restore today (`localize.json` notes "restore
-Scrutor: restored 0, failed 2", NU1507). The deeper problem: one loader was serving two
-different bars. The retrieval graph tolerates an approximate compilation (missing references
-still resolve most DI and route edges); the oracle cannot, because a compilation that differs
-from the real build in generators, analyzers, Razor output, or defines produces diagnostics
-the build would not produce, in both directions (false greens and false reds). Only the real
-build knows what the real build does, so the oracle tier is captured from the real build.
-
-**How.** A three-tier ladder, reported per project by `fuse doctor` and by the ambient
-availability header (R3):
-
-- **Tier 1, oracle-grade (build capture).** Run the repo's own build once with a binary log
-  (`dotnet build -bl`), extract every Csc invocation, and rehydrate exact compilations from
-  the recorded command lines (references, analyzers, source generators, generated files,
-  defines) via `CSharpCommandLineParser`; this is the approach proven by the Basic.CompilerLog
-  tooling. Everything MSBuildWorkspace fights (Central Package Management, workloads, Razor,
-  custom targets) is handled by construction, because the real build already handled it.
-  Incremental: a source edit swaps one syntax tree into the rehydrated compilation
-  (references are fixed); a project-file or package edit invalidates and re-captures that
-  project with a bounded rebuild. The capture build is the same first build the agent would
-  run anyway, and its one-time cost is comparable to the current full pass (69.7 s recorded
-  for the direct semantic pass on NodaTime, `performance.json`).
-- **Tier 2, graph-grade (salvage).** The original scoping survives here, serving retrieval
-  only, never the oracle: automatic `dotnet restore` with a bounded timeout on missing assets;
-  per-project partial load, so a failed project degrades that project rather than the whole
-  solution (today a solution-open throw at
-  [RoslynWorkspaceLoader.cs:61](../src/Core/Fuse.Semantics/RoslynWorkspaceLoader.cs#L61) drops
-  everything); metadata-reference salvage from the NuGet cache and framework ref packs.
-- **Tier 3, syntax.** Unchanged.
-
-`fuse_check`, `fuse_impact`, and `fuse_refactor` answer only at tier 1 and abstain otherwise
-(the availability contract); localize, resolve, and review use the best tier available. The
-`fuse doctor` command names the concrete reason per project (SDK mismatch, unrestored,
-workload missing, custom targets, build failed). In the harness, pin SDKs and pre-restore in
-`CorpusManager` setup; record the achieved tier distribution.
-
-**Tests.** A repo that builds reaches tier 1, and its rehydrated compilation's diagnostics
-agree with `dotnet build` on the unmodified tree (the structural zero-baseline for Suite F). A
-repo with one failing project degrades that project to tier 2 while the rest stay tier 1. A
-repo missing assets triggers the bounded restore. `fuse doctor` reports the concrete downgrade
-reason per project. A project-file edit invalidates and re-captures only that project. The
-external-process invocations (restore, build) bound their argument lists per the change-safety
-invariant.
-
-**Docs.** `project/benchmarks.mdx` (the tier distribution), `reference/cli.mdx` (`fuse
-doctor`), `AGENTS.md` corpus description, `internals/` (the ladder).
-
-**Benchmark.** The de-risking spike becomes a bake-off, run as item zero of the release: on
-the 4 corpus main checkouts plus about 20 popular OSS .NET repos, measure the tier
-distribution under (a) hardened MSBuildWorkspace alone and (b) the capture ladder, and record
-both, so the mechanism choice is a recorded result rather than an argument. The cutoff is
-quantitative: tier 1 on at least 80 percent of the repos whose plain `dotnet build` succeeds
-in the environment, and tier 2 or better on the majority of the rest. Then re-run
-`localize.json` and `review.json` with the best tier on; this is the first real test of the
-"recall is bounded by index mode" hypothesis.
-
-**Expected result.** For the oracle (theory, made structural by the mechanism): Suite F
-agreement on tier-1 projects should be near 1.0 by construction, because tier 1 shares the
-build's own inputs; residual disagreement isolates incrementality bugs rather than load
-approximation. The gate this imposes is also the honest truth: a repo that cannot build cannot
-be typechecked by any tool, so those repos get tier 2 and an abstention, not a guess, and the
-measured fraction of repos that do not build is published as the oracle's coverage ceiling.
-For retrieval: the graph-dependent numbers (localize recall, co-change and centrality priors)
-move where they were flat, or they do not and the hypothesis is falsified, which re-scopes
-Phase 4 with that knowledge. Either outcome is worth the item.
-
-**Kill risk, and it is still the release's biggest.** For tier 1: repos that do not build at
-all in the eval environment (the recorded corpus history above says this is common; that
-fraction is the measured ceiling of oracle coverage, published, not hidden), and staleness of
-project-level structure between captures (bounded re-capture on project-file change; N6 stamps
-anything older). For tier 2: unchanged from the original scoping, it remains an entropy fight
-with a "good enough" cutoff rather than a done state, which is exactly why it now gates only
-retrieval coverage and never the oracle's correctness.
 
 ### N5. Retire the legacy harness and obsolete code paths; migrate to one established form
 
@@ -598,9 +591,163 @@ bugs).
 the hash fallback bound it); reconcile storms during bulk operations (the dirty-count
 threshold above). Neither blocks shipping the stamp path, which is the contract's floor.
 
+### N3. The resident oracle by default (promotes v3.2 W1)
+
+**Why.** Finding 5, and the thesis: an oracle that pays 70 seconds of cold start per question
+is not an oracle. V3.2 deferred this because a detached background task in the serve host was
+easy to orphan and to race teardown. The daemon owning its lifecycle fixes both and is the
+prerequisite for dependency-scoped freshness, which R1 and R2 also need.
+
+**How.** Hold one loaded workspace (the `MSBuildWorkspace` or the `LoadedProject` set from
+[RoslynWorkspaceLoader.cs](../src/Core/Fuse.Semantics/RoslynWorkspaceLoader.cs)) resident in
+the `mcp serve` host and, symmetrically, in `fuse host` / `FuseHostService`, with explicit
+lifetime management, so the MSBuild evaluation is paid once. `MSBuildLocator` is already
+registered once per process; extend that to a retained workspace. Make syntax-first cold start
+the default by retiring the `FUSE_BG_UPGRADE` opt-in gate
+([McpServeCommand.cs:46](../src/Host/Fuse.Cli/Commands/McpServeCommand.cs#L46),
+[FuseTools.cs:177](../src/Host/Fuse.Cli/Mcp/FuseTools.cs#L177)) and replacing the
+fire-and-forget `ScheduleSemanticUpgrade` at
+[FuseTools.cs:211](../src/Host/Fuse.Cli/Mcp/FuseTools.cs#L211) with a supervised job owned by
+the resident host, cancellation tied to host shutdown, no orphaned task. Add a semantic path to
+`ReindexFileAsync` ([SemanticIndexer.cs:199](../src/Core/Fuse.Semantics/SemanticIndexer.cs#L199)):
+on a file edit, apply the document change to the resident compilation and re-run the wiring
+analyzers over only the changed file's project and its direct dependents, recomputing only the
+affected edges and clearing `SemanticPendingMetaKey` for that neighborhood.
+
+**Tests.** The resident workspace is reused across two index calls without a second MSBuild
+load (a timing or invariant assertion). The default cold path serves syntax-first then upgrades
+with no orphaned process and no teardown race (the failure mode V3.1 hit). Editing a file to add
+a DI registration makes the new resolve edge appear after the incremental call, not just the
+symbol rows (extends [IncrementalReindexTests.cs](../tests/Fuse.Semantics.Tests/IncrementalReindexTests.cs)).
+An unrelated edge elsewhere is unchanged; the re-analyzed set is bounded to the dependent
+neighborhood; a deleted file's edges are removed. If a DTO or `[JsonRpcMethod]` signature
+changes, bump `FuseHostService.ProtocolVersion`
+([FuseHostService.cs:35](../src/Host/Fuse.Cli/Host/Rpc/FuseHostService.cs#L35)) and
+[protocol.ts](../ext/vscode/src/host/protocol.ts) together and update the contract test.
+
+**Docs.** `project/performance.mdx` (few-seconds cold start, resident workspace, the freshness
+number replacing the syntax-rows-only caveat), `internals/pipeline.mdx`, `internals/operator.mdx`.
+
+**Benchmark.** `performance.json` gains a resident-workspace first-answer number (target a few
+seconds) and an edge-freshness number (edit a DI registration, query resolve, assert the new
+edge within about 1 s), plus a correctness check that the post-incremental graph matches a full
+re-index on the changed neighborhood.
+
+**Expected result.** First answer in a few seconds instead of about 70; edited edges fresh
+within about 1 s instead of never (until full re-index). This is what turns the compilation
+into an oracle rather than a batch tool.
+
+**Kill risk.** Background-upgrade races and orphaned tasks (the reason it is off today), and
+memory growth from a retained compilation. Mitigation: the daemon owns the lifecycle, no
+fire-and-forget in the serve path, upgrade is a supervised job with cancellation tied to the
+host; a compilation memory budget with eviction. Ships only with the lifetime and freshness
+tests green.
+
+**Amendments (findings 6 and 7).** Three. First, the trigger is named as a deliverable:
+nothing in the serve loop calls `ReindexFileAsync` today (its only callers are tests and the
+performance suite), so this item owns the observer, not just the semantic path. The resident
+daemon runs the debounced watcher (the `DebouncedFileWatcher` class exists and is used by
+`fuse host` for broadcast only); `mcp serve` gets the same watcher feeding a reconcile queue;
+short-lived callers reconcile by content hash on open (the store already records
+`content_hash` per file). The freshness contract that consumes this is its own floor item
+(N6). Second, the benchmark records resident memory: `performance.json` gains a
+resident-workspace RSS figure for NodaTime and eShopOnWeb alongside the first-answer number,
+because the kill risk above is currently promised a budget but never a measurement. Third, the
+recorded background-upgrade path costs more total time than the direct pass (19.9 s syntax
+plus a further 94.9 s to semantic-ready, versus 69.7 s direct, `performance.json`); the
+resident workspace should close most of that gap, and the benchmark asserts the syntax-first
+default no longer pays a total-time penalty over the synchronous pass.
+
 ---
 
 ## Phase 2: the oracle
+
+### R5. The persisted reference index: calls, references, and tests edges (added, finding 7)
+
+**Why.** Finding 7. Three items in this plan assumed graph edges that do not exist: R2's
+tens-of-ms impact, M1's covering-test selection ("the graph already carries test edges"), and
+opt-in graph expansion's `calls` traversal weight. Verified against the tree, no analyzer emits
+`calls` or `tests` edges, yet [EdgeWeightProvider.cs:31](../src/Core/Fuse.Retrieval/EdgeWeightProvider.cs#L31)
+weights them (0.65 and 0.60) and the `"tests"` branch of `RoleFor`
+([SemanticRetrievalEngine.cs:443](../src/Core/Fuse.Retrieval/SemanticRetrievalEngine.cs#L443))
+is dead. This item builds the substrate the others assume, once, so R2, M1, and expansion all
+read it instead of each recomputing it live.
+
+**How.** At semantic index time (and incrementally under N3/N6), walk each project's semantic
+model once and persist two edge classes into the existing `edges` table (or a sibling table if
+the volume warrants): member-level `references` (symbol to referencing document and span) and
+`tests` (a test method to the symbols it transitively references, with the DI graph resolving
+interface references to their registered implementations, so a test that depends on
+`IOrderService` is correctly linked to `OrderService`). The extraction is the same
+model-walk-and-upsert every analyzer already does; the schema and incremental machinery exist
+(`WorkspaceIndexSchema`, `ReindexFileAsync`). Bump `WorkspaceIndexSchema.TargetVersion` (new
+edge kinds are an extraction-contract change) so a stale index rebuilds. `fuse_impact` (R2)
+becomes a lookup plus an on-demand bind-check; test-impact selection (M1) becomes a transitive
+query over `tests` edges.
+
+**Tests.** A method's `references` rows match live `SymbolFinder.FindReferencesAsync` on a
+fixture (port-parity, the same discipline as N5). A `tests` edge links a test through an
+injected interface to the registered implementation (the DI-resolution detail is what makes
+this better than a plain reference walk). An incremental edit adds and removes the right
+reference rows and no others (extends `IncrementalReindexTests`). The dead `calls`/`tests`
+weights in `EdgeWeightProvider` now have producers, or are removed if this item chooses
+`references` over `calls` as the edge name (the changelog names the choice).
+
+**Docs.** `internals/semantic-graph.mdx` (the new edge kinds), `reference/mcp-tools.mdx`
+(fuse_impact now index-backed).
+
+**Benchmark.** `performance.json` gains `fuse_impact` P50 from the persisted index on NodaTime
+and eShopOnWeb, target an order of magnitude below live `SymbolFinder` on the same solutions
+(both recorded side by side so the claim is a measurement, not an assertion), plus the
+index-time cost delta and row-count growth per repo (the substrate is not free; its cost is
+published).
+
+**Expected result (theory).** `fuse_impact` at tens of ms rather than hundreds-to-seconds,
+which is what makes R2's crown-table target real; test selection that is sound-enough to gate
+M1's fallback because DI resolution closes the interface-to-implementation gap that a naive
+reference walk misses. Magnitude of the latency win is set by solution size; on NodaTime-size
+solutions the precedent is the sub-ms edge lookup already in `performance.json`.
+
+**Kill risk.** Index-time cost and row volume on large solutions (bound the walk per project,
+measure and publish both; a member-level reference index can be large, so cap granularity at
+the declaration that owns the reference if row counts explode). Staleness inherits N6. If the
+row volume proves unaffordable, fall back to persisting `references` at file granularity (still
+enough for `fuse_impact`'s file-level answer) and computing member-level binding on demand.
+
+### R2. `fuse_impact`: blast radius before the edit
+
+**Why.** Turns "edit, build, discover you missed four call sites, edit, build again" into one
+up-front answer. The most conventional item in the phase; the reference substrate (R5) does
+most of the work.
+
+**How.** Add a `fuse_impact` MCP tool: call-site and implementation enumeration for a named
+symbol, plus "what breaks if this signature changes" (the call sites whose arguments would no
+longer bind). Extends the existing review machinery from diff-first to intent-first over the
+resident compilation. Amended (finding 7): served from R5's persisted reference rows, not live
+`SymbolFinder`; the bind-check for a proposed signature change runs on demand against the
+resident compilation for the candidate sites only, and live `SymbolFinder` is the parity
+oracle in tests, not the serving path.
+
+**Tests.** For a named method, the call sites and implementers are enumerated across the
+solution. For a signature change, the break set includes the now-non-binding call sites and
+excludes unaffected ones. Tool-name array updated.
+
+**Docs.** `reference/mcp-tools.mdx`, `AGENTS.md`.
+
+**Benchmark.** Over the signature-changing subset of the PR corpus, does the impact set cover
+the files the PR actually touched (extends the `review.json` methodology, same must-keep caveat
+noted honestly).
+
+**Expected result.** Complete call-site sets in tens of milliseconds served from R5's index
+(the sub-millisecond resolve in `performance.json` is the precedent for edge-lookup latency;
+the bind-check adds a bounded per-candidate cost), removing the discover-by-rebuild iterations
+for refactors. Without R5 the same feature runs live `SymbolFinder` at hundreds of ms to
+seconds warm, which does not meet the crown-table target; the "tens of ms" claim is R5's, not
+`SymbolFinder`'s (finding 7).
+
+**Kill risk.** Low. Availability is the only real one, and it inherits N3/N4's load state and
+the abstention contract. Second: R5 must exist first, or the target silently reverts to
+`SymbolFinder` latency; R2 ships after R5.
 
 ### R1. `fuse_check`: speculative diagnostics
 
@@ -658,93 +805,6 @@ many-hundred-project solution will not re-diagnose its closure in under a second
 do not imply it will. Where feasible, Suite F also records an LSP overlay-diagnostics
 comparison arm, because that, not `dotnet build`, is the strongest competing verify path (see
 honest ceilings).
-
-### R2. `fuse_impact`: blast radius before the edit
-
-**Why.** Turns "edit, build, discover you missed four call sites, edit, build again" into one
-up-front answer. The most conventional item in the phase; the reference substrate (R5) does
-most of the work.
-
-**How.** Add a `fuse_impact` MCP tool: call-site and implementation enumeration for a named
-symbol, plus "what breaks if this signature changes" (the call sites whose arguments would no
-longer bind). Extends the existing review machinery from diff-first to intent-first over the
-resident compilation. Amended (finding 7): served from R5's persisted reference rows, not live
-`SymbolFinder`; the bind-check for a proposed signature change runs on demand against the
-resident compilation for the candidate sites only, and live `SymbolFinder` is the parity
-oracle in tests, not the serving path.
-
-**Tests.** For a named method, the call sites and implementers are enumerated across the
-solution. For a signature change, the break set includes the now-non-binding call sites and
-excludes unaffected ones. Tool-name array updated.
-
-**Docs.** `reference/mcp-tools.mdx`, `AGENTS.md`.
-
-**Benchmark.** Over the signature-changing subset of the PR corpus, does the impact set cover
-the files the PR actually touched (extends the `review.json` methodology, same must-keep caveat
-noted honestly).
-
-**Expected result.** Complete call-site sets in tens of milliseconds served from R5's index
-(the sub-millisecond resolve in `performance.json` is the precedent for edge-lookup latency;
-the bind-check adds a bounded per-candidate cost), removing the discover-by-rebuild iterations
-for refactors. Without R5 the same feature runs live `SymbolFinder` at hundreds of ms to
-seconds warm, which does not meet the crown-table target; the "tens of ms" claim is R5's, not
-`SymbolFinder`'s (finding 7).
-
-**Kill risk.** Low. Availability is the only real one, and it inherits N3/N4's load state and
-the abstention contract. Second: R5 must exist first, or the target silently reverts to
-`SymbolFinder` latency; R2 ships after R5.
-
-### R5. The persisted reference index: calls, references, and tests edges (added, finding 7)
-
-**Why.** Finding 7. Three items in this plan assumed graph edges that do not exist: R2's
-tens-of-ms impact, M1's covering-test selection ("the graph already carries test edges"), and
-opt-in graph expansion's `calls` traversal weight. Verified against the tree, no analyzer emits
-`calls` or `tests` edges, yet [EdgeWeightProvider.cs:31](../src/Core/Fuse.Retrieval/EdgeWeightProvider.cs#L31)
-weights them (0.65 and 0.60) and the `"tests"` branch of `RoleFor`
-([SemanticRetrievalEngine.cs:443](../src/Core/Fuse.Retrieval/SemanticRetrievalEngine.cs#L443))
-is dead. This item builds the substrate the others assume, once, so R2, M1, and expansion all
-read it instead of each recomputing it live.
-
-**How.** At semantic index time (and incrementally under N3/N6), walk each project's semantic
-model once and persist two edge classes into the existing `edges` table (or a sibling table if
-the volume warrants): member-level `references` (symbol to referencing document and span) and
-`tests` (a test method to the symbols it transitively references, with the DI graph resolving
-interface references to their registered implementations, so a test that depends on
-`IOrderService` is correctly linked to `OrderService`). The extraction is the same
-model-walk-and-upsert every analyzer already does; the schema and incremental machinery exist
-(`WorkspaceIndexSchema`, `ReindexFileAsync`). Bump `WorkspaceIndexSchema.TargetVersion` (new
-edge kinds are an extraction-contract change) so a stale index rebuilds. `fuse_impact` (R2)
-becomes a lookup plus an on-demand bind-check; test-impact selection (M1) becomes a transitive
-query over `tests` edges.
-
-**Tests.** A method's `references` rows match live `SymbolFinder.FindReferencesAsync` on a
-fixture (port-parity, the same discipline as N5). A `tests` edge links a test through an
-injected interface to the registered implementation (the DI-resolution detail is what makes
-this better than a plain reference walk). An incremental edit adds and removes the right
-reference rows and no others (extends `IncrementalReindexTests`). The dead `calls`/`tests`
-weights in `EdgeWeightProvider` now have producers, or are removed if this item chooses
-`references` over `calls` as the edge name (the changelog names the choice).
-
-**Docs.** `internals/semantic-graph.mdx` (the new edge kinds), `reference/mcp-tools.mdx`
-(fuse_impact now index-backed).
-
-**Benchmark.** `performance.json` gains `fuse_impact` P50 from the persisted index on NodaTime
-and eShopOnWeb, target an order of magnitude below live `SymbolFinder` on the same solutions
-(both recorded side by side so the claim is a measurement, not an assertion), plus the
-index-time cost delta and row-count growth per repo (the substrate is not free; its cost is
-published).
-
-**Expected result (theory).** `fuse_impact` at tens of ms rather than hundreds-to-seconds,
-which is what makes R2's crown-table target real; test selection that is sound-enough to gate
-M1's fallback because DI resolution closes the interface-to-implementation gap that a naive
-reference walk misses. Magnitude of the latency win is set by solution size; on NodaTime-size
-solutions the precedent is the sub-ms edge lookup already in `performance.json`.
-
-**Kill risk.** Index-time cost and row volume on large solutions (bound the walk per project,
-measure and publish both; a member-level reference index can be large, so cap granularity at
-the declaration that owns the reference if row counts explode). Staleness inherits N6. If the
-row volume proves unaffordable, fall back to persisting `references` at file granularity (still
-enough for `fuse_impact`'s file-level answer) and computing member-level binding on demand.
 
 ### R6. Repair packets and the API-shape oracle (added)
 
@@ -832,6 +892,48 @@ reference) is silently incomplete; the mitigation is that R7 stages a diff for t
 review and R1 re-checks it, so an incompleteness surfaces as a diagnostic rather than a
 committed bug, and the docs state the boundary plainly.
 
+### R4. Rebuild the agent benchmark to measure the loop, not the payload
+
+**Why.** Finding 2. Suite D at N=12, one rollout, cannot detect the effect it exists to
+measure, and cumulative session tokens is the wrong metric for the oracle thesis. This is a
+harness-first item: the benchmark is the deliverable.
+
+**How.** Build a task-resolution suite over a small verified set of 10 to 15 PRs with
+reproducible failing-then-passing tests, on top of the existing but unwired
+[TaskResolutionHarness.cs](../tests/benchmarks/Fuse.Benchmarks/TaskResolutionHarness.cs)
+(`OracleCommand`, `dotnet test`). Metrics: pass@1 and iterations-to-green with and without the
+oracle tools, plus build-invocations-per-session as the direct measure of loop collapse. Cheap
+driver model, three rollouts minimum, CIs recorded. Register the suite in `EvalCommand.BuildSuite`.
+
+**Tests.** The suite runs a single task end to end deterministically where the model is stubbed;
+the metric computation (iterations, build-invocations) is unit-tested against a scripted
+transcript.
+
+**Docs.** `project/benchmarks.mdx` (the new suite and its metrics, replacing the Suite D framing),
+`AGENTS.md`.
+
+**Benchmark.** `results/task-resolution.json` (or the chosen `Name`), with pass@1,
+iterations-to-green, and build-invocations-per-session, all with CIs.
+
+**Expected result.** A metric that can actually move with the oracle. The deterministic
+sub-metrics (Suite F agreement, build-invocation counts) carry the claim between the expensive
+model-driven runs, which are scheduled, not continuous.
+
+**Kill risk.** Cost. Mitigation: the deterministic sub-metrics stand between full runs; the
+curated 10-to-15 PR set with reproducible test oracles is the expensive build and is done once.
+
+**Amendments (2026-07-03).** Three, and they change when R4 happens. (a) The task-set curation
+is pure data work blocked on nothing, so it moves into Phase 1 alongside the N4 spike, and the
+native-arm baseline is recorded before any oracle tool exists. Pre-registering the baseline is
+what makes the eventual claim credible (a project cannot grade its own homework by building the
+benchmark after the feature it measures) and it de-risks G1's demo-task selection for free.
+(b) A third arm: an agent with the C# language server or serena. That is the comparison the
+launch will actually be judged against, and without it the plan has no measurement that
+survives the rebuttal "an LSP already does this." (c) Record wall-clock per task, not just
+iterations and build-invocations: the Expected-impact section says the gains are asymmetric
+toward wall-clock, so iteration counts alone will not show the 1.5-to-4x it projects, and the
+demo (G1) needs the wall-clock number to be honest.
+
 ### R3. Collapse the tool surface around the oracle, seven live tools (shim-compatible)
 
 **Why (the story and the analysis).** Nine tools describe a workflow, and models follow
@@ -899,48 +1001,6 @@ whether this answer is oracle-grade or graph-grade. `fuse doctor` puts availabil
 command a mid-loop agent never calls; the abstention contract the plan celebrates has to be
 ambient metadata on the answer, not a diagnosis the agent must separately request. The header
 is the single highest-leverage agent-ergonomics change in the reshape.
-
-### R4. Rebuild the agent benchmark to measure the loop, not the payload
-
-**Why.** Finding 2. Suite D at N=12, one rollout, cannot detect the effect it exists to
-measure, and cumulative session tokens is the wrong metric for the oracle thesis. This is a
-harness-first item: the benchmark is the deliverable.
-
-**How.** Build a task-resolution suite over a small verified set of 10 to 15 PRs with
-reproducible failing-then-passing tests, on top of the existing but unwired
-[TaskResolutionHarness.cs](../tests/benchmarks/Fuse.Benchmarks/TaskResolutionHarness.cs)
-(`OracleCommand`, `dotnet test`). Metrics: pass@1 and iterations-to-green with and without the
-oracle tools, plus build-invocations-per-session as the direct measure of loop collapse. Cheap
-driver model, three rollouts minimum, CIs recorded. Register the suite in `EvalCommand.BuildSuite`.
-
-**Tests.** The suite runs a single task end to end deterministically where the model is stubbed;
-the metric computation (iterations, build-invocations) is unit-tested against a scripted
-transcript.
-
-**Docs.** `project/benchmarks.mdx` (the new suite and its metrics, replacing the Suite D framing),
-`AGENTS.md`.
-
-**Benchmark.** `results/task-resolution.json` (or the chosen `Name`), with pass@1,
-iterations-to-green, and build-invocations-per-session, all with CIs.
-
-**Expected result.** A metric that can actually move with the oracle. The deterministic
-sub-metrics (Suite F agreement, build-invocation counts) carry the claim between the expensive
-model-driven runs, which are scheduled, not continuous.
-
-**Kill risk.** Cost. Mitigation: the deterministic sub-metrics stand between full runs; the
-curated 10-to-15 PR set with reproducible test oracles is the expensive build and is done once.
-
-**Amendments (2026-07-03).** Three, and they change when R4 happens. (a) The task-set curation
-is pure data work blocked on nothing, so it moves into Phase 1 alongside the N4 spike, and the
-native-arm baseline is recorded before any oracle tool exists. Pre-registering the baseline is
-what makes the eventual claim credible (a project cannot grade its own homework by building the
-benchmark after the feature it measures) and it de-risks G1's demo-task selection for free.
-(b) A third arm: an agent with the C# language server or serena. That is the comparison the
-launch will actually be judged against, and without it the plan has no measurement that
-survives the rebuttal "an LSP already does this." (c) Record wall-clock per task, not just
-iterations and build-invocations: the Expected-impact section says the gains are asymmetric
-toward wall-clock, so iteration counts alone will not show the 1.5-to-4x it projects, and the
-demo (G1) needs the wall-clock number to be honest.
 
 ---
 
@@ -1045,114 +1105,6 @@ via tsserver next), not a parser approximation. Not in 4.0.
 
 ---
 
-## Go-to-market
-
-### G1. The latency demo and launch publish
-
-**Why.** The demo that lands is a latency demo, not a token demo. Token savings are invisible
-on screen; a compiler answering in milliseconds while the other pane waits on MSBuild is
-visceral. This is honest only after R1/R2, which is the right forcing function.
-
-**How.** Side-by-side terminal recording on eShopOnWeb, "rename this method on IOrderService
-and update everything": left, a stock agent (grep, edit, `dotnet build`, parse errors, repeat);
-right, with Fuse (once R7 exists, `fuse_refactor` performs the rename as a staged diff,
-`fuse_check` returns green in under a second, one final build). Publish and link from the
-landing page and README.
-
-**Amendments (2026-07-03).** Two, both about not letting the demo inherit the optimistic
-branch of the theory. (a) Verification parity: the illustrative 150 s to 35-40 s model in
-Expected-impact books the fuse arm with a scoped test subset while the native arm pays a full
-test run; with both arms running the same final verification, the same model gives roughly 90
-to 95 s, about 1.6x on the loop, not 3 to 4x. The 3-to-4x figure silently assumes M2-grade
-trusted test selection, which the demo does not include; the demo script uses the
-verification-parity number and R4's recorded wall-clock, not the loop-only projection. (b) The
-demo is R7-first, not R1/R2-first: the visceral moment is the compiler performing a 40-site
-rename correctly in one call, which no LSP-driven agent loop matches for ergonomics, and it
-pre-empts the "just use the language server" rebuttal that a check-only demo invites. The
-honest claim is "no editor session, whole-solution, multi-file, correct by construction, with
-abstention," not "only a compiler can do this."
-
-**Acceptance.** The asset is linked from the landing page and README; every claim is sourced to
-R4's recorded numbers or labeled illustrative with its arithmetic shown; nothing overclaims a
-head-to-head win, and the LSP counterfactual is named rather than ignored.
-
-### G2. The analyzer contribution program and coverage table
-
-**Why.** Section 1.2's coverage critique (Autofac, Lamar, Wolverine, FastEndpoints, Carter,
-source-generated DI are unhandled by the 10 first-party-pattern analyzers in
-`src/Core/Fuse.Semantics/Analyzers/`) is the moat's biggest weakness; the on-ramp converts it
-into contributions. People star tools they can extend for their stack.
-
-**How.** A documented recipe for writing a wiring analyzer, the `--corpus-sample` adjudication
-flow as the test methodology, and a public coverage table of container and framework support.
-Seed it with two or three new analyzers (a scanning-convention container and one endpoint
-framework) so the recipe is proven, not theoretical.
-
-**Acceptance.** The recipe page ships, the coverage table is published, and at least one seed
-analyzer added via the documented recipe passes Suite A on a new fixture.
-
----
-
-## Governance
-
-L1 and L2 are the first v4 execution items, before the N4 bake-off and before any Phase 1
-code. The 3.2.0 tag releases the current tree under MIT; governance lands immediately after on
-the v4 line so every subsequent commit and PR is under Apache 2.0 with DCO sign-off. They pair
-with G2: a contribution program needs a license and a provenance contract contributors can
-follow without legal friction.
-
-### L1. Migrate the project license from MIT to Apache 2.0
-
-**Why.** Fuse is moving from a permissive MIT license to Apache 2.0 because the oracle release
-adds patent-sensitive surface (compiler execution, staged diffs, speculative verification) and
-the project is opening a community on-ramp (G2). Apache 2.0 carries an explicit patent grant
-and a termination clause on offensive patent litigation, which is the standard pairing for
-compiler-adjacent tooling that third parties embed in products. MIT stays permissive but offers
-no patent language; staying on MIT while inviting framework-specific analyzer contributions
-creates asymmetric risk for corporate adopters and contributors.
-
-**How.** Replace [LICENSE](../LICENSE) with the Apache 2.0 text, retaining the Litenova Solutions
-copyright line and adding the standard Apache 2.0 appendix. Update every license expression and
-badge: `Directory.Build.props` and each `.csproj` `PackageLicenseExpression`, `README.md` and
-the docs site license references, NuGet package metadata, the VS Code extension
-(`ext/vscode/package.json`), and `mcp-registry/server.json`. Audit third-party dependencies and
-the benchmark corpus for license compatibility (Apache 2.0 is compatible with MIT dependencies;
-confirm no copyleft conflict in bundled native assets). Add a `NOTICE` file if any bundled
-dependency requires attribution beyond the SPDX expression. Record the change in `CHANGELOG.md`
-under 4.0.0 with a plain migration note for downstream packagers (license header change only,
-no API break).
-
-**Acceptance.** `LICENSE` is Apache 2.0; `build/verify-version.ps1` and a repo-wide grep find no
-remaining MIT license claims on Fuse-owned artifacts; CI green; the contributing page names the
-new license.
-
-### L2. Adopt the Developer Certificate of Origin (DCO)
-
-**Why.** Apache 2.0 projects need a lightweight provenance contract so every commit can be
-traced to a contributor who attested they have the right to submit it. A full Contributor
-License Agreement (CLA) re-assigns copyright or grants a broad patent license through a signed
-legal document; it adds onboarding friction and is appropriate mainly when a single company
-needs to relicense the whole tree. The Developer Certificate of Origin (DCO), used by the Linux
-kernel, Kubernetes, and the Apache Software Foundation, is the better fit here: contributors add
-a `Signed-off-by` trailer to each commit attesting the DCO 1.1 statement, GitHub's DCO bot
-blocks merges without it, and no separate signature step is required. DCO plus Apache 2.0 is the
-industry-default pairing for open contributions without CLA overhead.
-
-**How.** Add [DCO.txt](../DCO.txt) (the canonical Developer Certificate of Origin 1.1 text) at
-the repo root. Document the sign-off requirement in `CONTRIBUTING.md` and on the docs
-contributing page (`site/content/docs/project/contributing.mdx`): use `git commit -s` or add
-`Signed-off-by: Name <email>` manually; the sign-off certifies agreement with the DCO text.
-Enable the DCO GitHub App (or equivalent CI check) on the repository so PRs without sign-off on
-every commit fail with an actionable message. Update the PR template (if one exists) to remind
-contributors. Existing commits before the cutover are grandfathered; the check applies from the
-DCO adoption merge forward. Do not adopt a CLA in parallel; one provenance mechanism only.
-
-**Acceptance.** `DCO.txt` is present; contributing docs describe sign-off; the DCO check is
-enabled and verified on a test PR; G2's contribution recipe references the DCO requirement in
-its first step.
-
----
-
 ## Phase 4: retrieval bets (gated; only after N4's localize re-run is recorded)
 
 These two items attack the open-ended recall ceiling directly rather than nudging it. They are
@@ -1239,6 +1191,54 @@ a modest recall@10 lift where history is deep, nothing where it is thin.
 ranking with it); guarded by featurizing relevance signals rather than raw change frequency,
 and by the temporal split. Cold or shallow repos get the fallback. Evaluation leakage is the
 subtle killer; the strict temporal split is the guard, and the eval is invalid without it.
+
+---
+
+## Go-to-market
+
+### G1. The latency demo and launch publish
+
+**Why.** The demo that lands is a latency demo, not a token demo. Token savings are invisible
+on screen; a compiler answering in milliseconds while the other pane waits on MSBuild is
+visceral. This is honest only after R1/R2, which is the right forcing function.
+
+**How.** Side-by-side terminal recording on eShopOnWeb, "rename this method on IOrderService
+and update everything": left, a stock agent (grep, edit, `dotnet build`, parse errors, repeat);
+right, with Fuse (once R7 exists, `fuse_refactor` performs the rename as a staged diff,
+`fuse_check` returns green in under a second, one final build). Publish and link from the
+landing page and README.
+
+**Amendments (2026-07-03).** Two, both about not letting the demo inherit the optimistic
+branch of the theory. (a) Verification parity: the illustrative 150 s to 35-40 s model in
+Expected-impact books the fuse arm with a scoped test subset while the native arm pays a full
+test run; with both arms running the same final verification, the same model gives roughly 90
+to 95 s, about 1.6x on the loop, not 3 to 4x. The 3-to-4x figure silently assumes M2-grade
+trusted test selection, which the demo does not include; the demo script uses the
+verification-parity number and R4's recorded wall-clock, not the loop-only projection. (b) The
+demo is R7-first, not R1/R2-first: the visceral moment is the compiler performing a 40-site
+rename correctly in one call, which no LSP-driven agent loop matches for ergonomics, and it
+pre-empts the "just use the language server" rebuttal that a check-only demo invites. The
+honest claim is "no editor session, whole-solution, multi-file, correct by construction, with
+abstention," not "only a compiler can do this."
+
+**Acceptance.** The asset is linked from the landing page and README; every claim is sourced to
+R4's recorded numbers or labeled illustrative with its arithmetic shown; nothing overclaims a
+head-to-head win, and the LSP counterfactual is named rather than ignored.
+
+### G2. The analyzer contribution program and coverage table
+
+**Why.** Section 1.2's coverage critique (Autofac, Lamar, Wolverine, FastEndpoints, Carter,
+source-generated DI are unhandled by the 10 first-party-pattern analyzers in
+`src/Core/Fuse.Semantics/Analyzers/`) is the moat's biggest weakness; the on-ramp converts it
+into contributions. People star tools they can extend for their stack.
+
+**How.** A documented recipe for writing a wiring analyzer, the `--corpus-sample` adjudication
+flow as the test methodology, and a public coverage table of container and framework support.
+Seed it with two or three new analyzers (a scanning-convention container and one endpoint
+framework) so the recipe is proven, not theoretical.
+
+**Acceptance.** The recipe page ships, the coverage table is published, and at least one seed
+analyzer added via the documented recipe passes Suite A on a new fixture.
 
 ---
 

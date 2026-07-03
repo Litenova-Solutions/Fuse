@@ -1,0 +1,25 @@
+{
+  "suite": "ranking",
+  "description": "Ranking regression: MRR, recall@k, nDCG@k for the lexical channel and the shipping default.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 53,
+    "recall": 0.15003777668872006,
+    "recallCiLow": 0.09076104712897165,
+    "recallCiHigh": 0.21451033243486073,
+    "precision": 0.19661575321952682,
+    "f1": 0.19661575321952682,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [],
+  "notes": [
+    "candidates@20, title-only input, changed-file ground truth",
+    "index modes: partial 2, syntax 2",
+    "config lexical (n 53): MRR 0.187, recall@1 3.0%, recall@5 10.7%, recall@10 12.6%, nDCG@10 0.117",
+    "config default (n 53): MRR 0.197, recall@1 4.0%, recall@5 10.4%, recall@10 15.0%, nDCG@10 0.139",
+    "config default-no-cochange (n 53): MRR 0.208, recall@1 4.3%, recall@5 9.6%, recall@10 15.0%, nDCG@10 0.141",
+    "A6 co-change prior delta (on minus off): MRR -0.011, recall@10 0.0%"
+  ]
+}

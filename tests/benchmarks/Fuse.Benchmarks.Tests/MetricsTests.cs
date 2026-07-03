@@ -60,4 +60,49 @@ public sealed class MetricsTests
         Assert.Equal(0.7, low);
         Assert.Equal(0.7, high);
     }
+
+    [Fact]
+    public void ReciprocalRank_is_one_over_first_hit_rank()
+    {
+        var gt = new HashSet<string> { "b", "d" };
+        // First hit "b" is at rank 2 (1-based) -> 1/2.
+        Assert.Equal(0.5, Metrics.ReciprocalRank(new[] { "a", "b", "c", "d" }, gt), 6);
+    }
+
+    [Fact]
+    public void ReciprocalRank_is_zero_when_no_hit()
+        => Assert.Equal(0.0, Metrics.ReciprocalRank(new[] { "a", "b" }, new HashSet<string> { "z" }));
+
+    [Fact]
+    public void RecallAtK_counts_ground_truth_in_top_k()
+    {
+        var ranked = new[] { "a", "x", "b", "y", "c" };
+        var gt = new[] { "a", "b", "c" };
+        Assert.Equal(1.0 / 3, Metrics.RecallAtK(ranked, gt, 1), 6); // only "a" in top 1
+        Assert.Equal(2.0 / 3, Metrics.RecallAtK(ranked, gt, 3), 6); // "a","b" in top 3
+        Assert.Equal(1.0, Metrics.RecallAtK(ranked, gt, 5), 6);     // all three in top 5
+    }
+
+    [Fact]
+    public void RecallAtK_of_empty_ground_truth_is_one()
+        => Assert.Equal(1.0, Metrics.RecallAtK(new[] { "a" }, Array.Empty<string>(), 10));
+
+    [Fact]
+    public void NdcgAtK_is_one_when_all_relevant_are_at_the_top()
+    {
+        var gt = new HashSet<string> { "a", "b" };
+        Assert.Equal(1.0, Metrics.NdcgAtK(new[] { "a", "b", "c" }, gt, 10), 6);
+    }
+
+    [Fact]
+    public void NdcgAtK_penalizes_lower_placement()
+    {
+        var gt = new HashSet<string> { "a" };
+        var top = Metrics.NdcgAtK(new[] { "a", "b", "c" }, gt, 10);
+        var lower = Metrics.NdcgAtK(new[] { "b", "c", "a" }, gt, 10);
+        Assert.Equal(1.0, top, 6);
+        Assert.True(lower < top, $"expected lower placement to score below top ({lower} vs {top})");
+        // Single relevant at rank 3: DCG = 1/log2(4) = 0.5, IDCG = 1 -> nDCG = 0.5.
+        Assert.Equal(0.5, lower, 6);
+    }
 }

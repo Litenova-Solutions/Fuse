@@ -748,14 +748,18 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         // bm25() takes one weight per column in declaration order: chunk_id (unindexed, weight ignored),
-        // path, name, symbols, signature, comments, body, subtokens, stems. Name/signature/symbols outrank path,
-        // which outranks comments and body. The subtokens column (subword expansion of identifiers) is weighted
-        // below the exact name but above the body, so an exact name match still wins over a subword match. The
-        // stems column (Porter-stemmed identifiers and comments) is weighted lowest, as a fuzzy inflection bridge.
-        // bm25 is lower-is-better, so the score is negated to make higher better.
+        // path, name, symbols, signature, comments, body, subtokens, stems. The intended ordering (N1, finding 4)
+        // is name > symbols > signature > subtokens > path > comments > body > stems: a term hitting a declared
+        // symbol name or signature must outrank the same term appearing only in a folder path, so a symbol-name
+        // match wins over a folder-name match. subtokens (subword expansion of identifiers) sits below the exact
+        // name but above the body, so an exact name still beats a subword match; stems (Porter-stemmed identifiers
+        // and comments) is lowest, a fuzzy inflection bridge. This is the single intended weight table, guarded by
+        // the ranking suite (RankingSuite). Before this fix the path column was weighted highest (4.0), inverting
+        // the documented intent and letting folder-name matches outrank symbol-name matches. bm25 is
+        // lower-is-better, so the score is negated to make higher better.
         command.CommandText = """
             SELECT f.chunk_id, files.normalized_path, c.kind, c.name, c.start_line, c.end_line,
-                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7, 0.9, 0.5) AS score
+                   -bm25(chunk_fts, 0.0, 2.0, 5.0, 4.0, 3.0, 1.5, 1.0, 2.5, 0.7) AS score
             FROM chunk_fts f
             JOIN chunks c ON c.chunk_id = f.chunk_id
             JOIN files ON files.file_id = c.file_id

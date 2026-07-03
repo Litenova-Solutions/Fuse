@@ -267,16 +267,23 @@ planning purposes; the per-item Why/How/Tests/Docs/Kill-risk below are unchanged
 | N2 purge + citations | part 1 done | results archived, reduce/performance regenerated, citations fixed; in-memory `Bm25RelevanceIndex` deletion deferred (non-shipping path, heavy test coupling) |
 | N5 harness retirement | done | one C# harness plus the one peer-script exception; drifts fixed |
 | N6 freshness contract | done | reconcile-on-open plus stale-as-of stamp |
-| N4 tier-1 build capture | mechanism validated, integration blocked | see blocker B1 |
+| N4 tier-1 build capture | done (out-of-proc worker) | B1 resolved: `Fuse.BuildCaptureWorker` rehydrates a binlog, runs extraction, serializes the graph; parent ingests. Default off (needs `FUSE_BUILD_CAPTURE_WORKER`) |
 | N4 part 1 `fuse doctor` | done | per-project load-tier reporting |
+| N4 localize re-run | done | `results/localize.tier1.json`: recall 15.0 vs 14.9 baseline, no lift; re-scopes V1/V2 as not-warranted |
 | N3 resident oracle | part 1 done | supervised background upgrade (finding 5); resident workspace and incremental semantic reindex remain, see blocker B2 |
-| R6 `fuse_signatures` | part 1 done | API-shape oracle from the symbol store; repair-packet half rides R1 |
-| R5, R2, R1, R7 | not started | blocked on B1/B2 |
-| R4 loop suite | not started | task-set curation is unblocked data work; the LSP-armed and model arms need provisioned models |
-| R3 tool reshape | not started | additive router plus shims; best done once the oracle tools it reshapes around exist |
-| M1, M2 | not started | depend on R1/R5 |
-| V1, V2 | not started | gated on N4's localize re-run (B1) |
-| G1, G2 | not started | G1 needs R1/R2/R7; G2's recipe/table is partly unblocked docs |
+| R5 references + tests edges | done | `ReferenceEdgeAnalyzer` (references, weight 0.15) + `TestEdgeExtractor` (DI-resolved tests edges, post-merge); schema TargetVersion 15 |
+| R6 `fuse_signatures` | part 1 done | API-shape oracle from the symbol store; repair-packet half (R6 part 2) rides R1 and remains |
+| R2 `fuse_impact` | done | blast radius from R5 + wiring edges; abstains on the exact break set; carries the availability header and covering tests |
+| R1 `fuse_check` | engine + Suite F done | out-of-proc speculative typecheck (abstains unless tier-1); Suite F `results/checkgate.json` 8/8, zero false-green/false-red. Repair packets + resident fast path remain |
+| R7 `fuse_refactor` | part 1 done (rename) | MSBuildWorkspace + Roslyn Renamer, staged as a diff, abstains on partial load; change-signature (part 2) remains |
+| R3 tool reshape | part done (availability header) | ambient grade header on the store-backed oracle reads; V2 shims already exist; the typed-union router remains (needs the extension client in the loop) |
+| R4 loop suite | not started | blocked: the model and LSP-armed arms need provisioned models; task-set curation is unblocked data work |
+| M1 | down-payment done | covering-test selection over R5 tests edges (in `fuse_impact`); the changeset-session lifecycle remains |
+| M2 | not started | stretch, pre-agreed to slip to 4.1 |
+| V1, V2 | not warranted | the N4 tier-1 localize re-run showed no recall lift, so the richer-graph premise did not hold |
+| G1 | not started | outward-facing launch publish; not an autonomous action |
+| G2 | docs done | analyzer coverage table + contribution recipe shipped; the community program is a launch activity |
+| version | bumped to 4.0.0 | `build/set-version.ps1 4.0.0`, verify-version OK; no tag cut |
 
 ### The two substrate blockers
 

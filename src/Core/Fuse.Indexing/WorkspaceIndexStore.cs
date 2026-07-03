@@ -904,6 +904,57 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<SymbolSignature>> GetMembersOfTypeAsync(
+        string typeName, int limit, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(typeName))
+            return [];
+
+        // A member's containing_type and the requested type name may each be simple or fully qualified, and they
+        // need not agree. Match four ways so a request in either form finds a stored value in either form: exact
+        // on the request, exact on the request's simple suffix, and a suffix match ('%.' || simple) against a
+        // stored fully qualified containing_type. A diagnostic message usually carries the fully qualified name.
+        var simple = typeName.Contains('.', StringComparison.Ordinal)
+            ? typeName[(typeName.LastIndexOf('.') + 1)..]
+            : typeName;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT s.name, s.kind, s.fully_qualified_name, s.signature, s.accessibility, s.containing_type,
+                   files.normalized_path, s.start_line, s.is_public_api
+            FROM symbols s
+            JOIN files ON files.file_id = s.file_id
+            WHERE s.containing_type = $full COLLATE NOCASE
+               OR s.containing_type = $simple COLLATE NOCASE
+               OR s.containing_type LIKE '%.' || $simple COLLATE NOCASE
+            ORDER BY s.is_public_api DESC, s.name COLLATE NOCASE
+            LIMIT $limit;
+            """;
+        command.Parameters.AddWithValue("$full", typeName);
+        command.Parameters.AddWithValue("$simple", simple);
+        command.Parameters.AddWithValue("$limit", limit);
+
+        var results = new List<SymbolSignature>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new SymbolSignature(
+                Name: reader.GetString(0),
+                Kind: reader.GetString(1),
+                FullyQualifiedName: reader.GetString(2),
+                Signature: reader.IsDBNull(3) ? null : reader.GetString(3),
+                Accessibility: reader.IsDBNull(4) ? null : reader.GetString(4),
+                ContainingType: reader.IsDBNull(5) ? null : reader.GetString(5),
+                FilePath: reader.GetString(6),
+                StartLine: reader.GetInt32(7),
+                IsPublicApi: reader.GetInt64(8) != 0));
+        }
+
+        return results;
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken)
     {
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);

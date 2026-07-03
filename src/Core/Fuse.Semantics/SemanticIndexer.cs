@@ -122,6 +122,37 @@ public sealed class SemanticIndexer
     }
 
     /// <summary>
+    ///     Diagnoses the semantic load without writing the index: discovers the workspace, loads it through
+    ///     MSBuild/Roslyn, and reports the achieved tier and the concrete per-project outcome. This is what
+    ///     <c>fuse doctor</c> reports, so a downgrade names its reason per project (unrestored, SDK mismatch,
+    ///     build error) rather than failing opaquely at the solution level.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="cancellationToken">A token to cancel the load.</param>
+    /// <returns>The load diagnosis: the tier, per-project reports, and load diagnostics.</returns>
+    public async Task<LoadDiagnosis> DiagnoseLoadAsync(string rootDirectory, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
+        var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
+
+        // The oracle tier requires every loaded project to be error-free; a project loaded with compile errors is
+        // graph-grade (retrieval only), and any project that did not load at all drops the tier further.
+        var loaded = snapshot.ProjectReports.Count(p => p.Loaded);
+        var total = snapshot.ProjectReports.Count;
+        var anyErrors = snapshot.ProjectReports.Any(p => p.Loaded && p.Reason.Contains("error", StringComparison.OrdinalIgnoreCase));
+        string tier;
+        if (!snapshot.SemanticLoadSucceeded || loaded == 0)
+            tier = "syntax";
+        else if (loaded < total || anyErrors)
+            tier = "graph-grade (partial)";
+        else
+            tier = "oracle-grade (all projects loaded clean)";
+
+        return new LoadDiagnosis(tier, loaded, total, snapshot.ProjectReports, snapshot.Diagnostics);
+    }
+
+    /// <summary>
     ///     Indexes the workspace at the syntax tier only, skipping the MSBuild/Roslyn load, so a first call
     ///     serves context in a few seconds instead of waiting for the full semantic load. Sets the index mode to
     ///     <c>syntax</c> and flags <see cref="SemanticPendingMetaKey" /> so a caller knows the semantic graph is
@@ -147,7 +178,8 @@ public sealed class SemanticIndexer
         var snapshot = new RoslynWorkspaceSnapshot(
             SemanticLoadSucceeded: false,
             Projects: [],
-            Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-first", "Syntax-tier index served first; the semantic graph upgrades in the background.")]);
+            Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-first", "Syntax-tier index served first; the semantic graph upgrades in the background.")],
+            ProjectReports: []);
 
         var result = await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken, embed: false);
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
@@ -590,3 +622,18 @@ public sealed record FreshnessResult(int Checked, int Reconciled, int DirtyRemai
     /// <summary>Whether the index is fresh after this pass (nothing dirty remains).</summary>
     public bool IsFresh => DirtyRemaining == 0;
 }
+
+/// <summary>
+///     The outcome of diagnosing a workspace's semantic load, reported by <c>fuse doctor</c>.
+/// </summary>
+/// <param name="Tier">The achieved load tier (oracle-grade, graph-grade (partial), or syntax).</param>
+/// <param name="ProjectsLoaded">The number of projects that produced a compilation.</param>
+/// <param name="ProjectsTotal">The total number of projects the loader opened.</param>
+/// <param name="Projects">The per-project load reports with their concrete reasons.</param>
+/// <param name="Diagnostics">The load diagnostics (SDK, restore, MSBuild) gathered during loading.</param>
+public sealed record LoadDiagnosis(
+    string Tier,
+    int ProjectsLoaded,
+    int ProjectsTotal,
+    IReadOnlyList<ProjectLoadReport> Projects,
+    IReadOnlyList<DiagnosticRecord> Diagnostics);

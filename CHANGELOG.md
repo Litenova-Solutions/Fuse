@@ -20,6 +20,8 @@ The compiler-oracle release. See `roadmap/v4-plan.md` for the full item breakdow
 
 ### Added
 
+- **`fuse doctor`: per-project load-tier diagnosis (N4, part 1).** A new command actively loads the workspace through MSBuild and Roslyn and reports the achieved tier (oracle-grade when every project loads clean, graph-grade when some load with compile errors or fail to load, syntax when none load) and the concrete per-project reason for any downgrade (unrestored, SDK mismatch, build error). The loader now records a per-project load report, and a project that loads with compile errors is marked graph-grade rather than counted as oracle-grade. This is the availability-reporting half of N4; the tier-1 build-capture (binlog rehydration) and tier-2 auto-restore mechanisms are not yet implemented, so oracle-grade is reached today only where MSBuildWorkspace already loads every project clean.
+
 - **Developer Certificate of Origin (DCO) sign-off requirement (L2).** Contributions now require a `Signed-off-by:` trailer on every commit (`git commit -s`), certifying the DCO 1.1 statement in the new `DCO.txt`. A DCO CI check (`.github/workflows/dco.yml`) fails any pull request with a commit missing a matching trailer; commits merged before adoption are grandfathered. A pull-request template reminds contributors, and the contributing docs describe the flow. Fuse uses the DCO in place of a Contributor License Agreement.
 
 ## [3.2.0] - 2026-07-02

@@ -23,6 +23,7 @@ The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace 
 | `fuse review [path]` | Review the semantic impact of a change | yes | first-use |
 | `fuse find <query>` | Exact symbol, path, or text lookup | yes | first-use |
 | `fuse diagnostics [path]` | Report index state | yes | no |
+| `fuse doctor [path]` | Diagnose the semantic load tier and per-project downgrade reasons | no | no |
 | `fuse reduce` | Compact a known set of files or content | no | no |
 | `fuse models` | Manage optional rerank models | no | no |
 | `fuse init` | Write a configuration file | no | no |
@@ -104,6 +105,14 @@ Report the index state: schema version, mode, status, record counts, and the sto
 
 ```text
 fuse diagnostics ./src
+```
+
+## fuse doctor
+
+Diagnose the semantic load and report the achieved tier and the concrete per-project reason for any downgrade. Where `fuse diagnostics` reports the state of an already-written index, `fuse doctor` actively loads the workspace through MSBuild and Roslyn and explains why the oracle tier was or was not reached, so you know whether the compiler-backed answers are available. It names each project as loaded, loaded with compile errors (graph-grade), or not loaded (unrestored, SDK mismatch, or a build error), and reports the overall tier: oracle-grade (every project loaded clean), graph-grade (partial), or syntax.
+
+```text
+fuse doctor ./src
 ```
 
 ## fuse reduce

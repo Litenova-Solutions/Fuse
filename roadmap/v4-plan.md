@@ -1768,6 +1768,16 @@ Basic.CompilerLog approach), with incremental single-tree swaps. Tier 2 (salvage
 mechanism reaches tier-1 on 100 percent of buildable repos vs 12 percent semantic for MSBuildWorkspace;
 this part builds the availability surface that the tier-1 mechanism will populate.
 
+**Tier-1 dependency de-risk (2026-07-03, recorded for the next session).** `Basic.CompilerLog.Util`
+(the binlog-rehydration library, jaredpar) is available on nuget.org at 0.9.47 and restores cleanly
+under this repo's central package management. The one caveat, to resolve before wiring it in: 0.9.47
+declares a dependency on Microsoft.CodeAnalysis 4.8.0 while this repo pins Roslyn 4.14.0, so the
+restore raises NU1608 version-constraint warnings and the runtime compatibility of the 4.8-built
+library against 4.14 assemblies must be validated (read a real binlog, produce a compilation, confirm
+no MissingMethod at runtime) before it is committed. The speculative package reference was reverted
+so the tree stays clean until that validation is done; the mechanism decision (build-capture) is
+already recorded in `results/n4-bakeoff.json`.
+
 **Blockers.** None for part 1. Tier-1/tier-2 are large, self-contained follow-on work (binlog
 integration is a new capability), deliberately not rushed to keep the gates and the no-silent-change
 discipline intact.

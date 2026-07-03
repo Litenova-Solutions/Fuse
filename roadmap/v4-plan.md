@@ -221,7 +221,7 @@ Phase 1: the trustworthy floor
       named, resident memory is measured)
 
 Phase 2: the oracle
-- [ ] R5 The persisted reference index: calls, references, and tests edges (added, finding 7)
+- [x] R5 The persisted reference index: calls, references, and tests edges (added, finding 7)
 - [ ] R2 `fuse_impact`: blast radius before the edit (served from R5, not live SymbolFinder)
 - [ ] R1 `fuse_check`: speculative diagnostics as repair packets, and Suite F (false-green and
       false-red both gated)
@@ -2050,6 +2050,37 @@ workspace plus N4 tier-1), the same substrate the other oracle tools need.
 today and gains the precise break-set for free once the resident compilation exists.
 
 **Time.** ~1 session-hour.
+
+### 2026-07-03 R5 (part 2, completes R5): DI-resolved test edges
+
+**Status.** Done. R5 is now complete (references edges in part 1, tests edges here). Box ticked.
+
+**Result.** Added `TestEdgeExtractor`, run as a post-merge pass in `SemanticIndexer.RunAnalyzers` (after the
+per-project analyzers merge, so it has the full node set and the `di_resolves_to` edges). For each test
+type (identified by test-framework attributes: Fact/Theory/Test/TestMethod/TestCase), it resolves the
+source types the test references and emits a `tests` edge to each, plus, when a referenced type is an
+interface the DI graph resolves, to that interface's registered implementations. So a test injecting
+`IOrderService` links to `OrderService`, which is what makes covering-test selection better than a plain
+reference walk. Foreign-key safe: it links only to node ids that already exist in the merged graph, so no
+dangling edge to a framework or third-party metadata type. Finding 7 is fully resolved: `references` (part
+1) and `tests` (here) both have producers; the dead `calls` weight was removed in part 1.
+
+**Tests.** `TestEdgeExtractorTests` (via `InlineCompilation`): a test linked to a referenced interface and,
+through a synthetic DI map, to its implementation; the FK-safe case (no edge to an absent node); and a
+non-test type producing no tests edges. Full suite green (Suite A unaffected: `tests` is a distinct edge
+type from the wiring edges it checks).
+
+**Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). No schema
+change beyond R5 part 1's version 15 bump (same `edges` table, a new edge_type value). Docs: `AGENTS.md`
+and `overview.md` edge-weight notes; `EdgeWeightProvider` comment updated.
+
+**Blockers.** None. Selection soundness is bounded by what the reference walk and DI graph see (reflection
+and source-generator-reached tests are missed), reported as best-effort, never as complete, per the plan.
+
+**Lessons.** Doing the tests pass post-merge (not as a per-project analyzer) is what makes it both
+cross-project and foreign-key safe: the full node set and DI edges are only available after the merge.
+
+**Time.** ~1.5 session-hours.
 
 ### 2026-07-03 plan revision (external review pass)
 

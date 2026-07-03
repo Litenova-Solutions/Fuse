@@ -542,6 +542,20 @@ public sealed class SemanticIndexer
             diagnostics.AddRange(result.Diagnostics);
         }
 
+        // R5 part 2: after the per-project analyzers merge, emit cross-project tests edges, resolving injected
+        // interfaces to their registered implementations through the di_resolves_to edges just collected. Runs
+        // here (not as a per-project analyzer) so it links across projects and only to nodes that already exist.
+        var existingNodeIds = new HashSet<string>(nodes.Keys, StringComparer.Ordinal);
+        var diResolvesTo = edges
+            .Where(e => e.EdgeType == "di_resolves_to")
+            .GroupBy(e => e.FromNodeId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(e => e.ToNodeId).Distinct(StringComparer.Ordinal).ToList(), StringComparer.Ordinal);
+        var (testNodes, testEdges) = new Analyzers.TestEdgeExtractor()
+            .Extract(snapshot.Projects, existingNodeIds, diResolvesTo, root, cancellationToken);
+        foreach (var node in testNodes)
+            nodes[node.NodeId] = node;
+        edges.AddRange(testEdges);
+
         return new SemanticAnalyzerResult(nodes.Values.ToList(), edges, routes, registrations, bindings, diagnostics);
     }
 

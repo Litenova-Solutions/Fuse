@@ -2302,6 +2302,26 @@ build's inputs), and the abstention contract handles the non-oracle case honestl
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 Release gate: version bump to 4.0.0 (no tag)
+
+**Status.** Done. The tag is deliberately not cut; per the working conventions the release is triggered by
+pushing a matching `vX.Y.Z` tag, which is a reviewer/maintainer action, not an autonomous one.
+
+**Result.** Ran `build/set-version.ps1 4.0.0`, which set the single source of truth (`Directory.Build.props`
+`<Version>`) and the three satellite manifests that must agree (`ext/vscode/package.json`,
+`mcp-registry/server.json`, `site/package.json`) in one step, never by hand. `build/verify-version.ps1`
+reports "Version OK: 4.0.0", so CI's version-consistency gate is satisfied. The build and format gates are
+green after the bump; a version-string change does not touch test logic, which was green at the preceding
+commit. The RPC `ProtocolVersion` and `PROTOCOL_VERSION` constants are independent of the package version and
+were not touched by this bump.
+
+**Not done, on purpose.** No git tag, no NuGet/GitHub/Marketplace publish. The release remains a single open PR
+off main. The remaining gated items (R4's model and LSP arms, R3's typed-union router, M1's changeset
+lifecycle, G1's outward-facing launch publish) are logged as blocked or launch activities; the version number
+reflects the v4 target on the branch, not a shipped release.
+
+**Time.** ~0.25 session-hours.
+
 ### 2026-07-03 G2 (docs): the analyzer coverage table and contribution recipe
 
 **Status.** Docs deliverable done. Box left unticked: the outward-facing community contribution program (the

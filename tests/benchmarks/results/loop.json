@@ -1,0 +1,27 @@
+{
+  "suite": "loop",
+  "description": "Loop metric (R4): build-gated turns to green per toolbox (model-dependent; harness is the deliverable).",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 0,
+    "recall": 0,
+    "recallCiLow": 0,
+    "recallCiHigh": 0,
+    "precision": 0,
+    "f1": 0,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [],
+  "notes": [
+    "model claude-sonnet-4-6",
+    "max turns 40",
+    "arms: native, fuse",
+    "metric: build-gated turns to green (iterations_to_green), build invocations; lower is better",
+    "harness-first: the harness is the deliverable; numbers are recorded when the claude CLI and a model are provisioned",
+    "execution opt-in required: set FUSE_LOOP_RUN=1 to run the model-driven arms.",
+    "claude CLI present.",
+    "would sample 8 PR(s): NodaTime#621, NodaTime#620, Scrutor#6, Scrutor#4, Specification#502, Specification#196, eShopOnWeb#949, eShopOnWeb#878"
+  ]
+}

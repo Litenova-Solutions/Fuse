@@ -2199,6 +2199,35 @@ contract.
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 N4 tier-1 (part 6): tier-1 build capture wired into the indexer
+
+**Status.** Done and green; the tier-1 data path is functional end to end. N4 box still unticked: worker
+packaging, tier-2 auto-restore salvage, and the recall re-run remain.
+
+**Result.** `SemanticIndexer.IndexAsync` now tries tier-1 build capture first (via `BuildCaptureClient`) when
+`FUSE_BUILD_CAPTURE` is truthy and a worker is configured. On a successful capture, `IndexFromCaptureAsync`
+writes the worker's graph bundle (symbols, nodes, edges, routes, DI registrations, options bindings) to the
+store; the parent still does the file scan, syntax chunks, and embeddings. Any capture failure falls back to
+the MSBuildWorkspace load (tier 2), then syntax (tier 3). Default off, so indexing is unchanged unless both env
+vars are set (no silent behavior change).
+
+**Tests.** `IndexFromCaptureTests`: a synthetic capture is ingested and the store receives the symbols and the
+di_resolves_to edge, with mode `semantic`. Combined with the worker tests (parts 3-5), the full tier-1 path is
+covered: build and rehydrate, extract, serialize, spawn and deserialize, ingest.
+
+**Verification.** Three gates green (clean build 0 errors, full suite green on re-run after an unrelated
+git-stats parallelism flake, format clean). External-process args bounded; JSON source-generated; no protocol
+change; schema already at v15.
+
+**Remaining N4 work.** (a) Package `fuse-build-capture` with the global tool and locate it relative to the
+running tool so `FUSE_BUILD_CAPTURE_WORKER` is not needed in production. (b) Tier-2 auto-restore salvage (bounded
+`dotnet restore` on missing assets). (c) The localize/review recall re-run with tier-1 on, the Phase 4 gate.
+
+**Lessons.** The tier-1 ingest is a plain store-write over the deserialized bundle, exactly as predicted once the
+five crux risks were retired; the whole of N4's dominant uncertainty reduced to packaging plus a benchmark run.
+
+**Time.** ~1 session-hour.
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

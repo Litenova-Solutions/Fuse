@@ -28,6 +28,35 @@ public sealed class SemanticIndexer
     private readonly ITextEmbedder? _embedder;
     private readonly LanguageSyntaxProviderRegistry _syntaxProviders;
     private readonly GitCoChangeCollector _coChangeCollector = new();
+    private readonly BuildCaptureClient _buildCaptureClient = new();
+
+    // N4 tier-1 build capture is opt-in via FUSE_BUILD_CAPTURE (truthy) and requires the worker to be configured
+    // (FUSE_BUILD_CAPTURE_WORKER); default off, so indexing behavior is unchanged unless both are set.
+    private static readonly TimeSpan BuildCaptureTimeout = TimeSpan.FromMinutes(10);
+
+    private static bool BuildCaptureEnabled()
+    {
+        var value = Environment.GetEnvironmentVariable("FUSE_BUILD_CAPTURE");
+        return value is not null
+               && (value.Equals("1", StringComparison.Ordinal)
+                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Runs the tier-1 build-capture worker for the discovered workspace. Returns the captured graph on success, or
+    // null when capture is disabled, the worker is unavailable, there is no build target, or the build failed.
+    private async Task<Fuse.Indexing.CaptureResult?> TryBuildCaptureAsync(
+        WorkspaceDiscoveryResult discovery, CancellationToken cancellationToken)
+    {
+        if (!BuildCaptureEnabled() || !_buildCaptureClient.IsAvailable)
+            return null;
+        var buildTarget = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
+        if (buildTarget is null)
+            return null;
+        var result = await _buildCaptureClient.CaptureAsync(buildTarget, BuildCaptureTimeout, cancellationToken);
+        return result.Succeeded ? result : null;
+    }
 
     // Non-source file extensions the scanner still needs for project discovery and config indexing, beyond the
     // source extensions the language providers claim.
@@ -93,12 +122,24 @@ public sealed class SemanticIndexer
     {
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
-        var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
         var files = await ScanFilesAsync(root, cancellationToken);
 
-        SemanticIndexResult result = snapshot.SemanticLoadSucceeded
-            ? await IndexSemanticAsync(root, store, files, snapshot, cancellationToken)
-            : await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
+        // Tier 1 (build capture, oracle-grade) when enabled and available: run the out-of-process worker, which
+        // builds the repo and rehydrates the exact compilations, and write its graph bundle. Falls back to the
+        // MSBuildWorkspace load (tier 2), which itself falls back to syntax (tier 3), on any capture failure.
+        var capture = await TryBuildCaptureAsync(discovery, cancellationToken);
+        SemanticIndexResult result;
+        if (capture is not null)
+        {
+            result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
+        }
+        else
+        {
+            var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
+            result = snapshot.SemanticLoadSucceeded
+                ? await IndexSemanticAsync(root, store, files, snapshot, cancellationToken)
+                : await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
+        }
 
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         // A full pass is the final word on the mode: clear any syntax-first pending flag a prior fast pass set.
@@ -387,6 +428,53 @@ public sealed class SemanticIndexer
 
         var routeCount = syntaxRoutes.Count + graph.Routes.Count;
         return new SemanticIndexResult(mode, linkedFiles.Count, projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
+    }
+
+    // Tier 1 write path: the graph came from the out-of-process build-capture worker (exact compilations), so
+    // the symbols, nodes, edges, routes, and DI/options are taken from its bundle. Chunks, syntax routes, and
+    // embeddings are produced here from the parent's own syntax pass, exactly as the semantic path does.
+    internal async Task<SemanticIndexResult> IndexFromCaptureAsync(
+        string root,
+        IWorkspaceIndexStore store,
+        IReadOnlyList<IndexedFileRecord> files,
+        Fuse.Indexing.CaptureResult capture,
+        CancellationToken cancellationToken)
+    {
+        var linkedFiles = files
+            .Select(f => f with { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
+            .ToList();
+        await store.UpsertFilesAsync(linkedFiles, cancellationToken);
+
+        var symbols = capture.Projects.SelectMany(p => p.Symbols ?? []).ToList();
+        await store.UpsertSymbolsAsync(symbols, cancellationToken);
+
+        var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
+        await store.UpsertChunksAsync(chunks, cancellationToken);
+        await EmbedAndPersistAsync(store, chunks, cancellationToken);
+        await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
+
+        // Nodes before edges so the edge foreign keys resolve, then the semantic routes/DI/options from the bundle.
+        var nodes = capture.Projects.SelectMany(p => p.Nodes ?? []).ToList();
+        var edges = capture.Projects.SelectMany(p => p.Edges ?? []).ToList();
+        var semanticRoutes = capture.Projects.SelectMany(p => p.Routes ?? []).ToList();
+        var registrations = capture.Projects.SelectMany(p => p.DiRegistrations ?? []).ToList();
+        var bindings = capture.Projects.SelectMany(p => p.OptionsBindings ?? []).ToList();
+        await store.UpsertNodesAsync(nodes, cancellationToken);
+        await store.UpsertEdgesAsync(edges, cancellationToken);
+        await store.UpsertRoutesAsync(semanticRoutes, cancellationToken);
+        await store.UpsertDiRegistrationsAsync(registrations, cancellationToken);
+        await store.UpsertOptionsBindingsAsync(bindings, cancellationToken);
+
+        // Build capture shares the real build's inputs, so a project with residual compile errors is graph-grade
+        // (partial); a clean capture across every project is the oracle-grade semantic tier.
+        var mode = capture.Projects.Any(p => p.ErrorCount > 0) ? "partial" : "semantic";
+        var diagnostics = new List<DiagnosticRecord>
+        {
+            new(DiagnosticSeverity.Info, "build-capture",
+                $"Tier-1 build capture: {capture.Projects.Count} project(s), {symbols.Count} symbols, {edges.Count} edges."),
+        };
+        var routeCount = syntaxRoutes.Count + semanticRoutes.Count;
+        return new SemanticIndexResult(mode, linkedFiles.Count, capture.Projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
     }
 
     private async Task<SemanticIndexResult> IndexSyntaxAsync(

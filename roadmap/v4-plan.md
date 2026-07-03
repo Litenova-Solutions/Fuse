@@ -2302,6 +2302,31 @@ build's inputs), and the abstention contract handles the non-oracle case honestl
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 G2 (docs): the analyzer coverage table and contribution recipe
+
+**Status.** Docs deliverable done. Box left unticked: the outward-facing community contribution program (the
+public on-ramp, issue templates, and any coverage bounty) is a launch activity, not a code change, and is out
+of scope for an autonomous engineering session.
+
+**Result.** Added `site/content/docs/internals/extending/semantic-analyzer.mdx` (linked in the Extending
+section's `meta.json`): an honest coverage table of the twelve shipped analyzers, each with the framework or
+pattern it covers and the edge or record it produces (verified against the edge-kind constants in source:
+`di_resolves_to`, `implements`, `inherits`, `references`, `tests`, `di_decorates`, routes, options, hosted
+services, EF Core), plus the four-step recipe to contribute an analyzer (implement `ISemanticAnalyzer`, register
+in `SemanticAnalysisRunner.CreateDefault()`, add a fixture and a Suite A golden edge, keep the gates green) and
+the honesty rules (emit an edge only when the symbols resolve, weight a soft signal below a hard one, measure
+precision via `--corpus-sample`). It states plainly that the semantic tier is C#/Roslyn-only and that an
+analyzer sees only indexed source, so the picture is not overclaimed.
+
+**Verification.** Docs-only change (only `site/` and the roadmap/changelog); the .NET build, test, and format
+gates are unaffected and were green at the preceding commit. ASCII-clean. The table's edge names were checked
+against the analyzer source, not asserted from memory.
+
+**Remaining G2 work.** The community program itself (a launch and governance activity), and any future analyzer
+contributions that extend the table.
+
+**Time.** ~0.5 session-hours.
+
 ### 2026-07-03 R3 (part): the ambient availability header
 
 **Status.** Done and green. The R3 box stays unticked: the full tool-surface reshape (the typed-union router

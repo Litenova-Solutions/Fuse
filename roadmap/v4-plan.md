@@ -2302,6 +2302,41 @@ build's inputs), and the abstention contract handles the non-oracle case honestl
 
 **Time.** ~1.5 session-hours.
 
+### 2026-07-03 R1 Suite F: the fuse_check honesty gate (checkgate)
+
+**Status.** Done and green. The R1 box stays unticked: the repair-packet half (R6 part 2, structured fixes
+on R1's diagnostics) and the resident-compilation fast path remain.
+
+**Result.** Added `CheckGateSuite` (`fuse eval checkgate`, `results/checkgate.json`), Suite F: the false-green
+and false-red gate for `fuse_check`. It builds a small self-contained compilation with raw Roslyn (no MSBuild,
+no Basic.CompilerLog, so it runs everywhere and cannot hit the B1 assembly conflict) and runs a battery of
+single-file edits each with a known-correct verdict, three that must stay clean (an equivalent rewrite, an
+added valid overload, a comment-only change) and five that must be flagged (missing member CS1061, wrong
+return type CS0029, undefined type CS0246, a syntax error, an init-only assignment CS8852). Each edit replaces
+one document's syntax tree and is classified with the exact shipped `CheckResult.IsClean` rule, so the gate
+measures the classification contract the tool ships, not a proxy. An abstention counts as neither a false
+green nor a false red, matching the oracle's honesty contract.
+
+**Result numbers.** 8 of 8 edits classified correctly: false-green 0, false-red 0, abstained 0. GATE: PASS.
+
+**Tests.** `CheckGateSuiteTests` (the gate passes with no false green and no false red; every case scores 1.0).
+Full suite green (Fuse.Cli 82, Fuse.Semantics 110, worker 3, plus the rest).
+
+**Verification.** Three gates green (build 0 errors, full test suite exit 0, format exit 0). The suite runs
+via the real CLI (`fuse eval checkgate`) and wrote `results/checkgate.json`. The dominant failure mode a
+speculative typecheck can have (a false green that ships a broken change) is now measured, not asserted.
+
+**Scope choice.** The offline gate is the in-process classification measure, which is deterministic and needs
+no provisioning. The tier-1 end-to-end path (the out-of-process build-capture worker) is exercised by
+`BuildCaptureCheckTests`; the suite records the tier-1 arm as skipped when no `FUSE_BUILD_CAPTURE_WORKER` is
+configured rather than fabricating a number for it, per the never-weaken-a-number rule.
+
+**Remaining R1 work.** Repair packets (turn a diagnostic into a structured, apply-ready fix suggestion, the
+R6-part-2 half), and the resident-compilation fast path so a warm check is sub-second rather than tracking a
+build. Both are additive on top of the shipped engine plus this gate.
+
+**Time.** ~1 session-hour.
+
 ### 2026-07-03 R7 (part 1): fuse_refactor compiler-executed rename
 
 **Status.** Done and green (rename). Box left unticked: the second operation (change-signature) and the

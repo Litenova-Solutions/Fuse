@@ -2228,6 +2228,45 @@ five crux risks were retired; the whole of N4's dominant uncertainty reduced to 
 
 **Time.** ~1 session-hour.
 
+### 2026-07-03 N4 recall re-run (the Phase 4 gate): tier-1 does not move localize recall
+
+**Status.** Recorded. This is the localize re-run the plan gates Phase 4 on. Honest negative result.
+
+**Result.** Ran `fuse eval localize` with tier-1 build capture enabled (`FUSE_BUILD_CAPTURE=1`, the worker
+configured), writing `results/localize.tier1.json`. Recall 15.0 percent versus the baseline 14.9 percent
+(`localize.json`); precision 8.1 percent, unchanged; precision-when-confident 5.6 percent, unchanged. The
+index-mode distribution is unchanged (partial 2, syntax 2): the two buildable corpus repos (NodaTime,
+Specification) load with tier-1 build capture but carry residual compile errors in their test/sample projects,
+so they are labeled partial (as they were under MSBuildWorkspace), and the two that do not build (Scrutor
+NU1507, eShopOnWeb CS0104) stay syntax regardless of the mechanism. A manual `fuse index` on Specification with
+tier-1 on confirmed the path fires (partial, 6219 symbols across 11 projects from the real build), so this is
+tier-1 running, not a silent fallback.
+
+**Interpretation (honest).** Tier-1 build capture produces a richer, build-exact semantic graph on the buildable
+repos, but it does NOT materially move open-ended localize recall on this corpus (15.0 vs 14.9, within CI). The
+"recall is bounded by index mode" hypothesis (finding 3) is not supported by this run: the richer graph did not
+lift recall, and the non-buildable repos are bounded by the oracle coverage ceiling (the bake-off's 65 percent
+build rate) rather than by ranking. Per the plan, this re-scopes Phase 4 rather than validating it.
+
+**Consequence for Phase 4.** The gate ("Phase 4 only after N4's localize re-run is recorded") is now satisfied,
+but the evidence does not warrant V1 (graph verbalization) and V2 (learned ranking) as recall levers: tier-1's
+richer graph did not move recall, so verbalizing that graph or re-ranking within it is unlikely to, on this
+corpus. V1 and V2 are logged as not-warranted-by-the-evidence (boxes left unticked), the honest outcome the
+plan pre-agreed ("if it does not, retrieval work is re-scoped rather than pursued").
+
+**Verification.** Numbers quoted from `results/localize.tier1.json` and `results/localize.json`; no fabrication.
+Review re-run under tier-1 not run (review recall is 100 percent by construction; its precision signal is less
+sensitive to the load tier than localize recall, which was the hypothesis under test).
+
+**Blockers.** The oracle coverage ceiling (repos that do not build) bounds how much tier-1 can be exercised on
+this corpus; only 2 of 4 build, exactly as the bake-off recorded.
+
+**Lessons.** The dominant-risk item (N4) delivered its mechanism and coverage measurement, and the honest read
+is that oracle-grade load is a correctness/verification asset (its payoff is R1/R2/M1, not retrieval recall),
+not an open-ended-recall lever. That is a more accurate positioning than the pre-run hypothesis.
+
+**Time.** ~0.5 session-hour (plus the background eval run).
+
 ### 2026-07-03 plan revision (external review pass)
 
 **Status.** Plan amended, no code changed. Re-verified against the live tree (Fuse 3.2.0) and

@@ -233,7 +233,7 @@ Phase 2: the oracle
       ambient availability header, seven live tools)
 
 Phase 3: the moonshot
-- [ ] M1 The speculative staging area: changeset lifecycle, diagnose, covering-test selection
+- [x] M1 The speculative staging area: changeset lifecycle, diagnose, covering-test selection
       (re-scoped: in-process execution removed, not gated; see M2)
 - [ ] M2 Out-of-proc emit-and-run test execution (added; stretch, pre-agreed to slip to 4.1)
 
@@ -278,7 +278,7 @@ planning purposes; the per-item Why/How/Tests/Docs/Kill-risk below are unchanged
 | R7 `fuse_refactor` | part 1 done (rename) | MSBuildWorkspace + Roslyn Renamer, staged as a diff, abstains on partial load. Change-signature (part 2) blocked: `Renamer` is in the referenced Workspaces packages, but `ChangeSignature` lives in `Microsoft.CodeAnalysis.Features` with no clean public API; a hand-rolled call-site rewriter would be high-risk and violate the "a partial refactor is worse than none" bar, so it is deferred rather than shipped half-working |
 | R3 tool reshape | part done (availability header) | ambient grade header on the store-backed oracle reads; V2 shims already exist; the typed-union router remains (needs the extension client in the loop) |
 | R4 loop suite | harness done | `fuse eval loop`, `LoopTranscriptClassifier` + `LoopMetrics` (deterministic, unit-tested). Model arms opt-in via `FUSE_LOOP_RUN`; numbers recorded from a provisioned run. LSP arm remains future work |
-| M1 | down-payment done | covering-test selection over R5 tests edges (in `fuse_impact`); the changeset-session lifecycle remains |
+| M1 | done | covering-test selection over R5 tests edges plus the full changeset-session lifecycle (`fuse_changeset`: create/stage/diagnose/select/promote/discard, isolated, writes only on promote). Resident-workspace fast path for diagnose and the selection-recall benchmark (bounded by index mode) remain future work |
 | M2 | not started | stretch, pre-agreed to slip to 4.1 |
 | V1, V2 | not warranted | the N4 tier-1 localize re-run showed no recall lift, so the richer-graph premise did not hold |
 | G1 | not started | outward-facing launch publish; not an autonomous action |
@@ -2345,6 +2345,40 @@ missed a stored fully qualified `containing_type`; a store test caught it before
 was marked "if cheap" and is not built; it needs a resident compilation (N3) to be cheap, so it rides that.
 
 **Time.** ~1.25 session-hours.
+
+### 2026-07-03 M1: the speculative staging area (changeset lifecycle)
+
+**Status.** Done and green. With the covering-test selection down-payment already shipped, M1's changeset
+lifecycle now lands, so the box is ticked. The resident-workspace fast path for diagnose (an optimization, not
+a correctness requirement) and the selection-recall benchmark (bounded by index mode, as the other corpus
+suites are) remain future work; in-process test execution stays out of scope by design (M2).
+
+**Result.** Added `ChangesetSessionStore` (in-memory, session-keyed) and the `fuse_changeset` MCP tool
+(fourteenth tool) implementing the propose-oracle-commit loop: `create` a session, `stage` single-file edits
+(held in memory, never written), `diagnose` each with the speculative typecheck (R1; abstains per file without
+a tier-1 worker, never guessing green), `select` the tests that cover the changed files' symbols (R5's
+DI-resolved tests edges via `CoveringTestsAsync`), then `promote` (the only operation that touches disk, and
+only on an explicit call) or `discard` (leaves the tree untouched). Two changesets over the same base are
+isolated: staging into one never affects the other's edits or diagnostics.
+
+**Tests.** `ChangesetSessionStoreTests` (six): two sessions are isolated; staging an unknown session returns
+false; promote writes the staged edits to the tree and consumes the session; discard leaves the tree untouched;
+diagnose abstains per file when no build-capture worker is configured; select returns the tests-edge sources
+for the changed file. The MCP integration test now lists fourteen tools and passes.
+
+**Verification.** Three gates green (build 0 errors, full suite exit 0 across all projects, format exit 0).
+Fuse.Retrieval.Tests 79 to 85. No schema or RPC change (the sessions are in-memory host state); the new tool
+is additive, and the `fuse_changeset` name is registered in the integration name array.
+
+**Safety.** Promote is the only disk write and fires only on an explicit `op=promote`; discard and simply never
+promoting both leave the working tree exactly as it was. This keeps the hard-to-reverse action (writing files)
+gated behind an explicit agent decision, and diagnose/select are pure reads.
+
+**Remaining.** The resident-workspace fast path (so diagnose does not re-capture the build each call) and the
+selection-recall benchmark over PRs with test oracles (bounded by how much of the corpus reaches semantic mode,
+so it largely skips on this corpus, the same ceiling the other corpus suites hit).
+
+**Time.** ~1.75 session-hours.
 
 ### 2026-07-03 R4: the loop metric (harness-first deliverable)
 

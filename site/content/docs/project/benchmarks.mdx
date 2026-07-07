@@ -1,9 +1,9 @@
 ---
 title: Benchmarks
-description: Reproducible measurements of Fuse as a Roslyn-backed .NET semantic context engine, scored on five suites over a pinned corpus of real .NET repositories, with honest reporting of where Fuse loses.
+description: Reproducible measurements of Fuse as the Roslyn-backed compiler oracle for .NET agents, scored on suites over a pinned corpus of real .NET repositories, with honest reporting of where Fuse loses.
 ---
 
-Fuse is a Roslyn-backed .NET semantic context engine with a warm persistent index. This page reports what it does on real .NET codebases, judged by one question: can it resolve .NET wiring, scope a change with precision, help an agent gather the right files, and avoid returning junk on a low-signal query. The yardstick is the semantic engine, not tokens saved; token efficiency is a property of the scoped output (a pull request's context arrives in a median 958 tokens), not the headline.
+Fuse is the Roslyn-backed compiler oracle for .NET coding agents, working from a warm persistent index. This page reports what it does on real .NET codebases, judged by one question: can it verify an edit honestly, resolve .NET wiring, scope a change with precision, help an agent gather the right files, and avoid returning junk on a low-signal query. The yardstick is the compiler-grade engine, not tokens saved; token efficiency is a property of the scoped output (a pull request's context arrives in a median 958 tokens), not the headline.
 
 Three readers are served below. A stakeholder can read the suite headlines and the honest-reporting section. A new engineer can follow the reproduction steps and run a suite. A maintainer can read each suite's method, sample, index-mode distribution, and the cases where Fuse is weak.
 

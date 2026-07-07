@@ -72,6 +72,29 @@ All numbers come from `tests/benchmarks/results` (the recorded data) and the ben
 - The product version lives in the codebase, not in the git tag. `Directory.Build.props` `<Version>` is the single source of truth for every .NET assembly; the VS Code extension (`ext/vscode/package.json`), the MCP registry manifest (`mcp-registry/server.json`), and the docs site (`site/package.json`) carry the same number. Bump all of them with `build/set-version.ps1 <version>`, never by hand one at a time. `build/verify-version.ps1` fails CI if the packages disagree, and on a release it fails if the tag does not match the codebase version.
 - One tag releases everything. The flow is: run `build/set-version.ps1 X.Y.Z`, commit, then push a matching `vX.Y.Z` tag. That single tag triggers the NuGet publish (`publish.yml`), the GitHub release binaries (`release.yml`), the MCP registry (`mcp-registry.yml`), and the VS Code extension (`ext-release.yml`, which builds the six platform VSIXes and publishes them to the VS Code Marketplace and Open VSX when the `VSCE_PAT` / `OVSX_PAT` secrets are set, otherwise it just uploads the VSIXes as artifacts). Every one of these verifies the tag against the codebase version first, so a mismatched tag fails the release rather than shipping the wrong number. There is no separate extension tag; the old `ext-v*` trigger is retired.
 
+## Working a plan item
+
+Forward work is organized as a dependency-ordered program in [roadmap/v4.1-plan.md](roadmap/v4.1-plan.md). That file is the execution law; this section is the pointer plus the guardrails inline so they are read before any edit.
+
+- **Reading order for a fresh session.** The plan's Execution protocol section in full, then its Decision records, its Metrics dictionary, its Master checklist (the single source of item status), then the item you are about to work including its Preconditions and Gate.
+- **Item lifecycle.** Status lives only in the Master checklist: `[ ]` todo, `[>]` in progress, `[x]` done (gate recorded green in the progress log), `[!]` blocked (progress log names the blocker), `[-]` descoped (progress log names the written decision). Never record status inside item bodies.
+- **Selection rule.** Work the checklist top to bottom; an item may start only when every dependency in its `depends:` list is `[x]`. If the next todo is blocked, take the next todo whose dependencies are met and record why you skipped.
+- **Per-item procedure.** Run every Precondition and record each finding (file, line, command output) in the progress-log entry before the first edit. Implement within the Design constraints and Do-not lists (they are decisions, not suggestions). Land engine plus tests plus docs plus validation together. Then run the three gates (`dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release --no-build`, `dotnet format Fuse.slnx --verify-no-changes`) plus the item's Validation commands, and meet the item's Gate with a recorded artifact. On a gate miss, apply the item's named Fallback and record it; never reinterpret a gate to pass it. Write the progress-log entry, update the checklist state, then move on.
+
+Standing guardrails (violations are defects):
+
+- **Defaults are the product.** Nothing ships default-off without a named promotion gate; benchmark runs use shipping defaults unless the item is an explicit A/B.
+- **No silent tails.** If scope must split mid-item, add the remainder to the Master checklist as its own gated item in the same session, or descope it in writing.
+- **Latency through product entry points only** (the MCP tool layer or the CLI), never internal methods.
+- **Behavior changes are named** in CHANGELOG (defaults, throw behavior, tool output shape, on-disk formats), with the migration (rebuild, reconnect, reconfigure).
+- **Numbers are sourced.** Quote only canonical result files; after regenerating results, sweep the docs for superseded figures in the same change. Never fabricate, round, or quote a below-minimum-N model run as a headline.
+- **Model-driven suites are gated.** They refuse to run without a fresh `corpus-health.json` meeting the C4 minimums.
+- **Tests must actually run.** A new test the test command does not discover is dead; confirm the count went up.
+- **The server never writes the working tree** except through the one explicitly named apply path (plan Decision D2). Watchers, indexers, and hooks are read-only on the tree.
+- **Maintainer-only actions** (tagging, publishing, naming public repos, commercial decisions) are marked `[maintainer]`; agents prepare, humans pull the trigger.
+
+The progress-log entry format (append to the log at the end of the plan file): date and item id and title, Preconditions (each check, finding, file:line refs), Shipped, Commands (with pasted output), Numbers (each with its result file), Deviations, Gate (criterion -> PASS or FAIL plus fallback).
+
 ## Writing Style (docs and prose)
 
 - Plain ASCII only. No em dashes, no emoji.

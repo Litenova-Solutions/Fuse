@@ -2,6 +2,14 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 3.0 is a product overhaul; backward compatibility with 2.x output, commands, and the MCP tool surface is not a goal.
 
+## [Unreleased] - v4.1 program (the resident verified-edit runtime)
+
+The forward program that inverts the 4.0 order: substrate first, tools second, proof third. See `roadmap/v4.1-plan.md` for the full item breakdown. Entries land wave by wave.
+
+### Changed
+
+- **Repositioned the product identity to the compiler oracle (X1).** The README, the docs start pages (`index`, `what-is-fuse`, `why-fuse`, `connect-your-ai`), and the benchmarks page now lead with the verified-edit identity: Fuse typechecks a proposed edit before it lands (`fuse_check`), computes a change's blast radius (`fuse_impact`), stages compiler-executed refactors as diffs (`fuse_refactor`), and resolves what the code actually runs, with a grade on every answer and honest abstention when it cannot answer at compiler grade. Scoped, reduced context and ranked retrieval are reframed as the supporting machinery that feeds those answers, not the headline (Suite D recorded that per-payload reduction does not move session totals). No page states a number this program has not yet recorded. AGENTS.md gains a "Working a plan item" section carrying the execution protocol and guardrails by reference to the plan. Docs-only; no code, API, or on-disk format change.
+
 ## [Unreleased] - 4.0.0
 
 The compiler-oracle release. See `roadmap/v4-plan.md` for the full item breakdown.

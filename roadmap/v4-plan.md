@@ -15,7 +15,7 @@ pitch: Fuse gives your agent the compiler. This plan derives from an adversarial
 thesis that were verified against the live tree before it was written; each item below carries
 its own rationale (the "Why" paragraph) capturing that analysis. For the full state of the
 project (architecture, algorithms with their real constants, measured results, known issues,
-and roadmap history) read [overview.md](overview.md), which any reader can use to orient before
+and roadmap history) read [briefing.md](../briefing.md), which any reader can use to orient before
 this plan.
 
 Revision note (2026-07-03, plan rename). This document was renamed from `v3.3-plan.md` to
@@ -662,7 +662,7 @@ archived or kept as the explicit directional pre-R4 record, with the caveat writ
 file's notes and into every doc that cites it. Second, the doc citations that quote the
 superseded a1 run: precision-when-confident is 5.6 percent in the current `localize.json`, not
 9.3, and the dense-lift pairing on current files is 13.3 to 14.9 (`localize.a1-lexical.json`
-vs `localize.json`), not 13.3 to 15.1. AGENTS.md, `overview.md`, and the benchmarks page are
+vs `localize.json`), not 13.3 to 15.1. AGENTS.md, `briefing.md`, and the benchmarks page are
 swept for both.
 
 ### N5. Retire the legacy harness and obsolete code paths; migrate to one established form
@@ -1817,7 +1817,7 @@ Corrected finding-8 citations everywhere: precision-when-confident 9.3 to 5.6 pe
 (`localize.json`, 9 confident tasks), dense lift 13.3 to 14.9 percent (not 15.1), skeleton
 reduction 37-55 to 38-44 percent, `reduction.json` to `reduce.json`. Annotated `agent.json`'s notes
 with the directional pre-R4 / retired-corpus caveat. Updated regenerated latency figures in
-AGENTS.md, overview.md, and performance.mdx (warm localize 42 ms P50, cold pass 58 s; NodaTime loads
+AGENTS.md, briefing.md, and performance.mdx (warm localize 42 ms P50, cold pass 58 s; NodaTime loads
 syntax under the current loader, consistent with the N4 bake-off).
 
 **Part 2 deferral (surfaced honestly).** N2's headline "delete `Bm25RelevanceIndex` and route the
@@ -1855,7 +1855,7 @@ to `Metrics`/`RankingSuite` (N1), the layer suites to the C# `IEvalSuite` set, a
 to `CorpusManager`. Fixed drifts: `FuseTools` XML summary corrected from "eight tools" (omitting
 `fuse_neighbors`) to nine; `OrderingApp` added to `corpus.json` as a fixture-only entry (the Suite A
 wiring ground truth, no PR history); the legacy `reduction.json` was archived under N2. Rewrote the
-benchmark readme and swept `benchmarks.mdx`, `AGENTS.md`, and `overview.md` to describe one harness
+benchmark readme and swept `benchmarks.mdx`, `AGENTS.md`, and `briefing.md` to describe one harness
 and one command surface (`fuse eval`).
 
 **Verification.** Three gates green (build 0 errors, all tests pass including Benchmarks.Tests 45 and
@@ -2160,7 +2160,7 @@ type from the wiring edges it checks).
 
 **Verification.** Three gates green (clean build 0 errors, full suite exit 0, format clean). No schema
 change beyond R5 part 1's version 15 bump (same `edges` table, a new edge_type value). Docs: `AGENTS.md`
-and `overview.md` edge-weight notes; `EdgeWeightProvider` comment updated.
+and `briefing.md` edge-weight notes; `EdgeWeightProvider` comment updated.
 
 **Blockers.** None. Selection soundness is bounded by what the reference walk and DI graph see (reflection
 and source-generator-reached tests are missed), reported as best-effort, never as complete, per the plan.

@@ -28,7 +28,7 @@
 
 Fuse is a Model Context Protocol server that makes your AI coding assistant (Claude Code, Cursor, GitHub Copilot) faster, cheaper, and more accurate on .NET code. Its one concrete edge: it understands how your code is actually wired (which service implements an interface, which handler runs a request, which action a route hits) by reading the code with Roslyn, so the assistant answers from the real graph instead of guessing from file names and grep. Context for a task arrives scoped and reduced in one call, so the agent spends fewer tokens and fewer round-trips. The same engine is also a `fuse` CLI.
 
-Full documentation: **[fuse.codes](https://fuse.codes/docs)**.
+Full documentation: **[fuse.codes](https://fuse.codes/docs)**. Contributors and roadmap planners: see [briefing.md](briefing.md) for architecture, benchmark evidence, and plan history.
 
 ## Install
 

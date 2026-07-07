@@ -1,21 +1,38 @@
 ---
 title: What is Fuse
-description: Fuse is a Roslyn-backed semantic context engine for .NET. It keeps a warm index of a workspace and resolves what code actually runs, then hands an agent the exact context a task needs.
+description: Fuse is the compiler oracle for .NET coding agents. It typechecks a proposed edit before it lands, computes a change's blast radius, stages verified refactors, and resolves what code actually runs, from a warm Roslyn graph.
 ---
 
-Fuse is a semantic context engine for .NET coding agents. It maintains a warm, persistent
-index of a workspace built with Roslyn, and answers the questions an agent really has:
-which implementation is injected for an interface, which handler processes a request,
-which endpoint serves a route, which options type binds a config section, and what a git
-diff actually impacts. It then hands the agent the exact code that task needs, reduced to
-fit the window.
+Fuse is the compiler oracle for .NET coding agents. Its thesis is that the compilation is
+the source of truth and everything else is a projection of it, so it answers an agent's
+edit-time questions from the compiler rather than from a guess. It typechecks a proposed
+edit before the agent writes it, computes the blast radius of a change, stages
+compiler-executed refactors as diffs that compile or are not handed over, and resolves
+what the code actually runs: which implementation is injected for an interface, which
+handler processes a request, which endpoint serves a route, which options type binds a
+config section, and what a git diff actually impacts. Every answer carries a grade so the
+agent knows what it is trusting, and Fuse abstains rather than guess when it cannot answer
+at compiler grade.
 
-A warm index is one that stays built between calls, in a single SQLite file at
-`.fuse/fuse.db`, so the first call pays the analysis cost and later calls are fast.
+It works from a warm, persistent index built with Roslyn: an index that stays built
+between calls, in a single SQLite file at `.fuse/fuse.db`, so the first call pays the
+analysis cost and later calls are fast.
 
-Hand it to an agent through the MCP server. For change and pull-request work, one call
-returns the changed files plus their blast radius (callers, DI consumers, route and
-request handlers, options consumers, tests) as packed context:
+Hand it to an agent through the MCP server. Before an edit, check it against the compiler
+and see what a change would break:
+
+```text
+fuse_check(path="C:/Projects/MyApp/src", file="OrderService.cs", content="<proposed edit>")
+  -> CS1061 at OrderService.cs:41: 'Order' has no member 'TotalAmount'
+     repair packet: 'Total' exists on Order; grade: oracle
+
+fuse_impact(path="C:/Projects/MyApp/src", symbol="IBasketService.Checkout")
+  -> callers, implementers, and referencing types from the typed graph
+```
+
+For change and pull-request work, one call returns the changed files plus their blast
+radius (callers, DI consumers, route and request handlers, options consumers, tests) as
+packed context:
 
 ```text
 fuse_review(
@@ -25,7 +42,8 @@ fuse_review(
 )
 ```
 
-For an open-ended task, localize to candidate files first, then plan context for them:
+For an open-ended task with no anchor to check or resolve, localization is the fallback:
+rank candidate files first, then plan context for them:
 
 ```text
 fuse_localize(path="C:/Projects/MyApp/src", task="where is the discount applied at checkout?")
@@ -45,13 +63,16 @@ fuse review ./src --changed-since origin/main --max-tokens 25000
 
 ## What It Does, in One Line
 
-Fuse resolves what .NET code actually runs and hands an agent the exact context a task
-needs, from a warm Roslyn-backed graph, instead of letting the agent open thousands of
-files to find its way around.
+Fuse gives a .NET coding agent a compiler's answer instead of a guess: it verifies an edit,
+scopes a change, and resolves what the code actually runs, from a warm Roslyn-backed graph,
+so the agent stops guessing from file names and grep and stops waiting on a full build to
+learn what it broke.
 
-A read call returns a **context plan**: a scoped set of source bodies at mixed render
-tiers, a semantic manifest, and per-file provenance, returned as an MCP tool response to
-an agent or written to a file from the CLI.
+A verify call returns a graded verdict: oracle-grade when the build-captured compilation
+answered speculatively, and an honest abstention (with the missing prerequisite named) when
+it cannot. A read call returns a **context plan**: a scoped set of source bodies at mixed
+render tiers, a semantic manifest, and per-file provenance, returned as an MCP tool response
+to an agent or written to a file from the CLI.
 
 ## Why That Matters
 
@@ -77,7 +98,8 @@ binds) to the neighborhood a task needs, and prunes the rest.
 
 ## Reduction without Losing the Surface
 
-Reduction is now the rendering step that fits context to a budget, not the product. Across
+Reduction is supporting machinery: the rendering step that fits context to a budget, not the
+product. It feeds the scoped context that verification and resolution hand back. Across
 a commit-pinned corpus of real .NET libraries, the default and `aggressive` reductions cut
 6 to 46 percent of tokens while keeping 99 to 100 percent of public types and methods. The
 **skeleton** render tier, which keeps signatures and drops bodies, removes 39 to 56 percent
@@ -95,9 +117,9 @@ Fuse ships from one package in two forms:
 
 - The **`fuse` global tool** indexes a workspace and writes context to a file from your
   terminal. Start at the [Quickstart](/docs/start/quickstart).
-- The **`fuse mcp serve` MCP server** exposes eight tools to an AI client such as Claude
-  Code, Cursor, or GitHub Copilot, so the agent requests resolved context directly.
-  See [Connect to your AI](/docs/start/connect-your-ai).
+- The **`fuse mcp serve` MCP server** exposes a set of verbs to an AI client such as Claude
+  Code, Cursor, or GitHub Copilot, so the agent verifies edits and requests resolved context
+  directly. See [Connect to your AI](/docs/start/connect-your-ai).
 
 ## What It Is Not
 

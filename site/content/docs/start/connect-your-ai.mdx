@@ -3,16 +3,16 @@ title: Connect to your AI
 description: Register Fuse with Claude Code, Cursor, or GitHub Copilot so your agent fetches scoped context directly.
 ---
 
-Fuse runs as a Model Context Protocol (MCP) server. Once registered, your agent gets
-eight tools for indexing a workspace, surveying it, localizing a task, resolving .NET
-wiring, planning context, and reviewing a change, all returning scoped, provenance-backed
-context in a single call.
+Fuse runs as a Model Context Protocol (MCP) server. Once registered, your agent gets a set
+of verbs for checking a proposed edit against the compiler, computing a change's blast
+radius, resolving .NET wiring, and planning scoped context, all returning graded,
+provenance-backed answers in a single call.
 
 You do not run `fuse mcp serve` manually for normal use. Fuse uses stdio MCP: your AI client
 launches `fuse mcp serve` as a child process when MCP is enabled, talks JSON-RPC over
 stdin/stdout, and tears the process down when the session ends. Your job is a one-time
-registration; after that the agent calls `fuse_localize`, `fuse_review`, and the rest
-whenever it needs context.
+registration; after that the agent calls `fuse_check`, `fuse_review`, and the rest
+whenever it needs an answer.
 
 ## Register in One Command
 

@@ -1,6 +1,6 @@
 # Fuse - Agent and Contributor Guide
 
-Read this before editing Fuse source or docs. It holds the durable context about the project so a session does not need it repeated in a prompt.
+Read this before editing Fuse source or docs. It holds the durable context about the project so a session does not need it repeated in a prompt. For the full project briefing (architecture, all benchmark methodology and results, roadmap history), see [briefing.md](briefing.md) at the repo root.
 
 ## What Fuse Is
 
@@ -14,6 +14,7 @@ Fuse is a .NET-native codebase context optimizer for AI-assisted development. It
 - `tests/`: unit, golden-output, and integration tests. `tests/benchmarks/`: the harness, corpus manifest, and recorded results.
 - `site/`: the documentation website (Next.js + Fumadocs), published at fuse.codes. All prose documentation lives here as MDX under `site/content/docs`.
 - `assets/`: the benchmark figure (`fuse-benchmarks.png` and `.svg`) and the chart-generating script. `mcp-registry/`: the MCP Registry server manifest.
+- `briefing.md` (repo root): full project briefing for planners (architecture, benchmarks, gaps); see also `roadmap/` for executable plans.
 - Solution file: `Fuse.slnx`.
 
 ## Build, Test, Format

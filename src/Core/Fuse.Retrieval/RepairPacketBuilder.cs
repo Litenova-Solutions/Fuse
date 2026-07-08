@@ -37,7 +37,10 @@ public sealed partial class RepairPacketBuilder
     {
         return diagnostic.Id switch
         {
-            "CS1061" => await BuildMissingMemberAsync(diagnostic, cancellationToken),
+            // CS1061 (instance member access) and CS0117 (static/type member access) share the message shape
+            // "'Type' does not contain a definition for 'Member'", so both list the receiver type's real members
+            // with the nearest names first (S2 repair-packet expansion).
+            "CS1061" or "CS0117" => await BuildMissingMemberAsync(diagnostic, cancellationToken),
             "CS0246" => await BuildUnknownTypeAsync(diagnostic, cancellationToken),
             _ => null,
         };

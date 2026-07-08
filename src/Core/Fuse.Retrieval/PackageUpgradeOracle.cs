@@ -44,6 +44,67 @@ public static class PackageUpgradeOracle
             AdditiveChanges: delta.Changes.Where(c => !c.Breaking).ToList(),
             BlindSpots: "Blind spots not in this metadata diff: reflection/dynamic usage, and repo call-site intersection (the reference graph does not track external-package call sites).");
     }
+
+    /// <summary>
+    ///     Analyzes a bump between two cached package versions, resolving each version's assembly from the local
+    ///     NuGet cache; abstains (the offline case) when a version is not cached.
+    /// </summary>
+    /// <param name="packageId">The package id (case-insensitive; the cache folder is lowercased).</param>
+    /// <param name="fromVersion">The currently referenced version.</param>
+    /// <param name="toVersion">The target (upgrade) version.</param>
+    /// <returns>The upgrade report, or an abstention when a version's assembly is not in the local cache.</returns>
+    public static PackageUpgradeReport AnalyzeCachedVersions(string packageId, string fromVersion, string toVersion)
+    {
+        var fromDll = ResolveCachedAssembly(packageId, fromVersion);
+        if (fromDll is null)
+            return PackageUpgradeReport.Abstain(packageId, $"version {fromVersion} of '{packageId}' is not in the local NuGet cache; restore it or run online");
+        var toDll = ResolveCachedAssembly(packageId, toVersion);
+        if (toDll is null)
+            return PackageUpgradeReport.Abstain(packageId, $"version {toVersion} of '{packageId}' is not in the local NuGet cache; restore it or run online");
+        return Analyze(packageId, fromDll, toDll);
+    }
+
+    /// <summary>
+    ///     Resolves a package version's main assembly from the local NuGet cache, choosing the highest-versioned
+    ///     target-framework folder under <c>lib</c> (the closest to a modern reference); returns null when absent.
+    /// </summary>
+    /// <param name="packageId">The package id.</param>
+    /// <param name="version">The package version.</param>
+    /// <returns>The assembly path, or null when the version or its assembly is not cached.</returns>
+    public static string? ResolveCachedAssembly(string packageId, string version)
+    {
+        foreach (var root in CacheRoots())
+        {
+            var versionDir = Path.Combine(root, packageId.ToLowerInvariant(), version);
+            var lib = Path.Combine(versionDir, "lib");
+            if (!Directory.Exists(lib))
+                continue;
+
+            // Prefer the DLL named after the package; else the first DLL, in the highest-sorted TFM folder.
+            var tfmDirs = Directory.GetDirectories(lib).OrderByDescending(d => Path.GetFileName(d), StringComparer.Ordinal);
+            foreach (var tfm in tfmDirs)
+            {
+                var named = Path.Combine(tfm, $"{packageId}.dll");
+                if (File.Exists(named))
+                    return named;
+                var any = Directory.EnumerateFiles(tfm, "*.dll").FirstOrDefault();
+                if (any is not null)
+                    return any;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> CacheRoots()
+    {
+        var env = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+        if (!string.IsNullOrEmpty(env) && Directory.Exists(env))
+            yield return env;
+        var profile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+        if (Directory.Exists(profile))
+            yield return profile;
+    }
 }
 
 /// <summary>The NuGet upgrade oracle's report for one package bump (F3).</summary>

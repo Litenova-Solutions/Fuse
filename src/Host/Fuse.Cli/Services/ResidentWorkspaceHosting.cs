@@ -37,6 +37,7 @@ public static class ResidentWorkspaceHosting
     /// </summary>
     /// <param name="root">The absolute repository root the host serves.</param>
     /// <param name="watcher">The host's file watcher; its <see cref="DebouncedFileWatcher.BatchChanged" /> drives updates.</param>
+    /// <param name="indexer">The semantic indexer the registry projects resident edits through into the store.</param>
     /// <param name="log">A sink for non-fatal diagnostics (stderr), or null.</param>
     /// <param name="cancellationToken">The host's lifetime token.</param>
     /// <returns>

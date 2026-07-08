@@ -349,6 +349,43 @@ public sealed class ResidentWorkspaceTests
         }
     }
 
+    [Fact]
+    public async Task ResidentEmit_writes_the_assembly_and_resolves_reference_paths()
+    {
+        // T1: the emit-to-scratch half. The emitted assembly lands in the scratch dir and its reference paths (the
+        // dependency closure the runner materializes) resolve to real files.
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        var scratch = Path.Combine(work, "scratch");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
+            var output = ResidentEmit.EmitToDirectory(resident.Projects.First(), scratch, CancellationToken.None);
+
+            Assert.NotNull(output);
+            Assert.True(File.Exists(output!.AssemblyPath), "emitted assembly not on disk");
+            Assert.NotEmpty(output.ReferencePaths);
+            Assert.All(output.ReferencePaths, p => Assert.True(File.Exists(p), $"reference not found: {p}"));
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
     // Writes a fixture project with the .NET analyzers enabled, a static-able instance method that CA1822 flags,
     // and an .editorconfig carrying the given rule-severity line, so a test controls whether the rule fires.
     private static async Task WriteAnalyzerFixtureAsync(string work, string editorConfigSeverityLine)

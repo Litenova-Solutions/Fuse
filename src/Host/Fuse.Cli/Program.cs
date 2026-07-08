@@ -27,7 +27,6 @@ Cli.Ext.ConfigureServices(services =>
     services.AddSingleton<McpInstallService>();
     services.AddTransient<McpServeCommand>();
     services.AddTransient<ReduceCommand>();
-    services.AddTransient<ModelsCommand>();
 });
 
 await Cli.RunAsync<FuseCliCommand>(args);

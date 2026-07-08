@@ -61,11 +61,14 @@ public sealed class RankingSuite : IEvalSuite
             return Skipped(notes);
         }
 
-        var configs = new (string Label, bool UseEmbedder, bool Centrality, bool CoChange)[]
+        // The dense channel was retired (K1); every config now ranks on the lexical channel. The three configs
+        // isolate the priors: "lexical" is the bare lexical channel, "default" is the shipping default (centrality
+        // plus co-change), and "default-no-cochange" isolates the co-change prior for re-adjudication.
+        var configs = new (string Label, bool Centrality, bool CoChange)[]
         {
-            ("lexical", false, false, false),
-            ("default", true, true, true),
-            ("default-no-cochange", true, true, false),
+            ("lexical", false, false),
+            ("default", true, true),
+            ("default-no-cochange", true, false),
         };
 
         // config label -> per-task ranked metrics
@@ -93,9 +96,7 @@ public sealed class RankingSuite : IEvalSuite
                 var repoTasks = options.Limit > 0 ? repo.Tasks.Take(options.Limit).ToList() : repo.Tasks;
                 foreach (var config in configs)
                 {
-                    // The lexical config forces the embedder off; the others use whatever the run supplied.
-                    var embedder = config.UseEmbedder ? options.Embedder : null;
-                    var engine = new SemanticRetrievalEngine(store, _changeSource, embedder);
+                    var engine = new SemanticRetrievalEngine(store, _changeSource);
                     foreach (var task in repoTasks)
                     {
                         cancellationToken.ThrowIfCancellationRequested();

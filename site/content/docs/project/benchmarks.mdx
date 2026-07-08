@@ -94,31 +94,24 @@ Against an adjudicated reading set (the support files a reviewer must read beyon
 
 ## Suite C: open-ended localization (the weakest mode)
 
-Suite C is the open-ended floor. It gives `fuse localize` only a PR title, with no Git base, and asks it to find the changed files from the title text alone. This is the hardest mode and the one where Fuse is weakest. The dense channel is on by default (a small local embedding model, fetched once and cached, then offline); when it is absent the path falls back to a deterministic lexical floor. The retrieval mechanism (subword identifier indexing, stemming, a comment bridge, the dense channel, and the structural priors) is described in [Retrieval Internals](/docs/internals/scoping-internals).
+Suite C is the open-ended floor. It gives `fuse localize` only a PR title, with no Git base, and asks it to find the changed files from the title text alone. This is the hardest mode and the one where Fuse is weakest. Retrieval is the lexical channel (the dense embedding channel was retired in v4.1; see the note below). The retrieval mechanism (subword identifier indexing, stemming, a comment bridge, and the structural priors) is described in [Retrieval Internals](/docs/internals/scoping-internals).
 
-Over the 53 PRs (title only, restore on, dense on by default):
+Over the 53 PRs (title only, restore on):
 
 | Metric | Value |
 |--------|------:|
-| Changed-file recall | about 15% |
+| Changed-file recall | 15.0% |
 | Precision | 8.1% |
-| Median returned tokens | 1,033 |
+| Median returned tokens | 1,049 |
 | Low-signal detection F1 | 1.00 |
-| False-rejection on answerable | 0.0% |
+| False-rejection on answerable | 0.0% (0 of 52) |
 | Precision when confident | 5.6% (9 tasks) |
 
-By bucket: identifier-rich 21 percent, natural-language domain 17 percent. The localize main-checkout index modes are partial 2, syntax 2 (NodaTime and Specification partial; Scrutor's NU1507 conflict and eShopOnWeb's main checkout load syntax), so the recall ceiling here is index mode, not the retrieval levers.
+By bucket: identifier-rich 19 percent, natural-language domain 17 percent. The localize main-checkout index modes are partial 2, syntax 2 (NodaTime and Specification partial; Scrutor's NU1507 conflict and eShopOnWeb's main checkout load syntax), so the recall ceiling here is index mode, not the retrieval levers.
 
-The dense channel is the main recall lever on this path. Against the lexical fallback (the same 53 PRs with the embedding model disabled):
+### The dense channel was retired (v4.1)
 
-| Metric | Lexical fallback | Dense (default) |
-|--------|-----------------:|----------------:|
-| Overall changed-file recall | 13.3% | 14.9% |
-| natural-language domain bucket | 14% | 17% |
-| identifier-rich bucket | 20% | 21% |
-| False-rejection on answerable | 5.8% | 0.0% |
-
-Dense lifts the natural-language-domain bucket (prose titles that share no tokens with the code, the bucket it targets) and removes the false rejections, because every answerable query then carries some dense signal. The trade is a precision cost where dense pulls a few semantically-near-but-wrong files into the answered set on this small, mostly-syntax corpus; the graded cutoff is the counterweight, and a corpus that loads more semantically is expected to widen the gain.
+Earlier releases ran a dense embedding channel (a small local all-MiniLM-L6-v2 model) on by default. Its recorded lift did not pay for a 23 MB model download, an index-time embedding step, and a supply-chain surface: on this corpus dense reached 14.9 percent overall recall against the lexical fallback's 13.3 percent, and its only clear win was removing the lexical path's false rejections. In v4.1 the channel was deleted and the tool carries no model. The false rejections were recovered instead by lowering the signal-sufficiency floor (the lexical-only path now grades those three answerable queries as partial rather than refusing them), which held overall recall at 15.0 percent with false rejection back to 0.0 percent, on the lexical channel alone.
 
 The signal-sufficiency contract is why the precision metrics hold despite the low recall. Because Fuse runs as an MCP server in a loop with a model, the answer to a low-signal request is not a low-precision list, it is to refuse and route: every request is graded **confident** (a candidate stands clear; return the tight set), **partial** (some signal, no clear winner; return a small flagged set plus a navigation map), or **insufficient** (no usable anchor; return only a navigation map and an explicit ask for a symbol, route, service, request, config section, or git base). The grade is computed from the candidate score distribution with no model. Correct-refusal on no-signal titles is 100 percent (low-signal detection F1 1.0), and the false-rejection rate on answerable queries stays at or under the 0.10 target. With a Git base available, the routed mode is change impact (Suite B), which is where the recall and precision are; Suite C is what Fuse can do from a sentence with no base, and it is reported as the weakest mode on purpose.
 

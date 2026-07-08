@@ -36,7 +36,6 @@ public sealed class EvalCommand
     private readonly FusionOrchestrator _orchestrator;
     private readonly ProjectTemplateRegistry _templateRegistry;
     private readonly IConsoleUI _consoleUI;
-    private readonly Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? _embedder;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="EvalCommand" /> class for CLI option binding only.
@@ -54,21 +53,18 @@ public sealed class EvalCommand
     /// <param name="orchestrator">The fusion orchestrator used by the reduction suite.</param>
     /// <param name="templateRegistry">The template registry used by the reduction suite.</param>
     /// <param name="consoleUI">The console UI for output.</param>
-    /// <param name="embedder">An optional text embedder; present when a dense model is cached, enabling the dense channel.</param>
     public EvalCommand(
         SemanticIndexer indexer,
         IChangeSource changeSource,
         FusionOrchestrator orchestrator,
         ProjectTemplateRegistry templateRegistry,
-        IConsoleUI consoleUI,
-        Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? embedder = null)
+        IConsoleUI consoleUI)
     {
         _indexer = indexer;
         _changeSource = changeSource;
         _orchestrator = orchestrator;
         _templateRegistry = templateRegistry;
         _consoleUI = consoleUI;
-        _embedder = embedder;
     }
 
     /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, <c>ranking</c>, or <c>agent</c>.</summary>
@@ -115,10 +111,6 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Skip checkouts that index below semantic mode instead of scoring the fallback.")]
     public bool RequireSemantic { get; set; }
 
-    /// <summary>When set, force the deterministic lexical fallback (no dense channel), the A/B comparator for dense-by-default.</summary>
-    [CliOption(Required = false, Description = "Force the lexical fallback (disable the dense embedding channel), the A/B comparator for dense-by-default.")]
-    public bool Lexical { get; set; }
-
     /// <summary>When greater than zero, the semantics suite samples this many predicted edges per type over the corpus for adjudication.</summary>
     [CliOption(Required = false, Description = "Sample N predicted edges per type over the corpus (semantics adjudication).")]
     public int CorpusSample { get; set; }
@@ -146,7 +138,6 @@ public sealed class EvalCommand
             Rollouts: Rollouts,
             Restore: Restore,
             RequireSemantic: RequireSemantic,
-            Embedder: Lexical ? null : _embedder,
             CorpusSample: CorpusSample,
             Log: _consoleUI.WriteStep);
 

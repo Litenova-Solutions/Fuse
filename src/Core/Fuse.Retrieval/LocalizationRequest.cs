@@ -113,9 +113,6 @@ public enum CandidateSource
     /// <summary>A full-text match on a body or comment field.</summary>
     FtsBody,
 
-    /// <summary>A dense (embedding) similarity match, ranking a chunk by meaning rather than shared words.</summary>
-    Dense,
-
     /// <summary>A git co-change neighbor.</summary>
     Cochange,
 
@@ -143,7 +140,6 @@ public static class CandidateSourceWeights
         CandidateSource.RequestExact => 0.95,
         CandidateSource.ConfigExact => 0.90,
         CandidateSource.FtsSymbol => 0.75,
-        CandidateSource.Dense => 0.72,
         CandidateSource.FtsPath => 0.70,
         CandidateSource.FtsBody => 0.55,
         CandidateSource.Cochange => 0.45,

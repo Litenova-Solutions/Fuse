@@ -26,14 +26,13 @@ fuse localize ./src --task "discount calculation at checkout"
 Localization ranks candidate files and symbols for a task and returns them with reasons
 and token costs, no bodies. Ranking weights a node's declared type and member names and
 its path, so a task lands on the file that declares a concept rather than one that merely
-mentions it. The lexical channel is a field-weighted BM25 ranker whose rank is carried
+mentions it. Ranking is the field-weighted BM25 lexical channel whose rank is carried
 through to the score (a stronger lexical match ranks higher, not just present), with one
 round of pseudo-relevance feedback that pulls in files sharing the vocabulary of the top
-hits. A dense channel is on by default: a small local embedding model (fetched once and
-cached, then fully offline) ranks files by embedding similarity, so a prose task that shares
-no words with the code still finds the right file. The query string is embedded as written,
-never rephrased by a model. When the model is genuinely absent the path falls back to the
-deterministic lexical floor. Feed the candidate file paths to `fuse_context` to fetch their bodies. It
+hits, and offline subword and stem bridges so a prose word matches a compound identifier
+without any model. Ranked prose localization is the fallback mode; the precise path is an
+anchor (a symbol, route, service, request, config section, or git base) resolved through the
+graph. Feed the candidate file paths to `fuse_context` to fetch their bodies. It
 needs no prior knowledge of a change, which makes it the honest default for one-call
 context: in the
 [Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)

@@ -55,7 +55,9 @@ public sealed class SignalGraderTests
     [Fact]
     public void WeakDistributionIsInsufficient()
     {
-        var ranked = Ranked(0.25, 0.22, 0.20);
+        // The insufficient floor was lowered from 0.30 to 0.20 when the dense channel was retired (K1), so a
+        // near-empty distribution must now be below 0.20 to be judged insufficient by score.
+        var ranked = Ranked(0.18, 0.15, 0.12);
 
         Assert.Equal(SignalState.Insufficient, SignalGrader.Grade(ranked));
     }

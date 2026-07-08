@@ -97,7 +97,7 @@ public sealed class PerformanceSuite : IEvalSuite
             // Warm operations over the persistent index. Use the most common indexed symbol as a realistic,
             // repo-agnostic resolve and localize target.
             var topSymbol = (await store.ListSymbolsAsync(1, cancellationToken)).FirstOrDefault()?.Name ?? repo.Name;
-            var engine = new SemanticRetrievalEngine(store, _changeSource, options.Embedder);
+            var engine = new SemanticRetrievalEngine(store, _changeSource);
             var resolver = new SemanticResolver(store);
 
             var localizeMs = await TimeAsync(WarmIterations, async () =>

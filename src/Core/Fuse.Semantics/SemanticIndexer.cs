@@ -1,5 +1,4 @@
 using Fuse.Indexing;
-using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Semantics.Analyzers;
 
 namespace Fuse.Semantics;
@@ -25,7 +24,6 @@ public sealed class SemanticIndexer
     private readonly SyntaxRouteExtractor _routeExtractor;
     private readonly FileHashService _hashService;
     private readonly SemanticAnalysisRunner _analysisRunner;
-    private readonly ITextEmbedder? _embedder;
     private readonly LanguageSyntaxProviderRegistry _syntaxProviders;
     private readonly GitCoChangeCollector _coChangeCollector = new();
     private readonly BuildCaptureClient _buildCaptureClient = new();
@@ -81,7 +79,6 @@ public sealed class SemanticIndexer
     /// <param name="routeExtractor">The syntax route extractor.</param>
     /// <param name="hashService">The content hash service, used for project hashes.</param>
     /// <param name="analysisRunner">The semantic analyzer runner producing graph edges (semantic mode only).</param>
-    /// <param name="embedder">An optional text embedder; when available, a dense vector is persisted per chunk for dense retrieval.</param>
     public SemanticIndexer(
         DotNetWorkspaceDiscoverer discoverer,
         RoslynWorkspaceLoader loader,
@@ -90,8 +87,7 @@ public sealed class SemanticIndexer
         SyntaxSymbolExtractor syntaxSymbols,
         SyntaxRouteExtractor routeExtractor,
         FileHashService hashService,
-        SemanticAnalysisRunner analysisRunner,
-        ITextEmbedder? embedder = null)
+        SemanticAnalysisRunner analysisRunner)
     {
         _discoverer = discoverer;
         _loader = loader;
@@ -101,7 +97,6 @@ public sealed class SemanticIndexer
         _routeExtractor = routeExtractor;
         _hashService = hashService;
         _analysisRunner = analysisRunner;
-        _embedder = embedder;
         // The syntax tier is provider-driven: C# behind the seam (unchanged behavior), plus a second-language
         // syntax spike. Built internally so the existing constructor and its callers are unaffected; a later
         // change can make the provider set injectable for an external language plugin.
@@ -222,7 +217,7 @@ public sealed class SemanticIndexer
             Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-first", "Syntax-tier index served first; the semantic graph upgrades in the background.")],
             ProjectReports: []);
 
-        var result = await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken, embed: false);
+        var result = await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "1", cancellationToken);
         // Stamp the Fuse build even on the syntax-first pass so a partial index also carries provenance.
@@ -405,7 +400,6 @@ public sealed class SemanticIndexer
 
         var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
-        await EmbedAndPersistAsync(store, chunks, cancellationToken);
         // Syntax routes first (covers minimal APIs), then the semantic MVC routes overwrite by route id with
         // their resolved handler symbol ids.
         await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
@@ -431,8 +425,8 @@ public sealed class SemanticIndexer
     }
 
     // Tier 1 write path: the graph came from the out-of-process build-capture worker (exact compilations), so
-    // the symbols, nodes, edges, routes, and DI/options are taken from its bundle. Chunks, syntax routes, and
-    // embeddings are produced here from the parent's own syntax pass, exactly as the semantic path does.
+    // the symbols, nodes, edges, routes, and DI/options are taken from its bundle. Chunks and syntax routes are
+    // produced here from the parent's own syntax pass, exactly as the semantic path does.
     internal async Task<SemanticIndexResult> IndexFromCaptureAsync(
         string root,
         IWorkspaceIndexStore store,
@@ -450,7 +444,6 @@ public sealed class SemanticIndexer
 
         var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
-        await EmbedAndPersistAsync(store, chunks, cancellationToken);
         await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
 
         // Nodes before edges so the edge foreign keys resolve, then the semantic routes/DI/options from the bundle.
@@ -482,8 +475,7 @@ public sealed class SemanticIndexer
         IWorkspaceIndexStore store,
         IReadOnlyList<IndexedFileRecord> files,
         RoslynWorkspaceSnapshot snapshot,
-        CancellationToken cancellationToken,
-        bool embed = true)
+        CancellationToken cancellationToken)
     {
         // Tag each file with its language from the provider that claims its extension, so retrieval can
         // filter or blend by language; a file no provider claims (a config file) stays untagged.
@@ -531,53 +523,8 @@ public sealed class SemanticIndexer
         await store.UpsertSymbolsAsync(symbols, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
         await store.UpsertRoutesAsync(routes, cancellationToken);
-        // The syntax-first fast pass skips embedding so it serves in a few seconds; the background semantic
-        // upgrade (a full pass) does the embedding, so dense lands together with the graph.
-        if (embed)
-            await EmbedAndPersistAsync(store, chunks, cancellationToken);
 
         return new SemanticIndexResult("syntax", files.Count, 0, symbols.Count, chunks.Count, routes.Count, snapshot.Diagnostics);
-    }
-
-    // Embeds each chunk's text representation (name, signature, body) and persists the vectors, when a text
-    // embedder is available. A no-op when no model is present, which keeps retrieval lexical when no model is present: the index still
-    // builds and retrieval stays lexical. Per-chunk text is truncated so tokenization cost stays bounded.
-    private async Task EmbedAndPersistAsync(IWorkspaceIndexStore store, IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken)
-    {
-        if (_embedder is null || !_embedder.IsAvailable || chunks.Count == 0)
-            return;
-
-        var embeddings = new List<ChunkEmbeddingRecord>(chunks.Count);
-        foreach (var chunk in chunks)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var text = BuildEmbedText(chunk);
-            if (text.Length == 0)
-                continue;
-            var vector = _embedder.Embed(text);
-            if (vector.Length == 0)
-                continue;
-            embeddings.Add(new ChunkEmbeddingRecord(chunk.ChunkId, vector.Length, vector));
-        }
-
-        await store.UpsertEmbeddingsAsync(embeddings, cancellationToken);
-    }
-
-    // The text a chunk is embedded from: its declared name and signature carry the most meaning, followed by a
-    // bounded slice of the body. Bounded to keep the model's tokenization within its context window.
-    private static string BuildEmbedText(ChunkRecord chunk)
-    {
-        const int maxChars = 2000;
-        var parts = new List<string>(3);
-        if (!string.IsNullOrWhiteSpace(chunk.Name))
-            parts.Add(chunk.Name!);
-        if (!string.IsNullOrWhiteSpace(chunk.Signature))
-            parts.Add(chunk.Signature!);
-        if (!string.IsNullOrWhiteSpace(chunk.Body))
-            parts.Add(chunk.Body!);
-
-        var text = string.Join('\n', parts).Trim();
-        return text.Length > maxChars ? text[..maxChars] : text;
     }
 
     // Chunks and routes always come from syntax so full-text search works in both modes. In semantic mode the

@@ -117,7 +117,6 @@ from MIT in v4 item L1).
   - `Fuse.Plugins.Languages.CSharp` - the lexer-based C# reducer.
   - `Fuse.Plugins.Languages.CSharp.Roslyn` - the Roslyn skeleton extractor and analyzers.
   - `Fuse.Plugins.Formats.Web` - JSON/XML/CSS/SCSS/JS/HTML/Razor/YAML/Markdown/SQL minifiers.
-  - `Fuse.Plugins.Rerank.Onnx` - the dense embedding model (all-MiniLM-L6-v2, ONNX).
 - `tests/` - unit, golden-output, integration tests. `tests/benchmarks/` - the eval harness,
   corpus manifest, recorded results, peer harness.
 - `site/` - the documentation website (Next.js + Fumadocs), published at fuse.codes. All prose
@@ -713,10 +712,16 @@ library repos that load syntax scope tightly, keeping aggregate precision high.
 
 **Question:** Given only a PR title (no git base), does `fuse localize` find the changed files?
 
-**How measured:** Same 53 PRs, title-only query, top 20 candidates, `--restore`. Default run
-has dense retrieval on (`FUSE_DENSE` unset). Signal-sufficiency contract graded on every query.
-Variant `localize.a1-lexical.json`: dense off (`FUSE_DENSE=0`). Variant `localize.tier1.json`:
-`FUSE_BUILD_CAPTURE=1` with worker configured.
+> Note (v4.1 K1, 2026-07-08): the dense embedding channel and the ONNX plugin were retired.
+> Retrieval is now the lexical channel with the offline subword, stem, comment, centrality, and
+> co-change signals. The dense-on and dense-off descriptions below are the pre-K1 record; the
+> current numbers are in AGENTS.md (measured-results source of truth), the benchmarks page, and
+> `localize.json` / `ranking.json`. `FUSE_DENSE` and `FUSE_RERANK` are no longer read.
+
+**How measured:** Same 53 PRs, title-only query, top 20 candidates, `--restore`. The
+signal-sufficiency contract is graded on every query. (Pre-K1 the default run had dense on and
+`localize.a1-lexical.json` was the dense-off A/B; post-K1 the default is the lexical path.)
+Variant `localize.tier1.json`: `FUSE_BUILD_CAPTURE=1` with worker configured.
 
 **Result (default, `localize.json`):**
 

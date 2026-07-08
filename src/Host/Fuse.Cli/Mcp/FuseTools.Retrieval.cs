@@ -1026,9 +1026,16 @@ public sealed partial class FuseTools
         [Description("Include related test files.")] bool includeTests = true,
         [Description("Output format: xml (default), markdown, or json.")] string format = "xml",
         [Description("Session id; files already sent unchanged in this session are elided.")] string? sessionId = null,
+        [Description("Produce a paste-ready PR handoff packet instead of the review context; refuses while the check session has unresolved introduced errors (U2).")] bool handoff = false,
+        [Description("For handoff: the fuse_check session id to gate on (refuses while it has unresolved introduced errors).")] string checkSession = "",
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetFullPath(path);
+
+        // U2 handoff: a paste-ready PR packet, gated by the check session's red state (gate, not controller).
+        if (handoff)
+            return await BuildHandoffAsync(indexer, changeSource, root, changedSince, checkSession, cancellationToken);
+
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
         var engine = new SemanticRetrievalEngine(store, changeSource);
         var plan = await engine.ReviewAsync(
@@ -1068,6 +1075,89 @@ public sealed partial class FuseTools
         {
             return null;
         }
+    }
+
+    // The U2 handoff packet: paste-ready PR body for a change, gated by the check session's red state. It refuses
+    // (with the red summary) while the resident session has unresolved introduced errors - the gate-not-controller
+    // stance in one behavior - and otherwise emits the changed files, the public API delta, the compiler-gate
+    // status, and the named residual risk. The compiler gate is resident-only (like delta mode); with no resident
+    // check session it is reported not-gated rather than assumed green.
+    private static async Task<string> BuildHandoffAsync(
+        SemanticIndexer indexer, IChangeSource changeSource, string root, string changedSince, string checkSession, CancellationToken cancellationToken)
+    {
+        // A tool never crashes the server: any failure below (a git spawn error, an unreadable base ref) returns a
+        // graceful abstention string, not an exception. Cancellation propagates.
+        try
+        {
+            return await BuildHandoffCoreAsync(indexer, changeSource, root, changedSince, checkSession, cancellationToken);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return $"cannot build a handoff: {e.Message}. A handoff needs a readable git base ref (changedSince) and, for the red-gate, a resident check session.";
+        }
+    }
+
+    private static async Task<string> BuildHandoffCoreAsync(
+        SemanticIndexer indexer, IChangeSource changeSource, string root, string changedSince, string checkSession, CancellationToken cancellationToken)
+    {
+        var gateLine = "compiler status: not gated (no resident check session; run fuse_check --delta or re-check before merge).";
+        var current = ResidentWorkspaces.TryGetCurrentDiagnostics(root);
+        if (!string.IsNullOrWhiteSpace(checkSession) && current is not null)
+        {
+            await using var gateStore = await OpenIndexedAsync(indexer, root, cancellationToken);
+            var baseline = await gateStore.GetCheckSessionBaselineAsync(checkSession, cancellationToken);
+            if (baseline is not null)
+            {
+                var delta = DiagnosticDelta.Compute(baseline.Diagnostics, current);
+                var introducedErrors = delta.Introduced.Where(d => d.Severity == "Error").ToList();
+                if (introducedErrors.Count > 0)
+                {
+                    var red = new StringBuilder();
+                    red.AppendLine($"handoff refused: the session has {introducedErrors.Count} unresolved introduced error(s). Resolve them before handoff (Fuse gates, it does not commit for you).");
+                    foreach (var d in introducedErrors)
+                        red.AppendLine($"  {d.Id} {d.FilePath}:{d.Line}: {d.Message}");
+                    return red.ToString().TrimEnd();
+                }
+
+                gateLine = $"compiler status: green (no unresolved introduced errors in session '{checkSession}', resident-verified since {baseline.UpdatedUtc}).";
+            }
+            else
+            {
+                gateLine = $"compiler status: session '{checkSession}' has no baseline yet; establish one with fuse_check --delta, then re-check before merge.";
+            }
+        }
+
+        IReadOnlyList<string> changed;
+        try
+        {
+            changed = await changeSource.GetChangedFilesAsync(root, changedSince, cancellationToken);
+        }
+        catch (ChangeSourceException e)
+        {
+            return $"cannot build a handoff: {e.Message}. A handoff needs a git base ref (changedSince).";
+        }
+
+        var apiDelta = await BuildApiDeltaSectionAsync(changeSource, root, changedSince, cancellationToken);
+        var packet = new StringBuilder();
+        packet.AppendLine($"# Handoff: changes since {changedSince}");
+        packet.AppendLine();
+        packet.AppendLine(gateLine);
+        packet.AppendLine();
+        packet.AppendLine($"## Changed files ({changed.Count})");
+        foreach (var file in changed)
+            packet.AppendLine($"- {file}");
+        packet.AppendLine();
+        packet.AppendLine("## Public API delta");
+        packet.AppendLine(apiDelta ?? "No public or protected API change (internal-only change).");
+        packet.AppendLine();
+        packet.AppendLine("## Tests");
+        packet.AppendLine("Run fuse_test on the changed symbols for covering-test verdicts (not included in this packet).");
+        packet.AppendLine();
+        packet.AppendLine("## Residual risk");
+        packet.AppendLine("- Reflection, dynamic dispatch, and cross-boundary references by name (config strings, DI keys) are outside the compiler and graph view; verify them manually.");
+        if (apiDelta is not null)
+            packet.AppendLine("- The public API delta above may break external callers; confirm the change is intended.");
+        return packet.ToString().TrimEnd();
     }
 
     // The T2 public-surface line for impact: whether the target symbol is on the public/protected API surface, so

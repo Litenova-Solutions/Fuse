@@ -2,20 +2,22 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `519a2d3` (T0 landed at `32f4450`, the S1
-design checkpoint at `519a2d3`).
+bumps, or publishing. Tree is green and pushed at HEAD `4bd7bd6` (T0 landed at `32f4450`, the S1
+design checkpoint at `519a2d3`/`9d576bb`, S1 sub-step 1 at `4bd7bd6`).
 
 ## Current state (latest checkpoint)
 
 T0 is complete and gate-green (build-grade fallback for `fuse_check`, oracle-vs-build agreement
-100.0% on 24 mutants). S1 (the resident workspace, XL keystone) is `[>]`: its preconditions are
-verified with file:line and the one architecture decision that gates all its code is recorded (a
-resident engine needs live Compilations, but the MSBuildWorkspace and Basic.CompilerLog closures
-cannot share a process; three options analysed, closure-coexistence spike recommended first). C1
-(`fuse up`) has advance-scouted preconditions banked (the bake-off failure classification) but is
-not started - it stays `[ ]` so S1 remains the single in-progress item. Exact next action: run the
-S1 closure-coexistence spike, then implement S1 step 1 behind the surviving option; or, if a session
-budget favours a completable independent-lane item, start C1 from its banked classification.
+100.0% on 24 mutants). S1 (the resident workspace, XL keystone) is `[>]` with its first sub-step
+LANDED gate-green: the new `Fuse.Workspace` core library and its `ResidentWorkspace` rehydrate a
+tier-1 binlog once and hold the live compilations, with an in-memory overlay check (no build, no
+disk write); it references `Basic.CompilerLog` but not `MSBuildWorkspace` (the architecture decision
+made concrete). The closure question was de-risked from the worker's existing references and a real
+resolution bug (VB 4.8 floor -> 4.14 pin) was found and fixed. C1 (`fuse up`) has advance-scouted
+preconditions banked but stays `[ ]`. Exact next action: S1 step 2 (define `IWorkspaceTruth` and
+route one read tool through the resident workspace), then steps 3-6 (watcher + incremental cone
+re-analysis with the issue-5 DI-edge acceptance test first, remaining read tools, changeset overlay
+unification, and the `performance.json` latency/RSS gate); the S1 Gate is met only after those.
 
 ## Summary
 

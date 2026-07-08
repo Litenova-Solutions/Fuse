@@ -29,6 +29,19 @@ public sealed class TestFilterBuilderTests
     }
 
     [Fact]
+    public void BuildContains_selects_every_test_in_the_covering_types()
+    {
+        var filter = TestFilterBuilder.BuildContains(["Ns.OrderServiceTests", "Ns.BasketTests"]);
+        Assert.Equal("FullyQualifiedName~Ns.OrderServiceTests|FullyQualifiedName~Ns.BasketTests", filter);
+    }
+
+    [Fact]
+    public void BuildContains_of_an_empty_set_yields_an_empty_filter()
+    {
+        Assert.Equal(string.Empty, TestFilterBuilder.BuildContains([]));
+    }
+
+    [Fact]
     public void Escapes_operator_characters_in_a_parameterized_name()
     {
         // A theory/parameterized display name can carry parentheses and other operator chars; they must be escaped

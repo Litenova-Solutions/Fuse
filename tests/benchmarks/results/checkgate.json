@@ -155,9 +155,12 @@
   ],
   "notes": [
     "In-process core: a raw-Roslyn compilation, one document replaced per case, classified with the shipped CheckResult.IsClean rule.",
-    "cases 8: correct 8, false-green 0, false-red 0, abstained 0.",
-    "false-green rate 0.0%, false-red rate 0.0% (over 8 verified).",
-    "GATE: PASS (no false green, no false red among verified checks).",
+    "curated cases 8: correct 8, false-green 0, false-red 0, abstained 0.",
+    "curated false-green rate 0.0%, false-red rate 0.0% (over 8 verified).",
+    "mutation fixture SampleShop: baseline has 13 in-process error(s) [CS0234, CS0246, CS0103]; skipped, not scored (the in-process compilation cannot bind it without its full project references).",
+    "mutation fixture OrderingApp: 1000 verified cases (500 breaking, 500 neutral); false-green 0, false-red 0, abstained 0, correct 1000.",
+    "mutation totals: 1000 cases, false-green 0, false-red 0 (false-green rate 0.00%, false-red rate 0.00% over 1000 verified).",
+    "GATE: PASS (false green 0; mutation false-red rate 0.00% \u003C 1%).",
     "Tier-1 arm: skipped (no FUSE_BUILD_CAPTURE_WORKER); the worker path is covered by BuildCaptureCheckTests when provisioned."
   ]
 }

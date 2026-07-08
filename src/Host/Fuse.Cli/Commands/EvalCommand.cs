@@ -115,6 +115,10 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Sample N predicted edges per type over the corpus (semantics adjudication).")]
     public int CorpusSample { get; set; }
 
+    /// <summary>When greater than zero, the checkgate suite runs this many compiler-verified mutants per class per fixture (the scaled honesty gate).</summary>
+    [CliOption(Required = false, Description = "Run N compiler-verified mutants per class per fixture through checkgate (the scaled honesty gate).")]
+    public int Mutations { get; set; }
+
     /// <summary>An optional path to write the JSON results to. Defaults to results/&lt;suite&gt;.json under the benchmark root.</summary>
     [CliOption(Required = false, Description = "Path to write JSON results to.")]
     public string? Output { get; set; }
@@ -139,6 +143,7 @@ public sealed class EvalCommand
             Restore: Restore,
             RequireSemantic: RequireSemantic,
             CorpusSample: CorpusSample,
+            Mutations: Mutations,
             Log: _consoleUI.WriteStep);
 
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());

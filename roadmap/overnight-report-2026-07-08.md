@@ -7,12 +7,14 @@ bumps, or publishing. Tree is green and pushed at HEAD `9fc43e9` plus the wrap-u
 ## Summary
 
 Wave 0 (contract and kills) is complete: all four items landed gate-green, committed, and pushed.
-In Wave 1, H1 (mutation-derived check-honesty calibration) also landed gate-green, which unblocks
-T0. Five items complete this run, all gate-green. T0's hard design work was then done and recorded
-(both preconditions verified, integration plan, and the Decision-D2 tree-safety resolution); it is
-marked in progress with implementation pending a full-budget session, because it changes the shipped
-`fuse_check` path and a rushed shipped-path change would risk the "never game a gate" red line. S1
-(the resident workspace, XL) remains unstarted for a dedicated session (rationale below).
+In Wave 1, H1 (mutation-derived check-honesty calibration) landed gate-green and unblocked T0, and
+T0 (the verification-grade ladder) then landed gate-green in full this run: the build-grade fallback
+executor, the grade on every `fuse_check` answer, the availability-header grade clause, and the
+oracle-vs-build agreement gate. Six items complete this run, all gate-green. Notably the build-capture
+worker turned out to run in this environment once built as part of the solution, so T0's agreement
+gate (deferred by the earlier design pass as "pending a provisioned worker") was measured this run:
+100.0 percent diagnostic-identity agreement on 24 comparable OrderingApp mutants. S1 (the resident
+workspace, XL) remains unstarted for a dedicated multi-session effort (rationale below).
 
 ## Items completed (with gate verdicts)
 
@@ -23,6 +25,7 @@ marked in progress with implementation pending a full-budget session, because it
 | K3 | Close V1/V2, freeze language providers, de-headline Suite D | PASS (docs merged; site builds) | `ea4cb24` |
 | K2 | Delete the in-memory BM25F ranker and the dead classic query path | PASS (zero references; contract suite 8/8) | `9fc43e9` |
 | H1 | Mutation-derived check-honesty calibration at scale | PASS (false green 0; mutation false-red 0.00% < 1% over 1,000 verified cases) | (this run) |
+| T0 | Verification-grade ladder: build-grade fallback, verify never shrugs | PASS (3 classification tests green; oracle-vs-build agreement 24/24 = 100.0% >= 99%) | (this run) |
 
 The three standing gates (`dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release
 --no-build`, `dotnet format Fuse.slnx --verify-no-changes`) were green on every item that touched
@@ -153,9 +156,14 @@ Two are now eligible:
   as a multi-session XL and land it in the sub-steps its item text lists (extract a
   rehydration-to-resident loader first; DI-edge acceptance test first for the watcher step).
 
-Recommended: take T0 next (small-to-medium, dependency-met, completable), then commit to S1 as a
-multi-session effort. A worthwhile H1 follow-up (named, not blocking): bind the SampleShop fixture
-with per-project references so the mutation arm scores two fixtures instead of one.
+T0 is now complete (see the table). Recommended next: S1 (the resident workspace), the Wave 1
+keystone, executed as committed multi-session sub-steps (extract a rehydration-to-resident loader
+first; DI-edge acceptance test first for the watcher step). The independent-lane alternative if a
+session's budget favors a completable item is C1 (`fuse up`, depends X1, met), the first dependency-met
+non-S1 item. Named follow-ups (not blocking): (a) carry the verification grade into `fuse_review` and
+`fuse_changeset diagnose` (T0 was scoped to `fuse_check`); (b) bind the SampleShop fixture with
+per-project references so the mutation and agreement arms score two fixtures instead of one; (c) a
+larger provisioned oracle-vs-build agreement sweep beyond the 24-mutant bounded sample.
 
 ## Guardrail compliance
 

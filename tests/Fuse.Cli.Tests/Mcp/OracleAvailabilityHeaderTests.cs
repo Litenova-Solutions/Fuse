@@ -57,6 +57,20 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
         Assert.Contains("tier-1 build capture", header);
     }
 
+    [Fact]
+    public async Task Header_names_the_build_grade_fallback_when_tier1_not_configured()
+    {
+        // T0/D11: with no tier-1 worker configured, fuse_check still verifies at build-grade (a scoped dotnet
+        // build). The header names the grade the workspace can serve so a client knows the latency to expect and
+        // never reads the missing oracle as "cannot verify".
+        await _store.SetMetaAsync("index_mode", "syntax", CancellationToken.None);
+
+        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, CancellationToken.None);
+
+        Assert.Contains("tier-1 build capture not configured", header);
+        Assert.Contains("verify serves build-grade", header);
+    }
+
     public async Task DisposeAsync()
     {
         await _store.DisposeAsync();

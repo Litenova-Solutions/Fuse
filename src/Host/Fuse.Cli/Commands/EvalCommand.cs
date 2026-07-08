@@ -119,6 +119,10 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Run N compiler-verified mutants per class per fixture through checkgate (the scaled honesty gate).")]
     public int Mutations { get; set; }
 
+    /// <summary>When greater than zero and a build-capture worker is configured, checkgate runs this many mutants through both the oracle and build-grade paths and records their diagnostic-identity agreement (the T0 verify-agreement gate).</summary>
+    [CliOption(Required = false, Description = "Run N mutants through both the oracle and build-grade paths and record their diagnostic-identity agreement (the T0 verify-agreement gate; needs FUSE_BUILD_CAPTURE_WORKER).")]
+    public int VerifyAgreement { get; set; }
+
     /// <summary>An optional path to write the JSON results to. Defaults to results/&lt;suite&gt;.json under the benchmark root.</summary>
     [CliOption(Required = false, Description = "Path to write JSON results to.")]
     public string? Output { get; set; }
@@ -144,6 +148,7 @@ public sealed class EvalCommand
             RequireSemantic: RequireSemantic,
             CorpusSample: CorpusSample,
             Mutations: Mutations,
+            VerifyAgreement: VerifyAgreement,
             Log: _consoleUI.WriteStep);
 
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());

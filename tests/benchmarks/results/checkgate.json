@@ -161,6 +161,8 @@
     "mutation fixture OrderingApp: 1000 verified cases (500 breaking, 500 neutral); false-green 0, false-red 0, abstained 0, correct 1000.",
     "mutation totals: 1000 cases, false-green 0, false-red 0 (false-green rate 0.00%, false-red rate 0.00% over 1000 verified).",
     "GATE: PASS (false green 0; mutation false-red rate 0.00% \u003C 1%).",
-    "Tier-1 arm: skipped (no FUSE_BUILD_CAPTURE_WORKER); the worker path is covered by BuildCaptureCheckTests when provisioned."
+    "Tier-1 arm: build-capture worker configured; the in-process gate is the scored measure, the worker path is covered by BuildCaptureCheckTests.",
+    "verify-agreement arm: 24 OrderingApp mutants sampled, 24 comparable (oracle abstained 0, build abstained 0); diagnostic-id agreement 24/24 = 100.0%; verdict (clean/red) agreement 24/24.",
+    "T0 GATE (verify agreement): PASS (100.0% \u003E= 99% on 24 comparable mutants)."
   ]
 }

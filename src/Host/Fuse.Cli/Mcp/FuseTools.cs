@@ -232,11 +232,18 @@ public sealed partial class FuseTools
     {
         var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
         var staleRaw = await store.GetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, cancellationToken);
-        var tier1 = new Fuse.Semantics.BuildCaptureClient().IsAvailable ? "configured" : "not configured";
+        var tier1Available = new Fuse.Semantics.BuildCaptureClient().IsAvailable;
+        var tier1 = tier1Available ? "configured" : "not configured";
+        // Name the verification grade fuse_check can currently serve (T0, D11): oracle-grade when tier-1 build
+        // capture is configured, otherwise the build-grade fallback (dotnet build scoped to the owning project).
+        // The verify verb never shrugs where a project can be built; the grade names the latency to expect.
+        var verifyGrade = tier1Available
+            ? "verify serves oracle-grade"
+            : "verify serves build-grade (fuse_check runs a scoped dotnet build)";
         var freshness = int.TryParse(staleRaw, out var stale) && stale > 0
             ? $"{stale} known file(s) changed since index, results may lag the working tree"
             : "up to date";
-        return $"availability: index mode {mode}; tier-1 build capture {tier1}; {freshness}.";
+        return $"availability: index mode {mode}; tier-1 build capture {tier1}; {verifyGrade}; {freshness}.";
     }
 
     // Runs the semantic upgrade in the background on its own store handle (the foreground store is disposed when

@@ -2,9 +2,31 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `32f4450`, the S1
-design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
-C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam at `38004d2`/`69cea59`).
+bumps, or publishing. Tree is green and pushed at HEAD `13dcc66`.
+
+## T2: DONE (full item, gate PASS) - public API delta on review and impact
+
+T2 is complete end to end this session. `fuse_review` now opens its manifest with a public API delta section
+(public/protected members added, removed, or changed between the git base ref and the working tree, breaking vs
+additive), and `fuse_impact` carries a conservative, mode-aware public-surface line. Built as gate-green
+sub-steps over the two pure cores: a `git show <ref>:<path>` capability on the change detector, an `IChangeSource`
+base-content read, a purpose-built `PublicSurfaceExtractor` (syntax-only public/protected type AND member
+extraction with effective accessibility - the fix for the general extractor leaving member accessibility null),
+the `ChangedFileApiDelta` bridge, the `ChangedApiSurfaceGatherer` orchestration seam, the emitter/manifest
+threading (a nullable `ContextJsonDto.ApiDelta` field for JSON), and the conservative impact line. Docs (mcp-tools
+review+impact + out-of-scope note) and CHANGELOG swept. GATE: `fuse eval review` recorded a per-PR delta on 42 of
+53 PRs; 10 hand-adjudicated against the real base->head diff -> 10/10 agree after one disagreement (generic types
+collided under an arity-stripped FQN) was analyzed and fixed (TypeFqn now carries CLR-style arity `Foo\`1`), with a
+new test and a re-run confirming precise naming across 15 generic-heavy PRs. No false breaking flag, no missed
+public change on the set. Commits `659b114`..`13dcc66`. Follow-up (non-blocking): regenerate the canonical
+review.json under --restore so the api-delta notes land there too (the delta is syntax-based and identical under
+either mode; the Suite B headline is unaffected by this additive section).
+
+## Prior HEAD lineage (earlier this run)
+
+T0 landed at `32f4450`, the S1 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at
+`4bd7bd6`/`deb5594`/`041eb33`, C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam
+at `38004d2`/`69cea59`.
 
 ## S1: gate numbers all MET (opt-in); only the G5-gated default-on promotion remains
 

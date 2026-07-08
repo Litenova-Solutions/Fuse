@@ -7,6 +7,7 @@
     "options",
     "mcp-tools",
     "mcp-resources",
+    "latency",
     "reducers",
     "templates",
     "tokenizers",

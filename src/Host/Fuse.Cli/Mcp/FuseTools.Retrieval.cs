@@ -331,7 +331,7 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the rename.</param>
     /// <returns>The staged per-file diffs, or an explicit abstention.</returns>
     [McpServerTool(Name = "fuse_refactor", ReadOnly = true)]
-    [Description("Compiler-executed, verify-gated refactors returned as a staged diff (nothing is written to disk). operation=rename (default): rename a symbol and all its references through Roslyn (a same-named unrelated symbol is not touched). operation=add-parameter: add a trailing parameter to a method and its override/interface family, threading an explicit argument (the `argument` value) into every call site. operation=add-cancellation-token: add a CancellationToken parameter and thread an in-scope token into every call site that has one, listing token-less sites as manual follow-ups. operation=remove-parameter: remove a parameter (named by parameterName) and drop its argument at every call site, abstaining when the parameter is used in a body or a call site passes a non-trivial (possibly side-effecting) argument. operation=reorder-parameters: reorder parameters into `newOrder` (comma-separated names), abstaining if any call site uses positional arguments (only named-argument call sites are safe to reorder). operation=extract-interface: generate an interface from a class's public instance methods and properties (name it with newName, else I<Class>) and make the class implement it. The signature and type operations recompile the solution and return the diff ONLY when no new diagnostic is introduced; otherwise they abstain naming the offending sites (never a mostly-right diff). Rename and the signature ops answer only when the whole solution loads cleanly; abstain otherwise. Review the diff and re-check with fuse_check before applying.")]
+    [Description("Compiler-executed, verify-gated refactors returned as a staged diff (nothing is written to disk). operation=rename (default): rename a symbol and all its references through Roslyn (a same-named unrelated symbol is not touched). operation=add-parameter: add a trailing parameter to a method and its override/interface family, threading an explicit argument (the `argument` value) into every call site. operation=add-cancellation-token: add a CancellationToken parameter and thread an in-scope token into every call site that has one, listing token-less sites as manual follow-ups. operation=remove-parameter: remove a parameter (named by parameterName) and drop its argument at every call site, abstaining when the parameter is used in a body or a call site passes a non-trivial (possibly side-effecting) argument. operation=reorder-parameters: reorder parameters into `newOrder` (comma-separated names), abstaining if any call site uses positional arguments (only named-argument call sites are safe to reorder). operation=extract-interface: generate an interface from a class's public instance methods and properties (name it with newName, else I<Class>) and make the class implement it. operation=move-type: move a top-level type (symbol) to its own new file named after it, removing it from its current file. The signature and type operations recompile the solution and return the diff ONLY when no new diagnostic is introduced; otherwise they abstain naming the offending sites (never a mostly-right diff). Rename and the signature ops answer only when the whole solution loads cleanly; abstain otherwise. Review the diff and re-check with fuse_check before applying.")]
     public static async Task<string> FuseRefactorAsync(
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("The simple name of the symbol to rename, or the method name for a signature operation.")] string symbol = "",
@@ -390,21 +390,17 @@ public sealed partial class FuseTools
             case "extract-interface":
                 if (string.IsNullOrWhiteSpace(symbol))
                     return "Error: extract-interface needs the class (symbol).";
-                var extractResult = await new Fuse.Semantics.TypeRefactorer().ExtractInterfaceAsync(
-                    target, symbol, string.IsNullOrWhiteSpace(newName) ? null : newName, cancellationToken);
-                if (!extractResult.Changed)
-                    return $"cannot extract interface from {symbol}: {extractResult.Reason}";
-                var extractBuilder = new StringBuilder();
-                extractBuilder.AppendLine($"staged {extractResult.Summary} (verified clean; {extractResult.Diffs.Count} file(s) changed, not written to disk)");
-                foreach (var d in extractResult.Diffs)
-                {
-                    extractBuilder.AppendLine($"--- {d.FilePath} (full new content)");
-                    extractBuilder.AppendLine(d.NewText);
-                }
+                return RenderTypeRefactor(
+                    await new Fuse.Semantics.TypeRefactorer().ExtractInterfaceAsync(
+                        target, symbol, string.IsNullOrWhiteSpace(newName) ? null : newName, cancellationToken),
+                    $"extract interface from {symbol}");
 
-                extractBuilder.AppendLine();
-                extractBuilder.AppendLine("This diff verified clean (no new compile diagnostic). Review it and re-check with fuse_check before applying.");
-                return extractBuilder.ToString().TrimEnd();
+            case "move-type":
+                if (string.IsNullOrWhiteSpace(symbol))
+                    return "Error: move-type needs the type (symbol).";
+                return RenderTypeRefactor(
+                    await new Fuse.Semantics.TypeRefactorer().MoveTypeToOwnFileAsync(target, symbol, cancellationToken),
+                    $"move {symbol} to its own file");
 
             case "rename":
             case "":
@@ -429,6 +425,25 @@ public sealed partial class FuseTools
             default:
                 return $"Error: unknown operation '{operation}'. Use rename, add-parameter, or add-cancellation-token.";
         }
+    }
+
+    // Renders a type-refactor outcome (extract-interface, move-type): the staged full-file content, or the abstention.
+    private static string RenderTypeRefactor(Fuse.Semantics.TypeRefactorResult result, string what)
+    {
+        if (!result.Changed)
+            return $"cannot {what}: {result.Reason}";
+
+        var builder = new StringBuilder();
+        builder.AppendLine($"staged {result.Summary} (verified clean; {result.Diffs.Count} file(s), not written to disk)");
+        foreach (var d in result.Diffs)
+        {
+            builder.AppendLine($"--- {d.FilePath} (full new content)");
+            builder.AppendLine(d.NewText);
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("This diff verified clean (no new compile diagnostic). Review it and re-check with fuse_check before applying.");
+        return builder.ToString().TrimEnd();
     }
 
     // Renders a change-signature outcome: the staged diff plus any manual follow-up sites, or the abstention.

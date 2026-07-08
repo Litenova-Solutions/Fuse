@@ -39,6 +39,80 @@ public sealed class TypeRefactorer
         return await ExtractInterfaceInSolutionAsync(loaded.Solution, typeName, interfaceName, cancellationToken);
     }
 
+    /// <summary>
+    ///     Moves a top-level type to its own new file (named after the type, in the same folder), removing it from
+    ///     its current file, and returns the staged diff (or a named abstention). Verify-gated like the others.
+    /// </summary>
+    /// <param name="solutionOrProjectPath">The absolute path to the solution or project to load.</param>
+    /// <param name="typeName">The simple name of the type to move.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The outcome: the staged new file and the trimmed original, or an abstention with a reason.</returns>
+    public async Task<TypeRefactorResult> MoveTypeToOwnFileAsync(
+        string solutionOrProjectPath,
+        string typeName,
+        CancellationToken cancellationToken)
+    {
+        var loaded = await LoadSolutionAsync(solutionOrProjectPath, cancellationToken);
+        if (loaded.Solution is null)
+            return TypeRefactorResult.Abstain(loaded.Reason!);
+        return await MoveTypeInSolutionAsync(loaded.Solution, typeName, cancellationToken);
+    }
+
+    internal async Task<TypeRefactorResult> MoveTypeInSolutionAsync(
+        Solution solution, string typeName, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(typeName))
+            return TypeRefactorResult.Abstain("provide the type name to move");
+
+        var (type, reason) = await ResolveAnyTypeAsync(solution, typeName, cancellationToken);
+        if (type is null)
+            return TypeRefactorResult.Abstain(reason!);
+
+        var declaration = type.DeclaringSyntaxReferences.FirstOrDefault();
+        if (declaration is null || await declaration.GetSyntaxAsync(cancellationToken) is not BaseTypeDeclarationSyntax typeSyntax)
+            return TypeRefactorResult.Abstain($"'{type.Name}' is not a single type declaration in source");
+        var document = solution.GetDocument(declaration.SyntaxTree);
+        if (document is null || await document.GetSyntaxRootAsync(cancellationToken) is not CompilationUnitSyntax root)
+            return TypeRefactorResult.Abstain($"'{type.Name}' is not in a document of the loaded solution");
+
+        var siblingTypes = root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>()
+            .Count(t => t.Parent is BaseNamespaceDeclarationSyntax or CompilationUnitSyntax);
+        if (siblingTypes <= 1)
+            return TypeRefactorResult.Abstain($"'{type.Name}' is already the only top-level type in its file; nothing to move");
+
+        var baseline = await CollectErrorSignaturesAsync(solution, cancellationToken);
+
+        // The new file: the original usings, the type's namespace (file-scoped), and the type declaration.
+        var namespaceName = type.ContainingNamespace is { IsGlobalNamespace: false } ns ? ns.ToDisplayString() : null;
+        var movedType = typeSyntax.WithLeadingTrivia(SyntaxFactory.TriviaList()).WithTrailingTrivia(SyntaxFactory.TriviaList());
+        var newUnit = SyntaxFactory.CompilationUnit().WithUsings(root.Usings);
+        newUnit = namespaceName is null
+            ? newUnit.AddMembers(movedType)
+            : newUnit.AddMembers(SyntaxFactory.FileScopedNamespaceDeclaration(SyntaxFactory.ParseName(namespaceName)).AddMembers(movedType));
+        var newContent = newUnit.NormalizeWhitespace().ToFullString() + Environment.NewLine;
+
+        // The trimmed original: remove the moved type node.
+        var trimmedRoot = root.RemoveNode(typeSyntax, SyntaxRemoveOptions.KeepNoTrivia);
+        var changed = solution.WithDocumentSyntaxRoot(document.Id, trimmedRoot!);
+
+        // Add the new document in the same folder as the original.
+        var directory = document.FilePath is { } fp ? Path.GetDirectoryName(fp) : null;
+        var newPath = directory is null ? $"{type.Name}.cs" : Path.Combine(directory, $"{type.Name}.cs");
+        var newDocId = DocumentId.CreateNewId(document.Project.Id);
+        changed = changed.AddDocument(newDocId, $"{type.Name}.cs", Microsoft.CodeAnalysis.Text.SourceText.From(newContent), filePath: newPath);
+
+        var introduced = await CollectIntroducedErrorsAsync(changed, baseline, cancellationToken);
+        if (introduced.Count > 0)
+            return TypeRefactorResult.Abstain($"the change introduced {introduced.Count} new compile error(s), so it is refused: {string.Join("; ", introduced.Take(5))}");
+
+        var diffs = new List<TypeRefactorFileDiff>
+        {
+            new(newPath, newContent),
+            new(document.FilePath ?? document.Name, (await changed.GetDocument(document.Id)!.GetTextAsync(cancellationToken)).ToString()),
+        };
+        return TypeRefactorResult.Ok(type.ToDisplayString(), $"moved {type.Name} to {type.Name}.cs", diffs);
+    }
+
     internal async Task<TypeRefactorResult> ExtractInterfaceInSolutionAsync(
         Solution solution,
         string typeName,
@@ -150,8 +224,17 @@ public sealed class TypeRefactorer
             .WithBaseList(baseList);
     }
 
-    private static async Task<(INamedTypeSymbol? Type, string? Reason)> ResolveClassAsync(
-        Solution solution, string typeName, CancellationToken cancellationToken)
+    private static Task<(INamedTypeSymbol? Type, string? Reason)> ResolveClassAsync(
+        Solution solution, string typeName, CancellationToken cancellationToken) =>
+        ResolveTypeAsync(solution, typeName, t => t.TypeKind == TypeKind.Class, "class", cancellationToken);
+
+    private static Task<(INamedTypeSymbol? Type, string? Reason)> ResolveAnyTypeAsync(
+        Solution solution, string typeName, CancellationToken cancellationToken) =>
+        ResolveTypeAsync(solution, typeName,
+            t => t.TypeKind is TypeKind.Class or TypeKind.Struct or TypeKind.Interface or TypeKind.Enum, "type", cancellationToken);
+
+    private static async Task<(INamedTypeSymbol? Type, string? Reason)> ResolveTypeAsync(
+        Solution solution, string typeName, Func<INamedTypeSymbol, bool> kind, string noun, CancellationToken cancellationToken)
     {
         var matches = new List<INamedTypeSymbol>();
         var seen = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
@@ -161,15 +244,15 @@ public sealed class TypeRefactorer
             if (compilation is null)
                 return (null, $"project '{project.Name}' produced no compilation; the change would be incomplete");
             foreach (var type in EnumerateSourceTypes(compilation.Assembly.GlobalNamespace))
-                if (type.Name == typeName && type.TypeKind == TypeKind.Class && seen.Add(type))
+                if (type.Name == typeName && kind(type) && seen.Add(type))
                     matches.Add(type);
         }
 
         return matches.Count switch
         {
-            0 => (null, $"class '{typeName}' was not found in the loaded solution's source"),
+            0 => (null, $"{noun} '{typeName}' was not found in the loaded solution's source"),
             1 => (matches[0], null),
-            _ => (null, $"'{typeName}' is ambiguous ({matches.Count} classes match); disambiguate"),
+            _ => (null, $"'{typeName}' is ambiguous ({matches.Count} {noun}es match); disambiguate"),
         };
     }
 

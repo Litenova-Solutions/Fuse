@@ -83,6 +83,42 @@ public sealed class TypeRefactorerTests
     }
 
     [Fact]
+    public async Task Move_type_splits_a_multi_type_file_into_a_new_file_and_verifies_clean()
+    {
+        var solution = SolutionWith("""
+            namespace Fix;
+            public class Alpha { public int A() => 1; }
+            public class Beta { public int B() => 2; }
+            """);
+
+        var result = await new TypeRefactorer().MoveTypeInSolutionAsync(solution, "Beta", CancellationToken.None);
+
+        Assert.True(result.Changed, result.Reason);
+        Assert.Equal(2, result.Diffs.Count);
+        var newFile = result.Diffs.First(d => d.FilePath.EndsWith("Beta.cs"));
+        var original = result.Diffs.First(d => !d.FilePath.EndsWith("Beta.cs"));
+        // The new file carries Beta in its namespace; the original keeps Alpha and lost Beta.
+        Assert.Contains("namespace Fix", newFile.NewText);
+        Assert.Contains("class Beta", newFile.NewText);
+        Assert.Contains("class Alpha", original.NewText);
+        Assert.DoesNotContain("class Beta", original.NewText);
+    }
+
+    [Fact]
+    public async Task Move_type_abstains_when_the_type_is_alone_in_its_file()
+    {
+        var solution = SolutionWith("""
+            namespace Fix;
+            public class Solo { public int S() => 0; }
+            """);
+
+        var result = await new TypeRefactorer().MoveTypeInSolutionAsync(solution, "Solo", CancellationToken.None);
+
+        Assert.False(result.Changed);
+        Assert.Contains("already the only top-level type", result.Reason);
+    }
+
+    [Fact]
     public async Task Extract_interface_abstains_on_a_missing_class()
     {
         var solution = SolutionWith("namespace Fix; public class A { public int M() => 0; }");

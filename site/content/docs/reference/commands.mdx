@@ -20,7 +20,9 @@ The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace 
 | `fuse localize [path]` | Rank candidate files/symbols for a task (no bodies) | yes | first-use |
 | `fuse resolve [path]` | Resolve a service, request, route, config, or symbol | yes | first-use |
 | `fuse context [path]` | Plan and emit context for seeds (source bodies) | yes | first-use |
-| `fuse review [path]` | Review the semantic impact of a change | yes | first-use |
+| `fuse review [path]` | Review the semantic impact of a change (or `--handoff` for a PR packet) | yes | first-use |
+| `fuse impact <symbol>` | Blast radius for a symbol (or a NuGet package-upgrade break set) | yes | first-use |
+| `fuse test <symbol>` | Run the covering tests for a symbol, scoped | yes | first-use |
 | `fuse find <query>` | Exact symbol, path, or text lookup | yes | first-use |
 | `fuse diagnostics [path]` | Report index state | yes | no |
 | `fuse doctor [path]` | Diagnose the semantic load tier and per-project downgrade reasons | no | no |
@@ -87,7 +89,18 @@ Review the semantic impact of a change since a git base ref: the changed files, 
 fuse review ./src --changed-since origin/main --max-tokens 25000
 ```
 
-Accepts `--changed-since`, `--max-tokens`, `--include-tests`, `--format`, and `--plan-only`.
+Accepts `--changed-since`, `--max-tokens`, `--include-tests`, `--format`, `--plan-only`, `--handoff`, and `--check-session`. With `--handoff` it prints a paste-ready PR packet (changed files, public API delta, compiler-gate status, residual risk) instead of the review context, and refuses while the `--check-session` has unresolved introduced errors.
+
+## fuse impact
+
+Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, from the persisted semantic graph. Reads the index; builds it on first use.
+
+```text
+fuse impact OrderService --path ./src
+fuse impact --package System.Text.Json --from-version 4.7.2 --to-version 8.0.0
+```
+
+Accepts a `symbol` argument, `--path`, `--limit`, and the package-upgrade trio `--package`, `--from-version`, `--to-version` (which diffs two cached NuGet package versions' public API instead of a symbol's graph blast radius).
 
 ## fuse check, fuse gate
 

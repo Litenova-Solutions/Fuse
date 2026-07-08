@@ -40,6 +40,36 @@ public sealed class SemanticContextEmitterTests
         Assert.Contains("public class OrderService", output);
     }
 
+    [Fact]
+    public void XmlIncludesTheApiDeltaSectionWhenProvided()
+    {
+        var output = SemanticContextEmitter.Emit(
+            Plan(), Rendered(), ContextOutputFormat.Xml, root: "/repo",
+            apiDeltaSection: "public API delta: 1 BREAKING change(s), 0 additive.\n  [BREAKING] Api.Bar: removed");
+
+        Assert.Contains("public API delta: 1 BREAKING change(s)", output);
+        Assert.Contains("[BREAKING] Api.Bar: removed", output);
+    }
+
+    [Fact]
+    public void JsonPutsTheApiDeltaInItsOwnFieldNotAsRawPrefix()
+    {
+        var output = SemanticContextEmitter.Emit(
+            Plan(), Rendered(), ContextOutputFormat.Json, root: "/repo",
+            apiDeltaSection: "public API delta: none");
+
+        // The section rides a dedicated field so the payload stays valid JSON (a raw prefix would break parsing).
+        Assert.Contains("\"apiDelta\"", output);
+        Assert.StartsWith("{", output.TrimStart());
+    }
+
+    [Fact]
+    public void JsonOmitsTheApiDeltaFieldWhenAbsent()
+    {
+        var output = SemanticContextEmitter.Emit(Plan(), Rendered(), ContextOutputFormat.Json, root: "/repo");
+        Assert.DoesNotContain("\"apiDelta\"", output);
+    }
+
     private static ContextPlan Plan() =>
         new("context",
         [

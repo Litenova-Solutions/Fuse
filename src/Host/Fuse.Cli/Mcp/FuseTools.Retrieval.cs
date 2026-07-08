@@ -670,7 +670,36 @@ public sealed partial class FuseTools
         var renderer = new SemanticContextRenderer(reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
         var rendered = await renderer.RenderAsync(plan, root, cancellationToken);
         var unchanged = string.IsNullOrWhiteSpace(sessionId) ? null : sessionStore.Reconcile(sessionId, rendered.Files);
-        return SemanticContextEmitter.Emit(plan, rendered, ParseFormat(format), root, changedSince, unchanged);
+
+        var apiDeltaSection = await BuildApiDeltaSectionAsync(changeSource, root, changedSince, cancellationToken);
+        return SemanticContextEmitter.Emit(plan, rendered, ParseFormat(format), root, changedSince, unchanged, apiDeltaSection);
+    }
+
+    // The T2 public-API delta section for a review: added, removed, and changed public/protected members between
+    // the base ref and the working tree. Best-effort - a git or read failure returns null so the review payload is
+    // unaffected (the delta is an added section, not the review itself). The base side is read from the git base
+    // ref; the current side from the working tree.
+    private static async Task<string?> BuildApiDeltaSectionAsync(
+        IChangeSource changeSource, string root, string changedSince, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var changed = await changeSource.GetChangedFilesAsync(root, changedSince, cancellationToken);
+            var delta = await ChangedApiSurfaceGatherer.GatherAsync(
+                changeSource, root, changedSince, changed,
+                (relativePath, _) =>
+                {
+                    var absolute = Path.Combine(root, relativePath);
+                    return Task.FromResult(File.Exists(absolute) ? File.ReadAllText(absolute) : null);
+                },
+                cancellationToken);
+
+            return delta.Changes.Count == 0 ? null : ApiDeltaReport.Render(delta);
+        }
+        catch (ChangeSourceException)
+        {
+            return null;
+        }
     }
 
     private static ContextOutputFormat ParseFormat(string format) => format.Trim().ToLowerInvariant() switch

@@ -90,3 +90,61 @@ public sealed class CiWorkflowParserTests
         Assert.Contains("dotnet test", result.RehearsableCommands[0]);
     }
 }
+
+// G8 rehearser: scans .github/workflows and produces the parity report (no execution here, so it is deterministic).
+public sealed class CiParityRehearserTests
+{
+    [Fact]
+    public async Task Reports_the_command_sequence_and_non_rehearsable_steps_across_workflows()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-ciparity", Guid.NewGuid().ToString("N"));
+        var wf = Path.Combine(root, ".github", "workflows");
+        Directory.CreateDirectory(wf);
+        await File.WriteAllTextAsync(Path.Combine(wf, "ci.yml"), """
+            steps:
+              - run: dotnet build --configuration Release
+              - run: dotnet test --no-build
+            """);
+        await File.WriteAllTextAsync(Path.Combine(wf, "release.yml"), """
+            steps:
+              - run: dotnet pack --output ./artifacts
+              - run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_TOKEN }}
+            """);
+
+        try
+        {
+            var report = await CiParityRehearser.RehearseAsync(root, run: false, TimeSpan.FromMinutes(1), CancellationToken.None);
+
+            Assert.Equal(2, report.WorkflowsScanned.Count);
+            Assert.Contains("dotnet build --configuration Release", report.RehearsableCommands);
+            Assert.Contains("dotnet test --no-build", report.RehearsableCommands);
+            Assert.Contains("dotnet pack --output ./artifacts", report.RehearsableCommands);
+            // The secret-bearing push is named non-rehearsable, never silently dropped.
+            Assert.Single(report.NonRehearsableSteps);
+            Assert.Contains("dotnet nuget push", report.NonRehearsableSteps[0]);
+            Assert.Empty(report.ExecutionResults); // run: false
+            Assert.Null(report.Note);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task Notes_when_there_are_no_workflows()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-ciparity", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var report = await CiParityRehearser.RehearseAsync(root, run: false, TimeSpan.FromMinutes(1), CancellationToken.None);
+            Assert.NotNull(report.Note);
+            Assert.Empty(report.RehearsableCommands);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { }
+        }
+    }
+}

@@ -443,7 +443,10 @@ public sealed partial class FuseTools
                 if (target is null)
                     return "cannot verify: no solution or project found to build. fuse_changeset diagnose abstains.";
                 var diagnoses = await store.DiagnoseAsync(
-                    session, target, new Fuse.Semantics.BuildCaptureClient(), TimeSpan.FromMinutes(10), cancellationToken);
+                    session, target, new Fuse.Semantics.BuildCaptureClient(), TimeSpan.FromMinutes(10), cancellationToken,
+                    // Resident-first (S1): when a live resident workspace serves this root, each staged file is
+                    // diagnosed oracle-grade from the held compilation with no build; else the build-capture path runs.
+                    (file, content) => ResidentWorkspaces.TryCheckOverlay(root, file, content, cancellationToken));
                 if (diagnoses is null)
                     return $"unknown session {session}.";
                 return RenderDiagnoses(diagnoses);

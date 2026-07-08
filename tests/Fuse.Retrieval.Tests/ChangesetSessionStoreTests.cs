@@ -45,6 +45,34 @@ public sealed class ChangesetSessionStoreTests : IAsyncLifetime
         => Assert.False(new ChangesetSessionStore().Stage("nope", "a.cs", "x"));
 
     [Fact]
+    public async Task Diagnose_uses_the_resident_check_when_it_answers_and_falls_back_otherwise()
+    {
+        // S1: when a resident workspace answers a staged file, diagnose is oracle-grade from the held compilation
+        // with no build; a file the resident check does not answer falls back to the build-capture client (which
+        // abstains here, no worker configured).
+        var store = new ChangesetSessionStore();
+        var session = store.Create(_root);
+        store.Stage(session, "src/Broken.cs", "// broken content");
+        store.Stage(session, "src/Other.cs", "// other content");
+
+        var diagnoses = await store.DiagnoseAsync(
+            session, _root, new BuildCaptureClient(workerDllPath: ""), TimeSpan.FromSeconds(1), CancellationToken.None,
+            residentCheck: (file, _) => file == "src/Broken.cs"
+                ? [new CheckDiagnostic("CS1061", "Error", "no member", file, 1)]
+                : null);
+
+        Assert.NotNull(diagnoses);
+        var broken = diagnoses!.Single(d => d.File == "src/Broken.cs");
+        Assert.True(broken.Check.Verified);
+        Assert.Equal("oracle", broken.Check.Grade);
+        Assert.Contains(broken.Check.Diagnostics, d => d.Id == "CS1061");
+
+        // The file the resident check declined falls back to the client, which abstains without a worker.
+        var other = diagnoses.Single(d => d.File == "src/Other.cs");
+        Assert.False(other.Check.Verified);
+    }
+
+    [Fact]
     public async Task Promote_writes_the_staged_edits_to_the_tree()
     {
         var store = new ChangesetSessionStore();

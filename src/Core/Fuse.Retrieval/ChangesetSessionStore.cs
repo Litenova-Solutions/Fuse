@@ -71,9 +71,16 @@ public sealed class ChangesetSessionStore
     /// <param name="client">The build-capture client that runs the speculative typecheck.</param>
     /// <param name="timeout">The per-file check timeout.</param>
     /// <param name="cancellationToken">A token to cancel the diagnose.</param>
+    /// <param name="residentCheck">
+    ///     An optional resident-first check (S1): given a staged file and its content, returns the changed
+    ///     document's diagnostics from a live resident workspace, or null when none serves it. When it answers,
+    ///     the staged file is diagnosed oracle-grade from the held compilation with no build; otherwise the file
+    ///     falls back to the build-capture <paramref name="client" />. Null (the default) keeps the prior behavior.
+    /// </param>
     /// <returns>The per-file check results, or null when the session is unknown.</returns>
     public async Task<IReadOnlyList<ChangesetDiagnosis>?> DiagnoseAsync(
-        string sessionId, string buildTarget, BuildCaptureClient client, TimeSpan timeout, CancellationToken cancellationToken)
+        string sessionId, string buildTarget, BuildCaptureClient client, TimeSpan timeout, CancellationToken cancellationToken,
+        Func<string, string, IReadOnlyList<CheckDiagnostic>?>? residentCheck = null)
     {
         if (!_sessions.TryGetValue(sessionId, out var state))
             return null;
@@ -85,7 +92,10 @@ public sealed class ChangesetSessionStore
         foreach (var (file, content) in edits)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var check = await client.CheckAsync(buildTarget, file, content, timeout, cancellationToken);
+            var residentDiagnostics = residentCheck?.Invoke(file, content);
+            var check = residentDiagnostics is not null
+                ? CheckResult.Ok(residentDiagnostics)
+                : await client.CheckAsync(buildTarget, file, content, timeout, cancellationToken);
             results.Add(new ChangesetDiagnosis(file, check));
         }
 

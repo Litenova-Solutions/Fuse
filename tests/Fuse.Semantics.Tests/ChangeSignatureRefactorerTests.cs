@@ -164,6 +164,39 @@ public sealed class ChangeSignatureRefactorerTests
     }
 
     [Fact]
+    public async Task Thread_cancellation_token_threads_an_in_scope_token_and_flags_a_token_less_site()
+    {
+        var solution = SolutionWith("""
+            using System.Threading;
+            namespace Fix;
+            public class Service
+            {
+                public int Work(int x) => x;
+            }
+            public class HasToken
+            {
+                public int Call(CancellationToken ct) => new Service().Work(1);
+            }
+            public class NoToken
+            {
+                public int Call() => new Service().Work(2);
+            }
+            """);
+
+        var result = await new ChangeSignatureRefactorer().ThreadCancellationTokenInSolutionAsync(
+            solution, "Work", containingTypeName: "Service", parameterName: "cancellationToken", CancellationToken.None);
+
+        Assert.True(result.Changed, result.Reason);
+        var text = string.Join("\n", result.Diffs.Select(d => d.UnifiedDiff));
+        // The declaration gains the token; the caller that has one threads it; the caller without one gets default.
+        Assert.Contains("CancellationToken cancellationToken", text);
+        Assert.Contains("Work(1, ct)", text);
+        Assert.Contains("Work(2, default)", text);
+        // The token-less call site is surfaced as a manual follow-up, not silently defaulted without notice.
+        Assert.Single(result.ManualFollowUps);
+    }
+
+    [Fact]
     public async Task Integration_over_the_fixture_stages_or_abstains_cleanly()
     {
         var sln = SampleShopSolution();

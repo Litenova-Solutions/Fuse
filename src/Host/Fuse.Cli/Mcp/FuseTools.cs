@@ -210,12 +210,17 @@ public sealed partial class FuseTools
                 await indexer.IndexAsync(root, store, cancellationToken);
             }
         }
-        else
+        else if (ResidentWorkspaces.DescribeResident(root) is null)
         {
             // Freshness contract (N6): a warm store may have been built at first call and then gone stale as the
             // agent edited files. Reconcile dirty known files (edited or deleted) before answering, so no read
             // tool serves silently stale data. A bulk change degrades to a stale-as-of stamp (see the reconciler),
             // which the availability header and fuse doctor report; it never silently serves the old index.
+            //
+            // Single-writer discipline (S1/D8): when a resident workspace serves this root, its watcher is the sole
+            // store writer (it projects the changed cone on each edit), so the read path must NOT also reconcile -
+            // two writers would race. The condition is false only when a resident provider is wired (opt-in), so
+            // the default store-backed path reconciles exactly as before.
             await indexer.ReconcileDirtyFilesAsync(root, store, cancellationToken);
         }
         return store;

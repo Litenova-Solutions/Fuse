@@ -138,7 +138,14 @@ Two are now eligible:
 - **T0 - Verification-grade ladder: verify never shrugs** (depends: H1, now `[x]`). This is the next
   todo whose dependency is met. It adds the build-grade fallback so a verify-class answer degrades to
   running the real toolchain (stamped `build`-grade) instead of abstaining, using H1's mutation corpus
-  as the oracle-versus-build agreement check.
+  as the oracle-versus-build agreement check. T0 precondition finding for the next session: it changes
+  the shipped `fuse_check` response path (adds `verification_grade` and a scoped `dotnet build`
+  executor), so it deserves a fresh full-budget session; and its gate has two parts - the three
+  build-grade classification tests (runnable now, no tier-1 needed) and a >=99% oracle-vs-build
+  diagnostic-agreement check that needs a build-capture worker (`FUSE_BUILD_CAPTURE_WORKER`), which is
+  NOT configured in this environment (the checkgate suite reports "Tier-1 arm: skipped"). Plan to land
+  the executor plus the three classification tests, and record the agreement check as pending a
+  provisioned worker (the H1 mutation corpus is ready to feed it).
 - **S1 - the resident workspace** (depends: X1, met) is the keystone and the larger prize; budget it
   as a multi-session XL and land it in the sub-steps its item text lists (extract a
   rehydration-to-resident loader first; DI-edge acceptance test first for the watcher step).

@@ -2,7 +2,8 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `44c59d2`.
+bumps, or publishing. Tree is green and pushed at HEAD `89f517e`. Full test suite re-certified green after the U1
+reshape and U2 sub-steps 1-5: all 16 projects pass, 0 failures (Fuse.Retrieval.Tests 131, Fuse.Cli.Tests 128, etc.).
 
 ## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8, F3, U1 done + G2 iter 1; T2, S2, S4 done; S3 [!]; U2 started
 

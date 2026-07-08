@@ -84,12 +84,13 @@ public sealed class TestCommand
             return;
         }
 
-        var filter = TestFilterBuilder.BuildContains(covering.Select(c => c.Symbol));
+        var coveringTypes = covering.Select(c => c.Symbol).ToList();
+        var filter = TestFilterBuilder.BuildContains(coveringTypes);
         var scratch = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-test", Guid.NewGuid().ToString("N"));
         try
         {
             var result = await BuildGradeTestRunner.RunAsync(target, filter, scratch, TimeSpan.FromMinutes(10), context.CancellationToken);
-            _consoleUI.WriteResult(Render(Symbol, covering.Count, result));
+            _consoleUI.WriteResult(Render(Symbol, coveringTypes, result));
         }
         finally
         {
@@ -97,7 +98,7 @@ public sealed class TestCommand
         }
     }
 
-    private static string Render(string symbol, int coveringTypes, TestRunResult result)
+    private static string Render(string symbol, IReadOnlyList<string> coveringTypes, TestRunResult result)
     {
         var builder = new StringBuilder();
         builder.AppendLine("verification grade: build (ran dotnet test scoped to the covering tests; the emit fast path is future work)");
@@ -116,9 +117,17 @@ public sealed class TestCommand
         var passed = result.Verdicts.Count(v => v.Outcome == "passed");
         var failed = result.Verdicts.Count(v => v.Outcome == "failed");
         var notRun = result.Verdicts.Count(v => v.Outcome == "not-run");
-        builder.AppendLine($"covering tests for {symbol}: {coveringTypes} test type(s), {result.Verdicts.Count} test(s) run - {passed} passed, {failed} failed, {notRun} not-run");
+        builder.AppendLine($"covering tests for {symbol}: {coveringTypes.Count} test type(s), {result.Verdicts.Count} test(s) run - {passed} passed, {failed} failed, {notRun} not-run");
         foreach (var verdict in result.Verdicts.OrderBy(v => v.Outcome == "failed" ? 0 : 1).ThenBy(v => v.Name, StringComparer.Ordinal))
             builder.AppendLine($"  {verdict.Outcome} {verdict.Name}");
+
+        var notRunnable = CoveringRunAnalysis.NotRunnableTypes(coveringTypes, result.Verdicts);
+        if (notRunnable.Count > 0)
+        {
+            builder.AppendLine($"not-runnable ({notRunnable.Count}; selected but produced no result):");
+            foreach (var type in notRunnable)
+                builder.AppendLine($"  {type}");
+        }
 
         return builder.ToString().TrimEnd();
     }

@@ -2,14 +2,18 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `a5f11ed`.
+bumps, or publishing. Tree is green and pushed at HEAD `e65a39f`.
 
-## Session tally: T1, T3, T3b, H2, T4, T4b, B2 done; T2, S2, S4 done; S3 blocked on a maintainer decision
+## Session tally: T1, T3, T3b, H2, T4, T4b, B2 done + G2 iteration 1; T2, S2, S4 done; S3 [!] maintainer
 
 Full test suite green (a one-off Fuse.Fusion GitStats test flaked on a `git` process launch in a temp dir - an
 environmental race, passed on immediate re-run, unrelated to any change this session).
 
 Latest items this session:
+- **G2 iteration 1** (Gate PASS): keyed DI added to the wiring analyzer (AddKeyed*/TryAddKeyed*); OrderingApp
+  fixture + Suite A ground truth extended to 23 edges; `fuse eval semantics` stays exact at 23/23, 0 false
+  positives - the moat holds. Docs + coverage table + the benchmark figure SVG swept 22->23 (the PNG social/README
+  asset lags, pending a rasterizer - noted follow-up). G2 stays [>] (repeatable; second analyzer gated on C4).
 - **T4b DONE** (Gate PASS): apply-codefix shipped end to end (CodeFixApplier) - the verify-gated run-analyzer ->
   apply-fix -> re-analyze loop, reflection-discovery of analyzers + [ExportCodeFixProvider] fixes from the project's
   analyzer references, and a public ApplyCodeFixAsync wired into fuse_refactor. The full T4 refactor family (rename,

@@ -153,6 +153,53 @@ public sealed class ResidentWorkspaceTests
     }
 
     [Fact]
+    public async Task Added_document_binds_in_the_resident_state()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
+
+            // Add a brand-new file to the project's resident compilation.
+            var added = resident.AddDocument(
+                Path.Combine(work, "Helper.cs"),
+                "namespace Sample; public static class Helper { public static int Base() => 1; }",
+                CancellationToken.None);
+            Assert.True(added);
+
+            // A later check that references the new type binds (it would be CS0103/CS0246 if AddDocument had not
+            // added Helper to the resident compilation).
+            var afterAdd = resident.CheckOverlay(
+                "Widget.cs", "namespace Sample; public sealed class Widget { public int Spin() => Helper.Base(); }",
+                CancellationToken.None);
+            Assert.NotNull(afterAdd);
+            Assert.DoesNotContain(afterAdd!, d => d.Severity == "Error");
+
+            // A file under no held project is not attributed.
+            Assert.False(resident.AddDocument(Path.Combine(Path.GetTempPath(), "Elsewhere.cs"), "class Z { }", CancellationToken.None));
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public async Task Overlay_check_returns_null_for_a_file_not_in_any_compilation()
     {
         var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));

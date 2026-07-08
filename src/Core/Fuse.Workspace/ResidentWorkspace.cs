@@ -147,6 +147,52 @@ public sealed class ResidentWorkspace : IDisposable
     }
 
     /// <summary>
+    ///     Adds a newly created file's syntax tree to the resident state, attributed to the project whose
+    ///     directory is the closest ancestor of the file (the creation half of the watcher's incremental update,
+    ///     S1 step 3). Never writes the tree.
+    /// </summary>
+    /// <param name="absoluteFilePath">The absolute path of the new file.</param>
+    /// <param name="content">The file's content.</param>
+    /// <param name="cancellationToken">A token to cancel the update.</param>
+    /// <returns>
+    ///     True when the file was attributed to a held project and added; false when no held project contains it,
+    ///     or when it is already present (the caller uses <see cref="ApplyEdit" /> for an existing file).
+    /// </returns>
+    public bool AddDocument(string absoluteFilePath, string content, CancellationToken cancellationToken)
+    {
+        var full = Path.GetFullPath(absoluteFilePath).Replace('\\', '/');
+        var bestIndex = -1;
+        var bestLength = -1;
+        for (var i = 0; i < _projects.Count; i++)
+        {
+            var projectDir = Path.GetDirectoryName(_projects[i].ProjectFilePath);
+            if (projectDir is null)
+                continue;
+            var normalized = Path.GetFullPath(projectDir).Replace('\\', '/').TrimEnd('/') + "/";
+            if (full.StartsWith(normalized, StringComparison.OrdinalIgnoreCase) && normalized.Length > bestLength)
+            {
+                bestIndex = i;
+                bestLength = normalized.Length;
+            }
+        }
+
+        if (bestIndex < 0)
+            return false;
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var compilation = _projects[bestIndex].Compilation;
+        if (compilation.SyntaxTrees.Any(t => t.FilePath.Replace('\\', '/').Equals(full, StringComparison.OrdinalIgnoreCase)))
+            return false; // Already present; the caller applies an edit rather than adding a duplicate.
+
+        // Parse with the compilation's existing parse options (language version, preprocessor symbols, doc mode);
+        // AddSyntaxTrees rejects a tree whose features differ from the rest of the compilation.
+        var parseOptions = compilation.SyntaxTrees.FirstOrDefault()?.Options as CSharpParseOptions;
+        var tree = CSharpSyntaxTree.ParseText(content, parseOptions, absoluteFilePath, cancellationToken: cancellationToken);
+        _projects[bestIndex] = _projects[bestIndex] with { Compilation = compilation.AddSyntaxTrees(tree) };
+        return true;
+    }
+
+    /// <summary>
     ///     Removes a deleted file's syntax tree from the resident state, so later queries no longer see it (the
     ///     deletion half of the watcher's incremental update, S1 step 3). Never writes the tree.
     /// </summary>

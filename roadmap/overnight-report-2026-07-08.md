@@ -27,17 +27,21 @@ This session completed two fully-gated items, the entire mechanism of a third, a
   Data-backed design decision: analyzers ON for verify-class calls (an explicit verify tolerates ~900 ms for CI
   parity), OFF by default for delta mode (would break the sub-1000 ms hot path), header names the setting.
 
-S4 building blocks and engine core are now landed too: ResidentProject carries the captured analyzers and the
-editorconfig-mapped AnalyzerOptions, and ResidentAnalyzerRunner runs them and returns the error/warning diagnostics
-scoped to a document (2 tests with an in-memory compilation and an inline analyzer, no capture needed).
+S4 analyzer parity is now implemented end to end for the resident grade: ResidentProject carries the captured
+analyzers + editorconfig-mapped AnalyzerOptions; ResidentAnalyzerRunner runs them scoped to a document (tested with
+an inline analyzer); ResidentWorkspace.CheckOverlayAsync merges compiler + analyzer diagnostics (tested on the
+binlog fixture); a new async IResidentWorkspaceProvider.TryCheckOverlayAsync threads it through the seam; and
+fuse_check gained an `analyzers` param (default on for the single-file verify) routing through it, with docs.
+Confirmed: delta mode stays analyzers-off inherently (compiler-only GetDiagnostics), and build-grade already has
+analyzer parity for free (dotnet build runs analyzers; BuildGradeChecker parses them). S4's remaining piece is its
+Gate: the id-set-equality fixture test (a reliably-firing-analyzer binlog fixture, resident check id-set vs dotnet
+build, editorconfig-silenced rule stays silent) plus the trust-model docs; a small follow-up adds analyzers to the
+out-of-process worker oracle path.
 
-Next action (top-to-bottom): finish the S4 shipped-path integration - an async analyzer-aware
-CheckOverlay/GetDiagnostics that merges ResidentAnalyzerRunner output with the compiler diagnostics, threaded
-through IResidentWorkspaceProvider + fuse_check (default on for verify, off for delta) + the header, mirrored in
-BuildGradeChecker, with a binlog-with-analyzer id-set-equality fixture test and the trust-model docs. Then T1, H2;
-C1 remains `[>]` (corpus-gated apply); S3 has one maintainer-gated timing deviation. All work committed and pushed
-at HEAD `a8c1f5e`; every commit gate-green (build + all 16 .NET assemblies + dotnet format + extension contract
-9/9 + tsc). Roughly 66 gate-green commits this session on top of the prior run.
+Next action (top-to-bottom): the S4 Gate fixture test, then the trust-model docs; then T1, H2. C1 remains `[>]`
+(corpus-gated apply); S3 has one maintainer-gated timing deviation. All work committed and pushed at HEAD
+`7a88177`; every commit gate-green (build + all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc
+from the S3 protocol change). Roughly 74 gate-green commits this session on top of the prior run.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

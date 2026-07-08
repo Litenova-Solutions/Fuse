@@ -2,13 +2,18 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `01cd8c0`.
+bumps, or publishing. Tree is green and pushed at HEAD `2bdd6ff`.
 
-## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8 done + G2 iter 1; U1/F3 opened; T2, S2, S4 done; S3 [!]
+## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8, F3 done + G2 iter 1; T2, S2, S4 done; S3 [!]; U1 opened
 
-Opened with recorded preconditions + sub-step plans (fresh-context implementation): U1 (the eight-tool surface
-reshape, L), G2 iteration 2 (corpus-frequency-gated on C4), and F3 (NuGet upgrade oracle) whose first sub-step -
-the offline metadata public-surface extractor that reuses T2's PublicApiDelta - is shipped and tested.
+- **F3 DONE** (Gate PASS, zero false-safe on real cached pairs): the NuGet upgrade oracle ships in
+  `fuse_impact package:{id,fromVersion,toVersion}` - a new MetadataSurfaceExtractor + PackageUpgradeOracle diff two
+  package versions' public API (reusing T2's PublicApiDelta), abstain offline, and name blind spots. Validated:
+  System.Text.Json 4.7.2->8.0.0 flagged breaking (JsonClassInfo removed); Immutable/DI additive majors clean.
+
+Opened with recorded preconditions + full sub-step plans for fresh-context implementation: U1 (the eight-tool
+surface reshape, L) and G2 iteration 2 (corpus-frequency-gated on C4). U1 is the sole remaining fully-unblocked
+implementation item; everything else is corpus/install/model/maintainer/dependency-gated.
 
 - **G8 DONE** (Gate PASS): `fuse verify --ci-parity` ships - CiWorkflowParser + CiParityRehearser + the command
   extract the workflows' dotnet steps, run the rehearsable ones (--run), and name the non-rehearsable ones (no

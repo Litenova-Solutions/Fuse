@@ -2,11 +2,18 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `6ae73bc`.
+bumps, or publishing. Tree is green and pushed at HEAD `7ac4ab7`.
 
-## Session tally: T1 done, T3 done, T2 done, S2 done, S4 done; S3 blocked on a maintainer decision
+## Session tally: T1, T3, T3b, H2 done; T2, S2, S4 done; S3 blocked on a maintainer decision
 
 Latest items this session:
+- **T3b DONE** (Gate PASS): remove-parameter + reorder added to the change-signature family, safety-gated beyond
+  the compile check (used-parameter and side-effecting-argument for remove; positional-call-site for reorder).
+  changesig.json grew to 25 cases, 0 bad diffs, 32% abstention.
+- **H2 DONE** (Gate PASS): added a machine-applicable TopRepair to fuse_check packets (rendered as `apply: replace
+  X with Y`); new `fuse eval diagbench` records the auto-apply fix rate. diagbench.json: 20 API-shape mutants, 100%
+  auto-fixed. T4 was deferred (large L, spike/descope) with the ordering rationale recorded in the plan.
+
 - **T1 DONE** (all 3 Gate criteria met): build-grade covering-test execution shipped (fuse_test MCP + fuse test
   CLI); testexec.json records false-green 0, median 1792 ms incremental (<10s), and selection-safety 100% (0
   misses, covering set excludes the unrelated test). Emit fast-path descoped in writing (runtime closure needed).

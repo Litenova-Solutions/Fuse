@@ -12,6 +12,17 @@ namespace Fuse.Workspace;
 public sealed record ResidentStatus(int ProjectCount, string AsOf);
 
 /// <summary>
+///     One signature resolved from a live resident compilation (U1b): the compiler-rendered declaration of a
+///     symbol, sourced either from the project's own source or - the point of the resident path - from a
+///     referenced assembly's real metadata, so a package API is answered from the compiler rather than guessed.
+/// </summary>
+/// <param name="Signature">The compiler-rendered declaration (accessibility, return type, name, parameters).</param>
+/// <param name="Kind">The symbol kind (for example <c>Method</c>, <c>Property</c>, <c>NamedType</c>).</param>
+/// <param name="Container">The containing type or namespace, or empty when there is none.</param>
+/// <param name="Assembly">The declaring assembly's simple name (the metadata source, for a referenced symbol).</param>
+public sealed record ResidentSignature(string Signature, string Kind, string Container, string Assembly);
+
+/// <summary>
 ///     The seam by which a read path asks whether a live resident workspace is serving a repository root, so an
 ///     answer can be labelled resident-grade rather than store-grade (S1, Decision D8: resident truth first, the
 ///     store second). The default implementation reports no resident workspace, so a process that has not wired a
@@ -70,6 +81,27 @@ public interface IResidentWorkspaceProvider
     Task<IReadOnlyList<CheckDiagnostic>?> TryCheckOverlayAsync(
         string root, string relativeFilePath, string newContent, bool includeAnalyzers, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<CheckDiagnostic>?>(null);
+
+    /// <summary>
+    ///     Resolves a symbol's signature against the resident workspace serving a root, if one is live (U1b): the
+    ///     compiler-rendered declaration of a type or member, from the project's source or - the point of this path
+    ///     - from a referenced assembly's real metadata. This is the hallucinated-package-API killer: asking for a
+    ///     package type or member by qualified name returns the compiler's own view of the shipped API, not a guess
+    ///     or a store row that never indexed the package. Resolution needs a qualified name (a namespace-qualified
+    ///     type, or <c>Type.Member</c>) because a metadata assembly cannot be searched by simple name without a full
+    ///     walk; a simple name falls through to the source declarations only.
+    /// </summary>
+    /// <param name="root">The absolute workspace root.</param>
+    /// <param name="symbolName">The symbol to resolve (a qualified type name, or <c>Type.Member</c>).</param>
+    /// <param name="limitPerName">The maximum matches to return.</param>
+    /// <param name="cancellationToken">A token to cancel the resolution.</param>
+    /// <returns>
+    ///     The resolved signatures, or null when no resident workspace serves the root (the caller then falls back
+    ///     to the store-backed signature index). An empty list means a resident workspace served the root but did
+    ///     not resolve the name.
+    /// </returns>
+    IReadOnlyList<ResidentSignature>? TryGetSignature(
+        string root, string symbolName, int limitPerName, CancellationToken cancellationToken) => null;
 }
 
 /// <summary>

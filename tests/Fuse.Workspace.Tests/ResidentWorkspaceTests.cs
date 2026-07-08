@@ -386,6 +386,59 @@ public sealed class ResidentWorkspaceTests
         }
     }
 
+    [Fact]
+    public async Task GetSignatures_resolves_referenced_metadata_and_source_symbols()
+    {
+        // U1b: the resident compilation answers a signature from a referenced assembly's real metadata (the
+        // hallucinated-package-API killer), not only from source. The fixture references no package (to avoid a
+        // restore), but it references the framework, so System.Text.StringBuilder is a real referenced-metadata
+        // type - the same resolution path a package type takes. A simple name resolves the project's own source.
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin(int turns) => turns * 42; }");
+
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
+
+            // A qualified referenced-metadata type: the type plus its public members, sourced from the framework
+            // assembly (not the project's source, which never declares StringBuilder).
+            var type = resident.GetSignatures("System.Text.StringBuilder", 50, CancellationToken.None);
+            Assert.NotEmpty(type);
+            Assert.Contains(type, s => s.Kind == "NamedType" && s.Signature.Contains("StringBuilder", StringComparison.Ordinal));
+            Assert.Contains(type, s => s.Signature.Contains("Append", StringComparison.Ordinal));
+            Assert.All(type, s => Assert.False(string.IsNullOrEmpty(s.Assembly)));
+
+            // A Type.Member query: the matching members' overloads from metadata.
+            var member = resident.GetSignatures("System.Text.StringBuilder.Append", 50, CancellationToken.None);
+            Assert.NotEmpty(member);
+            Assert.All(member, s => Assert.Contains("Append", s.Signature, StringComparison.Ordinal));
+
+            // A simple name resolves the project's own source declaration.
+            var source = resident.GetSignatures("Widget", 50, CancellationToken.None);
+            Assert.Contains(source, s => s.Signature.Contains("Widget", StringComparison.Ordinal));
+
+            // An unresolved name yields an empty (not null) list: a resident workspace answered, nothing matched.
+            Assert.Empty(resident.GetSignatures("No.Such.Type.Exists", 50, CancellationToken.None));
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
     // Writes a fixture project with the .NET analyzers enabled, a static-able instance method that CA1822 flags,
     // and an .editorconfig carrying the given rule-severity line, so a test controls whether the rule fires.
     private static async Task WriteAnalyzerFixtureAsync(string work, string editorConfigSeverityLine)

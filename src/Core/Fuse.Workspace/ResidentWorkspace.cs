@@ -189,6 +189,119 @@ public sealed class ResidentWorkspace : IDisposable
         return null;
     }
 
+    // The signature display: accessibility, return/field type, name with type parameters, and a full parameter
+    // list with types, names, defaults, and ref/out/params modifiers - the shape an agent asks for when it needs
+    // the exact call site, rendered the way the compiler sees it (special types like int, referenced-assembly
+    // types by their namespace-qualified name).
+    private static readonly SymbolDisplayFormat SignatureFormat = new(
+        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+        memberOptions: SymbolDisplayMemberOptions.IncludeParameters
+            | SymbolDisplayMemberOptions.IncludeType
+            | SymbolDisplayMemberOptions.IncludeModifiers
+            | SymbolDisplayMemberOptions.IncludeAccessibility,
+        parameterOptions: SymbolDisplayParameterOptions.IncludeType
+            | SymbolDisplayParameterOptions.IncludeName
+            | SymbolDisplayParameterOptions.IncludeDefaultValue
+            | SymbolDisplayParameterOptions.IncludeParamsRefOut,
+        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+            | SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
+
+    /// <summary>
+    ///     Resolves a symbol's signature against the held compilations (U1b): the compiler-rendered declaration of a
+    ///     type or member, from the project's own source or - the point of the resident path - from a referenced
+    ///     assembly's real metadata. A qualified type name (for example <c>System.Text.Json.JsonSerializer</c>)
+    ///     lists the type and its public and protected members; a <c>Type.Member</c> query lists the matching
+    ///     members' overloads; a simple name matches source declarations only.
+    /// </summary>
+    /// <param name="symbolName">The symbol to resolve (a qualified type name, or <c>Type.Member</c>).</param>
+    /// <param name="limitPerName">The maximum matches to return.</param>
+    /// <param name="cancellationToken">A token to cancel the resolution.</param>
+    /// <returns>
+    ///     The resolved signatures (possibly empty when the name does not resolve in any held compilation). Metadata
+    ///     resolution needs a qualified name because a metadata assembly cannot be searched by simple name without a
+    ///     full walk.
+    /// </returns>
+    public IReadOnlyList<ResidentSignature> GetSignatures(
+        string symbolName, int limitPerName, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(symbolName))
+            return [];
+
+        var name = symbolName.Trim();
+        var results = new List<ResidentSignature>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var project in _projects)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var symbol in ResolveSymbols(project.Compilation, name, cancellationToken))
+            {
+                var display = symbol.ToDisplayString(SignatureFormat);
+                var assembly = symbol.ContainingAssembly?.Name ?? "";
+                if (!seen.Add(display + "|" + assembly))
+                    continue;
+
+                results.Add(new ResidentSignature(
+                    display,
+                    symbol.Kind.ToString(),
+                    symbol.ContainingType?.ToDisplayString() ?? symbol.ContainingNamespace?.ToDisplayString() ?? "",
+                    assembly));
+                if (results.Count >= limitPerName)
+                    return results;
+            }
+        }
+
+        return results;
+    }
+
+    // Resolves a name to the symbols it can name in a compilation, trying (in order): a qualified type by its
+    // metadata name (yielding the type and its public/protected members, the API-surface view); a Type.Member
+    // split where the left part resolves as a type (yielding the matching members' overloads); and a simple-name
+    // search over the compilation's source declarations. The first two paths reach referenced-assembly metadata;
+    // the last reaches source only (a metadata assembly has no by-simple-name search without a full namespace walk).
+    private static IEnumerable<ISymbol> ResolveSymbols(Compilation compilation, string name, CancellationToken cancellationToken)
+    {
+        var type = compilation.GetTypeByMetadataName(name);
+        if (type is not null)
+        {
+            yield return type;
+            foreach (var member in type.GetMembers()
+                .Where(m => m.DeclaredAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal)
+                .Where(m => m.Kind is SymbolKind.Method or SymbolKind.Property or SymbolKind.Field or SymbolKind.Event)
+                .Where(m => m is not IMethodSymbol method || method.MethodKind is not (MethodKind.PropertyGet or MethodKind.PropertySet or MethodKind.EventAdd or MethodKind.EventRemove)))
+            {
+                yield return member;
+            }
+
+            yield break;
+        }
+
+        var lastDot = name.LastIndexOf('.');
+        if (lastDot > 0)
+        {
+            var containerName = name[..lastDot];
+            var memberName = name[(lastDot + 1)..];
+            var container = compilation.GetTypeByMetadataName(containerName);
+            if (container is not null)
+            {
+                foreach (var member in container.GetMembers(memberName))
+                    yield return member;
+                yield break;
+            }
+        }
+
+        // Simple name (or an unresolved qualified name): the source declarations the compilation knows by that name.
+        foreach (var symbol in compilation.GetSymbolsWithName(
+            n => string.Equals(n, name, StringComparison.Ordinal),
+            SymbolFilter.TypeAndMember,
+            cancellationToken))
+        {
+            yield return symbol;
+        }
+    }
+
     /// <summary>
     ///     Applies an edit to the resident state: replaces the file's syntax tree in the held compilation so every
     ///     later query and overlay check reflects the new content. This is the in-memory core of the incremental

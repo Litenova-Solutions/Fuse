@@ -74,6 +74,16 @@ public sealed class ResidentWorkspaceService : IResidentWorkspaceProvider, IDisp
         return await _workspace.CheckOverlayAsync(relativeFilePath, newContent, includeAnalyzers, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public IReadOnlyList<ResidentSignature>? TryGetSignature(
+        string root, string symbolName, int limitPerName, CancellationToken cancellationToken)
+    {
+        if (!Matches(root))
+            return null;
+        lock (_gate)
+            return _workspace.GetSignatures(symbolName, limitPerName, cancellationToken);
+    }
+
     /// <summary>
     ///     Applies a coalesced watcher batch to the held workspace, advancing the revision.
     /// </summary>

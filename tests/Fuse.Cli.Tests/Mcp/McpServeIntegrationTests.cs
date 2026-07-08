@@ -121,6 +121,22 @@ public sealed class McpServeIntegrationTests
         // and graph-grade claims are capped at partially verified (not compiler-confirmed).
         Assert.Contains("claims (", impactText);
         Assert.Contains("partially verified", impactText);
+
+        // U3: the playbook prompts are registered and selectable by name.
+        var prompts = await client.ListPromptsAsync(cancellationToken: TestCancellation);
+        Assert.Equal(
+            ["add-endpoint", "fix-build-error", "implement-feature", "rename-symbol", "review-pr"],
+            prompts.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
+
+        // A selected prompt expands with its anchor argument into the loop-shaped playbook.
+        var fixPrompt = await client.GetPromptAsync(
+            "fix-build-error",
+            new Dictionary<string, object?> { ["diagnosticId"] = "CS1061" },
+            cancellationToken: TestCancellation);
+        var promptText = string.Concat(
+            fixPrompt.Messages.Select(m => (m.Content as TextContentBlock)?.Text));
+        Assert.Contains("CS1061", promptText);
+        Assert.Contains("fuse_check", promptText);
     }
 
     private static CancellationToken TestCancellation => default;

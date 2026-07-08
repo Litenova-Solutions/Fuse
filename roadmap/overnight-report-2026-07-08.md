@@ -7,14 +7,13 @@ reshape and U2 sub-steps 1-5: all 16 projects pass, 0 failures (Fuse.Retrieval.T
 
 ## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8, F3, U1 done + G2 iter 1; T2, S2, S4 done; S3 [!]; U2 started
 
-- **U2 in progress** (claim grades / evidence ledger / PR handoff): sub-steps 1-5 landed - the claims model
-  (ClaimLedger: Verified/PartiallyVerified/Stale/Contradicted, computed not asserted, graph-grade capped at
-  partially-verified), graded claims blocks on fuse_impact (graph), fuse_test (verified/test-grade), and fuse_find
-  wiring resolution (graph), and fuse_review --handoff (the paste-ready PR packet that refuses with the red summary
-  while the resident check session has unresolved introduced errors, guarded against git-spawn crashes). The
-  handoff wire-test is blocked by an environmental git-in-subprocess crash (recorded; the same GitStats fragility);
-  it ships with its guard. Remaining (fresh context, session-state-dependent): the stale/contradicted transitions,
-  the session-ledger resource, the fuse_review claims block (emitter threading), and golden tests.
+- **U2 in progress** (claim grades / evidence ledger / PR handoff): sub-steps 1-8 landed - the claims model
+  (all four grades reachable in tests), graded claims blocks on fuse_impact (graph), fuse_test (verified), and
+  fuse_find wiring (graph); fuse_review --handoff + red-refusal (guarded); the stale/contradicted transition logic
+  (ClaimReviewer); and the functional session-ledger loop (an additive claim_ledger store, AppendAsync accumulation,
+  fuse_impact persisting its claims when given a session, and the fuse://ledger/{path}/{session} resource). All
+  tested; full suite green. Remaining (involved, fresh context): the fuse_review claims block (threading a claims
+  section through SemanticContextEmitter for json validity + review golden updates) and dedicated golden outputs.
 
 - **U1 DONE** (Gate PASS): the eight-tool loop surface shipped. Live surface is now the 8 loop tools
   (fuse_workspace, fuse_find, fuse_context, fuse_impact, fuse_check, fuse_test, fuse_refactor, fuse_review) +

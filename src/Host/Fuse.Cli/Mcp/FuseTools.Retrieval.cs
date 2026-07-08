@@ -196,6 +196,7 @@ public sealed partial class FuseTools
         [Description("Package-upgrade mode: the NuGet package id whose bump to analyze.")] string package = "",
         [Description("Package-upgrade mode: the currently referenced version.")] string fromVersion = "",
         [Description("Package-upgrade mode: the target (upgrade) version.")] string toVersion = "",
+        [Description("Optional session id: when set, this call's graded claims are appended to the session's claim ledger (U2).")] string session = "",
         CancellationToken cancellationToken = default)
     {
         // Package-upgrade mode (F3): diff two cached package versions' public API. Independent of the workspace
@@ -255,6 +256,11 @@ public sealed partial class FuseTools
         };
         builder.AppendLine();
         builder.AppendLine(ClaimLedger.Render(claims));
+
+        // U2 ledger: when a session is given, accumulate this call's claims so the session-ledger resource can
+        // report the running evidence trail across the task.
+        if (!string.IsNullOrWhiteSpace(session))
+            await SessionClaimLedger.AppendAsync(store, session, Path.GetFullPath(path), claims, cancellationToken);
 
         return builder.ToString();
     }

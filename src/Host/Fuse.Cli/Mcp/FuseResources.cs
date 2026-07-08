@@ -47,6 +47,35 @@ public sealed class FuseResources
     }
 
     /// <summary>
+    ///     Reads a session's accumulated claims ledger (U2): the graded, evidence-referenced claims Fuse emitted
+    ///     across the session, re-graded stale where their evidence has since changed. The running evidence trail.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (opens the store; the ledger lives in the workspace store).</param>
+    /// <param name="path">Relative path to the workspace directory.</param>
+    /// <param name="session">The session id whose ledger to read.</param>
+    /// <param name="cancellationToken">Token used to cancel the read.</param>
+    /// <returns>The rendered claims ledger, or a note when the session has no accumulated claims.</returns>
+    [McpServerResource(
+        UriTemplate = "fuse://ledger/{path}/{session}",
+        Name = "Session Claim Ledger",
+        MimeType = "text/plain")]
+    [Description("Returns a session's accumulated graded claims (U2): the evidence trail Fuse emitted across the session, each claim graded and evidence-referenced.")]
+    public static async Task<string> ReadClaimLedgerResourceAsync(
+        SemanticIndexer indexer,
+        [Description("Relative path to the workspace directory.")] string path,
+        [Description("The session id whose claim ledger to read.")] string session,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Directory.Exists(Path.GetFullPath(path)))
+            return $"Error: Directory not found: {Path.GetFullPath(path)}";
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var claims = await SessionClaimLedger.LoadAsync(store, session, cancellationToken);
+        if (claims.Count == 0)
+            return $"session '{session}': no accumulated claims yet. Claim-emitting tools (for example fuse_impact with a session) add to the ledger.";
+        return $"session '{session}' claim ledger:\n" + ClaimLedger.Render(claims);
+    }
+
+    /// <summary>
     ///     Reads ranked candidate files and symbols for a task, with no source bodies. Mirrors fuse_find (kind=task).
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>

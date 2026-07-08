@@ -2,9 +2,24 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `b1e28b7`.
+bumps, or publishing. Tree is green and pushed at HEAD `6ae73bc`.
 
-## Session tally: T2 done, S2 done, S4 done, S3 mechanism complete
+## Session tally: T1 done, T3 done, T2 done, S2 done, S4 done; S3 blocked on a maintainer decision
+
+Latest items this session:
+- **T1 DONE** (all 3 Gate criteria met): build-grade covering-test execution shipped (fuse_test MCP + fuse test
+  CLI); testexec.json records false-green 0, median 1792 ms incremental (<10s), and selection-safety 100% (0
+  misses, covering set excludes the unrelated test). Emit fast-path descoped in writing (runtime closure needed).
+- **T3 DONE** (Gate PASS): constrained change-signature, verify-gated. ChangeSignatureRefactorer ships
+  add-parameter + the CancellationToken threading recipe, wired into fuse_refactor (operation switch); every
+  returned diff recompiles clean or the tool abstains naming sites. 20-case matrix (changesig.json): 15 verified
+  diffs, 5 abstentions (25% <= 50% Gate), 0 bad diffs. remove-parameter + reorder split to the new gated item T3b.
+- **S3 BLOCKED [!]** on a maintainer decision: mechanism/install/docs/both-shell e2e complete and gate-green (pipe
+  RPC half PASSES); the "no-resident exit under 100ms" half is bounded by .NET managed cold-start (~155-182ms),
+  unbeatable without an AOT/R2R hook build (blocked by install-nothing + the recorded local AOT-link failure).
+- Fixed a pre-existing format-analyzers break (RS1038/RS1041 on the S4 test-only fixture analyzer); format exit 0.
+
+## Earlier this session: T2 done, S2 done, S4 done, S3 mechanism complete
 
 This session completed three fully-gated items (T2, S2, S4) and the entire mechanism of a fourth (S3):
 - **T2 DONE** (gate PASS): public API delta on fuse_review + fuse_impact; 10/10 corpus adjudication.

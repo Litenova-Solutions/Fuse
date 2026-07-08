@@ -246,6 +246,90 @@ public sealed class ResidentWorkspaceTests
         }
     }
 
+    [Fact]
+    public async Task Editorconfig_elevated_analyzer_rule_surfaces_only_with_analyzers_on()
+    {
+        // S4 gate: an editorconfig-elevated analyzer rule (CA1822, mark members static) fires through the
+        // analyzer-aware overlay check at the configured severity and is absent from the compiler-only check. This
+        // exercises the forked-tree editorconfig-severity preservation (ForkedTreeOptionsProvider); without it the
+        // replaced tree loses the mapping and CA1822 falls back to its default sub-warning severity.
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        try
+        {
+            await WriteAnalyzerFixtureAsync(work, "dotnet_diagnostic.CA1822.severity = warning");
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
+            if (resident.Projects.All(p => p.Analyzers.IsDefaultOrEmpty))
+                return; // No analyzers captured in this SDK build; nothing to validate.
+
+            const string content = "namespace Sample; public sealed class Widget { public int Spin() => 42; }";
+            var compilerOnly = resident.CheckOverlay("Widget.cs", content, CancellationToken.None);
+            var withAnalyzers = await resident.CheckOverlayAsync("Widget.cs", content, includeAnalyzers: true, CancellationToken.None);
+
+            Assert.NotNull(compilerOnly);
+            Assert.NotNull(withAnalyzers);
+            Assert.DoesNotContain(compilerOnly!, d => d.Id == "CA1822");
+            Assert.Contains(withAnalyzers!, d => d.Id == "CA1822");
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task Editorconfig_silenced_analyzer_rule_stays_silent_with_analyzers_on()
+    {
+        // S4 gate (the other direction): a rule silenced in editorconfig produces nothing even with analyzers on,
+        // proving the overlay honors the repo's severity configuration rather than a fixed rule set.
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        try
+        {
+            await WriteAnalyzerFixtureAsync(work, "dotnet_diagnostic.CA1822.severity = none");
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
+            if (resident.Projects.All(p => p.Analyzers.IsDefaultOrEmpty))
+                return;
+
+            const string content = "namespace Sample; public sealed class Widget { public int Spin() => 42; }";
+            var withAnalyzers = await resident.CheckOverlayAsync("Widget.cs", content, includeAnalyzers: true, CancellationToken.None);
+
+            Assert.NotNull(withAnalyzers);
+            Assert.DoesNotContain(withAnalyzers!, d => d.Id == "CA1822"); // silenced in editorconfig, so absent
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    // Writes a fixture project with the .NET analyzers enabled, a static-able instance method that CA1822 flags,
+    // and an .editorconfig carrying the given rule-severity line, so a test controls whether the rule fires.
+    private static async Task WriteAnalyzerFixtureAsync(string work, string editorConfigSeverityLine)
+    {
+        await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+                <EnableNETAnalyzers>true</EnableNETAnalyzers>
+                <AnalysisLevel>latest</AnalysisLevel>
+              </PropertyGroup>
+            </Project>
+            """);
+        await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+            "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+        await File.WriteAllTextAsync(Path.Combine(work, ".editorconfig"),
+            "root = true\n[*.cs]\n" + editorConfigSeverityLine + "\n");
+    }
+
     private static async Task<bool> TryBuildWithBinlogAsync(string projectDir, string binlogPath)
     {
         var psi = new ProcessStartInfo("dotnet")

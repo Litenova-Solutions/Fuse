@@ -171,6 +171,18 @@ public sealed class ResidentWorkspace : IDisposable
             var newTree = CSharpSyntaxTree.ParseText(
                 newContent, (CSharpParseOptions?)tree.Options, tree.FilePath, cancellationToken: cancellationToken);
             var forked = project.Compilation.ReplaceSyntaxTree(tree, newTree);
+
+            // Replacing the tree loses its editorconfig analyzer-config mapping: the compilation's
+            // SyntaxTreeOptionsProvider keys severities by the original tree, so the new tree falls back to default
+            // severities and an editorconfig-elevated rule stops surfacing (and a silenced one could reappear). The
+            // new tree has the same path, so redirect its config queries to the original tree to preserve severities
+            // for both compiler and analyzer diagnostics on the edited document (S4).
+            if (project.Compilation.Options.SyntaxTreeOptionsProvider is { } inner)
+            {
+                forked = forked.WithOptions(
+                    forked.Options.WithSyntaxTreeOptionsProvider(new ForkedTreeOptionsProvider(inner, tree, newTree)));
+            }
+
             return (project, forked, newTree);
         }
 
@@ -318,6 +330,27 @@ public sealed class ResidentWorkspace : IDisposable
 
     /// <summary>Releases the held compilations and the underlying compiler-log reader.</summary>
     public void Dispose() => _reader.Dispose();
+
+    // Redirects analyzer-config queries for the overlay's replaced tree to the original tree, so the edited
+    // document keeps the original file's editorconfig severities (both trees share the same path). Without this,
+    // ReplaceSyntaxTree drops the per-tree mapping and severities fall back to defaults (S4).
+    private sealed class ForkedTreeOptionsProvider(
+        SyntaxTreeOptionsProvider inner, SyntaxTree originalTree, SyntaxTree replacementTree) : SyntaxTreeOptionsProvider
+    {
+        public override GeneratedKind IsGenerated(SyntaxTree tree, CancellationToken cancellationToken) =>
+            inner.IsGenerated(Redirect(tree), cancellationToken);
+
+        public override bool TryGetDiagnosticValue(
+            SyntaxTree tree, string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic severity) =>
+            inner.TryGetDiagnosticValue(Redirect(tree), diagnosticId, cancellationToken, out severity);
+
+        public override bool TryGetGlobalDiagnosticValue(
+            string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic severity) =>
+            inner.TryGetGlobalDiagnosticValue(diagnosticId, cancellationToken, out severity);
+
+        private SyntaxTree Redirect(SyntaxTree tree) =>
+            ReferenceEquals(tree, replacementTree) ? originalTree : tree;
+    }
 }
 
 /// <summary>

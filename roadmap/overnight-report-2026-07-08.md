@@ -54,11 +54,18 @@ covering subset in a spawned Microsoft.Testing.Platform micro-host with a stripp
 report per-test verdicts plus a not-runnable list, degrade per T0, add the H1 mutant extension, and record
 testexec.json (false-green 0, median under 10s, selection safety at least 95 percent).
 
-Next action: the T1 micro-host runner, as gated sub-steps (a safe first slice is the emit-to-scratch plus
-dependency materialization, testable before the run half). Then H2. C1 remains `[>]` (corpus-and-install-gated
-apply); S3 has one maintainer-gated timing deviation (mechanism complete). All work committed and pushed at HEAD
-`ec04d05`; every committed change gate-green (build + all 16 .NET assemblies + dotnet format; extension contract
-9/9 + tsc from the S3 protocol change). Roughly 86 gate-green commits this session.
+The T1 emit half is landed: ResidentEmit.EmitToDirectory emits a resident project's speculative compilation to a
+scratch-dir assembly and resolves its reference paths (the dependency closure), tested on the rehydrated fixture
+(assembly on disk, references resolve). Emit failure returns null, never a false run.
+
+Next action: the T1 micro-host run half (the Large multi-session core) - spawn a Microsoft.Testing.Platform
+micro-host over the emitted assembly, run the covering subset (CoveringTestsAsync) with a stripped environment and
+a hard timeout, classify not-runnable tests by name, kill a hung child cleanly; then fuse_test / fuse test, the T0
+degrade ladder, the H1 mutant extension, and testexec.json (false green 0, median under 10s, selection safety at
+least 95 percent). Then H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing
+deviation (mechanism complete). All work committed and pushed at HEAD `6a19cee`; every committed change gate-green
+(build + all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc from the S3 protocol change). Roughly
+90 gate-green commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

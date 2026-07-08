@@ -1,0 +1,64 @@
+---
+title: Run Fuse verbs in CI on a pull request
+description: A recipe that runs fuse review and fuse test on a pull request from the command line, so the same verified-edit verbs an agent uses also gate the pipeline.
+---
+
+The verbs an agent calls interactively (`fuse_review`, `fuse_test`, `fuse_impact`, `fuse_check`) are also CLI commands, so a CI pipeline can run the same checks the agent runs. This recipe wires `fuse review` and `fuse test` into a pull-request job: the review reports the change's blast radius and public API delta against the merge base, and the covering tests run scoped to just the changed symbols rather than the whole suite.
+
+## The commands
+
+Against a checked-out PR branch with its merge base available:
+
+```bash
+# Build and index once, so the read verbs answer from a warm store.
+fuse workspace --action index
+
+# Review the change against the merge base: changed files, the public API delta
+# (breaking or additive), the semantic blast radius, and the graded claims block.
+fuse review --changed-since origin/main --format markdown
+
+# Run the covering tests for a symbol the PR changed, scoped so the whole suite never runs.
+fuse test OrderService
+```
+
+`fuse review` prints the diff-first impact; `fuse test <symbol>` runs only the tests that reach that symbol through the persisted `tests` edges, at build grade. Both read the persistent index, so run `fuse workspace --action index` (or any read verb, which builds the index on first use) before them.
+
+## A GitHub Actions job
+
+```yaml
+name: fuse-review
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # the merge base must be reachable for --changed-since
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet tool install -g fuse
+      - run: fuse workspace --action index
+      - run: fuse review --changed-since origin/${{ github.base_ref }} --format markdown
+      - run: fuse test OrderService
+```
+
+The review step surfaces a breaking public-API change as the first thing in its output, so a contract break fails review here rather than downstream. Choose the symbol (or symbols) to `fuse test` from what the PR changed; the covering selection keeps the run scoped.
+
+## The handoff packet
+
+For a paste-ready PR summary rather than the full review context, add `--handoff`:
+
+```bash
+fuse review --changed-since origin/main --handoff
+```
+
+The handoff is the changed files, the public API delta, the compiler-gate status, and the named residual risk. When a check session is gating the change (`--check-session`), the handoff refuses while that session still has unresolved introduced errors, so the packet only ever describes a change that passes the compiler.
+
+## Rehearse the pipeline's own steps first
+
+To check what your existing CI workflow runs before you push, and run the rehearsable dotnet steps locally, use [rehearse CI before you push](/docs/scenarios/rehearse-ci) (`fuse verify --ci-parity`). That names the steps this machine cannot reproduce (a secret, a package push) rather than surprising you after the push.

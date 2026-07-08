@@ -55,12 +55,27 @@ public sealed class ChangeSignatureRefactorer
         if (string.IsNullOrWhiteSpace(methodName) || string.IsNullOrWhiteSpace(parameterType) || string.IsNullOrWhiteSpace(parameterName))
             return ChangeSignatureResult.Abstain("provide a method name, a parameter type, and a parameter name");
 
+        var loaded = await LoadSolutionAsync(solutionOrProjectPath, cancellationToken);
+        if (loaded.Solution is null)
+            return ChangeSignatureResult.Abstain(loaded.Reason!);
+
+        return await AddParameterToSolutionAsync(
+            loaded.Solution, methodName, containingTypeName, parameterType, parameterName, argumentValue, cancellationToken);
+    }
+
+    // Opens the solution/project through MSBuild, oracle-shaped: abstains on a locator failure, a load exception,
+    // or a WorkspaceFailed event, because a solution that did not load cleanly could yield an incomplete change.
+    // The MSBuildWorkspace is disposed once the solution snapshot is materialized; downstream reads use the
+    // immutable Solution, so disposal is safe.
+    private static async Task<(Solution? Solution, string? Reason)> LoadSolutionAsync(
+        string solutionOrProjectPath, CancellationToken cancellationToken)
+    {
         lock (LocatorGate)
         {
             if (!MSBuildLocator.IsRegistered)
             {
                 try { MSBuildLocator.RegisterDefaults(); }
-                catch (Exception ex) { return ChangeSignatureResult.Abstain($"no MSBuild/SDK found ({ex.Message}); cannot change the signature"); }
+                catch (Exception ex) { return (null, $"no MSBuild/SDK found ({ex.Message}); cannot change the signature"); }
             }
         }
 
@@ -78,14 +93,13 @@ public sealed class ChangeSignatureRefactorer
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ChangeSignatureResult.Abstain($"could not load the workspace: {ex.Message}");
+            return (null, $"could not load the workspace: {ex.Message}");
         }
 
         if (loadFailed)
-            return ChangeSignatureResult.Abstain("the workspace did not load cleanly; a solution-wide signature change could be incomplete, so it is refused");
+            return (null, "the workspace did not load cleanly; a solution-wide signature change could be incomplete, so it is refused");
 
-        return await AddParameterToSolutionAsync(
-            solution, methodName, containingTypeName, parameterType, parameterName, argumentValue, cancellationToken);
+        return (solution, null);
     }
 
     // The load-independent core: resolve, collect the family, baseline, rewrite, verify, and diff over an already
@@ -117,8 +131,71 @@ public sealed class ChangeSignatureRefactorer
         // Baseline compile-error signatures, so the verify gate can tell an INTRODUCED error from a pre-existing one.
         var baseline = await CollectErrorSignaturesAsync(solution, cancellationToken);
 
-        // Best-effort rewrite: the parameter into every declaration, an argument into every invocation call site.
-        var rewrite = await ApplyRewriteAsync(solution, family, parameterType, parameterName, argumentValue, cancellationToken);
+        // Best-effort rewrite: the parameter into every declaration, the constant argument into every call site.
+        return await RewriteVerifyAndStageAsync(
+            solution, method, family, parameterType, parameterName, baseline,
+            (_, _) => (argumentValue, false), cancellationToken);
+    }
+
+    /// <summary>
+    ///     Adds a <c>CancellationToken</c> parameter to a method (and its family) and threads an in-scope token
+    ///     into every call site where one is available, listing token-less sites as manual follow-ups; the change
+    ///     is verify-gated and staged as a diff, or abstained with a reason.
+    /// </summary>
+    /// <param name="solutionOrProjectPath">The absolute path to the solution or project to load.</param>
+    /// <param name="methodName">The simple name of the method to thread the token through.</param>
+    /// <param name="containingTypeName">The declaring type's simple name to disambiguate, or null.</param>
+    /// <param name="parameterName">The token parameter's name (for example <c>cancellationToken</c>).</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The outcome: the staged diffs plus token-less follow-up sites, or an abstention with a reason.</returns>
+    public async Task<ChangeSignatureResult> ThreadCancellationTokenAsync(
+        string solutionOrProjectPath,
+        string methodName,
+        string? containingTypeName,
+        string parameterName,
+        CancellationToken cancellationToken)
+    {
+        var loaded = await LoadSolutionAsync(solutionOrProjectPath, cancellationToken);
+        if (loaded.Solution is null)
+            return ChangeSignatureResult.Abstain(loaded.Reason!);
+        return await ThreadCancellationTokenInSolutionAsync(
+            loaded.Solution, methodName, containingTypeName, parameterName, cancellationToken);
+    }
+
+    internal async Task<ChangeSignatureResult> ThreadCancellationTokenInSolutionAsync(
+        Solution solution,
+        string methodName,
+        string? containingTypeName,
+        string parameterName,
+        CancellationToken cancellationToken)
+    {
+        var resolution = await ResolveMethodAsync(solution, methodName, containingTypeName, cancellationToken);
+        if (resolution.Method is null)
+            return ChangeSignatureResult.Abstain(resolution.Reason!);
+        var method = resolution.Method;
+        if (method.Parameters.Any(p => p.IsParams))
+            return ChangeSignatureResult.Abstain($"'{method.Name}' has a params parameter; threading abstains (params interaction)");
+
+        var family = await CollectMethodFamilyAsync(solution, method, cancellationToken);
+        var baseline = await CollectErrorSignaturesAsync(solution, cancellationToken);
+        return await RewriteVerifyAndStageAsync(
+            solution, method, family, "CancellationToken", parameterName, baseline,
+            ResolveTokenArgument, cancellationToken);
+    }
+
+    // The shared tail both operations use: rewrite with the given per-site argument resolver, verify by recompile
+    // (abstain on any introduced error), and stage the diffs (with any manual follow-ups).
+    private async Task<ChangeSignatureResult> RewriteVerifyAndStageAsync(
+        Solution solution,
+        IMethodSymbol method,
+        IReadOnlyCollection<IMethodSymbol> family,
+        string parameterType,
+        string parameterName,
+        HashSet<string> baseline,
+        Func<SemanticModel?, InvocationExpressionSyntax, (string Arg, bool FollowUp)> argResolver,
+        CancellationToken cancellationToken)
+    {
+        var rewrite = await ApplyRewriteAsync(solution, family, parameterType, parameterName, argResolver, cancellationToken);
         if (rewrite.Solution is null)
             return ChangeSignatureResult.Abstain(rewrite.Reason!);
         var changed = rewrite.Solution;
@@ -137,7 +214,7 @@ public sealed class ChangeSignatureRefactorer
         if (diffs.Count == 0)
             return ChangeSignatureResult.Abstain("the rewrite produced no change (the method or its call sites were not found in source)");
 
-        return ChangeSignatureResult.Ok(method.ToDisplayString(), $"{parameterType} {parameterName}", diffs);
+        return ChangeSignatureResult.Ok(method.ToDisplayString(), $"{parameterType} {parameterName}", diffs, rewrite.FollowUps);
     }
 
     // Resolves exactly one source method by name (optionally within a named type). Zero matches or more than one
@@ -217,19 +294,22 @@ public sealed class ChangeSignatureRefactorer
     }
 
     // Applies the parameter to every family declaration and an argument to every invocation call site, grouped by
-    // document so each document is edited once. Non-invocation references (method groups, nameof) are left alone;
-    // if that breaks compilation the verify gate abstains.
-    private async Task<(Solution? Solution, string? Reason)> ApplyRewriteAsync(
+    // document so each document is edited once. The per-site argument comes from argResolver, so add-parameter
+    // passes a constant while the CancellationToken recipe threads an in-scope token (or default, flagged as a
+    // manual follow-up). Non-invocation references (method groups, nameof) are left alone; if that breaks
+    // compilation the verify gate abstains.
+    private async Task<(Solution? Solution, string? Reason, IReadOnlyList<string> FollowUps)> ApplyRewriteAsync(
         Solution solution,
         IReadOnlyCollection<IMethodSymbol> family,
         string parameterType,
         string parameterName,
-        string argumentValue,
+        Func<SemanticModel?, InvocationExpressionSyntax, (string Arg, bool FollowUp)> argResolver,
         CancellationToken cancellationToken)
     {
-        // Collect edit sites per document: declaration parameter-list spans, and invocation argument-list spans.
+        // Collect edit sites per document: declaration parameter-list spans, and (argument-list span, arg text).
         var declSites = new Dictionary<DocumentId, List<int>>();
-        var callSites = new Dictionary<DocumentId, List<int>>();
+        var callSites = new Dictionary<DocumentId, List<(int Span, string Arg)>>();
+        var followUps = new List<string>();
 
         foreach (var member in family)
         {
@@ -241,7 +321,7 @@ public sealed class ChangeSignatureRefactorer
                     continue;
                 var node = await reference.GetSyntaxAsync(cancellationToken);
                 if (node is BaseMethodDeclarationSyntax { ParameterList: { } list })
-                    AddSite(declSites, doc.Id, list.SpanStart);
+                    AddDeclSite(declSites, doc.Id, list.SpanStart);
             }
 
             foreach (var referenced in await SymbolFinder.FindReferencesAsync(member, solution, cancellationToken))
@@ -253,8 +333,12 @@ public sealed class ChangeSignatureRefactorer
                     var root = await doc.GetSyntaxRootAsync(cancellationToken);
                     var token = root?.FindToken(location.Location.SourceSpan.Start);
                     var invocation = token?.Parent?.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
-                    if (invocation is not null)
-                        AddSite(callSites, doc.Id, invocation.ArgumentList.SpanStart);
+                    if (invocation is null)
+                        continue;
+                    var model = await doc.GetSemanticModelAsync(cancellationToken);
+                    var (arg, followUp) = argResolver(model, invocation);
+                    if (AddCallSite(callSites, doc.Id, invocation.ArgumentList.SpanStart, arg) && followUp)
+                        followUps.Add(HumanNode(invocation));
                 }
             }
         }
@@ -288,12 +372,12 @@ public sealed class ChangeSignatureRefactorer
 
             if (callSites.TryGetValue(docId, out var callSpans))
             {
-                foreach (var span in callSpans)
+                foreach (var (span, arg) in callSpans)
                 {
                     var list = root.FindToken(span).Parent?.AncestorsAndSelf().OfType<ArgumentListSyntax>().FirstOrDefault();
                     if (list is null)
                         continue;
-                    var argument = SyntaxFactory.Argument(SyntaxFactory.ParseExpression(argumentValue))
+                    var argument = SyntaxFactory.Argument(SyntaxFactory.ParseExpression(arg))
                         .WithLeadingTrivia(SyntaxFactory.Space);
                     editor.ReplaceNode(list, list.AddArguments(argument));
                 }
@@ -302,15 +386,49 @@ public sealed class ChangeSignatureRefactorer
             changed = changed.WithDocumentSyntaxRoot(docId, await editor.GetChangedDocument().GetSyntaxRootAsync(cancellationToken) ?? root);
         }
 
-        return (changed, null);
+        return (changed, null, followUps);
     }
 
-    private static void AddSite(Dictionary<DocumentId, List<int>> sites, DocumentId id, int span)
+    // Resolves the argument for a CancellationToken threading call site: the name of an in-scope CancellationToken
+    // (a parameter or local visible at the call), or "default" flagged as a manual follow-up when none is in scope.
+    private static (string Arg, bool FollowUp) ResolveTokenArgument(SemanticModel? model, InvocationExpressionSyntax invocation)
+    {
+        if (model is not null)
+        {
+            var inScope = model.LookupSymbols(invocation.SpanStart)
+                .Where(s => s is IParameterSymbol or ILocalSymbol)
+                .Select(s => (Symbol: s, Type: (s as IParameterSymbol)?.Type ?? (s as ILocalSymbol)?.Type))
+                .FirstOrDefault(t => t.Type is { Name: "CancellationToken", ContainingNamespace.Name: "Threading" });
+            if (inScope.Symbol is not null)
+                return (inScope.Symbol.Name, false);
+        }
+
+        // No token in scope: pass default and list the site so a human threads a real token later.
+        return ("default", true);
+    }
+
+    private static string HumanNode(SyntaxNode node)
+    {
+        var span = node.GetLocation().GetLineSpan();
+        return $"{System.IO.Path.GetFileName(span.Path)}:{span.StartLinePosition.Line + 1}";
+    }
+
+    private static void AddDeclSite(Dictionary<DocumentId, List<int>> sites, DocumentId id, int span)
     {
         if (!sites.TryGetValue(id, out var list))
             sites[id] = list = [];
         if (!list.Contains(span))
             list.Add(span);
+    }
+
+    private static bool AddCallSite(Dictionary<DocumentId, List<(int Span, string Arg)>> sites, DocumentId id, int span, string arg)
+    {
+        if (!sites.TryGetValue(id, out var list))
+            sites[id] = list = [];
+        if (list.Any(s => s.Span == span))
+            return false;
+        list.Add((span, arg));
+        return true;
     }
 
     // The Error-severity diagnostic signatures across the whole solution, so introduced errors can be diffed from
@@ -446,19 +564,30 @@ public sealed record ChangeSignatureFileDiff(string FilePath, string UnifiedDiff
 /// <param name="OldSignature">The resolved method's display signature, when changed.</param>
 /// <param name="Added">A description of what was added, when changed.</param>
 /// <param name="Diffs">The per-file staged diffs, when changed.</param>
+/// <param name="ManualFollowUps">
+///     Call sites the change could not fully resolve and a human should review (for the CancellationToken recipe,
+///     the sites where no in-scope token was found so <c>default</c> was passed); empty for a fully-threaded change.
+/// </param>
 public sealed record ChangeSignatureResult(
-    bool Changed, string? Reason, string? OldSignature, string? Added, IReadOnlyList<ChangeSignatureFileDiff> Diffs)
+    bool Changed,
+    string? Reason,
+    string? OldSignature,
+    string? Added,
+    IReadOnlyList<ChangeSignatureFileDiff> Diffs,
+    IReadOnlyList<string> ManualFollowUps)
 {
     /// <summary>Creates a successful, verified change result.</summary>
     /// <param name="oldSignature">The resolved method display signature.</param>
     /// <param name="added">A description of what was added.</param>
     /// <param name="diffs">The staged per-file diffs.</param>
+    /// <param name="manualFollowUps">The call sites listed for manual review, or empty.</param>
     /// <returns>A changed result.</returns>
-    public static ChangeSignatureResult Ok(string oldSignature, string added, IReadOnlyList<ChangeSignatureFileDiff> diffs) =>
-        new(true, null, oldSignature, added, diffs);
+    public static ChangeSignatureResult Ok(
+        string oldSignature, string added, IReadOnlyList<ChangeSignatureFileDiff> diffs, IReadOnlyList<string>? manualFollowUps = null) =>
+        new(true, null, oldSignature, added, diffs, manualFollowUps ?? []);
 
     /// <summary>Creates an abstention.</summary>
     /// <param name="reason">The concrete reason the change was refused.</param>
     /// <returns>An unchanged result.</returns>
-    public static ChangeSignatureResult Abstain(string reason) => new(false, reason, null, null, []);
+    public static ChangeSignatureResult Abstain(string reason) => new(false, reason, null, null, [], []);
 }

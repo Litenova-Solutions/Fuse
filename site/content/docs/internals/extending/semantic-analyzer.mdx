@@ -11,7 +11,7 @@ Every analyzer implements `ISemanticAnalyzer` and runs per project over the Rosl
 
 | Analyzer | Framework / pattern | Edge or record it produces |
 |----------|--------------------|----------------------------|
-| `DiRegistrationAnalyzer` | `Microsoft.Extensions.DependencyInjection` registrations (`AddScoped`, `AddSingleton`, `AddTransient`, `TryAdd*`, open generics, factory lambdas, Scrutor scanning and decoration) | `di_resolves_to` (service to implementation) and DI registration records |
+| `DiRegistrationAnalyzer` | `Microsoft.Extensions.DependencyInjection` registrations (`AddScoped`, `AddSingleton`, `AddTransient`, `TryAdd*`, keyed `AddKeyed*`, open generics, factory lambdas, Scrutor scanning and decoration) | `di_resolves_to` (service to implementation) and DI registration records |
 | `ConstructorInjectionAnalyzer` | Constructor-injected dependencies | An edge from a type to each dependency it takes, resolved to the registered implementation |
 | `InterfaceImplementationAnalyzer` | Interface implementation and base-type inheritance among the project's own types | `implements` and inheritance edges |
 | `MediatRAnalyzer` | MediatR requests, notifications, and their handlers, plus send/publish sites | Request-to-handler edges |

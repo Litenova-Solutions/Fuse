@@ -97,3 +97,38 @@ public sealed class MetadataSurfaceExtractorTests
             : null;
     }
 }
+
+// F3: the upgrade oracle's analysis entry point over two assembly paths (reuses the extractor + T2 diff).
+public sealed class PackageUpgradeOracleTests
+{
+    [Fact]
+    public void Same_version_reports_no_breaking_changes()
+    {
+        var path = typeof(Fuse.Indexing.SymbolRecord).Assembly.Location;
+        var report = PackageUpgradeOracle.Analyze("Fuse.Indexing", path, path);
+
+        Assert.True(report.Available);
+        Assert.False(report.HasBreaking);
+        Assert.Empty(report.BreakingChanges);
+        Assert.NotNull(report.BlindSpots); // blind spots named on every available report
+    }
+
+    [Fact]
+    public void Missing_target_abstains_with_a_reason()
+    {
+        var path = typeof(Fuse.Indexing.SymbolRecord).Assembly.Location;
+        var report = PackageUpgradeOracle.Analyze("X", path, "no-such-target.dll");
+
+        Assert.False(report.Available);
+        Assert.False(report.HasBreaking);
+        Assert.Contains("not available locally", report.Reason);
+    }
+
+    [Fact]
+    public void Missing_referenced_abstains()
+    {
+        var report = PackageUpgradeOracle.Analyze("X", "no-such-ref.dll", "no-such-target.dll");
+        Assert.False(report.Available);
+        Assert.Contains("could not be read", report.Reason);
+    }
+}

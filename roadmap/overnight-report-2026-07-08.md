@@ -2,9 +2,15 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `ebc1016`.
+bumps, or publishing. Tree is green and pushed at HEAD `44c59d2`.
 
-## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8, F3, U1 done + G2 iter 1; T2, S2, S4 done; S3 [!]
+## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8, F3, U1 done + G2 iter 1; T2, S2, S4 done; S3 [!]; U2 started
+
+- **U2 started** (claim grades / evidence ledger / PR handoff): sub-steps 1-2 landed - the claims model
+  (ClaimLedger: Verified/PartiallyVerified/Stale/Contradicted grades, computed not asserted, graph-grade capped at
+  partially-verified) and a graded claims block wired onto fuse_impact (wire-tested). Remaining (fresh context,
+  involved): claims on find/review/test (review needs emitter threading), the stale/contradicted session-state
+  transitions, the session-ledger resource, fuse_review --handoff (PR packet, refuses while red), and golden tests.
 
 - **U1 DONE** (Gate PASS): the eight-tool loop surface shipped. Live surface is now the 8 loop tools
   (fuse_workspace, fuse_find, fuse_context, fuse_impact, fuse_check, fuse_test, fuse_refactor, fuse_review) +

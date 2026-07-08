@@ -125,6 +125,79 @@ public class GitChangeDetectorTests
         }
     }
 
+    [Fact]
+    public async Task GetFileContentAt_CommittedFile_ReturnsContentAtRef()
+    {
+        var repoDirectory = Path.Combine(Path.GetTempPath(), "fuse-git-show", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(repoDirectory);
+        try
+        {
+            RunGit(repoDirectory, "init");
+            RunGit(repoDirectory, "config user.email test@test.com");
+            RunGit(repoDirectory, "config user.name Test");
+            File.WriteAllText(Path.Combine(repoDirectory, "File.cs"), "public class Foo { }");
+            RunGit(repoDirectory, "add .");
+            RunGit(repoDirectory, "commit -m baseline");
+
+            // The working copy diverges from the committed version; git show must return the committed content.
+            File.WriteAllText(Path.Combine(repoDirectory, "File.cs"), "public class Foo { public int Bar; }");
+
+            var detector = new GitChangeDetector();
+            var content = await detector.GetFileContentAtAsync(repoDirectory, "HEAD", "File.cs");
+
+            Assert.Equal("public class Foo { }", content?.TrimEnd());
+        }
+        finally
+        {
+            TryDeleteDirectory(repoDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task GetFileContentAt_FileAbsentAtRef_ReturnsNull()
+    {
+        var repoDirectory = Path.Combine(Path.GetTempPath(), "fuse-git-show-absent", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(repoDirectory);
+        try
+        {
+            RunGit(repoDirectory, "init");
+            RunGit(repoDirectory, "config user.email test@test.com");
+            RunGit(repoDirectory, "config user.name Test");
+            File.WriteAllText(Path.Combine(repoDirectory, "Existing.cs"), "public class Existing { }");
+            RunGit(repoDirectory, "add .");
+            RunGit(repoDirectory, "commit -m baseline");
+
+            var detector = new GitChangeDetector();
+            // A file that never existed at HEAD (a newly added file has no base version) reads as null, not error.
+            var content = await detector.GetFileContentAtAsync(repoDirectory, "HEAD", "NeverExisted.cs");
+
+            Assert.Null(content);
+        }
+        finally
+        {
+            TryDeleteDirectory(repoDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task GetFileContentAt_NotGitRepo_ThrowsChangeDetectionException()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "fuse-git-show-notrepo", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var detector = new GitChangeDetector();
+            var exception = await Assert.ThrowsAsync<ChangeDetectionException>(() =>
+                detector.GetFileContentAtAsync(directory, "HEAD", "File.cs"));
+
+            Assert.Contains("not a git repository", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            TryDeleteDirectory(directory);
+        }
+    }
+
     private static void RunGit(string workingDirectory, string args)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("git", args)

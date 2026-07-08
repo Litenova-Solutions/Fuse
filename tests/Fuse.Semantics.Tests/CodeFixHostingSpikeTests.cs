@@ -53,9 +53,12 @@ public sealed class CodeFixHostingSpikeTests
         Assert.DoesNotContain("class c", changedText);
     }
 
+    // RS2008 (analyzer release tracking) does not apply to a test-only spike descriptor.
+#pragma warning disable RS2008
     private static readonly DiagnosticDescriptor Descriptor = new(
         "SPIKE001", "Class name should be PascalCase", "Class '{0}' should be PascalCase", "Naming",
         Microsoft.CodeAnalysis.DiagnosticSeverity.Warning, isEnabledByDefault: true);
+#pragma warning restore RS2008
 
     // A minimal code fix: uppercase the first letter of the flagged class name. Not exported (the spike constructs
     // it directly); apply_codefix would instead discover [ExportCodeFixProvider] types in the analyzer references.

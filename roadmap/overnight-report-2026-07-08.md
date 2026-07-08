@@ -7,8 +7,9 @@ bumps, or publishing. Tree is green and pushed at HEAD `9fc43e9` plus the wrap-u
 ## Summary
 
 Wave 0 (contract and kills) is complete: all four items landed gate-green, committed, and pushed.
-Wave 1 was analyzed and sequenced; no Wave 1 item was started as code, by an explicit
-quality-over-count decision recorded in the plan's progress log and explained below.
+In Wave 1, H1 (mutation-derived check-honesty calibration) also landed gate-green, which unblocks
+T0. S1 (the resident workspace, XL) was analyzed and deliberately left unstarted for a dedicated
+session (rationale below). Five items complete this run, all gate-green.
 
 ## Items completed (with gate verdicts)
 
@@ -18,6 +19,7 @@ quality-over-count decision recorded in the plan's progress log and explained be
 | K1 | Retire the dense embedding channel and the ONNX plugin | PASS (ranking within CI of recorded lexical; low-signal F1 1.0; false-rejection 0/52) | `c037269` |
 | K3 | Close V1/V2, freeze language providers, de-headline Suite D | PASS (docs merged; site builds) | `ea4cb24` |
 | K2 | Delete the in-memory BM25F ranker and the dead classic query path | PASS (zero references; contract suite 8/8) | `9fc43e9` |
+| H1 | Mutation-derived check-honesty calibration at scale | PASS (false green 0; mutation false-red 0.00% < 1% over 1,000 verified cases) | (this run) |
 
 The three standing gates (`dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release
 --no-build`, `dotnet format Fuse.slnx --verify-no-changes`) were green on every item that touched
@@ -48,6 +50,12 @@ All under `tests/benchmarks/results/`:
 - `archive/localize.a1-lexical.json`: the old dense-off A/B, archived (the `--lexical` flag that
   produced it was removed in K1; the default is now the lexical path, so this file is redundant).
 
+- `checkgate.json` (regenerated, `fuse eval checkgate --mutations 500`): curated 8 of 8 correct
+  (false green 0, false red 0); mutation arm 1,000 compiler-verified cases over OrderingApp (500
+  breaking, 500 neutral), false green 0, false red 0.00% over 1,000 verified. SampleShop skipped
+  (13 in-process baseline errors CS0234/CS0246/CS0103, its two-project MVC structure not binding in
+  a flat in-process compilation), recorded not fabricated. Gate: false green 0, false red < 1% - PASS.
+
 No model-driven suite was run (hard-banned tonight: `fuse eval loop`, `fuse eval agent`, B1 and the
 B1-gated items). No number was fabricated, rounded, or quoted below its minimum N.
 
@@ -60,10 +68,8 @@ B1-gated items). No number was fabricated, rounded, or quoted below its minimum 
   verified in a single session, and a half-built resident engine is exactly the half-done state the
   guardrails warn against. Per "quality over count governs," S1 is left `[ ]` (not half-built) for a
   dedicated session. Recorded in the plan's progress log under "Wave 1 sequencing note".
-- **H1 (mutation-derived honesty calibration, M) - designed, not coded.** Chosen as the intended
-  next item (dependency-met, self-contained, unblocks T0), but deferred to reserve wrap-up budget
-  rather than rush it, because it turned out to carry real completion uncertainty (see the design
-  and findings below). No H1 code was written; nothing is half-landed.
+- **H1 - completed gate-green** (see the completed table and numbers above). The design notes below
+  are kept as the record of how it was built and the one honest limitation (SampleShop skipped).
 - Everything requiring a model run or API tokens (B1, F1/F2/F6, `fuse eval loop`/`agent`) is
   hard-banned for tonight and was not touched.
 
@@ -77,7 +83,7 @@ B1-gated items). No number was fabricated, rounded, or quoted below its minimum 
   6/8/9/10 already present; no corpus repo needed a missing band. The benchmark corpus was already
   cloned under `tests/benchmarks/.corpus` (NodaTime, Scrutor, Specification, eShopOnWeb).
 
-## H1 design and preconditions (de-risked handoff for the next session)
+## H1 as built (record of the implementation and its one limitation)
 
 Preconditions verified:
 - The Suite F harness is `CheckGateSuite` (`tests/benchmarks/Fuse.Benchmarks/Suites/CheckGateSuite.cs`),
@@ -127,11 +133,19 @@ separately and label it.
 
 ## Exact next item to start
 
-**H1 - Mutation-derived honesty calibration at scale** (Master checklist Wave 1; depends: none).
-Follow the design above. It is dependency-met today and unblocks T0 (verification-grade ladder).
-After H1, the keystone **S1 - the resident workspace** is the next major item; budget it as a
-multi-session XL and land it in the sub-steps its item text lists (extract a rehydration-to-resident
-loader first, DI-edge acceptance test first for the watcher step).
+Two are now eligible:
+
+- **T0 - Verification-grade ladder: verify never shrugs** (depends: H1, now `[x]`). This is the next
+  todo whose dependency is met. It adds the build-grade fallback so a verify-class answer degrades to
+  running the real toolchain (stamped `build`-grade) instead of abstaining, using H1's mutation corpus
+  as the oracle-versus-build agreement check.
+- **S1 - the resident workspace** (depends: X1, met) is the keystone and the larger prize; budget it
+  as a multi-session XL and land it in the sub-steps its item text lists (extract a
+  rehydration-to-resident loader first; DI-edge acceptance test first for the watcher step).
+
+Recommended: take T0 next (small-to-medium, dependency-met, completable), then commit to S1 as a
+multi-session effort. A worthwhile H1 follow-up (named, not blocking): bind the SampleShop fixture
+with per-project references so the mutation arm scores two fixtures instead of one.
 
 ## Guardrail compliance
 

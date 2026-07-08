@@ -15,6 +15,7 @@ namespace Fuse.Benchmarks;
 /// <param name="Restore">When true, run <c>dotnet restore</c> on each checkout before indexing so it can load semantically.</param>
 /// <param name="RequireSemantic">When true, do not score a task whose checkout indexes below semantic mode; report it loudly instead of silently scoring the syntax fallback.</param>
 /// <param name="CorpusSample">When greater than zero, the semantics suite samples this many predicted edges per type over the corpus for adjudication.</param>
+/// <param name="Mutations">When greater than zero, the checkgate suite runs this many compiler-verified mutants per class per fixture (the scaled honesty gate, H1).</param>
 /// <param name="Log">A progress callback, or null for no output.</param>
 public sealed record EvalOptions(
     string BenchRoot,
@@ -28,6 +29,7 @@ public sealed record EvalOptions(
     bool Restore = false,
     bool RequireSemantic = false,
     int CorpusSample = 0,
+    int Mutations = 0,
     Action<string>? Log = null)
 {
     /// <summary>Writes a progress line through <see cref="Log" />, if one is set.</summary>

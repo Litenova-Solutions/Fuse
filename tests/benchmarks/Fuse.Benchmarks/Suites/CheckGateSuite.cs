@@ -105,11 +105,26 @@ public sealed class CheckGateSuite : IEvalSuite
 
         var verified = falseGreen + falseRed + correct;
         var accuracy = tasks.Count == 0 ? 0.0 : (double)correct / tasks.Count;
-        notes.Add($"cases {tasks.Count}: correct {correct}, false-green {falseGreen}, false-red {falseRed}, abstained {abstained}.");
-        notes.Add($"false-green rate {(verified == 0 ? 0 : (double)falseGreen / verified):P1}, false-red rate {(verified == 0 ? 0 : (double)falseRed / verified):P1} (over {verified} verified).");
-        notes.Add(falseGreen == 0 && falseRed == 0
-            ? "GATE: PASS (no false green, no false red among verified checks)."
-            : "GATE: FAIL (a broken edit passed or a valid edit was flagged).");
+        notes.Add($"curated cases {tasks.Count}: correct {correct}, false-green {falseGreen}, false-red {falseRed}, abstained {abstained}.");
+        notes.Add($"curated false-green rate {(verified == 0 ? 0 : (double)falseGreen / verified):P1}, false-red rate {(verified == 0 ? 0 : (double)falseRed / verified):P1} (over {verified} verified).");
+
+        // The mutation arm (H1): thousands of compiler-verified single-file edits, so "check never lies" is a
+        // measured rate rather than the eight curated cases. Off unless --mutations N is given; the curated set
+        // above remains the named subset.
+        var mutation = options.Mutations > 0
+            ? RunMutationArm(options, notes, cancellationToken)
+            : null;
+        if (mutation is null)
+            notes.Add("mutation arm: skipped (pass --mutations N to run the scaled honesty gate).");
+
+        var totalFalseGreen = falseGreen + (mutation?.FalseGreen ?? 0);
+        var totalFalseRed = falseRed + (mutation?.FalseRed ?? 0);
+        var mutationFalseRedRate = mutation is { Verified: > 0 }
+            ? (double)mutation.FalseRed / mutation.Verified
+            : 0.0;
+        notes.Add(totalFalseGreen == 0 && mutationFalseRedRate < 0.01
+            ? $"GATE: PASS (false green {totalFalseGreen}; mutation false-red rate {mutationFalseRedRate:P2} < 1%)."
+            : $"GATE: FAIL (false green {totalFalseGreen}; mutation false-red rate {mutationFalseRedRate:P2}).");
 
         // Optional tier-1 end-to-end arm: only when a real worker is configured. It is a wiring check that the
         // out-of-process path returns the same clean/dirty verdict, not a second statistical sample.
@@ -284,5 +299,184 @@ public sealed class CheckGateSuite : IEvalSuite
         return builder.ToImmutable();
     }
 
+    // The scaled honesty gate (H1): generate compiler-verified breaking and neutral single-file mutants over the
+    // in-repo fixtures and run each through the same shipped classification the curated cases use, so false green
+    // and false red become rates over hundreds of cases per class. A fixture that cannot compile clean in-process
+    // (for example one needing a framework its references do not supply) is recorded skipped rather than scored,
+    // so the gate never measures the fixture instead of the oracle.
+    private static MutationTally RunMutationArm(EvalOptions options, List<string> notes, CancellationToken cancellationToken)
+    {
+        var repoRoot = Path.GetFullPath(Path.Combine(options.BenchRoot, "..", ".."));
+        var fixturesRoot = options.FixturesRoot is { } root ? Path.GetFullPath(root) : Path.Combine(repoRoot, "tests", "fixtures");
+        var generator = new MutationGenerator();
+        var total = new MutationTally(0, 0, 0, 0, 0);
+        // A fixed seed keyed off the fixture name keeps a run reproducible while giving each fixture its own stream.
+        var seedBase = 20260708;
+
+        foreach (var fixture in new[] { "SampleShop", "OrderingApp" })
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var dir = Path.Combine(fixturesRoot, fixture);
+            if (!Directory.Exists(dir))
+            {
+                notes.Add($"mutation fixture {fixture}: not found at {dir}; skipped.");
+                continue;
+            }
+
+            var (compilation, mutableFiles) = BuildFixtureCompilation(dir);
+            var baselineDiagnostics = compilation.GetDiagnostics(cancellationToken)
+                .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
+                .ToList();
+            if (baselineDiagnostics.Count != 0)
+            {
+                var ids = string.Join(", ", baselineDiagnostics.Select(d => d.Id).Distinct().Take(6));
+                notes.Add($"mutation fixture {fixture}: baseline has {baselineDiagnostics.Count} in-process error(s) [{ids}]; skipped, not scored (the in-process compilation cannot bind it without its full project references).");
+                continue;
+            }
+
+            var cases = generator.Generate(compilation, mutableFiles, options.Mutations, seedBase + fixture.GetHashCode());
+            var tally = new MutationTally(0, 0, 0, 0, 0);
+            foreach (var mutant in cases)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var result = CheckInProcess(compilation,
+                    new CheckEdit(mutant.Name, mutant.TargetFile, mutant.NewContent, mutant.ShouldBeClean),
+                    cancellationToken);
+                tally = Tally(tally, mutant.ShouldBeClean, result);
+            }
+
+            var breaking = cases.Count(c => !c.ShouldBeClean);
+            var neutral = cases.Count - breaking;
+            notes.Add($"mutation fixture {fixture}: {cases.Count} verified cases ({breaking} breaking, {neutral} neutral); " +
+                      $"false-green {tally.FalseGreen}, false-red {tally.FalseRed}, abstained {tally.Abstained}, correct {tally.Correct}.");
+            total = Add(total, tally);
+        }
+
+        var verified = total.Verified;
+        notes.Add($"mutation totals: {total.Total} cases, false-green {total.FalseGreen}, false-red {total.FalseRed} " +
+                  $"(false-green rate {(verified == 0 ? 0 : (double)total.FalseGreen / verified):P2}, " +
+                  $"false-red rate {(verified == 0 ? 0 : (double)total.FalseRed / verified):P2} over {verified} verified).");
+        return total;
+    }
+
+    // Classifies one mutant's check result against its verified verdict, mirroring the curated-case rule exactly.
+    private static MutationTally Tally(MutationTally t, bool shouldBeClean, CheckResult result)
+    {
+        if (!result.Verified)
+            return t with { Total = t.Total + 1, Abstained = t.Abstained + 1 };
+        if (shouldBeClean && !result.IsClean)
+            return t with { Total = t.Total + 1, FalseRed = t.FalseRed + 1 };
+        if (!shouldBeClean && result.IsClean)
+            return t with { Total = t.Total + 1, FalseGreen = t.FalseGreen + 1 };
+        return t with { Total = t.Total + 1, Correct = t.Correct + 1 };
+    }
+
+    private static MutationTally Add(MutationTally a, MutationTally b) => new(
+        a.Total + b.Total, a.FalseGreen + b.FalseGreen, a.FalseRed + b.FalseRed, a.Abstained + b.Abstained, a.Correct + b.Correct);
+
+    // Builds an in-process compilation from a fixture directory: every .cs under it (excluding build output),
+    // referenced against the BCL and, when present, the ASP.NET Core shared framework so a web fixture binds. The
+    // output kind follows the sources (top-level statements => console app, else library), so the baseline does
+    // not fail on an entry-point mismatch.
+    private static (CSharpCompilation Compilation, IReadOnlyCollection<string> MutableFiles) BuildFixtureCompilation(string dir)
+    {
+        var files = Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                     && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToList();
+        var trees = files
+            .Select(f => CSharpSyntaxTree.ParseText(File.ReadAllText(f), path: f))
+            .ToList();
+
+        // SDK-style projects rely on implicit global usings that a raw compilation does not synthesize. Supply the
+        // Microsoft.NET.Sdk (and, when the ASP.NET shared framework is available, the .Web) implicit-using sets so
+        // a fixture that omits explicit usings still binds; an unused global using is harmless. The ASP.NET set is
+        // added only when its references are present, or a global using to a missing namespace would itself error.
+        var aspNet = AspNetSharedFrameworkReferences();
+        var references = ReferencePaths().AddRange(aspNet);
+        trees.Insert(0, CSharpSyntaxTree.ParseText(ImplicitGlobalUsings(includeAspNet: aspNet.Length > 0), path: "GlobalUsings.g.cs"));
+
+        var hasTopLevel = trees.Any(t => t.GetRoot() is Microsoft.CodeAnalysis.CSharp.Syntax.CompilationUnitSyntax cu
+            && cu.Members.OfType<Microsoft.CodeAnalysis.CSharp.Syntax.GlobalStatementSyntax>().Any());
+        var outputKind = hasTopLevel ? OutputKind.ConsoleApplication : OutputKind.DynamicallyLinkedLibrary;
+        var compilation = CSharpCompilation.Create(
+            Path.GetFileName(dir) + "Mutations",
+            trees,
+            references,
+            new CSharpCompilationOptions(outputKind, allowUnsafe: true));
+        return (compilation, files);
+    }
+
+    // The ASP.NET Core shared framework assemblies as references, resolved relative to the running .NET runtime
+    // directory (a sibling of the base runtime's shared folder). Empty when the shared framework is not installed,
+    // in which case a web fixture simply records a baseline error and is skipped.
+    private static ImmutableArray<MetadataReference> AspNetSharedFrameworkReferences()
+    {
+        var runtimeDir = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
+        // runtimeDir is .../shared/Microsoft.NETCore.App/<version>/; the ASP.NET one is a sibling framework dir.
+        var sharedRoot = Directory.GetParent(runtimeDir)?.Parent;
+        if (sharedRoot is null)
+            return [];
+        var aspNetRoot = Path.Combine(sharedRoot.FullName, "Microsoft.AspNetCore.App");
+        if (!Directory.Exists(aspNetRoot))
+            return [];
+
+        // Pick the highest installed version directory, so the fixture binds against a current framework.
+        var versionDir = Directory.EnumerateDirectories(aspNetRoot)
+            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
+            .LastOrDefault();
+        if (versionDir is null)
+            return [];
+
+        var builder = ImmutableArray.CreateBuilder<MetadataReference>();
+        foreach (var dll in Directory.EnumerateFiles(versionDir, "*.dll"))
+        {
+            try
+            {
+                builder.Add(MetadataReference.CreateFromFile(dll));
+            }
+            catch (Exception ex) when (ex is IOException or BadImageFormatException)
+            {
+                // A non-managed or unreadable dll in the framework dir is skipped; the rest still bind.
+            }
+        }
+        return builder.ToImmutable();
+    }
+
+    // The implicit global usings emitted by Microsoft.NET.Sdk, plus the Microsoft.NET.Sdk.Web set when the ASP.NET
+    // shared framework is referenced, so an SDK-style fixture that omits explicit usings binds in-process. Unused
+    // entries are harmless; a fixture that needs none of them still compiles.
+    private static string ImplicitGlobalUsings(bool includeAspNet)
+    {
+        var baseSet = """
+            global using global::System;
+            global using global::System.Collections.Generic;
+            global using global::System.IO;
+            global using global::System.Linq;
+            global using global::System.Net.Http;
+            global using global::System.Threading;
+            global using global::System.Threading.Tasks;
+            """;
+        if (!includeAspNet)
+            return baseSet;
+        return baseSet + "\r\n" + """
+            global using global::System.Net.Http.Json;
+            global using global::Microsoft.AspNetCore.Builder;
+            global using global::Microsoft.AspNetCore.Hosting;
+            global using global::Microsoft.AspNetCore.Http;
+            global using global::Microsoft.AspNetCore.Routing;
+            global using global::Microsoft.Extensions.Configuration;
+            global using global::Microsoft.Extensions.DependencyInjection;
+            global using global::Microsoft.Extensions.Hosting;
+            global using global::Microsoft.Extensions.Logging;
+            """;
+    }
+
     private sealed record CheckEdit(string Name, string TargetFile, string NewContent, bool ShouldBeClean);
+
+    // Running counts for the mutation arm. Verified excludes abstentions (neither a false green nor a false red).
+    private sealed record MutationTally(int Total, int FalseGreen, int FalseRed, int Abstained, int Correct)
+    {
+        public int Verified => FalseGreen + FalseRed + Correct;
+    }
 }

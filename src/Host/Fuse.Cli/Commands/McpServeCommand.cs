@@ -78,22 +78,20 @@ public sealed class McpServeCommand
                 options.ServerInstructions =
                     "Fuse is a .NET semantic context engine for AI agents. It indexes a workspace with Roslyn and " +
                     "serves precise, provenance-backed context from a typed semantic graph.\n\n" +
+                    "THE LOOP: after an edit, fuse_check; before a signature change, fuse_impact; before done, fuse_review.\n\n" +
                     "Use fuse_review for PR/change work when a git base exists.\n" +
-                    "Use fuse_resolve when a task names a route, interface, service, request, handler, or config section.\n" +
-                    "Use fuse_localize for open-ended tasks.\n" +
-                    "Use fuse_context only after localize/resolve unless the user asks for one-shot context.\n" +
-                    "Use fuse_find for exact text/path/symbol lookup.\n\n" +
+                    "Use fuse_find with kind=service|request|route|config when a task names wiring, or kind=task for an open-ended task.\n" +
+                    "Use fuse_context only after fuse_find unless the user asks for one-shot context.\n" +
+                    "Use fuse_find with kind=symbol|path|text for exact lookup.\n\n" +
                     "TOOLS:\n" +
                     "- fuse_workspace: Workspace status and lifecycle. action=status (index mode, verify grade, freshness), index (build/refresh), map (symbols/routes/counts), doctor (per-project load diagnosis). The cheap first call.\n" +
-                    "- fuse_localize: Rank candidate files/symbols for a task. No bodies.\n" +
-                    "- fuse_resolve: Resolve wiring (service->impl, request->handler, route->action, config->options, symbol). No bodies.\n" +
+                    "- fuse_find: The find union. kind=symbol|path|text|all (exact lookup); service|request|route|config (wiring to impl/handler/action/options); signatures (a symbol's exact signature); neighbors (callers and implementers); task (rank candidate files, graded refuse-and-route). No bodies.\n" +
                     "- fuse_context: Emit source context (mixed tiers, manifest, provenance) for selected seeds.\n" +
                     "- fuse_review: Diff-first semantic impact and packed context for a change.\n" +
-                    "- fuse_find: Exact symbol/path/text lookup.\n" +
-                    "- fuse_signatures: Batch exact signatures for named symbols in one call (no grep-and-read round-trips).\n" +
-                    "- fuse_impact: Blast radius for a symbol (callers, implementers, referencers) before an edit.\n" +
+                    "- fuse_impact: Blast radius for a symbol (callers, implementers, referencers) before an edit; also package:{id,fromVersion,toVersion} for a NuGet upgrade break set.\n" +
                     "- fuse_check: Speculatively typecheck a proposed single-file edit (oracle-grade; abstains otherwise).\n" +
-                    "- fuse_refactor: Compiler-executed solution-wide rename, staged as a diff (abstains on a partial load).\n" +
+                    "- fuse_test: Run the covering tests for a symbol (build-grade, scoped by filter).\n" +
+                    "- fuse_refactor: Compiler-executed, verify-gated refactors staged as a diff (rename, add/remove/reorder-parameter, add-cancellation-token, extract-interface, move-type, apply-codefix).\n" +
                     "- fuse_changeset: Speculative staging area (create/stage/diagnose/select/promote/discard); nothing is written until an explicit promote.\n" +
                     "- fuse_reduce: Compact a known set of files or raw content.";
             })

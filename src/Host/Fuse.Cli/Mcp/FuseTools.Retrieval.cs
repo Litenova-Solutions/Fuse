@@ -33,8 +33,7 @@ public sealed partial class FuseTools
     /// <param name="expand">When true, the selected candidates are enriched with their typed-graph neighbors for discovery; off by default.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>Ranked candidates with reasons and token costs, or a navigation map when the request is not confident.</returns>
-    [McpServerTool(Name = "fuse_localize", ReadOnly = true)]
-    [Description("Localize a task to ranked candidate files and symbols (no bodies). The cheap first step of an iterative workflow; follow with fuse_context to read selected seeds.")]
+    // Folded into fuse_find (kind=task) in U1; kept as an internal helper the find union calls, shimmed by name.
     public static async Task<string> FuseLocalizeAsync(
         SemanticIndexer indexer,
         IChangeSource changeSource,
@@ -73,8 +72,7 @@ public sealed partial class FuseTools
     /// <param name="limitPerName">The maximum matches to return per requested name.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The signatures grouped by requested name, with a note for any name that did not match.</returns>
-    [McpServerTool(Name = "fuse_signatures", ReadOnly = true)]
-    [Description("Batch exact signatures for named symbols from the semantic index, in one call instead of many grep-and-read round-trips. Returns the declared signature, kind, accessibility, and location per match. A signature is available at the semantic tier; in syntax mode it may be absent, and the tool says so rather than inventing one.")]
+    // Folded into fuse_find (kind=signatures) in U1; kept as an internal helper the find union calls, shimmed by name.
     public static async Task<string> FuseSignaturesAsync(
         SemanticIndexer indexer,
         [Description("Symbol names to look up (simple name or fully qualified).")] string[] names,
@@ -130,8 +128,7 @@ public sealed partial class FuseTools
     /// <param name="limit">The maximum results to return.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The ranked exploration items with provenance and no bodies.</returns>
-    [McpServerTool(Name = "fuse_neighbors", ReadOnly = true)]
-    [Description("Iterative exploration primitives (no bodies): the graph neighborhood of a file (callers, implementers, consumers, config, plus same-folder cohesion), the callers and implementers of a symbol, or the structurally central files of an area. Chain these to turn a weak first guess into a strong few-call funnel.")]
+    // Folded into fuse_find (kind=neighbors) in U1; kept as an internal helper the find union calls, shimmed by name.
     public static async Task<string> FuseNeighborsAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
@@ -864,8 +861,7 @@ public sealed partial class FuseTools
     /// <param name="symbol">A symbol to resolve to its declaration.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The resolved target(s) with paths and evidence.</returns>
-    [McpServerTool(Name = "fuse_resolve", ReadOnly = true)]
-    [Description("Deterministically resolve .NET wiring: a service to its implementation, a request to its handler, a route to its action, a config section to its options, or a symbol to its declaration. No source bodies.")]
+    // Folded into fuse_find (kind=service/request/route/config) in U1; kept as an internal helper, shimmed by name.
     public static async Task<string> FuseResolveAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",

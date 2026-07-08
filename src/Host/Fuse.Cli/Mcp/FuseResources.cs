@@ -33,7 +33,7 @@ public sealed class FuseResources
         UriTemplate = "fuse://map/{path}",
         Name = "Workspace Map",
         MimeType = "text/plain")]
-    [Description("Returns a map of the indexed workspace (symbols, routes, counts). Mirrors fuse_map.")]
+    [Description("Returns a map of the indexed workspace (symbols, routes, counts). Mirrors fuse_workspace (action=map).")]
     public static async Task<string> ReadMapResourceAsync(
         SemanticIndexer indexer,
         [Description("Relative path to the workspace directory.")] string path,
@@ -47,7 +47,7 @@ public sealed class FuseResources
     }
 
     /// <summary>
-    ///     Reads ranked candidate files and symbols for a task, with no source bodies. Mirrors fuse_localize.
+    ///     Reads ranked candidate files and symbols for a task, with no source bodies. Mirrors fuse_find (kind=task).
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
     /// <param name="changeSource">The change source (unused for a title-only query, passed for parity).</param>
@@ -59,7 +59,7 @@ public sealed class FuseResources
         UriTemplate = "fuse://localize/{path}/{query}",
         Name = "Localized Candidates",
         MimeType = "text/plain")]
-    [Description("Returns ranked candidate files and symbols for a task, no source bodies. Mirrors fuse_localize.")]
+    [Description("Returns ranked candidate files and symbols for a task, no source bodies. Mirrors fuse_find (kind=task).")]
     public static async Task<string> ReadLocalizeResourceAsync(
         SemanticIndexer indexer,
         IChangeSource changeSource,

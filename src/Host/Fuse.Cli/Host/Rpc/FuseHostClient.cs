@@ -73,7 +73,16 @@ public static class FuseHostClient
     {
         if (OperatingSystem.IsWindows())
         {
-            var client = new NamedPipeClientStream(".", HostEndpoint.PipeName(root), PipeDirection.InOut, System.IO.Pipes.PipeOptions.Asynchronous);
+            var pipeName = HostEndpoint.PipeName(root);
+            // A non-existent named pipe makes ConnectAsync poll for the whole timeout before failing, which would
+            // put that full delay on the no-host hot path. Windows lists live pipes under the \\.\pipe\ device
+            // namespace, so enumerating it short-circuits the no-host case to (effectively) zero probe latency; the
+            // connect timeout then only bounds a pipe that exists but is momentarily busy. (File.Exists does not
+            // detect a named pipe, so the directory enumeration is the reliable check.)
+            if (!WindowsPipeExists(pipeName))
+                return null;
+
+            var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, System.IO.Pipes.PipeOptions.Asynchronous);
             try
             {
                 await client.ConnectAsync((int)connectTimeout.TotalMilliseconds, cancellationToken);
@@ -86,6 +95,27 @@ public static class FuseHostClient
             }
         }
 
+        return await ConnectUnixAsync(root, connectTimeout, cancellationToken);
+    }
+
+    // Whether a named pipe with the given name is currently served. The \\.\pipe\ device directory lists every
+    // live pipe; enumerating it is reliable where File.Exists is not. On any enumeration failure this returns true
+    // so the caller still attempts a real connect rather than wrongly short-circuiting to "no host".
+    private static bool WindowsPipeExists(string pipeName)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(@"\\.\pipe\")
+                .Any(p => string.Equals(Path.GetFileName(p), pipeName, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true;
+        }
+    }
+
+    private static async Task<Stream?> ConnectUnixAsync(string root, TimeSpan connectTimeout, CancellationToken cancellationToken)
+    {
         var socketPath = HostEndpoint.SocketPath(root);
         if (!File.Exists(socketPath))
             return null; // No socket file means no host is bound for this root.

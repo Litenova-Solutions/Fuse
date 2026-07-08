@@ -64,6 +64,15 @@ public sealed class InstallCommand
     public bool Rules { get; set; }
 
     /// <summary>
+    ///     When set, also writes Fuse's ambient-verification hooks (S3) into the project's Claude Code
+    ///     <c>.claude/settings.json</c>: a PostToolUse hook running <c>fuse check --delta --fast</c> after edits and
+    ///     a Stop hook running <c>fuse gate</c>. Requires the explicit flag; the merge preserves other settings and
+    ///     is idempotent.
+    /// </summary>
+    [CliOption(Name = "--with-hooks", Required = false, Description = "Also write Claude Code ambient-verification hooks (PostToolUse -> fuse check --delta, Stop -> fuse gate) into project .claude/settings.json.")]
+    public bool WithHooks { get; set; }
+
+    /// <summary>
     ///     Writes MCP configuration for the selected client(s) and scope.
     /// </summary>
     /// <param name="context">The CLI invocation context.</param>
@@ -106,10 +115,35 @@ public sealed class InstallCommand
             $"Configured {configured} client{(configured == 1 ? string.Empty : "s")}. " +
             "Your AI client will launch fuse mcp serve automatically when MCP is enabled.");
 
+        if (WithHooks)
+            WriteClaudeHooks();
+
         if (!Rules)
             _consoleUI.WriteStep(
                 "Tip: re-run with --rules to also bias your agent toward the fuse_* tools "
                 + "(writes a short rule into your client's instructions file).");
+    }
+
+    // Writes (or idempotently updates) the project's .claude/settings.json with Fuse's ambient-verification hooks.
+    // The command the hooks invoke is the explicit --command or the fuse global tool on PATH; the working tree is
+    // touched only under the explicit --with-hooks flag.
+    private void WriteClaudeHooks()
+    {
+        var projectRoot = Directory.GetCurrentDirectory();
+        var settingsPath = System.IO.Path.Combine(projectRoot, ".claude", "settings.json");
+        var existing = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
+        if (ClaudeHooksConfig.AlreadyInstalled(existing))
+        {
+            _consoleUI.WriteStep($"Ambient-verification hooks already present in {settingsPath}.");
+            return;
+        }
+
+        var fuseCommand = string.IsNullOrWhiteSpace(Command) ? "fuse" : Command!;
+        var merged = ClaudeHooksConfig.Merge(existing, fuseCommand);
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(settingsPath)!);
+        File.WriteAllText(settingsPath, merged);
+        _consoleUI.WriteSuccess($"Wrote ambient-verification hooks to {settingsPath} (PostToolUse -> check --delta, Stop -> gate).");
+        _consoleUI.WriteStep("Remove them by deleting the two fuse hook entries from that file's \"hooks\" section.");
     }
 
     private static bool TryParseClient(string value, out IReadOnlyList<McpInstallClient> clients)

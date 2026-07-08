@@ -313,10 +313,18 @@ public sealed partial class FuseTools
         // compilation), fall back to build-grade (run the real toolchain, scoped to the owning project), and abstain
         // only when neither can run. An oracle abstention (tier-1 not configured, or the project did not load clean)
         // is a fall-through to build-grade, not a shrug.
+        //
+        // Resident-first (S1, D8): when a live resident workspace serves this root it answers the oracle check from
+        // the held compilation (no per-check rebuild). With no resident workspace wired the provider returns null and
+        // this is a no-op, so the build-capture-worker path below is unchanged.
+        Fuse.Indexing.CheckResult? oracle = null;
+        var residentDiagnostics = ResidentWorkspaces.TryCheckOverlay(root, file, content, cancellationToken);
+        if (residentDiagnostics is not null)
+            oracle = Fuse.Indexing.CheckResult.Ok(residentDiagnostics);
+
         var client = new Fuse.Semantics.BuildCaptureClient();
         var oracleTarget = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
-        Fuse.Indexing.CheckResult? oracle = null;
-        if (client.IsAvailable && oracleTarget is not null)
+        if (oracle is null && client.IsAvailable && oracleTarget is not null)
         {
             var candidate = await client.CheckAsync(oracleTarget, file, content, TimeSpan.FromMinutes(10), cancellationToken);
             if (candidate.Verified)

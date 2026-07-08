@@ -46,11 +46,19 @@ surfaces and a silenced rule stays silent through the analyzer-aware check; the 
 verify, off for delta; 887 ms) is recorded. Docs (verification-grades analyzer-and-nullable-parity) + CHANGELOG
 swept.
 
-Next action (top-to-bottom): T1 (covering-test execution out of process; deps S1/S2/H1 all done) - a fresh
-Wave-3 item, run its preconditions first. Then H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one
-maintainer-gated timing deviation (the mechanism is complete). All work committed and pushed at HEAD `e4f7f38`;
-every committed change gate-green (build + all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc
-from the S3 protocol change). Roughly 82 gate-green commits this session.
+T1 is started (`[>]`): all preconditions confirmed - the covering-selection entry points exist, Microsoft.Testing.
+Platform is cached, and the emit spike passes (a rehydrated build-exact resident compilation emits a runnable
+assembly, the item's main uncertainty). The remaining T1 work is the Large, multi-session micro-host runner:
+fuse_test / fuse test that emit the speculative assemblies to a scratch dir, materialize dependencies, run the
+covering subset in a spawned Microsoft.Testing.Platform micro-host with a stripped environment and a hard timeout,
+report per-test verdicts plus a not-runnable list, degrade per T0, add the H1 mutant extension, and record
+testexec.json (false-green 0, median under 10s, selection safety at least 95 percent).
+
+Next action: the T1 micro-host runner, as gated sub-steps (a safe first slice is the emit-to-scratch plus
+dependency materialization, testable before the run half). Then H2. C1 remains `[>]` (corpus-and-install-gated
+apply); S3 has one maintainer-gated timing deviation (mechanism complete). All work committed and pushed at HEAD
+`ec04d05`; every committed change gate-green (build + all 16 .NET assemblies + dotnet format; extension contract
+9/9 + tsc from the S3 protocol change). Roughly 86 gate-green commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

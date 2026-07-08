@@ -70,6 +70,87 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
+    ///     The workspace status and lifecycle tool (U1): the single entry point for the state of the workspace and
+    ///     its index. <c>action=status</c> reports the index mode, verify grade, and freshness; <c>index</c> builds
+    ///     or refreshes the index; <c>map</c> prints the symbol and route map; <c>doctor</c> diagnoses the semantic
+    ///     load per project. The read actions fold the former <c>fuse_index</c> and <c>fuse_map</c>; the explicit
+    ///     apply-diff write path (Decision D2) is added as a later action.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer.</param>
+    /// <param name="action">The action: status, index, map, or doctor.</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="detail">For the map action: the detail to include (symbols, routes, all).</param>
+    /// <param name="maxRows">For the map action: the maximum rows per section.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The action's result, or a descriptive error.</returns>
+    [McpServerTool(Name = "fuse_workspace", ReadOnly = false)]
+    [Description("Workspace status and lifecycle (the loop's first stop). action=status (default): the index mode, verification grade, and freshness. action=index: build or refresh the persistent semantic index. action=map: the symbols, routes, and counts. action=doctor: the per-project semantic-load diagnosis (why a project loaded at the tier it did). The read actions fold fuse_index and fuse_map; the explicit apply-diff write path is added separately.")]
+    public static async Task<string> FuseWorkspaceAsync(
+        SemanticIndexer indexer,
+        [Description("The action: status, index, map, or doctor.")] string action = "status",
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("For the map action: detail to include (symbols, routes, all).")] string detail = "all",
+        [Description("For the map action: maximum rows per section.")] int maxRows = 200,
+        CancellationToken cancellationToken = default)
+    {
+        switch (action.Trim().ToLowerInvariant())
+        {
+            case "index":
+                return await FuseIndexAsync(indexer, path, cancellationToken);
+            case "map":
+                return await FuseMapAsync(indexer, path, detail, maxRows, cancellationToken);
+            case "doctor":
+                return await WorkspaceDoctorAsync(indexer, path, cancellationToken);
+            case "status":
+            case "":
+                return await WorkspaceStatusAsync(indexer, path, cancellationToken);
+            default:
+                return $"Error: unknown workspace action '{action}'. Use status, index, map, or doctor.";
+        }
+    }
+
+    // The status action: the availability header (index mode, verify grade, freshness) plus the index counts.
+    private static async Task<string> WorkspaceStatusAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
+        var builder = new StringBuilder();
+        builder.AppendLine(await OracleAvailabilityHeaderAsync(store, root, cancellationToken));
+        builder.AppendLine($"workspace: {root}");
+        builder.AppendLine($"index mode: {mode}");
+        return builder.ToString().TrimEnd();
+    }
+
+    // The doctor action: the per-project semantic-load diagnosis, so a downgrade names its reason per project.
+    private static async Task<string> WorkspaceDoctorAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+
+        var diagnosis = await indexer.DiagnoseLoadAsync(root, cancellationToken);
+        var builder = new StringBuilder();
+        builder.AppendLine($"workspace: {root}");
+        builder.AppendLine($"load tier: {diagnosis.Tier}");
+        builder.AppendLine($"projects loaded: {diagnosis.ProjectsLoaded}/{diagnosis.ProjectsTotal}");
+        if (diagnosis.Projects.Count == 0)
+        {
+            builder.AppendLine("no projects: the workspace has no solution or project, or none opened; indexing is syntax-only.");
+        }
+        else
+        {
+            foreach (var project in diagnosis.Projects)
+                builder.AppendLine($"  {project.Name}: {(project.Loaded ? "loaded" : "not loaded")} - {project.Reason}");
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
     ///     Exact lookup over the index: symbols by name, files by path, and chunks by full-text.
     /// </summary>
     /// <param name="indexer">The semantic indexer (used to build the index on first use).</param>

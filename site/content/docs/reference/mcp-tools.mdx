@@ -121,6 +121,8 @@ Review the semantic impact of a change since a git base ref: the changed files, 
 | `format` | string | `xml` | `xml`, `markdown`, or `json` |
 | `sessionId` | string | null | Session id; files already sent unchanged in the session are elided |
 
+The manifest opens with a public API delta section (T2): the public and protected members added, removed, or changed between the git base ref and the working tree, each flagged breaking (a removal, a signature change, or an accessibility reduction) or additive. A purely internal change shows no section. The surface is compared by extracting the public and protected symbols of each changed C# file on both sides (the base side read from the base ref, the current side from the working tree), so a contract break is the first thing a reviewer reads rather than something CI discovers. In the JSON format the section rides a dedicated `apiDelta` field so the payload stays valid JSON. Out of scope, and not flagged: binary-compatibility subtleties that are not a source-visible surface change, specifically default parameter value changes and `const` inlining.
+
 ## fuse_find
 
 Exact lookup: a symbol by name, a file by path fragment, or text by full-text search. Use instead of broad grep when the name or path is known.
@@ -180,6 +182,8 @@ Blast radius for a symbol before you edit it: the callers, implementers, consume
 | `symbol` | string | required | The symbol (simple or qualified name) whose blast radius to compute |
 | `path` | string | `.` | Workspace directory |
 | `limit` | int | 50 | Maximum impacted items to return |
+
+The response also carries a public API surface line (T2): whether the target symbol is on the public or protected surface, so before editing you know whether the change is contract-relevant (removing it, reducing its accessibility, or reshaping its signature would break external callers). The flag is conservative to avoid training you to ignore it: a positive "public" is asserted only from the recorded public-API flag, which is reliable for types in any index mode and for members at the semantic tier; a member in syntax mode, where accessibility is not resolved, is reported undetermined rather than guessed either way.
 
 ## fuse_signatures
 

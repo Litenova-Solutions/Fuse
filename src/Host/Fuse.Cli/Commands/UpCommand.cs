@@ -69,5 +69,22 @@ public sealed class UpCommand
         var diagnosis = await _indexer.DiagnoseLoadAsync(root, context.CancellationToken);
         var plan = new EnvironmentRemediationPlanner().Plan(diagnosis);
         _consoleUI.WriteResult(RemediationReport.Render(plan));
+
+        // For the NU1507 remedy (Central Package Management with no source mapping) the fix is an overlay
+        // NuGet.config, which installs nothing and is never written into the repository. Generate it now to a
+        // temp file so the concrete remedy is in hand: pass it to restore/build with --configfile. (Auto-applying
+        // it through the index/build pipeline and re-attempting tier-1 is the C1 apply step; this hands back the
+        // ready-to-use overlay without touching the repo.)
+        if (plan.Remediable.Any(i => i.Signature?.Remedy == "overlay-nuget-source-mapping"))
+        {
+            var overlay = NuGetOverlayConfig.Build(NuGetOverlayConfig.ReadSources(root));
+            var overlayPath = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(), $"fuse-nuget-overlay-{Guid.NewGuid():N}.config");
+            await File.WriteAllTextAsync(overlayPath, overlay, context.CancellationToken);
+            _consoleUI.WriteResult(
+                $"\nNU1507 overlay written to {overlayPath}\n" +
+                $"apply it (installs nothing, never edits the repo):\n" +
+                $"  dotnet restore --configfile \"{overlayPath}\"");
+        }
     }
 }

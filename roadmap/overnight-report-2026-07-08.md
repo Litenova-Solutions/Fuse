@@ -8,8 +8,11 @@ bumps, or publishing. Tree is green and pushed at HEAD `9fc43e9` plus the wrap-u
 
 Wave 0 (contract and kills) is complete: all four items landed gate-green, committed, and pushed.
 In Wave 1, H1 (mutation-derived check-honesty calibration) also landed gate-green, which unblocks
-T0. S1 (the resident workspace, XL) was analyzed and deliberately left unstarted for a dedicated
-session (rationale below). Five items complete this run, all gate-green.
+T0. Five items complete this run, all gate-green. T0's hard design work was then done and recorded
+(both preconditions verified, integration plan, and the Decision-D2 tree-safety resolution); it is
+marked in progress with implementation pending a full-budget session, because it changes the shipped
+`fuse_check` path and a rushed shipped-path change would risk the "never game a gate" red line. S1
+(the resident workspace, XL) remains unstarted for a dedicated session (rationale below).
 
 ## Items completed (with gate verdicts)
 

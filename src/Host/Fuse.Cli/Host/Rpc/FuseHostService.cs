@@ -36,11 +36,13 @@ public sealed class FuseHostService : IDisposable
     ///     Version 4 (v4.1 S3): the <c>fuse/check</c> ambient-verification method and its <c>CheckDeltaDto</c> /
     ///     <c>CheckDiagnosticDto</c> shapes were added. Version 5 (v4.1 G3): the read-only session-observability
     ///     methods <c>fuse/sessions</c> and <c>fuse/session-view</c> and their <c>SessionListDto</c> /
-    ///     <c>SessionSummaryDto</c> / <c>SessionViewDto</c> shapes were added for the extension panel. The
-    ///     extension's <c>protocol.ts</c> PROTOCOL_VERSION mirrors this in the same change, per the host RPC
-    ///     change-safety invariant.
+    ///     <c>SessionSummaryDto</c> / <c>SessionViewDto</c> shapes were added for the extension panel. Version 6
+    ///     (v4.1 G3b): the <c>fuse/session-diff</c> method and its <c>SessionDiffDto</c> / <c>SessionDiffFileDto</c>
+    ///     shapes were added (the working-tree diff against HEAD plus a handoff preview). The extension's
+    ///     <c>protocol.ts</c> PROTOCOL_VERSION mirrors this in the same change, per the host RPC change-safety
+    ///     invariant.
     /// </remarks>
-    public const int ProtocolVersion = 5;
+    public const int ProtocolVersion = 6;
 
     private const int ListLimit = 100_000;
 
@@ -578,6 +580,45 @@ public sealed class FuseHostService : IDisposable
             delta.Introduced.Select(ToCheckDiagnosticDto).ToList(),
             delta.Resolved.Select(ToCheckDiagnosticDto).ToList(),
             claims);
+    }
+
+    /// <summary>
+    ///     Returns the workspace working-tree diff against HEAD and a paste-ready handoff preview (G3b): the
+    ///     uncommitted edits an agent session has made, plus the handoff packet a reviewer would paste. The diff is
+    ///     workspace-global (base HEAD), so the panel shows it at the root rather than per session. Best-effort: a
+    ///     git failure or a missing HEAD returns an unavailable result rather than throwing, so the panel degrades
+    ///     to a note.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <returns>The working-tree diff files and the handoff preview.</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    [JsonRpcMethod("fuse/session-diff")]
+    public async Task<SessionDiffDto> SessionDiffAsync(string sessionToken, string root)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        var resolved = Path.GetFullPath(root);
+
+        List<SessionDiffFileDto> files;
+        var available = true;
+        try
+        {
+            var diffs = await _changeSource.GetDiffsAsync(resolved, "HEAD", CancellationToken.None);
+            files = diffs.Select(d => new SessionDiffFileDto(d.Path, d.Added, d.Removed)).ToList();
+        }
+        catch (ChangeSourceException)
+        {
+            // No git, or no HEAD (a fresh repo): the panel shows an unavailable note rather than an error.
+            available = false;
+            files = [];
+        }
+
+        // The handoff preview reuses the same builder fuse_review --handoff uses, against HEAD; it carries its own
+        // git-failure guard and returns a graceful note rather than throwing.
+        var handoffPreview = await Fuse.Cli.Mcp.FuseTools.BuildHandoffAsync(
+            _indexer, _changeSource, resolved, "HEAD", string.Empty, CancellationToken.None);
+
+        return new SessionDiffDto(available, "HEAD", files, handoffPreview);
     }
 
     private static CheckDiagnosticDto ToCheckDiagnosticDto(CheckDiagnostic diagnostic) =>

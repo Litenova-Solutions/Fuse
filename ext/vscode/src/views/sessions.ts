@@ -1,19 +1,24 @@
 import * as vscode from "vscode";
-import { SessionListDto, SessionViewDto } from "../host/protocol";
+import { SessionDiffDto, SessionListDto, SessionViewDto } from "../host/protocol";
 import {
   buildSessionChildren,
   buildSessionRows,
+  buildWorktreeChildren,
   SessionChildRow,
   SessionRow,
+  WorktreeChildRow,
+  WorktreeRow,
+  WORKTREE_ROW,
 } from "./sessionModel.js";
 
-/** The subset of the host client the panel needs: the two read-only session-observability calls (G3). */
+/** The subset of the host client the panel needs: the read-only session-observability calls (G3, G3b). */
 export interface SessionsClient {
   sessions(root: string): Promise<SessionListDto>;
   sessionView(root: string, session: string): Promise<SessionViewDto>;
+  sessionDiff(root: string): Promise<SessionDiffDto>;
 }
 
-type SessionNode = SessionRow | SessionChildRow;
+type SessionNode = WorktreeRow | SessionRow | SessionChildRow | WorktreeChildRow;
 
 /**
  * The agent observability panel (G3): a read-only tree of the sessions the host knows for the workspace, each
@@ -34,11 +39,25 @@ export class SessionsProvider implements vscode.TreeDataProvider<SessionNode> {
 
   getTreeItem(node: SessionNode): vscode.TreeItem {
     switch (node.kind) {
+      case "worktree": {
+        const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Collapsed);
+        item.iconPath = new vscode.ThemeIcon("git-compare");
+        item.contextValue = "fuseWorktree";
+        return item;
+      }
       case "session": {
         const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Collapsed);
         item.description = node.description;
         item.iconPath = new vscode.ThemeIcon("pulse");
         item.contextValue = "fuseSession";
+        return item;
+      }
+      case "difffile": {
+        const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
+        item.description = node.description;
+        item.iconPath = new vscode.ThemeIcon("diff");
+        item.resourceUri = vscode.Uri.file(`${this.root}/${node.path}`);
+        item.command = { command: "vscode.open", title: "Open", arguments: [item.resourceUri] };
         return item;
       }
       case "diagnostic": {
@@ -72,7 +91,11 @@ export class SessionsProvider implements vscode.TreeDataProvider<SessionNode> {
     }
     try {
       if (!element) {
-        return buildSessionRows(await client.sessions(this.root));
+        // The working-tree diff is a workspace-global root node (G3b), a sibling of the per-session rows.
+        return [WORKTREE_ROW, ...buildSessionRows(await client.sessions(this.root))];
+      }
+      if (element.kind === "worktree") {
+        return buildWorktreeChildren(await client.sessionDiff(this.root));
       }
       if (element.kind === "session") {
         return buildSessionChildren(await client.sessionView(this.root, element.sessionId));

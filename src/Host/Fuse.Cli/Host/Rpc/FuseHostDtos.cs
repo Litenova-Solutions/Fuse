@@ -233,3 +233,28 @@ public sealed record SessionViewDto(
     IReadOnlyList<CheckDiagnosticDto> Introduced,
     IReadOnlyList<CheckDiagnosticDto> Resolved,
     string Claims);
+
+/// <summary>
+///     One file in the working-tree diff (G3b): its repo-relative path and the added and removed line counts.
+/// </summary>
+/// <param name="Path">The repo-relative path of the changed file.</param>
+/// <param name="Added">The number of added lines.</param>
+/// <param name="Removed">The number of removed lines.</param>
+public sealed record SessionDiffFileDto(string Path, int Added, int Removed);
+
+/// <summary>
+///     The result of the <c>fuse/session-diff</c> method (G3b): the workspace working-tree diff against HEAD (the
+///     uncommitted edits an agent session has made) and a paste-ready handoff preview. The diff is workspace-global
+///     (the working tree is one tree, not per session), so the panel shows it at the root rather than under a
+///     session. Best-effort: when git is unavailable or there is no HEAD, <see cref="Available" /> is false and the
+///     lists are empty, so the panel degrades to a note rather than an error.
+/// </summary>
+/// <param name="Available">Whether the working-tree diff could be computed (git present, HEAD resolvable).</param>
+/// <param name="Base">The git base the diff is against (always <c>HEAD</c> in this version).</param>
+/// <param name="Files">The changed files with their added and removed line counts.</param>
+/// <param name="HandoffPreview">The rendered paste-ready handoff packet, or a note when it could not be built.</param>
+public sealed record SessionDiffDto(
+    bool Available,
+    string Base,
+    IReadOnlyList<SessionDiffFileDto> Files,
+    string HandoffPreview);

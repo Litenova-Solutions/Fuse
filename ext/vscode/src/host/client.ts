@@ -15,6 +15,7 @@ import {
   Methods,
   Notifications,
   ScopeResultDto,
+  SessionDiffDto,
   SessionListDto,
   SessionViewDto,
 } from "./protocol";
@@ -106,6 +107,11 @@ export class HostClient {
   /** Returns the read-only observability view of one session (G3): its introduced/resolved diagnostics and rendered claim ledger. */
   sessionView(root: string, session: string): Promise<SessionViewDto> {
     return this.connection.sendRequest(Methods.sessionView, this.requireToken(), root, session);
+  }
+
+  /** Returns the workspace working-tree diff against HEAD and a paste-ready handoff preview (G3b), for the panel's root working-tree node. */
+  sessionDiff(root: string): Promise<SessionDiffDto> {
+    return this.connection.sendRequest(Methods.sessionDiff, this.requireToken(), root);
   }
 
   /** Registers a handler for the host's `fuse/invalidated` notification (the workspace changed). */

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { buildSessionRows, buildSessionChildren } from "../src/views/sessionModel.js";
+import { buildSessionRows, buildSessionChildren, buildWorktreeChildren, WORKTREE_ROW } from "../src/views/sessionModel.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = JSON.parse(readFileSync(join(here, "fixtures.json"), "utf8"));
@@ -75,6 +75,31 @@ test("a non-resident view reports the missing resident workspace and still shows
   });
   assert.ok(children.some((c) => c.kind === "info" && c.label.includes("no resident workspace")));
   assert.ok(children.some((c) => c.kind === "claims"));
+});
+
+test("the working-tree root node maps a diff to file rows and a handoff preview (G3b)", () => {
+  assert.equal(WORKTREE_ROW.kind, "worktree");
+
+  const children = buildWorktreeChildren(fixtures.sessionDiff);
+  const files = children.filter((c) => c.kind === "difffile");
+  assert.equal(files.length, 1);
+  assert.equal(files[0].label, "a/Order.cs");
+  assert.equal(files[0].description, "+12 -3");
+  assert.equal(files[0].path, "a/Order.cs");
+
+  const preview = children.find((c) => c.kind === "claims" && c.label === "handoff preview");
+  assert.ok(preview);
+  assert.ok(preview.tooltip.includes("handoff:"));
+});
+
+test("an unavailable working-tree diff reports the missing git base", () => {
+  const children = buildWorktreeChildren({ available: false, base: "HEAD", files: [], handoffPreview: "" });
+  assert.ok(children.some((c) => c.kind === "info" && c.label.includes("unavailable")));
+});
+
+test("a clean working tree reports no uncommitted changes", () => {
+  const children = buildWorktreeChildren({ available: true, base: "HEAD", files: [], handoffPreview: "" });
+  assert.ok(children.some((c) => c.kind === "info" && c.label.includes("no uncommitted changes")));
 });
 
 test("a resident view with no delta and no claims reports the clean baseline", () => {

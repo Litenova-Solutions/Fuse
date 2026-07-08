@@ -180,4 +180,21 @@ public sealed class FuseHostContractTests
         Assert.Contains("\"resolved\":[]", json);
         Assert.Contains("\"claims\":\"claims (1", json);
     }
+
+    [Fact]
+    public void SessionDiff_SerializesFilesAndPreviewCamelCase()
+    {
+        var diff = new SessionDiffDto(
+            true,
+            "HEAD",
+            [new SessionDiffFileDto("a/Order.cs", 12, 3)],
+            "handoff: 1 changed file, no unresolved introduced errors.");
+
+        var json = JsonSerializer.Serialize(diff, FuseHostJsonContext.Default.SessionDiffDto);
+
+        Assert.Contains("\"available\":true", json);
+        Assert.Contains("\"base\":\"HEAD\"", json);
+        Assert.Contains("\"files\":[{\"path\":\"a/Order.cs\",\"added\":12,\"removed\":3}]", json);
+        Assert.Contains("\"handoffPreview\":\"handoff: 1 changed file", json);
+    }
 }

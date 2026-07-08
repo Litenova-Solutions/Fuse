@@ -63,12 +63,15 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
   warms the served root in the background, keeps it current from the watcher batch (evicting to store-backed
   above the 300-file storm threshold), and disposes on shutdown; `fuse_check` for the served root then answers
   resident-grade from the held compilation with no per-check rebuild. Smoke-tested: `FUSE_RESIDENT=1 fuse mcp
-  serve` starts, warms, and shuts down clean. Default off keeps the shipped path byte-identical. What remains to
-  CLOSE S1's gate: route the remaining read tools through the seam (step 4), unify changeset sessions as overlays
-  (step 5), and the `performance.json` latency/RSS gate through the MCP layer (delta p95 < 1s warm at NodaTime
-  scale, edge freshness < 2s, resident RSS) with an end-to-end resident `fuse_check` over JSON-RPC - which needs
-  a provisioned tier-1 repo - after which `FUSE_RESIDENT` is promoted to default-on. That is the dedicated
-  benchmarking session.
+  serve` starts, warms, and shuts down clean. Default off keeps the shipped path byte-identical. Both
+  speculative-verify paths now route resident-first behind the null default: `fuse_check` and
+  `fuse_changeset diagnose` (per staged file), so a live resident workspace answers either at oracle grade with
+  no build. What remains to CLOSE S1's gate: store-projection so non-check reads (find/map/resolve) are
+  resident-fresh (step 4, a careful single-writer/N6-coexistence change), the fuller multi-file overlay-session
+  unification (step 5 remainder), and the `performance.json` latency/RSS gate through the MCP layer (delta p95
+  < 1s warm at NodaTime scale, edge freshness < 2s, resident RSS) with an end-to-end resident `fuse_check` over
+  JSON-RPC - which needs a provisioned tier-1 repo - after which `FUSE_RESIDENT` is promoted to default-on. Those
+  are the dedicated benchmarking/integration session.
 - **C1 fuse up** `[>]`: five sub-steps landed gate-green, including a working user-facing command -
   `RemediationKnowledgeBase` (JSON-data KB + matcher; 7 tests), `EnvironmentRemediationPlanner`
   (classify-and-report core; 4 tests), `NuGetOverlayConfig` (NU1507 overlay generator, installs nothing, never

@@ -299,18 +299,27 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the check.</param>
     /// <returns>The diagnostics for the changed document, a clean verdict, or an explicit abstention.</returns>
     [McpServerTool(Name = "fuse_check", ReadOnly = true)]
-    [Description("Speculatively typecheck a proposed single-file edit: the compiler errors and warnings it would produce, without writing the file. Verification never shrugs (D11): oracle-grade (sub-second, no build) when the repo is captured at tier-1; otherwise build-grade, running dotnet build scoped to the owning project (tens of seconds) and parsing the same diagnostics; abstains only when even the toolchain cannot run, naming the reason. Every answer is stamped with its grade.")]
+    [Description("Speculatively typecheck a proposed single-file edit: the compiler errors and warnings it would produce, without writing the file. Verification never shrugs (D11): oracle-grade (sub-second, no build) when the repo is captured at tier-1; otherwise build-grade, running dotnet build scoped to the owning project (tens of seconds) and parsing the same diagnostics; abstains only when even the toolchain cannot run, naming the reason. Every answer is stamped with its grade. Delta mode (S2): pass a session id with no content to get the diagnostics your on-disk edits introduced or resolved since the session baseline (needs a resident workspace; does not run a build); full:true returns the whole current set; markGreen:true resets the baseline to now.")]
     public static async Task<string> FuseCheckAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("The repo-relative path of the file being changed.")] string file = "",
         [Description("The proposed full new content of that file.")] string content = "",
+        [Description("Delta mode: a session id. With no content, returns the diagnostics introduced or resolved since the session baseline (needs a resident workspace; does not run a build).")] string session = "",
+        [Description("Delta mode: return the whole current diagnostic set instead of the delta since the baseline.")] bool full = false,
+        [Description("Delta mode: reset the session baseline to the current diagnostics (mark green), so later deltas are measured from here.")] bool markGreen = false,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(file) || string.IsNullOrEmpty(content))
-            return "Error: provide the changed file path and its proposed new content.";
-
         var root = Path.GetFullPath(path);
+
+        // Delta mode (S2): a session with no proposed content asks "what did my last on-disk edit change", diffed
+        // against the persisted session baseline. The content path below is unchanged when content is supplied.
+        if (string.IsNullOrEmpty(content) && !string.IsNullOrWhiteSpace(session))
+            return await FuseCheckDeltaAsync(indexer, path, root, session, full, markGreen, cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(file) || string.IsNullOrEmpty(content))
+            return "Error: provide the changed file path and its proposed new content (or a session id for delta mode).";
+
         var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
 
         // The verification-grade ladder (T0, D11): try oracle-grade first (speculative, resident/captured
@@ -375,6 +384,93 @@ public sealed partial class FuseTools
         var packetBuilder = new RepairPacketBuilder(store);
         var packets = new List<RepairPacket>();
         foreach (var d in result.Diagnostics.Where(d => d.Severity == "Error"))
+        {
+            var packet = await packetBuilder.BuildAsync(d, cancellationToken);
+            if (packet is not null)
+                packets.Add(packet);
+        }
+
+        if (packets.Count > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("repair packets:");
+            foreach (var p in packets)
+            {
+                builder.AppendLine($"  [{p.DiagnosticId}] {p.Explanation}");
+                foreach (var m in p.Members.Take(12))
+                    builder.AppendLine($"    {(string.IsNullOrEmpty(m.Signature) ? m.Name : m.Signature)}");
+            }
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    // Delta mode (S2): compute the diagnostics introduced or resolved since a persisted session baseline. Current
+    // whole-state diagnostics come from a live resident workspace (delta mode must not run a build); the baseline
+    // is persisted so a restarted process resumes it. On session start (no baseline) the current set is recorded as
+    // the baseline; markGreen resets it to current; full returns the whole current set.
+    private static async Task<string> FuseCheckDeltaAsync(
+        SemanticIndexer indexer, string path, string root, string session, bool full, bool markGreen, CancellationToken cancellationToken)
+    {
+        var current = ResidentWorkspaces.TryGetCurrentDiagnostics(root);
+        if (current is null)
+        {
+            return "cannot compute delta (abstain): no resident workspace serves this root, and delta mode does not run a build. "
+                + "Start the server with FUSE_RESIDENT=1 for delta mode, or pass file and content for a speculative single-file check.";
+        }
+
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+
+        if (markGreen)
+        {
+            await store.SaveCheckSessionBaselineAsync(session, root, current, cancellationToken);
+            return $"delta mode: session '{session}' baseline reset (marked green) to {current.Count} current diagnostic(s). Later deltas are measured from here.";
+        }
+
+        if (full)
+        {
+            var all = new StringBuilder();
+            all.AppendLine($"delta mode (resident): full diagnostic set, {current.Count} diagnostic(s).");
+            foreach (var d in current)
+                all.AppendLine($"  {d.Severity} {d.Id} {d.FilePath}:{d.Line}: {d.Message}");
+            return all.ToString().TrimEnd();
+        }
+
+        var baseline = await store.GetCheckSessionBaselineAsync(session, cancellationToken);
+        if (baseline is null)
+        {
+            await store.SaveCheckSessionBaselineAsync(session, root, current, cancellationToken);
+            return $"delta mode: session '{session}' established with a {current.Count}-diagnostic baseline. Edit, then call again with the same session to see what your change introduced or resolved.";
+        }
+
+        var delta = DiagnosticDelta.Compute(baseline.Diagnostics, current);
+        var builder = new StringBuilder();
+        builder.AppendLine($"delta mode (resident, since baseline {baseline.UpdatedUtc}): {delta.Introduced.Count} introduced, {delta.Resolved.Count} resolved.");
+
+        if (delta.Introduced.Count == 0 && delta.Resolved.Count == 0)
+        {
+            builder.AppendLine("  (no change in diagnostics since the baseline)");
+            return builder.ToString().TrimEnd();
+        }
+
+        if (delta.Introduced.Count > 0)
+        {
+            builder.AppendLine("introduced (attributed to your changes since the baseline):");
+            foreach (var d in delta.Introduced)
+                builder.AppendLine($"  {d.Severity} {d.Id} {d.FilePath}:{d.Line}: {d.Message}");
+        }
+
+        if (delta.Resolved.Count > 0)
+        {
+            builder.AppendLine("resolved:");
+            foreach (var d in delta.Resolved)
+                builder.AppendLine($"  {d.Severity} {d.Id} {d.FilePath}:{d.Line}: {d.Message}");
+        }
+
+        // Repair packets (R6) for the introduced errors, so the fix does not cost another round-trip.
+        var packetBuilder = new RepairPacketBuilder(store);
+        var packets = new List<RepairPacket>();
+        foreach (var d in delta.Introduced.Where(d => d.Severity == "Error"))
         {
             var packet = await packetBuilder.BuildAsync(d, cancellationToken);
             if (packet is not null)

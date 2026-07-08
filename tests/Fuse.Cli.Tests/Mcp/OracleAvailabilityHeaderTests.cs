@@ -9,6 +9,10 @@ namespace Fuse.Cli.Tests.Mcp;
 // R3: the ambient availability header. Every store-backed oracle read prepends a one-line grade so a client
 // cannot mistake a syntax-tier or stale answer for an oracle-grade one. These tests pin the header wording
 // against the three facts it reports: index mode, tier-1 build-capture availability, and the N6 freshness stamp.
+//
+// Shares a collection with the other tests that mutate the static FuseTools.ResidentWorkspaces, so xUnit
+// serializes them rather than racing the shared static across parallel classes.
+[Collection("FuseToolsResidentProvider")]
 public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
 {
     private readonly string _databasePath =

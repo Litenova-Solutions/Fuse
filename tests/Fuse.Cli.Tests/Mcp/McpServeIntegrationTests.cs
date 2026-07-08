@@ -16,9 +16,7 @@ public sealed class McpServeIntegrationTests
         "fuse_context",
         "fuse_find",
         "fuse_impact",
-        "fuse_index",
         "fuse_localize",
-        "fuse_map",
         "fuse_neighbors",
         "fuse_reduce",
         "fuse_refactor",
@@ -38,6 +36,8 @@ public sealed class McpServeIntegrationTests
         "fuse_dotnet",
         "fuse_focus",
         "fuse_generic",
+        "fuse_index",
+        "fuse_map",
         "fuse_search",
         "fuse_skeleton",
         "fuse_toc",
@@ -68,15 +68,23 @@ public sealed class McpServeIntegrationTests
         var expected = ExpectedV3ToolNames.Concat(ExpectedDeprecatedToolNames).OrderBy(n => n, StringComparer.Ordinal).ToArray();
         Assert.Equal(expected, tools.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
 
-        // fuse_map builds the index on first use (the fixture is a git repo, so the store stays inside it).
+        // fuse_workspace action=map builds the index on first use (the fixture is a git repo, so the store stays
+        // inside it). The map folded into fuse_workspace in U1.
         var result = await client.CallToolAsync(
-            "fuse_map",
-            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["detail"] = "symbols" },
+            "fuse_workspace",
+            new Dictionary<string, object?> { ["action"] = "map", ["path"] = fixture.ProjectPath, ["detail"] = "symbols" },
             cancellationToken: TestCancellation);
 
         var text = TextContent(result);
         Assert.Contains("workspace map", text);
         Assert.Contains("WidgetService", text);
+
+        // The folded name still resolves as a shim naming its replacement (no bare Unknown tool across an upgrade).
+        var shim = await client.CallToolAsync(
+            "fuse_map",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath },
+            cancellationToken: TestCancellation);
+        Assert.Contains("fuse_workspace", TextContent(shim));
 
         // fuse_impact carries the T2 public-surface line: a public type is flagged as external-facing so the agent
         // knows a change to it is contract-relevant before editing.

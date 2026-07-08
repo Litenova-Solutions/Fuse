@@ -24,17 +24,17 @@ public sealed class FuseDeprecatedTools
     /// <param name="path">Ignored. Accepted so a V2 call still binds.</param>
     /// <returns>Guidance naming the V3 replacement.</returns>
     [McpServerTool(Name = "fuse_toc", ReadOnly = true)]
-    [Description("Deprecated: renamed to fuse_map in Fuse V3. Call fuse_map instead.")]
+    [Description("Deprecated: the map folded into fuse_workspace. Call fuse_workspace with action=map.")]
     public static string FuseToc([Description("Ignored.")] string? path = null) =>
-        Renamed("fuse_toc", "fuse_map", "the workspace map of symbols, routes, and counts");
+        Renamed("fuse_toc", "fuse_workspace", "the workspace map of symbols, routes, and counts with action=map");
 
     /// <summary>Deprecated V2 alias for <c>fuse_map</c> / <c>fuse_context</c>.</summary>
     /// <param name="path">Ignored. Accepted so a V2 call still binds.</param>
     /// <returns>Guidance naming the V3 replacement.</returns>
     [McpServerTool(Name = "fuse_skeleton", ReadOnly = true)]
-    [Description("Deprecated: removed in Fuse V3. Use fuse_map for structure, or fuse_context for skeleton-tier source.")]
+    [Description("Deprecated: removed in Fuse V3. Use fuse_workspace (action=map) for structure, or fuse_context for skeleton-tier source.")]
     public static string FuseSkeleton([Description("Ignored.")] string? path = null) =>
-        Renamed("fuse_skeleton", "fuse_map", "the workspace structure; use fuse_context with selected seeds for skeleton-tier source");
+        Renamed("fuse_skeleton", "fuse_workspace", "the workspace structure with action=map; use fuse_context with selected seeds for skeleton-tier source");
 
     /// <summary>Deprecated V2 alias for <c>fuse_localize</c> (then <c>fuse_context</c>).</summary>
     /// <param name="path">Ignored. Accepted so a V2 call still binds.</param>
@@ -87,6 +87,22 @@ public sealed class FuseDeprecatedTools
     [Description("Deprecated: removed in Fuse V3. Use fuse_reduce for a known set of files, or fuse_context over the indexed workspace.")]
     public static string FuseGeneric([Description("Ignored.")] string? path = null) =>
         Renamed("fuse_generic", "fuse_reduce", "compaction of a known set of files; use fuse_context to pull from the indexed workspace");
+
+    /// <summary>Deprecated: folded into <c>fuse_workspace</c> (U1). Use <c>fuse_workspace</c> with <c>action=index</c>.</summary>
+    /// <param name="path">Ignored. Accepted so a prior call still binds.</param>
+    /// <returns>Guidance naming the replacement.</returns>
+    [McpServerTool(Name = "fuse_index", ReadOnly = false)]
+    [Description("Deprecated: folded into fuse_workspace. Call fuse_workspace with action=index.")]
+    public static string FuseIndex([Description("Ignored.")] string? path = null) =>
+        Renamed("fuse_index", "fuse_workspace", "build or refresh the index with action=index");
+
+    /// <summary>Deprecated: folded into <c>fuse_workspace</c> (U1). Use <c>fuse_workspace</c> with <c>action=map</c>.</summary>
+    /// <param name="path">Ignored. Accepted so a prior call still binds.</param>
+    /// <returns>Guidance naming the replacement.</returns>
+    [McpServerTool(Name = "fuse_map", ReadOnly = true)]
+    [Description("Deprecated: folded into fuse_workspace. Call fuse_workspace with action=map.")]
+    public static string FuseMap([Description("Ignored.")] string? path = null) =>
+        Renamed("fuse_map", "fuse_workspace", "the symbols/routes/counts map with action=map");
 
     // The single message shape for every retired name, so an upgraded server answers a stale call with a
     // clear pointer to the current tool rather than a bare Unknown tool error.

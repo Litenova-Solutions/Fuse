@@ -331,7 +331,7 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the rename.</param>
     /// <returns>The staged per-file diffs, or an explicit abstention.</returns>
     [McpServerTool(Name = "fuse_refactor", ReadOnly = true)]
-    [Description("Compiler-executed, verify-gated refactors returned as a staged diff (nothing is written to disk). operation=rename (default): rename a symbol and all its references through Roslyn (a same-named unrelated symbol is not touched). operation=add-parameter: add a trailing parameter to a method and its override/interface family, threading an explicit argument (the `argument` value) into every call site. operation=add-cancellation-token: add a CancellationToken parameter and thread an in-scope token into every call site that has one, listing token-less sites as manual follow-ups. operation=remove-parameter: remove a parameter (named by parameterName) and drop its argument at every call site, abstaining when the parameter is used in a body or a call site passes a non-trivial (possibly side-effecting) argument. operation=reorder-parameters: reorder parameters into `newOrder` (comma-separated names), abstaining if any call site uses positional arguments (only named-argument call sites are safe to reorder). The signature operations recompile the solution and return the diff ONLY when no new diagnostic is introduced; otherwise they abstain naming the offending sites (never a mostly-right diff). Rename and the signature ops answer only when the whole solution loads cleanly; abstain otherwise. Review the diff and re-check with fuse_check before applying.")]
+    [Description("Compiler-executed, verify-gated refactors returned as a staged diff (nothing is written to disk). operation=rename (default): rename a symbol and all its references through Roslyn (a same-named unrelated symbol is not touched). operation=add-parameter: add a trailing parameter to a method and its override/interface family, threading an explicit argument (the `argument` value) into every call site. operation=add-cancellation-token: add a CancellationToken parameter and thread an in-scope token into every call site that has one, listing token-less sites as manual follow-ups. operation=remove-parameter: remove a parameter (named by parameterName) and drop its argument at every call site, abstaining when the parameter is used in a body or a call site passes a non-trivial (possibly side-effecting) argument. operation=reorder-parameters: reorder parameters into `newOrder` (comma-separated names), abstaining if any call site uses positional arguments (only named-argument call sites are safe to reorder). operation=extract-interface: generate an interface from a class's public instance methods and properties (name it with newName, else I<Class>) and make the class implement it. The signature and type operations recompile the solution and return the diff ONLY when no new diagnostic is introduced; otherwise they abstain naming the offending sites (never a mostly-right diff). Rename and the signature ops answer only when the whole solution loads cleanly; abstain otherwise. Review the diff and re-check with fuse_check before applying.")]
     public static async Task<string> FuseRefactorAsync(
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("The simple name of the symbol to rename, or the method name for a signature operation.")] string symbol = "",
@@ -386,6 +386,25 @@ public sealed partial class FuseTools
                     await new Fuse.Semantics.ChangeSignatureRefactorer().ReorderParametersAsync(
                         target, symbol, containing, order, cancellationToken),
                     $"reorder parameters of {symbol}");
+
+            case "extract-interface":
+                if (string.IsNullOrWhiteSpace(symbol))
+                    return "Error: extract-interface needs the class (symbol).";
+                var extractResult = await new Fuse.Semantics.TypeRefactorer().ExtractInterfaceAsync(
+                    target, symbol, string.IsNullOrWhiteSpace(newName) ? null : newName, cancellationToken);
+                if (!extractResult.Changed)
+                    return $"cannot extract interface from {symbol}: {extractResult.Reason}";
+                var extractBuilder = new StringBuilder();
+                extractBuilder.AppendLine($"staged {extractResult.Summary} (verified clean; {extractResult.Diffs.Count} file(s) changed, not written to disk)");
+                foreach (var d in extractResult.Diffs)
+                {
+                    extractBuilder.AppendLine($"--- {d.FilePath} (full new content)");
+                    extractBuilder.AppendLine(d.NewText);
+                }
+
+                extractBuilder.AppendLine();
+                extractBuilder.AppendLine("This diff verified clean (no new compile diagnostic). Review it and re-check with fuse_check before applying.");
+                return extractBuilder.ToString().TrimEnd();
 
             case "rename":
             case "":

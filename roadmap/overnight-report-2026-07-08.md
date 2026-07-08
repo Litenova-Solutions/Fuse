@@ -2,11 +2,14 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `b4fbc25`.
+bumps, or publishing. Tree is green and pushed at HEAD `4d22b00`.
 
-## Session tally: T1, T3, T3b, H2, T4 done; T2, S2, S4 done; S3 blocked on a maintainer decision
+## Session tally: T1, T3, T3b, H2, T4, B2 done; T2, S2, S4 done; S3 blocked on a maintainer decision
 
 Latest items this session:
+- **B2 DONE** (Gate PASS): published the Latency SLOs reference page (site/content/docs/reference/latency.mdx),
+  extended the performance suite with fuse_find + fuse_impact timers, and recorded two scale points (NodaTime +
+  eShopOnWeb). Verify verbs, read verbs, test execution, and cold start all sourced to result files.
 - **T4 DONE** (Gate PASS under the per-operation Fallback): extract-interface + move-type shipped in TypeRefactorer,
   verify-gated, wired into fuse_refactor; 6 tests. The codefix-hosting spike resolved (AdhocWorkspace hosts a
   CodeFixProvider without the Features package). apply-codefix split to the new gated item T4b (viable, deferred).

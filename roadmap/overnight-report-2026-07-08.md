@@ -6,6 +6,17 @@ bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `
 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
 C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam at `38004d2`/`69cea59`).
 
+## Co-activation finding (S1 architecture, verified)
+
+The shipped Cli's MSBuildWorkspace is NOT broken by co-presence of the resident `Basic.CompilerLog` closure:
+`fuse doctor tests/fixtures/OrderingApp` loads oracle-grade with the committed `Fuse.Cli -> Fuse.Workspace`
+reference present. So the S1 in-process serve/host wiring is MSBuildWorkspace-safe and there is no shipped
+regression. A latency-gate attempt (a resident delta-check arm in PerformanceSuite) was reverted because adding
+`Fuse.Workspace` plus an explicit VisualBasic ref to Fuse.Benchmarks broke `RestoreSemanticTests`; that is a
+Benchmarks-specific reference interaction (or a restore flake), not a fundamental conflict, and is deferred to
+the benchmarking session with exact follow-ups recorded in the plan progress log. The resident warm itself
+worked on NodaTime (~9s, no crash) in-process alongside MSBuildWorkspace.
+
 ## Current state (latest checkpoint)
 
 T0 is complete and gate-green (build-grade fallback for `fuse_check`, oracle-vs-build agreement

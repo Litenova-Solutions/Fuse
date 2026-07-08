@@ -24,9 +24,13 @@ public static class SemanticManifestBuilder
     ///     The rendered public-API delta section (T2) for a review plan, or null to omit. Emitted ahead of the
     ///     seeds so a breaking change is the first thing the agent reads.
     /// </param>
+    /// <param name="claimsSection">
+    ///     The rendered graded-claims block (U2) for the answer, or null to omit. Emitted ahead of the seeds,
+    ///     after the API delta, so the graded evidence trail is read before the source.
+    /// </param>
     /// <returns>The manifest body text.</returns>
     public static string Build(
-        ContextPlan plan, string? root = null, string? changedSince = null, string? apiDeltaSection = null)
+        ContextPlan plan, string? root = null, string? changedSince = null, string? apiDeltaSection = null, string? claimsSection = null)
     {
         var seeds = plan.Items.Where(i => i.MustKeep || i.Role is "changed" or "exact-seed").ToList();
         var impact = plan.Items.Where(i => !seeds.Contains(i)).ToList();
@@ -45,6 +49,12 @@ public static class SemanticManifestBuilder
         if (!string.IsNullOrWhiteSpace(apiDeltaSection))
         {
             builder.AppendLine(apiDeltaSection.TrimEnd());
+            builder.AppendLine();
+        }
+
+        if (!string.IsNullOrWhiteSpace(claimsSection))
+        {
+            builder.AppendLine(claimsSection.TrimEnd());
             builder.AppendLine();
         }
 

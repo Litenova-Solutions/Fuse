@@ -1053,7 +1053,28 @@ public sealed partial class FuseTools
         var unchanged = string.IsNullOrWhiteSpace(sessionId) ? null : sessionStore.Reconcile(sessionId, rendered.Files);
 
         var apiDeltaSection = await BuildApiDeltaSectionAsync(changeSource, root, changedSince, cancellationToken);
-        return SemanticContextEmitter.Emit(plan, rendered, ParseFormat(format), root, changedSince, unchanged, apiDeltaSection);
+        var claimsSection = BuildReviewClaimsSection(plan, changedSince, apiDeltaSection);
+        return SemanticContextEmitter.Emit(plan, rendered, ParseFormat(format), root, changedSince, unchanged, apiDeltaSection, claimsSection);
+    }
+
+    // The U2 graded-claims block for a review: the changed-file set is git-truth (Verified), and the presence of a
+    // public-API surface delta is a graph-grade inference (PartiallyVerified, the grade cap). Returns null when
+    // there is nothing to claim, so the emitter omits the block.
+    private static string? BuildReviewClaimsSection(ContextPlan plan, string changedSince, string? apiDeltaSection)
+    {
+        var changedCount = plan.Items.Count(i => i.Role == "changed");
+        var claims = new List<Claim>();
+        if (changedCount > 0)
+            claims.Add(Claim.FromCompiler(
+                $"{changedCount} changed file(s) are seeded as must-keep",
+                $"git diff {changedSince}"));
+        if (!string.IsNullOrWhiteSpace(apiDeltaSection))
+            claims.Add(Claim.FromGraph(
+                "the change alters the public API surface (see the api-delta section)",
+                "graph: public-API delta (T2)"));
+        if (claims.Count == 0)
+            return null;
+        return ClaimLedger.Render(claims);
     }
 
     // The T2 public-API delta section for a review: added, removed, and changed public/protected members between

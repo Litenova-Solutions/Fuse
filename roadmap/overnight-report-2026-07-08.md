@@ -6,6 +6,18 @@ bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `
 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
 C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam at `38004d2`/`69cea59`).
 
+## S1: gate numbers all MET (opt-in); only the G5-gated default-on promotion remains
+
+S1's measured gate is green: delta-diagnostics P95 31.0 ms (< 1000 ms; `resident-latency.json`), edge-freshness
+correctness validated (the issue-5 acceptance test: an edited DI registration resolves after resident projection
+with no full re-index), edge-freshness latency < 2 s (measured in isolation), and RSS 164 MB. The full resident
+mechanism is built, wired opt-in into both hosts, and single-writer-projecting into the store. S1 stays `[>]`
+only because it ships opt-in (`FUSE_RESIDENT`): promotion to default-on is gated on G5 (the resident daemon that
+isolates the resident `Basic.CompilerLog` closure from in-process MSBuildWorkspace, since co-activation in one
+long-lived process is order-fragile). So S1's engine, wiring, and every gate number are complete; the sole
+remaining sub-step is the G5-gated default-on promotion (plus an optional dedicated single-writer concurrency
+test). The next lanes are G5 (unblocking S1 default-on) and the C1 apply pipeline.
+
 ## S1: fully wired opt-in end to end (only end-to-end validation + G5 default-on remain)
 
 With `FUSE_RESIDENT=1`, the serve/host now: warms a resident workspace for the root in the background; on each

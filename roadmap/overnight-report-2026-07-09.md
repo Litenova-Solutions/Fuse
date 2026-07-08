@@ -2,11 +2,30 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `f546383` (plus this report/plan checkpoint).
+bumps, or publishing. Tree is green and pushed at HEAD `c98aca1` (plus this report/plan checkpoint).
 Full test suite re-certified green after U2 completion and U1b: all 16 projects pass, 0 failures
 (Fuse.Cli.Tests 130, Fuse.Workspace.Tests 38, Fuse.GoldenOutput.Tests 14, Fuse.Retrieval.Tests 139).
 
-## Session tally: U2 DONE, U1b DONE (U1 fully complete). Next: U3
+## Session tally: U2 DONE, U1b DONE (U1 complete), U3 DONE. Wave 3 (U-track) complete. Next: G-track / gated items
+
+- **U3 DONE** (Gate PASS): playbook prompts, session resources, and CLI parity, in four sub-steps.
+  - **sub-step 1** (`beae6aa`): 5 playbook prompts (`FusePrompts`, `[McpServerPromptType]`, registered via
+    `.WithPrompts<>`) - fix-build-error, implement-feature, review-pr, rename-symbol, add-endpoint - each anchored
+    and expanding into a loop-shaped plan. Precondition confirmed: the pinned MCP library (0.8.0-preview.1) exposes
+    prompt support.
+  - **sub-step 2** (`9ca28ac`): three read-only resources - `fuse://status/{path}`, `fuse://diff/{path}/{session}`
+    (the check-delta, read-only: never establishes a baseline), `fuse://diagnostics/{path}/{session}` - joining the
+    U2 session ledger resource.
+  - **sub-step 3** (`da2d083`): CLI parity - a new `fuse impact` command (blast radius + F3 package-upgrade mode)
+    and `--handoff`/`--check-session` on `fuse review` (reusing the exact handoff builder). `fuse check --delta` and
+    `fuse test` were already CLI-first.
+  - **sub-step 4** (`c98aca1`): docs - prompts + session resources on the resources reference, a new CI recipe
+    scenario page (review + test on a PR), the commands reference, and the CHANGELOG U3 entry.
+  - Validation: the MCP integration test lists the prompts and resources over the wire; `fuse impact --package
+    System.Text.Json --from-version 4.7.2 --to-version 8.0.0` returned the F3 break set end to end through the new
+    CLI command.
+
+
 
 - **U2 DONE** (Gate PASS): claim grades, the evidence ledger, and the PR handoff packet. This session closed the
   last three sub-steps:
@@ -50,9 +69,9 @@ Full test suite re-certified green after U2 completion and U1b: all 16 projects 
 
 ## Exact next action
 
-**U3** (playbook prompts, resources, server instructions, CLI parity; depends U1 `[x]`, now the top eligible
-checklist item). Precondition: confirm MCP prompt + resource support in the server library version in use. Ships:
-5 playbook prompts (fix-build-error, implement-feature, review-pr, rename-symbol, add-endpoint), 4 addressable
-resources (workspace status, session ledger [already shipped in U2], session diff, session diagnostics), CLI parity
-for check --delta / test / impact / review --handoff, and a CI recipe docs page. See the U3 item body in
-`roadmap/v4.1-plan.md` and its progress-log pointer.
+Wave 3 (the U-track) is complete: U1 `[x]`, U1b `[x]`, U2 `[x]`, U3 `[x]`. Re-read the Master checklist in
+`roadmap/v4.1-plan.md` top-to-bottom and take the next todo whose `depends:` are all `[x]`. Candidates: G2
+iteration 2 (a second first-party wiring analyzer; may be corpus-frequency-gated on C4 - check whether it can
+proceed without a fresh corpus), and G3 (depends S2 `[x]`). Most other remaining items (B1/B3/B4, the C-track,
+the F-track, G1/G4-G7) are corpus/install/model/maintainer/dependency-gated; if the next todo is gated, record
+why and take the following eligible one, or mark it `[!]` with the blocker named.

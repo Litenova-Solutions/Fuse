@@ -44,7 +44,6 @@ public sealed class FusionRequestBuilder
     private bool _inMemory = false;
     private FocusOptions? _focusOptions;
     private ChangeOptions? _changeOptions;
-    private QueryOptions? _queryOptions;
     private int _parallelism = Environment.ProcessorCount;
     private bool _useReductionCache = true;
     private bool _clearReductionCache = false;
@@ -297,17 +296,6 @@ public sealed class FusionRequestBuilder
     }
 
     /// <summary>
-    ///     Sets BM25 query-scoped fusion options.
-    /// </summary>
-    /// <param name="queryOptions">The query options, or <c>null</c> to disable.</param>
-    /// <returns>The current builder instance.</returns>
-    public FusionRequestBuilder WithQueryOptions(QueryOptions? queryOptions)
-    {
-        _queryOptions = queryOptions;
-        return this;
-    }
-
-    /// <summary>
     ///     Sets the maximum degree of parallelism for pipeline stages.
     /// </summary>
     /// <param name="parallelism">The parallelism degree; must be at least 1.</param>
@@ -373,7 +361,6 @@ public sealed class FusionRequestBuilder
             _inMemory,
             _focusOptions,
             _changeOptions,
-            _queryOptions,
             _parallelism,
             _useReductionCache,
             _clearReductionCache,

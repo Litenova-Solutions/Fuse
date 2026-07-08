@@ -28,7 +28,6 @@ public sealed class GoldenFusionTestHost : IDisposable
         ReductionOptions? reduction = null,
         EmissionOptions? emission = null,
         FocusOptions? focus = null,
-        QueryOptions? query = null,
         int parallelism = 1,
         bool useCache = false)
     {
@@ -43,9 +42,6 @@ public sealed class GoldenFusionTestHost : IDisposable
 
         if (focus is not null)
             builder.WithFocusOptions(focus);
-
-        if (query is not null)
-            builder.WithQueryOptions(query);
 
         var request = builder.Build();
         var result = await Orchestrator.FuseAsync(request);

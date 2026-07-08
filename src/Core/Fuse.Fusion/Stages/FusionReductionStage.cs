@@ -112,7 +112,7 @@ public sealed class FusionReductionStage
         }
 
         if (experimental.DowngradeBeforeDrop &&
-            (request.Query is not null || request.Focus is not null) &&
+            request.Focus is not null &&
             request.Emission.MaxTokens is { } downgradeBudget)
         {
             reducedContent = await ApplyDowngradeBeforeDropAsync(

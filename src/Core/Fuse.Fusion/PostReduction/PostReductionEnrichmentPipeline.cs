@@ -124,7 +124,7 @@ public sealed class PostReductionEnrichmentPipeline
         // pre-pack candidate set as an upper bound for sections whose size depends on the emitted files, so the
         // total never exceeds the budget; it can leave the body budget slightly under-filled, which is the safe
         // direction for a hard cap.
-        if ((request.Focus is not null || request.Query is not null) &&
+        if (request.Focus is not null &&
             request.Emission.MaxTokens is { } maxTokens)
         {
             // Two passes keep the guarantee tight and provable. Pass one packs the file bodies into the whole
@@ -424,7 +424,7 @@ public sealed class PostReductionEnrichmentPipeline
     {
         if (!context.Experimental.TieredEmission)
             return null;
-        if (context.Request.Focus is null && context.Request.Query is null)
+        if (context.Request.Focus is null)
             return null;
         if (context.Provenance is not { } provenance)
             return null;

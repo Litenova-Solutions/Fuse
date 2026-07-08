@@ -207,15 +207,21 @@ public sealed class FusionConcurrencyTests : IDisposable
             Assert.Equal(first, result.InMemoryContent);
     }
 
-    private static FusionRequest BuildQueryRequest(string dir, string query, bool usePersistentIndex = false) =>
-        new(
+    // Builds a no-scope in-memory fusion request over the whole repo. The classic query scoping mode was
+    // removed (K2), so these concurrency tests exercise the orchestrator, persistent index, and reduction
+    // cache over an unscoped run rather than a query-scoped one; the label argument is retained only to keep
+    // each concurrent request's marker file distinct.
+    private static FusionRequest BuildQueryRequest(string dir, string label, bool usePersistentIndex = false)
+    {
+        _ = label;
+        return new FusionRequest(
             new CollectionOptions(dir, extensions: [".cs"]),
             new ReductionOptions(),
             new EmissionOptions(),
             inMemory: true,
-            query: new QueryOptions(query),
             useReductionCache: usePersistentIndex ? false : true,
             usePersistentIndex: usePersistentIndex);
+    }
 
     private string NewDirectory()
     {

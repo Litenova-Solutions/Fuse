@@ -20,7 +20,6 @@ public sealed class FusionRequest
         bool inMemory = false,
         FocusOptions? focus = null,
         ChangeOptions? changes = null,
-        QueryOptions? query = null,
         int parallelism = 0,
         bool useReductionCache = true,
         bool clearReductionCache = false,
@@ -33,7 +32,6 @@ public sealed class FusionRequest
         InMemory = inMemory;
         Focus = focus;
         Changes = changes;
-        Query = query;
         Parallelism = parallelism;
         UseReductionCache = useReductionCache;
         ClearReductionCache = clearReductionCache;
@@ -70,11 +68,6 @@ public sealed class FusionRequest
     ///     Gets change scoping options, or <c>null</c> when not scoped by git changes.
     /// </summary>
     public ChangeOptions? Changes { get; }
-
-    /// <summary>
-    ///     Gets BM25 query scoping options, or <c>null</c> when not query-scoped.
-    /// </summary>
-    public QueryOptions? Query { get; }
 
     /// <summary>
     ///     Gets the maximum degree of parallelism for pipeline stages.

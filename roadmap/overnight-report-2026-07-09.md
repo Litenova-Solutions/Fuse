@@ -103,8 +103,22 @@ collection code landed. And the G3b "git fragility" was investigated: it is test
 already spawns git for `changes` scoping), so G3b is unblocked - its real gate is a small design call (what git
 base a session maps to), and it is a deliberate deferred unit, not stuck.
 
+**G3b advanced (partial + de-risked):** a git-free "files touched (N): ..." summary node landed in the panel
+(commit 76e4fd7, computed from the diagnostics the panel already has, no protocol change, headless-tested), and
+G3b's one open design question is resolved - session diff base = HEAD (`git diff HEAD` is exactly the session's
+uncommitted working-tree edits). The host has both `_indexer` and `_changeSource`, and `ChangedFile` carries the
+diff hunks, so G3b's remaining git-based staged-diff + handoff-preview is now a purely mechanical fresh-session
+unit: a `fuse/session-diff` RPC (protocol bump 5->6, lockstep with protocol.ts/client/contract tests) returning
+`git diff HEAD` + a `BuildHandoffAsync(changedSince=HEAD)` preview, plus the two panel nodes. Its git path is only
+E2E-testable in production (the test-host git-spawn crash), so cover the DTO shape + panel node-shaping headless.
+
 **Honest gated-frontier read:** after G3, every remaining checklist todo is externally gated (installs, corpus,
-a model run, or a maintainer decision) or a deliberate deferral (G3b). No ungated, ready-to-implement item remains
-that does not need one of those or a fresh multi-step protocol unit best begun with full context. Next session:
-(a) obtain a maintainer decision on S3 / F4 / F5, or (b) begin G3b's design+impl (protocol bump 5->6), or
-(c) advance C1's install-free overlay slice on a locally-built NU1507 fixture. Tree green and pushed.
+a model run, or a maintainer decision) or a fresh-session unit. Not started this session, and why:
+- **G3b remaining**: a second protocol-bump shipped-contract unit; de-risked and documented, deliberately not
+  rushed at a session tail (the standing "never rush a shipped-path change" guardrail). Clean fresh-session task.
+- **S3 / F4 / F5**: maintainer decisions (`[!]` / `[maintainer]`); F5's governance note is prepared and awaiting review.
+- **C1 remainder, C2/C3/C4, B1/B3/B4, G1/G4/G5/G6/G7, F1/F2/F6/F7, G2 next-iter**: installs / corpus / model runs /
+  dependency-gated.
+Next session: begin G3b's mechanical impl (design + host access already confirmed here), or obtain the maintainer
+decisions on S3/F4/F5, or advance C1's install-free overlay slice on a locally-built NU1507 fixture. Tree green and
+pushed at every step.

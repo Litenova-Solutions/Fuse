@@ -66,3 +66,21 @@ false-red rates. See the [benchmarks page](/docs/project/benchmarks) for the cur
 The one-line availability header that store-backed tools prepend also names the grade the
 workspace can currently serve ("verify serves oracle-grade" or "verify serves build-grade"),
 so an agent knows the class of truth before it makes the call.
+
+## Analyzer and nullable parity
+
+A green compiler check is not the whole story: CI's build step also runs the repository's
+configured analyzers (StyleCop, the .NET code-analysis rules, any package analyzers) and
+nullable warnings, at the severities the repository's editorconfig sets. A local green
+followed by a CI red on an analyzer warning is a wasted round trip. When a resident workspace
+serves the root, `fuse_check` closes that gap: it runs the same analyzers the build ran,
+against the overlay compilation, with the repository's editorconfig severities, and merges
+their diagnostics with the compiler diagnostics. An editorconfig-elevated rule surfaces; a
+silenced rule stays silent.
+
+Analyzers cost real time (hundreds of milliseconds on a large analyzer set), so they are on
+by default for the single-file verify (`fuse_check` with content), where an explicit check
+tolerates the latency for CI parity, and off by default for the hot per-edit delta path, where
+the sub-second feel matters more; the `analyzers` parameter overrides either way. The
+build-grade fallback already has this parity for free, because it runs the real `dotnet build`,
+which runs the analyzers. Without a resident workspace the setting has no effect.

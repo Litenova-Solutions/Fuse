@@ -49,12 +49,35 @@ function buildSessionChildren(view) {
     rows.push({ kind: "info", label: `${view.resolved.length} diagnostic(s) resolved since the baseline` });
   }
 
+  // A git-free "files touched" summary (G3b, a lightweight stand-in for the staged-diff view): the distinct files
+  // the session's introduced and resolved diagnostics land in, computed from the panel's existing data - no git
+  // spawn, no extra RPC. It answers "which files did this session's edits affect" without a working-tree diff.
+  const touched = distinctFiles([...view.introduced, ...view.resolved]);
+  if (touched.length > 0) {
+    rows.push({ kind: "info", label: `files touched (${touched.length}): ${touched.join(", ")}` });
+  }
+
   const claims = (view.claims || "").trim();
   if (claims.length > 0) {
     rows.push({ kind: "claims", label: "claim ledger", tooltip: claims });
   }
 
   return rows;
+}
+
+/**
+ * The distinct, sorted file paths a set of diagnostics land in (skipping any without a path).
+ * @param {Array<{path?: string}>} diagnostics
+ * @returns {string[]}
+ */
+function distinctFiles(diagnostics) {
+  const seen = new Set();
+  for (const d of diagnostics) {
+    if (d.path) {
+      seen.add(d.path);
+    }
+  }
+  return [...seen].sort();
 }
 
 module.exports = { buildSessionRows, buildSessionChildren };

@@ -1,5 +1,6 @@
 using System.IO.Hashing;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -159,6 +160,43 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         {
             return null;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task SaveCheckSessionBaselineAsync(
+        string sessionId, string root, IReadOnlyList<CheckDiagnostic> baseline, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(
+            baseline.ToList(), BuildCaptureJsonContext.Default.ListCheckDiagnostic);
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO check_sessions(session_id, root, baseline_json, updated_utc) VALUES($id, $root, $json, $utc) " +
+            "ON CONFLICT(session_id) DO UPDATE SET root = excluded.root, baseline_json = excluded.baseline_json, updated_utc = excluded.updated_utc;";
+        command.Parameters.AddWithValue("$id", sessionId);
+        command.Parameters.AddWithValue("$root", root);
+        command.Parameters.AddWithValue("$json", json);
+        command.Parameters.AddWithValue("$utc", DateTime.UtcNow.ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<CheckSessionBaseline?> GetCheckSessionBaselineAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT root, baseline_json, updated_utc FROM check_sessions WHERE session_id = $id LIMIT 1;";
+        command.Parameters.AddWithValue("$id", sessionId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+            return null;
+
+        var root = reader.GetString(0);
+        var json = reader.GetString(1);
+        var updatedUtc = reader.GetString(2);
+        var diagnostics = JsonSerializer.Deserialize(json, BuildCaptureJsonContext.Default.ListCheckDiagnostic)
+            ?? [];
+        return new CheckSessionBaseline(sessionId, root, diagnostics, updatedUtc);
     }
 
     /// <inheritdoc />

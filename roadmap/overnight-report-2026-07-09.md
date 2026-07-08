@@ -2,11 +2,28 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `c98aca1` (plus this report/plan checkpoint).
+bumps, or publishing. Tree is green and pushed at HEAD `6a6ec2a` (plus this report/plan checkpoint).
 Full test suite re-certified green after U2 completion and U1b: all 16 projects pass, 0 failures
 (Fuse.Cli.Tests 130, Fuse.Workspace.Tests 38, Fuse.GoldenOutput.Tests 14, Fuse.Retrieval.Tests 139).
 
-## Session tally: U2 DONE, U1b DONE (U1 complete), U3 DONE. Wave 3 (U-track) complete. Next: G-track / gated items
+## Session tally: U2, U1b, U3 DONE (Wave 3 complete); G3 DONE. Next: gated frontier / G3b follow-up
+
+- **G3 DONE** (Gate PASS): the VS Code agent observability panel, in three sub-steps.
+  - **sub-step 1** (`aaffeed`): host RPC read-only session observability - a store `ListSessionsAsync` enumerator
+    (unions `check_sessions` + `claim_ledger`, root-filtered) and two methods, `fuse/sessions` and
+    `fuse/session-view` (per-session introduced/resolved diagnostics + rendered claim ledger). Host protocol
+    bumped 4 to 5 with `protocol.ts`, the client, and the DTO shapes in lockstep (change-safety invariant);
+    contract suites moved together (.NET +2, extension +1, store +2).
+  - **sub-step 2** (`27f961d`): the read-only Agent Sessions TreeDataProvider - sessions expand to their
+    introduced diagnostics (click to open), a claim-ledger node, and info rows. Pure shaping split into a
+    vscode-free CommonJS module so a fixture-driven panel data test runs headless (`test:contract` now 15 pass).
+  - **sub-step 3** (`6a6ec2a`): docs - the panel + refresh command on the extension page (swept two stale
+    post-K1/U1 lines there), the new methods on the host-rpc page, the CHANGELOG G3 entry.
+  - Fallback invoked: the git-dependent staged-diff and handoff-preview views split to **G3b** (a gated tail
+    item) because spawning git inside the long-lived host is the documented fragile path; the Gate ("panel
+    renders live session data") is met by the sessions + diagnostics + claims panel.
+
+
 
 - **U3 DONE** (Gate PASS): playbook prompts, session resources, and CLI parity, in four sub-steps.
   - **sub-step 1** (`beae6aa`): 5 playbook prompts (`FusePrompts`, `[McpServerPromptType]`, registered via
@@ -69,9 +86,15 @@ Full test suite re-certified green after U2 completion and U1b: all 16 projects 
 
 ## Exact next action
 
-Wave 3 (the U-track) is complete: U1 `[x]`, U1b `[x]`, U2 `[x]`, U3 `[x]`. Re-read the Master checklist in
-`roadmap/v4.1-plan.md` top-to-bottom and take the next todo whose `depends:` are all `[x]`. Candidates: G2
-iteration 2 (a second first-party wiring analyzer; may be corpus-frequency-gated on C4 - check whether it can
-proceed without a fresh corpus), and G3 (depends S2 `[x]`). Most other remaining items (B1/B3/B4, the C-track,
-the F-track, G1/G4-G7) are corpus/install/model/maintainer/dependency-gated; if the next todo is gated, record
-why and take the following eligible one, or mark it `[!]` with the blocker named.
+Wave 3 (the U-track) is complete and G3 is done. Re-read the Master checklist in `roadmap/v4.1-plan.md`
+top-to-bottom for the next eligible todo. The remaining eligible items are narrow and mostly gated:
+- **G3b** (depends G3 `[x]`): eligible, but needs the host git-spawn fragility solved before the git-dependent
+  diff/handoff views can land - a real follow-up, not a quick unit.
+- **C1** `[>]`: the report-only remediation core is done; the remaining sub-steps are consent-gated installs +
+  the 17-repo up-report corpus gate (install/corpus-gated).
+- **G2** `[>]`: the next analyzer iteration is C4-gated (corpus-v2 frequency data).
+- **B1/B3/B4, C2/C3/C4, F-track, G1/G4-G7**: corpus/install/model/maintainer/dependency-gated.
+- **S3** `[!]`: maintainer decision on the sub-100ms cold-start floor.
+Next session: assess whether C1's overlay-config application can proceed without installing packages (generating
+a nuget.config overlay + re-running restore against the existing cache is install-free), or tackle G3b's host
+git-spawn fix. If the eligible frontier is truly all gated, record that honestly and mark the blocked items.

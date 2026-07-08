@@ -29,9 +29,9 @@ namespace Fuse.Workspace;
 public sealed class ResidentWorkspace : IDisposable
 {
     private readonly ICompilerCallReader _reader;
-    private readonly IReadOnlyList<ResidentProject> _projects;
+    private readonly List<ResidentProject> _projects;
 
-    private ResidentWorkspace(ICompilerCallReader reader, IReadOnlyList<ResidentProject> projects)
+    private ResidentWorkspace(ICompilerCallReader reader, List<ResidentProject> projects)
     {
         _reader = reader;
         _projects = projects;
@@ -113,6 +113,37 @@ public sealed class ResidentWorkspace : IDisposable
         }
 
         return null;
+    }
+
+    /// <summary>
+    ///     Applies an edit to the resident state: replaces the file's syntax tree in the held compilation so every
+    ///     later query and overlay check reflects the new content. This is the in-memory core of the incremental
+    ///     update the file watcher drives (S1 step 3); unlike <see cref="CheckOverlay" />, which forks a throwaway
+    ///     compilation for a speculative edit, this mutates the retained compilation. It never writes the tree.
+    /// </summary>
+    /// <param name="relativeFilePath">The repo-relative path of the edited file (matched by path suffix).</param>
+    /// <param name="newContent">The new content of that file.</param>
+    /// <param name="cancellationToken">A token to cancel the update.</param>
+    /// <returns>True when the file was found in a held compilation and the edit was applied; false otherwise.</returns>
+    public bool ApplyEdit(string relativeFilePath, string newContent, CancellationToken cancellationToken)
+    {
+        var normalized = relativeFilePath.Replace('\\', '/');
+        for (var i = 0; i < _projects.Count; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var compilation = _projects[i].Compilation;
+            var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
+                t.FilePath.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
+            if (tree is null)
+                continue;
+
+            var newTree = CSharpSyntaxTree.ParseText(
+                newContent, (CSharpParseOptions?)tree.Options, tree.FilePath, cancellationToken: cancellationToken);
+            _projects[i] = _projects[i] with { Compilation = compilation.ReplaceSyntaxTree(tree, newTree) };
+            return true;
+        }
+
+        return false;
     }
 
     private static CheckDiagnostic ToCheckDiagnostic(Diagnostic diagnostic)

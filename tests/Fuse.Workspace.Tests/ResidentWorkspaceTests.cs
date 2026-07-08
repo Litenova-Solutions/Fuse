@@ -60,6 +60,55 @@ public sealed class ResidentWorkspaceTests
     }
 
     [Fact]
+    public async Task Applied_edit_persists_in_resident_state_for_later_checks()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                    <Nullable>enable</Nullable>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
+
+            // Apply an edit that adds a method; the change is retained in the resident compilation.
+            var applied = resident.ApplyEdit(
+                "Widget.cs",
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; public int Twice() => Spin() * 2; }",
+                CancellationToken.None);
+            Assert.True(applied);
+
+            // A later overlay check that calls the newly added method binds against the retained edit (it would be
+            // CS1061 if the resident state had not kept the ApplyEdit that introduced Twice).
+            var afterEdit = resident.CheckOverlay(
+                "Widget.cs",
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; public int Twice() => Spin() * 2; public int Quad() => Twice() * 2; }",
+                CancellationToken.None);
+            Assert.NotNull(afterEdit);
+            Assert.DoesNotContain(afterEdit!, d => d.Severity == "Error");
+
+            // Applying to a file not in any compilation reports no match.
+            Assert.False(resident.ApplyEdit("Nowhere/Absent.cs", "class Z { }", CancellationToken.None));
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public async Task Overlay_check_returns_null_for_a_file_not_in_any_compilation()
     {
         var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));

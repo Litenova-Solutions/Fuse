@@ -9,11 +9,14 @@ public sealed class FuseDeprecatedToolsTests
     [Fact]
     public void ShimsNameTheirV3Replacement()
     {
-        Assert.Contains("fuse_map", FuseDeprecatedTools.FuseToc());
+        Assert.Contains("fuse_workspace", FuseDeprecatedTools.FuseToc());
         Assert.Contains("fuse_review", FuseDeprecatedTools.FuseChanges());
         Assert.Contains("fuse_localize", FuseDeprecatedTools.FuseSearch());
         Assert.Contains("fuse_context", FuseDeprecatedTools.FuseFocus());
         Assert.Contains("fuse_localize", FuseDeprecatedTools.FuseAsk());
+        // The U1 folds resolve to their union tool.
+        Assert.Contains("fuse_workspace", FuseDeprecatedTools.FuseIndex());
+        Assert.Contains("fuse_workspace", FuseDeprecatedTools.FuseMap());
     }
 
     [Fact]

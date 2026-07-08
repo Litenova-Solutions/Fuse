@@ -30,8 +30,8 @@ public sealed partial class FuseTools
     /// <param name="path">The workspace directory.</param>
     /// <param name="cancellationToken">A token to cancel indexing.</param>
     /// <returns>A summary of the index pass, or a descriptive error.</returns>
-    [McpServerTool(Name = "fuse_index", ReadOnly = false)]
-    [Description("Build or refresh the persistent semantic index for a .NET workspace. Run once before the read tools, or to pick up changes. Returns a summary (mode, files, projects, symbols, routes).")]
+    // Folded into fuse_workspace (action=index) in U1; kept as an internal helper the workspace tool calls, and
+    // shimmed under its old name in FuseDeprecatedTools.
     public static async Task<string> FuseIndexAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
@@ -56,8 +56,8 @@ public sealed partial class FuseTools
     /// <param name="maxRows">The maximum rows per section.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The workspace map.</returns>
-    [McpServerTool(Name = "fuse_map", ReadOnly = true)]
-    [Description("Print a map of the workspace: indexed symbols, routes, and counts. The cheap first call to understand structure before fetching context.")]
+    // Folded into fuse_workspace (action=map) in U1; kept as an internal helper the workspace tool calls, and
+    // shimmed under its old name in FuseDeprecatedTools.
     public static async Task<string> FuseMapAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",

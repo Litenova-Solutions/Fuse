@@ -84,8 +84,7 @@ public sealed class McpServeCommand
                     "Use fuse_context only after localize/resolve unless the user asks for one-shot context.\n" +
                     "Use fuse_find for exact text/path/symbol lookup.\n\n" +
                     "TOOLS:\n" +
-                    "- fuse_index: Build or refresh the persistent semantic index. The read tools build it on first use.\n" +
-                    "- fuse_map: Workspace map (symbols, routes, counts). The cheap first call.\n" +
+                    "- fuse_workspace: Workspace status and lifecycle. action=status (index mode, verify grade, freshness), index (build/refresh), map (symbols/routes/counts), doctor (per-project load diagnosis). The cheap first call.\n" +
                     "- fuse_localize: Rank candidate files/symbols for a task. No bodies.\n" +
                     "- fuse_resolve: Resolve wiring (service->impl, request->handler, route->action, config->options, symbol). No bodies.\n" +
                     "- fuse_context: Emit source context (mixed tiers, manifest, provenance) for selected seeds.\n" +

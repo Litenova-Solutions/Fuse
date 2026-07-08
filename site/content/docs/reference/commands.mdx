@@ -93,6 +93,10 @@ Accepts `--changed-since`, `--max-tokens`, `--include-tests`, `--format`, and `-
 
 Ambient verification (see [Verify every edit automatically](/docs/scenarios/ambient-verification)). `fuse check --delta` prints the diagnostics the session's edits introduced or resolved since its baseline; `fuse gate` exits nonzero while the session has introduced unresolved errors. Both read the delta from the running host over its pipe and never run a build; with no host serving the workspace they exit 0 silently.
 
+## fuse verify --ci-parity
+
+Rehearse what CI will run (see [Rehearse CI before you push](/docs/scenarios/rehearse-ci)). `fuse verify --ci-parity` reads the repository's GitHub Actions workflows, prints the dotnet command sequence they run in CI order, and names the steps that cannot be rehearsed locally (a step needing a secret, a package push) so nothing is silently skipped. Add `--run` to execute the rehearsable steps locally through the same executor build-grade verification uses.
+
 ```text
 fuse check ./src --delta --fast
 fuse gate ./src

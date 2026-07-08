@@ -56,19 +56,19 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
   coalesces raw filesystem events to the net change per path via `WorkspaceFileChangeSet` and raises an additive
   `BatchChanged` event; 6 accumulator tests), and the batch-apply glue done (`ResidentWorkspace.AddDocument`
   plus `ResidentWorkspaceUpdater`, which applies a watcher batch to a resident workspace - edit/add
-  created-or-changed .cs, remove deleted, skip the rest, never writing the tree; 2 tests). The concrete provider is also
-  built: `ResidentWorkspaceService` implements `IResidentWorkspaceProvider` over a live workspace (root-scoped
-  describe + overlay check, `ApplyBatch` running the updater under a lock and advancing a revision; owns and
-  disposes the workspace; 1 test). So EVERY resident piece is built and independently tested. The ONE remaining
-  S1 slice is the serve/host lifecycle wiring: a per-root registry that lazily builds a binlog and constructs the
-  `ResidentWorkspace`, news up a `ResidentWorkspaceService`, sets `FuseTools.ResidentWorkspaces`, subscribes the
-  per-root `watcher.BatchChanged` to `service.ApplyBatch` (stamping stale above the 300-file
-  `WorkspaceFileChangeSet.Count` threshold), and disposes on shutdown - gated off by default first so the shipped
-  serve path stays byte-identical. That wiring turns on the co-activation decision (empirically green in the
-  shared Cli.Tests process, which already co-loads both closures, all pinned to CodeAnalysis 4.14; still to be
-  validated in a serve-shaped process) and needs an end-to-end `mcp serve` smoke run, so it is the dedicated
-  session; then read-tool routing for the remaining tools, changeset-overlay unification, and the
-  `performance.json` latency/RSS gate close S1.
+  created-or-changed .cs, remove deleted, skip the rest, never writing the tree; 2 tests). The concrete provider
+  (`ResidentWorkspaceService`), the process-wide `ResidentWorkspaceRegistry` (lazy per-root warm/cache), and the
+  shared `ResidentWorkspaceHosting` helper are all built and tested, and the resident workspace is now WIRED
+  end-to-end (opt-in, `FUSE_RESIDENT`, default off) into BOTH `mcp serve` and `fuse host`: on opt-in the host
+  warms the served root in the background, keeps it current from the watcher batch (evicting to store-backed
+  above the 300-file storm threshold), and disposes on shutdown; `fuse_check` for the served root then answers
+  resident-grade from the held compilation with no per-check rebuild. Smoke-tested: `FUSE_RESIDENT=1 fuse mcp
+  serve` starts, warms, and shuts down clean. Default off keeps the shipped path byte-identical. What remains to
+  CLOSE S1's gate: route the remaining read tools through the seam (step 4), unify changeset sessions as overlays
+  (step 5), and the `performance.json` latency/RSS gate through the MCP layer (delta p95 < 1s warm at NodaTime
+  scale, edge freshness < 2s, resident RSS) with an end-to-end resident `fuse_check` over JSON-RPC - which needs
+  a provisioned tier-1 repo - after which `FUSE_RESIDENT` is promoted to default-on. That is the dedicated
+  benchmarking session.
 - **C1 fuse up** `[>]`: five sub-steps landed gate-green, including a working user-facing command -
   `RemediationKnowledgeBase` (JSON-data KB + matcher; 7 tests), `EnvironmentRemediationPlanner`
   (classify-and-report core; 4 tests), `NuGetOverlayConfig` (NU1507 overlay generator, installs nothing, never

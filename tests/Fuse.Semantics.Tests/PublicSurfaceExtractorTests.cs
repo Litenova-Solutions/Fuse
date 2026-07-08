@@ -78,6 +78,18 @@ public sealed class PublicSurfaceExtractorTests
     }
 
     [Fact]
+    public void A_generic_and_a_non_generic_type_of_the_same_name_are_distinct_identities()
+    {
+        var symbols = PublicSurfaceExtractor.Extract("A.cs",
+            "public interface IFoo { } public interface IFoo<T> { }");
+        var types = symbols.Where(s => s.Name == "IFoo").ToList();
+        Assert.Equal(2, types.Count);
+        // The arity marker keeps them apart, so neither hides the other in a surface diff.
+        Assert.Equal(2, types.Select(t => t.FullyQualifiedName).Distinct().Count());
+        Assert.Contains(types, t => t.FullyQualifiedName.EndsWith("IFoo`1", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Whitespace_differences_normalize_to_the_same_signature()
     {
         var tight = PublicSurfaceExtractor.Extract("A.cs", "public class A { public void Foo(int x){} }");

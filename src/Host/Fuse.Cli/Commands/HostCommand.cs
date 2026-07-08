@@ -70,6 +70,13 @@ public sealed class HostCommand
             await notifier.BroadcastAsync("fuse/invalidated");
         };
 
+        // Resident workspace (S1), opt-in (FUSE_RESIDENT), default off: keep a live compilation for this root and
+        // drive it from the same watcher's coalesced batches, so fuse_check answers resident-grade without a
+        // rebuild. Off by default keeps the host path byte-identical until the S1 latency gate promotes it.
+        using var resident = Services.ResidentWorkspaceHosting.OptIn()
+            ? Services.ResidentWorkspaceHosting.Enable(root, watcher, message => logger.LogInformation("{Message}", message), stopCts.Token)
+            : null;
+
         logger.LogInformation("Fuse host {Version} serving {Root}", FuseHostService.HostVersion, root);
 
         try

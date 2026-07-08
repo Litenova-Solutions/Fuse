@@ -44,7 +44,7 @@ public sealed class BuildGradeTestRunnerTests
 
             var result = await BuildGradeTestRunner.RunAsync(
                 Path.Combine(work, "Fix.csproj"),
-                ["Fix.Cases.PassingTest", "Fix.Cases.FailingTest"],
+                TestFilterBuilder.Build(["Fix.Cases.PassingTest", "Fix.Cases.FailingTest"]),
                 scratch,
                 TimeSpan.FromMinutes(5),
                 CancellationToken.None);
@@ -67,7 +67,7 @@ public sealed class BuildGradeTestRunnerTests
     public async Task An_empty_covering_set_runs_nothing()
     {
         var result = await BuildGradeTestRunner.RunAsync(
-            "does-not-matter.csproj", [], Path.GetTempPath(), TimeSpan.FromSeconds(5), CancellationToken.None);
+            "does-not-matter.csproj", string.Empty, Path.GetTempPath(), TimeSpan.FromSeconds(5), CancellationToken.None);
 
         Assert.True(result.RanNothing);
         Assert.Empty(result.Verdicts);

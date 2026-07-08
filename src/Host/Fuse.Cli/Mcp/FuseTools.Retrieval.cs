@@ -241,6 +241,76 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
+    ///     Runs the covering tests for a symbol (T1): the tests that reach it through the persisted <c>tests</c>
+    ///     edges, run at build grade (<c>dotnet test</c> scoped by filter to just those test types), with the whole
+    ///     suite never run. Selection-only when no <c>tests</c> edge reaches the symbol; the grade is stamped.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (opens the store for covering selection).</param>
+    /// <param name="symbol">The symbol whose covering tests to run.</param>
+    /// <param name="path">The workspace directory.</param>
+    /// <param name="limit">The maximum covering test types to run.</param>
+    /// <param name="cancellationToken">A token to cancel the run.</param>
+    /// <returns>The per-test verdicts plus the grade, or the selection-only floor when nothing covers the symbol.</returns>
+    [McpServerTool(Name = "fuse_test", ReadOnly = true)]
+    [Description("Run the covering tests for a symbol: the tests that reach it through the persisted tests edges, run at build grade (dotnet test scoped by filter to just those test types, the whole suite never run), with per-test verdicts. Selection-only when no tests edge reaches the symbol. Build-grade runs the real build; the emit fast path is future work.")]
+    public static async Task<string> FuseTestAsync(
+        SemanticIndexer indexer,
+        [Description("The symbol whose covering tests to run.")] string symbol = "",
+        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
+        [Description("Maximum covering test types to run.")] int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            return "Error: provide a symbol name whose covering tests to run.";
+
+        var root = Path.GetFullPath(path);
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var covering = await new GraphNeighborhoodExplorer(store).CoveringTestsAsync(symbol, limit, cancellationToken);
+        if (covering.Count == 0)
+            return $"covering tests for {symbol}: none (no tests edge reaches it, so there is nothing to run). This is the selection-only floor; a test reached only by reflection has no edge and is not selected.";
+
+        var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
+        var target = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
+        if (target is null)
+            return $"covering tests for {symbol}: {covering.Count} test type(s) selected, but no solution or project was found to run them (selection-only).";
+
+        var filter = Fuse.Workspace.TestFilterBuilder.BuildContains(covering.Select(c => c.Symbol));
+        var scratch = Path.Combine(Path.GetTempPath(), "fuse-test", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result = await Fuse.Workspace.BuildGradeTestRunner.RunAsync(
+                target, filter, scratch, TimeSpan.FromMinutes(10), cancellationToken);
+
+            var builder = new StringBuilder();
+            builder.AppendLine("verification grade: build (ran dotnet test scoped to the covering tests; the emit fast path is future work)");
+            if (result.TimedOut)
+            {
+                builder.AppendLine($"covering tests for {symbol}: timed out and the test host was killed. Narrow the change or raise the budget.");
+                return builder.ToString().TrimEnd();
+            }
+
+            if (result.Diagnostics is not null)
+            {
+                builder.AppendLine($"covering tests for {symbol}: {result.Diagnostics}");
+                return builder.ToString().TrimEnd();
+            }
+
+            var passed = result.Verdicts.Count(v => v.Outcome == "passed");
+            var failed = result.Verdicts.Count(v => v.Outcome == "failed");
+            var notRun = result.Verdicts.Count(v => v.Outcome == "not-run");
+            builder.AppendLine($"covering tests for {symbol}: {covering.Count} test type(s), {result.Verdicts.Count} test(s) run - {passed} passed, {failed} failed, {notRun} not-run");
+            foreach (var verdict in result.Verdicts.OrderBy(v => v.Outcome == "failed" ? 0 : 1).ThenBy(v => v.Name, StringComparer.Ordinal))
+                builder.AppendLine($"  {verdict.Outcome} {verdict.Name}");
+
+            return builder.ToString().TrimEnd();
+        }
+        finally
+        {
+            try { Directory.Delete(scratch, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    /// <summary>
     ///     Compiler-executed solution-wide rename (R7): renames a symbol and every reference through Roslyn and
     ///     returns the change as a staged diff, never touching the working tree. Answers only when the whole
     ///     solution loads (a partial rename is worse than none) and abstains otherwise.

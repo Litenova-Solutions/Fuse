@@ -25,6 +25,7 @@ public sealed class McpServeIntegrationTests
         "fuse_resolve",
         "fuse_review",
         "fuse_signatures",
+        "fuse_test",
     ];
 
     // The retired V2 names are re-registered as deprecation shims (FuseDeprecatedTools) so a client that cached

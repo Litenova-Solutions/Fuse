@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text;
 using Fuse.Collection.FileSystem;
 using Fuse.Context;
 using Fuse.Indexing;
@@ -73,6 +74,141 @@ public sealed class FuseResources
         if (claims.Count == 0)
             return $"session '{session}': no accumulated claims yet. Claim-emitting tools (for example fuse_impact with a session) add to the ledger.";
         return $"session '{session}' claim ledger:\n" + ClaimLedger.Render(claims);
+    }
+
+    /// <summary>
+    ///     Reads the workspace status (U3): the availability header (index mode, verification grade, freshness) and
+    ///     the resolved workspace root and index mode. The addressable form of <c>fuse_workspace action=status</c>.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
+    /// <param name="path">Relative path to the workspace directory.</param>
+    /// <param name="cancellationToken">Token used to cancel the read.</param>
+    /// <returns>The rendered status, or a descriptive error message when the directory is missing.</returns>
+    [McpServerResource(
+        UriTemplate = "fuse://status/{path}",
+        Name = "Workspace Status",
+        MimeType = "text/plain")]
+    [Description("Returns the workspace status (index mode, verification grade, freshness). Mirrors fuse_workspace (action=status).")]
+    public static async Task<string> ReadStatusResourceAsync(
+        SemanticIndexer indexer,
+        [Description("Relative path to the workspace directory.")] string path,
+        CancellationToken cancellationToken = default)
+    {
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
+        var builder = new StringBuilder();
+        builder.AppendLine(await FuseTools.OracleAvailabilityHeaderAsync(store, root, cancellationToken));
+        builder.AppendLine($"workspace: {root}");
+        builder.AppendLine($"index mode: {mode}");
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    ///     Reads a session's diagnostics diff (U3): the compiler diagnostics the session's on-disk edits introduced
+    ///     or resolved since its baseline, read from a live resident workspace. The addressable, read-only form of
+    ///     <c>fuse_check --delta</c>; unlike the tool it never establishes a baseline (a resource read is idempotent).
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (opens the store; the baseline lives in the workspace store).</param>
+    /// <param name="path">Relative path to the workspace directory.</param>
+    /// <param name="session">The session id whose diff to read.</param>
+    /// <param name="cancellationToken">Token used to cancel the read.</param>
+    /// <returns>The rendered diff, or a note when no resident workspace serves the root or the session has no baseline.</returns>
+    [McpServerResource(
+        UriTemplate = "fuse://diff/{path}/{session}",
+        Name = "Session Diff",
+        MimeType = "text/plain")]
+    [Description("Returns the diagnostics a session's edits introduced or resolved since its baseline (read-only). Mirrors fuse_check --delta.")]
+    public static async Task<string> ReadSessionDiffResourceAsync(
+        SemanticIndexer indexer,
+        [Description("Relative path to the workspace directory.")] string path,
+        [Description("The session id whose diagnostics diff to read.")] string session,
+        CancellationToken cancellationToken = default)
+    {
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+
+        var current = FuseTools.ResidentWorkspaces.TryGetCurrentDiagnostics(root);
+        if (current is null)
+            return "no diff: no resident workspace serves this root (start the server with FUSE_RESIDENT=1); the diff never runs a build.";
+
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var baseline = await store.GetCheckSessionBaselineAsync(session, cancellationToken);
+        if (baseline is null)
+            return $"session '{session}': no baseline recorded yet. Call fuse_check with this session to establish one, then read the diff.";
+
+        var delta = DiagnosticDelta.Compute(baseline.Diagnostics, current);
+        var builder = new StringBuilder();
+        builder.AppendLine($"session '{session}' diff (since baseline {baseline.UpdatedUtc}): {delta.Introduced.Count} introduced, {delta.Resolved.Count} resolved.");
+        if (delta.Introduced.Count == 0 && delta.Resolved.Count == 0)
+        {
+            builder.AppendLine("  (no change in diagnostics since the baseline)");
+            return builder.ToString().TrimEnd();
+        }
+
+        if (delta.Introduced.Count > 0)
+        {
+            builder.AppendLine("introduced:");
+            foreach (var d in delta.Introduced)
+                builder.AppendLine($"  {d.Severity} {d.Id} {d.FilePath}:{d.Line}: {d.Message}");
+        }
+
+        if (delta.Resolved.Count > 0)
+        {
+            builder.AppendLine("resolved:");
+            foreach (var d in delta.Resolved)
+                builder.AppendLine($"  {d.Severity} {d.Id} {d.FilePath}:{d.Line}: {d.Message}");
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    ///     Reads a session's current diagnostics (U3): the whole-state compiler diagnostics from a live resident
+    ///     workspace, or the session's recorded baseline set when no resident workspace serves the root. Read-only.
+    /// </summary>
+    /// <param name="indexer">The semantic indexer (opens the store for the recorded baseline).</param>
+    /// <param name="path">Relative path to the workspace directory.</param>
+    /// <param name="session">The session id whose diagnostics to read.</param>
+    /// <param name="cancellationToken">Token used to cancel the read.</param>
+    /// <returns>The rendered diagnostics, or a note when neither a resident workspace nor a recorded baseline exists.</returns>
+    [McpServerResource(
+        UriTemplate = "fuse://diagnostics/{path}/{session}",
+        Name = "Session Diagnostics",
+        MimeType = "text/plain")]
+    [Description("Returns a session's whole-state diagnostics (live resident set, or the recorded baseline). Read-only.")]
+    public static async Task<string> ReadSessionDiagnosticsResourceAsync(
+        SemanticIndexer indexer,
+        [Description("Relative path to the workspace directory.")] string path,
+        [Description("The session id whose diagnostics to read.")] string session,
+        CancellationToken cancellationToken = default)
+    {
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+
+        var current = FuseTools.ResidentWorkspaces.TryGetCurrentDiagnostics(root);
+        var builder = new StringBuilder();
+        if (current is not null)
+        {
+            builder.AppendLine($"session '{session}' diagnostics (live resident): {current.Count} diagnostic(s).");
+            foreach (var d in current)
+                builder.AppendLine($"  {d.Severity} {d.Id} {d.FilePath}:{d.Line}: {d.Message}");
+            return builder.ToString().TrimEnd();
+        }
+
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        var baseline = await store.GetCheckSessionBaselineAsync(session, cancellationToken);
+        if (baseline is null)
+            return $"session '{session}': no live resident workspace and no recorded baseline. Start the server with FUSE_RESIDENT=1, or call fuse_check with this session first.";
+
+        builder.AppendLine($"session '{session}' diagnostics (recorded baseline as of {baseline.UpdatedUtc}): {baseline.Diagnostics.Count} diagnostic(s).");
+        foreach (var d in baseline.Diagnostics)
+            builder.AppendLine($"  {d.Severity} {d.Id} {d.FilePath}:{d.Line}: {d.Message}");
+        return builder.ToString().TrimEnd();
     }
 
     /// <summary>

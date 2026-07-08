@@ -137,6 +137,15 @@ public sealed class McpServeIntegrationTests
             fixPrompt.Messages.Select(m => (m.Content as TextContentBlock)?.Text));
         Assert.Contains("CS1061", promptText);
         Assert.Contains("fuse_check", promptText);
+
+        // U3: the addressable resources include the U2 session ledger and the new status/diff/diagnostics reads,
+        // alongside the map/localize/context/review workflow resources.
+        var resourceTemplates = await client.ListResourceTemplatesAsync(cancellationToken: TestCancellation);
+        var templateUris = resourceTemplates.Select(r => r.UriTemplate).ToArray();
+        Assert.Contains(templateUris, u => u.StartsWith("fuse://ledger/", StringComparison.Ordinal));
+        Assert.Contains(templateUris, u => u.StartsWith("fuse://status/", StringComparison.Ordinal));
+        Assert.Contains(templateUris, u => u.StartsWith("fuse://diff/", StringComparison.Ordinal));
+        Assert.Contains(templateUris, u => u.StartsWith("fuse://diagnostics/", StringComparison.Ordinal));
     }
 
     private static CancellationToken TestCancellation => default;

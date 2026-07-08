@@ -281,17 +281,21 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
-    ///     Speculatively typechecks a proposed single-file edit against the build-captured compilation (R1): the
-    ///     compiler diagnostics the change would produce, without writing the file or running <c>dotnet build</c>.
-    ///     Answers only at oracle-grade (tier-1) load and abstains otherwise, per the availability contract.
+    ///     Typechecks a proposed single-file edit and returns the compiler diagnostics the change would produce,
+    ///     without writing the file (T0, Decision D11). Verification never shrugs: it answers at oracle-grade (a
+    ///     speculative typecheck against the build-captured compilation, no build) when tier-1 is available, falls
+    ///     back to build-grade (running <c>dotnet build</c> scoped to the owning project and parsing the same
+    ///     diagnostic shape) otherwise, and abstains only when even the toolchain cannot run. Every answer is
+    ///     stamped with its <see cref="Fuse.Indexing.CheckResult.Grade" />.
     /// </summary>
+    /// <param name="indexer">The semantic indexer (opens the store for repair-packet context).</param>
     /// <param name="path">The workspace directory.</param>
     /// <param name="file">The repo-relative path of the file being changed.</param>
     /// <param name="content">The proposed full new content of that file.</param>
     /// <param name="cancellationToken">A token to cancel the check.</param>
     /// <returns>The diagnostics for the changed document, a clean verdict, or an explicit abstention.</returns>
     [McpServerTool(Name = "fuse_check", ReadOnly = true)]
-    [Description("Speculatively typecheck a proposed single-file edit: the compiler errors and warnings it would produce, without writing the file or running dotnet build. Oracle-grade: answers only when the repo builds and is captured at tier-1, and abstains with a reason otherwise rather than guessing green.")]
+    [Description("Speculatively typecheck a proposed single-file edit: the compiler errors and warnings it would produce, without writing the file. Verification never shrugs (D11): oracle-grade (sub-second, no build) when the repo is captured at tier-1; otherwise build-grade, running dotnet build scoped to the owning project (tens of seconds) and parsing the same diagnostics; abstains only when even the toolchain cannot run, naming the reason. Every answer is stamped with its grade.")]
     public static async Task<string> FuseCheckAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
@@ -303,24 +307,52 @@ public sealed partial class FuseTools
             return "Error: provide the changed file path and its proposed new content.";
 
         var root = Path.GetFullPath(path);
-        var client = new Fuse.Semantics.BuildCaptureClient();
-        if (!client.IsAvailable)
-            return "cannot verify: oracle-grade build capture is not configured (set FUSE_BUILD_CAPTURE_WORKER). fuse_check abstains rather than guessing green.";
-
         var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
-        var buildTarget = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
-        if (buildTarget is null)
-            return "cannot verify: no solution or project found to build. fuse_check abstains.";
 
-        var result = await client.CheckAsync(buildTarget, file, content, TimeSpan.FromMinutes(10), cancellationToken);
+        // The verification-grade ladder (T0, D11): try oracle-grade first (speculative, resident/captured
+        // compilation), fall back to build-grade (run the real toolchain, scoped to the owning project), and abstain
+        // only when neither can run. An oracle abstention (tier-1 not configured, or the project did not load clean)
+        // is a fall-through to build-grade, not a shrug.
+        var client = new Fuse.Semantics.BuildCaptureClient();
+        var oracleTarget = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
+        Fuse.Indexing.CheckResult? oracle = null;
+        if (client.IsAvailable && oracleTarget is not null)
+        {
+            var candidate = await client.CheckAsync(oracleTarget, file, content, TimeSpan.FromMinutes(10), cancellationToken);
+            if (candidate.Verified)
+                oracle = candidate;
+        }
+
+        Fuse.Indexing.CheckResult result;
+        long buildElapsedMs = 0;
+        if (oracle is not null)
+        {
+            result = oracle;
+        }
+        else if (discovery.ProjectPaths.Count == 0)
+        {
+            return "cannot verify: no project found to build. fuse_check abstains (no oracle-grade capture and no buildable project).";
+        }
+        else
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            result = await new Fuse.Semantics.BuildGradeChecker().CheckAsync(root, discovery.ProjectPaths, file, content, cancellationToken);
+            buildElapsedMs = stopwatch.ElapsedMilliseconds;
+        }
+
         if (!result.Verified)
-            return $"cannot verify: {result.Reason}";
+            return $"cannot verify ({result.Grade}): {result.Reason}";
+
+        var gradeLine = result.Grade == "oracle"
+            ? "verification grade: oracle (speculative typecheck, no build, no disk write)"
+            : $"verification grade: build (ran dotnet build scoped to the owning project, {buildElapsedMs / 1000.0:F1}s, no disk write)";
 
         if (result.IsClean)
-            return $"clean: no errors in the changed document {file} (speculative typecheck, no build, no disk write).";
+            return $"{gradeLine}\nclean: no errors in the changed document {file}.";
 
         var builder = new StringBuilder();
-        builder.AppendLine($"diagnostics for {file} (speculative typecheck): {result.Diagnostics.Count}");
+        builder.AppendLine(gradeLine);
+        builder.AppendLine($"diagnostics for {file}: {result.Diagnostics.Count}");
         foreach (var d in result.Diagnostics)
             builder.AppendLine($"  {d.Severity} {d.Id} at line {d.Line}: {d.Message}");
 

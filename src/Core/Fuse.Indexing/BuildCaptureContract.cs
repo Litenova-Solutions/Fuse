@@ -82,15 +82,30 @@ public sealed record CheckResult(bool Verified, string? Reason, IReadOnlyList<Ch
     /// <summary>Whether the changed document has no error-severity diagnostics (a clean speculative build).</summary>
     public bool IsClean => Verified && !Diagnostics.Any(d => d.Severity == "Error");
 
-    /// <summary>Creates a verified result.</summary>
+    /// <summary>
+    ///     The verification grade (T0, Decision D11): <c>oracle</c> when a resident or build-captured compilation
+    ///     answered speculatively (sub-second, no build), <c>build</c> when Fuse ran the real toolchain and parsed
+    ///     its diagnostics (ground truth, tens of seconds), or <c>abstain</c> when neither was possible and the
+    ///     missing prerequisite is named in <see cref="Reason" />. Defaults to <c>oracle</c> so the existing
+    ///     speculative path and any pre-T0 worker output deserialize unchanged.
+    /// </summary>
+    public string Grade { get; init; } = "oracle";
+
+    /// <summary>Creates a verified oracle-grade result (speculative typecheck, no build).</summary>
     /// <param name="diagnostics">The compiler diagnostics.</param>
-    /// <returns>A verified result.</returns>
+    /// <returns>A verified oracle-grade result.</returns>
     public static CheckResult Ok(IReadOnlyList<CheckDiagnostic> diagnostics) => new(true, null, diagnostics);
 
-    /// <summary>Creates an abstention (could not verify).</summary>
+    /// <summary>Creates a verified build-grade result (Fuse ran the real toolchain and parsed its diagnostics).</summary>
+    /// <param name="diagnostics">The compiler diagnostics parsed from the build.</param>
+    /// <returns>A verified build-grade result.</returns>
+    public static CheckResult BuildGraded(IReadOnlyList<CheckDiagnostic> diagnostics) =>
+        new(true, null, diagnostics) { Grade = "build" };
+
+    /// <summary>Creates an abstention (could not verify at any grade).</summary>
     /// <param name="reason">The concrete reason the check could not verify.</param>
-    /// <returns>An unverified result.</returns>
-    public static CheckResult Abstain(string reason) => new(false, reason, []);
+    /// <returns>An unverified result stamped <c>abstain</c>.</returns>
+    public static CheckResult Abstain(string reason) => new(false, reason, []) { Grade = "abstain" };
 }
 
 /// <summary>

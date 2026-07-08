@@ -41,7 +41,7 @@ public sealed class CheckGateSuite : IEvalSuite
     public string Description => "Suite F: fuse_check false-green and false-red rates over known-good and known-bad edits.";
 
     /// <inheritdoc />
-    public Task<SuiteResult> RunAsync(EvalOptions options, CancellationToken cancellationToken)
+    public async Task<SuiteResult> RunAsync(EvalOptions options, CancellationToken cancellationToken)
     {
         var notes = new List<string>
         {
@@ -56,8 +56,8 @@ public sealed class CheckGateSuite : IEvalSuite
         {
             // The baseline must compile clean, or the gate would measure the fixture, not the oracle.
             notes.Add($"Baseline compilation has {baselineErrors} error(s); cannot run the gate.");
-            return Task.FromResult(new SuiteResult(Name, Description, null,
-                new Scorecard(0, 0, 0, 0, 0, 0, 0, 0), tasks, notes));
+            return new SuiteResult(Name, Description, null,
+                new Scorecard(0, 0, 0, 0, 0, 0, 0, 0), tasks, notes);
         }
 
         int falseGreen = 0, falseRed = 0, abstained = 0, correct = 0;
@@ -132,6 +132,15 @@ public sealed class CheckGateSuite : IEvalSuite
             ? "Tier-1 arm: build-capture worker configured; the in-process gate is the scored measure, the worker path is covered by BuildCaptureCheckTests."
             : "Tier-1 arm: skipped (no FUSE_BUILD_CAPTURE_WORKER); the worker path is covered by BuildCaptureCheckTests when provisioned.");
 
+        // The T0 verify-agreement arm: run a sample of mutants through both the oracle path (the build-capture
+        // worker) and the build-grade path (BuildGradeChecker), and record their diagnostic-identity agreement.
+        // This is the recorded artifact for T0's gate; it runs only when a worker is provisioned and --verify-agreement
+        // N is given, and it is a bounded sample because each mutant runs two real builds.
+        if (options.VerifyAgreement > 0)
+            await RunVerifyAgreementArmAsync(options, notes, cancellationToken);
+        else
+            notes.Add("verify-agreement arm: skipped (pass --verify-agreement N with FUSE_BUILD_CAPTURE_WORKER to record the T0 oracle-vs-build agreement).");
+
         var scorecard = new Scorecard(
             tasks.Count,
             accuracy,
@@ -141,7 +150,134 @@ public sealed class CheckGateSuite : IEvalSuite
             accuracy,
             0,
             0);
-        return Task.FromResult(new SuiteResult(Name, Description, null, scorecard, tasks, notes));
+        return new SuiteResult(Name, Description, null, scorecard, tasks, notes);
+    }
+
+    // The T0 verify-agreement arm (Decision D11): the build-grade rung is ground truth by construction (the real
+    // compiler answered), so the honesty question is whether the oracle-grade speculative path AGREES with it. For
+    // a bounded sample of OrderingApp mutants, run the same proposed content through both the worker (oracle) and a
+    // scoped dotnet build (build-grade) and compare the set of error diagnostic ids attributed to the changed file.
+    // A mutant where either grade abstains is not comparable and is counted separately, not scored as a disagreement.
+    private async Task<VerifyAgreementTally?> RunVerifyAgreementArmAsync(
+        EvalOptions options, List<string> notes, CancellationToken cancellationToken)
+    {
+        if (!_capture.IsAvailable)
+        {
+            notes.Add("verify-agreement arm: skipped (no FUSE_BUILD_CAPTURE_WORKER; the oracle-vs-build agreement gate needs a provisioned worker).");
+            return null;
+        }
+
+        var repoRoot = Path.GetFullPath(Path.Combine(options.BenchRoot, "..", ".."));
+        var fixturesRoot = options.FixturesRoot is { } root ? Path.GetFullPath(root) : Path.Combine(repoRoot, "tests", "fixtures");
+        var dir = Path.Combine(fixturesRoot, "OrderingApp");
+        var project = Path.Combine(dir, "OrderingApp.csproj");
+        if (!File.Exists(project))
+        {
+            notes.Add($"verify-agreement arm: skipped (OrderingApp project not found at {project}).");
+            return null;
+        }
+
+        var (compilation, mutableFiles) = BuildFixtureCompilation(dir);
+        var baselineErrors = compilation.GetDiagnostics(cancellationToken)
+            .Count(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+        if (baselineErrors != 0)
+        {
+            notes.Add($"verify-agreement arm: skipped (OrderingApp baseline has {baselineErrors} in-process error(s)).");
+            return null;
+        }
+
+        // Balance the sample across breaking and neutral mutants, then take exactly the requested count.
+        var perClass = Math.Max(1, (options.VerifyAgreement + 1) / 2);
+        var cases = new MutationGenerator().Generate(compilation, mutableFiles, perClass, 20260708 + "OrderingApp".GetHashCode());
+        var sample = cases.Take(options.VerifyAgreement).ToList();
+
+        // Mirror the fixture to a temp working copy so the real fixture stays pristine, and point the oracle at it.
+        // The mutation is applied in-memory (the on-disk sources never change across mutants), so the incremental
+        // build would go up-to-date after the first call and capture no compiler invocation; clearing obj/bin before
+        // each oracle call forces a real recompile so the binlog carries the csc call the worker rehydrates.
+        var work = Path.Combine(Path.GetTempPath(), "fuse-verify-agreement", Guid.NewGuid().ToString("N"));
+        CopyDirectoryExcludingBuild(dir, work);
+        var oracleProject = Path.Combine(work, Path.GetFileName(project));
+
+        var timeout = TimeSpan.FromMinutes(5);
+        var buildChecker = new BuildGradeChecker(timeout);
+        int compared = 0, idAgree = 0, verdictAgree = 0, oracleAbstain = 0, buildAbstain = 0;
+        var disagreements = new List<string>();
+        try
+        {
+            foreach (var mutant in sample)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var relative = Path.GetRelativePath(dir, mutant.TargetFile);
+                ClearBuildOutput(work);
+                var oracle = await _capture.CheckAsync(oracleProject, relative, mutant.NewContent, timeout, cancellationToken);
+                var build = await buildChecker.CheckAsync(work, [oracleProject], relative, mutant.NewContent, cancellationToken);
+
+                if (!oracle.Verified) { oracleAbstain++; if (disagreements.Count < 12) disagreements.Add($"{mutant.Name}: oracle abstained ({oracle.Reason})"); continue; }
+                if (!build.Verified) { buildAbstain++; if (disagreements.Count < 12) disagreements.Add($"{mutant.Name}: build abstained ({build.Reason})"); continue; }
+
+                compared++;
+                var oracleIds = ErrorIds(oracle);
+                var buildIds = ErrorIds(build);
+                if (oracleIds.SetEquals(buildIds))
+                    idAgree++;
+                else if (disagreements.Count < 12)
+                    disagreements.Add($"{mutant.Name}: oracle[{string.Join("+", oracleIds.OrderBy(x => x))}] vs build[{string.Join("+", buildIds.OrderBy(x => x))}]");
+                if (oracle.IsClean == build.IsClean)
+                    verdictAgree++;
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+
+        var rate = compared == 0 ? 0.0 : (double)idAgree / compared;
+        notes.Add($"verify-agreement arm: {sample.Count} OrderingApp mutants sampled, {compared} comparable " +
+                  $"(oracle abstained {oracleAbstain}, build abstained {buildAbstain}); " +
+                  $"diagnostic-id agreement {idAgree}/{compared} = {rate:P1}; verdict (clean/red) agreement {verdictAgree}/{compared}.");
+        foreach (var line in disagreements)
+            notes.Add($"verify-agreement disagreement: {line}");
+        notes.Add(rate >= 0.99
+            ? $"T0 GATE (verify agreement): PASS ({rate:P1} >= 99% on {compared} comparable mutants)."
+            : $"T0 GATE (verify agreement): {rate:P1} < 99% on {compared} comparable mutants; per the fallback, build-grade is ground truth and ships, the discrepancy list above is the named fix item.");
+
+        return new VerifyAgreementTally(sample.Count, compared, idAgree, verdictAgree, oracleAbstain, buildAbstain);
+    }
+
+    // The distinct error-severity diagnostic ids a check attributed to the changed document. Warnings are excluded
+    // because the verdict (clean vs red) turns on errors; a warning-set difference (for example a doc-comment
+    // warning the build path does not emit) is not a verdict disagreement.
+    private static HashSet<string> ErrorIds(CheckResult result) =>
+        result.Diagnostics.Where(d => d.Severity == "Error").Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
+
+    // Copies a fixture directory to a working location, skipping build/tooling output so the copy is a clean source
+    // tree the oracle can build from without inheriting stale artifacts.
+    private static void CopyDirectoryExcludingBuild(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(source, file);
+            if (relative.Split('/', '\\').Any(s => s is "bin" or "obj" or ".vs" or ".git"))
+                continue;
+            var target = Path.Combine(destination, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
+    }
+
+    // Removes the build output of a working copy so the next build recompiles (the on-disk sources are unchanged
+    // across mutants, so an incremental build would otherwise go up-to-date and capture no compiler invocation).
+    private static void ClearBuildOutput(string directory)
+    {
+        foreach (var name in new[] { "obj", "bin" })
+        {
+            var path = Path.Combine(directory, name);
+            try { if (Directory.Exists(path)) Directory.Delete(path, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     // Replaces the target document's tree in the baseline compilation and classifies the changed document's
@@ -479,4 +615,8 @@ public sealed class CheckGateSuite : IEvalSuite
     {
         public int Verified => FalseGreen + FalseRed + Correct;
     }
+
+    // Running counts for the T0 verify-agreement arm. Comparable excludes mutants either grade abstained on.
+    private sealed record VerifyAgreementTally(
+        int Sampled, int Comparable, int DiagnosticIdAgree, int VerdictAgree, int OracleAbstain, int BuildAbstain);
 }

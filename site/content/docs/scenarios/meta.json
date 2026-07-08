@@ -6,6 +6,7 @@
     "ask-one-question",
     "refine-across-turns",
     "scope-a-pr",
+    "ambient-verification",
     "survey-cheaply",
     "stay-under-a-budget",
     "cut-tokens-dotnet",

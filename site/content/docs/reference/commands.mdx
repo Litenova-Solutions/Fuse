@@ -89,6 +89,17 @@ fuse review ./src --changed-since origin/main --max-tokens 25000
 
 Accepts `--changed-since`, `--max-tokens`, `--include-tests`, `--format`, and `--plan-only`.
 
+## fuse check, fuse gate
+
+Ambient verification (see [Verify every edit automatically](/docs/scenarios/ambient-verification)). `fuse check --delta` prints the diagnostics the session's edits introduced or resolved since its baseline; `fuse gate` exits nonzero while the session has introduced unresolved errors. Both read the delta from the running host over its pipe and never run a build; with no host serving the workspace they exit 0 silently.
+
+```text
+fuse check ./src --delta --fast
+fuse gate ./src
+```
+
+`fuse check` accepts `--delta`, `--session` (default `hook`), and `--fast`; `fuse gate` accepts `--session`. Wire them automatically with `fuse mcp install --with-hooks`.
+
 ## fuse find
 
 Exact lookup over the index.

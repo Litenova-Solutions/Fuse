@@ -17,6 +17,7 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<LocalizeCommand>();
     services.AddTransient<ContextCommand>();
     services.AddTransient<ReviewCommand>();
+    services.AddTransient<ImpactCommand>();
     services.AddTransient<DiagnosticsCommand>();
     services.AddTransient<DoctorCommand>();
     services.AddTransient<FindCommand>();

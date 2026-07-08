@@ -1128,7 +1128,8 @@ public sealed partial class FuseTools
     // stance in one behavior - and otherwise emits the changed files, the public API delta, the compiler-gate
     // status, and the named residual risk. The compiler gate is resident-only (like delta mode); with no resident
     // check session it is reported not-gated rather than assumed green.
-    private static async Task<string> BuildHandoffAsync(
+    // Internal (not private): the CLI review command (U3 parity) calls this directly for `fuse review --handoff`.
+    internal static async Task<string> BuildHandoffAsync(
         SemanticIndexer indexer, IChangeSource changeSource, string root, string changedSince, string checkSession, CancellationToken cancellationToken)
     {
         // A tool never crashes the server: any failure below (a git spawn error, an unreadable base ref) returns a

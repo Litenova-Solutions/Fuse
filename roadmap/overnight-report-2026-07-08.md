@@ -67,19 +67,21 @@ orchestrator either sources/synthesizes those and materializes them beside the e
 primitives) or ships a custom load-context micro-host (design b). Recommendation and opening investigation step
 (confirm what the capture exposes) are in the plan.
 
-The orchestrator crux is resolved by investigation: probed Basic.CompilerLog and confirmed CompilationData.
-EmitToDisk emits the compiler outputs but not the SDK runtimeconfig.json/deps.json, so an emitted assembly is not
-directly launchable by `dotnet vstest`. Decision: design (b), a small Fuse-shipped custom micro-host exe that
-AssemblyLoadContext-loads the emitted test assembly plus its reference paths and runs the covering xunit tests via
-the xunit runner API, reporting verdicts. It reuses ResidentEmit, TimedProcess, and TestFilterBuilder.
+T1 build-grade floor is SHIPPED on both surfaces. Six tested run-half primitives (ResidentEmit, TimedProcess,
+TestFilterBuilder + BuildContains, TrxResultParser, TestHostContract, BuildGradeTestRunner - the last end-to-end
+tested on a real xunit fixture: passing/failing/uncovered classified correctly), and both fuse_test (MCP) and
+fuse test (CLI) that select a symbol's covering test types, run them scoped via dotnet test --filter, and report
+per-test verdicts + the build grade (selection-only floor when nothing covers; timeout reported, never hung). The
+MCP tool count is now 15 (docs + AGENTS.md swept). This is exactly T1's pre-agreed Fallback default.
 
-Next action: scaffold the T1 micro-host runner exe + xunit runner-API integration (a coherent new component), then
-ResidentTestRunner, fuse_test / fuse test, the T0 degrade ladder, the H1 mutant extension, and testexec.json
-(false green 0, median under 10s, selection safety at least 95 percent) with an xunit-fixture end-to-end test. Then
-H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing deviation (mechanism
-complete). All work committed and pushed at HEAD `b951b77`; every committed change gate-green (build + all 16 .NET
-assemblies + dotnet format; extension contract 9/9 + tsc from the S3 protocol change). About 100 gate-green
-commits this session.
+Next action: the T1 EMIT FAST PATH behind a flag - the Fuse.TestHost custom micro-host (a new exe:
+AssemblyLoadContext-load the emitted assembly + refs, run the covering xunit tests via the xunit runner API, report
+via TestHostContract), which is what meets the Gate's median-under-10s (the build-grade floor runs the real build).
+Then not-runnable classification, the H1 mutant extension, and testexec.json + the Gate verdict. Then H2. C1
+remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing deviation (mechanism complete).
+All work committed and pushed at HEAD `502e4f8`; every committed change gate-green (build + all 16 .NET assemblies
++ dotnet format; extension contract 9/9 + tsc from the S3 protocol change). About 118 gate-green commits this
+session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

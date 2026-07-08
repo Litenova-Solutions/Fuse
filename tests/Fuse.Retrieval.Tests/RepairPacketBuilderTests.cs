@@ -95,10 +95,53 @@ public sealed class RepairPacketBuilderTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_unhandled_diagnostic_returns_no_packet()
+    public async Task Missing_required_argument_CS7036_surfaces_the_callee_signature()
+    {
+        // The call omits a required parameter; the packet re-presents the callee's parameters so the agent knows
+        // what to pass. GrandTotal is recorded, so its signature is surfaced.
+        var diagnostic = new CheckDiagnostic("CS7036",
+            "Error", "There is no argument given that corresponds to the required parameter 'value' of 'Shop.Order.GrandTotal(decimal)'", "src/Order.cs", 6);
+
+        var packet = await _builder.BuildAsync(diagnostic, CancellationToken.None);
+
+        Assert.NotNull(packet);
+        Assert.Equal("CS7036", packet!.DiagnosticId);
+        Assert.Contains("required parameter 'value'", packet.Explanation);
+        Assert.Contains(packet.Members, m => m.Name == "GrandTotal");
+    }
+
+    [Fact]
+    public async Task Type_mismatch_CS0029_names_the_conversion_direction()
     {
         var diagnostic = new CheckDiagnostic("CS0029",
             "Error", "Cannot implicitly convert type 'string' to 'decimal'", "src/Order.cs", 6);
+
+        var packet = await _builder.BuildAsync(diagnostic, CancellationToken.None);
+
+        Assert.NotNull(packet);
+        Assert.Equal("CS0029", packet!.DiagnosticId);
+        Assert.Contains("(decimal)", packet.Explanation);
+    }
+
+    [Fact]
+    public async Task Type_mismatch_CS0029_suggests_a_source_member_that_yields_the_target()
+    {
+        // Shop.Order.Total yields decimal, so converting an Order where a decimal is wanted likely means .Total.
+        var diagnostic = new CheckDiagnostic("CS0029",
+            "Error", "Cannot implicitly convert type 'Shop.Order' to 'decimal'", "src/Order.cs", 6);
+
+        var packet = await _builder.BuildAsync(diagnostic, CancellationToken.None);
+
+        Assert.NotNull(packet);
+        Assert.Contains("Total", packet!.Candidates);
+    }
+
+    [Fact]
+    public async Task An_unhandled_diagnostic_returns_no_packet()
+    {
+        // CS0165 (use of unassigned local) has no nearest-name or signature suggestion, so no packet is built.
+        var diagnostic = new CheckDiagnostic("CS0165",
+            "Error", "Use of unassigned local variable 'x'", "src/Order.cs", 6);
 
         Assert.Null(await _builder.BuildAsync(diagnostic, CancellationToken.None));
     }

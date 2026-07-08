@@ -223,6 +223,13 @@ public static class WorkspaceIndexSchema
           baseline_json TEXT NOT NULL,
           updated_utc TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS claim_ledger(
+          session_id TEXT PRIMARY KEY,
+          root TEXT NOT NULL,
+          claims_json TEXT NOT NULL,
+          updated_utc TEXT NOT NULL
+        );
         """;
 
     /// <summary>

@@ -43,4 +43,18 @@ public sealed class GitChangeSource : IChangeSource
             throw new ChangeSourceException(ex.Message);
         }
     }
+
+    /// <inheritdoc />
+    public async Task<string?> GetFileContentAtBaseAsync(
+        string rootDirectory, string since, string relativePath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _changeDetector.GetFileContentAtAsync(rootDirectory, since, relativePath, cancellationToken);
+        }
+        catch (ChangeDetectionException ex)
+        {
+            throw new ChangeSourceException(ex.Message);
+        }
+    }
 }

@@ -2,22 +2,27 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `4bd7bd6` (T0 landed at `32f4450`, the S1
-design checkpoint at `519a2d3`/`9d576bb`, S1 sub-step 1 at `4bd7bd6`).
+bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `32f4450`, the S1
+design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`).
 
 ## Current state (latest checkpoint)
 
 T0 is complete and gate-green (build-grade fallback for `fuse_check`, oracle-vs-build agreement
-100.0% on 24 mutants). S1 (the resident workspace, XL keystone) is `[>]` with its first sub-step
-LANDED gate-green: the new `Fuse.Workspace` core library and its `ResidentWorkspace` rehydrate a
-tier-1 binlog once and hold the live compilations, with an in-memory overlay check (no build, no
-disk write); it references `Basic.CompilerLog` but not `MSBuildWorkspace` (the architecture decision
-made concrete). The closure question was de-risked from the worker's existing references and a real
-resolution bug (VB 4.8 floor -> 4.14 pin) was found and fixed. C1 (`fuse up`) has advance-scouted
-preconditions banked but stays `[ ]`. Exact next action: S1 step 2 (define `IWorkspaceTruth` and
-route one read tool through the resident workspace), then steps 3-6 (watcher + incremental cone
-re-analysis with the issue-5 DI-edge acceptance test first, remaining read tools, changeset overlay
-unification, and the `performance.json` latency/RSS gate); the S1 Gate is met only after those.
+100.0% on 24 mutants). S1 (the resident workspace, XL keystone) is `[>]` with its entire in-memory
+resident-engine surface LANDED gate-green across three commits: the new `Fuse.Workspace` library and
+its `ResidentWorkspace` rehydrate a tier-1 binlog once and hold the live compilations, with an
+in-memory overlay check, an apply-edit that mutates the retained compilation, a remove-document for
+deletions, and a whole-state diagnostics baseline (all no-build, no-disk-write). It references
+`Basic.CompilerLog` but not `MSBuildWorkspace` (the architecture decision made concrete); the closure
+question was de-risked from the worker's existing references and a real resolution bug (VB 4.8 floor
+-> 4.14 pin) was found and fixed. Everything is additive and unreferenced, so no shipped path has
+changed yet. C1 (`fuse up`) has advance-scouted preconditions banked but stays `[ ]`. Exact next
+action: the first S1 shipped-substrate sub-step (dedicated session) - the file watcher that drives
+apply-edit/remove-document on file events (with the 300-file storm threshold and single-writer
+projection rule), the `IWorkspaceTruth` seam (resident-first, store-fallback, availability header),
+and where the serve/host holds the `ResidentWorkspace`, with the issue-5 DI-edge acceptance test
+first; then routing read tools, changeset-overlay unification, and the `performance.json` latency/RSS
+gate. The S1 Gate closes only after those.
 
 ## Summary
 

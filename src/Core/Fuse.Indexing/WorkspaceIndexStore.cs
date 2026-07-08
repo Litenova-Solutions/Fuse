@@ -200,6 +200,35 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task SaveClaimLedgerAsync(string sessionId, string root, string claimsJson, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO claim_ledger(session_id, root, claims_json, updated_utc) VALUES($id, $root, $json, $utc) " +
+            "ON CONFLICT(session_id) DO UPDATE SET root = excluded.root, claims_json = excluded.claims_json, updated_utc = excluded.updated_utc;";
+        command.Parameters.AddWithValue("$id", sessionId);
+        command.Parameters.AddWithValue("$root", root);
+        command.Parameters.AddWithValue("$json", claimsJson);
+        command.Parameters.AddWithValue("$utc", DateTime.UtcNow.ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<ClaimLedgerRecord?> GetClaimLedgerAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT root, claims_json, updated_utc FROM claim_ledger WHERE session_id = $id LIMIT 1;";
+        command.Parameters.AddWithValue("$id", sessionId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+            return null;
+
+        return new ClaimLedgerRecord(sessionId, reader.GetString(0), reader.GetString(1), reader.GetString(2));
+    }
+
+    /// <inheritdoc />
     public async Task UpsertFilesAsync(IReadOnlyList<IndexedFileRecord> files, CancellationToken cancellationToken)
     {
         if (files.Count == 0)

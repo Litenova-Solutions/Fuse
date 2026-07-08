@@ -78,3 +78,53 @@ public sealed class ClaimLedgerTests
         Assert.Contains("now: NewHandler", claim.Evidence);
     }
 }
+
+// U2: the session ledger persists a session's claims through the index store and reloads them (the substrate the
+// ledger resource exposes and ClaimReviewer re-grades). Roundtrip over a real temp SQLite store.
+public sealed class SessionClaimLedgerTests : IAsyncLifetime
+{
+    private readonly string _databasePath =
+        Path.Combine(Path.GetTempPath(), "fuse-claimledger-tests", Guid.NewGuid().ToString("N"), "fuse.db");
+    private Fuse.Indexing.WorkspaceIndexStore _store = null!;
+
+    public async Task InitializeAsync()
+    {
+        _store = new Fuse.Indexing.WorkspaceIndexStore(_databasePath);
+        await _store.InitializeAsync(CancellationToken.None);
+    }
+
+    public async Task DisposeAsync() => await _store.DisposeAsync();
+
+    [Fact]
+    public async Task Save_then_load_roundtrips_the_claims()
+    {
+        var claims = new List<Claim>
+        {
+            Claim.FromCompiler("the edit compiles clean", "check: 0 errors"),
+            Claim.FromGraph("3 callers", "graph: references edges"),
+            Claim.Contradicted("the handler is X", "X", "Y"),
+        };
+        await SessionClaimLedger.SaveAsync(_store, "s1", "C:/repo", claims, CancellationToken.None);
+
+        var loaded = await SessionClaimLedger.LoadAsync(_store, "s1", CancellationToken.None);
+
+        Assert.Equal(3, loaded.Count);
+        Assert.Equal(claims[0], loaded[0]);
+        Assert.Equal(ClaimGrade.Contradicted, loaded[2].Grade);
+    }
+
+    [Fact]
+    public async Task Load_of_an_unknown_session_is_empty()
+    {
+        Assert.Empty(await SessionClaimLedger.LoadAsync(_store, "no-such-session", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Save_overwrites_the_prior_ledger_for_a_session()
+    {
+        await SessionClaimLedger.SaveAsync(_store, "s2", "C:/repo", [Claim.FromGraph("a", "e")], CancellationToken.None);
+        await SessionClaimLedger.SaveAsync(_store, "s2", "C:/repo", [Claim.FromGraph("b", "e"), Claim.FromGraph("c", "e")], CancellationToken.None);
+        var loaded = await SessionClaimLedger.LoadAsync(_store, "s2", CancellationToken.None);
+        Assert.Equal(2, loaded.Count);
+    }
+}

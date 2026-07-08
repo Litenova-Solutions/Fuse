@@ -310,6 +310,28 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The session baseline, or <c>null</c> when the session is unknown.</returns>
     Task<CheckSessionBaseline?> GetCheckSessionBaselineAsync(string sessionId, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Persists a session's accumulated claims ledger (U2) as an opaque JSON payload, keyed by session id. The
+    ///     store keeps the payload verbatim (it does not know the claim shape, which lives in the retrieval layer),
+    ///     so the caller serializes and deserializes. Additive table, idempotent DDL, so no schema version bump.
+    /// </summary>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="root">The absolute workspace root the session is rooted at.</param>
+    /// <param name="claimsJson">The serialized claims payload.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the ledger is persisted.</returns>
+    Task SaveClaimLedgerAsync(string sessionId, string root, string claimsJson, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    /// <summary>
+    ///     Returns a session's persisted claims ledger (U2), or <c>null</c> when no session with that id exists.
+    /// </summary>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The ledger record, or <c>null</c> when the session is unknown.</returns>
+    Task<ClaimLedgerRecord?> GetClaimLedgerAsync(string sessionId, CancellationToken cancellationToken)
+        => Task.FromResult<ClaimLedgerRecord?>(null);
 }
 
 /// <summary>
@@ -322,3 +344,13 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
 /// <param name="UpdatedUtc">The ISO-8601 UTC time the baseline was last written.</param>
 public sealed record CheckSessionBaseline(
     string SessionId, string Root, IReadOnlyList<CheckDiagnostic> Diagnostics, string UpdatedUtc);
+
+/// <summary>
+///     A persisted claims ledger (U2): the serialized claims accumulated in a session, plus its root and the time
+///     it was last written. The JSON payload is opaque to the store; the retrieval layer owns the claim shape.
+/// </summary>
+/// <param name="SessionId">The opaque session id.</param>
+/// <param name="Root">The absolute workspace root the session is rooted at.</param>
+/// <param name="ClaimsJson">The serialized claims payload.</param>
+/// <param name="UpdatedUtc">The ISO-8601 UTC time the ledger was last written.</param>
+public sealed record ClaimLedgerRecord(string SessionId, string Root, string ClaimsJson, string UpdatedUtc);

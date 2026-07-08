@@ -1,3 +1,7 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Fuse.Indexing;
+
 namespace Fuse.Retrieval;
 
 /// <summary>
@@ -118,4 +122,44 @@ public static class ClaimLedger
         ClaimGrade.Contradicted => "contradicted",
         _ => "unknown",
     };
+}
+
+/// <summary>Source-generated JSON context for the claims ledger payload (the reflection-free serialization invariant).</summary>
+[JsonSerializable(typeof(List<Claim>))]
+public sealed partial class ClaimJsonContext : JsonSerializerContext;
+
+/// <summary>
+///     Persists and reloads a session's accumulated claims through the index store (U2), serializing the claim
+///     shape the store keeps opaque. The reloaded claims are the substrate the session-ledger resource exposes and
+///     that <see cref="ClaimReviewer" /> re-grades against current truth.
+/// </summary>
+public static class SessionClaimLedger
+{
+    /// <summary>Persists a session's claims.</summary>
+    /// <param name="store">The index store.</param>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="root">The workspace root.</param>
+    /// <param name="claims">The claims to persist.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the claims are persisted.</returns>
+    public static Task SaveAsync(
+        IWorkspaceIndexStore store, string sessionId, string root, IReadOnlyList<Claim> claims, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(claims.ToList(), ClaimJsonContext.Default.ListClaim);
+        return store.SaveClaimLedgerAsync(sessionId, root, json, cancellationToken);
+    }
+
+    /// <summary>Loads a session's persisted claims, or an empty list when the session is unknown.</summary>
+    /// <param name="store">The index store.</param>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The persisted claims, or empty when the session has none.</returns>
+    public static async Task<IReadOnlyList<Claim>> LoadAsync(
+        IWorkspaceIndexStore store, string sessionId, CancellationToken cancellationToken)
+    {
+        var record = await store.GetClaimLedgerAsync(sessionId, cancellationToken);
+        if (record is null)
+            return [];
+        return JsonSerializer.Deserialize(record.ClaimsJson, ClaimJsonContext.Default.ListClaim) ?? [];
+    }
 }

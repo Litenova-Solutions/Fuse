@@ -172,14 +172,14 @@ def compose():
         "100% of changed files kept at 79.8% precision, a median 958 returned tokens per review; a grep baseline reaches 53% recall at 14% precision (Suite B).")
     y = card(
         y, "03", "Localizing From a Task Title",
-        "fuse localize recall by title signal, no git base, 53 PRs on the rebuilt corpus, dense on by default.",
+        "fuse localize recall by title signal, no git base, 53 PRs on the rebuilt corpus, the offline lexical channel.",
         ["The hardest mode: a sentence with no diff. Identifier-rich titles localize; vague ones do not.",
          "On a no-signal title Fuse refuses and hands back a navigation map instead of guessing (correct-refusal 100%)."],
-        [("Identifier-rich titles", 21, "21%", "fuse"),
+        [("Identifier-rich titles", 19, "19%", "fuse"),
          ("Natural-language titles", 17, "17%", "fuse"),
          ("Overall", 15, "15%", "fuse")],
         100,
-        "About 15% overall recall (21% on identifier-rich titles), offline and dense by default. The weakest mode, bounded by a mostly-syntax corpus, reported straight (Suite C).")
+        "About 15% overall recall (19% on identifier-rich titles), offline with no model. The weakest mode, bounded by a mostly-syntax corpus, reported straight (Suite C).")
     y = card(
         y, "04", "Helping a Real Agent",
         "Claude Code (sonnet-4-6) gathering a change's files: bare tools versus the Fuse MCP. 12 PRs.",

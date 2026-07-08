@@ -118,19 +118,21 @@ base a session maps to), and it is a deliberate deferred unit, not stuck.
 environment. Every remaining checklist todo is gated:
 - **S3 `[!]` / F4 `[maintainer]` / F5 `[!]`**: maintainer decisions. F5's governance note is prepared and awaiting
   the maintainer review its precondition requires (`roadmap/f5-data-governance-note.md`).
-- **C1 remainder**: the remediation apply/re-attempt pipeline is not yet built (only the report-only path is).
-  There IS an install-free slice - threading the NU1507 overlay NuGet config into the tier-1 re-attempt as
-  `--configfile <overlay>` (the Hard rule: never written into the repo), unit-testable on a synthetic CPM/2-source
-  fixture - but it is a fresh C-track apply-pipeline sub-step (a shipped-path change executing remedies), best
-  begun with full context per the LARGE-ITEMS guardrail, and its Gate (reach tier-1 unattended; the 17-repo
-  `up-report.json`) is corpus/network-gated regardless.
+- **C1 remainder** (verified this session): every UNGATED piece of C1 is already done - the report-only path, the
+  KB (`remediation-kb.json`), the troubleshooting docs page + the KB-drift test
+  (`RemediationKnowledgeBaseDocsTests`), the overlay generation (`NuGetOverlayConfig` + `NuGetOverlayConfigTests`),
+  AND `fuse up` already materializes the NU1507 overlay to a temp file and prints the `dotnet restore --configfile`
+  command (never touching the repo). C1's only remaining work is GATED: the auto-apply + re-attempt-tier-1
+  execution (needs the build pipeline + network/corpus) and the 17-repo `up-report.json` Gate (corpus). No ungated
+  code slice remains in C1.
 - **C2 / C3 / C4**: portable capture + corpus + possibly installs.
 - **B1 (then B3), F1 / F2 / F6**: a model run gated behind C4's corpus-health, plus B1 recorded for the F-track.
 - **B4, G2 next-iteration**: corpus (WiringBench / corpus-v2 frequency data).
 - **G1 / G4 / G5 / G6 / G7**: gated on C2 or S3.
-Next session, in priority order: (1) begin C1's install-free apply-pipeline sub-step (thread the NU1507 overlay
-config as `--configfile` into the tier-1 re-attempt, with the synthetic-fixture integration test the item names) -
-this is the top of the checklist and the one ungated code unit, deferred here only to avoid rushing a shipped-path
-change at a session tail; (2) obtain the maintainer decisions (S3 cold-start floor; F4; F5 governance-note
-sign-off); (3) set up `D:\fuse-work` + a corpus to unblock the C-track Gates and the model-driven suites. Tree
-green and pushed at every step; nothing is half-done.
+Next session, in priority order: (1) set up `D:\fuse-work` + clone the bake-off corpus (per MACHINE PREP) so
+C1's apply/re-attempt execution can be built AND validated against its 17-repo Gate - the corpus is the true
+unblocker for the entire C-track and, through C4, the model-driven B-track; (2) obtain the maintainer decisions
+(S3 cold-start floor; F4; F5 governance-note sign-off); (3) with the corpus present, implement C1's auto-apply +
+re-attempt-tier-1, then C2 portable capture. Every ungated code unit reachable in THIS environment is done and
+green; the remaining work needs a corpus, a model run, installs, or a maintainer decision. Tree green and pushed
+at every step; nothing is half-done.

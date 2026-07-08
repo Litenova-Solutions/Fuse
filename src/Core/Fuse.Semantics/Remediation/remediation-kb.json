@@ -1,0 +1,42 @@
+[
+  {
+    "id": "NU1507",
+    "pattern": "NU1507",
+    "title": "Central Package Management needs a single package source or a source mapping",
+    "remedy": "overlay-nuget-source-mapping",
+    "requiresConsent": false,
+    "explanation": "Multiple package sources are defined without a source mapping under Central Package Management. Fuse can supply an overlay NuGet.config with a packageSourceMapping passed explicitly on restore, never written into the repository."
+  },
+  {
+    "id": "NETSDK1045",
+    "pattern": "NETSDK1045",
+    "title": "The installed .NET SDK does not support the targeted version",
+    "remedy": "install-sdk",
+    "requiresConsent": true,
+    "explanation": "The project targets an SDK band the machine does not have. Fuse can install the pinned SDK from global.json behind --allow-install; consent-gated because it changes the machine."
+  },
+  {
+    "id": "MSB4018",
+    "pattern": "MSB4018",
+    "title": "An MSBuild task failed to load or execute",
+    "remedy": "install-workload",
+    "requiresConsent": true,
+    "explanation": "Often a missing workload or SDK-band task assembly, which a workload install can fix (consent-gated). It can also be a repository-custom task, in which case Fuse classifies rather than remediates."
+  },
+  {
+    "id": "CS0104",
+    "pattern": "\\bCS0104\\b",
+    "title": "Ambiguous type reference in repository code",
+    "remedy": "classify-only",
+    "requiresConsent": false,
+    "explanation": "A compile error in the repository's own source (an ambiguous type). Fuse never edits repository files, so this is reported with its reason, not remediated."
+  },
+  {
+    "id": "CS2007",
+    "pattern": "\\bCS2007\\b",
+    "title": "Unrecognized compiler option in repository code",
+    "remedy": "classify-only",
+    "requiresConsent": false,
+    "explanation": "A legacy or repository-specific compiler option the current toolchain rejects. Fuse never edits repository files, so this is reported with its reason, not remediated."
+  }
+]

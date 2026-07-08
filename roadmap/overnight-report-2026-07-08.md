@@ -6,6 +6,21 @@ bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `
 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
 C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam at `38004d2`/`69cea59`).
 
+## S1 engine and glue: COMPLETE and tested (only the single-writer serve wiring remains)
+
+Every S1 engine and glue piece is now built and tested: the resident engine (`Fuse.Workspace`), the watcher
+change-coalescing and batch updater, the registry and concrete provider service, both-host opt-in wiring, both
+verify paths resident-routed, the latency gate (P95 31 ms), the projection engine
+(`ProjectFromCompilationsAsync`, add/change/removal), and the glue `ResidentWorkspaceService.ProjectChangedAsync`
+(maps changed files to their held compilations and re-projects each into the store; tested - an added type is
+queryable in the store after a batch). The ONLY remaining S1 integration is narrow but delicate: call
+`ProjectChangedAsync` from the serve watcher's batch handler under the single-writer rule, which also needs
+`OpenIndexedAsync` to skip the N6 reconcile when a resident workspace serves the root (so the watcher is the sole
+store writer) - the single-writer projection discipline the S1 design says to assert with a test. That, the
+issue-5 DI-edge acceptance test, and the edge-freshness < 2 s measurement close S1's edge-freshness gate;
+default-on still needs G5. It is a shipped read-path coordination where a bug means two writers, so it is the
+dedicated-session close, not rushed at depth.
+
 ## S1 step 4 projection engine: COMPLETE (add/change/removal)
 
 `SemanticIndexer.ProjectFromCompilationsAsync(root, store, (projectPath, Compilation)[], files, ct)` projects

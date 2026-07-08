@@ -51,6 +51,14 @@ public sealed class UpCommand
     [CliArgument(Description = "The workspace directory. Defaults to the current directory.")]
     public string Path { get; set; } = ".";
 
+    /// <summary>Apply the install-free environment remedies (the NU1507 overlay restore) and re-attempt the load.</summary>
+    [CliOption(Name = "--apply", Description = "Apply the install-free remedies (the NU1507 overlay restore) and re-attempt the load. Consent-gated installs still require --allow-install and are only reported. Never edits the repository.")]
+    public bool Apply { get; set; }
+
+    /// <summary>Consent to machine-changing installs (SDK, workload). Off by default; the installs are reported, not run, without it.</summary>
+    [CliOption(Name = "--allow-install", Description = "Consent to the machine-changing install remedies (SDK, workload). Off by default; without it those remedies are reported, never run.")]
+    public bool AllowInstall { get; set; }
+
     /// <summary>
     ///     Runs the up command.
     /// </summary>
@@ -75,16 +83,65 @@ public sealed class UpCommand
         // temp file so the concrete remedy is in hand: pass it to restore/build with --configfile. (Auto-applying
         // it through the index/build pipeline and re-attempting tier-1 is the C1 apply step; this hands back the
         // ready-to-use overlay without touching the repo.)
-        if (plan.Remediable.Any(i => i.Signature?.Remedy == "overlay-nuget-source-mapping"))
+        var hasOverlayRemedy = plan.Remediable.Any(i => i.Signature?.Remedy == "overlay-nuget-source-mapping");
+        if (hasOverlayRemedy)
         {
             var overlay = NuGetOverlayConfig.Build(NuGetOverlayConfig.ReadSources(root));
             var overlayPath = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(), $"fuse-nuget-overlay-{Guid.NewGuid():N}.config");
             await File.WriteAllTextAsync(overlayPath, overlay, context.CancellationToken);
-            _consoleUI.WriteResult(
-                $"\nNU1507 overlay written to {overlayPath}\n" +
-                $"apply it (installs nothing, never edits the repo):\n" +
-                $"  dotnet restore --configfile \"{overlayPath}\"");
+
+            if (!Apply)
+            {
+                _consoleUI.WriteResult(
+                    $"\nNU1507 overlay written to {overlayPath}\n" +
+                    $"apply it (installs nothing, never edits the repo):\n" +
+                    $"  dotnet restore --configfile \"{overlayPath}\"\n" +
+                    $"or re-run with --apply to apply it and re-attempt the load.");
+            }
+            else
+            {
+                // Apply the install-free overlay remedy (Hard rule: the overlay is a temp file, never written into
+                // the repo) and re-attempt the load once (Do-not: no unbounded retry; a single remediation round).
+                _consoleUI.WriteStep("Applying the NU1507 overlay (dotnet restore --configfile) and re-attempting the load");
+                var applier = new EnvironmentRemediationApplier(TimeSpan.FromMinutes(5));
+                var result = await applier.ApplyOverlayRestoreAsync(root, overlayPath, context.CancellationToken);
+                if (result.TimedOut)
+                {
+                    _consoleUI.WriteError("overlay restore timed out; leaving the plan unchanged.");
+                }
+                else if (!result.Success)
+                {
+                    _consoleUI.WriteError($"overlay restore did not succeed; the blocker may be more than NU1507. Restore tail:\n{Tail(result.Output)}");
+                }
+                else
+                {
+                    var after = await _indexer.DiagnoseLoadAsync(root, context.CancellationToken);
+                    var afterPlan = new EnvironmentRemediationPlanner().Plan(after);
+                    _consoleUI.WriteResult("\nafter applying the overlay:");
+                    _consoleUI.WriteResult(RemediationReport.Render(afterPlan));
+                }
+            }
         }
+
+        // Consent-gated install remedies are reported, never run without --allow-install (Do-not: no auto-install).
+        var installRemedies = plan.Remediable
+            .Where(i => i.Signature is { RequiresConsent: true })
+            .Select(i => i.Signature!.Id)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (installRemedies.Count > 0 && !AllowInstall)
+        {
+            _consoleUI.WriteResult(
+                $"\nconsent-gated remedies present ({string.Join(", ", installRemedies)}): not run. " +
+                "Re-run with --allow-install to permit machine-changing installs.");
+        }
+    }
+
+    // The last few lines of a tool output, so an error report shows the actionable tail without flooding the console.
+    private static string Tail(string output, int lines = 8)
+    {
+        var all = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        return string.Join("\n", all.TakeLast(lines));
     }
 }

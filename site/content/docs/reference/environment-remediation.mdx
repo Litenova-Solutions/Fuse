@@ -5,7 +5,7 @@ description: The environment failures fuse up recognizes and the remedy it maps 
 
 `fuse up` runs the same load diagnosis as `fuse doctor`, then classifies each downgraded project's failure against a knowledge base of known environment problems and names the remedy that would address it. The catalog below is that knowledge base. Repository-code failures (a compile error in the repository's own source) are named as not fixable by `fuse up`, never edited: the hard rule is that `fuse up` never edits files inside the repository, so every remedy is environment- or overlay-scoped.
 
-The remedy the plan reports today is report-only for the current release: `fuse up` names what it would do. Applying the remedies (the overlay NuGet config, and the consent-gated SDK and workload installs) and re-attempting the oracle tier is in progress.
+By default `fuse up` is report-only: it names what it would do. Add `--apply` to apply the install-free remedy (the NU1507 overlay NuGet config) and re-attempt the load: `fuse up` writes the overlay to a temp file, runs `dotnet restore --configfile <overlay>` (never editing the repository), then re-runs the load diagnosis and prints the new per-project tiers. The consent-gated remedies (the SDK and workload installs) are never run without `--allow-install`; without it they are reported, not applied. The apply path is bounded to a single remediation round.
 
 ## Recognized failures
 

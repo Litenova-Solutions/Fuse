@@ -108,6 +108,16 @@ public sealed class PerformanceSuite : IEvalSuite
             notes.Add($"warm localize ({WarmIterations}x): P50 {Percentile(localizeMs, 50):F1} ms, P95 {Percentile(localizeMs, 95):F1} ms");
             notes.Add($"warm resolve ({WarmIterations}x): P50 {Percentile(resolveMs, 50):F1} ms, P95 {Percentile(resolveMs, 95):F1} ms");
 
+            // The exact-lookup and blast-radius verbs behind fuse_find and fuse_impact (B2): warm reads over the
+            // persistent index, the same primitives the MCP tools call.
+            var findMs = await TimeAsync(WarmIterations, async () =>
+                await store.FindSymbolsByNameAsync(topSymbol, 50, cancellationToken), cancellationToken);
+            var explorer = new GraphNeighborhoodExplorer(store);
+            var impactMs = await TimeAsync(WarmIterations, async () =>
+                await explorer.CallersAndImplementersAsync(topSymbol, 50, cancellationToken), cancellationToken);
+            notes.Add($"warm find symbol ({WarmIterations}x): P50 {Percentile(findMs, 50):F1} ms, P95 {Percentile(findMs, 95):F1} ms");
+            notes.Add($"warm impact callers+implementers ({WarmIterations}x): P50 {Percentile(impactMs, 50):F1} ms, P95 {Percentile(impactMs, 95):F1} ms");
+
             // Review-plan latency against the checkout's own recent history (a real git base).
             try
             {

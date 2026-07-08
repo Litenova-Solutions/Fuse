@@ -100,6 +100,16 @@ fuse gate ./src
 
 `fuse check` accepts `--delta`, `--session` (default `hook`), and `--fast`; `fuse gate` accepts `--session`. Wire them automatically with `fuse mcp install --with-hooks`.
 
+## fuse test
+
+Run the covering tests for a symbol (the tests that reach it via the persisted `tests` edges) at build grade, scoped by filter so the whole suite never runs. Reads the index; run `fuse index` first.
+
+```text
+fuse test OrderService --path ./src
+```
+
+Accepts `--path` and `--limit` (maximum covering test types). Reports per-test verdicts with the grade; selection-only when no `tests` edge reaches the symbol.
+
 ## fuse find
 
 Exact lookup over the index.

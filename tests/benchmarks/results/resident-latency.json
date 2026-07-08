@@ -9,16 +9,18 @@
     "recallCiHigh": 0,
     "precision": 0,
     "f1": 0,
-    "medianTokens": 19.8885,
-    "meanTokens": 14139,
+    "medianTokens": 23.6413,
+    "meanTokens": 15447,
     "lowSignalF1": 0
   },
   "tasks": [],
   "notes": [
     "repo NodaTime, 2 resident project(s)",
-    "resident warm (build \u002B rehydrate): 14,139 ms; resident RSS 164 MB",
-    "resident delta-check (25x) on AmbiguousTimeException.cs: P50 19.9 ms, P95 31.0 ms",
-    "S1 gate (delta-check P95 \u003C 1000 ms warm): PASS at P95 31.0 ms",
-    "note: measures ResidentWorkspace.CheckOverlay, the speculative typecheck fuse_check invokes when a resident workspace is live; timings are environment-dependent; runs in a dedicated process that never invokes MSBuildWorkspace."
+    "resident warm (build \u002B rehydrate): 15,447 ms; resident RSS 166 MB",
+    "resident delta-check (25x) on AmbiguousTimeException.cs: P50 23.6 ms, P95 41.7 ms",
+    "S1 gate (delta-check P95 \u003C 1000 ms warm): PASS at P95 41.7 ms",
+    "S2 delta-mode (GetDiagnostics \u002B DiagnosticDelta, 25x, 0 baseline diag): P50 205.5 ms, P95 643.6 ms",
+    "S2 gate (delta-mode P95 \u003C 1000 ms warm): PASS at P95 643.6 ms",
+    "note: measures ResidentWorkspace.CheckOverlay (the S1 speculative typecheck) and GetDiagnostics\u002BDiagnosticDelta (the S2 delta mode), the operations fuse_check invokes when a resident workspace is live; timings are environment-dependent; runs in a dedicated process that never invokes MSBuildWorkspace."
   ]
 }

@@ -470,6 +470,67 @@ public sealed class SemanticIndexer
         return new SemanticIndexResult(mode, linkedFiles.Count, capture.Projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
     }
 
+    /// <summary>
+    ///     Projects live (resident) compilations into the store (S1 step 4): for each compilation, extracts its
+    ///     symbols and wiring graph in-process (the same extraction the build-capture worker runs) and upserts them
+    ///     through <see cref="IndexFromCaptureAsync" />, so a cross-file relationship an edit introduced (for
+    ///     example a new DI registration) becomes queryable without a full re-index.
+    /// </summary>
+    /// <remarks>
+    ///     The store upserts are INSERT OR REPLACE by content-stable id, so re-projecting unchanged content is
+    ///     idempotent and an added or changed entity updates in place; this covers the add and change case.
+    ///     Entities REMOVED by an edit leave stale rows until the changed files' rows are cleared first, which is a
+    ///     follow-up. The caller supplies the projects' on-disk files (chunks are read from disk, so an edit must
+    ///     already be written). This is a store-write: per the single-writer invariant only one process (the serve
+    ///     watcher) may call it for a given root.
+    /// </remarks>
+    /// <param name="root">The workspace root.</param>
+    /// <param name="store">The index store to project into.</param>
+    /// <param name="compilations">Each project's file path paired with its live compilation.</param>
+    /// <param name="files">The on-disk file records for those projects (for the file rows and chunk extraction).</param>
+    /// <param name="cancellationToken">A token to cancel the projection.</param>
+    /// <returns>The index result (mode and counts) for the projected set.</returns>
+    public async Task<SemanticIndexResult> ProjectFromCompilationsAsync(
+        string root,
+        IWorkspaceIndexStore store,
+        IReadOnlyList<(string ProjectFilePath, Microsoft.CodeAnalysis.Compilation Compilation)> compilations,
+        IReadOnlyList<IndexedFileRecord> files,
+        CancellationToken cancellationToken)
+    {
+        var captured = new List<CapturedProject>(compilations.Count);
+        foreach (var (projectFilePath, compilation) in compilations)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var projectDir = Path.GetDirectoryName(projectFilePath) ?? root;
+            var loaded = new LoadedProject(
+                Name: Path.GetFileNameWithoutExtension(projectFilePath),
+                FilePath: projectFilePath,
+                AssemblyName: compilation.AssemblyName,
+                Compilation: compilation);
+            var symbols = _semanticSymbols.Extract(loaded, projectDir, cancellationToken);
+            var graph = _analysisRunner.Run(new SemanticAnalysisContext(loaded, projectDir), cancellationToken);
+            var errorCount = compilation.GetDiagnostics(cancellationToken)
+                .Count(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+            captured.Add(new CapturedProject(
+                Name: loaded.Name,
+                FilePath: loaded.FilePath,
+                AssemblyName: compilation.AssemblyName,
+                ErrorCount: errorCount,
+                TypeCount: 0,
+                SymbolCount: symbols.Count,
+                NodeCount: graph.Nodes.Count,
+                EdgeCount: graph.Edges.Count,
+                Symbols: symbols,
+                Nodes: graph.Nodes,
+                Edges: graph.Edges,
+                Routes: graph.Routes,
+                DiRegistrations: graph.DiRegistrations,
+                OptionsBindings: graph.OptionsBindings));
+        }
+
+        return await IndexFromCaptureAsync(root, store, files, CaptureResult.Ok(captured), cancellationToken);
+    }
+
     private async Task<SemanticIndexResult> IndexSyntaxAsync(
         string root,
         IWorkspaceIndexStore store,

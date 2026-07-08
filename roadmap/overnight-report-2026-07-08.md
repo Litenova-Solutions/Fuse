@@ -1,0 +1,144 @@
+# Overnight autonomous run report - 2026-07-08
+
+Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
+All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
+bumps, or publishing. Tree is green and pushed at HEAD `9fc43e9` plus the wrap-up commit.
+
+## Summary
+
+Wave 0 (contract and kills) is complete: all four items landed gate-green, committed, and pushed.
+Wave 1 was analyzed and sequenced; no Wave 1 item was started as code, by an explicit
+quality-over-count decision recorded in the plan's progress log and explained below.
+
+## Items completed (with gate verdicts)
+
+| Item | Title | Gate | Commit |
+|------|-------|------|--------|
+| X1 | Execution contract into AGENTS.md; compiler-oracle identity rewrite | PASS (site builds; AGENTS carries the contract) | `900b6f0` |
+| K1 | Retire the dense embedding channel and the ONNX plugin | PASS (ranking within CI of recorded lexical; low-signal F1 1.0; false-rejection 0/52) | `c037269` |
+| K3 | Close V1/V2, freeze language providers, de-headline Suite D | PASS (docs merged; site builds) | `ea4cb24` |
+| K2 | Delete the in-memory BM25F ranker and the dead classic query path | PASS (zero references; contract suite 8/8) | `9fc43e9` |
+
+The three standing gates (`dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release
+--no-build`, `dotnet format Fuse.slnx --verify-no-changes`) were green on every item that touched
+code (K1, K2). The full test suite passes: all 15 assemblies, 0 failed (Fusion 234 -> 141 after
+K2's dead-path test removal; GoldenOutput 17 -> 13; all others unchanged or higher).
+
+Note on order: the checklist order is X1, K1, K2, K3. K2 was worked last of the four because its
+precise removal set needed a dependency-map pass (the classic query path is deeply wired); K1 and K3
+were unblocked and landed first. All four are `[x]` in the Master checklist.
+
+## Numbers recorded (each with its result file)
+
+All under `tests/benchmarks/results/`:
+
+- `ranking.json` (regenerated, `fuse eval ranking --restore`): lexical channel MRR 0.187,
+  recall@10 12.6%, nDCG@10 0.117; shipping default (lexical + centrality + co-change) MRR 0.197,
+  recall@10 15.0%, nDCG@10 0.139; default-no-cochange MRR 0.208, recall@10 15.0%. Byte-identical
+  to the pre-K1 recording - dense contributed nothing on this partial-2/syntax-2 corpus, so its
+  removal cost no ranking quality. Restore: NodaTime 15/0, Scrutor 0/2, Specification 11/0,
+  eShopOnWeb 11/0.
+- `localize.json` (regenerated, `fuse eval localize --restore`): recall 15.0% (95% CI 9-21%),
+  precision 8.1%, median 1,049 tokens, low-signal F1 1.00, false-rejection on answerable 0/52
+  (0.0%), precision-when-confident 5.6% (9 tasks); graded states confident 9, partial 43,
+  insufficient 1; buckets identifier-rich 19%, nl-domain 17%. Retiring dense held overall recall at
+  15.0% (equal to the pre-K1 dense-on default, above the pre-K1 lexical fallback's 13.3%) because
+  lowering the `SignalGrader` insufficient floor from 0.30 to 0.20 recovered the three answerable
+  tasks the lexical-only path used to refuse.
+- `archive/localize.a1-lexical.json`: the old dense-off A/B, archived (the `--lexical` flag that
+  produced it was removed in K1; the default is now the lexical path, so this file is redundant).
+
+No model-driven suite was run (hard-banned tonight: `fuse eval loop`, `fuse eval agent`, B1 and the
+B1-gated items). No number was fabricated, rounded, or quoted below its minimum N.
+
+## Items blocked or deferred, and why
+
+- **S1 (the resident workspace, XL) - not started, by decision.** S1 is the next todo and is
+  dependency-met (X1 is `[x]`), but its gate is a full resident engine (rehydrated compilations,
+  file watcher, incremental cone re-analysis, overlay unification) measured for delta-diagnostics
+  p95, edge freshness, and RSS on NodaTime and eShopOnWeb. That gate cannot be reached or honestly
+  verified in a single session, and a half-built resident engine is exactly the half-done state the
+  guardrails warn against. Per "quality over count governs," S1 is left `[ ]` (not half-built) for a
+  dedicated session. Recorded in the plan's progress log under "Wave 1 sequencing note".
+- **H1 (mutation-derived honesty calibration, M) - designed, not coded.** Chosen as the intended
+  next item (dependency-met, self-contained, unblocks T0), but deferred to reserve wrap-up budget
+  rather than rush it, because it turned out to carry real completion uncertainty (see the design
+  and findings below). No H1 code was written; nothing is half-landed.
+- Everything requiring a model run or API tokens (B1, F1/F2/F6, `fuse eval loop`/`agent`) is
+  hard-banned for tonight and was not touched.
+
+## Environment changes (user-scoped only; nothing installed)
+
+- `git config --global core.longpaths true`.
+- Created `D:\fuse-work\nuget` and `D:\fuse-work\bench` (C: had 31 GB free, under the 60 GB
+  threshold). All `dotnet build`/`test` and the eval runs used `NUGET_PACKAGES=D:/fuse-work/nuget`
+  for the session (prefixed per command; env does not persist across shell calls). C: stayed at ~31
+  GB free throughout (never below 15 GB). No registry, Defender, winget, or installer changes. SDKs
+  6/8/9/10 already present; no corpus repo needed a missing band. The benchmark corpus was already
+  cloned under `tests/benchmarks/.corpus` (NodaTime, Scrutor, Specification, eShopOnWeb).
+
+## H1 design and preconditions (de-risked handoff for the next session)
+
+Preconditions verified:
+- The Suite F harness is `CheckGateSuite` (`tests/benchmarks/Fuse.Benchmarks/Suites/CheckGateSuite.cs`),
+  run via `fuse eval checkgate`, writing `results/checkgate.json` (currently 8 curated cases, all
+  correct). Its `CheckInProcess` builds a raw-Roslyn `CSharpCompilation` (no MSBuild), replaces one
+  document's tree, and classifies the changed document's diagnostics with the shipped
+  `CheckResult.IsClean` rule - the exact contract `fuse_check` ships.
+- Fixture compilability (the key finding): `tests/fixtures/SampleShop` (14 .cs files, no package
+  references) compiles in-process with BCL-only `TRUSTED_PLATFORM_ASSEMBLIES` refs, so it is a
+  clean mutation baseline. `tests/fixtures/OrderingApp` (18 .cs files) uses the ASP.NET Core shared
+  framework (`Microsoft.AspNetCore.Builder`, `Microsoft.Extensions.*`) with no NuGet PackageReference,
+  so it does NOT compile in-process with BCL-only refs; it needs the `Microsoft.AspNetCore.App`
+  shared-framework assemblies added as metadata references (resolvable from `dotnet --list-runtimes`
+  paths) or it will show baseline errors and the gate will refuse to run over it.
+
+Recommended H1 shape (completable in a focused session):
+1. New `MutationGenerator` in `Fuse.Benchmarks` (Roslyn `CSharpSyntaxRewriter`s), deterministic from
+   a recorded seed (`new Random(seed)` is fine in C# benchmark code).
+2. Ground truth is compiler-verified, not asserted: for each candidate mutant, apply it to the clean
+   baseline compilation and check the full-compilation error count. Keep a breaking mutant only if it
+   introduces at least one error; keep a neutral mutant only if it stays clean; discard and retry
+   otherwise (bounded attempts). This is how "provably neutral" becomes mechanical.
+3. Operators, single-file (matching the shipped single-file `fuse_check` contract):
+   breaking - rename a bound member access (CS1061), replace a used type name with an undefined one
+   (CS0246, the reliable form of "delete a required using"), change a return/expression body to an
+   incompatible literal (CS0029), delete a declaration referenced elsewhere in the same file
+   (CS0117/CS1061); neutral - consistent local rename within one method, reorder two members within a
+   type, comment/whitespace insertion.
+4. Run over SampleShop as the primary in-process fixture (meets the >=1,000 cases / 500-per-class
+   minimum on its own). Add OrderingApp only after wiring the ASP.NET shared-framework refs, or
+   record it skipped with the reason. A second clean in-process baseline (the synthetic Shop
+   compilation already in `CheckGateSuite.BuildBaseline`) can stand in as the "second fixture" if
+   OrderingApp is deferred - record which.
+5. `fuse eval checkgate --mutations N` (add `Mutations` to `EvalOptions` and a `--mutations` option
+   to `EvalCommand`); write `checkgate.json` v2 keeping the 8 curated cases as a named subset.
+6. Generator unit tests in `Fuse.Benchmarks.Tests`: each breaking operator's output fails compilation
+   on a minimal fixture; each neutral operator's output compiles clean.
+7. Gate: false green 0; false red under 1%. Fallbacks are in the item text (a nonzero false green is
+   a release-blocking check bug; false red >=1% means analyze/reclassify the operator).
+
+Watch-out worth a design note: `fuse_check` is a single-file check by contract, so keep the
+operators single-file (a cross-file break, e.g. deleting a public declaration whose only references
+are in another file, could be a real false green because the single-file check does not inspect the
+other file - that class belongs to T0/S1's whole-compilation verification, not to the shipped
+single-file honesty gate). Do not silently mix the two; if a cross-file class is added, gate it
+separately and label it.
+
+## Exact next item to start
+
+**H1 - Mutation-derived honesty calibration at scale** (Master checklist Wave 1; depends: none).
+Follow the design above. It is dependency-met today and unblocks T0 (verification-grade ladder).
+After H1, the keystone **S1 - the resident workspace** is the next major item; budget it as a
+multi-session XL and land it in the sub-steps its item text lists (extract a rehydration-to-resident
+loader first, DI-edge acceptance test first for the watcher step).
+
+## Guardrail compliance
+
+Every commit was green (build, test, format) before push. Numbers are sourced to canonical result
+files and superseded figures were swept in the same change (AGENTS.md, briefing.md, the site
+benchmarks/scoping/config-keys/commands/internals pages, README, CHANGELOG). Behavior changes are
+named in CHANGELOG with their migration (index rebuild on schema 15->16; the removed env vars and
+the `fuse models` command). Writing stayed plain ASCII. No secrets in logs or commits. Nothing was
+written outside `c:\Projects\Fuse`, `D:\fuse-work`, and the scratchpad; no corpus repo source was
+edited (the eval `--restore` writes into corpus obj/ are the harness's normal operation).

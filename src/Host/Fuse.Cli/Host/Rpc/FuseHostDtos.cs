@@ -197,3 +197,39 @@ public sealed record CheckDeltaDto(
     bool Resident,
     IReadOnlyList<CheckDiagnosticDto> Introduced,
     IReadOnlyList<CheckDiagnosticDto> Resolved);
+
+/// <summary>
+///     One session known to the store for a root (G3): its opaque id and when it was last written. This is the
+///     row the extension observability panel lists so a human can pick a session to watch.
+/// </summary>
+/// <param name="SessionId">The opaque session id.</param>
+/// <param name="UpdatedUtc">The ISO-8601 UTC time the session was last written (a baseline save or a claim append).</param>
+/// <param name="HasBaseline">Whether the session has a recorded check-diagnostics baseline (delta mode is available).</param>
+/// <param name="HasClaims">Whether the session has an accumulated claim ledger (U2).</param>
+public sealed record SessionSummaryDto(string SessionId, string UpdatedUtc, bool HasBaseline, bool HasClaims);
+
+/// <summary>
+///     The result of the <c>fuse/sessions</c> method (G3): the sessions the store knows for a root, most recently
+///     written first, so the extension panel can list what an agent has been doing.
+/// </summary>
+/// <param name="Sessions">The known sessions for the root.</param>
+public sealed record SessionListDto(IReadOnlyList<SessionSummaryDto> Sessions);
+
+/// <summary>
+///     The result of the <c>fuse/session-view</c> method (G3): the read-only observability view of one session -
+///     the diagnostics its edits introduced or resolved since its baseline (from a live resident workspace) and its
+///     accumulated graded claim ledger (U2), rendered as text. No write actions (those need F1). When no resident
+///     workspace serves the root, <see cref="Resident" /> is false and the diagnostic lists are empty, but the
+///     recorded claim ledger is still returned.
+/// </summary>
+/// <param name="SessionId">The session this view describes.</param>
+/// <param name="Resident">Whether a live resident workspace served the diagnostics.</param>
+/// <param name="Introduced">Diagnostics the session's edits introduced since its baseline.</param>
+/// <param name="Resolved">Diagnostics the session's edits resolved since its baseline.</param>
+/// <param name="Claims">The rendered graded claim ledger for the session, or an empty string when it has none.</param>
+public sealed record SessionViewDto(
+    string SessionId,
+    bool Resident,
+    IReadOnlyList<CheckDiagnosticDto> Introduced,
+    IReadOnlyList<CheckDiagnosticDto> Resolved,
+    string Claims);

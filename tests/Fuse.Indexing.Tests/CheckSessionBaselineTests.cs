@@ -75,6 +75,47 @@ public sealed class CheckSessionBaselineTests : IDisposable
         Assert.Empty(baseline!.Diagnostics);
     }
 
+    [Fact]
+    public async Task Lists_sessions_for_a_root_unioning_baselines_and_claim_ledgers()
+    {
+        // G3: the observability panel lists sessions with a baseline OR a claim ledger, filtered by root. A session
+        // with both is listed once with both flags; a session under another root is excluded.
+        await using var store = new WorkspaceIndexStore(_databasePath);
+        await store.InitializeAsync(CancellationToken.None);
+
+        await store.SaveCheckSessionBaselineAsync("with-baseline", "/repo", [Diag("CS1061", "x")], CancellationToken.None);
+        await store.SaveClaimLedgerAsync("with-claims", "/repo", "[]", CancellationToken.None);
+        await store.SaveCheckSessionBaselineAsync("with-both", "/repo", [], CancellationToken.None);
+        await store.SaveClaimLedgerAsync("with-both", "/repo", "[]", CancellationToken.None);
+        await store.SaveCheckSessionBaselineAsync("other-root", "/elsewhere", [], CancellationToken.None);
+
+        var sessions = await store.ListSessionsAsync("/repo", CancellationToken.None);
+
+        Assert.Equal(3, sessions.Count);
+        Assert.DoesNotContain(sessions, s => s.SessionId == "other-root");
+
+        var both = Assert.Single(sessions, s => s.SessionId == "with-both");
+        Assert.True(both.HasBaseline);
+        Assert.True(both.HasClaims);
+
+        var baselineOnly = Assert.Single(sessions, s => s.SessionId == "with-baseline");
+        Assert.True(baselineOnly.HasBaseline);
+        Assert.False(baselineOnly.HasClaims);
+
+        var claimsOnly = Assert.Single(sessions, s => s.SessionId == "with-claims");
+        Assert.False(claimsOnly.HasBaseline);
+        Assert.True(claimsOnly.HasClaims);
+    }
+
+    [Fact]
+    public async Task Lists_no_sessions_for_a_root_with_none()
+    {
+        await using var store = new WorkspaceIndexStore(_databasePath);
+        await store.InitializeAsync(CancellationToken.None);
+
+        Assert.Empty(await store.ListSessionsAsync("/repo", CancellationToken.None));
+    }
+
     public void Dispose()
     {
         var directory = Path.GetDirectoryName(_databasePath);

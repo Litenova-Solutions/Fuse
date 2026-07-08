@@ -167,6 +167,9 @@ The signature operations are verified, not just generated: after the rewrite, Fu
 | `parameterType` | string | required (add-parameter) | The new parameter's type, as written in source |
 | `parameterName` | string | required (add-parameter) | The new parameter's name (defaults to `cancellationToken` for add-cancellation-token) |
 | `argument` | string | `default` | The argument expression added at every call site (add-parameter) |
+| `newOrder` | string | required (reorder-parameters) | The parameter names in the desired order, comma-separated |
+
+Two more operations extend the family: **`remove-parameter`** drops a parameter (named by `parameterName`) and its argument at every call site, and **`reorder-parameters`** reorders parameters into `newOrder`. Both are safety-gated beyond the compile check (see the abstention table).
 
 ### Abstention classes (change-signature)
 
@@ -176,10 +179,11 @@ The signature operations refuse rather than risk a wrong change in these shapes:
 |-------|-----------------|
 | `params` tail | A trailing parameter after a `params` array changes call binding; refused by a pre-check. |
 | Ambiguous method | The name matches more than one method (an overload set, or the same name across types); pass `containingType` to disambiguate. |
-| Method-group / delegate conversion | The method is used as a delegate (`Func<...> f = obj.M;`); adding a parameter breaks the conversion, caught by the recompile gate. |
+| Method-group / delegate conversion | The method is used as a delegate (`Func<...> f = obj.M;`); adding or reordering a parameter breaks the conversion, caught by the recompile gate. |
+| Used parameter (remove) | The parameter is referenced in a method body; removing it would not compile, and the site is named. |
+| Side-effecting dropped argument (remove) | A call site passes a non-trivial argument (a call, an object creation) whose removal could drop a side effect; a silent behavior change, so it abstains naming the site. |
+| Positional call site (reorder) | A reorder is safe only when every call site names its arguments; a positional call site would silently rebind, so any positional site abstains. |
 | Any residual compile error | Any call site or declaration the rewriter did not update correctly; the recompile gate names it and abstains. |
-
-Positional reorder and remove-parameter are not yet shipped (a positional reorder with same-typed parameters is a silent semantic change, so it is gated to named-argument call sites only); they are tracked as follow-up work.
 
 ## fuse_check
 

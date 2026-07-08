@@ -302,6 +302,16 @@ public sealed partial class FuseTools
             foreach (var verdict in result.Verdicts.OrderBy(v => v.Outcome == "failed" ? 0 : 1).ThenBy(v => v.Name, StringComparer.Ordinal))
                 builder.AppendLine($"  {verdict.Outcome} {verdict.Name}");
 
+            // Covering types that produced no verdict are reported not-runnable by name, never counted green.
+            var notRunnable = Fuse.Workspace.CoveringRunAnalysis.NotRunnableTypes(
+                covering.Select(c => c.Symbol).ToList(), result.Verdicts);
+            if (notRunnable.Count > 0)
+            {
+                builder.AppendLine($"not-runnable ({notRunnable.Count}; selected but produced no result - a collection error or no runnable test):");
+                foreach (var type in notRunnable)
+                    builder.AppendLine($"  {type}");
+            }
+
             return builder.ToString().TrimEnd();
         }
         finally

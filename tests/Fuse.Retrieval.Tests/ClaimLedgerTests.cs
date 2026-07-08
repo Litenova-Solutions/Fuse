@@ -127,4 +127,17 @@ public sealed class SessionClaimLedgerTests : IAsyncLifetime
         var loaded = await SessionClaimLedger.LoadAsync(_store, "s2", CancellationToken.None);
         Assert.Equal(2, loaded.Count);
     }
+
+    [Fact]
+    public async Task Append_accumulates_across_calls()
+    {
+        await SessionClaimLedger.AppendAsync(_store, "s3", "C:/repo", [Claim.FromGraph("first", "e1")], CancellationToken.None);
+        await SessionClaimLedger.AppendAsync(_store, "s3", "C:/repo", [Claim.FromCompiler("second", "e2")], CancellationToken.None);
+
+        var loaded = await SessionClaimLedger.LoadAsync(_store, "s3", CancellationToken.None);
+
+        Assert.Equal(2, loaded.Count);
+        Assert.Contains(loaded, c => c.Statement == "first");
+        Assert.Contains(loaded, c => c.Statement == "second");
+    }
 }

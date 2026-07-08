@@ -149,6 +149,26 @@ public static class SessionClaimLedger
         return store.SaveClaimLedgerAsync(sessionId, root, json, cancellationToken);
     }
 
+    /// <summary>
+    ///     Appends claims to a session's ledger, accumulating across the session (load the existing claims, add the
+    ///     new ones, save). This is how a claim-emitting tool contributes to the running ledger without discarding
+    ///     what earlier calls recorded.
+    /// </summary>
+    /// <param name="store">The index store.</param>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="root">The workspace root.</param>
+    /// <param name="newClaims">The claims to append.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the appended ledger is persisted.</returns>
+    public static async Task AppendAsync(
+        IWorkspaceIndexStore store, string sessionId, string root, IReadOnlyList<Claim> newClaims, CancellationToken cancellationToken)
+    {
+        if (newClaims.Count == 0)
+            return;
+        var existing = await LoadAsync(store, sessionId, cancellationToken);
+        await SaveAsync(store, sessionId, root, existing.Concat(newClaims).ToList(), cancellationToken);
+    }
+
     /// <summary>Loads a session's persisted claims, or an empty list when the session is unknown.</summary>
     /// <param name="store">The index store.</param>
     /// <param name="sessionId">The opaque session id.</param>

@@ -66,6 +66,31 @@ public sealed class CodeFixApplierTests
         Assert.Contains("no 'FUSEFIX001' diagnostic", result.Reason);
     }
 
+    [Fact]
+    public async Task Public_apply_over_the_fixture_abstains_cleanly()
+    {
+        var sln = SampleShopSolution();
+        if (sln is null)
+            return; // Fixture not present.
+
+        // Tolerant integration: the public path loads via MSBuild and discovers providers from analyzer references.
+        // With a diagnostic id no provider fixes (or a missing file), it must abstain cleanly, never throw.
+        var result = await new CodeFixApplier().ApplyCodeFixAsync(sln, "CS0000", "NoSuchFile.cs", CancellationToken.None);
+        Assert.False(result.Changed);
+        Assert.False(string.IsNullOrEmpty(result.Reason));
+    }
+
+    private static string? SampleShopSolution([System.Runtime.CompilerServices.CallerFilePath] string sourceFilePath = "")
+    {
+        var dir = new DirectoryInfo(Path.GetDirectoryName(sourceFilePath)!);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Fuse.slnx")))
+            dir = dir.Parent;
+        if (dir is null)
+            return null;
+        var sln = Path.Combine(dir.FullName, "tests", "fixtures", "SampleShop", "SampleShop.sln");
+        return File.Exists(sln) ? sln : null;
+    }
+
 #pragma warning disable RS1036, RS2008, RS1038, RS1041
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     private sealed class LowercaseClassAnalyzer : DiagnosticAnalyzer

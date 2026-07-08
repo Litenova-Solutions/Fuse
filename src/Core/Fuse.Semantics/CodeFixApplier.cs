@@ -1,8 +1,11 @@
 using System.Collections.Immutable;
+using System.Reflection;
+using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.MSBuild;
 
 namespace Fuse.Semantics;
 
@@ -22,6 +25,103 @@ namespace Fuse.Semantics;
 public sealed class CodeFixApplier
 {
     private const int MaxFixes = 100;
+    private static readonly object LocatorGate = new();
+
+    /// <summary>
+    ///     Loads the workspace, discovers the analyzers and code fix providers the project's analyzer references
+    ///     ship, and applies the fix for a diagnostic id in the named file, staged and verify-gated.
+    /// </summary>
+    /// <param name="solutionOrProjectPath">The absolute path to the solution or project to load.</param>
+    /// <param name="diagnosticId">The diagnostic id to drive to zero.</param>
+    /// <param name="file">The file (path or suffix) to apply the fix in.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The outcome: the changed document text, or an abstention with a reason.</returns>
+    public async Task<CodeFixResult> ApplyCodeFixAsync(
+        string solutionOrProjectPath, string diagnosticId, string file, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(diagnosticId) || string.IsNullOrWhiteSpace(file))
+            return CodeFixResult.Abstain("provide a diagnostic id and a file to fix");
+
+        lock (LocatorGate)
+        {
+            if (!MSBuildLocator.IsRegistered)
+            {
+                try { MSBuildLocator.RegisterDefaults(); }
+                catch (Exception ex) { return CodeFixResult.Abstain($"no MSBuild/SDK found ({ex.Message}); cannot apply the fix"); }
+            }
+        }
+
+        using var workspace = MSBuildWorkspace.Create();
+        var loadFailed = false;
+        workspace.WorkspaceFailed += (_, _) => loadFailed = true;
+        Solution solution;
+        try
+        {
+            solution = solutionOrProjectPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)
+                       || solutionOrProjectPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
+                ? await workspace.OpenSolutionAsync(solutionOrProjectPath, cancellationToken: cancellationToken)
+                : (await workspace.OpenProjectAsync(solutionOrProjectPath, cancellationToken: cancellationToken)).Solution;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return CodeFixResult.Abstain($"could not load the workspace: {ex.Message}");
+        }
+
+        if (loadFailed)
+            return CodeFixResult.Abstain("the workspace did not load cleanly; refused");
+
+        var normalized = file.Replace('\\', '/');
+        var document = solution.Projects
+            .SelectMany(p => p.Documents)
+            .FirstOrDefault(d => d.FilePath is { } fp && fp.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
+        if (document is null)
+            return CodeFixResult.Abstain($"file '{file}' was not found in the loaded solution");
+
+        var analyzers = DiscoverAnalyzers(document.Project);
+        var providers = DiscoverFixProviders(document.Project, diagnosticId);
+        if (providers.Count == 0)
+            return CodeFixResult.Abstain($"no code fix provider fixing '{diagnosticId}' was found in the project's analyzer references");
+
+        return await ApplyAsync(solution, document.Id, diagnosticId, analyzers, providers, cancellationToken);
+    }
+
+    // The analyzers the project's references ship, best-effort: a reference that fails to yield analyzers is
+    // skipped rather than failing the whole operation.
+    private static ImmutableArray<DiagnosticAnalyzer> DiscoverAnalyzers(Project project)
+    {
+        var builder = ImmutableArray.CreateBuilder<DiagnosticAnalyzer>();
+        foreach (var reference in project.AnalyzerReferences)
+        {
+            try { builder.AddRange(reference.GetAnalyzers(LanguageNames.CSharp)); }
+            catch (Exception) { /* a reference that cannot load its analyzers is skipped. */ }
+        }
+
+        return builder.ToImmutable();
+    }
+
+    // The code fix providers the project's analyzer-reference assemblies export, discovered by reflection: load
+    // each reference assembly, find non-abstract CodeFixProvider subtypes, instantiate them, and keep those that
+    // fix the id. Best-effort and defensive - a reference that cannot load (a Roslyn-version mismatch) is skipped.
+    private static IReadOnlyList<CodeFixProvider> DiscoverFixProviders(Project project, string diagnosticId)
+    {
+        var providers = new List<CodeFixProvider>();
+        foreach (var path in project.AnalyzerReferences.OfType<AnalyzerFileReference>().Select(r => r.FullPath).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var assembly = Assembly.LoadFrom(path);
+                foreach (var type in assembly.GetTypes())
+                {
+                    if (!type.IsAbstract && typeof(CodeFixProvider).IsAssignableFrom(type) && Activator.CreateInstance(type) is CodeFixProvider provider
+                        && provider.FixableDiagnosticIds.Contains(diagnosticId))
+                        providers.Add(provider);
+                }
+            }
+            catch (Exception) { /* a reference assembly that cannot load or reflect is skipped. */ }
+        }
+
+        return providers;
+    }
 
     /// <summary>
     ///     Applies the code fix for a diagnostic id across a document and returns the outcome.

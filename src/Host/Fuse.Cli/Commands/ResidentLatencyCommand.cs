@@ -2,6 +2,7 @@ using System.Diagnostics;
 using DotMake.CommandLine;
 using Fuse.Benchmarks;
 using Fuse.Cli.Services;
+using Fuse.Retrieval;
 using Fuse.Semantics;
 using Fuse.Workspace;
 
@@ -121,11 +122,34 @@ public sealed class ResidentLatencyCommand
 
             var p50 = PerformanceSuite.Percentile(samples, 50);
             var p95 = PerformanceSuite.Percentile(samples, 95);
+
+            // S2 delta-mode latency: the operation fuse_check delta mode invokes when a resident workspace is live
+            // - read the whole-state diagnostics and diff them against a baseline (DiagnosticDelta). The store
+            // baseline read fuse_check adds on top is a sub-millisecond indexed SQLite lookup, so this bounds the
+            // delta-mode cost. Measured here, in the same MSBuildWorkspace-free process, per the S2 gate note.
+            var deltaBaseline = resident.GetDiagnostics(cancellationToken);
+            DiagnosticDelta.Compute(deltaBaseline, resident.GetDiagnostics(cancellationToken)); // untimed warm-up
+            var deltaSamples = new List<double>(WarmIterations);
+            for (var i = 0; i < WarmIterations; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var watch = Stopwatch.StartNew();
+                var current = resident.GetDiagnostics(cancellationToken);
+                DiagnosticDelta.Compute(deltaBaseline, current);
+                watch.Stop();
+                deltaSamples.Add(watch.Elapsed.TotalMilliseconds);
+            }
+
+            var deltaP50 = PerformanceSuite.Percentile(deltaSamples, 50);
+            var deltaP95 = PerformanceSuite.Percentile(deltaSamples, 95);
+
             notes.Add($"repo {System.IO.Path.GetFileName(root)}, {resident.Projects.Count} resident project(s)");
             notes.Add($"resident warm (build + rehydrate): {warmWatch.ElapsedMilliseconds:N0} ms; resident RSS {rssMb:F0} MB");
             notes.Add($"resident delta-check ({WarmIterations}x) on {System.IO.Path.GetFileName(sample.FilePath)}: P50 {p50:F1} ms, P95 {p95:F1} ms");
             notes.Add($"S1 gate (delta-check P95 < 1000 ms warm): {(p95 < 1000 ? "PASS" : "FAIL")} at P95 {p95:F1} ms");
-            notes.Add("note: measures ResidentWorkspace.CheckOverlay, the speculative typecheck fuse_check invokes when a resident workspace is live; timings are environment-dependent; runs in a dedicated process that never invokes MSBuildWorkspace.");
+            notes.Add($"S2 delta-mode (GetDiagnostics + DiagnosticDelta, {WarmIterations}x, {deltaBaseline.Count} baseline diag): P50 {deltaP50:F1} ms, P95 {deltaP95:F1} ms");
+            notes.Add($"S2 gate (delta-mode P95 < 1000 ms warm): {(deltaP95 < 1000 ? "PASS" : "FAIL")} at P95 {deltaP95:F1} ms");
+            notes.Add("note: measures ResidentWorkspace.CheckOverlay (the S1 speculative typecheck) and GetDiagnostics+DiagnosticDelta (the S2 delta mode), the operations fuse_check invokes when a resident workspace is live; timings are environment-dependent; runs in a dedicated process that never invokes MSBuildWorkspace.");
 
             // medianTokens carries the delta-check P50, meanTokens the warm build+rehydrate ms (mirrors PerformanceSuite).
             var scorecard = new Scorecard(1, 0, 0, 0, 0, 0, p50, warmWatch.ElapsedMilliseconds, 0);

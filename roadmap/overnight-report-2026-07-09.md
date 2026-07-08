@@ -2,7 +2,31 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `b926431` (plus this report/plan checkpoint).
+bumps, or publishing. Tree is green and pushed at HEAD `17472d1` (plus this report/plan checkpoint).
+
+## Terminal state for the autonomous environment (2026-07-09)
+
+Every remaining checklist item is now done or `[!]`-blocked, directly or through a dependency chain that bottoms
+out on a maintainer decision or an external resource this autonomous run cannot supply:
+- **C1 `[!]`**: all ungated code is done (report, KB, docs + drift test, overlay generation, overlay
+  materialization, and now `fuse up --apply` applying the NU1507 overlay + re-attempt, with a passing integration
+  test). Blocked on (a) the consent-gated SDK/workload installs, which MACHINE PREP forbids ("install NOTHING"),
+  and (b) the Gate, which needs a corpus that actually fails (the current pinned corpus builds clean) - a maintainer
+  decision to reconstruct the problematic-commit bake-off set or re-derive the Gate.
+- **G2 `[!]`**: iteration 1 (keyed DI) is done and gate-green (moat holds 23/23); the next analyzer iteration is
+  gated on C4 corpus-v2 frequency data.
+- **S3 `[!]`, F5 `[!]`, F4 `[maintainer]`**: maintainer decisions (S3 cold-start floor; F5 governance-note review,
+  note prepared; F4).
+- **C2 / C3 / C4** depend on C1 `[!]`; **B1 / B3 / B4** depend on C4 + S3 + a model run; **G1 / G4 / G5 / G6 / G7**
+  depend on C2 or S3; **F1 / F2 / F6** depend on B1; **F7** on the D3 host-support-matrix gate. All transitively
+  blocked.
+
+No eligible, ungated code unit remains in this environment. The autonomous run has completed every unit it can
+build and validate here (Waves 3 and 4 in full, plus every ungated slice of Wave 2's C1). Advancing further needs a
+maintainer to: decide the C1 Gate corpus and permit installs, decide S3 / F4 / F5, and provision a corpus (which
+unblocks the C-track and, via C4, the model-driven B-track). The corpus is present but clean (Scrutor/Specification/
+NodaTime/eShopOnWeb at pinned commits under `tests/benchmarks/.corpus`, nuget cache in `D:\fuse-work\nuget`); a
+failing corpus is what the C1 Gate and C4 need.
 Full test suite re-certified green after U2 completion and U1b: all 16 projects pass, 0 failures
 (Fuse.Cli.Tests 130, Fuse.Workspace.Tests 38, Fuse.GoldenOutput.Tests 14, Fuse.Retrieval.Tests 139).
 

@@ -11,6 +11,7 @@ import { Hotspot, HotspotsProvider } from "./views/hotspots";
 import { ExplainerProvider } from "./views/explainer";
 import { IndexStatusProvider, StatusRow } from "./views/indexStatus";
 import { ScopeResultProvider } from "./views/scopeResult";
+import { SessionsProvider } from "./views/sessions";
 
 let supervisor: HostSupervisor | undefined;
 
@@ -32,6 +33,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const hotspots = new HotspotsProvider(root);
   const scopeResult = new ScopeResultProvider(root);
   const explainer = new ExplainerProvider(root);
+  // The agent observability panel (G3): fetches sessions lazily from the warm host client the supervisor holds.
+  const sessions = new SessionsProvider(root, () => supervisor?.connected);
   const secrets = new SecretDiagnostics(root);
   const graphView = new GraphView(context, root);
   const relativePathOf = (uri: vscode.Uri): string => vscode.workspace.asRelativePath(uri, false);
@@ -46,6 +49,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("fuse.hotspots", hotspots),
     vscode.window.registerTreeDataProvider("fuse.scopeResult", scopeResult),
     vscode.window.registerTreeDataProvider("fuse.explainer", explainer),
+    vscode.window.registerTreeDataProvider("fuse.sessions", sessions),
     vscode.languages.registerCodeLensProvider({ scheme: "file", pattern: "**/*.cs" }, tokenLens),
     vscode.languages.registerHoverProvider({ scheme: "file", pattern: "**/*.cs" }, hover),
   );
@@ -56,6 +60,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // supervisor) the host's fuse/invalidated push when the workspace changes.
   const refresh = (): void => {
     void warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output);
+    // The session panel re-fetches lazily from the host on refresh, so a workspace change (or an explicit refresh)
+    // shows the agent's latest introduced diagnostics and claim ledger (G3).
+    sessions.refresh();
   };
   supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m), refresh);
   context.subscriptions.push({ dispose: () => supervisor?.dispose() });
@@ -66,7 +73,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     supervisor = new HostSupervisor(root, hostPath, (m) => output.appendLine(m), refresh);
     await warmAndProject(root, statusBar, indexStatus, hotspots, secrets, tokenLens, hover, output);
   });
-  context.subscriptions.push(indexCommand, restartCommand);
+  const refreshSessionsCommand = vscode.commands.registerCommand("fuse.refreshSessions", () => sessions.refresh());
+  context.subscriptions.push(indexCommand, restartCommand, refreshSessionsCommand);
 
   // The most recent scope, so "Show Dependency Graph" can overlay roles for what the last fusion included.
   let lastScope: { mode: string; seed: string | null; query: string | null; since: string | null } | undefined;

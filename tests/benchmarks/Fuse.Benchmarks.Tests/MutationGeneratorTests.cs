@@ -65,6 +65,40 @@ public sealed class MutationGeneratorTests
         Assert.True(neutralOps >= 2, $"expected >=2 neutral operators, saw {neutralOps}");
     }
 
+    [Fact]
+    public void Behavior_mutants_compile_clean_and_flip_a_condition_or_comparison()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            namespace Shop;
+            public sealed class Calc
+            {
+                public int Clamp(int x)
+                {
+                    if (x > 10) { return 10; }
+                    return x;
+                }
+                public bool IsPositive(int x) => x > 0;
+            }
+            """, path: "Calc.cs");
+        var compilation = CSharpCompilation.Create(
+            "BehaviorBaseline", [tree], ReferencePaths(),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var mutants = new MutationGenerator().GenerateBehaviorMutants(compilation, ["Calc.cs"], count: 6, seed: 99);
+
+        Assert.NotEmpty(mutants);
+        foreach (var mutant in mutants)
+        {
+            // A behavior mutant must still compile clean (it changes runtime behavior, not the types)...
+            var errors = RecompileErrors(compilation, mutant).ToList();
+            Assert.True(errors.Count == 0, $"behavior mutant {mutant.Name} introduced {errors.Count} error(s)");
+            // ...and it must actually change the source.
+            Assert.NotEqual(tree.ToString(), mutant.NewContent);
+        }
+
+        Assert.Contains(mutants, m => m.OperatorId is "negate-condition" or "flip-relational");
+    }
+
     private static IEnumerable<Diagnostic> RecompileErrors(CSharpCompilation baseline, MutationCase mutant)
     {
         var oldTree = baseline.SyntaxTrees.First(t => t.FilePath == mutant.TargetFile);

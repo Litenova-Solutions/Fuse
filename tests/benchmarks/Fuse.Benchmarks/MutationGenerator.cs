@@ -67,6 +67,56 @@ public sealed class MutationGenerator
         return cases;
     }
 
+    /// <summary>
+    ///     Generates up to <paramref name="count" /> behavior mutants (T1 H1 extension): edits that still compile
+    ///     clean but change runtime behavior (a negated condition, a flipped or off-by-one comparison), so a test
+    ///     that covers the mutated code should fail. Unlike the break/neutral classes, "behavior changed" is not
+    ///     compiler-verifiable, so the kill is confirmed by running the covering tests; here each candidate is only
+    ///     verified to still compile (a behavior mutant that stops compiling would be a break, not a behavior test).
+    /// </summary>
+    /// <param name="baseline">A compilation that compiles clean.</param>
+    /// <param name="mutableFiles">The document paths eligible for mutation.</param>
+    /// <param name="count">The number of behavior mutants to produce.</param>
+    /// <param name="seed">The deterministic seed.</param>
+    /// <returns>The verified-compiling behavior mutants; may be fewer than requested if the fixture is small.</returns>
+    public IReadOnlyList<MutationCase> GenerateBehaviorMutants(
+        CSharpCompilation baseline, IReadOnlyCollection<string> mutableFiles, int count, int seed)
+    {
+        var rng = new Random(seed);
+        var trees = baseline.SyntaxTrees.Where(t => mutableFiles.Contains(t.FilePath)).ToList();
+        if (trees.Count == 0)
+            return [];
+
+        var cases = new List<MutationCase>(count);
+        var produced = 0;
+        var attempts = 0;
+        var cap = count * AttemptsPerCase;
+        while (produced < count && attempts < cap)
+        {
+            attempts++;
+            var tree = trees[rng.Next(trees.Count)];
+            var op = BehaviorOperators[rng.Next(BehaviorOperators.Length)];
+            var root = tree.GetRoot();
+            var mutated = op.Apply(root, rng);
+            if (mutated is null)
+                continue;
+
+            var newText = mutated.ToFullString();
+            if (newText == root.ToFullString())
+                continue;
+
+            // A behavior mutant must still compile clean; if it broke compilation it would be a break case.
+            if (Classify(baseline, tree, newText, breaking: false) is null)
+                continue;
+
+            produced++;
+            cases.Add(new MutationCase(
+                $"behavior-{op.Id}-{produced}", op.Id, ShouldBeClean: true, tree.FilePath, newText));
+        }
+
+        return cases;
+    }
+
     private static IEnumerable<MutationCase> GenerateClass(
         CSharpCompilation baseline, IReadOnlyList<SyntaxTree> trees, int perClass, Random rng, bool breaking)
     {
@@ -247,6 +297,56 @@ public sealed class MutationGenerator
             var parens = SyntaxFactory.ParenthesizedExpression(target.Expression!.WithoutTrivia())
                 .WithTriviaFrom(target.Expression!);
             return root.ReplaceNode(target, target.WithExpression(parens));
+        }),
+    ];
+
+    // Behavior operators (T1 H1 extension). Each returns a mutated root that still compiles but changes runtime
+    // behavior, so a test covering the mutated code should fail. The kill is confirmed by running the covering
+    // tests, not by the compiler.
+    private static readonly MutationOperator[] BehaviorOperators =
+    [
+        // Negate a boolean condition: wrap an if/while condition in a logical-not, flipping the branch taken.
+        new("negate-condition", static (root, rng) =>
+        {
+            var conditions = root.DescendantNodes()
+                .Select(n => n switch
+                {
+                    IfStatementSyntax ifStatement => ifStatement.Condition,
+                    WhileStatementSyntax whileStatement => whileStatement.Condition,
+                    _ => null,
+                })
+                .Where(c => c is not null)
+                .Select(c => c!)
+                .ToList();
+            if (conditions.Count == 0)
+                return null;
+            var target = conditions[rng.Next(conditions.Count)];
+            var negated = SyntaxFactory.PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
+                SyntaxFactory.ParenthesizedExpression(target.WithoutTrivia())).WithTriviaFrom(target);
+            return root.ReplaceNode(target, negated);
+        }),
+
+        // Flip a relational operator to its off-by-one or opposite form, changing a boundary or the whole branch.
+        new("flip-relational", static (root, rng) =>
+        {
+            var binaries = root.DescendantNodes().OfType<BinaryExpressionSyntax>()
+                .Where(b => b.Kind() is SyntaxKind.LessThanExpression or SyntaxKind.LessThanOrEqualExpression
+                    or SyntaxKind.GreaterThanExpression or SyntaxKind.GreaterThanOrEqualExpression)
+                .ToList();
+            if (binaries.Count == 0)
+                return null;
+            var target = binaries[rng.Next(binaries.Count)];
+            var (kind, tokenKind) = target.Kind() switch
+            {
+                SyntaxKind.LessThanExpression => (SyntaxKind.LessThanOrEqualExpression, SyntaxKind.LessThanEqualsToken),
+                SyntaxKind.LessThanOrEqualExpression => (SyntaxKind.LessThanExpression, SyntaxKind.LessThanToken),
+                SyntaxKind.GreaterThanExpression => (SyntaxKind.GreaterThanOrEqualExpression, SyntaxKind.GreaterThanEqualsToken),
+                _ => (SyntaxKind.GreaterThanExpression, SyntaxKind.GreaterThanToken),
+            };
+            var operatorToken = SyntaxFactory.Token(tokenKind).WithTriviaFrom(target.OperatorToken);
+            var flipped = SyntaxFactory.BinaryExpression(kind, target.Left, operatorToken, target.Right);
+            return root.ReplaceNode(target, flipped);
         }),
     ];
 }

@@ -2,11 +2,22 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `6a6ec2a` (plus this report/plan checkpoint).
+bumps, or publishing. Tree is green and pushed at HEAD `b926431` (plus this report/plan checkpoint).
 Full test suite re-certified green after U2 completion and U1b: all 16 projects pass, 0 failures
 (Fuse.Cli.Tests 130, Fuse.Workspace.Tests 38, Fuse.GoldenOutput.Tests 14, Fuse.Retrieval.Tests 139).
 
-## Session tally: U2, U1b, U3 DONE (Wave 3 complete); G3 DONE. Next: gated frontier / G3b follow-up
+## Session tally: U2, U1b, U3 DONE (Wave 3 complete); G3 + G3b DONE. Next: gated frontier
+
+- **G3b DONE** (commit `b926431`): the working-tree diff and handoff-preview panel views, completing the G3
+  Ships list. A new read-only `fuse/session-diff` host RPC (protocol bumped 5 to 6, lockstep with
+  `protocol.ts`/client/contract tests) returns the `git diff HEAD` file set plus a `BuildHandoffAsync` preview;
+  the panel gains a root-level "Working tree (vs HEAD)" node (sibling of the session rows) expanding to changed
+  files (click to open) and a handoff-preview node, plus a git-free "files touched" summary under each session.
+  Full .NET suite green (16 projects, Cli 133); extension typecheck/lint/build clean, `test:contract` 20 pass.
+  The git spawn is not E2E-tested here (test-host crash class) but reuses the production-proven change source and
+  is covered by DTO-shape + panel-shaping tests.
+
+
 
 - **G3 DONE** (Gate PASS): the VS Code agent observability panel, in three sub-steps.
   - **sub-step 1** (`aaffeed`): host RPC read-only session observability - a store `ListSessionsAsync` enumerator
@@ -103,22 +114,15 @@ collection code landed. And the G3b "git fragility" was investigated: it is test
 already spawns git for `changes` scoping), so G3b is unblocked - its real gate is a small design call (what git
 base a session maps to), and it is a deliberate deferred unit, not stuck.
 
-**G3b advanced (partial + de-risked):** a git-free "files touched (N): ..." summary node landed in the panel
-(commit 76e4fd7, computed from the diagnostics the panel already has, no protocol change, headless-tested), and
-G3b's one open design question is resolved - session diff base = HEAD (`git diff HEAD` is exactly the session's
-uncommitted working-tree edits). The host has both `_indexer` and `_changeSource`, and `ChangedFile` carries the
-diff hunks, so G3b's remaining git-based staged-diff + handoff-preview is now a purely mechanical fresh-session
-unit: a `fuse/session-diff` RPC (protocol bump 5->6, lockstep with protocol.ts/client/contract tests) returning
-`git diff HEAD` + a `BuildHandoffAsync(changedSince=HEAD)` preview, plus the two panel nodes. Its git path is only
-E2E-testable in production (the test-host git-spawn crash), so cover the DTO shape + panel node-shaping headless.
-
-**Honest gated-frontier read:** after G3, every remaining checklist todo is externally gated (installs, corpus,
-a model run, or a maintainer decision) or a fresh-session unit. Not started this session, and why:
-- **G3b remaining**: a second protocol-bump shipped-contract unit; de-risked and documented, deliberately not
-  rushed at a session tail (the standing "never rush a shipped-path change" guardrail). Clean fresh-session task.
-- **S3 / F4 / F5**: maintainer decisions (`[!]` / `[maintainer]`); F5's governance note is prepared and awaiting review.
-- **C1 remainder, C2/C3/C4, B1/B3/B4, G1/G4/G5/G6/G7, F1/F2/F6/F7, G2 next-iter**: installs / corpus / model runs /
-  dependency-gated.
-Next session: begin G3b's mechanical impl (design + host access already confirmed here), or obtain the maintainer
-decisions on S3/F4/F5, or advance C1's install-free overlay slice on a locally-built NU1507 fixture. Tree green and
-pushed at every step.
+**Honest gated-frontier read:** with G3 and G3b done, the eligible-and-ungated frontier is exhausted for this
+environment. Every remaining checklist todo is gated:
+- **S3 `[!]` / F4 `[maintainer]` / F5 `[!]`**: maintainer decisions. F5's governance note is prepared and awaiting
+  the maintainer review its precondition requires (`roadmap/f5-data-governance-note.md`).
+- **C1 remainder**: consent-gated installs + a 17-repo corpus gate (install-nothing + corpus).
+- **C2 / C3 / C4**: portable capture + corpus + possibly installs.
+- **B1 (then B3), F1 / F2 / F6**: a model run gated behind C4's corpus-health, plus B1 recorded for the F-track.
+- **B4, G2 next-iteration**: corpus (WiringBench / corpus-v2 frequency data).
+- **G1 / G4 / G5 / G6 / G7**: gated on C2 or S3.
+Next session: obtain the maintainer decisions (S3 cold-start floor; F4; F5 governance-note sign-off), or set up
+`D:\fuse-work` + a corpus to unblock the C-track (C2 portable capture is the top C-track item once C1's
+install-gated remainder is resolved). Tree green and pushed at every step; nothing is half-done.

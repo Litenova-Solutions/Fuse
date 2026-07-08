@@ -3,7 +3,8 @@
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
 bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `32f4450`, the S1
-design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`).
+design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
+C1 knowledge base at a later commit this run).
 
 ## Current state (latest checkpoint)
 
@@ -46,6 +47,16 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
 | K2 | Delete the in-memory BM25F ranker and the dead classic query path | PASS (zero references; contract suite 8/8) | `9fc43e9` |
 | H1 | Mutation-derived check-honesty calibration at scale | PASS (false green 0; mutation false-red 0.00% < 1% over 1,000 verified cases) | (this run) |
 | T0 | Verification-grade ladder: build-grade fallback, verify never shrugs | PASS (3 classification tests green; oracle-vs-build agreement 24/24 = 100.0% >= 99%) | (this run) |
+
+## In-progress items (gate-green sub-steps landed; items not yet complete)
+
+- **S1 resident workspace** `[>]`: the full in-memory resident-engine surface landed (rehydrate-and-hold,
+  overlay check, apply edit, remove document, diagnostics baseline; `Fuse.Workspace`, 4 tests), all
+  additive/unreferenced. Remaining: watcher + `IWorkspaceTruth` seam + serve-host wiring + read-tool
+  routing + changeset-overlay unification + `performance.json` latency/RSS gate.
+- **C1 fuse up** `[>]`: sub-step 1 landed - `RemediationKnowledgeBase` (JSON-data KB + source-gen loader +
+  per-signature matcher, classify-only; 7 tests). Remaining: the `fuse up` command that applies remedies,
+  the per-project report shape, the KB-generated troubleshooting page, and the 17-repo `up-report.json` gate.
 
 The three standing gates (`dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release
 --no-build`, `dotnet format Fuse.slnx --verify-no-changes`) were green on every item that touched

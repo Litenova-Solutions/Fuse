@@ -745,8 +745,8 @@ public sealed partial class FuseTools
     /// <param name="limit">The maximum covering tests to return (for select).</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The operation's result, or an error/abstention string.</returns>
-    [McpServerTool(Name = "fuse_changeset", ReadOnly = false)]
-    [Description("Speculative staging area (propose, verify, select, commit): stage single-file edits into a changeset session, diagnose them with the speculative typecheck (fuse_check), select the tests that cover the changed symbols (from the persisted graph), then promote the diff to the working tree or discard it. Nothing is written until an explicit promote. op is one of: create, stage, list, diagnose, select, promote, discard.")]
+    // Dissolved in U1: the changeset workflow is now check-with-content (diagnose) + fuse_refactor (edits) +
+    // fuse_workspace action=apply (write, D2). The method is retained dormant behind the shim for one major.
     public static async Task<string> FuseChangesetAsync(
         SemanticIndexer indexer,
         [Description("The lifecycle operation: create, stage, list, diagnose, select, promote, or discard.")] string op = "",

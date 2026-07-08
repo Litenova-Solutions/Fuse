@@ -21,6 +21,10 @@ public sealed class FuseDeprecatedToolsTests
         Assert.Contains("fuse_find", FuseDeprecatedTools.FuseResolve());
         Assert.Contains("fuse_find", FuseDeprecatedTools.FuseNeighbors());
         Assert.Contains("fuse_find", FuseDeprecatedTools.FuseSignatures());
+        // The changeset shim names the replacement flow (check + refactor + workspace apply).
+        var changeset = FuseDeprecatedTools.FuseChangeset();
+        Assert.Contains("fuse_check", changeset);
+        Assert.Contains("fuse_workspace", changeset);
     }
 
     [Fact]

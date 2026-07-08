@@ -92,8 +92,7 @@ public sealed class McpServeCommand
                     "- fuse_check: Speculatively typecheck a proposed single-file edit (oracle-grade; abstains otherwise).\n" +
                     "- fuse_test: Run the covering tests for a symbol (build-grade, scoped by filter).\n" +
                     "- fuse_refactor: Compiler-executed, verify-gated refactors staged as a diff (rename, add/remove/reorder-parameter, add-cancellation-token, extract-interface, move-type, apply-codefix).\n" +
-                    "- fuse_changeset: Speculative staging area (create/stage/diagnose/select/promote/discard); nothing is written until an explicit promote.\n" +
-                    "- fuse_reduce: Compact a known set of files or raw content.";
+                    "- fuse_reduce: Compact a known set of files or raw content (the one utility outside the loop).";
             })
             .WithStdioServerTransport()
             .WithTools<FuseTools>()

@@ -52,6 +52,14 @@ public sealed class ProjectFromCompilationsTests
             Assert.Contains("Baz", namesAfterEdit);
             Assert.Contains("Foo", namesAfterEdit);
 
+            // Removal case: rewrite Bar.cs to rename its type, then re-project. The clear-then-reproject drops the
+            // stale "Bar" symbol (it is not merely left behind by an upsert).
+            await File.WriteAllTextAsync(Path.Combine(dir, "Bar.cs"), "namespace Demo; public sealed class Renamed { public int B(Foo f) => f.A(); }", Ct);
+            await indexer.ProjectFromCompilationsAsync(dir, store, [(projectPath, BuildCompilation(dir, "Foo.cs", "Bar.cs", "Baz.cs"))], Files(dir, "Foo.cs", "Bar.cs", "Baz.cs"), Ct);
+            var namesAfterRemoval = (await store.ListSymbolsAsync(500, Ct)).Select(s => s.Name).ToHashSet();
+            Assert.Contains("Renamed", namesAfterRemoval);
+            Assert.DoesNotContain("Bar", namesAfterRemoval);
+
             SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
         }
         finally

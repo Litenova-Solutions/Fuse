@@ -497,6 +497,13 @@ public sealed class SemanticIndexer
         IReadOnlyList<IndexedFileRecord> files,
         CancellationToken cancellationToken)
     {
+        // Clear each projected file's existing semantic rows first, so an entity an edit REMOVED does not linger
+        // as a stale row; the upsert below then reinserts the current set. Clear-then-reproject is an idempotent
+        // replace (the file row itself is kept, so symbols keep their foreign key). This covers add, change, and
+        // removal within the projected files.
+        foreach (var file in files)
+            await store.DeleteFileDataAsync(file.NormalizedPath, cancellationToken);
+
         var captured = new List<CapturedProject>(compilations.Count);
         foreach (var (projectFilePath, compilation) in compilations)
         {

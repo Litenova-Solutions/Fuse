@@ -72,7 +72,7 @@ public sealed class ResidentWorkspace : IDisposable
                 // invocation including /analyzer:, so the repo's configured analyzers (StyleCop, nullable, and so
                 // on) are available to run against the resident compilation for CI parity, gated per call.
                 var analyzers = data.GetAnalyzers(out _);
-                projects.Add(new ResidentProject(projectFilePath, compilation, analyzers));
+                projects.Add(new ResidentProject(projectFilePath, compilation, analyzers, data.AnalyzerOptions));
             }
         }
         catch
@@ -273,5 +273,12 @@ public sealed class ResidentWorkspace : IDisposable
 ///     The diagnostic analyzers the recorded csc invocation ran (S4), for optional analyzer-parity checks against
 ///     the resident compilation; empty when the invocation configured none.
 /// </param>
+/// <param name="AnalyzerOptions">
+///     The analyzer options rehydrated from the capture (additional files plus the editorconfig-derived analyzer
+///     config), so an analyzer run maps severities exactly as the repo configures them (S4).
+/// </param>
 public sealed record ResidentProject(
-    string ProjectFilePath, Compilation Compilation, ImmutableArray<DiagnosticAnalyzer> Analyzers);
+    string ProjectFilePath,
+    Compilation Compilation,
+    ImmutableArray<DiagnosticAnalyzer> Analyzers,
+    AnalyzerOptions AnalyzerOptions);

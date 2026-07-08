@@ -57,7 +57,12 @@ public sealed class McpServeCommand
         // (never blocking startup) so fuse_check answers resident-grade from the held compilation, and watch the
         // tree to keep it current; a bulk change above the storm threshold evicts to store-backed rather than
         // serving stale. Promotion to default-on with the recorded latency is the S1 gate.
-        using var resident = ResidentOptIn() ? WireResidentWorkspace(context.CancellationToken) : null;
+        using var residentWatcher = ResidentWorkspaceHosting.OptIn()
+            ? new DebouncedFileWatcher(Path.GetFullPath(Environment.CurrentDirectory), recursive: true, cancellationToken: context.CancellationToken)
+            : null;
+        using var resident = residentWatcher is null
+            ? null
+            : ResidentWorkspaceHosting.Enable(Environment.CurrentDirectory, residentWatcher, Console.Error.WriteLine, context.CancellationToken);
 
         var builder = Host.CreateApplicationBuilder();
 
@@ -125,65 +130,13 @@ public sealed class McpServeCommand
 
     // The background semantic upgrade is opt-in: FUSE_BG_UPGRADE set to a truthy value (1/true/yes/on) enables
     // the syntax-first cold start; otherwise the first read indexes synchronously.
-    private static bool BackgroundUpgradeOptIn() => IsTruthy(Environment.GetEnvironmentVariable("FUSE_BG_UPGRADE"));
-
-    // The resident workspace is opt-in for now: FUSE_RESIDENT truthy enables it. Default off keeps the shipped
-    // serve path byte-identical; promotion to default-on is the S1 latency gate.
-    private static bool ResidentOptIn() => IsTruthy(Environment.GetEnvironmentVariable("FUSE_RESIDENT"));
-
-    private static bool IsTruthy(string? value) =>
-        value is not null
-        && (value.Equals("1", StringComparison.Ordinal)
-            || value.Equals("true", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("on", StringComparison.OrdinalIgnoreCase));
-
-    // Constructs the resident-workspace registry, registers it as the read tools' provider, warms the served root
-    // in the background (so startup is not blocked by the build), and starts a watcher that keeps the resident
-    // state current. A change batch above the storm threshold evicts the root to store-backed rather than serving
-    // stale. Returns a disposable that stops the watcher, disposes the registry, and restores the null provider.
-    private static IDisposable WireResidentWorkspace(CancellationToken cancellationToken)
+    private static bool BackgroundUpgradeOptIn()
     {
-        const int StormThreshold = 300;
-        var root = Path.GetFullPath(Environment.CurrentDirectory);
-        var registry = new ResidentWorkspaceRegistry();
-        FuseTools.ResidentWorkspaces = registry;
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                if (!await registry.WarmAsync(root, cancellationToken))
-                    Console.Error.WriteLine($"resident workspace: {root} did not build; serving store-backed.");
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                Console.Error.WriteLine($"resident workspace warm failed: {ex.Message}");
-            }
-        }, cancellationToken);
-
-        var watcher = new DebouncedFileWatcher(root, recursive: true, cancellationToken: cancellationToken);
-        watcher.BatchChanged += (batch, _) =>
-        {
-            if (batch.Count > StormThreshold)
-                registry.Evict(root); // A bulk change outran incremental update; fall back to store-backed.
-            else
-                registry.ApplyBatch(root, batch, cancellationToken);
-            return Task.CompletedTask;
-        };
-
-        return new ResidentWiring(watcher, registry);
-    }
-
-    // Bundles the resident watcher and registry so serve shutdown stops watching, disposes the held workspaces,
-    // and restores the default (null) provider so a later in-process caller is unaffected.
-    private sealed class ResidentWiring(DebouncedFileWatcher watcher, ResidentWorkspaceRegistry registry) : IDisposable
-    {
-        public void Dispose()
-        {
-            watcher.Dispose();
-            registry.Dispose();
-            FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
-        }
+        var value = Environment.GetEnvironmentVariable("FUSE_BG_UPGRADE");
+        return value is not null
+               && (value.Equals("1", StringComparison.Ordinal)
+                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -102,6 +102,11 @@ public sealed class McpServeIntegrationTests
             cancellationToken: TestCancellation);
         Assert.Contains("localize", TextContent(findTask));
 
+        // (fuse_review --handoff (U2) is not exercised over the MCP subprocess here: calling it spawns git in the
+        // test-host+subprocess combo, which crashes the test host in this environment - the same git-process
+        // fragility the Fuse.Fusion GitStats test hits. The handoff carries a top-level guard that turns any such
+        // failure into a graceful abstention string; its red-gate decision is a simple introduced-error count.)
+
         // fuse_impact carries the T2 public-surface line: a public type is flagged as external-facing so the agent
         // knows a change to it is contract-relevant before editing.
         var impact = await client.CallToolAsync(

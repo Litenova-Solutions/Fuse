@@ -4,17 +4,26 @@ Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-com
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
 bumps, or publishing. Tree is green and pushed at HEAD `b1e28b7`.
 
-## Session tally: T2 done, S2 done, S3 runtime (A+B) done
+## Session tally: T2 done, S2 done, S3 mechanism complete (one documented gate deviation)
 
-This session completed two full gated items and the substantive runtime of a third:
+This session completed two fully-gated items and the entire mechanism of a third:
 - **T2 DONE** (gate PASS): public API delta on fuse_review + fuse_impact; 10/10 corpus adjudication.
 - **S2 DONE** (gate PASS): fuse_check delta mode, persisted sessions, repair packets v2; delta-mode P95 643.6 ms.
-- **S3 A+B DONE** (runtime): the fuse/check host RPC + protocol bump to v4 (both sides, contracts verified), the
-  FuseHostClient pipe/socket client, and the working `fuse check --delta` / `fuse gate` commands - the ambient-
-  verification mechanism runs end to end. Remaining S3: (C) `fuse mcp install --with-hooks` (idempotent JsonNode
-  merge into project .claude/settings.json); (D) dual-shell scripted e2e + the ambient-verification docs.
-Newly eligible after S2: S4, T1, H2; C1 remains [>] (corpus-gated apply). Next top-to-bottom is finishing S3 (C
-then D), then S4.
+- **S3 mechanism DONE** (A-D built, one documented deviation): fuse/check host RPC + protocol bump to v4 (both
+  sides, contracts verified); FuseHostClient pipe/socket client; working `fuse check --delta` / `fuse gate`
+  commands; `fuse mcp install --with-hooks` (idempotent .claude/settings.json merge); a `\\.\pipe\` existence
+  pre-check dropping no-host exit to ~182 ms; the ambient-verification docs page + commands reference + CHANGELOG;
+  and a dual-shell (bash + pwsh) multi-process e2e (host serving, commands connect and exit cleanly). S3 stays
+  `[>]` on ONE documented gate deviation: the "no-resident exit under 100 ms" half is unmet because the ~155-182 ms
+  residual is .NET managed cold-start (the connect probe the design controls is ~0 ms). The item's Fallback does
+  not apply (it is scoped to a pipe-RPC that cannot land; the RPC landed). Resolution is a maintainer decision
+  (accept the managed cold-start floor, or fund an AOT/R2R hook binary as a named follow-up) - prepared, not
+  self-approved.
+
+Next eligible (top-to-bottom): S4 (analyzer/nullable parity in check - a fresh M-sized item, preconditions first),
+then T1, H2; C1 remains `[>]` (corpus-gated apply). All work committed and pushed at HEAD `64e7c95`; every commit
+gate-green (build + all 16 .NET assemblies + dotnet format + extension contract 9/9 + tsc). Roughly 55 gate-green
+commits this session on top of the prior run.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

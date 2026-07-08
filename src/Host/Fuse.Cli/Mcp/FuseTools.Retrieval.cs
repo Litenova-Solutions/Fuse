@@ -922,6 +922,16 @@ public sealed partial class FuseTools
                 builder.AppendLine($"      {match.Signature}");
         }
 
+        // The graded claims block (U2): a wiring resolution rests on the persisted graph, so it caps at
+        // partially_verified (real signal, not compiler-confirmed).
+        builder.AppendLine();
+        builder.AppendLine(ClaimLedger.Render(
+        [
+            Claim.FromGraph(
+                $"{result.Query} resolves to {result.Matches.Count} {result.Target.ToString().ToLowerInvariant()} target(s)",
+                $"graph: {result.Target.ToString().ToLowerInvariant()} wiring edges"),
+        ]));
+
         return builder.ToString();
     }
 

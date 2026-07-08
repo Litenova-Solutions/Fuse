@@ -223,9 +223,16 @@ Blast radius for a symbol before you edit it: the callers, implementers, consume
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
-| `symbol` | string | required | The symbol (simple or qualified name) whose blast radius to compute |
+| `symbol` | string | required (blast-radius mode) | The symbol (simple or qualified name) whose blast radius to compute |
 | `path` | string | `.` | Workspace directory |
 | `limit` | int | 50 | Maximum impacted items to return |
+| `package` | string | null | Package-upgrade mode: the NuGet package id whose bump to analyze |
+| `fromVersion` | string | null | Package-upgrade mode: the currently referenced version |
+| `toVersion` | string | null | Package-upgrade mode: the target (upgrade) version |
+
+### Package-upgrade mode (F3)
+
+Pass `package`, `fromVersion`, and `toVersion` and `fuse_impact` becomes a NuGet upgrade oracle: it diffs the public API of the two package versions (resolved from the local NuGet cache) and lists the breaking public-API changes the bump would introduce (removed members, signature changes, accessibility reductions), so the anxiety of a package upgrade is answerable before the lockfile changes. It abstains with a reason when a version is not in the local cache (the offline case). It names its blind spots on every report: reflection and dynamic usage are invisible to a metadata diff, and repo call-site intersection is bounded by the reference graph, which does not track external-package call sites (so the answer is the version-to-version break set, not a repo-specific "your N call sites break" count). Recorded example: `System.Text.Json` 4.7.2 to 8.0.0 is flagged breaking (the public `JsonClassInfo` was removed), while additive-only major bumps of `System.Collections.Immutable` and `Microsoft.Extensions.DependencyInjection.Abstractions` report no break.
 
 The response also carries a public API surface line (T2): whether the target symbol is on the public or protected surface, so before editing you know whether the change is contract-relevant (removing it, reducing its accessibility, or reshaping its signature would break external callers). The flag is conservative to avoid training you to ignore it: a positive "public" is asserted only from the recorded public-API flag, which is reliable for types in any index mode and for members at the semantic tier; a member in syntax mode, where accessibility is not resolved, is reported undetermined rather than guessed either way.
 

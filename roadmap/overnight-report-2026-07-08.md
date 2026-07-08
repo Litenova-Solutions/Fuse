@@ -4,7 +4,7 @@ Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-com
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
 bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `32f4450`, the S1
 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
-C1 engine sub-steps at `a0b277f`/`065c591`/`f5739be`).
+C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam at `38004d2`/`69cea59`).
 
 ## Current state (latest checkpoint)
 
@@ -60,18 +60,18 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
   path; MSBuildLocator is process-global and order-sensitive, so this validation needs a separate process, not
   the shared test host) - plus read-tool routing for the remaining tools, changeset-overlay unification, and
   the `performance.json` latency/RSS gate.
-- **C1 fuse up** `[>]`: three engine sub-steps landed, all non-user-facing and gate-green -
-  `RemediationKnowledgeBase` (JSON-data KB + source-gen loader + per-signature matcher; 7 tests),
-  `EnvironmentRemediationPlanner` (classify-and-report core: per-project remedy classification,
-  remediable/unfixable partition, workable-subset line; 4 tests), and `NuGetOverlayConfig` (the NU1507
-  overlay-config remedy generator, installs nothing, never writes the repo; 4 tests). Remaining (shipped
-  integration for a dedicated session): the user-facing `fuse up` command that ties these together and APPLIES
-  remedies, which requires threading the overlay `--configfile` through the build/restore pipeline; the report
-  to workspace status; the KB-generated troubleshooting page with a key-diff test; and the 17-repo
-  `up-report.json` gate. Environmental note: the goal forbids installing anything, so the SDK-install
-  (NETSDK1045) and workload-install (MSB4018) remedies cannot be exercised here; only the NU1507 overlay
-  (installs nothing) is runnable, so the gate may land on the Fallback (record "1 of 6 flips" honestly) unless
-  the provisioned environment allows installs.
+- **C1 fuse up** `[>]`: five sub-steps landed gate-green, including a working user-facing command -
+  `RemediationKnowledgeBase` (JSON-data KB + matcher; 7 tests), `EnvironmentRemediationPlanner`
+  (classify-and-report core; 4 tests), `NuGetOverlayConfig` (NU1507 overlay generator, installs nothing, never
+  writes the repo; 4 tests), `RemediationReport` (renderer; 2 tests), and the report-only `fuse up` CLI command
+  (runs doctor + planner + report, applies nothing, never touches the repo; smoke-tested on the OrderingApp
+  fixture) plus the KB-generated troubleshooting page with its drift-guard test (1 test). Remaining (the apply +
+  gate, a dedicated session): thread the NU1507 overlay `--configfile` through the build/restore pipeline with
+  restore-artifact safety (restore writes obj/ into the repo, so it must run against a mirror), the
+  consent-gated SDK/workload installs, re-attempt tier-1, and the 17-repo `up-report.json` gate. Environmental
+  note: the goal forbids installing anything, so the SDK-install (NETSDK1045) and workload-install (MSB4018)
+  remedies cannot be exercised here; only the NU1507 overlay (installs nothing) is runnable, so the gate may
+  land on the Fallback (record "1 of 6 flips" honestly) unless the provisioned environment allows installs.
 
 Both open lanes are now at their irreducible shipped-activation step. S1's seam is fully wired (step 2 done,
 behavior-preserving), so the only remaining S1 activation is constructing a resident workspace in the serve

@@ -4,9 +4,9 @@ Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-com
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
 bumps, or publishing. Tree is green and pushed at HEAD `b1e28b7`.
 
-## Session tally: T2 done, S2 done, S3 mechanism complete, S4 investigation done
+## Session tally: T2 done, S2 done, S4 done, S3 mechanism complete
 
-This session completed two fully-gated items, the entire mechanism of a third, and the investigation of a fourth:
+This session completed three fully-gated items (T2, S2, S4) and the entire mechanism of a fourth (S3):
 - **T2 DONE** (gate PASS): public API delta on fuse_review + fuse_impact; 10/10 corpus adjudication.
 - **S2 DONE** (gate PASS): fuse_check delta mode, persisted sessions, repair packets v2; delta-mode P95 643.6 ms.
 - **S3 mechanism DONE** (A-D built, one documented deviation): fuse/check host RPC + protocol bump to v4 (both
@@ -38,19 +38,19 @@ Gate: the id-set-equality fixture test (a reliably-firing-analyzer binlog fixtur
 build, editorconfig-silenced rule stays silent) plus the trust-model docs; a small follow-up adds analyzers to the
 out-of-process worker oracle path.
 
-S4 Gate attempt found a real gap (this is what the gate is for): a fixture with an editorconfig-elevated CA1822
-does NOT surface through the resident analyzer run (absent in both the warning and none configs), so editorconfig
-severities are not being applied through the captured AnalyzerOptions. The analyzers run (execution is fine); the
-gap is severity MAPPING. The unproven tests were removed rather than committed red; the repro and a root-cause
-hypothesis (data.AnalyzerOptions likely lacks an editorconfig-populated AnalyzerConfigOptionsProvider) are recorded
-in the plan. S4 gate is NOT met (not reinterpreted to pass); S4 stays `[>]`.
+S4 is DONE (gate PASS). The Gate attempt found a real gap (editorconfig-elevated CA1822 did not surface through
+the forked overlay), which I root-caused precisely (ReplaceSyntaxTree drops the replaced tree's editorconfig
+severity mapping; direct run CA1822=Warning, forked overlay empty) and fixed (ForkedTreeOptionsProvider redirects
+the new tree's config queries to the original tree). Two Gate fixture tests now prove an editorconfig-elevated rule
+surfaces and a silenced rule stays silent through the analyzer-aware check; the latency decision (analyzers on for
+verify, off for delta; 887 ms) is recorded. Docs (verification-grades analyzer-and-nullable-parity) + CHANGELOG
+swept.
 
-Next action (top-to-bottom): fix the S4 editorconfig-severity mapping (inspect data.AnalyzerOptions'
-AnalyzerConfigOptionsProvider; reconstruct it from the rehydrated compilation's SyntaxTreeOptionsProvider or the
-captured analyzerconfig if empty; pass it to WithAnalyzers), then re-run the Gate fixture and add the trust-model
-docs. Then T1, H2. C1 remains `[>]` (corpus-gated apply); S3 has one maintainer-gated timing deviation. All work
-committed and pushed at HEAD `a62747d`; every committed change gate-green (build + all 16 .NET assemblies + dotnet
-format; extension contract 9/9 + tsc from the S3 protocol change). Roughly 76 gate-green commits this session.
+Next action (top-to-bottom): T1 (covering-test execution out of process; deps S1/S2/H1 all done) - a fresh
+Wave-3 item, run its preconditions first. Then H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one
+maintainer-gated timing deviation (the mechanism is complete). All work committed and pushed at HEAD `e4f7f38`;
+every committed change gate-green (build + all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc
+from the S3 protocol change). Roughly 82 gate-green commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

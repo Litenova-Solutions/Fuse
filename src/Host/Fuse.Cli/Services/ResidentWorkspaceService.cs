@@ -54,6 +54,15 @@ public sealed class ResidentWorkspaceService : IResidentWorkspaceProvider, IDisp
             return _workspace.CheckOverlay(relativeFilePath, newContent, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public IReadOnlyList<CheckDiagnostic>? TryGetCurrentDiagnostics(string root)
+    {
+        if (!Matches(root))
+            return null;
+        lock (_gate)
+            return _workspace.GetDiagnostics(CancellationToken.None);
+    }
+
     /// <summary>
     ///     Applies a coalesced watcher batch to the held workspace, advancing the revision.
     /// </summary>

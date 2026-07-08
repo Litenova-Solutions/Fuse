@@ -40,6 +40,17 @@ public interface IResidentWorkspaceProvider
     /// </returns>
     IReadOnlyList<CheckDiagnostic>? TryCheckOverlay(
         string root, string relativeFilePath, string newContent, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns the whole-state diagnostics of the resident workspace serving a root, if one is live: the
+    ///     current diagnostics across every held compilation (S1's <c>GetDiagnostics</c>). This is what
+    ///     <c>fuse_check</c> delta mode (S2) diffs a persisted session baseline against, so a delta is computed
+    ///     without running a build. Null when no resident workspace serves the root (delta mode then abstains,
+    ///     since it must not run a build).
+    /// </summary>
+    /// <param name="root">The absolute workspace root.</param>
+    /// <returns>The current whole-state diagnostics, or null when no resident workspace serves the root.</returns>
+    IReadOnlyList<CheckDiagnostic>? TryGetCurrentDiagnostics(string root) => null;
 }
 
 /// <summary>

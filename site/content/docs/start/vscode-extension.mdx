@@ -40,6 +40,12 @@ picks up a new tool surface.
 - **Token Hotspots** ranked by estimated token cost; click to open a file.
 - **Scope Result** after a scoping command: the files a fusion includes, with token costs.
 - **Explain** panel: why the current scope selected what it did.
+- **Agent Sessions** panel: the read-only window onto what your agent is doing. It lists the
+  sessions the host knows for the workspace; expand one to see the compiler diagnostics that
+  session's edits introduced or resolved since its baseline (live, from the resident
+  workspace) and its graded claim ledger (the evidence trail, see
+  [claim grades](/docs/concepts/claim-grades)). It is strictly a window: no promote or discard
+  actions. The panel refreshes on a workspace change and from its refresh button.
 - **Dependency Graph** webview (Cytoscape, bundled, offline): nodes sized by centrality,
   colored by token cost.
 - **Secret diagnostics**: detected secrets underlined at their exact range in the editor
@@ -55,6 +61,7 @@ picks up a new tool surface.
 | Fuse: Changes Since Branch | Scope to files changed since a git ref, plus dependents. |
 | Fuse: Explain Scope | Explain why the current scope selected what it did. |
 | Fuse: Show Dependency Graph | Open the graph webview for the workspace. |
+| Fuse: Refresh Agent Sessions | Re-fetch the Agent Sessions panel from the host. |
 | Fuse: Restart Host | Restart the background `fuse host` process. |
 
 Focus Here is also on the editor and explorer context menus.
@@ -75,15 +82,15 @@ reuses the same dependency-injection graph as `fuse mcp serve`, so MCP calls and
 commands share analysis results.
 
 The host and engine run fully offline: no network calls and no telemetry from the
-extension. The optional dense-rerank model is never bundled; download it only through
-the explicit `fuse models download` flow if you enable reranking.
+extension, and no model is bundled, fetched, or required (retrieval is the deterministic
+lexical channel; the dense embedding channel was retired).
 
 For trust boundaries and local exposure, see [Host RPC](/docs/internals/host-rpc).
 
 ## Connect Your Agent Too
 
 The extension and MCP server complement each other. Register MCP once so your agent can
-call the nine `fuse_*` tools:
+call the `fuse_*` loop tools:
 
 ```bash
 fuse mcp install --rules

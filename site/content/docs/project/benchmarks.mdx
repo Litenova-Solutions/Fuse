@@ -46,6 +46,7 @@ fuse eval review
 fuse eval localize
 fuse eval ranking
 fuse eval checkgate
+fuse eval diagbench
 fuse eval loop
 fuse eval agent
 fuse eval reduce
@@ -204,6 +205,10 @@ The recorded run (`--mutations 500`) produced 1,000 compiler-verified cases (500
 | eShopOnWeb | 65,569 | 11% | 16% | 42% | 47% | 226/226, 186/189 |
 
 The Roslyn skeleton keeps every public and protected type and 99 to 100 percent of public methods while removing 38 to 44 percent of tokens; public-API level removes 47 to 60 percent. The percentages are reduction against the raw C# token count.
+
+## DiagBench: repair-packet auto-apply rate
+
+A `fuse_check` repair packet is only useful if its suggested fix actually repairs the error. DiagBench (`fuse eval diagbench`) measures that directly and without a model: for each API-shape mutant (a misspelled member or type reference), it builds the shipped repair packet, auto-applies the packet's machine-applicable `TopRepair` (replace the offending token with the nearest recorded name), recompiles, and records whether the error went to zero with no new error. It runs in-process over a raw-Roslyn baseline and a store populated with the fixture's symbols, so it is deterministic and offline. The recorded run (`results/diagbench.json`) is 20 single-token near-miss mutants (14 `CS1061` missing-member, 6 `CS0246` unknown-type); every one carried a `TopRepair` and every one was auto-fixed, an auto-fix rate of 100 percent per class. The result is bounded by construction: these are one-edit typos whose original is the nearest real name, so the nearest-name heuristic recovers them reliably; it sets the baseline (the gate records it on first run, with no numeric pass bar) and is the feedback number for the repair-packet protocol. A class with no single-token fix (`CS7036` missing argument, `CS0029` type mismatch) carries no `TopRepair` and is excluded. This is a benchmark-harness path only; the product never auto-applies a repair without the agent asking.
 
 ## What is not measured at scale
 

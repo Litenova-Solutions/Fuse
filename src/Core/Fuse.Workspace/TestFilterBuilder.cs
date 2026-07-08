@@ -35,6 +35,27 @@ public static class TestFilterBuilder
         return string.Join("|", clauses);
     }
 
+    /// <summary>
+    ///     Builds a contains-match filter selecting every test whose fully qualified name contains one of the given
+    ///     fragments. Used when the covering set is test <em>types</em> (R5 <c>tests</c> edges connect a test type
+    ///     to the symbol), so <c>FullyQualifiedName~TypeName</c> runs all the test methods in each covering type.
+    /// </summary>
+    /// <param name="nameFragments">The type names (or fragments) to match by containment.</param>
+    /// <returns>
+    ///     A <c>FullyQualifiedName~A|FullyQualifiedName~B</c> expression, or an empty string when no fragments are
+    ///     given (which the caller must treat as "run nothing").
+    /// </returns>
+    public static string BuildContains(IEnumerable<string> nameFragments)
+    {
+        var clauses = nameFragments
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => "FullyQualifiedName~" + Escape(name.Trim()))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        return string.Join("|", clauses);
+    }
+
     private static string Escape(string name)
     {
         if (name.IndexOfAny(OperatorCharacters) < 0)

@@ -67,12 +67,19 @@ orchestrator either sources/synthesizes those and materializes them beside the e
 primitives) or ships a custom load-context micro-host (design b). Recommendation and opening investigation step
 (confirm what the capture exposes) are in the plan.
 
-Next action: resolve the T1 orchestrator crux (design a vs b), then wire ResidentTestRunner + fuse_test/fuse test +
-the T0 degrade ladder + the H1 mutant extension + testexec.json (false green 0, median under 10s, selection safety
-at least 95 percent), with an xunit-fixture end-to-end test. Then H2. C1 remains `[>]` (corpus-and-install-gated
-apply); S3 has one maintainer-gated timing deviation (mechanism complete). All work committed and pushed at HEAD
-`33616e7`; every committed change gate-green (build + all 16 .NET assemblies + dotnet format; extension contract
-9/9 + tsc from the S3 protocol change). Roughly 97 gate-green commits this session.
+The orchestrator crux is resolved by investigation: probed Basic.CompilerLog and confirmed CompilationData.
+EmitToDisk emits the compiler outputs but not the SDK runtimeconfig.json/deps.json, so an emitted assembly is not
+directly launchable by `dotnet vstest`. Decision: design (b), a small Fuse-shipped custom micro-host exe that
+AssemblyLoadContext-loads the emitted test assembly plus its reference paths and runs the covering xunit tests via
+the xunit runner API, reporting verdicts. It reuses ResidentEmit, TimedProcess, and TestFilterBuilder.
+
+Next action: scaffold the T1 micro-host runner exe + xunit runner-API integration (a coherent new component), then
+ResidentTestRunner, fuse_test / fuse test, the T0 degrade ladder, the H1 mutant extension, and testexec.json
+(false green 0, median under 10s, selection safety at least 95 percent) with an xunit-fixture end-to-end test. Then
+H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing deviation (mechanism
+complete). All work committed and pushed at HEAD `b951b77`; every committed change gate-green (build + all 16 .NET
+assemblies + dotnet format; extension contract 9/9 + tsc from the S3 protocol change). About 100 gate-green
+commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

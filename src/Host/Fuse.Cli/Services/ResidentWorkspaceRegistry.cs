@@ -110,6 +110,31 @@ public sealed class ResidentWorkspaceRegistry : IResidentWorkspaceProvider, IDis
         string root, string relativeFilePath, string newContent, CancellationToken cancellationToken) =>
         Resolve(root)?.TryCheckOverlay(root, relativeFilePath, newContent, cancellationToken);
 
+    /// <summary>
+    ///     Evicts a root's resident workspace, so reads for it revert to store-backed (S1 storm handling): when a
+    ///     bulk change outruns incremental update, the resident state is dropped rather than served stale, and the
+    ///     store path (with its N6 reconcile) answers until the root is warmed again.
+    /// </summary>
+    /// <param name="root">The absolute repository root to evict.</param>
+    /// <returns>True when a resident workspace was evicted; false when the root was not warmed.</returns>
+    public bool Evict(string root)
+    {
+        var full = Path.GetFullPath(root);
+        ResidentWorkspaceService? service;
+        string? binlog;
+        lock (_gate)
+        {
+            if (!_byRoot.Remove(full, out service))
+                return false;
+            _binlogs.Remove(full, out binlog);
+        }
+
+        service.Dispose();
+        if (binlog is not null)
+            TryDelete(binlog);
+        return true;
+    }
+
     private ResidentWorkspaceService? Resolve(string root)
     {
         var full = Path.GetFullPath(root);

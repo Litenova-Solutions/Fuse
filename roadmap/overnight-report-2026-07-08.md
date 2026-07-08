@@ -2,11 +2,18 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `4d22b00`.
+bumps, or publishing. Tree is green and pushed at HEAD `a5f11ed`.
 
-## Session tally: T1, T3, T3b, H2, T4, B2 done; T2, S2, S4 done; S3 blocked on a maintainer decision
+## Session tally: T1, T3, T3b, H2, T4, T4b, B2 done; T2, S2, S4 done; S3 blocked on a maintainer decision
+
+Full test suite green (a one-off Fuse.Fusion GitStats test flaked on a `git` process launch in a temp dir - an
+environmental race, passed on immediate re-run, unrelated to any change this session).
 
 Latest items this session:
+- **T4b DONE** (Gate PASS): apply-codefix shipped end to end (CodeFixApplier) - the verify-gated run-analyzer ->
+  apply-fix -> re-analyze loop, reflection-discovery of analyzers + [ExportCodeFixProvider] fixes from the project's
+  analyzer references, and a public ApplyCodeFixAsync wired into fuse_refactor. The full T4 refactor family (rename,
+  add/remove/reorder-parameter, add-cancellation-token, extract-interface, move-type, apply-codefix) is shipped.
 - **B2 DONE** (Gate PASS): published the Latency SLOs reference page (site/content/docs/reference/latency.mdx),
   extended the performance suite with fuse_find + fuse_impact timers, and recorded two scale points (NodaTime +
   eShopOnWeb). Verify verbs, read verbs, test execution, and cold start all sourced to result files.

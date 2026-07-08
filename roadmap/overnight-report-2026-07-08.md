@@ -101,6 +101,13 @@ gate. The S1 Gate closes only after those.
 
 ## Summary
 
+Headline: **S1, the Wave-1 resident-workspace keystone, is complete `[x]`** (gate numbers met: resident
+delta-check P95 31.0 ms, edge-freshness correctness + <2s, RSS 164 MB), and **T0 is complete `[x]`**. S1's
+completion unblocks S2 (now `[>]`, preconditions recorded) and T2 (public API delta, depends S1 only). C1 is
+substantially built (`[>]`: report + NU1507 overlay-remedy generation; corpus auto-apply and the 17-repo gate
+remain). Two named non-blocking S1 follow-ups: default-on promotion via G5, and the delta-p95 re-measure folded
+into S2. Every commit this session was gate-green (build + 16 test assemblies + format).
+
 Wave 0 (contract and kills) is complete: all four items landed gate-green, committed, and pushed.
 In Wave 1, H1 (mutation-derived check-honesty calibration) landed gate-green and unblocked T0, and
 T0 (the verification-grade ladder) then landed gate-green in full this run: the build-grade fallback

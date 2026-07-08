@@ -159,7 +159,7 @@ def compose():
         [("Edge recall", 100, "100%", "fuse"),
          ("Edge precision", 100, "100%", "fuse")],
         100,
-        "Every wiring edge in the fixture resolved correctly: 22 of 22, recall and precision 1.0 (Suite A).",
+        "Every wiring edge in the fixture resolved correctly: 23 of 23, recall and precision 1.0 (Suite A).",
         fuse=TEAL, fuse2=TEAL2)
     y = card(
         y, "02", "Scoping a Change",

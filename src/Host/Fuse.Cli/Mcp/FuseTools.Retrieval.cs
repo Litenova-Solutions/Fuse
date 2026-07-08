@@ -554,6 +554,8 @@ public sealed partial class FuseTools
             foreach (var p in packets)
             {
                 builder.AppendLine($"  [{p.DiagnosticId}] {p.Explanation}");
+                if (p.TopRepair is { } repair)
+                    builder.AppendLine($"    apply: replace '{repair.OldToken}' with '{repair.NewToken}'");
                 foreach (var m in p.Members.Take(12))
                     builder.AppendLine($"    {(string.IsNullOrEmpty(m.Signature) ? m.Name : m.Signature)}");
             }
@@ -641,6 +643,8 @@ public sealed partial class FuseTools
             foreach (var p in packets)
             {
                 builder.AppendLine($"  [{p.DiagnosticId}] {p.Explanation}");
+                if (p.TopRepair is { } repair)
+                    builder.AppendLine($"    apply: replace '{repair.OldToken}' with '{repair.NewToken}'");
                 foreach (var m in p.Members.Take(12))
                     builder.AppendLine($"    {(string.IsNullOrEmpty(m.Signature) ? m.Name : m.Signature)}");
             }

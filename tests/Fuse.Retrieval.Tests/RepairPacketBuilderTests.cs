@@ -66,6 +66,48 @@ public sealed class RepairPacketBuilderTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Missing_member_carries_a_machine_applicable_top_repair()
+    {
+        // H2: the packet exposes a structured, machine-applicable repair (replace the bad token with the nearest
+        // real name), not only prose - so DiagBench and an agent can apply it without re-deriving the edit.
+        var diagnostic = new CheckDiagnostic("CS1061",
+            "Error", "'Shop.Order' does not contain a definition for 'GrandTotol'", "src/Order.cs", 6);
+
+        var packet = await _builder.BuildAsync(diagnostic, CancellationToken.None);
+
+        Assert.NotNull(packet!.TopRepair);
+        Assert.Equal("GrandTotol", packet.TopRepair!.OldToken);
+        Assert.Equal("GrandTotal", packet.TopRepair.NewToken);
+    }
+
+    [Fact]
+    public async Task Unknown_type_carries_a_machine_applicable_top_repair()
+    {
+        var diagnostic = new CheckDiagnostic("CS0246",
+            "Error", "The type or namespace name 'Invoce' could not be found", "src/Order.cs", 10);
+
+        var packet = await _builder.BuildAsync(diagnostic, CancellationToken.None);
+
+        Assert.NotNull(packet!.TopRepair);
+        Assert.Equal("Invoce", packet.TopRepair!.OldToken);
+        Assert.Equal("Invoice", packet.TopRepair.NewToken);
+    }
+
+    [Fact]
+    public async Task Missing_argument_has_no_single_token_repair()
+    {
+        // CS7036 (missing argument) has no unambiguous token replacement, so TopRepair is null - the harness and an
+        // agent must synthesize an argument, which is not a machine-applicable single edit.
+        var diagnostic = new CheckDiagnostic("CS7036",
+            "Error", "There is no argument given that corresponds to the required parameter 'x' of 'Shop.Cart.Add(int, string)'", "src/Order.cs", 12);
+
+        var packet = await _builder.BuildAsync(diagnostic, CancellationToken.None);
+
+        Assert.NotNull(packet);
+        Assert.Null(packet!.TopRepair);
+    }
+
+    [Fact]
     public async Task Missing_member_on_an_unindexed_type_explains_the_gap_without_guessing()
     {
         var diagnostic = new CheckDiagnostic("CS1061",

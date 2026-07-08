@@ -17,6 +17,7 @@ public sealed class DebouncedFileWatcher : IDisposable
     private readonly FileSystemWatcher _watcher;
     private readonly int _debounceMilliseconds;
     private readonly CancellationToken _cancellationToken;
+    private readonly WorkspaceFileChangeSet _changes = new();
     private CancellationTokenSource? _debounceCts;
     private bool _disposed;
 
@@ -55,6 +56,13 @@ public sealed class DebouncedFileWatcher : IDisposable
     public event Func<CancellationToken, Task>? Changed;
 
     /// <summary>
+    ///     Raised alongside <see cref="Changed" /> after changes settle, carrying the coalesced net change per
+    ///     path over the debounce window (S1 step 3): the resident workspace applies one update per file from
+    ///     this list. A rename is reported as a delete of the old path and a create of the new.
+    /// </summary>
+    public event Func<IReadOnlyList<WorkspaceFileChange>, CancellationToken, Task>? BatchChanged;
+
+    /// <summary>
     ///     Stops watching, disposes the underlying <see cref="FileSystemWatcher" />, and cancels any pending
     ///     debounce timer.
     /// </summary>
@@ -74,6 +82,7 @@ public sealed class DebouncedFileWatcher : IDisposable
         if (ShouldIgnorePath(e.FullPath))
             return;
 
+        _changes.Add(ToChangeKind(e.ChangeType), e.FullPath);
         ScheduleDebounce();
     }
 
@@ -82,8 +91,21 @@ public sealed class DebouncedFileWatcher : IDisposable
         if (ShouldIgnorePath(e.FullPath) && ShouldIgnorePath(e.OldFullPath))
             return;
 
+        // A rename is a delete of the old path and a create of the new, so a resident update removes the old
+        // document and adds the new one.
+        if (!ShouldIgnorePath(e.OldFullPath))
+            _changes.Add(FileChangeKind.Deleted, e.OldFullPath);
+        if (!ShouldIgnorePath(e.FullPath))
+            _changes.Add(FileChangeKind.Created, e.FullPath);
         ScheduleDebounce();
     }
+
+    private static FileChangeKind ToChangeKind(WatcherChangeTypes changeType) => changeType switch
+    {
+        WatcherChangeTypes.Created => FileChangeKind.Created,
+        WatcherChangeTypes.Deleted => FileChangeKind.Deleted,
+        _ => FileChangeKind.Changed,
+    };
 
     private void ScheduleDebounce()
     {
@@ -98,6 +120,12 @@ public sealed class DebouncedFileWatcher : IDisposable
                 await Task.Delay(_debounceMilliseconds, cts.Token);
                 if (_cancellationToken.IsCancellationRequested)
                     return;
+
+                // Drain the coalesced batch once and hand it to the batch handler; the path-less Changed handler
+                // fires too, so existing consumers (whole-workspace re-index) are unaffected.
+                var batch = _changes.Drain();
+                if (BatchChanged is not null && batch.Count > 0)
+                    await BatchChanged(batch, _cancellationToken);
 
                 if (Changed is not null)
                     await Changed(_cancellationToken);

@@ -112,6 +112,10 @@ public sealed class McpServeIntegrationTests
         var impactText = TextContent(impact);
         Assert.Contains("public API surface:", impactText);
         Assert.Contains("WidgetService is on the public/protected surface", impactText);
+        // fuse_impact carries the U2 graded claims block: its statements each carry a grade and an evidence ref,
+        // and graph-grade claims are capped at partially verified (not compiler-confirmed).
+        Assert.Contains("claims (", impactText);
+        Assert.Contains("partially verified", impactText);
     }
 
     private static CancellationToken TestCancellation => default;

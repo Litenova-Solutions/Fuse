@@ -86,13 +86,18 @@ produced no verdict is reported not-runnable by name, in both fuse_test and fuse
 proven (the BuildGradeTestRunner end-to-end test detects a failing test as failed, never green). So the T1
 build-grade floor is functionally complete on the Fallback terms.
 
-Next action: the testexec.json benchmark suite (a fuse eval testexec suite recording false green 0 on the runnable
-subset, median latency, and selection safety at least 95 percent on a behavior-mutant fixture set) plus the H1
-behavior-mutant extension; both are fixture/corpus-gated. Then the deferred emit fast path (source the runtime
-closure). Then H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing deviation
-(mechanism complete). All work committed and pushed at HEAD `89f7644`; every committed change gate-green (build +
-all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc from the S3 protocol change). About 130
-gate-green commits this session.
+The H1 behavior-mutant operators are now built too (negate-condition, flip-relational: compiling edits that change
+runtime behavior, so a covering test should kill them; tested). So every T1 component exists and is tested: the
+build-grade floor (both surfaces), not-runnable classification, proven execution honesty, and behavior mutants.
+
+Next action: the testexec.json benchmark suite that ORCHESTRATES these components into the Gate artifact - over a
+fixture with covering edges (a semantic-indexed fixture with tests + R5 tests edges): false green 0 on the runnable
+subset, median latency, selection safety at least 95 percent, and mutant-kill. The selection-safety metric needs
+the covering-edge fixture, which makes the suite the fixture-gated focused deliverable. Then the deferred emit fast
+path (source the runtime closure). Then H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one
+maintainer-gated timing deviation (mechanism complete). All work committed and pushed at HEAD `0d1049e`; every
+committed change gate-green (build + all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc from the
+S3 protocol change). About 137 gate-green commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

@@ -108,6 +108,12 @@ substantially built (`[>]`: report + NU1507 overlay-remedy generation; corpus au
 remain). Two named non-blocking S1 follow-ups: default-on promotion via G5, and the delta-p95 re-measure folded
 into S2. Every commit this session was gate-green (build + 16 test assemblies + format).
 
+Newly unblocked by S1 `[x]`, both `[>]` with their pure engine cores built and tested (the shipped-path wiring
+is the dedicated-session remainder): **S2** has `DiagnosticDelta` (introduced/resolved with span-drift handling)
+and the CS0117 repair-packet expansion; **T2** has `PublicApiDelta` (added/removed/signature-changed/
+accessibility-reduced breaking classification). Remaining S2: the `fuse_check` delta mode + session persistence;
+remaining T2: wiring the delta into `fuse_review`/`fuse_impact` + the 10-PR adjudication gate.
+
 Wave 0 (contract and kills) is complete: all four items landed gate-green, committed, and pushed.
 In Wave 1, H1 (mutation-derived check-honesty calibration) landed gate-green and unblocked T0, and
 T0 (the verification-grade ladder) then landed gate-green in full this run: the build-grade fallback

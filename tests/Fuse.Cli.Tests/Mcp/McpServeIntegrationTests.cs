@@ -75,6 +75,17 @@ public sealed class McpServeIntegrationTests
         var text = TextContent(result);
         Assert.Contains("workspace map", text);
         Assert.Contains("WidgetService", text);
+
+        // fuse_impact carries the T2 public-surface line: a public type is flagged as external-facing so the agent
+        // knows a change to it is contract-relevant before editing.
+        var impact = await client.CallToolAsync(
+            "fuse_impact",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["symbol"] = "WidgetService" },
+            cancellationToken: TestCancellation);
+
+        var impactText = TextContent(impact);
+        Assert.Contains("public API surface:", impactText);
+        Assert.Contains("WidgetService is on the public/protected surface", impactText);
     }
 
     private static CancellationToken TestCancellation => default;

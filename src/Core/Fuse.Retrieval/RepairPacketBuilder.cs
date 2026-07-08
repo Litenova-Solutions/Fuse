@@ -11,9 +11,10 @@ namespace Fuse.Retrieval;
 ///     packet is built from the persisted symbol table, so it costs one indexed read, not a re-analysis.
 /// </summary>
 /// <remarks>
-///     Only the two diagnostics that dominate an agent's API-shape mistakes are handled (CS1061 member does not
-///     exist, CS0246 type or namespace not found); any other diagnostic returns null, so the check output is
-///     enriched only where a concrete suggestion is possible and is never padded with an empty packet.
+///     Only the diagnostics that dominate an agent's API-shape mistakes are handled: CS1061/CS0117 (member does
+///     not exist), CS0246 (type or namespace not found), CS7036 (missing required argument), and CS0029 (wrong
+///     type assigned). Any other diagnostic returns null, so the check output is enriched only where a concrete
+///     suggestion is possible and is never padded with an empty packet.
 /// </remarks>
 public sealed partial class RepairPacketBuilder
 {
@@ -42,6 +43,12 @@ public sealed partial class RepairPacketBuilder
             // with the nearest names first (S2 repair-packet expansion).
             "CS1061" or "CS0117" => await BuildMissingMemberAsync(diagnostic, cancellationToken),
             "CS0246" => await BuildUnknownTypeAsync(diagnostic, cancellationToken),
+            // CS7036: a call is missing a value for a required parameter; the fix context is the callee's signature
+            // (all its parameters), so the agent sees what to pass without going to read the method.
+            "CS7036" => await BuildMissingArgumentAsync(diagnostic, cancellationToken),
+            // CS0029: a value of the wrong type is being assigned; the fix context is the concrete conversion
+            // direction plus any member of the source type that already yields the target type.
+            "CS0029" => await BuildTypeMismatchAsync(diagnostic, cancellationToken),
             _ => null,
         };
     }
@@ -107,6 +114,70 @@ public sealed partial class RepairPacketBuilder
             $"The type '{name}' is not in the index. The nearest type names are {string.Join(", ", candidates)}.",
             candidates,
             []);
+    }
+
+    // CS7036: "There is no argument given that corresponds to the required parameter 'x' of 'Shop.Cart.Add(int,
+    // string)'". The first quoted token is the missing parameter, the second is the callee with its signature.
+    // The packet re-presents the callee's parameters (from the message, plus any recorded overloads) so the agent
+    // knows what to pass.
+    private async Task<RepairPacket?> BuildMissingArgumentAsync(CheckDiagnostic diagnostic, CancellationToken cancellationToken)
+    {
+        var quoted = QuotedTokens(diagnostic.Message);
+        if (quoted.Count < 2)
+            return null;
+        var parameter = quoted[0];
+        var callee = quoted[1];
+
+        // The simple method name is the identifier just before the parameter-list parenthesis.
+        var beforeParen = callee.Contains('(', StringComparison.Ordinal) ? callee[..callee.IndexOf('(', StringComparison.Ordinal)] : callee;
+        var simpleName = beforeParen.Contains('.', StringComparison.Ordinal) ? beforeParen[(beforeParen.LastIndexOf('.') + 1)..] : beforeParen;
+
+        var overloads = simpleName.Length == 0
+            ? []
+            : await _store.GetSignaturesByNamesAsync([simpleName], MaxCandidates, cancellationToken);
+        var signatures = overloads
+            .Select(o => o.Signature)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s!)
+            .Distinct(StringComparer.Ordinal)
+            .Take(MaxCandidates)
+            .ToList();
+
+        var explanation = signatures.Count > 0
+            ? $"The call to '{callee}' is missing a value for the required parameter '{parameter}'. Provide it (and any other required parameters). Recorded signature(s): {string.Join("; ", signatures)}."
+            : $"The call to '{callee}' is missing a value for the required parameter '{parameter}'. Provide an argument for it and for every other required parameter of '{callee}'.";
+
+        return new RepairPacket(diagnostic.Id, explanation, signatures, overloads);
+    }
+
+    // CS0029: "Cannot implicitly convert type 'A' to 'B'". The quoted tokens are the source and target types. The
+    // packet names the concrete conversion direction and, when the source type has a member whose signature yields
+    // the target type, suggests it (the value the agent likely meant to pass).
+    private async Task<RepairPacket?> BuildTypeMismatchAsync(CheckDiagnostic diagnostic, CancellationToken cancellationToken)
+    {
+        var quoted = QuotedTokens(diagnostic.Message);
+        if (quoted.Count < 2)
+            return null;
+        var source = quoted[0];
+        var target = quoted[1];
+
+        // A member of the source type whose signature mentions the target type is a likely intended conversion
+        // (for example a property or a To* method that returns the target). Matched by simple type name so a
+        // qualified target still hits.
+        var targetSimple = target.Contains('.', StringComparison.Ordinal) ? target[(target.LastIndexOf('.') + 1)..] : target;
+        var members = await _store.GetMembersOfTypeAsync(source, MaxMembers, cancellationToken);
+        var yielding = members
+            .Where(m => m.Signature is not null && m.Signature.Contains(targetSimple, StringComparison.Ordinal))
+            .Select(m => m.Name)
+            .Distinct(StringComparer.Ordinal)
+            .Take(MaxCandidates)
+            .ToList();
+
+        var explanation = yielding.Count > 0
+            ? $"Cannot convert '{source}' to '{target}'. If a conversion is intended, add an explicit cast '({target})' or use one of these members of '{source}' that yields '{target}': {string.Join(", ", yielding)}."
+            : $"Cannot convert '{source}' to '{target}'. If the conversion is intended, add an explicit cast '({target})' or a conversion; otherwise the value being assigned is the wrong one.";
+
+        return new RepairPacket(diagnostic.Id, explanation, yielding, []);
     }
 
     // The single-quoted tokens in a diagnostic message, in order. Compiler messages delimit symbol names with

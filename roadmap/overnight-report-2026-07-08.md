@@ -2,11 +2,15 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `7ac4ab7`.
+bumps, or publishing. Tree is green and pushed at HEAD `b4fbc25`.
 
-## Session tally: T1, T3, T3b, H2 done; T2, S2, S4 done; S3 blocked on a maintainer decision
+## Session tally: T1, T3, T3b, H2, T4 done; T2, S2, S4 done; S3 blocked on a maintainer decision
 
 Latest items this session:
+- **T4 DONE** (Gate PASS under the per-operation Fallback): extract-interface + move-type shipped in TypeRefactorer,
+  verify-gated, wired into fuse_refactor; 6 tests. The codefix-hosting spike resolved (AdhocWorkspace hosts a
+  CodeFixProvider without the Features package). apply-codefix split to the new gated item T4b (viable, deferred).
+
 - **T3b DONE** (Gate PASS): remove-parameter + reorder added to the change-signature family, safety-gated beyond
   the compile check (used-parameter and side-effecting-argument for remove; positional-call-site for reorder).
   changesig.json grew to 25 cases, 0 bad diffs, 32% abstention.

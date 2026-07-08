@@ -117,6 +117,7 @@ public sealed record CheckResult(bool Verified, string? Reason, IReadOnlyList<Ch
 [JsonSerializable(typeof(CapturedProject))]
 [JsonSerializable(typeof(CheckResult))]
 [JsonSerializable(typeof(CheckDiagnostic))]
+[JsonSerializable(typeof(List<CheckDiagnostic>))]
 [JsonSerializable(typeof(SymbolRecord))]
 [JsonSerializable(typeof(NodeRecord))]
 [JsonSerializable(typeof(SemanticEdgeRecord))]

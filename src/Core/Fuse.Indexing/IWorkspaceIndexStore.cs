@@ -288,4 +288,37 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     ///     the index was written, so a read tool reconciles them before answering rather than serving stale data.
     /// </remarks>
     Task<IReadOnlyDictionary<string, string>> GetAllFileHashesAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Persists (or replaces) a check session's diagnostic baseline (S2): the set of diagnostics as of the
+    ///     session's start or its last mark-green, against which <c>fuse_check</c> delta mode diffs the current
+    ///     diagnostics. Persisting to the store lets a restarted process resume the session with its baseline
+    ///     intact, so an hour of staged work is not lost to a crash.
+    /// </summary>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="root">The absolute workspace root the session is rooted at.</param>
+    /// <param name="baseline">The baseline diagnostics to record.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the baseline is persisted.</returns>
+    Task SaveCheckSessionBaselineAsync(
+        string sessionId, string root, IReadOnlyList<CheckDiagnostic> baseline, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns a persisted check session's baseline (S2), or <c>null</c> when no session with that id exists.
+    /// </summary>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The session baseline, or <c>null</c> when the session is unknown.</returns>
+    Task<CheckSessionBaseline?> GetCheckSessionBaselineAsync(string sessionId, CancellationToken cancellationToken);
 }
+
+/// <summary>
+///     A persisted check-session baseline (S2): the diagnostics recorded as of the session's start or last
+///     mark-green, plus the session's root and the time the baseline was last written.
+/// </summary>
+/// <param name="SessionId">The opaque session id.</param>
+/// <param name="Root">The absolute workspace root the session is rooted at.</param>
+/// <param name="Diagnostics">The baseline diagnostics the delta is computed against.</param>
+/// <param name="UpdatedUtc">The ISO-8601 UTC time the baseline was last written.</param>
+public sealed record CheckSessionBaseline(
+    string SessionId, string Root, IReadOnlyList<CheckDiagnostic> Diagnostics, string UpdatedUtc);

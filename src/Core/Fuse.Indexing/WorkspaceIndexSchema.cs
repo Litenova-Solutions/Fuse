@@ -216,6 +216,13 @@ public static class WorkspaceIndexSchema
         );
         CREATE INDEX IF NOT EXISTS idx_cochange_a ON git_cochange(path_a);
         CREATE INDEX IF NOT EXISTS idx_cochange_b ON git_cochange(path_b);
+
+        CREATE TABLE IF NOT EXISTS check_sessions(
+          session_id TEXT PRIMARY KEY,
+          root TEXT NOT NULL,
+          baseline_json TEXT NOT NULL,
+          updated_utc TEXT NOT NULL
+        );
         """;
 
     /// <summary>

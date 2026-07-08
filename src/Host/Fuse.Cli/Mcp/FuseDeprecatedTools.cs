@@ -137,6 +137,18 @@ public sealed class FuseDeprecatedTools
     public static string FuseSignatures([Description("Ignored.")] string? path = null) =>
         Renamed("fuse_signatures", "fuse_find", "a symbol's exact signature with kind=signatures");
 
+    /// <summary>Deprecated: the changeset workflow dissolved in U1 into check + refactor + the workspace apply path.</summary>
+    /// <param name="op">Ignored. Accepted so a prior call still binds.</param>
+    /// <param name="session">Ignored. Accepted so a prior call still binds.</param>
+    /// <returns>Guidance naming the replacement flow.</returns>
+    [McpServerTool(Name = "fuse_changeset", ReadOnly = false)]
+    [Description("Deprecated: the changeset workflow dissolved in Fuse V3. Diagnose an edit with fuse_check (pass content), make compiler-executed edits with fuse_refactor, and write the result with fuse_workspace action=apply.")]
+    public static string FuseChangeset([Description("Ignored.")] string? op = null, [Description("Ignored.")] string? session = null) =>
+        "Error: the MCP tool 'fuse_changeset' was dissolved in Fuse V3. Diagnose an edit with fuse_check (pass content), " +
+        "make compiler-executed edits with fuse_refactor, and write the result to the working tree with fuse_workspace action=apply. " +
+        "This usually means your client cached an older Fuse tool list; reconnect the Fuse MCP server to refresh it. " +
+        "See https://fuse.codes/docs/reference/mcp-tools.";
+
     // The single message shape for every retired name, so an upgraded server answers a stale call with a
     // clear pointer to the current tool rather than a bare Unknown tool error.
     private static string Renamed(string oldName, string newName, string what) =>

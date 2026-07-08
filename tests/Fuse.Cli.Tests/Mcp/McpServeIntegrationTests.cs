@@ -9,9 +9,10 @@ namespace Fuse.Cli.Tests.Mcp;
 /// </summary>
 public sealed class McpServeIntegrationTests
 {
+    // The eight-tool loop surface (U1) plus fuse_reduce, the one out-of-loop utility (it compacts arbitrary files
+    // and raw content, which fuse_context's indexed-seed emission does not cover).
     private static readonly string[] ExpectedV3ToolNames =
     [
-        "fuse_changeset",
         "fuse_check",
         "fuse_context",
         "fuse_find",
@@ -29,6 +30,7 @@ public sealed class McpServeIntegrationTests
     [
         "fuse_ask",
         "fuse_changes",
+        "fuse_changeset",
         "fuse_dotnet",
         "fuse_focus",
         "fuse_generic",

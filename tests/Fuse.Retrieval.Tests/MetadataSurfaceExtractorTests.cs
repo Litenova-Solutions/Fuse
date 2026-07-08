@@ -157,3 +157,38 @@ public sealed class PackageUpgradeOracleTests
         }
     }
 }
+
+// F3 Gate (the zero-false-safe contract): the oracle must FLAG a known-breaking upgrade and must NOT report it
+// safe. Curated real version pairs: System.Text.Json 4.7.2 -> 8.0.0 removed public API (JsonClassInfo and its
+// nested ConstructorDelegate), so it must be flagged breaking; the backward-compatible additive-only major bumps
+// of System.Collections.Immutable and Microsoft.Extensions.DependencyInjection.Abstractions must show no missed
+// break. Tolerant of an environment where the versions are not cached (the oracle then abstains, tested above).
+public sealed class PackageUpgradeGateTests
+{
+    [Fact]
+    public void Known_breaking_upgrade_is_flagged_never_reported_safe()
+    {
+        // System.Text.Json 4.7.2 -> 8.0.0 is a known-breaking upgrade (public JsonClassInfo was removed).
+        var report = PackageUpgradeOracle.AnalyzeCachedVersions("System.Text.Json", "4.7.2", "8.0.0");
+        if (!report.Available)
+            return; // versions not cached here; the offline abstention path is covered elsewhere.
+
+        // Zero false-safe: the known-breaking bump must not be reported without a breaking change.
+        Assert.True(report.HasBreaking, "a known-breaking upgrade was reported with no breaking changes (false safe)");
+        Assert.Contains(report.BreakingChanges, c => c.Symbol.Contains("JsonClassInfo", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("System.Collections.Immutable", "1.5.0", "8.0.0")]
+    [InlineData("Microsoft.Extensions.DependencyInjection.Abstractions", "6.0.0", "9.0.0")]
+    public void Backward_compatible_major_bump_reports_no_missed_break(string id, string from, string to)
+    {
+        var report = PackageUpgradeOracle.AnalyzeCachedVersions(id, from, to);
+        if (!report.Available)
+            return;
+        // These libraries grew additively across the major bump; the oracle correctly finds no public-API removal
+        // (a spurious flag would be survivable per the item, but these are clean, so it should be empty).
+        Assert.False(report.HasBreaking, $"{id} {from}->{to} reported a break where the surface only grew");
+        Assert.NotEmpty(report.AdditiveChanges);
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "suite": "resident-latency",
+  "description": "S1 resident delta-check latency: warm time, RSS, and overlay-check P50/P95.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 1,
+    "recall": 0,
+    "recallCiLow": 0,
+    "recallCiHigh": 0,
+    "precision": 0,
+    "f1": 0,
+    "medianTokens": 19.8885,
+    "meanTokens": 14139,
+    "lowSignalF1": 0
+  },
+  "tasks": [],
+  "notes": [
+    "repo NodaTime, 2 resident project(s)",
+    "resident warm (build \u002B rehydrate): 14,139 ms; resident RSS 164 MB",
+    "resident delta-check (25x) on AmbiguousTimeException.cs: P50 19.9 ms, P95 31.0 ms",
+    "S1 gate (delta-check P95 \u003C 1000 ms warm): PASS at P95 31.0 ms",
+    "note: measures ResidentWorkspace.CheckOverlay, the speculative typecheck fuse_check invokes when a resident workspace is live; timings are environment-dependent; runs in a dedicated process that never invokes MSBuildWorkspace."
+  ]
+}

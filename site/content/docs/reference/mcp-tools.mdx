@@ -149,13 +149,37 @@ The neighborhood falls back to same-folder cohesion where the graph is sparse, s
 
 ## fuse_refactor
 
-Compiler-executed solution-wide rename: renames a symbol and every reference through Roslyn's rename engine and returns the change as a staged diff, never touching the working tree. Because Roslyn drives it, a same-named but unrelated symbol (a local, a different type) is not renamed, which a textual find-and-replace cannot guarantee. It answers only when the whole solution loads cleanly and abstains otherwise, because a partial rename is worse than none. Review the diff and re-check with `fuse_check` before applying; a rename that crosses a boundary Roslyn does not see (an identifier in a string, a reflection call) surfaces there rather than as a silently committed bug. The first cut supports rename; change-signature is future work.
+Compiler-executed, verify-gated refactors returned as a staged diff, never touching the working tree. Select the operation with `operation`:
+
+- **`rename`** (default): renames a symbol and every reference through Roslyn's rename engine. Because Roslyn drives it, a same-named but unrelated symbol (a local, a different type) is not renamed, which a textual find-and-replace cannot guarantee.
+- **`add-parameter`**: adds a trailing parameter to a method and its whole override/interface family, threading an explicit argument (the `argument` value) into every call site.
+- **`add-cancellation-token`**: adds a `CancellationToken` parameter and threads an in-scope token into every call site that has one, listing token-less call sites as manual follow-ups so a human threads a real token there.
+
+The signature operations are verified, not just generated: after the rewrite, Fuse recompiles the solution and returns the diff **only when no new diagnostic is introduced**. A change the rewriter does not get exactly right (a call site it cannot resolve, a delegate conversion it breaks) makes the compile fail, so the tool abstains naming the offending sites rather than returning a mostly-right diff. Rename and the signature operations answer only when the whole solution loads cleanly and abstain otherwise, because a partial change is worse than none. Review the diff and re-check with `fuse_check` before applying.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
 | `path` | string | `.` | Workspace directory |
-| `symbol` | string | required | The simple name of the symbol to rename |
-| `newName` | string | required | The new name |
+| `symbol` | string | required | The symbol to rename, or the method name for a signature operation |
+| `newName` | string | required (rename) | The new name |
+| `operation` | string | `rename` | `rename`, `add-parameter`, or `add-cancellation-token` |
+| `containingType` | string | null | The declaring type's simple name, to disambiguate a method shared across types |
+| `parameterType` | string | required (add-parameter) | The new parameter's type, as written in source |
+| `parameterName` | string | required (add-parameter) | The new parameter's name (defaults to `cancellationToken` for add-cancellation-token) |
+| `argument` | string | `default` | The argument expression added at every call site (add-parameter) |
+
+### Abstention classes (change-signature)
+
+The signature operations refuse rather than risk a wrong change in these shapes:
+
+| Class | Why it abstains |
+|-------|-----------------|
+| `params` tail | A trailing parameter after a `params` array changes call binding; refused by a pre-check. |
+| Ambiguous method | The name matches more than one method (an overload set, or the same name across types); pass `containingType` to disambiguate. |
+| Method-group / delegate conversion | The method is used as a delegate (`Func<...> f = obj.M;`); adding a parameter breaks the conversion, caught by the recompile gate. |
+| Any residual compile error | Any call site or declaration the rewriter did not update correctly; the recompile gate names it and abstains. |
+
+Positional reorder and remove-parameter are not yet shipped (a positional reorder with same-typed parameters is a silent semantic change, so it is gated to named-argument call sites only); they are tracked as follow-up work.
 
 ## fuse_check
 

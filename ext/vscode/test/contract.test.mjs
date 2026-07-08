@@ -19,7 +19,7 @@ function assertKeys(obj, keys, label) {
 test("handshake shape", () => {
   assertKeys(fixtures.handshake, ["hostVersion", "protocolVersion", "sessionToken"], "handshake");
   assert.equal(typeof fixtures.handshake.protocolVersion, "number");
-  assert.equal(fixtures.handshake.protocolVersion, 3); // must match PROTOCOL_VERSION in protocol.ts
+  assert.equal(fixtures.handshake.protocolVersion, 4); // must match PROTOCOL_VERSION in protocol.ts
   assert.equal(typeof fixtures.handshake.sessionToken, "string");
   assert.ok(fixtures.handshake.sessionToken.length > 0);
 });
@@ -63,6 +63,13 @@ test("explain shape", () => {
   assertKeys(fixtures.explain.files[0], ["path", "role", "tier", "score"], "explain file");
 });
 
+test("check delta shape", () => {
+  assertKeys(fixtures.check, ["resident", "introduced", "resolved"], "check");
+  assert.equal(typeof fixtures.check.resident, "boolean");
+  assertKeys(fixtures.check.introduced[0], ["id", "severity", "message", "path", "line"], "check diagnostic");
+  assertKeys(fixtures.check.resolved[0], ["id", "severity", "message", "path", "line"], "check diagnostic");
+});
+
 test("authenticated RPC methods pass sessionToken first", () => {
   const authenticated = [
     "fuse/stats",
@@ -71,6 +78,7 @@ test("authenticated RPC methods pass sessionToken first", () => {
     "fuse/scope",
     "fuse/diagnostics",
     "fuse/explain",
+    "fuse/check",
     "fuse/shutdown",
   ];
   for (const method of authenticated) {

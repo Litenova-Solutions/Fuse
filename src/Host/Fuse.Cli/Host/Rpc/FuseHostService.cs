@@ -32,7 +32,12 @@ public sealed class FuseHostService : IDisposable
     ///     The wire protocol version. Bumped on any breaking change to a DTO or method shape so a stale extension
     ///     and a newer host detect the mismatch at handshake instead of failing later on a serialization error.
     /// </summary>
-    public const int ProtocolVersion = 3;
+    /// <remarks>
+    ///     Version 4 (v4.1 S3): the <c>fuse/check</c> ambient-verification method and its <c>CheckDeltaDto</c> /
+    ///     <c>CheckDiagnosticDto</c> shapes were added. The extension's <c>protocol.ts</c> PROTOCOL_VERSION mirrors
+    ///     this in the same change, per the host RPC change-safety invariant.
+    /// </remarks>
+    public const int ProtocolVersion = 4;
 
     private const int ListLimit = 100_000;
 
@@ -470,6 +475,51 @@ public sealed class FuseHostService : IDisposable
         DeleteTrackedPayloads();
         _shutdownRequested.TrySetResult();
     }
+
+    /// <summary>
+    ///     Returns the diagnostics a check session's edits introduced or resolved since its baseline (S3 ambient
+    ///     verification): the delta the harness hook renders after an edit and the gate blocks a red turn on.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="session">The opaque check-session id whose baseline the delta is measured against.</param>
+    /// <returns>
+    ///     The introduced and resolved diagnostics. When no resident workspace serves the root,
+    ///     <see cref="CheckDeltaDto.Resident" /> is false and both lists are empty, so a hook exits silently rather
+    ///     than blocking editing (delta mode never runs a build). The first call for a session establishes its
+    ///     baseline and returns an empty delta.
+    /// </returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    [JsonRpcMethod("fuse/check")]
+    public async Task<CheckDeltaDto> CheckDeltaAsync(string sessionToken, string root, string session)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        var resolved = Path.GetFullPath(root);
+
+        // The current whole-state diagnostics come from a live resident workspace (the same process-wide provider
+        // the MCP fuse_check delta mode reads); delta mode must not run a build, so with no resident workspace this
+        // returns an empty, non-resident delta and the hook stays silent.
+        var current = Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.TryGetCurrentDiagnostics(resolved);
+        if (current is null)
+            return new CheckDeltaDto(false, [], []);
+
+        await using var store = await OpenStoreAsync(resolved);
+        var baseline = await store.GetCheckSessionBaselineAsync(session, CancellationToken.None);
+        if (baseline is null)
+        {
+            await store.SaveCheckSessionBaselineAsync(session, resolved, current, CancellationToken.None);
+            return new CheckDeltaDto(true, [], []);
+        }
+
+        var delta = DiagnosticDelta.Compute(baseline.Diagnostics, current);
+        return new CheckDeltaDto(
+            true,
+            delta.Introduced.Select(ToCheckDiagnosticDto).ToList(),
+            delta.Resolved.Select(ToCheckDiagnosticDto).ToList());
+    }
+
+    private static CheckDiagnosticDto ToCheckDiagnosticDto(CheckDiagnostic diagnostic) =>
+        new(diagnostic.Id, diagnostic.Severity, diagnostic.Message, diagnostic.FilePath, diagnostic.Line);
 
     /// <summary>
     ///     Deletes any scope payload files written during this host session. Called from <c>fuse/shutdown</c> and

@@ -15,6 +15,10 @@ namespace Fuse.Cli.Tests;
 // Drives the host service over a real JSON-RPC connection (an in-memory duplex pipe pair, the same formatter and
 // header framing the named-pipe transport uses) to validate the wire wiring end to end: a client calls the
 // fuse/* methods by name and gets back deserialized DTOs, and fuse/shutdown completes the host's shutdown task.
+//
+// The fuse/check RPC reads the process-wide FuseTools.ResidentWorkspaces static, so this class joins the
+// collection that serializes the tests mutating it, avoiding a parallel race on the shared static.
+[Collection("FuseToolsResidentProvider")]
 public sealed class FuseHostServiceRpcTests : IDisposable
 {
     private readonly ServiceProvider _provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
@@ -458,5 +462,31 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
     }
 
-    public void Dispose() => _provider.Dispose();
+    [Fact]
+    public async Task Check_WithNoResidentWorkspace_ReturnsNonResidentEmptyDelta()
+    {
+        // Delta mode must not run a build, so with no resident workspace the RPC returns a non-resident empty
+        // delta and an ambient-verification hook stays silent rather than blocking editing.
+        Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
+        var source = NewFixture(("Widget.cs", "public class Widget { public void Run() { } }"));
+        try
+        {
+            var service = NewService();
+            var delta = await service.CheckDeltaAsync(SessionToken(service), source, "session-1");
+
+            Assert.False(delta.Resident);
+            Assert.Empty(delta.Introduced);
+            Assert.Empty(delta.Resolved);
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
+    public void Dispose()
+    {
+        Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
+        _provider.Dispose();
+    }
 }

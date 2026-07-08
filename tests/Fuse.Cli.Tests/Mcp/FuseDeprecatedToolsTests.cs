@@ -11,12 +11,16 @@ public sealed class FuseDeprecatedToolsTests
     {
         Assert.Contains("fuse_workspace", FuseDeprecatedTools.FuseToc());
         Assert.Contains("fuse_review", FuseDeprecatedTools.FuseChanges());
-        Assert.Contains("fuse_localize", FuseDeprecatedTools.FuseSearch());
+        Assert.Contains("fuse_find", FuseDeprecatedTools.FuseSearch());
         Assert.Contains("fuse_context", FuseDeprecatedTools.FuseFocus());
-        Assert.Contains("fuse_localize", FuseDeprecatedTools.FuseAsk());
+        Assert.Contains("fuse_find", FuseDeprecatedTools.FuseAsk());
         // The U1 folds resolve to their union tool.
         Assert.Contains("fuse_workspace", FuseDeprecatedTools.FuseIndex());
         Assert.Contains("fuse_workspace", FuseDeprecatedTools.FuseMap());
+        Assert.Contains("fuse_find", FuseDeprecatedTools.FuseLocalize());
+        Assert.Contains("fuse_find", FuseDeprecatedTools.FuseResolve());
+        Assert.Contains("fuse_find", FuseDeprecatedTools.FuseNeighbors());
+        Assert.Contains("fuse_find", FuseDeprecatedTools.FuseSignatures());
     }
 
     [Fact]

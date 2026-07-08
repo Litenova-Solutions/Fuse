@@ -41,18 +41,18 @@ public sealed class FuseDeprecatedTools
     /// <param name="query">Ignored. Accepted so a V2 call still binds.</param>
     /// <returns>Guidance naming the V3 replacement.</returns>
     [McpServerTool(Name = "fuse_search", ReadOnly = true)]
-    [Description("Deprecated: replaced in Fuse V3. Use fuse_localize to rank candidates, then fuse_context to read them.")]
+    [Description("Deprecated: replaced in Fuse V3. Use fuse_find with kind=task to rank candidates, then fuse_context to read them.")]
     public static string FuseSearch([Description("Ignored.")] string? path = null, [Description("Ignored.")] string? query = null) =>
-        Renamed("fuse_search", "fuse_localize", "ranked candidate files; follow with fuse_context to read the source bodies");
+        Renamed("fuse_search", "fuse_find", "ranked candidate files with kind=task; follow with fuse_context to read the source bodies");
 
     /// <summary>Deprecated V2 alias for <c>fuse_context</c> / <c>fuse_neighbors</c>.</summary>
     /// <param name="path">Ignored. Accepted so a V2 call still binds.</param>
     /// <param name="focus">Ignored. Accepted so a V2 call still binds.</param>
     /// <returns>Guidance naming the V3 replacement.</returns>
     [McpServerTool(Name = "fuse_focus", ReadOnly = true)]
-    [Description("Deprecated: replaced in Fuse V3. Use fuse_context to emit source for a seed, or fuse_neighbors to explore its graph.")]
+    [Description("Deprecated: replaced in Fuse V3. Use fuse_context to emit source for a seed, or fuse_find with kind=neighbors to explore its graph.")]
     public static string FuseFocus([Description("Ignored.")] string? path = null, [Description("Ignored.")] string? focus = null) =>
-        Renamed("fuse_focus", "fuse_context", "scoped source for a seed; use fuse_neighbors to walk its dependency neighborhood");
+        Renamed("fuse_focus", "fuse_context", "scoped source for a seed; use fuse_find with kind=neighbors to walk its dependency neighborhood");
 
     /// <summary>Deprecated V2 alias for <c>fuse_review</c>.</summary>
     /// <param name="path">Ignored. Accepted so a V2 call still binds.</param>
@@ -68,9 +68,9 @@ public sealed class FuseDeprecatedTools
     /// <param name="task">Ignored. Accepted so a V2 call still binds.</param>
     /// <returns>Guidance naming the V3 replacement.</returns>
     [McpServerTool(Name = "fuse_ask", ReadOnly = true)]
-    [Description("Deprecated: replaced in Fuse V3. Use fuse_localize for a task, then fuse_context to pack the selected seeds to a budget.")]
+    [Description("Deprecated: replaced in Fuse V3. Use fuse_find with kind=task, then fuse_context to pack the selected seeds to a budget.")]
     public static string FuseAsk([Description("Ignored.")] string? path = null, [Description("Ignored.")] string? task = null) =>
-        Renamed("fuse_ask", "fuse_localize", "ranked candidates for a task; follow with fuse_context for budget-packed source");
+        Renamed("fuse_ask", "fuse_find", "ranked candidates for a task with kind=task; follow with fuse_context for budget-packed source");
 
     /// <summary>Deprecated V2 alias for <c>fuse_context</c>.</summary>
     /// <param name="path">Ignored. Accepted so a V2 call still binds.</param>
@@ -103,6 +103,39 @@ public sealed class FuseDeprecatedTools
     [Description("Deprecated: folded into fuse_workspace. Call fuse_workspace with action=map.")]
     public static string FuseMap([Description("Ignored.")] string? path = null) =>
         Renamed("fuse_map", "fuse_workspace", "the symbols/routes/counts map with action=map");
+
+    /// <summary>Deprecated: folded into <c>fuse_find</c> (U1). Use <c>fuse_find</c> with <c>kind=task</c>.</summary>
+    /// <param name="path">Ignored. Accepted so a prior call still binds.</param>
+    /// <param name="task">Ignored. Accepted so a prior call still binds.</param>
+    /// <returns>Guidance naming the replacement.</returns>
+    [McpServerTool(Name = "fuse_localize", ReadOnly = true)]
+    [Description("Deprecated: folded into fuse_find. Call fuse_find with kind=task.")]
+    public static string FuseLocalize([Description("Ignored.")] string? path = null, [Description("Ignored.")] string? task = null) =>
+        Renamed("fuse_localize", "fuse_find", "rank candidate files for a task with kind=task");
+
+    /// <summary>Deprecated: folded into <c>fuse_find</c> (U1). Use <c>fuse_find</c> with a wiring kind.</summary>
+    /// <param name="path">Ignored. Accepted so a prior call still binds.</param>
+    /// <returns>Guidance naming the replacement.</returns>
+    [McpServerTool(Name = "fuse_resolve", ReadOnly = true)]
+    [Description("Deprecated: folded into fuse_find. Call fuse_find with kind=service, request, route, or config.")]
+    public static string FuseResolve([Description("Ignored.")] string? path = null) =>
+        Renamed("fuse_resolve", "fuse_find", "resolve wiring with kind=service, request, route, or config");
+
+    /// <summary>Deprecated: folded into <c>fuse_find</c> (U1). Use <c>fuse_find</c> with <c>kind=neighbors</c>.</summary>
+    /// <param name="path">Ignored. Accepted so a prior call still binds.</param>
+    /// <returns>Guidance naming the replacement.</returns>
+    [McpServerTool(Name = "fuse_neighbors", ReadOnly = true)]
+    [Description("Deprecated: folded into fuse_find. Call fuse_find with kind=neighbors.")]
+    public static string FuseNeighbors([Description("Ignored.")] string? path = null) =>
+        Renamed("fuse_neighbors", "fuse_find", "the callers and implementers of a symbol with kind=neighbors");
+
+    /// <summary>Deprecated: folded into <c>fuse_find</c> (U1). Use <c>fuse_find</c> with <c>kind=signatures</c>.</summary>
+    /// <param name="path">Ignored. Accepted so a prior call still binds.</param>
+    /// <returns>Guidance naming the replacement.</returns>
+    [McpServerTool(Name = "fuse_signatures", ReadOnly = true)]
+    [Description("Deprecated: folded into fuse_find. Call fuse_find with kind=signatures.")]
+    public static string FuseSignatures([Description("Ignored.")] string? path = null) =>
+        Renamed("fuse_signatures", "fuse_find", "a symbol's exact signature with kind=signatures");
 
     // The single message shape for every retired name, so an upgraded server answers a stale call with a
     // clear pointer to the current tool rather than a bare Unknown tool error.

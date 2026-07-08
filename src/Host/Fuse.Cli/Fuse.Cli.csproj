@@ -42,6 +42,7 @@
         <ProjectReference Include="..\..\Core\Fuse.Fusion\Fuse.Fusion.csproj" />
         <ProjectReference Include="..\..\Core\Fuse.Indexing\Fuse.Indexing.csproj" />
         <ProjectReference Include="..\..\Core\Fuse.Semantics\Fuse.Semantics.csproj" />
+        <ProjectReference Include="..\..\Core\Fuse.Workspace\Fuse.Workspace.csproj" />
         <ProjectReference Include="..\..\Core\Fuse.Retrieval\Fuse.Retrieval.csproj" />
         <ProjectReference Include="..\..\Core\Fuse.Context\Fuse.Context.csproj" />
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp\Fuse.Plugins.Languages.CSharp.csproj" />

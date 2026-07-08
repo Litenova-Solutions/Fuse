@@ -228,7 +228,16 @@ public sealed partial class FuseTools
     // per-read reconcile, so the graph may lag the working tree). Store-backed oracle tools prepend it; the
     // compiler tools (fuse_check, fuse_refactor) carry their own explicit "cannot verify/rename" abstention,
     // which is the same signal at higher resolution.
-    internal static async Task<string> OracleAvailabilityHeaderAsync(WorkspaceIndexStore store, CancellationToken cancellationToken)
+    /// <summary>
+    ///     The resident-workspace seam (S1, Decision D8): the availability header consults this to say whether a
+    ///     read is served by a live resident workspace or by the store. The default reports no resident workspace,
+    ///     so a process without a wired resident engine answers store-backed exactly as before; the host that
+    ///     holds a resident workspace replaces it with a provider over its live state.
+    /// </summary>
+    public static Fuse.Workspace.IResidentWorkspaceProvider ResidentWorkspaces { get; set; } =
+        Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
+
+    internal static async Task<string> OracleAvailabilityHeaderAsync(WorkspaceIndexStore store, string root, CancellationToken cancellationToken)
     {
         var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
         var staleRaw = await store.GetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, cancellationToken);
@@ -240,10 +249,15 @@ public sealed partial class FuseTools
         var verifyGrade = tier1Available
             ? "verify serves oracle-grade"
             : "verify serves build-grade (fuse_check runs a scoped dotnet build)";
+        // Name which truth answered (S1/D8): a live resident workspace (current as of its stamp) or the store.
+        var resident = ResidentWorkspaces.DescribeResident(root);
+        var residentClause = resident is null
+            ? "store-backed"
+            : $"resident ({resident.ProjectCount} project(s), current as of {resident.AsOf})";
         var freshness = int.TryParse(staleRaw, out var stale) && stale > 0
             ? $"{stale} known file(s) changed since index, results may lag the working tree"
             : "up to date";
-        return $"availability: index mode {mode}; tier-1 build capture {tier1}; {verifyGrade}; {freshness}.";
+        return $"availability: index mode {mode}; tier-1 build capture {tier1}; {verifyGrade}; workspace {residentClause}; {freshness}.";
     }
 
     // Runs the semantic upgrade in the background on its own store handle (the foreground store is disposed when

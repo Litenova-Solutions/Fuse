@@ -13,6 +13,7 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
 {
     private readonly string _databasePath =
         Path.Combine(Path.GetTempPath(), "fuse-avail-header-tests", Guid.NewGuid().ToString("N"), "fuse.db");
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "fuse-avail-header-root", Guid.NewGuid().ToString("N"));
     private WorkspaceIndexStore _store = null!;
 
     public async Task InitializeAsync()
@@ -27,7 +28,7 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
         await _store.SetMetaAsync("index_mode", "semantic", CancellationToken.None);
         await _store.SetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, "0", CancellationToken.None);
 
-        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, CancellationToken.None);
+        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, _root, CancellationToken.None);
 
         Assert.Contains("index mode semantic", header);
         Assert.Contains("up to date", header);
@@ -40,7 +41,7 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
         await _store.SetMetaAsync("index_mode", "partial", CancellationToken.None);
         await _store.SetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, "7", CancellationToken.None);
 
-        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, CancellationToken.None);
+        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, _root, CancellationToken.None);
 
         Assert.Contains("index mode partial", header);
         Assert.Contains("7 known file(s) changed", header);
@@ -50,11 +51,40 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
     [Fact]
     public async Task Header_reports_unknown_mode_when_meta_absent()
     {
-        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, CancellationToken.None);
+        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, _root, CancellationToken.None);
 
         Assert.Contains("index mode unknown", header);
         // Tier-1 build capture is reported either way; without FUSE_BUILD_CAPTURE_WORKER it is not configured.
         Assert.Contains("tier-1 build capture", header);
+    }
+
+    [Fact]
+    public async Task Header_reports_store_backed_by_default_and_resident_when_a_workspace_is_live()
+    {
+        await _store.SetMetaAsync("index_mode", "semantic", CancellationToken.None);
+
+        // Default seam: no resident workspace, so the header names the store as the truth source (S1/D8).
+        var storeBacked = await FuseTools.OracleAvailabilityHeaderAsync(_store, _root, CancellationToken.None);
+        Assert.Contains("workspace store-backed", storeBacked);
+
+        // With a resident workspace wired for this root, the header names it resident with its stamp.
+        FuseTools.ResidentWorkspaces = new StubResidentProvider(_root, new Fuse.Workspace.ResidentStatus(3, "2026-07-08T00:00:00Z"));
+        try
+        {
+            var resident = await FuseTools.OracleAvailabilityHeaderAsync(_store, _root, CancellationToken.None);
+            Assert.Contains("workspace resident (3 project(s), current as of 2026-07-08T00:00:00Z)", resident);
+        }
+        finally
+        {
+            FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
+        }
+    }
+
+    private sealed class StubResidentProvider(string root, Fuse.Workspace.ResidentStatus status)
+        : Fuse.Workspace.IResidentWorkspaceProvider
+    {
+        public Fuse.Workspace.ResidentStatus? DescribeResident(string queried) =>
+            string.Equals(queried, root, StringComparison.OrdinalIgnoreCase) ? status : null;
     }
 
     [Fact]
@@ -65,7 +95,7 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
         // never reads the missing oracle as "cannot verify".
         await _store.SetMetaAsync("index_mode", "syntax", CancellationToken.None);
 
-        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, CancellationToken.None);
+        var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, _root, CancellationToken.None);
 
         Assert.Contains("tier-1 build capture not configured", header);
         Assert.Contains("verify serves build-grade", header);

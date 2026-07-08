@@ -88,7 +88,7 @@ public sealed partial class FuseTools
         var matches = await store.GetSignaturesByNamesAsync(names, limitPerName, cancellationToken);
 
         var builder = new StringBuilder();
-        builder.AppendLine(await OracleAvailabilityHeaderAsync(store, cancellationToken));
+        builder.AppendLine(await OracleAvailabilityHeaderAsync(store, Path.GetFullPath(path), cancellationToken));
         foreach (var requested in names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()).Distinct(StringComparer.Ordinal))
         {
             var forName = matches
@@ -206,7 +206,7 @@ public sealed partial class FuseTools
         var impact = await explorer.CallersAndImplementersAsync(symbol, limit, cancellationToken);
 
         var builder = new StringBuilder();
-        builder.AppendLine(await OracleAvailabilityHeaderAsync(store, cancellationToken));
+        builder.AppendLine(await OracleAvailabilityHeaderAsync(store, Path.GetFullPath(path), cancellationToken));
         builder.AppendLine($"impact of {symbol}: {impact.Count} impacted (index mode {mode})");
         foreach (var item in impact)
         {

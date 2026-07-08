@@ -4,7 +4,7 @@ Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-com
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
 bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `32f4450`, the S1
 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
-C1 knowledge base at a later commit this run).
+C1 engine sub-steps at `a0b277f`/`065c591`/`f5739be`).
 
 ## Current state (latest checkpoint)
 
@@ -54,15 +54,23 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
   overlay check, apply edit, remove document, diagnostics baseline; `Fuse.Workspace`, 4 tests), all
   additive/unreferenced. Remaining: watcher + `IWorkspaceTruth` seam + serve-host wiring + read-tool
   routing + changeset-overlay unification + `performance.json` latency/RSS gate.
-- **C1 fuse up** `[>]`: two sub-steps landed, both non-user-facing and gate-green - `RemediationKnowledgeBase`
-  (JSON-data KB + source-gen loader + per-signature matcher; 7 tests) and `EnvironmentRemediationPlanner`
-  (classify-and-report core: per-project remedy classification, remediable/unfixable partition, workable-subset
-  line; 4 tests). Remaining: the user-facing `fuse up` command that APPLIES remedies, the report to workspace
-  status, the KB-generated troubleshooting page, and the 17-repo `up-report.json` gate. Environmental note for
-  that gate: the goal forbids installing anything, so the SDK-install (NETSDK1045) and workload-install
-  (MSB4018) remedies cannot be exercised here; only the overlay-NuGet-config remedy (Scrutor NU1507, which
-  installs nothing) is runnable, so the gate may land on the Fallback (record "1 of 6 flips" honestly) unless
+- **C1 fuse up** `[>]`: three engine sub-steps landed, all non-user-facing and gate-green -
+  `RemediationKnowledgeBase` (JSON-data KB + source-gen loader + per-signature matcher; 7 tests),
+  `EnvironmentRemediationPlanner` (classify-and-report core: per-project remedy classification,
+  remediable/unfixable partition, workable-subset line; 4 tests), and `NuGetOverlayConfig` (the NU1507
+  overlay-config remedy generator, installs nothing, never writes the repo; 4 tests). Remaining (shipped
+  integration for a dedicated session): the user-facing `fuse up` command that ties these together and APPLIES
+  remedies, which requires threading the overlay `--configfile` through the build/restore pipeline; the report
+  to workspace status; the KB-generated troubleshooting page with a key-diff test; and the 17-repo
+  `up-report.json` gate. Environmental note: the goal forbids installing anything, so the SDK-install
+  (NETSDK1045) and workload-install (MSB4018) remedies cannot be exercised here; only the NU1507 overlay
+  (installs nothing) is runnable, so the gate may land on the Fallback (record "1 of 6 flips" honestly) unless
   the provisioned environment allows installs.
+
+Both open lanes are now at their irreducible shipped-substrate integration step (S1: extend the path-less
+watcher and wire the resident engine into `mcp serve`/`host`; C1: the `fuse up` command plus overlay-config
+pipeline threading). All safe, additive, tested engine foundations for both are landed and pushed; the
+integration is the dedicated-session work per the LARGE ITEMS "do not rush a shipped-path change" directive.
 
 The three standing gates (`dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release
 --no-build`, `dotnet format Fuse.slnx --verify-no-changes`) were green on every item that touched

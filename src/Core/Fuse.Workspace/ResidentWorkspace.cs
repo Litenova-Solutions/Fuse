@@ -146,6 +146,56 @@ public sealed class ResidentWorkspace : IDisposable
         return false;
     }
 
+    /// <summary>
+    ///     Removes a deleted file's syntax tree from the resident state, so later queries no longer see it (the
+    ///     deletion half of the watcher's incremental update, S1 step 3). Never writes the tree.
+    /// </summary>
+    /// <param name="relativeFilePath">The repo-relative path of the deleted file (matched by path suffix).</param>
+    /// <param name="cancellationToken">A token to cancel the update.</param>
+    /// <returns>True when the file was found in a held compilation and removed; false otherwise.</returns>
+    public bool RemoveDocument(string relativeFilePath, CancellationToken cancellationToken)
+    {
+        var normalized = relativeFilePath.Replace('\\', '/');
+        for (var i = 0; i < _projects.Count; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var compilation = _projects[i].Compilation;
+            var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
+                t.FilePath.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
+            if (tree is null)
+                continue;
+
+            _projects[i] = _projects[i] with { Compilation = compilation.RemoveSyntaxTrees(tree) };
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    ///     The error and warning diagnostics across every held compilation as of now. This is the baseline a delta
+    ///     check compares against to attribute newly introduced or resolved diagnostics to an edit (S1 step 3, the
+    ///     substrate for S2's delta mode). It reports the whole resident state; a caller scoping to a file or cone
+    ///     filters the result.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the computation.</param>
+    /// <returns>The error and warning diagnostics, one entry per diagnostic, across all held compilations.</returns>
+    public IReadOnlyList<CheckDiagnostic> GetDiagnostics(CancellationToken cancellationToken)
+    {
+        var results = new List<CheckDiagnostic>();
+        foreach (var project in _projects)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var diagnostic in project.Compilation.GetDiagnostics(cancellationToken))
+            {
+                if (diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+                    results.Add(ToCheckDiagnostic(diagnostic));
+            }
+        }
+
+        return results;
+    }
+
     private static CheckDiagnostic ToCheckDiagnostic(Diagnostic diagnostic)
     {
         var inSource = diagnostic.Location.IsInSource;

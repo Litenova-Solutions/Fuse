@@ -27,12 +27,17 @@ This session completed two fully-gated items, the entire mechanism of a third, a
   Data-backed design decision: analyzers ON for verify-class calls (an explicit verify tolerates ~900 ms for CI
   parity), OFF by default for delta mode (would break the sub-1000 ms hot path), header names the setting.
 
-Next action (top-to-bottom): the S4 implementation - capture AnalyzerOptions for editorconfig-correct severities,
-merge WithAnalyzers into CheckOverlay/GetDiagnostics and BuildGradeChecker behind the per-call control, thread it
-through fuse_check + the header, and the id-set-equality fixture test. Then T1, H2; C1 remains `[>]` (corpus-gated
-apply); S3 has one maintainer-gated timing deviation. All work committed and pushed at HEAD `ff99396`; every commit
-gate-green (build + all 16 .NET assemblies + dotnet format + extension contract 9/9 + tsc). Roughly 60 gate-green
-commits this session on top of the prior run.
+S4 building blocks and engine core are now landed too: ResidentProject carries the captured analyzers and the
+editorconfig-mapped AnalyzerOptions, and ResidentAnalyzerRunner runs them and returns the error/warning diagnostics
+scoped to a document (2 tests with an in-memory compilation and an inline analyzer, no capture needed).
+
+Next action (top-to-bottom): finish the S4 shipped-path integration - an async analyzer-aware
+CheckOverlay/GetDiagnostics that merges ResidentAnalyzerRunner output with the compiler diagnostics, threaded
+through IResidentWorkspaceProvider + fuse_check (default on for verify, off for delta) + the header, mirrored in
+BuildGradeChecker, with a binlog-with-analyzer id-set-equality fixture test and the trust-model docs. Then T1, H2;
+C1 remains `[>]` (corpus-gated apply); S3 has one maintainer-gated timing deviation. All work committed and pushed
+at HEAD `a8c1f5e`; every commit gate-green (build + all 16 .NET assemblies + dotnet format + extension contract
+9/9 + tsc). Roughly 66 gate-green commits this session on top of the prior run.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

@@ -54,13 +54,16 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
   5 primitives; the `IResidentWorkspaceProvider` seam wired into the availability header AND `fuse_check`
   resident-first routing, behind a null default) and step 3's path-reporting half done (the watcher now
   coalesces raw filesystem events to the net change per path via `WorkspaceFileChangeSet` and raises an additive
-  `BatchChanged` event; 6 accumulator tests). Remaining is one activation slice: the serve/host handler that
-  subscribes to `BatchChanged`, drives `ResidentWorkspace.ApplyEdit`/`RemoveDocument` (stamping stale above the
-  300-file storm threshold), constructs the `ResidentWorkspace`, and sets a real provider. That construction
-  turns on the co-activation decision (in-process `MSBuildWorkspace` from `fuse index`/`doctor` versus
-  `Basic.CompilerLog` from the resident path; MSBuildLocator is process-global and order-sensitive, so it needs
-  a separate process, not the shared test host), then read-tool routing for the remaining tools,
-  changeset-overlay unification, and the `performance.json` latency/RSS gate.
+  `BatchChanged` event; 6 accumulator tests), and the batch-apply glue done (`ResidentWorkspace.AddDocument`
+  plus `ResidentWorkspaceUpdater`, which applies a watcher batch to a resident workspace - edit/add
+  created-or-changed .cs, remove deleted, skip the rest, never writing the tree; 2 tests). So the ENTIRE S1
+  mechanism is built and tested except one slice: the serve/host wiring that constructs a `ResidentWorkspace` on
+  start, subscribes `watcher.BatchChanged` to `ResidentWorkspaceUpdater.Apply` (stamping stale above the 300-file
+  storm threshold via `WorkspaceFileChangeSet.Count`), and sets a non-null provider. That construction turns on
+  the co-activation decision (in-process `MSBuildWorkspace` from `fuse index`/`doctor` versus `Basic.CompilerLog`
+  from the resident path; MSBuildLocator is process-global and order-sensitive, so it needs a separate process,
+  not the shared test host), after which read-tool routing for the remaining tools, changeset-overlay
+  unification, and the `performance.json` latency/RSS gate close S1.
 - **C1 fuse up** `[>]`: five sub-steps landed gate-green, including a working user-facing command -
   `RemediationKnowledgeBase` (JSON-data KB + matcher; 7 tests), `EnvironmentRemediationPlanner`
   (classify-and-report core; 4 tests), `NuGetOverlayConfig` (NU1507 overlay generator, installs nothing, never

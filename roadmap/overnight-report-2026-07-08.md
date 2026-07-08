@@ -4,9 +4,9 @@ Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-com
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
 bumps, or publishing. Tree is green and pushed at HEAD `b1e28b7`.
 
-## Session tally: T2 done, S2 done, S3 mechanism complete (one documented gate deviation)
+## Session tally: T2 done, S2 done, S3 mechanism complete, S4 investigation done
 
-This session completed two fully-gated items and the entire mechanism of a third:
+This session completed two fully-gated items, the entire mechanism of a third, and the investigation of a fourth:
 - **T2 DONE** (gate PASS): public API delta on fuse_review + fuse_impact; 10/10 corpus adjudication.
 - **S2 DONE** (gate PASS): fuse_check delta mode, persisted sessions, repair packets v2; delta-mode P95 643.6 ms.
 - **S3 mechanism DONE** (A-D built, one documented deviation): fuse/check host RPC + protocol bump to v4 (both
@@ -20,9 +20,18 @@ This session completed two fully-gated items and the entire mechanism of a third
   (accept the managed cold-start floor, or fund an AOT/R2R hook binary as a named follow-up) - prepared, not
   self-approved.
 
-Next eligible (top-to-bottom): S4 (analyzer/nullable parity in check - a fresh M-sized item, preconditions first),
-then T1, H2; C1 remains `[>]` (corpus-gated apply). All work committed and pushed at HEAD `64e7c95`; every commit
-gate-green (build + all 16 .NET assemblies + dotnet format + extension contract 9/9 + tsc). Roughly 55 gate-green
+- **S4 investigation DONE** (`[>]`, implementation next): both preconditions answered with numbers. The rehydrated
+  compilation carries the capture's analyzers (CompilationData.GetAnalyzers; NodaTime rehydrated 284), now exposed
+  on ResidentProject (additive). Analyzer-cost spike (284 analyzers, held compilation): P50 871.8 ms / P95 886.9
+  ms, versus compiler-only delta-check 31 ms and S2 delta-mode P50 204 / P95 699 ms (resident-latency.json).
+  Data-backed design decision: analyzers ON for verify-class calls (an explicit verify tolerates ~900 ms for CI
+  parity), OFF by default for delta mode (would break the sub-1000 ms hot path), header names the setting.
+
+Next action (top-to-bottom): the S4 implementation - capture AnalyzerOptions for editorconfig-correct severities,
+merge WithAnalyzers into CheckOverlay/GetDiagnostics and BuildGradeChecker behind the per-call control, thread it
+through fuse_check + the header, and the id-set-equality fixture test. Then T1, H2; C1 remains `[>]` (corpus-gated
+apply); S3 has one maintainer-gated timing deviation. All work committed and pushed at HEAD `ff99396`; every commit
+gate-green (build + all 16 .NET assemblies + dotnet format + extension contract 9/9 + tsc). Roughly 60 gate-green
 commits this session on top of the prior run.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded

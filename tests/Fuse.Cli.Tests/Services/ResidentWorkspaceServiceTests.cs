@@ -1,6 +1,10 @@
 using System.Diagnostics;
 using Fuse.Cli.Services;
+using Fuse.Cli.Tests;
+using Fuse.Indexing;
+using Fuse.Semantics;
 using Fuse.Workspace;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Fuse.Cli.Tests.Services;
@@ -59,6 +63,56 @@ public sealed class ResidentWorkspaceServiceTests
                 "namespace Sample; public sealed class Widget { public int Spin() => Helper.Base(); }", CancellationToken.None);
             Assert.NotNull(afterAdd);
             Assert.DoesNotContain(afterAdd!, d => d.Severity == "Error");
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task ProjectChangedAsync_makes_an_added_type_queryable_in_the_store()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-svc-proj-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        var databasePath = Path.Combine(work, ".fuse", "fuse.db");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            var root = Path.GetFullPath(work);
+            using var service = new ResidentWorkspaceService(root, ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None));
+
+            // Add Helper.cs on disk and to the resident state, then project the changed project into a store.
+            var helper = Path.Combine(work, "Helper.cs");
+            await File.WriteAllTextAsync(helper, "namespace Sample; public static class Helper { public static int Base() => 1; }");
+            service.ApplyBatch([new WorkspaceFileChange(FileChangeKind.Created, helper)], CancellationToken.None);
+
+            using var provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
+            var indexer = provider.GetRequiredService<SemanticIndexer>();
+            await using var store = new WorkspaceIndexStore(databasePath);
+            await store.InitializeAsync(CancellationToken.None);
+
+            var projected = await service.ProjectChangedAsync(indexer, store, [helper], CancellationToken.None);
+            Assert.True(projected >= 1);
+
+            var names = (await store.ListSymbolsAsync(500, CancellationToken.None)).Select(s => s.Name).ToHashSet();
+            Assert.Contains("Helper", names);
+            Assert.Contains("Widget", names);
+
+            Microsoft.Data.Sqlite.SqliteConnection.ClearPool(new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={databasePath}"));
         }
         finally
         {

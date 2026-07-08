@@ -1,0 +1,95 @@
+{
+  "suite": "testexec",
+  "description": "Suite T1: build-grade covering-test execution honesty and behavior-mutant kill rate.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 5,
+    "recall": 0.75,
+    "recallCiLow": 0.75,
+    "recallCiHigh": 0.75,
+    "precision": 1,
+    "f1": 0.75,
+    "medianTokens": 1804,
+    "meanTokens": 1804,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "clean",
+      "repo": "testexec",
+      "category": "clean",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 12468,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "behavior-flip-relational-1",
+      "repo": "testexec",
+      "category": "mutant",
+      "recall": 0,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 2011,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "behavior-negate-condition-2",
+      "repo": "testexec",
+      "category": "mutant",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 1801,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "behavior-flip-relational-3",
+      "repo": "testexec",
+      "category": "mutant",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 1804,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "behavior-negate-condition-4",
+      "repo": "testexec",
+      "category": "mutant",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 1746,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    }
+  ],
+  "notes": [
+    "Self-contained xunit fixture; runs the shipped build-grade covering-test runner (dotnet test --filter).",
+    "clean run: 4 test(s), 0 failed (false-red on a correct fixture must be 0), 12468 ms",
+    "behavior mutants: 4 generated, 3 killed (kill rate 75%); false green 0 by construction (the runner mirrors dotnet test)",
+    "per-run latency (build-grade): median 1804 ms over 5 run(s); the emit fast-path (sub-second, no build) is the named follow-up",
+    "selection-safety metric needs R5 covering edges (a semantic-indexed fixture) and is the named follow-up."
+  ]
+}

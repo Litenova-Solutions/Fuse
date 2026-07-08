@@ -50,16 +50,17 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
 
 ## In-progress items (gate-green sub-steps landed; items not yet complete)
 
-- **S1 resident workspace** `[>]`: step 1 (the full in-memory resident-engine surface: rehydrate-and-hold,
-  overlay check, apply edit, remove document, diagnostics baseline; `Fuse.Workspace`, 4 tests) and step 2 (the
-  `IResidentWorkspaceProvider` seam wired into the availability header AND `fuse_check` resident-first routing,
-  all behind a null default so behavior is preserved until a host wires a resident engine) are both landed
-  gate-green. Remaining: step 3 (the file watcher driving the resident updates) and the serve/host wiring that
-  constructs a `ResidentWorkspace` and sets a real provider - which is the co-activation-isolation decision
-  (in-process `MSBuildWorkspace` used by `fuse index`/`doctor` versus `Basic.CompilerLog` used by the resident
-  path; MSBuildLocator is process-global and order-sensitive, so this validation needs a separate process, not
-  the shared test host) - plus read-tool routing for the remaining tools, changeset-overlay unification, and
-  the `performance.json` latency/RSS gate.
+- **S1 resident workspace** `[>]`: steps 1-2 done (the in-memory resident-engine surface in `Fuse.Workspace`,
+  5 primitives; the `IResidentWorkspaceProvider` seam wired into the availability header AND `fuse_check`
+  resident-first routing, behind a null default) and step 3's path-reporting half done (the watcher now
+  coalesces raw filesystem events to the net change per path via `WorkspaceFileChangeSet` and raises an additive
+  `BatchChanged` event; 6 accumulator tests). Remaining is one activation slice: the serve/host handler that
+  subscribes to `BatchChanged`, drives `ResidentWorkspace.ApplyEdit`/`RemoveDocument` (stamping stale above the
+  300-file storm threshold), constructs the `ResidentWorkspace`, and sets a real provider. That construction
+  turns on the co-activation decision (in-process `MSBuildWorkspace` from `fuse index`/`doctor` versus
+  `Basic.CompilerLog` from the resident path; MSBuildLocator is process-global and order-sensitive, so it needs
+  a separate process, not the shared test host), then read-tool routing for the remaining tools,
+  changeset-overlay unification, and the `performance.json` latency/RSS gate.
 - **C1 fuse up** `[>]`: five sub-steps landed gate-green, including a working user-facing command -
   `RemediationKnowledgeBase` (JSON-data KB + matcher; 7 tests), `EnvironmentRemediationPlanner`
   (classify-and-report core; 4 tests), `NuGetOverlayConfig` (NU1507 overlay generator, installs nothing, never

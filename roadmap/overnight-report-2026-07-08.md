@@ -6,6 +6,19 @@ bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `
 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
 C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam at `38004d2`/`69cea59`).
 
+## S1: fully wired opt-in end to end (only end-to-end validation + G5 default-on remain)
+
+With `FUSE_RESIDENT=1`, the serve/host now: warms a resident workspace for the root in the background; on each
+watcher batch applies the edit to the held compilation and projects the changed cone into the store (so
+store-backed reads reflect the edit); and `OpenIndexedAsync` skips the N6 reconcile when resident so the watcher
+is the sole store writer (single-writer discipline). `fuse_check` and `fuse_changeset diagnose` answer
+resident-grade from the held compilation. All default-off/null-provider safe, so the shipped store-backed path
+is byte-identical. Smoke-tested: `FUSE_RESIDENT=1 fuse mcp serve` starts, warms, projects, and shuts down clean;
+the projection write path is unit-tested (an added type is queryable in the store after a batch). The remaining
+S1 work is end-to-end validation only: the issue-5 DI-edge acceptance test and the edge-freshness < 2 s
+measurement over JSON-RPC, a dedicated single-writer concurrency test, and default-on promotion via the G5
+daemon. The latency gate is already met (P95 31 ms).
+
 ## S1 engine and glue: COMPLETE and tested (only the single-writer serve wiring remains)
 
 Every S1 engine and glue piece is now built and tested: the resident engine (`Fuse.Workspace`), the watcher

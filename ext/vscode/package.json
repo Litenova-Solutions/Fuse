@@ -45,6 +45,10 @@
         {
           "id": "fuse.explainer",
           "name": "Explain"
+        },
+        {
+          "id": "fuse.sessions",
+          "name": "Agent Sessions"
         }
       ]
     },
@@ -76,9 +80,21 @@
       {
         "command": "fuse.explainScope",
         "title": "Fuse: Explain Scope"
+      },
+      {
+        "command": "fuse.refreshSessions",
+        "title": "Fuse: Refresh Agent Sessions",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "fuse.refreshSessions",
+          "when": "view == fuse.sessions",
+          "group": "navigation"
+        }
+      ],
       "editor/context": [
         {
           "command": "fuse.focusHere",
@@ -119,7 +135,7 @@
     "lint": "eslint src --ext ts",
     "pretest": "npm run build && tsc -p ./ --noEmit && tsc -p tsconfig.webview.json --noEmit",
     "typecheck": "tsc -p ./ --noEmit && tsc -p tsconfig.webview.json --noEmit",
-    "test:contract": "node --test ./test/contract.test.mjs",
+    "test:contract": "node --test ./test/contract.test.mjs ./test/sessionModel.test.mjs",
     "test": "node ./dist/test/runTest.js",
     "package": "vsce package --no-dependencies"
   },

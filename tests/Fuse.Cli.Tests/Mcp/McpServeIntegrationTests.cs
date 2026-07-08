@@ -88,6 +88,20 @@ public sealed class McpServeIntegrationTests
             cancellationToken: TestCancellation);
         Assert.Contains("fuse_workspace", TextContent(shim));
 
+        // The fuse_find union works over the wire: kind=symbol is exact lookup; the folded kinds route to the
+        // formerly-separate engines (kind=task ranks candidates, formerly fuse_localize).
+        var findSymbol = await client.CallToolAsync(
+            "fuse_find",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["query"] = "WidgetService", ["kind"] = "symbol" },
+            cancellationToken: TestCancellation);
+        Assert.Contains("WidgetService", TextContent(findSymbol));
+
+        var findTask = await client.CallToolAsync(
+            "fuse_find",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["query"] = "spin the widget", ["kind"] = "task" },
+            cancellationToken: TestCancellation);
+        Assert.Contains("localize", TextContent(findTask));
+
         // fuse_impact carries the T2 public-surface line: a public type is flagged as external-facing so the agent
         // knows a change to it is contract-relevant before editing.
         var impact = await client.CallToolAsync(

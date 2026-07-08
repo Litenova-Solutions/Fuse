@@ -252,11 +252,19 @@ public static class PublicSurfaceExtractor
             parts.Add(ns.Name.ToString());
 
         foreach (var outer in type.Ancestors().OfType<TypeDeclarationSyntax>().Reverse())
-            parts.Add(outer.Identifier.ValueText);
+            parts.Add(NameWithArity(outer.Identifier.ValueText, outer.TypeParameterList));
 
-        parts.Add(type.Identifier.ValueText);
+        parts.Add(NameWithArity(type.Identifier.ValueText, (type as TypeDeclarationSyntax)?.TypeParameterList));
         return string.Join(".", parts);
     }
+
+    // The type's name with a CLR-style arity marker (Foo`1 for Foo<T>) so a generic type and a same-named
+    // non-generic type are distinct identities and not collapsed into one - and so renaming a type parameter (T to
+    // TResult), which is not an API break, does not read as one. Arity, not the parameter names, is the identity.
+    private static string NameWithArity(string name, TypeParameterListSyntax? typeParameters) =>
+        typeParameters is null || typeParameters.Parameters.Count == 0
+            ? name
+            : $"{name}`{typeParameters.Parameters.Count}";
 
     private static string TypeKind(BaseTypeDeclarationSyntax type) => type switch
     {

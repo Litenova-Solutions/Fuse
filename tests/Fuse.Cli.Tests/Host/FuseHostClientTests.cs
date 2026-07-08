@@ -49,10 +49,14 @@ public sealed class FuseHostClientTests : IDisposable
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var service = NewService();
 
-        // Start a one-shot host endpoint for this root, matching how HostCommand serves.
-        var serverTask = ServeOneAsync(root, service, cts.Token);
+        // Start a one-shot host endpoint for this root, matching how HostCommand serves. Wait until the endpoint
+        // is listening before connecting, since a real host is always up before a hook fires (the client's
+        // existence pre-check is a point-in-time check, not a poll).
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var serverTask = ServeOneAsync(root, service, ready, cts.Token);
         try
         {
+            await ready.Task.WaitAsync(TimeSpan.FromSeconds(10), cts.Token);
             var delta = await FuseHostClient.TryCheckDeltaAsync(root, "s1", TimeSpan.FromSeconds(5), cts.Token);
 
             // No resident workspace is wired, so the delta round-trips as non-resident and empty - which proves the
@@ -69,8 +73,10 @@ public sealed class FuseHostClientTests : IDisposable
         }
     }
 
-    // Accepts a single connection on the root's endpoint and serves the host service until cancelled.
-    private static async Task ServeOneAsync(string root, FuseHostService service, CancellationToken cancellationToken)
+    // Accepts a single connection on the root's endpoint and serves the host service until cancelled. Signals
+    // `ready` once the endpoint exists (the pipe is created / the socket is bound), so the client connects only
+    // after the host is listening.
+    private static async Task ServeOneAsync(string root, FuseHostService service, TaskCompletionSource ready, CancellationToken cancellationToken)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -79,6 +85,7 @@ public sealed class FuseHostClientTests : IDisposable
                 PipeTransmissionMode.Byte, System.IO.Pipes.PipeOptions.Asynchronous);
             await using (server)
             {
+                ready.TrySetResult(); // the pipe now exists in the \\.\pipe\ namespace
                 await server.WaitForConnectionAsync(cancellationToken);
                 using var rpc = FuseHostConnection.Attach(PipeReader.Create(server), PipeWriter.Create(server), service);
                 await rpc.Completion.WaitAsync(cancellationToken);
@@ -92,6 +99,7 @@ public sealed class FuseHostClientTests : IDisposable
         using var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         listener.Bind(new UnixDomainSocketEndPoint(socketPath));
         listener.Listen(1);
+        ready.TrySetResult(); // the socket file now exists
         try
         {
             var accepted = await listener.AcceptAsync(cancellationToken);

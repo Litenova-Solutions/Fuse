@@ -9,18 +9,19 @@
     "recallCiHigh": 0,
     "precision": 0,
     "f1": 0,
-    "medianTokens": 23.6413,
-    "meanTokens": 15447,
+    "medianTokens": 31.2246,
+    "meanTokens": 14092,
     "lowSignalF1": 0
   },
   "tasks": [],
   "notes": [
     "repo NodaTime, 2 resident project(s)",
-    "resident warm (build \u002B rehydrate): 15,447 ms; resident RSS 166 MB",
-    "resident delta-check (25x) on AmbiguousTimeException.cs: P50 23.6 ms, P95 41.7 ms",
-    "S1 gate (delta-check P95 \u003C 1000 ms warm): PASS at P95 41.7 ms",
-    "S2 delta-mode (GetDiagnostics \u002B DiagnosticDelta, 25x, 0 baseline diag): P50 205.5 ms, P95 643.6 ms",
-    "S2 gate (delta-mode P95 \u003C 1000 ms warm): PASS at P95 643.6 ms",
+    "resident warm (build \u002B rehydrate): 14,092 ms; resident RSS 162 MB",
+    "resident delta-check (25x) on AmbiguousTimeException.cs: P50 31.2 ms, P95 42.4 ms",
+    "S1 gate (delta-check P95 \u003C 1000 ms warm): PASS at P95 42.4 ms",
+    "S2 delta-mode (GetDiagnostics \u002B DiagnosticDelta, 25x, 0 baseline diag): P50 203.9 ms, P95 699.3 ms",
+    "S2 gate (delta-mode P95 \u003C 1000 ms warm): PASS at P95 699.3 ms",
+    "S4 analyzer-cost (284 analyzer(s) on NodaTime.csproj, 5x): P50 871.8 ms, P95 886.9 ms (raw analyzer execution against the held compilation; default config, not editorconfig-mapped)",
     "note: measures ResidentWorkspace.CheckOverlay (the S1 speculative typecheck) and GetDiagnostics\u002BDiagnosticDelta (the S2 delta mode), the operations fuse_check invokes when a resident workspace is live; timings are environment-dependent; runs in a dedicated process that never invokes MSBuildWorkspace."
   ]
 }

@@ -224,6 +224,10 @@ public sealed class ResidentLatencyCommand
         psi.ArgumentList.Add($"-bl:{binlogPath}");
         psi.ArgumentList.Add("-nologo");
         psi.ArgumentList.Add("-v:quiet");
+        // Force a full compile so the binlog always records a csc invocation: an up-to-date incremental build logs
+        // no compilation, which rehydrates to zero projects and skips the measurement. (Never cleans the corpus's
+        // own obj/bin, which is off-limits.)
+        psi.ArgumentList.Add("--no-incremental");
 
         using var process = new Process { StartInfo = psi };
         try

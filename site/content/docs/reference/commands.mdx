@@ -26,7 +26,7 @@ The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace 
 | `fuse find <query>` | Exact symbol, path, or text lookup | yes | first-use |
 | `fuse diagnostics [path]` | Report index state | yes | no |
 | `fuse doctor [path]` | Diagnose the semantic load tier and per-project downgrade reasons | no | no |
-| `fuse up [path]` | Report the environment-remediation plan (remedies per failure, workable subset); report-only for now | no | no |
+| `fuse up [path]` | Report the environment-remediation plan (remedies per failure, workable subset); `--apply` applies the install-free NU1507 overlay and re-attempts the load | no | no |
 | `fuse reduce` | Compact a known set of files or content | no | no |
 | `fuse init` | Write a configuration file | no | no |
 | `fuse mcp install` | Register Fuse with an MCP client | no | no |
@@ -155,7 +155,7 @@ fuse doctor ./src
 
 ## fuse up
 
-Report the environment-remediation plan for a workspace: run the same load diagnosis as `fuse doctor`, classify each downgraded project's failure against a knowledge base of known environment problems (for example NU1507 central-package-management source mapping, NETSDK1045 SDK band, MSB4018 task load), and name the remedy that would address each plus the workable-subset line (for example "6 of 8 projects oracle-grade; blockers: NU1507 on 2"). Repository-code failures (an ambiguous type, a bad compiler option) are named as not fixable by `fuse up`, never edited. This first cut is report-only: it applies no remedy and never touches the repository. Applying the remedies (the overlay NuGet config for NU1507, and the consent-gated SDK and workload installs) and re-attempting the oracle tier is in progress.
+Report the environment-remediation plan for a workspace: run the same load diagnosis as `fuse doctor`, classify each downgraded project's failure against a knowledge base of known environment problems (for example NU1507 central-package-management source mapping, NETSDK1045 SDK band, MSB4018 task load), and name the remedy that would address each plus the workable-subset line (for example "6 of 8 projects oracle-grade; blockers: NU1507 on 2"). Repository-code failures (an ambiguous type, a bad compiler option) are named as not fixable by `fuse up`, never edited. By default it is report-only. Add `--apply` to apply the install-free NU1507 overlay (write the overlay NuGet config to a temp file, run `dotnet restore --configfile <overlay>` never touching the repository, then re-attempt the load and print the new per-project tiers); the apply path is bounded to one round. The consent-gated SDK and workload installs are never run without `--allow-install`; without it they are reported, not applied.
 
 ```text
 fuse up ./src

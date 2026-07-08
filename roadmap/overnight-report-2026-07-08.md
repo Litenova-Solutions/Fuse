@@ -6,12 +6,14 @@ bumps, or publishing. Tree is green and pushed at HEAD `44c59d2`.
 
 ## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8, F3, U1 done + G2 iter 1; T2, S2, S4 done; S3 [!]; U2 started
 
-- **U2 started** (claim grades / evidence ledger / PR handoff): sub-steps 1-4 landed - the claims model
+- **U2 in progress** (claim grades / evidence ledger / PR handoff): sub-steps 1-5 landed - the claims model
   (ClaimLedger: Verified/PartiallyVerified/Stale/Contradicted, computed not asserted, graph-grade capped at
-  partially-verified) and graded claims blocks wired onto fuse_impact (graph-grade), fuse_test (verified/test-grade),
-  and fuse_find wiring resolution (graph-grade) - the grade spectrum demonstrated. Remaining (fresh context,
-  involved, session-state-dependent): claims on fuse_review (needs emitter threading), the stale/contradicted
-  transitions, the session-ledger resource, fuse_review --handoff (PR packet, refuses while red), and golden tests.
+  partially-verified), graded claims blocks on fuse_impact (graph), fuse_test (verified/test-grade), and fuse_find
+  wiring resolution (graph), and fuse_review --handoff (the paste-ready PR packet that refuses with the red summary
+  while the resident check session has unresolved introduced errors, guarded against git-spawn crashes). The
+  handoff wire-test is blocked by an environmental git-in-subprocess crash (recorded; the same GitStats fragility);
+  it ships with its guard. Remaining (fresh context, session-state-dependent): the stale/contradicted transitions,
+  the session-ledger resource, the fuse_review claims block (emitter threading), and golden tests.
 
 - **U1 DONE** (Gate PASS): the eight-tool loop surface shipped. Live surface is now the 8 loop tools
   (fuse_workspace, fuse_find, fuse_context, fuse_impact, fuse_check, fuse_test, fuse_refactor, fuse_review) +

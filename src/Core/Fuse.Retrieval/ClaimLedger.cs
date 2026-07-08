@@ -46,6 +46,43 @@ public sealed record Claim(string Statement, ClaimGrade Grade, string Evidence)
     /// <param name="evidence">The compiler/test evidence reference.</param>
     /// <returns>A verified claim.</returns>
     public static Claim FromCompiler(string statement, string evidence) => new(statement, ClaimGrade.Verified, evidence);
+
+    /// <summary>
+    ///     Creates a contradicted claim (U2): a statement made earlier in a session that the current truth now
+    ///     conflicts with, citing both sides so neither is hidden.
+    /// </summary>
+    /// <param name="statement">The earlier claim.</param>
+    /// <param name="was">What was claimed (the session side).</param>
+    /// <param name="now">What is true now (the current side).</param>
+    /// <returns>A contradicted claim citing both sides.</returns>
+    public static Claim Contradicted(string statement, string was, string now) =>
+        new(statement, ClaimGrade.Contradicted, $"was: {was}; now: {now}");
+}
+
+/// <summary>
+///     Re-grades claims accumulated in a session against the current truth (U2): a claim goes
+///     <see cref="ClaimGrade.Stale" /> when the evidence it rested on has changed since it was computed, and
+///     <see cref="ClaimGrade.Contradicted" /> when the current truth conflicts with it. This is the pure transition
+///     logic the session ledger applies when it re-reads accumulated claims; it holds no state itself.
+/// </summary>
+public static class ClaimReviewer
+{
+    /// <summary>
+    ///     Re-grades a claim to <see cref="ClaimGrade.Stale" /> when its evidence file has changed since the claim
+    ///     was computed. An already-stale or contradicted claim is returned unchanged (a terminal grade does not
+    ///     revert), and a claim whose evidence has not changed keeps its grade.
+    /// </summary>
+    /// <param name="claim">The claim to review.</param>
+    /// <param name="evidenceChanged">Whether the evidence the claim rested on has changed since it was computed (watcher-known).</param>
+    /// <returns>The claim, re-graded stale when its evidence changed, else unchanged.</returns>
+    public static Claim Regrade(Claim claim, bool evidenceChanged)
+    {
+        if (!evidenceChanged)
+            return claim;
+        if (claim.Grade is ClaimGrade.Stale or ClaimGrade.Contradicted)
+            return claim;
+        return claim with { Grade = ClaimGrade.Stale, Evidence = $"{claim.Evidence} (stale: evidence changed since computed)" };
+    }
 }
 
 /// <summary>

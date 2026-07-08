@@ -1,0 +1,58 @@
+<!--
+fuse:semantic-context
+mode: review
+changedSince: origin/main
+files: 3
+estimatedTokens: 66
+
+claims (2, each graded and evidence-referenced):
+  [verified] 1 changed file(s) are seeded as must-keep  (evidence: git diff origin/main)
+  [partially verified] the change alters the public API surface (see the api-delta section)  (evidence: graph: public-API delta (T2))
+
+seeds:
+  - src/OrderService.cs (changed)
+
+semantic impact:
+  src/IOrderService.cs [di-implementation] <- di_resolves_to (hop 1)
+  src/OrdersController.cs [consumer] <- di_resolves_to (hop 1) <- di_injects (hop 2)
+-->
+<file path="src/OrderService.cs" role="changed" tier="Reduced" tokens="29">
+<!--
+included via:
+  changed file
+-->
+namespace App;
+public class OrderService : IOrderService
+{
+public int Create(int quantity)
+{
+return quantity;
+}
+}
+</file>
+<file path="src/IOrderService.cs" role="di-implementation" tier="Reduced" tokens="19">
+<!--
+included via:
+  changed symbol
+  <- di_resolves_to (hop 1)
+-->
+namespace App;
+public interface IOrderService
+{
+int Create(int quantity);
+}
+</file>
+<file path="src/OrdersController.cs" role="consumer" tier="Skeleton" tokens="37">
+<!--
+included via:
+  changed symbol
+  <- di_resolves_to (hop 1)
+  <- di_injects (hop 2)
+-->
+namespace App;
+public class OrdersController
+{
+    private readonly IOrderService _orders;
+    public OrdersController(IOrderService orders);
+}
+</file>

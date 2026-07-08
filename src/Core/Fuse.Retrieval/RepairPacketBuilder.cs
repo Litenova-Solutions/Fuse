@@ -80,7 +80,8 @@ public sealed partial class RepairPacketBuilder
         return new RepairPacket(diagnostic.Id,
             $"'{type}' has no member '{missing}'. Its members are listed below; the nearest names are {string.Join(", ", candidates)}.",
             candidates,
-            members);
+            members,
+            candidates.Count > 0 ? new RepairEdit(missing, candidates[0]) : null);
     }
 
     // CS0246: "The type or namespace name 'Invoice' could not be found ...". The first quoted token is the
@@ -113,7 +114,8 @@ public sealed partial class RepairPacketBuilder
         return new RepairPacket(diagnostic.Id,
             $"The type '{name}' is not in the index. The nearest type names are {string.Join(", ", candidates)}.",
             candidates,
-            []);
+            [],
+            candidates.Count > 0 ? new RepairEdit(name, candidates[0]) : null);
     }
 
     // CS7036: "There is no argument given that corresponds to the required parameter 'x' of 'Shop.Cart.Add(int,
@@ -223,8 +225,24 @@ public sealed partial class RepairPacketBuilder
 /// <param name="Explanation">A one-line, plain explanation of the error and the suggested direction.</param>
 /// <param name="Candidates">The nearest-name suggestions, closest first; empty when none could be found.</param>
 /// <param name="Members">The receiver type's member signatures, when the diagnostic is a missing member; otherwise empty.</param>
+/// <param name="TopRepair">
+///     The single machine-applicable repair when the diagnostic has an unambiguous token-level fix (a misspelled
+///     member or type name: replace the offending token with the nearest candidate); null when no such fix exists
+///     (a missing argument or a type mismatch has no single-token repair). This is what DiagBench (H2) auto-applies
+///     and what an agent can apply without re-deriving the edit from the prose.
+/// </param>
 public sealed record RepairPacket(
     string DiagnosticId,
     string Explanation,
     IReadOnlyList<string> Candidates,
-    IReadOnlyList<SymbolSignature> Members);
+    IReadOnlyList<SymbolSignature> Members,
+    RepairEdit? TopRepair = null);
+
+/// <summary>
+///     A machine-applicable token replacement: replace <see cref="OldToken" /> at the diagnostic site with
+///     <see cref="NewToken" />. Token-level (an identifier), so applying it is a scoped replacement, not a
+///     free-text patch.
+/// </summary>
+/// <param name="OldToken">The offending identifier the diagnostic named (the member or type that does not exist).</param>
+/// <param name="NewToken">The nearest recorded name to substitute.</param>
+public sealed record RepairEdit(string OldToken, string NewToken);

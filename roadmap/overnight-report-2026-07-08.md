@@ -74,14 +74,20 @@ fuse test (CLI) that select a symbol's covering test types, run them scoped via 
 per-test verdicts + the build grade (selection-only floor when nothing covers; timeout reported, never hung). The
 MCP tool count is now 15 (docs + AGENTS.md swept). This is exactly T1's pre-agreed Fallback default.
 
-Next action: the T1 EMIT FAST PATH behind a flag - the Fuse.TestHost custom micro-host (a new exe:
-AssemblyLoadContext-load the emitted assembly + refs, run the covering xunit tests via the xunit runner API, report
-via TestHostContract), which is what meets the Gate's median-under-10s (the build-grade floor runs the real build).
-Then not-runnable classification, the H1 mutant extension, and testexec.json + the Gate verdict. Then H2. C1
-remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing deviation (mechanism complete).
-All work committed and pushed at HEAD `502e4f8`; every committed change gate-green (build + all 16 .NET assemblies
-+ dotnet format; extension contract 9/9 + tsc from the S3 protocol change). About 118 gate-green commits this
-session.
+Emit fast-path finding (empirical, recorded): ResidentEmit.ReferencePaths are compile-time reference assemblies,
+which cannot be loaded for execution, so the fast path needs the runtime dependency closure (the build's bin/
+output + deps.json), not the compilation's references. That is exactly what the build-grade floor already uses by
+running the real dotnet test. Per the item's pre-agreed Fallback, the build-grade floor ships as the default and
+the emit fast path is deferred with the miss published (this finding is the reason). So T1's shippable deliverable
+is done; the fast path is a named follow-up.
+
+Next action: close T1 on the Fallback terms - testexec.json validation (run the build-grade floor on a fixture/
+corpus with tests: false green 0 on the runnable subset, median latency, selection safety at least 95 percent on a
+mutant set; corpus-gated), the H1 behavior-mutant extension, and not-runnable classification; then the deferred
+emit fast path as its own focused effort (source the runtime closure). Then H2. C1 remains `[>]` (corpus-and-
+install-gated apply); S3 has one maintainer-gated timing deviation (mechanism complete). All work committed and
+pushed at HEAD `c69fb70`; every committed change gate-green (build + all 16 .NET assemblies + dotnet format;
+extension contract 9/9 + tsc from the S3 protocol change). About 125 gate-green commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

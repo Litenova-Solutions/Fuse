@@ -26,6 +26,9 @@ Connections use Content-Length framed JSON-RPC (the same framing VS Code languag
 | `fuse/scope` | Runs a scoped fusion and writes the emitted payload to a temp file |
 | `fuse/explain` | Returns the context plan without writing a payload |
 | `fuse/diagnostics` | Returns secret spans, token hotspots, graph gaps, and generated-file hints |
+| `fuse/check` | Returns the diagnostics a session's edits introduced or resolved since its baseline (S3) |
+| `fuse/sessions` | Lists the sessions the store knows for a root (G3, read-only observability) |
+| `fuse/session-view` | Returns one session's introduced/resolved diagnostics and rendered claim ledger (G3) |
 | `fuse/shutdown` | Stops the host |
 | `fuse/invalidated` | Server push when watched files change (notification, not a request) |
 

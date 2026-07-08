@@ -58,14 +58,21 @@ The T1 emit half is landed: ResidentEmit.EmitToDirectory emits a resident projec
 scratch-dir assembly and resolves its reference paths (the dependency closure), tested on the rehydrated fixture
 (assembly on disk, references resolve). Emit failure returns null, never a false run.
 
-Next action: the T1 micro-host run half (the Large multi-session core) - spawn a Microsoft.Testing.Platform
-micro-host over the emitted assembly, run the covering subset (CoveringTestsAsync) with a stripped environment and
-a hard timeout, classify not-runnable tests by name, kill a hung child cleanly; then fuse_test / fuse test, the T0
-degrade ladder, the H1 mutant extension, and testexec.json (false green 0, median under 10s, selection safety at
-least 95 percent). Then H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing
-deviation (mechanism complete). All work committed and pushed at HEAD `6a19cee`; every committed change gate-green
-(build + all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc from the S3 protocol change). Roughly
-90 gate-green commits this session.
+T1 run half: four pure/testable primitives are now built (Fuse.Workspace, 20 tests) - ResidentEmit (emit +
+reference paths), TimedProcess (child run with hard timeout + tree-kill), TestFilterBuilder (covering-subset filter
+expression), TrxResultParser (per-test verdicts from vstest TRX). The runner is decided (`dotnet vstest` on the
+emitted assembly, no MSBuild, TRX for verdicts). The orchestrator has one recorded crux to resolve first: an
+emitted Roslyn assembly is not directly launchable by a test host (needs runtimeconfig.json/deps.json), so the
+orchestrator either sources/synthesizes those and materializes them beside the emitted DLL (design a, reuses the
+primitives) or ships a custom load-context micro-host (design b). Recommendation and opening investigation step
+(confirm what the capture exposes) are in the plan.
+
+Next action: resolve the T1 orchestrator crux (design a vs b), then wire ResidentTestRunner + fuse_test/fuse test +
+the T0 degrade ladder + the H1 mutant extension + testexec.json (false green 0, median under 10s, selection safety
+at least 95 percent), with an xunit-fixture end-to-end test. Then H2. C1 remains `[>]` (corpus-and-install-gated
+apply); S3 has one maintainer-gated timing deviation (mechanism complete). All work committed and pushed at HEAD
+`33616e7`; every committed change gate-green (build + all 16 .NET assemblies + dotnet format; extension contract
+9/9 + tsc from the S3 protocol change). Roughly 97 gate-green commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

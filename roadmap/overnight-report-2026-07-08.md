@@ -2,7 +2,19 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `b36f22d`.
+bumps, or publishing. Tree is green and pushed at HEAD `b1e28b7`.
+
+## Session tally: T2 done, S2 done, S3 runtime (A+B) done
+
+This session completed two full gated items and the substantive runtime of a third:
+- **T2 DONE** (gate PASS): public API delta on fuse_review + fuse_impact; 10/10 corpus adjudication.
+- **S2 DONE** (gate PASS): fuse_check delta mode, persisted sessions, repair packets v2; delta-mode P95 643.6 ms.
+- **S3 A+B DONE** (runtime): the fuse/check host RPC + protocol bump to v4 (both sides, contracts verified), the
+  FuseHostClient pipe/socket client, and the working `fuse check --delta` / `fuse gate` commands - the ambient-
+  verification mechanism runs end to end. Remaining S3: (C) `fuse mcp install --with-hooks` (idempotent JsonNode
+  merge into project .claude/settings.json); (D) dual-shell scripted e2e + the ambient-verification docs.
+Newly eligible after S2: S4, T1, H2; C1 remains [>] (corpus-gated apply). Next top-to-bottom is finishing S3 (C
+then D), then S4.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

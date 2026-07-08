@@ -331,36 +331,93 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the rename.</param>
     /// <returns>The staged per-file diffs, or an explicit abstention.</returns>
     [McpServerTool(Name = "fuse_refactor", ReadOnly = true)]
-    [Description("Compiler-executed solution-wide rename: rename a symbol and all its references through Roslyn, returned as a staged diff (nothing is written to disk). Roslyn semantics mean a same-named unrelated symbol is not touched. Answers only when the whole solution loads cleanly; abstains otherwise, because a partial rename is worse than none. Review the diff and re-check with fuse_check before applying.")]
+    [Description("Compiler-executed, verify-gated refactors returned as a staged diff (nothing is written to disk). operation=rename (default): rename a symbol and all its references through Roslyn (a same-named unrelated symbol is not touched). operation=add-parameter: add a trailing parameter to a method and its override/interface family, threading an explicit argument (the `argument` value) into every call site. operation=add-cancellation-token: add a CancellationToken parameter and thread an in-scope token into every call site that has one, listing token-less sites as manual follow-ups. The signature operations recompile the solution and return the diff ONLY when no new diagnostic is introduced; otherwise they abstain naming the offending sites (never a mostly-right diff). Rename and the signature ops answer only when the whole solution loads cleanly; abstain otherwise. Review the diff and re-check with fuse_check before applying.")]
     public static async Task<string> FuseRefactorAsync(
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
-        [Description("The simple name of the symbol to rename.")] string symbol = "",
-        [Description("The new name.")] string newName = "",
+        [Description("The simple name of the symbol to rename, or the method name for a signature operation.")] string symbol = "",
+        [Description("The new name (rename only).")] string newName = "",
+        [Description("The operation: rename (default), add-parameter, or add-cancellation-token.")] string operation = "rename",
+        [Description("The declaring type's simple name, to disambiguate a method shared across types (signature operations).")] string containingType = "",
+        [Description("The new parameter's type, as written in source (add-parameter).")] string parameterType = "",
+        [Description("The new parameter's name (add-parameter; defaults to cancellationToken for add-cancellation-token).")] string parameterName = "",
+        [Description("The argument expression added at every call site (add-parameter; defaults to 'default').")] string argument = "default",
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(newName))
-            return "Error: provide the symbol to rename and the new name.";
-
         var root = Path.GetFullPath(path);
         var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
         var target = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
         if (target is null)
-            return "cannot rename: no solution or project found. fuse_refactor abstains.";
+            return "cannot refactor: no solution or project found. fuse_refactor abstains.";
 
-        var result = await new Fuse.Semantics.RenameRefactorer().RenameAsync(target, symbol, newName, cancellationToken);
-        if (!result.Renamed)
-            return $"cannot rename: {result.Reason}";
+        var containing = string.IsNullOrWhiteSpace(containingType) ? null : containingType;
+        switch (operation.Trim().ToLowerInvariant())
+        {
+            case "add-parameter":
+                if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(parameterType) || string.IsNullOrWhiteSpace(parameterName))
+                    return "Error: add-parameter needs the method (symbol), parameterType, and parameterName.";
+                return RenderChangeSignature(
+                    await new Fuse.Semantics.ChangeSignatureRefactorer().AddParameterAsync(
+                        target, symbol, containing, parameterType, parameterName, argument, cancellationToken),
+                    $"add parameter '{parameterType} {parameterName}' to {symbol}");
+
+            case "add-cancellation-token":
+                if (string.IsNullOrWhiteSpace(symbol))
+                    return "Error: add-cancellation-token needs the method (symbol).";
+                var tokenName = string.IsNullOrWhiteSpace(parameterName) ? "cancellationToken" : parameterName;
+                return RenderChangeSignature(
+                    await new Fuse.Semantics.ChangeSignatureRefactorer().ThreadCancellationTokenAsync(
+                        target, symbol, containing, tokenName, cancellationToken),
+                    $"thread a CancellationToken '{tokenName}' through {symbol}");
+
+            case "rename":
+            case "":
+                if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(newName))
+                    return "Error: provide the symbol to rename and the new name.";
+                var result = await new Fuse.Semantics.RenameRefactorer().RenameAsync(target, symbol, newName, cancellationToken);
+                if (!result.Renamed)
+                    return $"cannot rename: {result.Reason}";
+
+                var builder = new StringBuilder();
+                builder.AppendLine($"staged rename: {result.OldName} -> {result.NewName} ({result.Diffs.Count} file(s) changed, not written to disk)");
+                foreach (var d in result.Diffs)
+                {
+                    builder.AppendLine($"--- {d.FilePath}");
+                    builder.AppendLine(d.UnifiedDiff);
+                }
+
+                builder.AppendLine();
+                builder.AppendLine("Review this diff and re-check with fuse_check before applying; a rename crossing a boundary Roslyn does not see (a string, reflection) would surface as a diagnostic there.");
+                return builder.ToString().TrimEnd();
+
+            default:
+                return $"Error: unknown operation '{operation}'. Use rename, add-parameter, or add-cancellation-token.";
+        }
+    }
+
+    // Renders a change-signature outcome: the staged diff plus any manual follow-up sites, or the abstention.
+    private static string RenderChangeSignature(Fuse.Semantics.ChangeSignatureResult result, string what)
+    {
+        if (!result.Changed)
+            return $"cannot {what}: {result.Reason}";
 
         var builder = new StringBuilder();
-        builder.AppendLine($"staged rename: {result.OldName} -> {result.NewName} ({result.Diffs.Count} file(s) changed, not written to disk)");
+        builder.AppendLine($"staged {what}: {result.OldSignature} (added {result.Added}; {result.Diffs.Count} file(s) changed, not written to disk)");
         foreach (var d in result.Diffs)
         {
             builder.AppendLine($"--- {d.FilePath}");
             builder.AppendLine(d.UnifiedDiff);
         }
 
+        if (result.ManualFollowUps.Count > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine($"Manual follow-ups ({result.ManualFollowUps.Count} call site(s) had no in-scope value, so 'default' was passed; thread a real value):");
+            foreach (var site in result.ManualFollowUps)
+                builder.AppendLine($"  {site}");
+        }
+
         builder.AppendLine();
-        builder.AppendLine("Review this diff and re-check with fuse_check before applying; a rename crossing a boundary Roslyn does not see (a string, reflection) would surface as a diagnostic there.");
+        builder.AppendLine("This diff verified clean (no new compile diagnostic). Review it and re-check with fuse_check before applying.");
         return builder.ToString().TrimEnd();
     }
 

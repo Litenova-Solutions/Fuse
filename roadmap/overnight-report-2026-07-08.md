@@ -90,14 +90,19 @@ The H1 behavior-mutant operators are now built too (negate-condition, flip-relat
 runtime behavior, so a covering test should kill them; tested). So every T1 component exists and is tested: the
 build-grade floor (both surfaces), not-runnable classification, proven execution honesty, and behavior mutants.
 
-Next action: the testexec.json benchmark suite that ORCHESTRATES these components into the Gate artifact - over a
-fixture with covering edges (a semantic-indexed fixture with tests + R5 tests edges): false green 0 on the runnable
-subset, median latency, selection safety at least 95 percent, and mutant-kill. The selection-safety metric needs
-the covering-edge fixture, which makes the suite the fixture-gated focused deliverable. Then the deferred emit fast
-path (source the runtime closure). Then H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one
-maintainer-gated timing deviation (mechanism complete). All work committed and pushed at HEAD `0d1049e`; every
-committed change gate-green (build + all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc from the
-S3 protocol change). About 137 gate-green commits this session.
+testexec.json is now RECORDED (via a dedicated `fuse testexec` command, because Fuse.Benchmarks cannot reference
+the Fuse.Workspace VB-4.14 closure - the S1 co-activation constraint, hit again). Results: clean run 4 tests 0
+failed (false-red 0), 4 behavior mutants 3 killed (75%), false green 0 by construction, median latency 1804 ms
+incremental (cold first build 12.5s). Gate of 3: false green 0 MET, median under 10s MET (incremental build-grade),
+selection safety at least 95 percent DEFERRED (needs a semantic-indexed fixture with R5 covering edges). So 2 of 3
+Gate criteria are met by the shipped build-grade floor.
+
+Next action: the T1 selection-safety metric (a semantic-indexed fixture with covering edges; verify the covering
+selection includes a killing test for a behavior mutant) and the deferred emit fast path (runtime closure). Then
+H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing deviation (mechanism
+complete). All work committed and pushed at HEAD `8b47039`; every committed change gate-green (build + all 16 .NET
+assemblies + dotnet format; extension contract 9/9 + tsc from the S3 protocol change). About 145 gate-green commits
+this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

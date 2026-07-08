@@ -54,9 +54,15 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
   overlay check, apply edit, remove document, diagnostics baseline; `Fuse.Workspace`, 4 tests), all
   additive/unreferenced. Remaining: watcher + `IWorkspaceTruth` seam + serve-host wiring + read-tool
   routing + changeset-overlay unification + `performance.json` latency/RSS gate.
-- **C1 fuse up** `[>]`: sub-step 1 landed - `RemediationKnowledgeBase` (JSON-data KB + source-gen loader +
-  per-signature matcher, classify-only; 7 tests). Remaining: the `fuse up` command that applies remedies,
-  the per-project report shape, the KB-generated troubleshooting page, and the 17-repo `up-report.json` gate.
+- **C1 fuse up** `[>]`: two sub-steps landed, both non-user-facing and gate-green - `RemediationKnowledgeBase`
+  (JSON-data KB + source-gen loader + per-signature matcher; 7 tests) and `EnvironmentRemediationPlanner`
+  (classify-and-report core: per-project remedy classification, remediable/unfixable partition, workable-subset
+  line; 4 tests). Remaining: the user-facing `fuse up` command that APPLIES remedies, the report to workspace
+  status, the KB-generated troubleshooting page, and the 17-repo `up-report.json` gate. Environmental note for
+  that gate: the goal forbids installing anything, so the SDK-install (NETSDK1045) and workload-install
+  (MSB4018) remedies cannot be exercised here; only the overlay-NuGet-config remedy (Scrutor NU1507, which
+  installs nothing) is runnable, so the gate may land on the Fallback (record "1 of 6 flips" honestly) unless
+  the provisioned environment allows installs.
 
 The three standing gates (`dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release
 --no-build`, `dotnet format Fuse.slnx --verify-no-changes`) were green on every item that touched

@@ -1,0 +1,30 @@
+---
+title: Environment remediation
+description: The environment failures fuse up recognizes and the remedy it maps each to, so a fresh clone reaches the oracle tier or reports exactly what is blocking it.
+---
+
+`fuse up` runs the same load diagnosis as `fuse doctor`, then classifies each downgraded project's failure against a knowledge base of known environment problems and names the remedy that would address it. The catalog below is that knowledge base. Repository-code failures (a compile error in the repository's own source) are named as not fixable by `fuse up`, never edited: the hard rule is that `fuse up` never edits files inside the repository, so every remedy is environment- or overlay-scoped.
+
+The remedy the plan reports today is report-only for the current release: `fuse up` names what it would do. Applying the remedies (the overlay NuGet config, and the consent-gated SDK and workload installs) and re-attempting the oracle tier is in progress.
+
+## Recognized failures
+
+### NU1507
+
+Central Package Management needs a single package source or a source mapping. Multiple package sources are defined without a source mapping under Central Package Management. Remedy: an overlay NuGet.config with a `packageSourceMapping` passed to restore explicitly, never written into the repository. No consent required.
+
+### NETSDK1045
+
+The installed .NET SDK does not support the targeted version. The project targets an SDK band the machine does not have. Remedy: install the pinned SDK from global.json behind `--allow-install`; consent-gated because it changes the machine.
+
+### MSB4018
+
+An MSBuild task failed to load or execute. Often a missing workload or SDK-band task assembly, which a workload install can fix (consent-gated). It can also be a repository-custom task, in which case Fuse classifies rather than remediates.
+
+### CS0104
+
+Ambiguous type reference in repository code. A compile error in the repository's own source. Fuse never edits repository files, so this is reported with its reason, not remediated.
+
+### CS2007
+
+Unrecognized compiler option in repository code. A legacy or repository-specific compiler option the current toolchain rejects. Fuse never edits repository files, so this is reported with its reason, not remediated.

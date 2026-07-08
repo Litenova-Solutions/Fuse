@@ -3,6 +3,7 @@
   "icon": "BookText",
   "pages": [
     "commands",
+    "environment-remediation",
     "options",
     "mcp-tools",
     "mcp-resources",

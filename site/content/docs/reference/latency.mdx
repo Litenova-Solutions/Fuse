@@ -5,20 +5,20 @@ description: Measured P50 and P95 latency for Fuse's read and verify verbs, sour
 
 The argument for a warm semantic index over grep plus `dotnet build` is a page of measured latencies. This page publishes them as a commitment: every number is traceable to a recorded result file under `tests/benchmarks/results`, regenerated with `fuse eval performance` and the verify commands. Latencies are environment-dependent; the numbers here are one development-class machine (a warm run on Windows over the pinned NodaTime checkout) and are read as within-environment SLOs and a regression fence, not a cross-machine guarantee.
 
-## Warm read verbs (NodaTime, `performance.json`)
+## Warm read verbs (two scales)
 
-The persistent index is warm; each verb is the primitive the matching MCP tool calls, timed over 25 iterations.
+The persistent index is warm; each verb is the primitive the matching MCP tool calls, timed over 25 iterations, at two scales: NodaTime (512 files, 7,657 symbols, `performance.json`) and eShopOnWeb (287 files, 1,216 symbols, `performance-eshop.json`).
 
-| Verb (tool) | P50 | P95 |
-|-------------|----:|----:|
-| Exact symbol lookup (`fuse_find`) | 2.0 ms | 2.3 ms |
-| Blast radius (`fuse_impact`) | ~0 ms | ~0 ms |
-| Localize (`fuse_localize`) | 23.1 ms | 24.0 ms |
-| Resolve symbol (`fuse_resolve`) | ~0 ms | ~0 ms |
-| Review plan (`fuse_review`) | 95.6 ms | 100.2 ms |
-| Single-file incremental re-index | 19.6 ms | 22.1 ms |
+| Verb (tool) | NodaTime P50 | NodaTime P95 | eShopOnWeb P50 | eShopOnWeb P95 |
+|-------------|----:|----:|----:|----:|
+| Exact symbol lookup (`fuse_find`) | 2.0 ms | 2.3 ms | 0.1 ms | 0.2 ms |
+| Blast radius (`fuse_impact`) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
+| Localize (`fuse_localize`) | 23.1 ms | 24.0 ms | 2.6 ms | 4.2 ms |
+| Resolve symbol (`fuse_resolve`) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
+| Review plan (`fuse_review`) | 95.6 ms | 100.2 ms | 38.3 ms | 41.6 ms |
+| Single-file incremental re-index | 19.6 ms | 22.1 ms | n/a | n/a |
 
-Every warm read is well inside a sub-second budget. `fuse_impact` reads ~0 ms here because this checkout indexes in syntax mode (no semantic graph, so the blast-radius query returns an empty set immediately); on a semantically loaded checkout the query walks real edges and costs more, bounded by the neighborhood size. That syntax-mode ceiling is the same one described on the [benchmarks page](/docs/project/benchmarks); it bounds the recall suites too.
+Every warm read is well inside a sub-second budget, and the verbs scale down with the repo (eShopOnWeb, a third of NodaTime's symbols, is proportionally faster). `fuse_impact` reads ~0 ms here because this checkout indexes in syntax mode (no semantic graph, so the blast-radius query returns an empty set immediately); on a semantically loaded checkout the query walks real edges and costs more, bounded by the neighborhood size. That syntax-mode ceiling is the same one described on the [benchmarks page](/docs/project/benchmarks); it bounds the recall suites too.
 
 ## Verify verbs (NodaTime, `resident-latency.json`)
 
@@ -55,9 +55,10 @@ Cold start serves the syntax tier first (symbols, find, localize) in about 19 se
 ## How these are regenerated
 
 ```bash
-fuse eval performance --repo NodaTime   # warm reads + cold start -> performance.json
-fuse testexec                           # build-grade test execution -> testexec.json
-fuse resident-latency                   # verify verbs -> resident-latency.json
+fuse eval performance --repo NodaTime     # warm reads + cold start -> performance.json
+fuse eval performance --repo eShopOnWeb    # second scale point -> performance-eshop.json
+fuse testexec                              # build-grade test execution -> testexec.json
+fuse resident-latency                      # verify verbs -> resident-latency.json
 ```
 
-The verbs still measured only through recorded adjacent operations rather than a dedicated per-tool timer (a standalone test-selection timer, and the eShopOnWeb scale point) are follow-up work; the numbers above are the ones recorded on this environment.
+The one verb without a dedicated per-tool timer here is test selection; its latency is the covering-tests query inside `fuse_impact` (part of the ~0 ms blast-radius read), and a standalone timer for it is follow-up work. Every other number above is a dedicated measurement recorded on this environment.

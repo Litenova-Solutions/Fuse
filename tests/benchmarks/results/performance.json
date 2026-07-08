@@ -9,21 +9,21 @@
     "recallCiHigh": 0,
     "precision": 0,
     "f1": 0,
-    "medianTokens": 23.1497,
-    "meanTokens": 26068,
+    "medianTokens": 23.4243,
+    "meanTokens": 24554,
     "lowSignalF1": 0
   },
   "tasks": [],
   "notes": [
-    "cold start: syntax-tier served in 19,139 ms (mode syntax, semantic_pending=1); semantic-ready after a further 90,150 ms (mode syntax, semantic_pending=0)",
+    "cold start: syntax-tier served in 17,840 ms (mode syntax, semantic_pending=1); semantic-ready after a further 48,329 ms (mode syntax, semantic_pending=0)",
     "repo NodaTime, index mode syntax, 512 files, 7657 symbols",
-    "cold index (full semantic pass): 26,068 ms",
-    "warm localize (25x): P50 23.1 ms, P95 24.0 ms",
-    "warm resolve (25x): P50 0.0 ms, P95 0.0 ms",
-    "warm find symbol (25x): P50 2.0 ms, P95 2.3 ms",
+    "cold index (full semantic pass): 24,554 ms",
+    "warm localize (25x): P50 23.4 ms, P95 25.2 ms",
+    "warm resolve (25x): P50 0.0 ms, P95 0.1 ms",
+    "warm find symbol (25x): P50 2.2 ms, P95 3.6 ms",
     "warm impact callers\u002Bimplementers (25x): P50 0.0 ms, P95 0.0 ms",
-    "warm review plan (25x): P50 95.6 ms, P95 100.2 ms",
-    "incremental re-index of src/NodaTime/IClock.cs (25x): P50 19.6 ms, P95 22.1 ms",
+    "warm review plan (25x): P50 97.8 ms, P95 101.3 ms",
+    "incremental re-index of src/NodaTime/IClock.cs (25x): P50 20.9 ms, P95 25.4 ms",
     "note: timings are environment-dependent; incremental re-index updates the file\u0027s syntax rows, not cross-file semantic edges."
   ]
 }

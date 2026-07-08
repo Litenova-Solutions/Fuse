@@ -97,8 +97,14 @@ Review the semantic impact of a change since a git base ref: the changed files, 
 | `includeTests` | bool | true | Include related test files |
 | `format` | string | `xml` | `xml`, `markdown`, or `json` |
 | `sessionId` | string | null | Session id; files already sent unchanged in the session are elided |
+| `handoff` | bool | false | Produce a paste-ready PR handoff packet instead of the review context; refuses while the check session has unresolved introduced errors |
+| `checkSession` | string | `""` | For `handoff`: the `fuse_check` session id to gate on |
 
 The manifest opens with a public API delta section (T2): the public and protected members added, removed, or changed between the git base ref and the working tree, each flagged breaking (a removal, a signature change, or an accessibility reduction) or additive. A purely internal change shows no section. The surface is compared by extracting the public and protected symbols of each changed C# file on both sides (the base side read from the base ref, the current side from the working tree), so a contract break is the first thing a reviewer reads rather than something CI discovers. In the JSON format the section rides a dedicated `apiDelta` field so the payload stays valid JSON. Out of scope, and not flagged: binary-compatibility subtleties that are not a source-visible surface change, specifically default parameter value changes and `const` inlining.
+
+The review also carries a graded claims block (U2): the changed-file set (git-truth, so `verified`) and, when the surface moved, a `partially verified` claim that the change alters the public API. Each claim names its evidence. See [claim grades](/docs/concepts/claim-grades) for the grade table and the session ledger.
+
+With `handoff=true` the tool returns a paste-ready PR body instead of the review context: the changed files, the public API delta, the compiler-gate status, and the named residual risk. It is gated, not a controller - while the `checkSession` still has unresolved introduced errors it refuses and returns the red summary rather than a packet, so a change that does not yet pass the compiler cannot be handed off.
 
 ## fuse_find
 

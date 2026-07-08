@@ -5,6 +5,7 @@ using Fuse.Fusion;
 using Fuse.Indexing;
 using Fuse.Plugins.Abstractions.Options;
 using Fuse.Reduction.Caching;
+using Fuse.Retrieval;
 using Fuse.Semantics;
 using ModelContextProtocol.Server;
 
@@ -160,19 +161,41 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The matches grouped by kind.</returns>
     [McpServerTool(Name = "fuse_find", ReadOnly = true)]
-    [Description("Exact lookup: find a symbol by name, a file by path fragment, or text by full-text search. Use instead of broad grep when the name or path is known.")]
+    [Description("The find union: locate what a task needs by kind. Exact lookup - kind=symbol (by name), path (by fragment), text (full-text), or all. Wiring - kind=service, request, route, or config resolves the query to its implementation/handler/action/options (folds fuse_resolve). kind=signatures returns the query symbol's exact signature (folds fuse_signatures). kind=neighbors returns the query symbol's callers and implementers (folds fuse_neighbors). kind=task ranks candidate files for the query with the graded refuse-and-route contract (folds fuse_localize). Use instead of broad grep when the name, wiring, or task is known.")]
     public static async Task<string> FuseFindAsync(
         SemanticIndexer indexer,
-        [Description("The name, path fragment, or text to find.")] string query,
+        IChangeSource changeSource,
+        [Description("The name, path fragment, text, wiring identifier, or task to find.")] string query,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
-        [Description("Restrict to one kind: symbol, path, text, or all. Default: all.")] string kind = "all",
+        [Description("The kind: symbol, path, text, all (exact); service, request, route, config (wiring); signatures; neighbors; task.")] string kind = "all",
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
             return "Error: provide a query to find.";
 
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
         var normalizedKind = kind.Trim().ToLowerInvariant();
+
+        // The union folds (U1): a wiring, signatures, neighbors, or task kind routes to the specialized engine
+        // logic (formerly fuse_resolve / fuse_signatures / fuse_neighbors / fuse_localize), keyed by the query.
+        switch (normalizedKind)
+        {
+            case "service":
+                return await FuseResolveAsync(indexer, path, service: query, cancellationToken: cancellationToken);
+            case "request":
+                return await FuseResolveAsync(indexer, path, request: query, cancellationToken: cancellationToken);
+            case "route":
+                return await FuseResolveAsync(indexer, path, route: query, cancellationToken: cancellationToken);
+            case "config":
+                return await FuseResolveAsync(indexer, path, config: query, cancellationToken: cancellationToken);
+            case "signatures":
+                return await FuseSignaturesAsync(indexer, [query], path, cancellationToken: cancellationToken);
+            case "neighbors":
+                return await FuseNeighborsAsync(indexer, path, symbol: query, cancellationToken: cancellationToken);
+            case "task":
+                return await FuseLocalizeAsync(indexer, changeSource, path, task: query, cancellationToken: cancellationToken);
+        }
+
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
         var builder = new StringBuilder();
 
         if (normalizedKind is "all" or "symbol")

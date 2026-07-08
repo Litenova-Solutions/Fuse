@@ -28,22 +28,25 @@ public static class BuildGradeTestRunner
     ///     Runs the covering tests for a target under a timeout and returns the per-test verdicts.
     /// </summary>
     /// <param name="target">The solution or project to test.</param>
-    /// <param name="coveringTestNames">The fully qualified names of the covering subset to run.</param>
+    /// <param name="filterExpression">
+    ///     The runner filter selecting the covering subset (built by <see cref="TestFilterBuilder" />). An empty
+    ///     string is treated as "run nothing", never an unfiltered whole-suite run.
+    /// </param>
     /// <param name="resultsDirectory">A scratch directory the TRX log is written to (created if absent).</param>
     /// <param name="timeout">The hard timeout for the run.</param>
     /// <param name="cancellationToken">A token to cancel the run.</param>
     /// <returns>The run result: verdicts, timeout and ran-nothing flags, and a diagnostic when the runner failed.</returns>
     public static async Task<TestRunResult> RunAsync(
         string target,
-        IReadOnlyList<string> coveringTestNames,
+        string filterExpression,
         string resultsDirectory,
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
-        var filter = TestFilterBuilder.Build(coveringTestNames);
-        if (filter.Length == 0)
+        if (string.IsNullOrEmpty(filterExpression))
             return new TestRunResult([], TimedOut: false, RanNothing: true, Diagnostics: null);
 
+        var filter = filterExpression;
         Directory.CreateDirectory(resultsDirectory);
         const string trxName = "fuse-covering.trx";
 

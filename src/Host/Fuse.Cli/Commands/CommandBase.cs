@@ -179,7 +179,6 @@ public abstract class CommandBase
             TieredEmission = resolved.TieredEmission,
             MultiQueryFusion = resolved.MultiQueryFusion,
             BudgetAwareExpansion = resolved.BudgetAwareExpansion,
-            DenseRerank = resolved.DenseRerank,
             GitChurnWeight = resolved.GitChurnWeight,
             SketchHugeFiles = resolved.SketchHugeFiles,
             DowngradeBeforeDrop = resolved.DowngradeBeforeDrop,

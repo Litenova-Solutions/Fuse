@@ -16,6 +16,10 @@
   "tasks": [],
   "notes": [
     "candidates@20, title-only input, changed-file ground truth",
+    "restore NodaTime: restored 15, failed 0",
+    "restore Scrutor: restored 0, failed 2",
+    "restore Specification: restored 11, failed 0",
+    "restore eShopOnWeb: restored 11, failed 0",
     "index modes: partial 2, syntax 2",
     "config lexical (n 53): MRR 0.187, recall@1 3.0%, recall@5 10.7%, recall@10 12.6%, nDCG@10 0.117",
     "config default (n 53): MRR 0.197, recall@1 4.0%, recall@5 10.4%, recall@10 15.0%, nDCG@10 0.139",

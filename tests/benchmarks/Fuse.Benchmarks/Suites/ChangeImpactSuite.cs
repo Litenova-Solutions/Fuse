@@ -135,7 +135,7 @@ public sealed class ChangeImpactSuite : IEvalSuite
                 return ([], null, mode, isAdjudicated);
             }
 
-            var engine = new SemanticRetrievalEngine(store, _changeSource, options.Embedder);
+            var engine = new SemanticRetrievalEngine(store, _changeSource);
             for (var i = 0; i < budgets.Count; i++)
             {
                 var budget = budgets[i];

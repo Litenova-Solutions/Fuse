@@ -31,7 +31,6 @@
       <Project Path="src/Plugins/Fuse.Plugins.Languages.CSharp/Fuse.Plugins.Languages.CSharp.csproj" />
       <Project Path="src/Plugins/Fuse.Plugins.Languages.CSharp.Roslyn/Fuse.Plugins.Languages.CSharp.Roslyn.csproj" />
       <Project Path="src/Plugins/Fuse.Plugins.Formats.Web/Fuse.Plugins.Formats.Web.csproj" />
-      <Project Path="src/Plugins/Fuse.Plugins.Rerank.Onnx/Fuse.Plugins.Rerank.Onnx.csproj" />
     </Folder>
   </Folder>
   <Folder Name="/src/Core/">
@@ -58,7 +57,6 @@
     <Project Path="tests/Fuse.GoldenOutput.Tests/Fuse.GoldenOutput.Tests.csproj" />
     <Project Path="tests/Fuse.Plugins.Languages.CSharp.Tests/Fuse.Plugins.Languages.CSharp.Tests.csproj" />
     <Project Path="tests/Fuse.Plugins.Languages.CSharp.Roslyn.Tests/Fuse.Plugins.Languages.CSharp.Roslyn.Tests.csproj" />
-    <Project Path="tests/Fuse.Plugins.Rerank.Onnx.Tests/Fuse.Plugins.Rerank.Onnx.Tests.csproj" />
     <Project Path="tests/Fuse.Reduction.Tests/Fuse.Reduction.Tests.csproj" />
     <Project Path="tests/Fuse.Indexing.Tests/Fuse.Indexing.Tests.csproj" />
     <Project Path="tests/Fuse.Semantics.Tests/Fuse.Semantics.Tests.csproj" />

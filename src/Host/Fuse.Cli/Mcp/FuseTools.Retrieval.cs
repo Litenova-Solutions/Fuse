@@ -19,7 +19,6 @@ public sealed partial class FuseTools
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
     /// <param name="changeSource">The change source for resolving a git base ref.</param>
-    /// <param name="embedder">An optional text embedder; when present, a dense retrieval channel is added.</param>
     /// <param name="path">The workspace directory.</param>
     /// <param name="task">The free-text task or query.</param>
     /// <param name="route">A route to resolve.</param>
@@ -38,7 +37,6 @@ public sealed partial class FuseTools
     public static async Task<string> FuseLocalizeAsync(
         SemanticIndexer indexer,
         IChangeSource changeSource,
-        Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? embedder = null,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("The task or query to localize.")] string? task = null,
         [Description("A route to resolve, for example \"POST /api/orders/{id}\".")] string? route = null,
@@ -54,7 +52,7 @@ public sealed partial class FuseTools
     {
         var root = Path.GetFullPath(path);
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
-        var engine = new SemanticRetrievalEngine(store, changeSource, embedder);
+        var engine = new SemanticRetrievalEngine(store, changeSource);
         var requestModel = new LocalizationRequest(
             root, Query: task, ChangedSince: changedSince, Route: route, Focus: symbol, Service: service,
             Request: request, ConfigSection: config, MaxCandidates: maxCandidates, Strict: strict, ExpandGraph: expand);

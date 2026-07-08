@@ -14,19 +14,15 @@ namespace Fuse.Fusion;
 
 /// <summary>
 ///     The query-mode scoping pipeline: builds the relevance index, runs ranking with pseudo-relevance
-///     feedback, multi-query fusion, the distributional thesaurus, member-level retrieval, the git churn prior,
-///     and dense rerank, then promotes seeds and expands the dependency graph. Extracted from
+///     feedback, multi-query fusion, the distributional thesaurus, member-level retrieval, and the git churn
+///     prior, then promotes seeds and expands the dependency graph. Extracted from
 ///     <see cref="FusionOrchestrator" /> so the query path is testable in isolation; behavior is unchanged.
 /// </summary>
 public sealed class QueryScopingPipeline
 {
-    // The candidate pool is widened to this multiple of the seed count when a pool prior (dense rerank or the
-    // git churn prior) is active, so the prior can promote a file the lexical pass ranked just outside the seeds.
+    // The candidate pool is widened to this multiple of the seed count when the git churn pool prior is active,
+    // so the prior can promote a file the lexical pass ranked just outside the seeds.
     private const int CandidatePoolWideningFactor = 4;
-
-    // Characters of file content included in the dense-rerank text. The declared symbols and path carry most of
-    // the signal; a short body sketch adds context. Capped so a large file does not dominate.
-    private const int RerankSketchChars = 2000;
 
     // A member is kept verbatim only when its query-overlap score is at least this fraction of the file's best
     // member. The floor separates the members the query is genuinely about from siblings that share the type.
@@ -45,7 +41,6 @@ public sealed class QueryScopingPipeline
     private readonly Func<IRelevanceIndex> _relevanceIndexFactory;
     private readonly RelevanceIndexCache _relevanceIndexCache;
     private readonly ITokenCostModel _tokenCostModel;
-    private readonly IReranker? _reranker;
     private readonly Enrichment.IGitStatsProvider _gitStatsProvider;
     private readonly FocusSeedResolver _focusSeedResolver;
     private readonly ILogger _logger;
@@ -62,7 +57,6 @@ public sealed class QueryScopingPipeline
         ITokenCostModel tokenCostModel,
         Enrichment.IGitStatsProvider gitStatsProvider,
         FocusSeedResolver focusSeedResolver,
-        IReranker? reranker = null,
         ILogger? logger = null)
     {
         _dependencyExtractors = dependencyExtractors;
@@ -73,7 +67,6 @@ public sealed class QueryScopingPipeline
         _tokenCostModel = tokenCostModel;
         _gitStatsProvider = gitStatsProvider;
         _focusSeedResolver = focusSeedResolver;
-        _reranker = reranker;
         _logger = logger ?? NullLogger<QueryScopingPipeline>.Instance;
     }
 
@@ -172,12 +165,10 @@ public sealed class QueryScopingPipeline
         // lexical default keeps the pool equal to the seed count, so behavior is unchanged.
         var candidateTopK = request.Query!.ResolvedCandidateTopK;
         var seedTopK = request.Query.ResolvedSeedTopK;
-        // A candidate-pool prior (dense rerank or the git churn prior) only changes the seed set when the pool
-        // is wider than the seed count, since it chooses which candidates become seeds. Widen the pool to
-        // several times the seed count when one is active, so the prior can promote a file the lexical pass
-        // ranked just outside the seeds.
-        var poolPriorActive = (experimental.DenseRerank && _reranker is { IsAvailable: true })
-                              || experimental.GitChurnWeight > 0;
+        // The git churn pool prior only changes the seed set when the pool is wider than the seed count, since it
+        // chooses which candidates become seeds. Widen the pool to several times the seed count when it is active,
+        // so the prior can promote a file the lexical pass ranked just outside the seeds.
+        var poolPriorActive = experimental.GitChurnWeight > 0;
         if (poolPriorActive)
             candidateTopK = Math.Max(candidateTopK, seedTopK * CandidatePoolWideningFactor);
         // Item 12 (rules-based, no model): when on, emphasize the query's compound PascalCase identifiers via
@@ -310,24 +301,7 @@ public sealed class QueryScopingPipeline
                 ranked, request.Collection.SourceDirectory, experimental.GitChurnWeight, cancellationToken);
         }
 
-        // Dense rerank (item 9): reorder the candidate pool by blending the lexical score with a model's
-        // query-to-document similarity, so a semantically matching file is promoted to a seed even when it
-        // shares fewer query words. Optional and gated: when no reranker is registered (no model, offline, or
-        // the assembly is absent) or the flag is off, the pool keeps its lexical order, which is the guaranteed
-        // lexical fallback when no model is present. The text embedded per candidate is its declared symbols, path, and a content sketch.
-        if (experimental.DenseRerank && _reranker is { IsAvailable: true } reranker && ranked.Count > 1)
-        {
-            var rerankText = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var candidate in ranked)
-            {
-                if (documents.TryGetValue(candidate.Path, out var doc))
-                    rerankText[candidate.Path] = BuildRerankText(doc);
-            }
-
-            ranked = reranker.Rerank(request.Query.Query, ranked, rerankText);
-        }
-
-        // Promote the top seedTopK of the (possibly reranked) candidate pool to expansion seeds. With the
+        // Promote the top seedTopK of the (possibly reordered) candidate pool to expansion seeds. With the
         // lexical default the pool and seed count are equal, so every candidate is a seed as before.
         var seedRanked = ranked.Count > seedTopK ? ranked.Take(seedTopK).ToList() : ranked;
         var seedScores = seedRanked.ToDictionary(r => r.Path, r => r.Score, StringComparer.OrdinalIgnoreCase);
@@ -465,18 +439,6 @@ public sealed class QueryScopingPipeline
         foreach (var symbol in symbols)
             foreach (var term in RelevanceTokenizer.Tokenize(symbol))
                 yield return term;
-    }
-
-    // Builds the text a candidate file is embedded as for dense reranking: its declared symbols first (the
-    // strongest concept signal), then its path, then a short content sketch.
-    private static string BuildRerankText(IndexedDocument document)
-    {
-        var symbols = document.Symbols is { Count: > 0 } declared
-            ? string.Join(' ', declared)
-            : string.Empty;
-        var content = document.Content;
-        var sketch = content.Length > RerankSketchChars ? content[..RerankSketchChars] : content;
-        return $"{symbols}\n{document.Path ?? string.Empty}\n{sketch}";
     }
 
     // Extracts the compound-identifier tokens from a query as a weighted-term set for an identifier-only ranking

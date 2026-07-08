@@ -1,7 +1,6 @@
 using DotMake.CommandLine;
 using Fuse.Cli.Services;
 using Fuse.Indexing;
-using Fuse.Plugins.Rerank.Onnx;
 using Fuse.Reduction.Caching;
 using Fuse.Semantics;
 
@@ -69,11 +68,6 @@ public sealed class IndexCommand
         var databasePath = FuseStorePaths.ResolveDatabasePath(root);
         _consoleUI.WriteStep($"Indexing {root}");
         _consoleUI.WriteStep($"Store: {databasePath}");
-
-        // Dense is on by default: fetch and cache the bundled embedding model once before indexing so per-chunk
-        // vectors are persisted. Offline-safe: a failed fetch falls back to lexical without breaking the index.
-        await DenseModelProvisioner.EnsureModelAsync(
-            new Progress<string>(_consoleUI.WriteStep), logger: null, context.CancellationToken);
 
         await using var store = new WorkspaceIndexStore(databasePath);
         await store.InitializeAsync(context.CancellationToken);

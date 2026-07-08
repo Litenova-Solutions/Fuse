@@ -36,6 +36,30 @@ public sealed class SemanticManifestBuilderTests
     }
 
     [Fact]
+    public void ManifestIncludesClaimsSectionWhenProvided()
+    {
+        // U2: the graded-claims block rides the manifest, emitted after the api-delta and ahead of the seeds so the
+        // evidence trail is read before the source. The block is a rendered string the tool computes.
+        var plan = SamplePlan();
+        var claims = ClaimLedger.Render([Claim.FromCompiler("2 changed file(s) are seeded as must-keep", "git diff origin/main")]);
+
+        var manifest = SemanticManifestBuilder.Build(plan, root: "/repo", changedSince: "origin/main", claimsSection: claims);
+
+        Assert.Contains("claims (1", manifest);
+        Assert.Contains("[verified] 2 changed file(s) are seeded as must-keep", manifest);
+        // Ordering: claims precede the seeds section.
+        Assert.True(manifest.IndexOf("claims (1", StringComparison.Ordinal) < manifest.IndexOf("seeds:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ManifestOmitsClaimsSectionWhenNull()
+    {
+        var manifest = SemanticManifestBuilder.Build(SamplePlan(), claimsSection: null);
+
+        Assert.DoesNotContain("claims (", manifest);
+    }
+
+    [Fact]
     public void ProvenanceFormatProducesBlock()
     {
         var block = ProvenanceFormatter.Format(["<- di_resolves_to (hop 1)", "<- di_injects (hop 2)"]);

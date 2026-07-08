@@ -33,22 +33,23 @@ public static class SemanticContextEmitter
         string? root = null,
         string? changedSince = null,
         IReadOnlyCollection<string>? unchangedPaths = null,
-        string? apiDeltaSection = null)
+        string? apiDeltaSection = null,
+        string? claimsSection = null)
     {
         var unchanged = unchangedPaths ?? [];
         return format switch
         {
-            ContextOutputFormat.Markdown => EmitMarkdown(plan, rendered, root, changedSince, unchanged, apiDeltaSection),
-            ContextOutputFormat.Json => EmitJson(plan, rendered, root, changedSince, unchanged, apiDeltaSection),
-            _ => EmitXml(plan, rendered, root, changedSince, unchanged, apiDeltaSection),
+            ContextOutputFormat.Markdown => EmitMarkdown(plan, rendered, root, changedSince, unchanged, apiDeltaSection, claimsSection),
+            ContextOutputFormat.Json => EmitJson(plan, rendered, root, changedSince, unchanged, apiDeltaSection, claimsSection),
+            _ => EmitXml(plan, rendered, root, changedSince, unchanged, apiDeltaSection, claimsSection),
         };
     }
 
-    private static string EmitXml(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged, string? apiDeltaSection)
+    private static string EmitXml(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged, string? apiDeltaSection, string? claimsSection = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine("<!--");
-        builder.Append(SemanticManifestBuilder.Build(plan, root, changedSince, apiDeltaSection));
+        builder.Append(SemanticManifestBuilder.Build(plan, root, changedSince, apiDeltaSection, claimsSection));
         builder.AppendLine("-->");
 
         foreach (var file in rendered.Files)
@@ -76,13 +77,13 @@ public static class SemanticContextEmitter
         return builder.ToString();
     }
 
-    private static string EmitMarkdown(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged, string? apiDeltaSection)
+    private static string EmitMarkdown(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged, string? apiDeltaSection, string? claimsSection = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine("# Fuse semantic context");
         builder.AppendLine();
         builder.AppendLine("```");
-        builder.Append(SemanticManifestBuilder.Build(plan, root, changedSince, apiDeltaSection));
+        builder.Append(SemanticManifestBuilder.Build(plan, root, changedSince, apiDeltaSection, claimsSection));
         builder.AppendLine("```");
         builder.AppendLine();
 
@@ -109,7 +110,7 @@ public static class SemanticContextEmitter
         return builder.ToString();
     }
 
-    private static string EmitJson(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged, string? apiDeltaSection)
+    private static string EmitJson(ContextPlan plan, RenderedContext rendered, string? root, string? changedSince, IReadOnlyCollection<string> unchanged, string? apiDeltaSection, string? claimsSection = null)
     {
         var dto = new ContextJsonDto(
             Mode: plan.Mode,
@@ -123,7 +124,8 @@ public static class SemanticContextEmitter
                     : new ContextFileDto(f.Path, f.Role, f.Tier.ToString(), f.Score, f.TokenCount, f.Provenance, f.Content))
                 .ToList(),
             Notes: plan.Warnings,
-            ApiDelta: string.IsNullOrWhiteSpace(apiDeltaSection) ? null : apiDeltaSection.TrimEnd());
+            ApiDelta: string.IsNullOrWhiteSpace(apiDeltaSection) ? null : apiDeltaSection.TrimEnd(),
+            Claims: string.IsNullOrWhiteSpace(claimsSection) ? null : claimsSection.TrimEnd());
 
         return JsonSerializer.Serialize(dto, FuseContextJsonContext.Default.ContextJsonDto);
     }

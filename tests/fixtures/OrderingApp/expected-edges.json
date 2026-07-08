@@ -22,6 +22,7 @@
     { "from": "service:SignalR", "to": "type:OrderingApp.Api.ChatHub", "type": "signalr_endpoint" },
     { "from": "type:OrderingApp.Data.ICache", "to": "type:OrderingApp.Data.MemoryCache", "type": "di_resolves_to" },
     { "from": "type:OrderingApp.Data.IShipping", "to": "type:OrderingApp.Data.FastShipping", "type": "di_resolves_to" },
+    { "from": "type:OrderingApp.Ordering.INotifier", "to": "type:OrderingApp.Ordering.EmailNotifier", "type": "di_resolves_to" },
     { "from": "type:OrderingApp.Data.IRepository<T>", "to": "type:OrderingApp.Data.Repository<T>", "type": "di_resolves_to" }
   ]
 }

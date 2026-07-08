@@ -966,7 +966,7 @@ claimed at this sample size.
 Read these together when prioritizing work:
 
 1. **Semantic ceiling (A) vs corpus reality (B/C/ranking):** Wiring resolution is exact on the
-   fixture (22/22). Corpus suites run mostly syntax/partial, so they understate the moat.
+   fixture (23/23). Corpus suites run mostly syntax/partial, so they understate the moat.
 2. **Retrieval is not the win (C, ranking, peers):** ~15% open-ended recall; tier-1 did not lift
    it; ranking tweaks are guarded but bounded by index mode. Fuse beats CodeGraph on peers but
    open-ended recall remains low.

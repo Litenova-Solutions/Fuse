@@ -28,6 +28,15 @@ public sealed class DiRegistrationAnalyzer : ISemanticAnalyzer
         ["TryAddScoped"] = "Scoped",
         ["TryAddSingleton"] = "Singleton",
         ["TryAddTransient"] = "Transient",
+        // Keyed DI (G2): AddKeyedSingleton<TService, TImpl>(serviceKey) and friends. The service key is a value
+        // argument the generic-2 and typeof extraction paths already ignore (the typeof filter drops the key), so
+        // the type-argument forms resolve identically to their non-keyed counterparts.
+        ["AddKeyedScoped"] = "Scoped",
+        ["AddKeyedSingleton"] = "Singleton",
+        ["AddKeyedTransient"] = "Transient",
+        ["TryAddKeyedScoped"] = "Scoped",
+        ["TryAddKeyedSingleton"] = "Singleton",
+        ["TryAddKeyedTransient"] = "Transient",
     };
 
     /// <inheritdoc />

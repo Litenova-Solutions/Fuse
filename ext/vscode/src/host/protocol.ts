@@ -4,7 +4,7 @@
 // parses the same fixtures, so any drift on either side fails a test. Keep this file in lockstep with the DTOs.
 
 /** Wire protocol version; must equal FuseHostService.ProtocolVersion on the host. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** Result of `fuse/handshake`: host package version, the wire protocol version to match, and the session token for later RPC calls. */
 export interface FuseHostHandshake {
@@ -118,6 +118,22 @@ export interface ExplainResultDto {
   files: ExplainFileDto[];
 }
 
+/** One compiler diagnostic in a `fuse/check` delta (S3 ambient verification). */
+export interface CheckDiagnosticDto {
+  id: string;
+  severity: string;
+  message: string;
+  path?: string;
+  line: number;
+}
+
+/** Result of `fuse/check`: the diagnostics a session's edits introduced or resolved since its baseline. When no resident workspace serves the root, `resident` is false and both lists are empty. */
+export interface CheckDeltaDto {
+  resident: boolean;
+  introduced: CheckDiagnosticDto[];
+  resolved: CheckDiagnosticDto[];
+}
+
 /** RPC method names exposed by the host (the `fuse/` namespace). */
 export const Methods = {
   handshake: "fuse/handshake",
@@ -127,6 +143,7 @@ export const Methods = {
   scope: "fuse/scope",
   diagnostics: "fuse/diagnostics",
   explain: "fuse/explain",
+  check: "fuse/check",
   shutdown: "fuse/shutdown",
 } as const;
 

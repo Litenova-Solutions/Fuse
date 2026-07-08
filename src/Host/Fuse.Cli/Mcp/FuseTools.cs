@@ -85,13 +85,16 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The action's result, or a descriptive error.</returns>
     [McpServerTool(Name = "fuse_workspace", ReadOnly = false)]
-    [Description("Workspace status and lifecycle (the loop's first stop). action=status (default): the index mode, verification grade, and freshness. action=index: build or refresh the persistent semantic index. action=map: the symbols, routes, and counts. action=doctor: the per-project semantic-load diagnosis (why a project loaded at the tier it did). The read actions fold fuse_index and fuse_map; the explicit apply-diff write path is added separately.")]
+    [Description("Workspace status and lifecycle (the loop's first stop). action=status (default): the index mode, verification grade, and freshness. action=index: build or refresh the persistent semantic index. action=map: the symbols, routes, and counts. action=doctor: the per-project semantic-load diagnosis. action=apply: write a proposed single-file edit (file + content) to the working tree - the one explicit apply path (Decision D2); it is a dry run that only reports the change unless write=true, and it refuses any path that escapes the workspace root. The read actions fold fuse_index and fuse_map.")]
     public static async Task<string> FuseWorkspaceAsync(
         SemanticIndexer indexer,
-        [Description("The action: status, index, map, or doctor.")] string action = "status",
+        [Description("The action: status, index, map, doctor, or apply.")] string action = "status",
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("For the map action: detail to include (symbols, routes, all).")] string detail = "all",
         [Description("For the map action: maximum rows per section.")] int maxRows = 200,
+        [Description("For the apply action: the repo-relative file to write.")] string file = "",
+        [Description("For the apply action: the full new content to write to that file.")] string content = "",
+        [Description("For the apply action: actually write (otherwise a dry run reports the change without writing).")] bool write = false,
         CancellationToken cancellationToken = default)
     {
         switch (action.Trim().ToLowerInvariant())
@@ -102,12 +105,44 @@ public sealed partial class FuseTools
                 return await FuseMapAsync(indexer, path, detail, maxRows, cancellationToken);
             case "doctor":
                 return await WorkspaceDoctorAsync(indexer, path, cancellationToken);
+            case "apply":
+                return await WorkspaceApplyAsync(path, file, content, write, cancellationToken);
             case "status":
             case "":
                 return await WorkspaceStatusAsync(indexer, path, cancellationToken);
             default:
-                return $"Error: unknown workspace action '{action}'. Use status, index, map, or doctor.";
+                return $"Error: unknown workspace action '{action}'. Use status, index, map, doctor, or apply.";
         }
+    }
+
+    // The one explicit tree-write path (Decision D2): write a single file's proposed content, guarded so the
+    // server never writes outside the workspace and never writes silently. A dry run (write=false, the default)
+    // reports what would change; write=true performs the one write. The path is refused if it escapes the root.
+    private static async Task<string> WorkspaceApplyAsync(string path, string file, string content, bool write, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(file))
+            return "Error: apply needs a file (the repo-relative path to write) and content.";
+
+        var root = Path.GetFullPath(path);
+        if (!Directory.Exists(root))
+            return $"Error: Directory not found: {root}";
+
+        // Resolve and confine: GetFullPath normalizes any ../ segments; the result must stay under the root, or a
+        // crafted path could escape the workspace. This is the guard the D2 write path exists to enforce.
+        var full = Path.GetFullPath(Path.Combine(root, file));
+        var rootPrefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
+        if (!full.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
+            return $"Error: refusing to write '{file}': it resolves outside the workspace root. The apply path only writes inside {root}.";
+
+        var exists = File.Exists(full);
+        if (!write)
+            return $"dry run (no write): would {(exists ? "overwrite" : "create")} {file} ({content.Length} chars). Re-run with write=true to apply.";
+
+        var dir = Path.GetDirectoryName(full);
+        if (dir is not null)
+            Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(full, content, cancellationToken);
+        return $"applied: {(exists ? "overwrote" : "created")} {file} ({content.Length} chars) in the working tree.";
     }
 
     // The status action: the availability header (index mode, verify grade, freshness) plus the index counts.

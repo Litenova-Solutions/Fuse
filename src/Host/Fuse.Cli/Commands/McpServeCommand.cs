@@ -84,7 +84,7 @@ public sealed class McpServeCommand
                     "Use fuse_context only after fuse_find unless the user asks for one-shot context.\n" +
                     "Use fuse_find with kind=symbol|path|text for exact lookup.\n\n" +
                     "TOOLS:\n" +
-                    "- fuse_workspace: Workspace status and lifecycle. action=status (index mode, verify grade, freshness), index (build/refresh), map (symbols/routes/counts), doctor (per-project load diagnosis). The cheap first call.\n" +
+                    "- fuse_workspace: Workspace status and lifecycle. action=status (index mode, verify grade, freshness), index (build/refresh), map (symbols/routes/counts), doctor (per-project load diagnosis), apply (write a proposed file edit - the one explicit tree-write path, D2; a dry run unless write=true, refuses paths outside the root). The cheap first call.\n" +
                     "- fuse_find: The find union. kind=symbol|path|text|all (exact lookup); service|request|route|config (wiring to impl/handler/action/options); signatures (a symbol's exact signature); neighbors (callers and implementers); task (rank candidate files, graded refuse-and-route). No bodies.\n" +
                     "- fuse_context: Emit source context (mixed tiers, manifest, provenance) for selected seeds.\n" +
                     "- fuse_review: Diff-first semantic impact and packed context for a change.\n" +

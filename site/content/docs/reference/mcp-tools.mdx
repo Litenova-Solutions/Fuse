@@ -170,8 +170,15 @@ The response opens with the grade line so a client knows the class of truth and 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
 | `path` | string | `.` | Workspace directory |
-| `file` | string | required | The repo-relative path of the file being changed |
-| `content` | string | required | The proposed full new content of that file |
+| `file` | string | required (single-file mode) | The repo-relative path of the file being changed |
+| `content` | string | required (single-file mode) | The proposed full new content of that file |
+| `session` | string | null | Delta mode: a session id (see below) |
+| `full` | bool | false | Delta mode: return the whole current diagnostic set instead of the delta |
+| `markGreen` | bool | false | Delta mode: reset the session baseline to the current diagnostics |
+
+### Delta mode
+
+Pass a `session` id with no `content` and `fuse_check` answers the inverse question: not "would this proposed edit compile" but "what did my on-disk edits change". It returns the diagnostics introduced or resolved since the session baseline, each introduced error carrying a repair packet where one applies. The baseline is set on the first call for a session and persists to the store, so a restarted process resumes the session with its baseline intact; `markGreen: true` resets the baseline to the current state, and `full: true` returns the whole current diagnostic set instead of the delta. Delta mode never runs a build (that would defeat the point), so it reads the current whole-state diagnostics from a live resident workspace and abstains, naming the prerequisite, when none serves the root. Matching ignores the line number so an edit that shifts a diagnostic up or down the file does not read as a phantom change.
 
 ## fuse_impact
 

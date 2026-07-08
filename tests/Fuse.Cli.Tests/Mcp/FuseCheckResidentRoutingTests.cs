@@ -12,6 +12,10 @@ namespace Fuse.Cli.Tests.Mcp;
 // With the default null provider the routing is a no-op and the existing worker/build-grade ladder is unchanged.
 // This test wires a stub resident provider and confirms fuse_check reports the resident diagnostics at oracle
 // grade.
+//
+// Shares a collection with the other tests that mutate the static FuseTools.ResidentWorkspaces, so xUnit
+// serializes them rather than racing the shared static across parallel classes.
+[Collection("FuseToolsResidentProvider")]
 public sealed class FuseCheckResidentRoutingTests : IDisposable
 {
     private readonly ServiceProvider _provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
@@ -49,7 +53,7 @@ public sealed class FuseCheckResidentRoutingTests : IDisposable
             var output = await FuseTools.FuseCheckAsync(
                 indexer, work, "Widget.cs",
                 "namespace Sample; public sealed class Widget { public int Spin() => Nope; }",
-                CancellationToken.None);
+                cancellationToken: CancellationToken.None);
 
             Assert.Contains("verification grade: oracle", output);
             Assert.Contains("CS1061", output);
@@ -84,7 +88,7 @@ public sealed class FuseCheckResidentRoutingTests : IDisposable
             var output = await FuseTools.FuseCheckAsync(
                 indexer, work, "Widget.cs",
                 "namespace Sample; public sealed class Widget { public int Spin() => 7; }",
-                CancellationToken.None);
+                cancellationToken: CancellationToken.None);
 
             Assert.Contains("verification grade: oracle", output);
             Assert.Contains("clean", output);

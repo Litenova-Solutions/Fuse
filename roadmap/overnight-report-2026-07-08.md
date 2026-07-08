@@ -2,7 +2,21 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `9de9e5d`.
+bumps, or publishing. Tree is green and pushed at HEAD `b36f22d`.
+
+## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
+
+S3 (harness hooks: ambient verification) is under way. Its hardest, most delicate part - the host RPC protocol
+bump, flagged as the item's main uncertainty - is done and fully verified on both sides: FuseHostService protocol
+3 -> 4 with a new `fuse/check` RPC (resident whole-state diagnostics diffed against the persisted session
+baseline, returning introduced/resolved; non-resident empty delta when no resident workspace serves the root, so a
+hook stays silent and never runs a build), new `CheckDeltaDto`/`CheckDiagnosticDto` shapes, the extension
+`protocol.ts` mirror (PROTOCOL_VERSION 4, interfaces, method name), and both contract suites plus the fixtures
+updated in lockstep per the change-safety invariant (.NET FuseHostContractTests 10/10, extension `node --test`
+9/9, `tsc --noEmit` clean, an RPC wire test for the no-resident path). All 16 .NET assemblies green, format clean.
+Commit `fe69948`. Remaining S3 (recorded in the plan): (B) `fuse check --delta`/`fuse gate` CLI commands - a new
+cross-platform .NET named-pipe/Unix-socket CLIENT connecting to the running host with a <100 ms no-host fast-exit
+(timing-sensitive shipped infra, to build fresh); (C) `fuse mcp install --with-hooks`; (D) dual-shell e2e + docs.
 
 ## S2: DONE (full item, gate PASS) - delta check, persisted sessions, repair packets v2
 

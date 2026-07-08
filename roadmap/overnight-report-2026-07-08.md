@@ -6,6 +6,19 @@ bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `
 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
 C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam at `38004d2`/`69cea59`).
 
+## S1 step 4 projection engine: COMPLETE (add/change/removal)
+
+`SemanticIndexer.ProjectFromCompilationsAsync(root, store, (projectPath, Compilation)[], files, ct)` projects
+live resident compilations into the store: it extracts each project's symbols and wiring graph in-process (the
+worker's extraction), clears the projected files' rows (`DeleteFileDataAsync`, so removals do not leave stale
+rows), and upserts via the tested `IndexFromCaptureAsync`. So a symbol or edge an edit introduces (or removes)
+is reflected in the store - queryable without a full re-index. It takes raw Roslyn Compilations (no
+Fuse.Workspace dependency, so no co-activation). Tested (ProjectFromCompilationsTests): project Foo/Bar, add
+Baz (queryable), rename Bar->Renamed (stale Bar dropped). The remaining S1 integration is wiring this to the
+serve watcher as the single writer (map the changed files to their project, re-project after the resident
+updater applies the edit) plus the issue-5 DI-edge acceptance test and the edge-freshness < 2 s measurement;
+and default-on via G5.
+
 ## S1 latency gate: MET (recorded)
 
 `fuse resident-latency tests/benchmarks/.corpus/NodaTime/src/NodaTime` (a new dedicated-process CLI command

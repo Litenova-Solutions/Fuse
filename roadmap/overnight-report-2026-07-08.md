@@ -38,10 +38,19 @@ Gate: the id-set-equality fixture test (a reliably-firing-analyzer binlog fixtur
 build, editorconfig-silenced rule stays silent) plus the trust-model docs; a small follow-up adds analyzers to the
 out-of-process worker oracle path.
 
-Next action (top-to-bottom): the S4 Gate fixture test, then the trust-model docs; then T1, H2. C1 remains `[>]`
-(corpus-gated apply); S3 has one maintainer-gated timing deviation. All work committed and pushed at HEAD
-`7a88177`; every commit gate-green (build + all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc
-from the S3 protocol change). Roughly 74 gate-green commits this session on top of the prior run.
+S4 Gate attempt found a real gap (this is what the gate is for): a fixture with an editorconfig-elevated CA1822
+does NOT surface through the resident analyzer run (absent in both the warning and none configs), so editorconfig
+severities are not being applied through the captured AnalyzerOptions. The analyzers run (execution is fine); the
+gap is severity MAPPING. The unproven tests were removed rather than committed red; the repro and a root-cause
+hypothesis (data.AnalyzerOptions likely lacks an editorconfig-populated AnalyzerConfigOptionsProvider) are recorded
+in the plan. S4 gate is NOT met (not reinterpreted to pass); S4 stays `[>]`.
+
+Next action (top-to-bottom): fix the S4 editorconfig-severity mapping (inspect data.AnalyzerOptions'
+AnalyzerConfigOptionsProvider; reconstruct it from the rehydrated compilation's SyntaxTreeOptionsProvider or the
+captured analyzerconfig if empty; pass it to WithAnalyzers), then re-run the Gate fixture and add the trust-model
+docs. Then T1, H2. C1 remains `[>]` (corpus-gated apply); S3 has one maintainer-gated timing deviation. All work
+committed and pushed at HEAD `a62747d`; every committed change gate-green (build + all 16 .NET assemblies + dotnet
+format; extension contract 9/9 + tsc from the S3 protocol change). Roughly 76 gate-green commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

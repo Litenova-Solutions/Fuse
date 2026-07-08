@@ -183,6 +183,335 @@ public sealed class ChangeSignatureRefactorer
             ResolveTokenArgument, cancellationToken);
     }
 
+    /// <summary>
+    ///     Removes a parameter from a method (and its override/interface family) solution-wide, dropping the
+    ///     corresponding argument at every call site, and returns the staged diff or a named abstention. Refuses
+    ///     when the parameter is used in any body (the change would not compile) or when a call site passes a
+    ///     non-trivial argument whose removal could drop a side effect (a silent semantic change).
+    /// </summary>
+    /// <param name="solutionOrProjectPath">The absolute path to the solution or project to load.</param>
+    /// <param name="methodName">The simple name of the method whose parameter to remove.</param>
+    /// <param name="containingTypeName">The declaring type's simple name to disambiguate, or null.</param>
+    /// <param name="parameterName">The name of the parameter to remove.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The outcome: the per-file staged diffs, or an abstention with a concrete reason.</returns>
+    public async Task<ChangeSignatureResult> RemoveParameterAsync(
+        string solutionOrProjectPath,
+        string methodName,
+        string? containingTypeName,
+        string parameterName,
+        CancellationToken cancellationToken)
+    {
+        var loaded = await LoadSolutionAsync(solutionOrProjectPath, cancellationToken);
+        if (loaded.Solution is null)
+            return ChangeSignatureResult.Abstain(loaded.Reason!);
+        return await RemoveParameterInSolutionAsync(
+            loaded.Solution, methodName, containingTypeName, parameterName, cancellationToken);
+    }
+
+    internal async Task<ChangeSignatureResult> RemoveParameterInSolutionAsync(
+        Solution solution,
+        string methodName,
+        string? containingTypeName,
+        string parameterName,
+        CancellationToken cancellationToken)
+    {
+        var resolution = await ResolveMethodAsync(solution, methodName, containingTypeName, cancellationToken);
+        if (resolution.Method is null)
+            return ChangeSignatureResult.Abstain(resolution.Reason!);
+        var method = resolution.Method;
+
+        var index = -1;
+        for (var i = 0; i < method.Parameters.Length; i++)
+            if (method.Parameters[i].Name == parameterName)
+                index = i;
+        if (index < 0)
+            return ChangeSignatureResult.Abstain($"'{method.Name}' has no parameter named '{parameterName}'");
+        if (method.Parameters[index].IsParams)
+            return ChangeSignatureResult.Abstain($"'{parameterName}' is a params parameter; remove-parameter abstains (params interaction)");
+
+        var family = await CollectMethodFamilyAsync(solution, method, cancellationToken);
+
+        // Safety pre-check the compile gate cannot see: the parameter must be unused in every family member's body
+        // (removing a used parameter would not even compile, but naming the site is clearer than a raw diagnostic).
+        var usedIn = await ParameterUsedInAnyBodyAsync(solution, family, index, cancellationToken);
+        if (usedIn is not null)
+            return ChangeSignatureResult.Abstain($"'{parameterName}' is used in the body of {usedIn}; remove-parameter abstains (it is not a dead parameter)");
+
+        var baseline = await CollectErrorSignaturesAsync(solution, cancellationToken);
+        var rewrite = await ApplyRemovalAsync(solution, family, parameterName, index, cancellationToken);
+        if (rewrite.Solution is null)
+            return ChangeSignatureResult.Abstain(rewrite.Reason!);
+
+        var introduced = await CollectIntroducedErrorsAsync(rewrite.Solution, baseline, cancellationToken);
+        if (introduced.Count > 0)
+            return ChangeSignatureResult.Abstain($"the change introduced {introduced.Count} new compile error(s), so it is refused: {string.Join("; ", introduced.Take(5))}");
+
+        var diffs = await BuildDiffsAsync(solution, rewrite.Solution, cancellationToken);
+        if (diffs.Count == 0)
+            return ChangeSignatureResult.Abstain("the rewrite produced no change (the method or its call sites were not found in source)");
+
+        return ChangeSignatureResult.Ok(method.ToDisplayString(), $"removed {parameterName}", diffs);
+    }
+
+    // Returns the display name of the first family member whose body uses the parameter at the given index, or
+    // null when the parameter is dead in every body. A dropped-but-used parameter is refused.
+    private static async Task<string?> ParameterUsedInAnyBodyAsync(
+        Solution solution, IReadOnlyCollection<IMethodSymbol> family, int index, CancellationToken cancellationToken)
+    {
+        foreach (var member in family)
+        {
+            if (index >= member.Parameters.Length)
+                continue;
+            var parameter = member.Parameters[index];
+            foreach (var referenced in await SymbolFinder.FindReferencesAsync(parameter, solution, cancellationToken))
+                if (referenced.Locations.Any())
+                    return member.ToDisplayString();
+        }
+
+        return null;
+    }
+
+    // Removes the parameter at the given index from every family declaration and the matching argument at every
+    // call site (a named argument named parameterName, else the positional argument at index), abstaining when a
+    // removed argument is not side-effect-free (dropping it could change behavior).
+    private async Task<(Solution? Solution, string? Reason)> ApplyRemovalAsync(
+        Solution solution,
+        IReadOnlyCollection<IMethodSymbol> family,
+        string parameterName,
+        int index,
+        CancellationToken cancellationToken)
+    {
+        var declEdits = new Dictionary<DocumentId, List<int>>();
+        var callEdits = new Dictionary<DocumentId, List<int>>();
+
+        foreach (var member in family)
+        {
+            foreach (var reference in member.DeclaringSyntaxReferences)
+            {
+                var doc = solution.GetDocument(reference.SyntaxTree);
+                if (doc is null)
+                    continue;
+                var node = await reference.GetSyntaxAsync(cancellationToken);
+                if (node is BaseMethodDeclarationSyntax { ParameterList: { } list } && index < list.Parameters.Count)
+                    AddDeclSite(declEdits, doc.Id, list.Parameters[index].SpanStart);
+            }
+
+            foreach (var referenced in await SymbolFinder.FindReferencesAsync(member, solution, cancellationToken))
+            {
+                foreach (var location in referenced.Locations)
+                {
+                    var doc = location.Document;
+                    var root = await doc.GetSyntaxRootAsync(cancellationToken);
+                    var token = root?.FindToken(location.Location.SourceSpan.Start);
+                    var invocation = token?.Parent?.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+                    if (invocation is null)
+                        continue;
+                    var argument = SelectArgument(invocation.ArgumentList, parameterName, index);
+                    if (argument is null)
+                        continue; // The parameter was omitted at this site (an optional argument); nothing to drop.
+                    if (!IsSideEffectFree(argument.Expression))
+                        return (null, $"call site at {HumanNode(invocation)} passes a non-trivial argument for '{parameterName}' that would be dropped; remove-parameter abstains (possible side effect)");
+                    AddDeclSite(callEdits, doc.Id, argument.SpanStart);
+                }
+            }
+        }
+
+        var changed = solution;
+        foreach (var docId in declEdits.Keys.Concat(callEdits.Keys).Distinct())
+        {
+            var document = changed.GetDocument(docId)!;
+            var editor = await DocumentEditor.CreateAsync(document, cancellationToken);
+            var root = await document.GetSyntaxRootAsync(cancellationToken);
+            if (root is null)
+                continue;
+
+            if (declEdits.TryGetValue(docId, out var declSpans))
+                foreach (var span in declSpans)
+                {
+                    var parameter = root.FindToken(span).Parent?.AncestorsAndSelf().OfType<ParameterSyntax>().FirstOrDefault();
+                    if (parameter is not null)
+                        editor.RemoveNode(parameter);
+                }
+
+            if (callEdits.TryGetValue(docId, out var callSpans))
+                foreach (var span in callSpans)
+                {
+                    var argument = root.FindToken(span).Parent?.AncestorsAndSelf().OfType<ArgumentSyntax>().FirstOrDefault();
+                    if (argument is not null)
+                        editor.RemoveNode(argument);
+                }
+
+            changed = changed.WithDocumentSyntaxRoot(docId, await editor.GetChangedDocument().GetSyntaxRootAsync(cancellationToken) ?? root);
+        }
+
+        return (changed, null);
+    }
+
+    // The argument that binds to the parameter: a named argument matching the name, else the positional argument
+    // at the index (when the call supplied that many positional arguments), else null (the parameter was omitted).
+    private static ArgumentSyntax? SelectArgument(ArgumentListSyntax list, string parameterName, int index)
+    {
+        var named = list.Arguments.FirstOrDefault(a => a.NameColon?.Name.Identifier.Text == parameterName);
+        if (named is not null)
+            return named;
+        var positional = list.Arguments.Where(a => a.NameColon is null).ToList();
+        return index < positional.Count ? positional[index] : null;
+    }
+
+    // A conservative side-effect-free test: literals, identifiers, member access, `default`, and `this`/`base` are
+    // safe to drop; anything that can invoke code (a call, object creation, an assignment) is not.
+    private static bool IsSideEffectFree(ExpressionSyntax expression) => expression switch
+    {
+        LiteralExpressionSyntax => true,
+        IdentifierNameSyntax => true,
+        MemberAccessExpressionSyntax member => IsSideEffectFree(member.Expression),
+        DefaultExpressionSyntax => true,
+        ThisExpressionSyntax or BaseExpressionSyntax => true,
+        ParenthesizedExpressionSyntax paren => IsSideEffectFree(paren.Expression),
+        _ when expression.IsKind(SyntaxKind.DefaultLiteralExpression) => true,
+        _ => false,
+    };
+
+    /// <summary>
+    ///     Reorders a method's parameters (and its override/interface family) into the given order and returns the
+    ///     staged diff or a named abstention. Safe only when every call site names its arguments: a positional call
+    ///     site would silently bind different values after a reorder, so any positional call site abstains.
+    /// </summary>
+    /// <param name="solutionOrProjectPath">The absolute path to the solution or project to load.</param>
+    /// <param name="methodName">The simple name of the method whose parameters to reorder.</param>
+    /// <param name="containingTypeName">The declaring type's simple name to disambiguate, or null.</param>
+    /// <param name="newOrder">The parameter names in the desired order (a permutation of the current parameters).</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The outcome: the per-file staged diffs, or an abstention with a concrete reason.</returns>
+    public async Task<ChangeSignatureResult> ReorderParametersAsync(
+        string solutionOrProjectPath,
+        string methodName,
+        string? containingTypeName,
+        IReadOnlyList<string> newOrder,
+        CancellationToken cancellationToken)
+    {
+        var loaded = await LoadSolutionAsync(solutionOrProjectPath, cancellationToken);
+        if (loaded.Solution is null)
+            return ChangeSignatureResult.Abstain(loaded.Reason!);
+        return await ReorderParametersInSolutionAsync(
+            loaded.Solution, methodName, containingTypeName, newOrder, cancellationToken);
+    }
+
+    internal async Task<ChangeSignatureResult> ReorderParametersInSolutionAsync(
+        Solution solution,
+        string methodName,
+        string? containingTypeName,
+        IReadOnlyList<string> newOrder,
+        CancellationToken cancellationToken)
+    {
+        var resolution = await ResolveMethodAsync(solution, methodName, containingTypeName, cancellationToken);
+        if (resolution.Method is null)
+            return ChangeSignatureResult.Abstain(resolution.Reason!);
+        var method = resolution.Method;
+
+        var current = method.Parameters.Select(p => p.Name).ToList();
+        if (newOrder.Count != current.Count || !newOrder.OrderBy(n => n).SequenceEqual(current.OrderBy(n => n)))
+            return ChangeSignatureResult.Abstain($"the new order must be a permutation of ({string.Join(", ", current)})");
+        var permutation = newOrder.Select(n => current.IndexOf(n)).ToArray();
+        if (permutation.SequenceEqual(Enumerable.Range(0, current.Count)))
+            return ChangeSignatureResult.Abstain("the requested order is the current order; nothing to do");
+
+        var family = await CollectMethodFamilyAsync(solution, method, cancellationToken);
+
+        // Safety: a positional call site silently rebinds after a reorder, so require every call site to name its
+        // arguments (a positional reorder with same types is the item's stated kill risk).
+        var positionalSite = await FirstPositionalCallSiteAsync(solution, family, cancellationToken);
+        if (positionalSite is not null)
+            return ChangeSignatureResult.Abstain($"call site at {positionalSite} uses positional arguments; reorder abstains (only named-argument call sites are safe to reorder)");
+
+        var baseline = await CollectErrorSignaturesAsync(solution, cancellationToken);
+        var rewrite = await ApplyReorderAsync(solution, family, permutation, cancellationToken);
+        if (rewrite.Solution is null)
+            return ChangeSignatureResult.Abstain(rewrite.Reason!);
+
+        var introduced = await CollectIntroducedErrorsAsync(rewrite.Solution, baseline, cancellationToken);
+        if (introduced.Count > 0)
+            return ChangeSignatureResult.Abstain($"the change introduced {introduced.Count} new compile error(s), so it is refused: {string.Join("; ", introduced.Take(5))}");
+
+        var diffs = await BuildDiffsAsync(solution, rewrite.Solution, cancellationToken);
+        if (diffs.Count == 0)
+            return ChangeSignatureResult.Abstain("the rewrite produced no change");
+
+        return ChangeSignatureResult.Ok(method.ToDisplayString(), $"reordered to ({string.Join(", ", newOrder)})", diffs);
+    }
+
+    // The first call site that passes a positional argument to a family member, or null when every call site names
+    // all its arguments. A method called with no arguments (all defaulted) is not a reorder hazard.
+    private static async Task<string?> FirstPositionalCallSiteAsync(
+        Solution solution, IReadOnlyCollection<IMethodSymbol> family, CancellationToken cancellationToken)
+    {
+        foreach (var member in family)
+        {
+            foreach (var referenced in await SymbolFinder.FindReferencesAsync(member, solution, cancellationToken))
+            {
+                foreach (var location in referenced.Locations)
+                {
+                    var doc = location.Document;
+                    var root = await doc.GetSyntaxRootAsync(cancellationToken);
+                    var token = root?.FindToken(location.Location.SourceSpan.Start);
+                    var invocation = token?.Parent?.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+                    if (invocation is not null && invocation.ArgumentList.Arguments.Any(a => a.NameColon is null))
+                        return HumanNode(invocation);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // Reorders each family declaration's parameter list per the permutation (all call sites are named, so they
+    // need no edit). Trivia is normalized to ", " separators for a clean diff.
+    private async Task<(Solution? Solution, string? Reason)> ApplyReorderAsync(
+        Solution solution,
+        IReadOnlyCollection<IMethodSymbol> family,
+        int[] permutation,
+        CancellationToken cancellationToken)
+    {
+        var declEdits = new Dictionary<DocumentId, List<int>>();
+        foreach (var member in family)
+            foreach (var reference in member.DeclaringSyntaxReferences)
+            {
+                var doc = solution.GetDocument(reference.SyntaxTree);
+                if (doc is null)
+                    continue;
+                var node = await reference.GetSyntaxAsync(cancellationToken);
+                if (node is BaseMethodDeclarationSyntax { ParameterList: { } list } && list.Parameters.Count == permutation.Length)
+                    AddDeclSite(declEdits, doc.Id, list.SpanStart);
+            }
+
+        var changed = solution;
+        foreach (var docId in declEdits.Keys)
+        {
+            var document = changed.GetDocument(docId)!;
+            var editor = await DocumentEditor.CreateAsync(document, cancellationToken);
+            var root = await document.GetSyntaxRootAsync(cancellationToken);
+            if (root is null)
+                continue;
+            foreach (var span in declEdits[docId])
+            {
+                var list = root.FindToken(span).Parent?.AncestorsAndSelf().OfType<ParameterListSyntax>().FirstOrDefault();
+                if (list is null || list.Parameters.Count != permutation.Length)
+                    continue;
+                var reordered = permutation
+                    .Select((oldIndex, newIndex) => list.Parameters[oldIndex]
+                        .WithLeadingTrivia()
+                        .WithLeadingTrivia(newIndex == 0 ? default : SyntaxFactory.Space))
+                    .ToArray();
+                editor.ReplaceNode(list, list.WithParameters(SyntaxFactory.SeparatedList(reordered)));
+            }
+
+            changed = changed.WithDocumentSyntaxRoot(docId, await editor.GetChangedDocument().GetSyntaxRootAsync(cancellationToken) ?? root);
+        }
+
+        return (changed, null);
+    }
+
     // The shared tail both operations use: rewrite with the given per-site argument resolver, verify by recompile
     // (abstain on any introduced error), and stage the diffs (with any manual follow-ups).
     private async Task<ChangeSignatureResult> RewriteVerifyAndStageAsync(

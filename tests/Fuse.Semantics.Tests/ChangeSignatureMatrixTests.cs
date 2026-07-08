@@ -45,6 +45,13 @@ public sealed class ChangeSignatureMatrixTests
         new("named-arg-call-site", "add", "Bar", "C", "public class C { public int Bar(int x)=>x; } public class U { public int M()=>new C().Bar(x: 1); }", true),
         new("method-group-delegate", "add", "Bar", "C", "using System; public class C { public int Bar(int x)=>x; } public class U { public Func<int,int> M()=>new C().Bar; }", false),
         new("bad-param-type", "addbad", "Bar", "C", "public class C { public int Bar(int x)=>x; } public class U { public int M()=>new C().Bar(1); }", false),
+
+        // remove-parameter and reorder (T3b): a safe case and an abstention each.
+        new("remove-dead-param", "remove", "Bar", "C", "public class C { public int Bar(int x,int dead)=>x; } public class U { public int M()=>new C().Bar(1,2); }", true),
+        new("remove-used-param", "remove", "Bar", "C", "public class C { public int Bar(int x,int y)=>x+y; }", false),
+        new("remove-side-effect-arg", "remove", "Bar", "C", "public class C { public int Bar(int x,int dead)=>x; public int Fx()=>0; public int M()=>Bar(1,Fx()); }", false),
+        new("reorder-named-calls", "reorder", "Bar", "C", "public class C { public int Bar(int x,string y)=>x; } public class U { public int M()=>new C().Bar(x:1,y:\"a\"); }", true),
+        new("reorder-positional-calls", "reorder", "Bar", "C", "public class C { public int Bar(int x,string y)=>x; } public class U { public int M()=>new C().Bar(1,\"a\"); }", false),
     ];
 
     [Fact]
@@ -61,6 +68,8 @@ public sealed class ChangeSignatureMatrixTests
                 "add" => await refactorer.AddParameterToSolutionAsync(solution, c.Method, c.Type, "int", "n", "0", CancellationToken.None),
                 "addbad" => await refactorer.AddParameterToSolutionAsync(solution, c.Method, c.Type, "NoSuchType", "n", "default", CancellationToken.None),
                 "ct" => await refactorer.ThreadCancellationTokenInSolutionAsync(solution, c.Method, c.Type, "cancellationToken", CancellationToken.None),
+                "remove" => await refactorer.RemoveParameterInSolutionAsync(solution, c.Method, c.Type, c.Name.Contains("used") ? "y" : "dead", CancellationToken.None),
+                "reorder" => await refactorer.ReorderParametersInSolutionAsync(solution, c.Method, c.Type, ["y", "x"], CancellationToken.None),
                 _ => throw new InvalidOperationException(c.Operation),
             };
 
@@ -99,7 +108,7 @@ public sealed class ChangeSignatureMatrixTests
         var builder = new StringBuilder();
         builder.AppendLine("{");
         builder.AppendLine("  \"suite\": \"changesig\",");
-        builder.AppendLine("  \"description\": \"T3 constrained change-signature matrix: verified-or-abstain over 20 call-site shapes\",");
+        builder.AppendLine("  \"description\": \"T3/T3b change-signature matrix: verified-or-abstain over add/remove/reorder/thread call-site shapes\",");
         builder.AppendLine($"  \"total\": {outcomes.Count},");
         builder.AppendLine($"  \"returnedDiff\": {outcomes.Count(o => o.Changed)},");
         builder.AppendLine($"  \"abstained\": {outcomes.Count(o => !o.Changed)},");

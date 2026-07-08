@@ -331,7 +331,7 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the rename.</param>
     /// <returns>The staged per-file diffs, or an explicit abstention.</returns>
     [McpServerTool(Name = "fuse_refactor", ReadOnly = true)]
-    [Description("Compiler-executed, verify-gated refactors returned as a staged diff (nothing is written to disk). operation=rename (default): rename a symbol and all its references through Roslyn (a same-named unrelated symbol is not touched). operation=add-parameter: add a trailing parameter to a method and its override/interface family, threading an explicit argument (the `argument` value) into every call site. operation=add-cancellation-token: add a CancellationToken parameter and thread an in-scope token into every call site that has one, listing token-less sites as manual follow-ups. The signature operations recompile the solution and return the diff ONLY when no new diagnostic is introduced; otherwise they abstain naming the offending sites (never a mostly-right diff). Rename and the signature ops answer only when the whole solution loads cleanly; abstain otherwise. Review the diff and re-check with fuse_check before applying.")]
+    [Description("Compiler-executed, verify-gated refactors returned as a staged diff (nothing is written to disk). operation=rename (default): rename a symbol and all its references through Roslyn (a same-named unrelated symbol is not touched). operation=add-parameter: add a trailing parameter to a method and its override/interface family, threading an explicit argument (the `argument` value) into every call site. operation=add-cancellation-token: add a CancellationToken parameter and thread an in-scope token into every call site that has one, listing token-less sites as manual follow-ups. operation=remove-parameter: remove a parameter (named by parameterName) and drop its argument at every call site, abstaining when the parameter is used in a body or a call site passes a non-trivial (possibly side-effecting) argument. operation=reorder-parameters: reorder parameters into `newOrder` (comma-separated names), abstaining if any call site uses positional arguments (only named-argument call sites are safe to reorder). The signature operations recompile the solution and return the diff ONLY when no new diagnostic is introduced; otherwise they abstain naming the offending sites (never a mostly-right diff). Rename and the signature ops answer only when the whole solution loads cleanly; abstain otherwise. Review the diff and re-check with fuse_check before applying.")]
     public static async Task<string> FuseRefactorAsync(
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("The simple name of the symbol to rename, or the method name for a signature operation.")] string symbol = "",
@@ -341,6 +341,7 @@ public sealed partial class FuseTools
         [Description("The new parameter's type, as written in source (add-parameter).")] string parameterType = "",
         [Description("The new parameter's name (add-parameter; defaults to cancellationToken for add-cancellation-token).")] string parameterName = "",
         [Description("The argument expression added at every call site (add-parameter; defaults to 'default').")] string argument = "default",
+        [Description("The parameter names in the desired order, comma-separated (reorder-parameters).")] string newOrder = "",
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetFullPath(path);
@@ -368,6 +369,23 @@ public sealed partial class FuseTools
                     await new Fuse.Semantics.ChangeSignatureRefactorer().ThreadCancellationTokenAsync(
                         target, symbol, containing, tokenName, cancellationToken),
                     $"thread a CancellationToken '{tokenName}' through {symbol}");
+
+            case "remove-parameter":
+                if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(parameterName))
+                    return "Error: remove-parameter needs the method (symbol) and parameterName.";
+                return RenderChangeSignature(
+                    await new Fuse.Semantics.ChangeSignatureRefactorer().RemoveParameterAsync(
+                        target, symbol, containing, parameterName, cancellationToken),
+                    $"remove parameter '{parameterName}' from {symbol}");
+
+            case "reorder-parameters":
+                if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(newOrder))
+                    return "Error: reorder-parameters needs the method (symbol) and newOrder (comma-separated parameter names).";
+                var order = newOrder.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                return RenderChangeSignature(
+                    await new Fuse.Semantics.ChangeSignatureRefactorer().ReorderParametersAsync(
+                        target, symbol, containing, order, cancellationToken),
+                    $"reorder parameters of {symbol}");
 
             case "rename":
             case "":

@@ -5,6 +5,8 @@ using Fuse.Cli.Services;
 using Fuse.Retrieval;
 using Fuse.Semantics;
 using Fuse.Workspace;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Fuse.Cli.Commands;
 
@@ -143,12 +145,45 @@ public sealed class ResidentLatencyCommand
             var deltaP50 = PerformanceSuite.Percentile(deltaSamples, 50);
             var deltaP95 = PerformanceSuite.Percentile(deltaSamples, 95);
 
+            // S4 analyzer-cost spike: the recorded csc invocation's analyzers are captured on each resident project
+            // (ResidentProject.Analyzers). Measure the cost of running them against the held compilation - the cost
+            // that decides whether analyzer parity is on by default per call class (verify vs delta). Pick the
+            // largest analyzer set present; skip when the capture configured none.
+            var analyzed = resident.Projects
+                .Where(p => !p.Analyzers.IsDefaultOrEmpty)
+                .OrderByDescending(p => p.Analyzers.Length)
+                .FirstOrDefault();
+            var analyzerNote = "S4 analyzer-cost: no analyzers configured in the capture (nothing to run).";
+            if (analyzed is not null)
+            {
+                var withAnalyzers = analyzed.Compilation.WithAnalyzers(analyzed.Analyzers, options: null, cancellationToken);
+                await withAnalyzers.GetAnalyzerDiagnosticsAsync(cancellationToken); // untimed warm-up (JIT + first pass)
+                const int analyzerIterations = 5;
+                var analyzerSamples = new List<double>(analyzerIterations);
+                for (var i = 0; i < analyzerIterations; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var fresh = analyzed.Compilation.WithAnalyzers(analyzed.Analyzers, options: null, cancellationToken);
+                    var watch = Stopwatch.StartNew();
+                    await fresh.GetAnalyzerDiagnosticsAsync(cancellationToken);
+                    watch.Stop();
+                    analyzerSamples.Add(watch.Elapsed.TotalMilliseconds);
+                }
+
+                var analyzerP50 = PerformanceSuite.Percentile(analyzerSamples, 50);
+                var analyzerP95 = PerformanceSuite.Percentile(analyzerSamples, 95);
+                analyzerNote =
+                    $"S4 analyzer-cost ({analyzed.Analyzers.Length} analyzer(s) on {System.IO.Path.GetFileName(analyzed.ProjectFilePath)}, {analyzerIterations}x): "
+                    + $"P50 {analyzerP50:F1} ms, P95 {analyzerP95:F1} ms (raw analyzer execution against the held compilation; default config, not editorconfig-mapped)";
+            }
+
             notes.Add($"repo {System.IO.Path.GetFileName(root)}, {resident.Projects.Count} resident project(s)");
             notes.Add($"resident warm (build + rehydrate): {warmWatch.ElapsedMilliseconds:N0} ms; resident RSS {rssMb:F0} MB");
             notes.Add($"resident delta-check ({WarmIterations}x) on {System.IO.Path.GetFileName(sample.FilePath)}: P50 {p50:F1} ms, P95 {p95:F1} ms");
             notes.Add($"S1 gate (delta-check P95 < 1000 ms warm): {(p95 < 1000 ? "PASS" : "FAIL")} at P95 {p95:F1} ms");
             notes.Add($"S2 delta-mode (GetDiagnostics + DiagnosticDelta, {WarmIterations}x, {deltaBaseline.Count} baseline diag): P50 {deltaP50:F1} ms, P95 {deltaP95:F1} ms");
             notes.Add($"S2 gate (delta-mode P95 < 1000 ms warm): {(deltaP95 < 1000 ? "PASS" : "FAIL")} at P95 {deltaP95:F1} ms");
+            notes.Add(analyzerNote);
             notes.Add("note: measures ResidentWorkspace.CheckOverlay (the S1 speculative typecheck) and GetDiagnostics+DiagnosticDelta (the S2 delta mode), the operations fuse_check invokes when a resident workspace is live; timings are environment-dependent; runs in a dedicated process that never invokes MSBuildWorkspace.");
 
             // medianTokens carries the delta-check P50, meanTokens the warm build+rehydrate ms (mirrors PerformanceSuite).

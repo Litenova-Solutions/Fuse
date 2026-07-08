@@ -1,7 +1,9 @@
+using System.Collections.Immutable;
 using Basic.CompilerLog.Util;
 using Fuse.Indexing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Fuse.Workspace;
 
@@ -66,7 +68,11 @@ public sealed class ResidentWorkspace : IDisposable
 
                 var compilation = data.GetCompilationAfterGenerators(cancellationToken);
                 var projectFilePath = data.CompilerCall.ProjectFilePath ?? data.CompilerCall.ProjectFileName ?? "project";
-                projects.Add(new ResidentProject(projectFilePath, compilation));
+                // Capture the analyzers the recorded csc invocation ran (S4): the compiler log replays the full
+                // invocation including /analyzer:, so the repo's configured analyzers (StyleCop, nullable, and so
+                // on) are available to run against the resident compilation for CI parity, gated per call.
+                var analyzers = data.GetAnalyzers(out _);
+                projects.Add(new ResidentProject(projectFilePath, compilation, analyzers));
             }
         }
         catch
@@ -263,4 +269,9 @@ public sealed class ResidentWorkspace : IDisposable
 /// </summary>
 /// <param name="ProjectFilePath">The project file path recorded in the compiler invocation.</param>
 /// <param name="Compilation">The rehydrated compilation, held live for overlay checks and incremental updates.</param>
-public sealed record ResidentProject(string ProjectFilePath, Compilation Compilation);
+/// <param name="Analyzers">
+///     The diagnostic analyzers the recorded csc invocation ran (S4), for optional analyzer-parity checks against
+///     the resident compilation; empty when the invocation configured none.
+/// </param>
+public sealed record ResidentProject(
+    string ProjectFilePath, Compilation Compilation, ImmutableArray<DiagnosticAnalyzer> Analyzers);

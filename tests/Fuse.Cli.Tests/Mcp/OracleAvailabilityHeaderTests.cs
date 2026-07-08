@@ -85,6 +85,9 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
     {
         public Fuse.Workspace.ResidentStatus? DescribeResident(string queried) =>
             string.Equals(queried, root, StringComparison.OrdinalIgnoreCase) ? status : null;
+
+        public IReadOnlyList<Fuse.Indexing.CheckDiagnostic>? TryCheckOverlay(
+            string queried, string relativeFilePath, string newContent, CancellationToken cancellationToken) => null;
     }
 
     [Fact]

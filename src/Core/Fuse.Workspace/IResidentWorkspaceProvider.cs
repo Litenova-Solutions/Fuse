@@ -1,3 +1,5 @@
+using Fuse.Indexing;
+
 namespace Fuse.Workspace;
 
 /// <summary>
@@ -23,6 +25,21 @@ public interface IResidentWorkspaceProvider
     /// <param name="root">The absolute workspace root.</param>
     /// <returns>The resident status, or null when no resident workspace serves that root (store-backed).</returns>
     ResidentStatus? DescribeResident(string root);
+
+    /// <summary>
+    ///     Speculatively typechecks a proposed single-file edit against the resident workspace serving a root, if
+    ///     one is live (S1: the oracle-grade check served from the live compilation, no build, no disk write).
+    /// </summary>
+    /// <param name="root">The absolute workspace root.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>
+    ///     The changed document's diagnostics, or null when no resident workspace serves the root or the file is
+    ///     not in it (the caller then falls back to the build-capture worker or build-grade path).
+    /// </returns>
+    IReadOnlyList<CheckDiagnostic>? TryCheckOverlay(
+        string root, string relativeFilePath, string newContent, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -41,4 +58,8 @@ public sealed class NullResidentWorkspaceProvider : IResidentWorkspaceProvider
 
     /// <inheritdoc />
     public ResidentStatus? DescribeResident(string root) => null;
+
+    /// <inheritdoc />
+    public IReadOnlyList<CheckDiagnostic>? TryCheckOverlay(
+        string root, string relativeFilePath, string newContent, CancellationToken cancellationToken) => null;
 }

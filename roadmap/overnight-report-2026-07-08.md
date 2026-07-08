@@ -146,7 +146,14 @@ workspace, XL) remains unstarted for a dedicated multi-session effort (rationale
   < 1s warm at NodaTime scale, edge freshness < 2s, resident RSS) with an end-to-end resident `fuse_check` over
   JSON-RPC - which needs a provisioned tier-1 repo - after which `FUSE_RESIDENT` is promoted to default-on. Those
   are the dedicated benchmarking/integration session.
-- **C1 fuse up** `[>]`: five sub-steps landed gate-green, including a working user-facing command -
+- **C1 fuse up** `[>]`: the KB, planner, NU1507 overlay generator, renderer, and a working `fuse up` command
+  that now both reports the remediation plan AND generates the NU1507 overlay remedy to a temp file (installs
+  nothing, never edits the repo) with the apply command, plus the KB-generated troubleshooting page with its
+  drift test. Remaining: the corpus-dependent auto-apply (thread the overlay `--configfile` through the
+  build/index pipeline against a mirror, re-attempt tier-1) and the 17-repo `up-report.json` gate; the
+  consent-gated SDK/workload installs are blocked by the install-nothing rule.
+
+- **C1 fuse up (earlier detail)** `[>]`: five sub-steps landed gate-green, including a working user-facing command -
   `RemediationKnowledgeBase` (JSON-data KB + matcher; 7 tests), `EnvironmentRemediationPlanner`
   (classify-and-report core; 4 tests), `NuGetOverlayConfig` (NU1507 overlay generator, installs nothing, never
   writes the repo; 4 tests), `RemediationReport` (renderer; 2 tests), and the report-only `fuse up` CLI command

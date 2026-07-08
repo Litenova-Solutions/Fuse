@@ -81,13 +81,18 @@ running the real dotnet test. Per the item's pre-agreed Fallback, the build-grad
 the emit fast path is deferred with the miss published (this finding is the reason). So T1's shippable deliverable
 is done; the fast path is a named follow-up.
 
-Next action: close T1 on the Fallback terms - testexec.json validation (run the build-grade floor on a fixture/
-corpus with tests: false green 0 on the runnable subset, median latency, selection safety at least 95 percent on a
-mutant set; corpus-gated), the H1 behavior-mutant extension, and not-runnable classification; then the deferred
-emit fast path as its own focused effort (source the runtime closure). Then H2. C1 remains `[>]` (corpus-and-
-install-gated apply); S3 has one maintainer-gated timing deviation (mechanism complete). All work committed and
-pushed at HEAD `c69fb70`; every committed change gate-green (build + all 16 .NET assemblies + dotnet format;
-extension contract 9/9 + tsc from the S3 protocol change). About 125 gate-green commits this session.
+Not-runnable classification is now shipped too (CoveringRunAnalysis: a covering type the filter selected but that
+produced no verdict is reported not-runnable by name, in both fuse_test and fuse test), and execution honesty is
+proven (the BuildGradeTestRunner end-to-end test detects a failing test as failed, never green). So the T1
+build-grade floor is functionally complete on the Fallback terms.
+
+Next action: the testexec.json benchmark suite (a fuse eval testexec suite recording false green 0 on the runnable
+subset, median latency, and selection safety at least 95 percent on a behavior-mutant fixture set) plus the H1
+behavior-mutant extension; both are fixture/corpus-gated. Then the deferred emit fast path (source the runtime
+closure). Then H2. C1 remains `[>]` (corpus-and-install-gated apply); S3 has one maintainer-gated timing deviation
+(mechanism complete). All work committed and pushed at HEAD `89f7644`; every committed change gate-green (build +
+all 16 .NET assemblies + dotnet format; extension contract 9/9 + tsc from the S3 protocol change). About 130
+gate-green commits this session.
 
 ## S3: sub-step A LANDED (the protocol-bump keystone), remaining sub-steps recorded
 

@@ -99,6 +99,66 @@ public sealed class ResidentWorkspace : IDisposable
     public IReadOnlyList<CheckDiagnostic>? CheckOverlay(
         string relativeFilePath, string newContent, CancellationToken cancellationToken)
     {
+        var overlay = TryFork(relativeFilePath, newContent, cancellationToken);
+        if (overlay is null)
+            return null;
+
+        return overlay.Value.Forked.GetSemanticModel(overlay.Value.NewTree)
+            .GetDiagnostics(cancellationToken: cancellationToken)
+            .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+            .Select(ToCheckDiagnostic)
+            .ToList();
+    }
+
+    /// <summary>
+    ///     Speculatively typechecks a proposed single-file edit and, when requested, also runs the project's
+    ///     configured analyzers against the overlay (S4, analyzer parity): the changed document's compiler
+    ///     diagnostics merged with its analyzer diagnostics, so a check reports what CI's build step would enforce.
+    /// </summary>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed (matched by path suffix).</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="includeAnalyzers">
+    ///     When true, the repo's configured analyzers are run with their editorconfig-mapped options and their
+    ///     diagnostics for the changed document are merged in; when false this is the compiler-only overlay check.
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>
+    ///     The changed document's diagnostics (compiler, plus analyzers when requested), or null when the file is
+    ///     not part of any held compilation.
+    /// </returns>
+    public async Task<IReadOnlyList<CheckDiagnostic>?> CheckOverlayAsync(
+        string relativeFilePath, string newContent, bool includeAnalyzers, CancellationToken cancellationToken)
+    {
+        var overlay = TryFork(relativeFilePath, newContent, cancellationToken);
+        if (overlay is null)
+            return null;
+
+        var (project, forked, newTree) = overlay.Value;
+        var diagnostics = forked.GetSemanticModel(newTree)
+            .GetDiagnostics(cancellationToken: cancellationToken)
+            .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+            .ToList();
+
+        if (includeAnalyzers && !project.Analyzers.IsDefaultOrEmpty)
+        {
+            var analyzerDiagnostics = await ResidentAnalyzerRunner.DiagnosticsForTreeAsync(
+                forked, project.Analyzers, project.AnalyzerOptions, newTree, cancellationToken);
+            diagnostics.AddRange(analyzerDiagnostics);
+        }
+
+        // Dedup by id and line so a diagnostic the compiler and an analyzer both report is not listed twice.
+        return diagnostics
+            .GroupBy(d => (d.Id, d.Location.GetLineSpan().StartLinePosition.Line))
+            .Select(g => g.First())
+            .Select(ToCheckDiagnostic)
+            .ToList();
+    }
+
+    // Finds the held project whose compilation contains the file, and forks that compilation with the proposed
+    // content replacing the file's syntax tree. Shared by the compiler-only and analyzer-aware overlay checks.
+    private (ResidentProject Project, Compilation Forked, SyntaxTree NewTree)? TryFork(
+        string relativeFilePath, string newContent, CancellationToken cancellationToken)
+    {
         var normalized = relativeFilePath.Replace('\\', '/');
         foreach (var project in _projects)
         {
@@ -111,11 +171,7 @@ public sealed class ResidentWorkspace : IDisposable
             var newTree = CSharpSyntaxTree.ParseText(
                 newContent, (CSharpParseOptions?)tree.Options, tree.FilePath, cancellationToken: cancellationToken);
             var forked = project.Compilation.ReplaceSyntaxTree(tree, newTree);
-            return forked.GetSemanticModel(newTree)
-                .GetDiagnostics(cancellationToken: cancellationToken)
-                .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
-                .Select(ToCheckDiagnostic)
-                .ToList();
+            return (project, forked, newTree);
         }
 
         return null;

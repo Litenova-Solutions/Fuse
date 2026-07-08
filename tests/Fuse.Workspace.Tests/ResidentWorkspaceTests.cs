@@ -52,6 +52,22 @@ public sealed class ResidentWorkspaceTests
             Assert.NotNull(broken);
             var error = Assert.Single(broken!, d => d.Severity == "Error");
             Assert.StartsWith("CS", error.Id);
+
+            // S4: the analyzer-aware overlay runs the compiler path plus any configured analyzers against the same
+            // held state and merges the result. The clean edit stays error-free through this path too (it never
+            // throws, and analyzers only add warnings if the project configured any); the broken edit still reports
+            // the compiler error, so the merge does not drop compiler diagnostics.
+            var cleanWithAnalyzers = await resident.CheckOverlayAsync(
+                "Widget.cs", "namespace Sample; public sealed class Widget { public int Spin() => 7; }",
+                includeAnalyzers: true, CancellationToken.None);
+            Assert.NotNull(cleanWithAnalyzers);
+            Assert.DoesNotContain(cleanWithAnalyzers!, d => d.Severity == "Error");
+
+            var brokenWithAnalyzers = await resident.CheckOverlayAsync(
+                "Widget.cs", "namespace Sample; public sealed class Widget { public int Spin() => Missing; }",
+                includeAnalyzers: true, CancellationToken.None);
+            Assert.NotNull(brokenWithAnalyzers);
+            Assert.Contains(brokenWithAnalyzers!, d => d.Severity == "Error" && d.Id.StartsWith("CS", StringComparison.Ordinal));
         }
         finally
         {

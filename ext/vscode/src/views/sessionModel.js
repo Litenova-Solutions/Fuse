@@ -80,4 +80,34 @@ function distinctFiles(diagnostics) {
   return [...seen].sort();
 }
 
-module.exports = { buildSessionRows, buildSessionChildren };
+// The static root node for the workspace working-tree diff (G3b): a sibling of the session rows, since the working
+// tree is one tree, not per session. Its children are fetched lazily (buildWorktreeChildren) when it expands.
+const WORKTREE_ROW = { kind: "worktree", label: "Working tree (vs HEAD)" };
+
+/**
+ * Builds the child rows under the working-tree node from a fuse/session-diff result (G3b): one row per changed
+ * file with its added/removed counts, and a handoff-preview row. Read-only.
+ * @param {{available: boolean, base: string, files: Array<{path: string, added: number, removed: number}>, handoffPreview: string}} diff
+ */
+function buildWorktreeChildren(diff) {
+  const rows = [];
+
+  if (!diff.available) {
+    rows.push({ kind: "info", label: "working-tree diff unavailable (no git, or no HEAD in this repository)" });
+  } else if (diff.files.length === 0) {
+    rows.push({ kind: "info", label: "no uncommitted changes (the working tree matches HEAD)" });
+  }
+
+  for (const f of diff.files) {
+    rows.push({ kind: "difffile", label: f.path, description: `+${f.added} -${f.removed}`, path: f.path });
+  }
+
+  const preview = (diff.handoffPreview || "").trim();
+  if (preview.length > 0) {
+    rows.push({ kind: "claims", label: "handoff preview", tooltip: preview });
+  }
+
+  return rows;
+}
+
+module.exports = { buildSessionRows, buildSessionChildren, buildWorktreeChildren, WORKTREE_ROW };

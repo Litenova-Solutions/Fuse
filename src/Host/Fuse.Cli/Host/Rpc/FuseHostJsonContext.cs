@@ -30,4 +30,6 @@ namespace Fuse.Cli.Rpc;
 [JsonSerializable(typeof(SessionSummaryDto))]
 [JsonSerializable(typeof(SessionListDto))]
 [JsonSerializable(typeof(SessionViewDto))]
+[JsonSerializable(typeof(SessionDiffFileDto))]
+[JsonSerializable(typeof(SessionDiffDto))]
 public sealed partial class FuseHostJsonContext : JsonSerializerContext;

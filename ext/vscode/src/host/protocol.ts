@@ -4,7 +4,7 @@
 // parses the same fixtures, so any drift on either side fails a test. Keep this file in lockstep with the DTOs.
 
 /** Wire protocol version; must equal FuseHostService.ProtocolVersion on the host. */
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 
 /** Result of `fuse/handshake`: host package version, the wire protocol version to match, and the session token for later RPC calls. */
 export interface FuseHostHandshake {
@@ -156,6 +156,21 @@ export interface SessionViewDto {
   claims: string;
 }
 
+/** One file in the working-tree diff (G3b): its repo-relative path and added/removed line counts. */
+export interface SessionDiffFileDto {
+  path: string;
+  added: number;
+  removed: number;
+}
+
+/** Result of `fuse/session-diff` (G3b): the workspace working-tree diff against HEAD (the uncommitted edits) and a paste-ready handoff preview. The diff is workspace-global, so the panel shows it at the root. `available` is false when git or HEAD is unavailable. */
+export interface SessionDiffDto {
+  available: boolean;
+  base: string;
+  files: SessionDiffFileDto[];
+  handoffPreview: string;
+}
+
 /** RPC method names exposed by the host (the `fuse/` namespace). */
 export const Methods = {
   handshake: "fuse/handshake",
@@ -168,6 +183,7 @@ export const Methods = {
   check: "fuse/check",
   sessions: "fuse/sessions",
   sessionView: "fuse/session-view",
+  sessionDiff: "fuse/session-diff",
   shutdown: "fuse/shutdown",
 } as const;
 

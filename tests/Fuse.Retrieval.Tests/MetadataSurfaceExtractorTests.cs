@@ -131,4 +131,29 @@ public sealed class PackageUpgradeOracleTests
         Assert.False(report.Available);
         Assert.Contains("could not be read", report.Reason);
     }
+
+    [Fact]
+    public void Cached_versions_analysis_abstains_for_an_uncached_package()
+    {
+        var report = PackageUpgradeOracle.AnalyzeCachedVersions("No.Such.Package.Xyz", "1.0.0", "2.0.0");
+        Assert.False(report.Available);
+        Assert.Contains("not in the local NuGet cache", report.Reason);
+    }
+
+    [Fact]
+    public void Cached_versions_analysis_runs_or_abstains_cleanly_for_a_real_package()
+    {
+        // Tolerant: newtonsoft.json 13.0.1 -> 13.0.3 is a patch bump (additive-or-empty). When both are cached the
+        // analysis runs and is available; otherwise it abstains cleanly. Either way it never throws.
+        var report = PackageUpgradeOracle.AnalyzeCachedVersions("Newtonsoft.Json", "13.0.1", "13.0.3");
+        if (report.Available)
+        {
+            Assert.NotNull(report.BlindSpots);
+            Assert.All(report.BreakingChanges, c => Assert.True(c.Breaking));
+        }
+        else
+        {
+            Assert.False(string.IsNullOrEmpty(report.Reason));
+        }
+    }
 }

@@ -190,16 +190,28 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The impacted files and symbols with the edge that connects them, plus an availability note.</returns>
     [McpServerTool(Name = "fuse_impact", ReadOnly = true)]
-    [Description("Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, from the persisted semantic graph. No bodies. The exact signature-change break set (which call sites would no longer bind) needs an oracle-grade (tier-1) load and is reported unavailable otherwise, rather than guessed.")]
+    [Description("Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, from the persisted semantic graph. No bodies. The exact signature-change break set (which call sites would no longer bind) needs an oracle-grade (tier-1) load and is reported unavailable otherwise, rather than guessed. Package-upgrade mode (F3): pass package + fromVersion + toVersion to get the public-API break set between two cached NuGet package versions (removed/changed public members), so a bump's risk is knowable before the lockfile changes; it abstains when a version is not in the local cache and names its blind spots.")]
     public static async Task<string> FuseImpactAsync(
         SemanticIndexer indexer,
-        [Description("The symbol (simple or qualified name) whose blast radius to compute.")] string symbol,
+        [Description("The symbol (simple or qualified name) whose blast radius to compute.")] string symbol = "",
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("Maximum impacted items to return.")] int limit = 50,
+        [Description("Package-upgrade mode: the NuGet package id whose bump to analyze.")] string package = "",
+        [Description("Package-upgrade mode: the currently referenced version.")] string fromVersion = "",
+        [Description("Package-upgrade mode: the target (upgrade) version.")] string toVersion = "",
         CancellationToken cancellationToken = default)
     {
+        // Package-upgrade mode (F3): diff two cached package versions' public API. Independent of the workspace
+        // index (it reads the NuGet cache), so it runs before the symbol blast-radius path.
+        if (!string.IsNullOrWhiteSpace(package))
+        {
+            if (string.IsNullOrWhiteSpace(fromVersion) || string.IsNullOrWhiteSpace(toVersion))
+                return "Error: package-upgrade mode needs package, fromVersion, and toVersion.";
+            return RenderPackageUpgrade(Fuse.Retrieval.PackageUpgradeOracle.AnalyzeCachedVersions(package, fromVersion, toVersion));
+        }
+
         if (string.IsNullOrWhiteSpace(symbol))
-            return "Error: provide a symbol name.";
+            return "Error: provide a symbol name (or package + fromVersion + toVersion for a package-upgrade analysis).";
 
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
         var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
@@ -441,6 +453,25 @@ public sealed partial class FuseTools
             default:
                 return $"Error: unknown operation '{operation}'. Use rename, add-parameter, or add-cancellation-token.";
         }
+    }
+
+    // Renders a package-upgrade analysis (F3): the breaking public-API changes between two versions, or an abstention.
+    private static string RenderPackageUpgrade(Fuse.Retrieval.PackageUpgradeReport report)
+    {
+        if (!report.Available)
+            return $"package upgrade {report.PackageId}: cannot analyze - {report.Reason}";
+
+        var builder = new StringBuilder();
+        var verdict = report.HasBreaking ? $"{report.BreakingChanges.Count} BREAKING public-API change(s)" : "no breaking public-API changes";
+        builder.AppendLine($"package upgrade {report.PackageId}: {verdict}, {report.AdditiveChanges.Count} additive");
+        foreach (var c in report.BreakingChanges)
+            builder.AppendLine($"  BREAK [{c.Kind}] {c.Symbol}{(c.Before is null ? string.Empty : $"  (was: {c.Before})")}");
+        if (report.BreakingChanges.Count == 0)
+            builder.AppendLine("  (the target version keeps every public/protected member of the referenced version)");
+
+        builder.AppendLine();
+        builder.AppendLine(report.BlindSpots);
+        return builder.ToString().TrimEnd();
     }
 
     // Renders a type-refactor outcome (extract-interface, move-type): the staged full-file content, or the abstention.

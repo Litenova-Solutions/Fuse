@@ -59,15 +59,15 @@
 <rect x="40.0" y="813.0" width="1040.0" height="331.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
 <text x="68.0" y="851.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">03</text>
 <text x="98.0" y="851.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Localizing From a Task Title</text>
-<text x="68.0" y="873.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">fuse localize recall by title signal, no git base, 53 PRs on the rebuilt corpus, dense on by default.</text>
+<text x="68.0" y="873.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">fuse localize recall by title signal, no git base, 53 PRs on the rebuilt corpus, the offline lexical channel.</text>
 <text x="68.0" y="894.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">The hardest mode: a sentence with no diff. Identifier-rich titles localize; vague ones do not.</text>
 <text x="68.0" y="911.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">On a no-signal title Fuse refuses and hands back a navigation map instead of guessing (correct-refusal 100%).</text>
 <text x="266.0" y="952.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Identifier-rich titles</text>
 <text x="266.0" y="966.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
 <rect x="282.0" y="940.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
 <linearGradient id="g5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ea580c"/><stop offset="1" stop-color="#fb923c"/></linearGradient>
-<rect x="282.0" y="940.0" width="161.7" height="28.0" rx="6" fill="url(#g5)"/>
-<text x="431.7" y="958.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">21%</text>
+<rect x="282.0" y="940.0" width="146.3" height="28.0" rx="6" fill="url(#g5)"/>
+<text x="416.3" y="958.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">19%</text>
 <text x="266.0" y="994.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Natural-language titles</text>
 <text x="266.0" y="1008.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
 <rect x="282.0" y="982.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
@@ -83,7 +83,7 @@
 <rect x="68.0" y="1070.0" width="984.0" height="50.0" rx="9" stroke="#f3d8c4" stroke-width="1" fill="#fff4ec"/>
 <rect x="68.0" y="1070.0" width="4.0" height="50.0" rx="2" fill="#ea580c"/>
 <text x="86.0" y="1090.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#ea580c" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
-<text x="146.0" y="1090.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">About 15% overall recall (21% on identifier-rich titles), offline and dense by default. The weakest mode, bounded by a</text>
+<text x="146.0" y="1090.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">About 15% overall recall (19% on identifier-rich titles), offline with no model. The weakest mode, bounded by a</text>
 <text x="146.0" y="1108.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">mostly-syntax corpus, reported straight (Suite C).</text>
 <rect x="40.0" y="1164.0" width="1040.0" height="289.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
 <text x="68.0" y="1202.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">04</text>

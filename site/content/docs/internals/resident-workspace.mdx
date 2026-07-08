@@ -1,0 +1,37 @@
+---
+title: Resident workspace
+description: How Fuse holds a live compilation in memory so an edited file is reflected in answers within a second, without a re-index or a build, and how it degrades to the store when no live compilation is available.
+---
+
+The resident workspace is Fuse's in-memory model of a repository's compilations, held live between calls so an answer reflects the tree as of now rather than as of the last index. It is the substrate the compiler-grade answers stand on: with a resident workspace live, `fuse_check` typechecks a proposed edit against the held compilation in memory, with no build and no disk write, and the answer is stamped `oracle` grade.
+
+This page describes what the resident workspace holds, how it stays current, and how Fuse degrades when it is not available. It is opt-in for now (see [Opting in](#opting-in)); the default remains the persistent store path until the latency gate promotes it.
+
+## State
+
+A resident workspace holds, per repository root, the rehydrated Roslyn compilations for the repository's C# projects. The compilations are rehydrated once from a tier-1 build capture (a binary log produced by the repository's own build) and then kept in memory. Only the rehydration closure is loaded in the process that holds a resident workspace; the MSBuild-based loader used by `fuse index` and `fuse doctor` is a separate path.
+
+Each held compilation supports three in-memory operations, none of which writes the tree:
+
+- **Overlay check**: apply a proposed file's content to the held compilation and return the changed document's diagnostics. This is the speculative typecheck behind resident-grade `fuse_check`.
+- **Apply edit / add / remove**: replace, add, or remove a document in the held compilation to reflect a change on disk.
+- **Diagnostics baseline**: the current error and warning set across the held compilations, which a delta check compares against to attribute newly introduced or resolved diagnostics to an edit.
+
+## Invalidation
+
+A file watcher observes the repository tree and coalesces raw filesystem events to the net change per path over a short debounce window (a create followed by a delete cancels; a delete followed by a create becomes a change; otherwise the latest event wins). When the batch settles, Fuse applies it to the held compilations: created and changed C# files are read from disk and their documents edited or added, deleted files have their documents removed. Non-C# files and files under no held project are skipped.
+
+A bulk change above the storm threshold (300 files in one batch) is not applied incrementally; instead the root is evicted to the store-backed path, whose freshness reconcile handles the staleness, and a later warm re-establishes the resident workspace. This keeps a large branch switch or generated-file sweep from turning incremental update into a re-index in disguise.
+
+## The degraded ladder
+
+Fuse answers at the best available substrate and names which one answered in the availability header:
+
+- **resident**: a live resident workspace serves the root. The header reads `workspace resident (N project(s), current as of ...)`, and `fuse_check` answers oracle-grade from the held compilation with no build.
+- **store-backed**: no resident workspace serves the root. The header reads `workspace store-backed`. Reads answer from the persistent semantic index, kept fresh by the freshness reconcile that re-indexes edited files on open. `fuse_check` still never shrugs: it uses the build-capture worker when tier-1 is configured, or the build-grade fallback (a scoped `dotnet build`) otherwise. See [verification grades](/docs/concepts/verification-grades).
+
+The store remains the substrate for degraded modes (repositories that do not build), cold boot, and the portable artifact. Resident truth is preferred when live; the store answers otherwise.
+
+## Opting in
+
+The resident workspace is enabled with the `FUSE_RESIDENT` environment variable (set to `1`, `true`, `yes`, or `on`) on a resident host (`fuse mcp serve` or `fuse host`). When enabled, the host warms the served root in the background so startup is never blocked by the build, then keeps the held compilations current from the watcher. With it off (the default), the host behaves exactly as before: every answer is store-backed. Promotion to on-by-default follows the recorded warm-latency and memory measurements.

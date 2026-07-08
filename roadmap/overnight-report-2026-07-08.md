@@ -2,7 +2,20 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `9fc43e9` plus the wrap-up commit.
+bumps, or publishing. Tree is green and pushed at HEAD `519a2d3` (T0 landed at `32f4450`, the S1
+design checkpoint at `519a2d3`).
+
+## Current state (latest checkpoint)
+
+T0 is complete and gate-green (build-grade fallback for `fuse_check`, oracle-vs-build agreement
+100.0% on 24 mutants). S1 (the resident workspace, XL keystone) is `[>]`: its preconditions are
+verified with file:line and the one architecture decision that gates all its code is recorded (a
+resident engine needs live Compilations, but the MSBuildWorkspace and Basic.CompilerLog closures
+cannot share a process; three options analysed, closure-coexistence spike recommended first). C1
+(`fuse up`) has advance-scouted preconditions banked (the bake-off failure classification) but is
+not started - it stays `[ ]` so S1 remains the single in-progress item. Exact next action: run the
+S1 closure-coexistence spike, then implement S1 step 1 behind the surviving option; or, if a session
+budget favours a completable independent-lane item, start C1 from its banked classification.
 
 ## Summary
 

@@ -311,6 +311,44 @@ public sealed class ResidentWorkspaceTests
         }
     }
 
+    [Fact]
+    public async Task Resident_compilation_emits_a_runnable_assembly()
+    {
+        // T1 precondition spike: the out-of-process test runner emits the speculative compilation's assembly and
+        // runs the covering subset against it. This confirms a rehydrated (build-exact) resident compilation emits
+        // successfully - all references are present - so the emit path T1 builds on is viable.
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
+            var project = resident.Projects.First();
+
+            using var stream = new MemoryStream();
+            var result = project.Compilation.Emit(stream);
+
+            Assert.True(result.Success, "emit failed: " + string.Join("; ", result.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error).Select(d => d.Id)));
+            Assert.True(stream.Length > 0, "emitted assembly is empty");
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
     // Writes a fixture project with the .NET analyzers enabled, a static-able instance method that CA1822 flags,
     // and an .editorconfig carrying the given rule-severity line, so a test controls whether the rule fires.
     private static async Task WriteAnalyzerFixtureAsync(string work, string editorConfigSeverityLine)

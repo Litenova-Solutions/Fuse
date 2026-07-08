@@ -2,7 +2,18 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `13dcc66`.
+bumps, or publishing. Tree is green and pushed at HEAD `9de9e5d`.
+
+## S2: DONE (full item, gate PASS) - delta check, persisted sessions, repair packets v2
+
+`fuse_check` gains a delta mode: a session id with no content returns the diagnostics the on-disk edits introduced
+or resolved since a persisted baseline (restart-resumable via a new additive `check_sessions` store table),
+reading whole-state diagnostics from a live resident workspace (a new `TryGetCurrentDiagnostics` seam) and
+abstaining, naming `FUSE_RESIDENT`, when none serves the root - it never runs a build. `full`/`markGreen`
+parameters return the whole set / reset the baseline. Repair packets expanded to CS7036 (missing argument) and
+CS0029 (type mismatch). Gate: delta-mode P95 643.6 ms < 1000 ms on NodaTime (resident-latency.json). All gates
+green; docs + CHANGELOG swept. Commits `54899fe`..`9de9e5d`. Two full items are now complete this session (T2 and
+S2); newly eligible: S3 (Wave 1), S4, T1, H2.
 
 ## T2: DONE (full item, gate PASS) - public API delta on review and impact
 

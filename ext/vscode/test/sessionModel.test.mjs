@@ -40,6 +40,29 @@ test("session children map introduced diagnostics and the claim ledger", () => {
 
   // No "no diagnostics" info row, since there is an introduced diagnostic.
   assert.ok(!children.some((c) => c.kind === "info" && c.label.startsWith("no diagnostics")));
+
+  // A git-free "files touched" summary lists the distinct files the diagnostics land in (G3b).
+  const touched = children.find((c) => c.kind === "info" && c.label.startsWith("files touched"));
+  assert.ok(touched, "expected a files-touched summary row");
+  assert.ok(touched.label.includes("a/Order.cs"));
+});
+
+test("files-touched dedupes and sorts across introduced and resolved, skipping path-less diagnostics", () => {
+  const children = buildSessionChildren({
+    sessionId: "s",
+    resident: true,
+    introduced: [
+      { id: "CS1", severity: "Error", message: "m", path: "b/Two.cs", line: 1 },
+      { id: "CS2", severity: "Error", message: "m", path: "a/One.cs", line: 2 },
+      { id: "CS3", severity: "Error", message: "m", line: 3 },
+    ],
+    resolved: [{ id: "CS4", severity: "Error", message: "m", path: "a/One.cs", line: 4 }],
+    claims: "",
+  });
+  const touched = children.find((c) => c.kind === "info" && c.label.startsWith("files touched"));
+  assert.ok(touched);
+  // Distinct (One.cs once) and sorted (a/ before b/); the path-less CS3 is skipped.
+  assert.equal(touched.label, "files touched (2): a/One.cs, b/Two.cs");
 });
 
 test("a non-resident view reports the missing resident workspace and still shows claims", () => {

@@ -2,6 +2,10 @@ using System.Diagnostics;
 using DotMake.CommandLine;
 using Fuse.Benchmarks;
 using Fuse.Cli.Services;
+using Fuse.Indexing;
+using Fuse.Reduction.Caching;
+using Fuse.Retrieval;
+using Fuse.Semantics;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -10,10 +14,12 @@ namespace Fuse.Cli.Commands;
 
 /// <summary>
 ///     Suite T1 (as a dedicated command, the resident-latency precedent): measures build-grade covering-test
-///     execution honesty and behavior-mutant kill rate. It runs the shipped build-grade covering-test runner over
-///     a self-contained xunit fixture - a clean run must be all green (no false red), and each compiling behavior
-///     mutant of the class under test must turn a covering test red (killed = the runner honestly surfaced the
-///     break) - and writes <c>results/testexec.json</c>.
+///     execution honesty, behavior-mutant kill rate, and selection-safety. It runs the shipped build-grade
+///     covering-test runner over a self-contained xunit fixture - a clean run must be all green (no false red),
+///     each compiling behavior mutant of the class under test must turn a covering test red (killed = the runner
+///     honestly surfaced the break), and the covering set that <see cref="GraphNeighborhoodExplorer" /> selects
+///     from the R5 <c>tests</c> edges must both kill the mutant and exclude the unrelated test (selection-safety) -
+///     and writes <c>results/testexec.json</c>.
 /// </summary>
 /// <remarks>
 ///     This is a command rather than a <c>fuse eval</c> suite because the build-grade runner lives in
@@ -21,29 +27,42 @@ namespace Fuse.Cli.Commands;
 ///     <c>Fuse.Benchmarks</c> suite assembly without breaking its MSBuildWorkspace-based suites (the S1
 ///     co-activation constraint). Run in its own process, this command touches neither MSBuildWorkspace nor the
 ///     resident workspace, so it is safe. False green is 0 by construction (the runner mirrors the real
-///     <c>dotnet test</c> TRX); the mutant-kill rate is the coverage signal. Selection-safety (needs R5 covering
-///     edges) and the emit fast-path latency are the named follow-ups.
+///     <c>dotnet test</c> TRX); the mutant-kill rate is the coverage signal; selection-safety is measured by
+///     indexing the fixture, asking the covering primitive which tests cover the class under test, and running
+///     only that subset against each mutant. The emit fast-path latency (sub-second, no build) is the named
+///     follow-up.
 /// </remarks>
 [CliCommand(
     Name = "testexec",
-    Description = "Measure build-grade covering-test execution honesty and behavior-mutant kill rate; writes results/testexec.json.",
+    Description = "Measure build-grade covering-test execution honesty, mutant kill rate, and selection-safety; writes results/testexec.json.",
     ShortFormAutoGenerate = CliNameAutoGenerate.None,
     Parent = typeof(FuseCliCommand))]
 public sealed class TestExecCommand
 {
-    private const string TestTypeName = "Fix.CalcTests";
+    // The class under test and the two test types: one covers Calc (must be selected), one covers an unrelated
+    // class (must NOT be selected). The gap between them is what makes selection-safety a real measurement rather
+    // than "run the whole suite".
+    private const string SymbolUnderTest = "Calc";
+    private const string CoveringTestType = "CalcTests";
+    private const string UnrelatedTestType = "OtherTests";
     private static readonly TimeSpan RunTimeout = TimeSpan.FromMinutes(5);
 
     private readonly IConsoleUI _consoleUI;
+    private readonly SemanticIndexer _indexer;
 
     /// <summary>Initializes a new instance of the <see cref="TestExecCommand" /> class for CLI binding.</summary>
-    public TestExecCommand() : this(null!)
+    public TestExecCommand() : this(null!, null!)
     {
     }
 
     /// <summary>Initializes a new instance of the <see cref="TestExecCommand" /> class.</summary>
     /// <param name="consoleUI">The console UI for output.</param>
-    public TestExecCommand(IConsoleUI consoleUI) => _consoleUI = consoleUI;
+    /// <param name="indexer">The semantic indexer used to build the covering-edge graph over the fixture.</param>
+    public TestExecCommand(IConsoleUI consoleUI, SemanticIndexer indexer)
+    {
+        _consoleUI = consoleUI;
+        _indexer = indexer;
+    }
 
     /// <summary>The number of behavior mutants to generate and run.</summary>
     [CliOption(Required = false, Description = "Number of behavior mutants to run.")]
@@ -76,10 +95,13 @@ public sealed class TestExecCommand
         try
         {
             await WriteFixtureAsync(work, cancellationToken);
-            var filter = TestFilterBuilder.BuildContains([TestTypeName]);
 
+            // The clean run exercises the WHOLE suite (both test types) so false-red is measured over everything.
+            // It also restores and builds the fixture, which the covering selection below relies on: the R5 tests
+            // edge is only emitted when the test attributes bind, which needs the xunit reference restored first.
+            var fullFilter = TestFilterBuilder.BuildContains([CoveringTestType, UnrelatedTestType]);
             var cleanWatch = Stopwatch.StartNew();
-            var clean = await BuildGradeTestRunner.RunAsync(project, filter, scratch, RunTimeout, cancellationToken);
+            var clean = await BuildGradeTestRunner.RunAsync(project, fullFilter, scratch, RunTimeout, cancellationToken);
             cleanWatch.Stop();
             if (clean.Verdicts.Count == 0)
             {
@@ -93,36 +115,69 @@ public sealed class TestExecCommand
             notes.Add($"clean run: {clean.Verdicts.Count} test(s), {cleanFailed} failed (false-red on a correct fixture must be 0), {cleanWatch.ElapsedMilliseconds} ms");
             tasks.Add(new TaskResult("clean", "testexec", "clean", cleanFailed == 0 ? 1.0 : 0.0, 1.0, 0, cleanWatch.ElapsedMilliseconds, EmptyFiles));
 
+            // The covering selection is a static, pre-edit choice over the RESTORED clean fixture: index it, then
+            // ask which tests cover Calc through the R5 tests edges. Empty when the fixture loads syntax-only in
+            // this environment (no edges) - recorded honestly, not fabricated.
+            var covering = await SelectCoveringTestsAsync(work, notes, cancellationToken);
+            var coveringFilter = covering.Count > 0
+                ? TestFilterBuilder.BuildContains(covering)
+                : TestFilterBuilder.BuildContains([CoveringTestType]);
+
             var cleanSource = await File.ReadAllTextAsync(classPath, cancellationToken);
             var mutants = GenerateBehaviorMutants(cleanSource, Mutants);
             if (mutants.Count == 0)
                 notes.Add("no behavior mutants generated (the class under test lacks a condition or comparison to mutate).");
 
+            // Each mutant is run against BOTH the whole suite and the covering subset the selection picked.
+            // Selection-safety is measured relative to what the whole suite catches: a selection MISS is a mutant
+            // the whole suite kills but the covering subset does not (the selection dropped a test that mattered).
+            // A mutant no test catches (a fixture coverage gap) is not a selection failure - it is excluded from
+            // the safety denominator, which is the count of mutants the whole suite kills.
             var latencies = new List<double> { cleanWatch.ElapsedMilliseconds };
             var killed = 0;
+            var fullSuiteKilled = 0;
+            var selectionMisses = 0;
             foreach (var (id, mutantSource) in mutants)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await File.WriteAllTextAsync(classPath, mutantSource, cancellationToken);
+
                 var watch = Stopwatch.StartNew();
-                var run = await BuildGradeTestRunner.RunAsync(project, filter, scratch, RunTimeout, cancellationToken);
+                var coveringRun = await BuildGradeTestRunner.RunAsync(project, coveringFilter, scratch, RunTimeout, cancellationToken);
                 watch.Stop();
                 latencies.Add(watch.ElapsedMilliseconds);
+                var coveringFailed = coveringRun.Verdicts.Any(v => v.Outcome == "failed");
 
-                var mutantFailed = run.Verdicts.Any(v => v.Outcome == "failed");
-                if (mutantFailed)
+                var fullRun = await BuildGradeTestRunner.RunAsync(project, fullFilter, scratch, RunTimeout, cancellationToken);
+                var fullFailed = fullRun.Verdicts.Any(v => v.Outcome == "failed");
+
+                if (coveringFailed)
                     killed++;
-                tasks.Add(new TaskResult(id, "testexec", "mutant", mutantFailed ? 1.0 : 0.0, 1.0, 0, watch.ElapsedMilliseconds, EmptyFiles));
+                if (fullFailed)
+                {
+                    fullSuiteKilled++;
+                    // The whole suite caught it; the covering subset must too, or the selection was unsafe.
+                    if (!coveringFailed && covering.Count > 0)
+                        selectionMisses++;
+                }
+
+                tasks.Add(new TaskResult(id, "testexec", "mutant", coveringFailed ? 1.0 : 0.0, 1.0, 0, watch.ElapsedMilliseconds, EmptyFiles));
                 await File.WriteAllTextAsync(classPath, cleanSource, cancellationToken);
             }
 
             var killRate = mutants.Count > 0 ? (double)killed / mutants.Count : 0.0;
+            var selectionSafety = fullSuiteKilled > 0 ? (double)(fullSuiteKilled - selectionMisses) / fullSuiteKilled : 1.0;
             var median = Median(latencies);
-            notes.Add($"behavior mutants: {mutants.Count} generated, {killed} killed (kill rate {killRate:P0}); false green 0 by construction (the runner mirrors dotnet test)");
+            notes.Add($"behavior mutants: {mutants.Count} generated, {killed} killed by the covering subset (kill rate {killRate:P0}); false green 0 by construction (the runner mirrors dotnet test)");
+            if (covering.Count > 0)
+                notes.Add($"selection-safety: covering set [{string.Join(", ", covering)}] excluded the unrelated test; the covering subset caught {fullSuiteKilled - selectionMisses}/{fullSuiteKilled} of what the whole suite caught ({selectionSafety:P0}), {selectionMisses} selection miss(es)");
+            else
+                notes.Add("selection-safety: not measured (the fixture did not load semantically here, so no R5 tests edge was produced); the covering subset fell back to the whole suite. This is the same index-mode ceiling that bounds the corpus suites.");
             notes.Add($"per-run latency (build-grade): median {median:F0} ms over {latencies.Count} run(s); the emit fast-path (sub-second, no build) is the named follow-up");
-            notes.Add("selection-safety metric needs R5 covering edges (a semantic-indexed fixture) and is the named follow-up.");
 
-            var scorecard = new Scorecard(tasks.Count, killRate, killRate, killRate, 1.0, killRate, median, median);
+            // Scorecard: recall = kill rate, precision = selection-safety (the covering subset is precise), the
+            // median columns carry latency (the suite conventions reused).
+            var scorecard = new Scorecard(tasks.Count, killRate, killRate, killRate, selectionSafety, killRate, median, median);
             await WriteAsync(new SuiteResult("testexec", Description(), null, scorecard, tasks, notes), cancellationToken);
             _consoleUI.WriteResult(string.Join("\n", notes));
         }
@@ -130,6 +185,55 @@ public sealed class TestExecCommand
         {
             try { Directory.Delete(work, recursive: true); } catch (IOException) { }
         }
+    }
+
+    // Index the clean fixture and return the simple names of the test types that cover Calc through the R5 tests
+    // edges. The unrelated test (OtherTests, which references only Other) must not appear; if it does, the note
+    // records the leak. Returns empty when the fixture loads syntax-only (no edges in this environment).
+    private async Task<IReadOnlyList<string>> SelectCoveringTestsAsync(
+        string work, List<string> notes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var databasePath = FuseStorePaths.ResolveDatabasePath(work);
+            await using var store = new WorkspaceIndexStore(databasePath);
+            var result = await _indexer.IndexAsync(work, store, cancellationToken);
+
+            var explorer = new GraphNeighborhoodExplorer(store);
+            var covering = await explorer.CoveringTestsAsync(SymbolUnderTest, limit: 20, cancellationToken);
+            var names = covering
+                .Select(c => SimpleTypeName(c.Symbol ?? string.Empty))
+                .Where(n => n.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            if (names.Count == 0)
+            {
+                notes.Add($"covering selection: index mode [{result.Mode}] produced no tests edge to {SymbolUnderTest} (selection-safety falls back to the whole suite).");
+                return [];
+            }
+
+            if (names.Contains(UnrelatedTestType, StringComparer.Ordinal))
+                notes.Add($"covering selection LEAK: {UnrelatedTestType} was selected as covering {SymbolUnderTest} but does not reference it.");
+            return names;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            notes.Add($"covering selection: index/query failed ({ex.GetType().Name}); selection-safety falls back to the whole suite.");
+            return [];
+        }
+    }
+
+    private static string SimpleTypeName(string displayName)
+    {
+        var name = displayName;
+        var dot = name.LastIndexOf('.');
+        if (dot >= 0 && dot < name.Length - 1)
+            name = name[(dot + 1)..];
+        var generic = name.IndexOf('<');
+        if (generic >= 0)
+            name = name[..generic];
+        return name.Trim();
     }
 
     private async Task WriteAsync(SuiteResult result, CancellationToken cancellationToken)
@@ -141,7 +245,7 @@ public sealed class TestExecCommand
         _consoleUI.WriteStep($"Wrote results to {outputPath}");
     }
 
-    private static string Description() => "Suite T1: build-grade covering-test execution honesty and behavior-mutant kill rate.";
+    private static string Description() => "Suite T1: build-grade covering-test execution honesty, mutant kill rate, and selection-safety.";
 
     private static Scorecard Empty() => new(0, 0, 0, 0, 0, 0, 0, 0);
 
@@ -162,7 +266,7 @@ public sealed class TestExecCommand
         var compilation = CSharpCompilation.Create(
             "TestExecMutation", [tree], FrameworkReferences(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        if (compilation.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
+        if (compilation.GetDiagnostics().Any(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error))
             return [];
 
         return new MutationGenerator()
@@ -209,6 +313,14 @@ public sealed class TestExecCommand
                 public static bool IsPositive(int x) => x > 0;
             }
             """, cancellationToken);
+        // An unrelated class + its tests: the selection must NOT pick OtherTests as covering Calc.
+        await File.WriteAllTextAsync(System.IO.Path.Combine(work, "Other.cs"), """
+            namespace Fix;
+            public static class Other
+            {
+                public static int Double(int x) => x * 2;
+            }
+            """, cancellationToken);
         await File.WriteAllTextAsync(System.IO.Path.Combine(work, "CalcTests.cs"), """
             using Xunit;
             namespace Fix;
@@ -218,6 +330,14 @@ public sealed class TestExecCommand
                 [Fact] public void Clamp_passes_small_values() => Assert.Equal(3, Calc.Clamp(3));
                 [Fact] public void IsPositive_true_for_positive() => Assert.True(Calc.IsPositive(5));
                 [Fact] public void IsPositive_false_for_zero() => Assert.False(Calc.IsPositive(0));
+            }
+            """, cancellationToken);
+        await File.WriteAllTextAsync(System.IO.Path.Combine(work, "OtherTests.cs"), """
+            using Xunit;
+            namespace Fix;
+            public class OtherTests
+            {
+                [Fact] public void Double_doubles() => Assert.Equal(6, Other.Double(3));
             }
             """, cancellationToken);
     }

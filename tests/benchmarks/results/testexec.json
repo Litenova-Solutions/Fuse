@@ -1,16 +1,16 @@
 {
   "suite": "testexec",
-  "description": "Suite T1: build-grade covering-test execution honesty and behavior-mutant kill rate.",
+  "description": "Suite T1: build-grade covering-test execution honesty, mutant kill rate, and selection-safety.",
   "generated": null,
   "scorecard": {
-    "taskCount": 5,
-    "recall": 0.75,
-    "recallCiLow": 0.75,
-    "recallCiHigh": 0.75,
+    "taskCount": 7,
+    "recall": 0.6666666666666666,
+    "recallCiLow": 0.6666666666666666,
+    "recallCiHigh": 0.6666666666666666,
     "precision": 1,
-    "f1": 0.75,
-    "medianTokens": 1804,
-    "meanTokens": 1804,
+    "f1": 0.6666666666666666,
+    "medianTokens": 1792,
+    "meanTokens": 1792,
     "lowSignalF1": 0
   },
   "tasks": [
@@ -21,7 +21,7 @@
       "recall": 1,
       "precision": 1,
       "tokens": 0,
-      "latencyMs": 12468,
+      "latencyMs": 4086,
       "hit": {
         "hits": [],
         "misses": [],
@@ -35,7 +35,7 @@
       "recall": 0,
       "precision": 1,
       "tokens": 0,
-      "latencyMs": 2011,
+      "latencyMs": 1845,
       "hit": {
         "hits": [],
         "misses": [],
@@ -49,7 +49,7 @@
       "recall": 1,
       "precision": 1,
       "tokens": 0,
-      "latencyMs": 1801,
+      "latencyMs": 1861,
       "hit": {
         "hits": [],
         "misses": [],
@@ -63,7 +63,7 @@
       "recall": 1,
       "precision": 1,
       "tokens": 0,
-      "latencyMs": 1804,
+      "latencyMs": 1792,
       "hit": {
         "hits": [],
         "misses": [],
@@ -77,7 +77,35 @@
       "recall": 1,
       "precision": 1,
       "tokens": 0,
-      "latencyMs": 1746,
+      "latencyMs": 1744,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "behavior-negate-condition-5",
+      "repo": "testexec",
+      "category": "mutant",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 1777,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "behavior-flip-relational-6",
+      "repo": "testexec",
+      "category": "mutant",
+      "recall": 0,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 1779,
       "hit": {
         "hits": [],
         "misses": [],
@@ -87,9 +115,9 @@
   ],
   "notes": [
     "Self-contained xunit fixture; runs the shipped build-grade covering-test runner (dotnet test --filter).",
-    "clean run: 4 test(s), 0 failed (false-red on a correct fixture must be 0), 12468 ms",
-    "behavior mutants: 4 generated, 3 killed (kill rate 75%); false green 0 by construction (the runner mirrors dotnet test)",
-    "per-run latency (build-grade): median 1804 ms over 5 run(s); the emit fast-path (sub-second, no build) is the named follow-up",
-    "selection-safety metric needs R5 covering edges (a semantic-indexed fixture) and is the named follow-up."
+    "clean run: 5 test(s), 0 failed (false-red on a correct fixture must be 0), 4086 ms",
+    "behavior mutants: 6 generated, 4 killed by the covering subset (kill rate 67%); false green 0 by construction (the runner mirrors dotnet test)",
+    "selection-safety: covering set [CalcTests] excluded the unrelated test; the covering subset caught 4/4 of what the whole suite caught (100%), 0 selection miss(es)",
+    "per-run latency (build-grade): median 1792 ms over 7 run(s); the emit fast-path (sub-second, no build) is the named follow-up"
   ]
 }

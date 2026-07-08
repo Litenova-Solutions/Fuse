@@ -129,6 +129,10 @@ public sealed class ResidentWorkspaceRegistry : IResidentWorkspaceProvider, IDis
         string root, string relativeFilePath, string newContent, CancellationToken cancellationToken) =>
         Resolve(root)?.TryCheckOverlay(root, relativeFilePath, newContent, cancellationToken);
 
+    /// <inheritdoc />
+    public IReadOnlyList<CheckDiagnostic>? TryGetCurrentDiagnostics(string root) =>
+        Resolve(root)?.TryGetCurrentDiagnostics(root);
+
     /// <summary>
     ///     Evicts a root's resident workspace, so reads for it revert to store-backed (S1 storm handling): when a
     ///     bulk change outruns incremental update, the resident state is dropped rather than served stale, and the

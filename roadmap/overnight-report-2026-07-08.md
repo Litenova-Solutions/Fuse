@@ -2,17 +2,17 @@
 
 Program: Fuse v4.1 (the resident verified-edit runtime). Branch: `feature/v4-compiler-oracle`.
 All work committed with DCO sign-off and pushed after each item. No PRs, merges, tags, version
-bumps, or publishing. Tree is green and pushed at HEAD `b63f921`.
+bumps, or publishing. Tree is green and pushed at HEAD `ebc1016`.
 
-## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8, F3 done + G2 iter 1; T2, S2, S4 done; S3 [!]; U1 in progress
+## Session tally: T1, T3, T3b, H2, T4, T4b, B2, G8, F3, U1 done + G2 iter 1; T2, S2, S4 done; S3 [!]
 
-- **U1 in progress** (the eight-tool reshape): sub-steps 1a-1d landed. Added fuse_workspace (status/index/map/doctor)
-  and expanded fuse_find into the typed union (symbol/path/text + service/request/route/config/signatures/neighbors/
-  task). Folded fuse_index/fuse_map into fuse_workspace and fuse_localize/resolve/neighbors/signatures into fuse_find,
-  each removed as a live tool and re-registered as a deprecation shim; existing shims repointed; ServerInstructions
-  rewritten to the loop. Live surface 15 to 10 tools + 14 shims; full suite green. Remaining (precision-critical,
-  fresh context): the D2 apply-diff write path on fuse_workspace (the server's only tree write) + fuse_changeset
-  dissolution, the fuse_reduce disposition, the docs sweep, and the scripted 8-tool transcript.
+- **U1 DONE** (Gate PASS): the eight-tool loop surface shipped. Live surface is now the 8 loop tools
+  (fuse_workspace, fuse_find, fuse_context, fuse_impact, fuse_check, fuse_test, fuse_refactor, fuse_review) +
+  fuse_reduce (out-of-loop utility) + 15 deprecation shims. fuse_workspace folds index/map/doctor and adds the D2
+  apply write path (dry-run default, path-escape guard); fuse_find is the typed union folding
+  localize/resolve/neighbors/signatures; fuse_changeset dissolved into check+refactor+apply. ServerInstructions
+  teach the loop; AGENTS.md + the MCP reference rewritten. Integration + shim-coverage gates green; full suite
+  green. signatures-over-referenced-assembly-metadata split to the new gated item U1b.
 
 - **F3 DONE** (Gate PASS, zero false-safe on real cached pairs): the NuGet upgrade oracle ships in
   `fuse_impact package:{id,fromVersion,toVersion}` - a new MetadataSurfaceExtractor + PackageUpgradeOracle diff two

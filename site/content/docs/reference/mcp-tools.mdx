@@ -3,64 +3,52 @@ title: Tools Reference
 description: Parameters and defaults for the MCP tools the Fuse server exposes to AI clients.
 ---
 
-The Fuse MCP server exposes thirteen tools an AI client can call to index a .NET workspace and serve precise, provenance-backed context from a Roslyn-backed semantic graph. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so an agent or its author can choose the right call and supply correct arguments.
+The Fuse MCP server exposes a loop-shaped surface of eight tools (`fuse_workspace`, `fuse_find`, `fuse_context`, `fuse_impact`, `fuse_check`, `fuse_test`, `fuse_refactor`, `fuse_review`), plus `fuse_reduce` as the one out-of-loop utility. Each tool is one mental act, so the loop is teachable: after an edit run `fuse_check`; before a signature change run `fuse_impact`; before done run `fuse_review`. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so an agent or its author can choose the right call and supply correct arguments.
 
 This page is for engineers writing agent instructions and for experts who need the exact default of each parameter. For the recommended order in which to call these tools, see [Context for an agent](/docs/scenarios/context-for-an-agent). The equivalent CLI flags are in [Commands Reference](/docs/reference/commands).
 
 ## Purpose and scope
 
-Read tools build the persistent index on first use, so an explicit `fuse_index` call is optional. The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace. Tools return their result in the tool response; only `fuse_index` writes (the index). Token budgets are honored by the plan, and secret redaction runs before any source reaches the payload.
+Read tools build the persistent index on first use, so an explicit `fuse_workspace action=index` call is optional. The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace. Tools return their result in the tool response; the only writes are the index (`fuse_workspace action=index`) and the one explicit tree-write path (`fuse_workspace action=apply`, a dry run unless `write=true`). Token budgets are honored by the plan, and secret redaction runs before any source reaches the payload.
 
 Choosing a tool:
 
 - Use `fuse_review` for PR or change work when a git base exists.
-- Use `fuse_resolve` when a task names a route, interface, service, request, handler, or config section.
-- Use `fuse_localize` for open-ended tasks.
-- Use `fuse_context` after localize or resolve, unless you want one-shot context.
-- Use `fuse_find` for exact text, path, or symbol lookup.
-- Use `fuse_neighbors` to explore iteratively: the graph neighborhood of a file, the callers and implementers of a symbol, or the central files of an area.
+- Use `fuse_find` with `kind=service|request|route|config` when a task names wiring, or `kind=task` for an open-ended task.
+- Use `fuse_context` after `fuse_find`, unless you want one-shot context.
+- Use `fuse_find` with `kind=symbol|path|text` for exact lookup, or `kind=neighbors` to explore the callers and implementers of a symbol.
 
-## fuse_index
+Every retired or folded name (`fuse_index`, `fuse_map`, `fuse_localize`, `fuse_resolve`, `fuse_neighbors`, `fuse_signatures`, `fuse_changeset`, and the older V2 names) stays registered as a deprecation shim that returns a message naming its replacement, so a client that cached an older tool list gets clear guidance instead of an opaque Unknown tool error. Reconnect the MCP server to refresh the tool list.
 
-Build or refresh the persistent semantic index. Run once before the read tools, or to pick up changes. Returns a summary (mode, files, projects, symbols, routes).
+## fuse_workspace
 
-| Parameter | Type | Default | Meaning |
-|-----------|------|---------|---------|
-| `path` | string | `.` | Workspace directory to index |
+Workspace status and lifecycle: the loop's first stop and the one explicit tree-write path. Select the operation with `action`.
 
-The index mode is `semantic` when the workspace loads through MSBuild/Roslyn, `partial` when some projects fall back, and `syntax` when no project loads.
-
-## fuse_map
-
-Print a map of the workspace: indexed symbols, routes, and counts. The cheap first call to understand structure before fetching context.
+- **`status`** (default): the index mode, verification grade, and freshness.
+- **`index`**: build or refresh the persistent semantic index. The index mode is `semantic` when the workspace loads through MSBuild/Roslyn, `partial` when some projects fall back, and `syntax` when no project loads.
+- **`map`**: the workspace map of indexed symbols, routes, and counts.
+- **`doctor`**: the per-project semantic-load diagnosis (why a project loaded at the tier it did).
+- **`apply`**: write a proposed single-file edit (`file` plus `content`) to the working tree. This is the server's one explicit tree-write path (Decision D2): it is a dry run that only reports the change unless `write=true`, and it refuses any `file` that resolves outside the workspace root.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
+| `action` | string | `status` | `status`, `index`, `map`, `doctor`, or `apply` |
 | `path` | string | `.` | Workspace directory |
-| `detail` | string | `all` | `symbols`, `routes`, or `all` |
-| `maxRows` | int | 200 | Maximum rows per section |
+| `detail` | string | `all` | For `map`: `symbols`, `routes`, or `all` |
+| `maxRows` | int | 200 | For `map`: maximum rows per section |
+| `file` | string | required (`apply`) | For `apply`: the repo-relative file to write |
+| `content` | string | required (`apply`) | For `apply`: the full new content to write |
+| `write` | bool | false | For `apply`: actually write (otherwise a dry run) |
 
-## fuse_localize
+(The former `fuse_index` and `fuse_map` tools folded into this tool; their old names remain as deprecation shims.)
 
-Localize a task to ranked candidate files and symbols. Returns candidates with reasons and token costs, no source bodies. The cheap first step of an iterative workflow; follow with `fuse_context`.
+## Task localization (fuse_find kind=task)
 
-| Parameter | Type | Default | Meaning |
-|-----------|------|---------|---------|
-| `path` | string | `.` | Workspace directory |
-| `task` | string | null | Free-text task or query |
-| `route` | string | null | A route to resolve, for example `POST /api/orders/{id}` |
-| `symbol` | string | null | A symbol to focus on |
-| `service` | string | null | A service to resolve to its implementation |
-| `request` | string | null | A request or command to resolve to its handler |
-| `config` | string | null | A config section to resolve to its options type |
-| `changedSince` | string | null | A git base ref whose changed files seed the candidates |
-| `maxCandidates` | int | 50 | Maximum candidates to return |
-| `strict` | bool | false | Refuse an insufficient request and return only a navigation map, instead of a low-confidence best-effort guess |
-| `expand` | bool | false | Enrich the selected candidates with their typed-graph neighbors (implementers, callers, config) for discovery; widens recall but pressures precision |
+Localize a task to ranked candidate files and symbols with `fuse_find` and `kind=task` (formerly the standalone `fuse_localize` tool, now folded). Returns candidates with reasons and token costs, no source bodies. The cheap first step of an iterative workflow; follow with `fuse_context`. Pass the task as `query`.
 
 ### The graded response
 
-`fuse_localize` grades each request into one of three states, computed from the candidate
+Task localization grades each request into one of three states, computed from the candidate
 score distribution with no model, and leads its output with the state (`localize [confident]: ...`):
 
 - **confident**: a candidate or a tight cluster stands clear; the tight set is returned and precision is high.
@@ -75,20 +63,9 @@ no-signal title (a merge, dependency-bump, or CI title with no code reference) a
 both modes, since it can only return noise. Provide one of the structured parameters above,
 or a name from the navigation map, to get a confident answer.
 
-## fuse_resolve
+## Wiring resolution (fuse_find kind=service|request|route|config)
 
-Deterministically resolve .NET wiring: a service to its implementation, a request to its handler, a route to its action, a config section to its options, or a symbol to its declaration. No source bodies.
-
-| Parameter | Type | Default | Meaning |
-|-----------|------|---------|---------|
-| `path` | string | `.` | Workspace directory |
-| `service` | string | null | Service to resolve to its implementation |
-| `request` | string | null | Request or command to resolve to its handler |
-| `route` | string | null | Route to resolve to its action |
-| `config` | string | null | Config section to resolve to its options type |
-| `symbol` | string | null | Symbol name to resolve to its declaration |
-
-Supply exactly one of the five.
+Deterministically resolve .NET wiring with `fuse_find`: `kind=service` (to its implementation), `request` (to its handler), `route` (to its action), or `config` (to its options type). No source bodies. Pass the identifier as `query`. (Formerly the standalone `fuse_resolve` tool, now folded; the old name remains a deprecation shim.)
 
 ## fuse_context
 
@@ -125,27 +102,21 @@ The manifest opens with a public API delta section (T2): the public and protecte
 
 ## fuse_find
 
-Exact lookup: a symbol by name, a file by path fragment, or text by full-text search. Use instead of broad grep when the name or path is known.
+The find union: locate what a task needs, keyed by `kind`. One tool for exact lookup, wiring resolution, signatures, neighbors, and task localization, so a client learns one entry point instead of five. The `query` carries the input for the selected kind.
+
+- **Exact lookup** (`kind=symbol|path|text|all`): a symbol by name, a file by path fragment, or text by full-text search. Use instead of broad grep when the name or path is known.
+- **Wiring** (`kind=service|request|route|config`): resolve the query to its implementation, handler, action, or options type (folds the former `fuse_resolve`).
+- **`kind=signatures`**: the query symbol's exact signature (folds `fuse_signatures`).
+- **`kind=neighbors`**: the query symbol's callers and implementers, ranked with provenance (folds `fuse_neighbors`).
+- **`kind=task`**: rank candidate files and symbols for the query, with the graded refuse-and-route contract (folds `fuse_localize`; see [The graded response](#the-graded-response)).
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
-| `query` | string | required | The name, path fragment, or text to find |
+| `query` | string | required | The name, path fragment, text, wiring identifier, or task |
 | `path` | string | `.` | Workspace directory |
-| `kind` | string | `all` | Restrict to `symbol`, `path`, `text`, or `all` |
+| `kind` | string | `all` | `symbol`, `path`, `text`, `all`, `service`, `request`, `route`, `config`, `signatures`, `neighbors`, or `task` |
 
-## fuse_neighbors
-
-Iterative exploration primitives, ranked and bounded with provenance and no source bodies. Specify exactly one of `file`, `symbol`, or `centralIn`. Chain these calls to turn a weak first guess into a strong few-call funnel.
-
-| Parameter | Type | Default | Meaning |
-|-----------|------|---------|---------|
-| `path` | string | `.` | Workspace directory |
-| `file` | string | null | A file whose graph neighborhood to return (callers, implementers, consumers, config, plus same-folder cohesion) |
-| `symbol` | string | null | A symbol whose callers and implementers to return (incoming typed edges) |
-| `centralIn` | string | null | An area (folder prefix, or empty for the whole workspace) whose structurally central files to return |
-| `limit` | int | 20 | Maximum results to return |
-
-The neighborhood falls back to same-folder cohesion where the graph is sparse, so a result is never empty; central files are ranked by node degree and are empty in syntax mode (no edges). These primitives compose the structural priors and graph expansion into operations shaped for exploration.
+(The former `fuse_localize`, `fuse_resolve`, `fuse_neighbors`, and `fuse_signatures` tools folded into this tool; their old names remain as deprecation shims.)
 
 ## fuse_refactor
 
@@ -246,28 +217,13 @@ Run the covering tests for a symbol: the tests that reach it through the persist
 | `path` | string | `.` | Workspace directory |
 | `limit` | int | 20 | Maximum covering test types to run |
 
-## fuse_signatures
+## Exact signatures (fuse_find kind=signatures)
 
-Batch exact-signature lookup: for a set of symbol names (simple or fully qualified), returns each declared signature, kind, accessibility, containing type, and location from the semantic index, in one call instead of many grep-and-read round-trips. This is the compiler-shaped answer to "what is the exact shape of these members". A signature is recorded at the semantic tier; in syntax mode a symbol may have no recorded signature, and the tool says so per symbol rather than inventing one. A requested name with no match is reported, not silently dropped. The response opens with an availability header (index mode, whether tier-1 build capture is configured, and the freshness stamp) so the grade of the answer is explicit.
+Look up a symbol's exact signature (declared signature, kind, accessibility, containing type, and location) with `fuse_find` and `kind=signatures`, the compiler-shaped answer to "what is the exact shape of this member" instead of grep-and-read. A signature is recorded at the semantic tier; in syntax mode a symbol may have no recorded signature, and the tool says so rather than inventing one. Pass the symbol name as `query`. (Formerly the standalone `fuse_signatures` tool, now folded; the old name remains a deprecation shim. Answering over referenced-assembly metadata when a resident workspace serves the root is a tracked follow-up.)
 
-| Parameter | Type | Default | Meaning |
-|-----------|------|---------|---------|
-| `names` | string[] | required | Symbol names to look up (simple name or fully qualified) |
-| `path` | string | `.` | Workspace directory |
-| `limitPerName` | int | 5 | Maximum matches to return per requested name |
+## The propose-verify-apply flow (fuse_changeset dissolved)
 
-## fuse_changeset
-
-The speculative staging area: propose a changeset, verify it, select its tests, then commit or abandon it, all without touching the working tree until you choose to. An agent creates a session, stages one or more single-file edits into it, diagnoses them with the speculative typecheck (`fuse_check`), selects the tests that cover the changed symbols (from the persisted `tests` edges), and then either promotes the changeset (which writes the staged edits to the working tree) or discards it (which leaves the tree untouched). Two changesets over the same base are isolated: staging into one never affects the other. The edit-verify loop becomes propose-oracle-commit. This first cut re-captures the build per diagnose (no resident compilation yet), so diagnose latency tracks a build; in-process test execution is out of scope by design (the select operation returns the covering set to run with your own `dotnet test --filter`).
-
-| Parameter | Type | Default | Meaning |
-|-----------|------|---------|---------|
-| `op` | string | required | The lifecycle operation: `create`, `stage`, `list`, `diagnose`, `select`, `promote`, or `discard` |
-| `path` | string | `.` | Workspace directory |
-| `session` | string | null | The session id (required for every op except `create`) |
-| `file` | string | null | The repo-relative file path (for `stage`) |
-| `content` | string | null | The proposed full new content of the file (for `stage`) |
-| `limit` | int | 50 | Maximum covering tests to return (for `select`) |
+The speculative staging workflow dissolved in the eight-tool reshape: instead of a stateful changeset session, the loop is direct. Diagnose a proposed single-file edit by passing its content to `fuse_check` (the speculative typecheck, oracle-grade when tier-1 is available). Make compiler-executed edits with `fuse_refactor` (each returns a verified staged diff or abstains). Select the covering tests for a changed symbol with `fuse_impact` (which lists them) or run them with `fuse_test`. When you choose to commit, write the result to the working tree with `fuse_workspace action=apply` (the one explicit write path, a dry run unless `write=true`). Nothing is written until that apply. (The old `fuse_changeset` name remains a deprecation shim naming this flow.)
 
 Only `promote` writes to disk, and only when called. A `discard` (or never promoting) leaves the working tree exactly as it was.
 

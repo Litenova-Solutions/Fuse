@@ -299,7 +299,7 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the check.</param>
     /// <returns>The diagnostics for the changed document, a clean verdict, or an explicit abstention.</returns>
     [McpServerTool(Name = "fuse_check", ReadOnly = true)]
-    [Description("Speculatively typecheck a proposed single-file edit: the compiler errors and warnings it would produce, without writing the file. Verification never shrugs (D11): oracle-grade (sub-second, no build) when the repo is captured at tier-1; otherwise build-grade, running dotnet build scoped to the owning project (tens of seconds) and parsing the same diagnostics; abstains only when even the toolchain cannot run, naming the reason. Every answer is stamped with its grade. Delta mode (S2): pass a session id with no content to get the diagnostics your on-disk edits introduced or resolved since the session baseline (needs a resident workspace; does not run a build); full:true returns the whole current set; markGreen:true resets the baseline to now.")]
+    [Description("Speculatively typecheck a proposed single-file edit: the compiler errors and warnings it would produce, without writing the file. Verification never shrugs (D11): oracle-grade (sub-second, no build) when the repo is captured at tier-1; otherwise build-grade, running dotnet build scoped to the owning project (tens of seconds) and parsing the same diagnostics; abstains only when even the toolchain cannot run, naming the reason. Every answer is stamped with its grade. Delta mode (S2): pass a session id with no content to get the diagnostics your on-disk edits introduced or resolved since the session baseline (needs a resident workspace; does not run a build); full:true returns the whole current set; markGreen:true resets the baseline to now. Analyzer parity (S4): when a resident workspace serves the root, analyzers:true (the default) also runs the repo's configured analyzers and nullable warnings at their editorconfig severities, so a green check matches CI.")]
     public static async Task<string> FuseCheckAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
@@ -308,6 +308,7 @@ public sealed partial class FuseTools
         [Description("Delta mode: a session id. With no content, returns the diagnostics introduced or resolved since the session baseline (needs a resident workspace; does not run a build).")] string session = "",
         [Description("Delta mode: return the whole current diagnostic set instead of the delta since the baseline.")] bool full = false,
         [Description("Delta mode: reset the session baseline to the current diagnostics (mark green), so later deltas are measured from here.")] bool markGreen = false,
+        [Description("Also run the repo's configured analyzers and nullable warnings at their editorconfig severities (CI parity), when a resident workspace serves the root. Default on.")] bool analyzers = true,
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetFullPath(path);
@@ -329,9 +330,10 @@ public sealed partial class FuseTools
         //
         // Resident-first (S1, D8): when a live resident workspace serves this root it answers the oracle check from
         // the held compilation (no per-check rebuild). With no resident workspace wired the provider returns null and
-        // this is a no-op, so the build-capture-worker path below is unchanged.
+        // this is a no-op, so the build-capture-worker path below is unchanged. Analyzer parity (S4): the single-file
+        // verify defaults analyzers on, so the check reports what CI's build step enforces, not just compiler errors.
         Fuse.Indexing.CheckResult? oracle = null;
-        var residentDiagnostics = ResidentWorkspaces.TryCheckOverlay(root, file, content, cancellationToken);
+        var residentDiagnostics = await ResidentWorkspaces.TryCheckOverlayAsync(root, file, content, analyzers, cancellationToken);
         if (residentDiagnostics is not null)
             oracle = Fuse.Indexing.CheckResult.Ok(residentDiagnostics);
 

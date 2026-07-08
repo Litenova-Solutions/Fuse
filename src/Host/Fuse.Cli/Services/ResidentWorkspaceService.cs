@@ -63,6 +63,17 @@ public sealed class ResidentWorkspaceService : IResidentWorkspaceProvider, IDisp
             return _workspace.GetDiagnostics(CancellationToken.None);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<CheckDiagnostic>?> TryCheckOverlayAsync(
+        string root, string relativeFilePath, string newContent, bool includeAnalyzers, CancellationToken cancellationToken)
+    {
+        if (!Matches(root))
+            return null;
+        // The overlay forks the held compilation and (optionally) runs analyzers off the shared state; the resident
+        // workspace itself is not mutated, so this does not need the write gate the batch/projection paths take.
+        return await _workspace.CheckOverlayAsync(relativeFilePath, newContent, includeAnalyzers, cancellationToken);
+    }
+
     /// <summary>
     ///     Applies a coalesced watcher batch to the held workspace, advancing the revision.
     /// </summary>

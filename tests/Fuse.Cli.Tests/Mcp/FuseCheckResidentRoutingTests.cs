@@ -108,5 +108,9 @@ public sealed class FuseCheckResidentRoutingTests : IDisposable
         public IReadOnlyList<CheckDiagnostic>? TryCheckOverlay(
             string queried, string relativeFilePath, string newContent, CancellationToken cancellationToken) =>
             string.Equals(queried, root, StringComparison.OrdinalIgnoreCase) ? diagnostics : null;
+
+        public Task<IReadOnlyList<CheckDiagnostic>?> TryCheckOverlayAsync(
+            string queried, string relativeFilePath, string newContent, bool includeAnalyzers, CancellationToken cancellationToken) =>
+            Task.FromResult(string.Equals(queried, root, StringComparison.OrdinalIgnoreCase) ? (IReadOnlyList<CheckDiagnostic>?)diagnostics : null);
     }
 }

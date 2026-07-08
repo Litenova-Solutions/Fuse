@@ -133,6 +133,13 @@ public sealed class ResidentWorkspaceRegistry : IResidentWorkspaceProvider, IDis
     public IReadOnlyList<CheckDiagnostic>? TryGetCurrentDiagnostics(string root) =>
         Resolve(root)?.TryGetCurrentDiagnostics(root);
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<CheckDiagnostic>?> TryCheckOverlayAsync(
+        string root, string relativeFilePath, string newContent, bool includeAnalyzers, CancellationToken cancellationToken) =>
+        Resolve(root) is { } service
+            ? service.TryCheckOverlayAsync(root, relativeFilePath, newContent, includeAnalyzers, cancellationToken)
+            : Task.FromResult<IReadOnlyList<CheckDiagnostic>?>(null);
+
     /// <summary>
     ///     Evicts a root's resident workspace, so reads for it revert to store-backed (S1 storm handling): when a
     ///     bulk change outruns incremental update, the resident state is dropped rather than served stale, and the

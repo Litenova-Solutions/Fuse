@@ -50,7 +50,7 @@ public sealed class ResidentAnalyzerRunnerTests
     // Flags every class declaration with a warning, so a test compilation deterministically produces analyzer
     // diagnostics without depending on a third-party analyzer package. RS1036 (release-tracking for shipped
     // analyzers) does not apply to a test-only fixture analyzer.
-#pragma warning disable RS1036
+#pragma warning disable RS1036, RS2008
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     private sealed class ClassFlagAnalyzer : DiagnosticAnalyzer
     {
@@ -73,5 +73,5 @@ public sealed class ResidentAnalyzerRunnerTests
                 SyntaxKind.ClassDeclaration);
         }
     }
-#pragma warning restore RS1036
+#pragma warning restore RS1036, RS2008
 }

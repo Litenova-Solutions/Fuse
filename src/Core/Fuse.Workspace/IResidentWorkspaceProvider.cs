@@ -51,6 +51,25 @@ public interface IResidentWorkspaceProvider
     /// <param name="root">The absolute workspace root.</param>
     /// <returns>The current whole-state diagnostics, or null when no resident workspace serves the root.</returns>
     IReadOnlyList<CheckDiagnostic>? TryGetCurrentDiagnostics(string root) => null;
+
+    /// <summary>
+    ///     Speculatively typechecks a proposed single-file edit against the resident workspace and, when requested,
+    ///     also runs the repo's configured analyzers against the overlay (S4 analyzer parity): the changed
+    ///     document's compiler diagnostics merged with its analyzer diagnostics at the repo's editorconfig
+    ///     severities. When <paramref name="includeAnalyzers" /> is false this is the compiler-only overlay check.
+    /// </summary>
+    /// <param name="root">The absolute workspace root.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="includeAnalyzers">Whether to run the configured analyzers and merge their diagnostics.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>
+    ///     The changed document's diagnostics, or null when no resident workspace serves the root or the file is
+    ///     not in it (the caller falls back to another grade). The default implementation returns null.
+    /// </returns>
+    Task<IReadOnlyList<CheckDiagnostic>?> TryCheckOverlayAsync(
+        string root, string relativeFilePath, string newContent, bool includeAnalyzers, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<CheckDiagnostic>?>(null);
 }
 
 /// <summary>

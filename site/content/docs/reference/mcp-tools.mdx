@@ -175,6 +175,11 @@ The response opens with the grade line so a client knows the class of truth and 
 | `session` | string | null | Delta mode: a session id (see below) |
 | `full` | bool | false | Delta mode: return the whole current diagnostic set instead of the delta |
 | `markGreen` | bool | false | Delta mode: reset the session baseline to the current diagnostics |
+| `analyzers` | bool | true | Also run the repo's configured analyzers and nullable warnings at editorconfig severities (CI parity), when a resident workspace serves the root |
+
+### Analyzer parity
+
+By default, when a live resident workspace serves the root, the check runs the repository's configured analyzers and nullable warnings against the overlay compilation at the severities the repository's editorconfig sets, and merges them with the compiler diagnostics. This makes a green check match what CI's build step enforces, not just the raw compiler errors, so a local green is not followed by a CI red on a StyleCop or nullable warning. A rule silenced in editorconfig stays silent. Analyzers add real cost (hundreds of milliseconds on a large analyzer set), so they default on for this single-file verify but off for the hot per-edit delta path; the availability header names the setting. Without a resident workspace the setting has no effect (the build-capture and build-grade paths report their own diagnostics).
 
 ### Delta mode
 

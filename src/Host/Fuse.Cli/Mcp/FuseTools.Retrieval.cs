@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text;
 using Fuse.Collection.FileSystem;
 using Fuse.Context;
+using Fuse.Indexing;
 using Fuse.Reduction;
 using Fuse.Retrieval;
 using Fuse.Semantics;
@@ -216,6 +217,9 @@ public sealed partial class FuseTools
 
         if (impact.Count == 0 && mode == "syntax")
             builder.AppendLine("  (no edges: syntax mode has no semantic graph; run fuse_index on a semantically loadable checkout)");
+
+        builder.AppendLine();
+        builder.AppendLine(await BuildImpactApiSurfaceLineAsync(store, symbol, mode, cancellationToken));
 
         // M1 covering-test selection (down-payment): the tests that reach the symbol through R5's DI-resolved
         // tests edges, called out distinctly from the blast radius so an agent can run just this subset. Best-
@@ -701,6 +705,44 @@ public sealed partial class FuseTools
             return null;
         }
     }
+
+    // The T2 public-surface line for impact: whether the target symbol is on the public/protected API surface, so
+    // an agent knows before editing whether a change is contract-relevant. Conservative (the T2 kill-risk): a
+    // positive "public" is asserted only from IsPublicApi, which is reliable for types in any mode and for members
+    // at the semantic tier; a member in syntax mode, where accessibility is unresolved, is reported undetermined
+    // rather than guessed either way.
+    private static async Task<string> BuildImpactApiSurfaceLineAsync(
+        WorkspaceIndexStore store, string symbol, string mode, CancellationToken cancellationToken)
+    {
+        var matches = await store.FindSymbolsByNameAsync(symbol, 50, cancellationToken);
+        var exact = matches
+            .Where(m => string.Equals(m.Name, symbol, StringComparison.Ordinal)
+                || string.Equals(m.FullyQualifiedName, symbol, StringComparison.Ordinal)
+                || m.FullyQualifiedName.EndsWith("." + symbol, StringComparison.Ordinal))
+            .ToList();
+
+        if (exact.Count == 0)
+            return $"public API surface: no indexed symbol named {symbol} to classify.";
+
+        if (exact.Any(m => m.IsPublicApi))
+        {
+            return $"public API surface: {symbol} is on the public/protected surface (T2); removing it, reducing its "
+                + "accessibility, or changing its signature is a breaking change, so the blast radius above is external-facing.";
+        }
+
+        // Not flagged public. For a member in syntax mode the flag is not reliable, so do not assert "internal".
+        var allMembers = exact.All(m => !IsTypeKind(m.Kind));
+        if (mode == "syntax" && allMembers)
+        {
+            return $"public API surface: undetermined for {symbol} in syntax mode (member accessibility is not "
+                + "resolved); run fuse_index on a semantically loadable checkout to classify.";
+        }
+
+        return $"public API surface: {symbol} is not on the public/protected surface; a change is internal to the assembly.";
+    }
+
+    private static bool IsTypeKind(string kind) =>
+        kind is "class" or "interface" or "struct" or "record" or "enum" or "delegate" or "type";
 
     private static ContextOutputFormat ParseFormat(string format) => format.Trim().ToLowerInvariant() switch
     {

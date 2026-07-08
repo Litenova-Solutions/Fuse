@@ -331,6 +331,16 @@ public sealed partial class FuseTools
                     builder.AppendLine($"  {type}");
             }
 
+            // The graded claims block (U2): a test verdict is compiler/test-grade truth (the real dotnet test ran),
+            // so this claim is verified - the strongest grade, distinct from the graph-grade impact claims.
+            builder.AppendLine();
+            builder.AppendLine(ClaimLedger.Render(
+            [
+                Claim.FromCompiler(
+                    $"{passed} of {result.Verdicts.Count} covering test(s) passed ({failed} failed) for {symbol}",
+                    "test: build-grade dotnet test run over the covering set"),
+            ]));
+
             return builder.ToString().TrimEnd();
         }
         finally

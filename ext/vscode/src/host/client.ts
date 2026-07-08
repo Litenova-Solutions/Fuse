@@ -15,6 +15,8 @@ import {
   Methods,
   Notifications,
   ScopeResultDto,
+  SessionListDto,
+  SessionViewDto,
 } from "./protocol";
 
 /**
@@ -94,6 +96,16 @@ export class HostClient {
 
   diagnostics(root: string): Promise<DiagnosticsDto> {
     return this.connection.sendRequest(Methods.diagnostics, this.requireToken(), root);
+  }
+
+  /** Lists the sessions the store knows for a root (G3), most recently written first, for the observability panel. */
+  sessions(root: string): Promise<SessionListDto> {
+    return this.connection.sendRequest(Methods.sessions, this.requireToken(), root);
+  }
+
+  /** Returns the read-only observability view of one session (G3): its introduced/resolved diagnostics and rendered claim ledger. */
+  sessionView(root: string, session: string): Promise<SessionViewDto> {
+    return this.connection.sendRequest(Methods.sessionView, this.requireToken(), root, session);
   }
 
   /** Registers a handler for the host's `fuse/invalidated` notification (the workspace changed). */

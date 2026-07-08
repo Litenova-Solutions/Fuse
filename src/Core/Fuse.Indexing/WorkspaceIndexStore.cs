@@ -229,6 +229,35 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<SessionSummary>> ListSessionsAsync(string root, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        // Union the two session tables by id (a session may have a baseline, a claim ledger, or both), taking the
+        // latest updated_utc and OR-ing the has-* flags. Filtered by root so the panel shows only this workspace.
+        command.CommandText =
+            "SELECT session_id, MAX(updated_utc) AS updated_utc, MAX(has_baseline) AS has_baseline, MAX(has_claims) AS has_claims FROM (" +
+            "  SELECT session_id, updated_utc, 1 AS has_baseline, 0 AS has_claims FROM check_sessions WHERE root = $root" +
+            "  UNION ALL" +
+            "  SELECT session_id, updated_utc, 0 AS has_baseline, 1 AS has_claims FROM claim_ledger WHERE root = $root" +
+            ") GROUP BY session_id ORDER BY updated_utc DESC;";
+        command.Parameters.AddWithValue("$root", root);
+
+        var sessions = new List<SessionSummary>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            sessions.Add(new SessionSummary(
+                reader.GetString(0),
+                reader.GetString(1),
+                reader.GetInt64(2) != 0,
+                reader.GetInt64(3) != 0));
+        }
+
+        return sessions;
+    }
+
+    /// <inheritdoc />
     public async Task UpsertFilesAsync(IReadOnlyList<IndexedFileRecord> files, CancellationToken cancellationToken)
     {
         if (files.Count == 0)

@@ -34,10 +34,13 @@ public sealed class FuseHostService : IDisposable
     /// </summary>
     /// <remarks>
     ///     Version 4 (v4.1 S3): the <c>fuse/check</c> ambient-verification method and its <c>CheckDeltaDto</c> /
-    ///     <c>CheckDiagnosticDto</c> shapes were added. The extension's <c>protocol.ts</c> PROTOCOL_VERSION mirrors
-    ///     this in the same change, per the host RPC change-safety invariant.
+    ///     <c>CheckDiagnosticDto</c> shapes were added. Version 5 (v4.1 G3): the read-only session-observability
+    ///     methods <c>fuse/sessions</c> and <c>fuse/session-view</c> and their <c>SessionListDto</c> /
+    ///     <c>SessionSummaryDto</c> / <c>SessionViewDto</c> shapes were added for the extension panel. The
+    ///     extension's <c>protocol.ts</c> PROTOCOL_VERSION mirrors this in the same change, per the host RPC
+    ///     change-safety invariant.
     /// </remarks>
-    public const int ProtocolVersion = 4;
+    public const int ProtocolVersion = 5;
 
     private const int ListLimit = 100_000;
 
@@ -516,6 +519,65 @@ public sealed class FuseHostService : IDisposable
             true,
             delta.Introduced.Select(ToCheckDiagnosticDto).ToList(),
             delta.Resolved.Select(ToCheckDiagnosticDto).ToList());
+    }
+
+    /// <summary>
+    ///     Lists the sessions the store knows for a root (G3): every session with a check-diagnostics baseline or an
+    ///     accumulated claim ledger, most recently written first. The read-only feed the extension observability
+    ///     panel lists so a human can pick a session to watch.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <returns>The known sessions for the root (empty when there are none).</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    [JsonRpcMethod("fuse/sessions")]
+    public async Task<SessionListDto> SessionsAsync(string sessionToken, string root)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        var resolved = Path.GetFullPath(root);
+        await using var store = await OpenStoreAsync(resolved);
+        var sessions = await store.ListSessionsAsync(resolved, CancellationToken.None);
+        return new SessionListDto(
+            sessions.Select(s => new SessionSummaryDto(s.SessionId, s.UpdatedUtc, s.HasBaseline, s.HasClaims)).ToList());
+    }
+
+    /// <summary>
+    ///     Returns the read-only observability view of one session (G3): the diagnostics its edits introduced or
+    ///     resolved since its baseline (from a live resident workspace, empty when none serves the root) and its
+    ///     accumulated graded claim ledger (U2) rendered as text. No write actions - watching, not driving.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="session">The session id to view.</param>
+    /// <returns>The session's diagnostics delta and rendered claim ledger.</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    [JsonRpcMethod("fuse/session-view")]
+    public async Task<SessionViewDto> SessionViewAsync(string sessionToken, string root, string session)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        var resolved = Path.GetFullPath(root);
+        await using var store = await OpenStoreAsync(resolved);
+
+        var claimsRecord = await Fuse.Retrieval.SessionClaimLedger.LoadAsync(store, session, CancellationToken.None);
+        var claims = Fuse.Retrieval.ClaimLedger.Render(claimsRecord);
+
+        // Diagnostics come from a live resident workspace only (delta mode never runs a build); with none, the view
+        // still returns the recorded claim ledger, so the panel shows the evidence trail even offline.
+        var current = Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.TryGetCurrentDiagnostics(resolved);
+        if (current is null)
+            return new SessionViewDto(session, false, [], [], claims);
+
+        var baseline = await store.GetCheckSessionBaselineAsync(session, CancellationToken.None);
+        if (baseline is null)
+            return new SessionViewDto(session, true, [], [], claims);
+
+        var delta = DiagnosticDelta.Compute(baseline.Diagnostics, current);
+        return new SessionViewDto(
+            session,
+            true,
+            delta.Introduced.Select(ToCheckDiagnosticDto).ToList(),
+            delta.Resolved.Select(ToCheckDiagnosticDto).ToList(),
+            claims);
     }
 
     private static CheckDiagnosticDto ToCheckDiagnosticDto(CheckDiagnostic diagnostic) =>

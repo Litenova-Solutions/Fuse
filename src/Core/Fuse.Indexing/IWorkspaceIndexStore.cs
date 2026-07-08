@@ -332,7 +332,29 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>The ledger record, or <c>null</c> when the session is unknown.</returns>
     Task<ClaimLedgerRecord?> GetClaimLedgerAsync(string sessionId, CancellationToken cancellationToken)
         => Task.FromResult<ClaimLedgerRecord?>(null);
+
+    /// <summary>
+    ///     Lists the sessions the store knows for a root (G3): every session with a recorded check-diagnostics
+    ///     baseline or an accumulated claim ledger, most recently written first. This is the read the extension
+    ///     observability panel uses to show what an agent has been doing. Additive read over the existing
+    ///     <c>check_sessions</c> and <c>claim_ledger</c> tables; no schema change.
+    /// </summary>
+    /// <param name="root">The absolute workspace root to filter sessions by.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The known sessions for the root, most recently written first (empty when there are none).</returns>
+    Task<IReadOnlyList<SessionSummary>> ListSessionsAsync(string root, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyList<SessionSummary>>([]);
 }
+
+/// <summary>
+///     One session the store knows for a root (G3): its id, when it was last written, and whether it has a
+///     check-diagnostics baseline and an accumulated claim ledger.
+/// </summary>
+/// <param name="SessionId">The opaque session id.</param>
+/// <param name="UpdatedUtc">The ISO-8601 UTC time the session was last written (baseline save or claim append).</param>
+/// <param name="HasBaseline">Whether the session has a recorded check-diagnostics baseline.</param>
+/// <param name="HasClaims">Whether the session has an accumulated claim ledger.</param>
+public sealed record SessionSummary(string SessionId, string UpdatedUtc, bool HasBaseline, bool HasClaims);
 
 /// <summary>
 ///     A persisted check-session baseline (S2): the diagnostics recorded as of the session's start or last

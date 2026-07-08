@@ -4,7 +4,7 @@
 // parses the same fixtures, so any drift on either side fails a test. Keep this file in lockstep with the DTOs.
 
 /** Wire protocol version; must equal FuseHostService.ProtocolVersion on the host. */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 /** Result of `fuse/handshake`: host package version, the wire protocol version to match, and the session token for later RPC calls. */
 export interface FuseHostHandshake {
@@ -134,6 +134,28 @@ export interface CheckDeltaDto {
   resolved: CheckDiagnosticDto[];
 }
 
+/** One session the store knows for a root (G3): its id, when it was last written, and what data it carries. */
+export interface SessionSummaryDto {
+  sessionId: string;
+  updatedUtc: string;
+  hasBaseline: boolean;
+  hasClaims: boolean;
+}
+
+/** Result of `fuse/sessions`: the sessions the store knows for a root, most recently written first. */
+export interface SessionListDto {
+  sessions: SessionSummaryDto[];
+}
+
+/** Result of `fuse/session-view` (G3): the read-only observability view of one session - the diagnostics its edits introduced or resolved since its baseline (empty when no resident workspace serves the root) and its rendered graded claim ledger. */
+export interface SessionViewDto {
+  sessionId: string;
+  resident: boolean;
+  introduced: CheckDiagnosticDto[];
+  resolved: CheckDiagnosticDto[];
+  claims: string;
+}
+
 /** RPC method names exposed by the host (the `fuse/` namespace). */
 export const Methods = {
   handshake: "fuse/handshake",
@@ -144,6 +166,8 @@ export const Methods = {
   diagnostics: "fuse/diagnostics",
   explain: "fuse/explain",
   check: "fuse/check",
+  sessions: "fuse/sessions",
+  sessionView: "fuse/session-view",
   shutdown: "fuse/shutdown",
 } as const;
 

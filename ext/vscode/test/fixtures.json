@@ -1,6 +1,6 @@
 {
   "_comment": "Canonical camelCase wire shapes for the host RPC DTOs. The .NET FuseHostContractTests pin that the source-generated serializer emits exactly these keys; the TypeScript contract test (contract.test.mjs) pins that protocol.ts parses them. Keep this file in lockstep with both sides: a DTO change must update the .NET DTO, protocol.ts, and this fixture together.",
-  "handshake": { "hostVersion": "3.2.0", "protocolVersion": 4, "sessionToken": "abc123token" },
+  "handshake": { "hostVersion": "3.2.0", "protocolVersion": 5, "sessionToken": "abc123token" },
   "stats": { "hostVersion": "3.0.0", "processId": 4242, "uptimeMs": 1500, "workingSetBytes": 123456789 },
   "graph": {
     "nodes": [{ "path": "a/B.cs", "declaredTypes": ["B"], "centrality": 0.5, "tokenCost": 1200, "role": "Seed" }],
@@ -34,6 +34,16 @@
     "introduced": [{ "id": "CS1061", "severity": "Error", "message": "'Order' does not contain a definition for 'Total'", "path": "a/Order.cs", "line": 12 }],
     "resolved": [{ "id": "CS0246", "severity": "Error", "message": "type 'Widget' not found", "path": "a/Widget.cs", "line": 3 }]
   },
+  "sessions": {
+    "sessions": [{ "sessionId": "hook", "updatedUtc": "2026-07-09T00:00:00.0000000Z", "hasBaseline": true, "hasClaims": false }]
+  },
+  "sessionView": {
+    "sessionId": "hook",
+    "resident": true,
+    "introduced": [{ "id": "CS1061", "severity": "Error", "message": "'Order' does not contain a definition for 'Total'", "path": "a/Order.cs", "line": 12 }],
+    "resolved": [],
+    "claims": "claims (1, each graded and evidence-referenced):\n  [verified] the edit compiles clean  (evidence: check: 0 errors)"
+  },
   "rpcParams": {
     "fuse/handshake": [],
     "fuse/stats": ["sessionToken"],
@@ -43,6 +53,8 @@
     "fuse/diagnostics": ["sessionToken", "root"],
     "fuse/explain": ["sessionToken", "root", "mode", "seed", "query", "since"],
     "fuse/check": ["sessionToken", "root", "session"],
+    "fuse/sessions": ["sessionToken", "root"],
+    "fuse/session-view": ["sessionToken", "root", "session"],
     "fuse/shutdown": ["sessionToken"]
   }
 }

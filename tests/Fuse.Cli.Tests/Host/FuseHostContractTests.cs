@@ -147,4 +147,37 @@ public sealed class FuseHostContractTests
         Assert.Contains("\"path\":\"a/Order.cs\",\"line\":12", json);
         Assert.Contains("\"resolved\":[{\"id\":\"CS0246\"", json);
     }
+
+    [Fact]
+    public void SessionList_SerializesSummariesCamelCase()
+    {
+        var list = new SessionListDto(
+            [new SessionSummaryDto("hook", "2026-07-09T00:00:00.0000000Z", true, false)]);
+
+        var json = JsonSerializer.Serialize(list, FuseHostJsonContext.Default.SessionListDto);
+
+        Assert.Contains("\"sessions\":[{\"sessionId\":\"hook\"", json);
+        Assert.Contains("\"updatedUtc\":\"2026-07-09T00:00:00.0000000Z\"", json);
+        Assert.Contains("\"hasBaseline\":true", json);
+        Assert.Contains("\"hasClaims\":false", json);
+    }
+
+    [Fact]
+    public void SessionView_SerializesDiagnosticsAndClaimsCamelCase()
+    {
+        var view = new SessionViewDto(
+            "hook",
+            true,
+            [new CheckDiagnosticDto("CS1061", "Error", "'Order' does not contain a definition for 'Total'", "a/Order.cs", 12)],
+            [],
+            "claims (1, each graded and evidence-referenced):\n  [verified] the edit compiles clean  (evidence: check: 0 errors)");
+
+        var json = JsonSerializer.Serialize(view, FuseHostJsonContext.Default.SessionViewDto);
+
+        Assert.Contains("\"sessionId\":\"hook\"", json);
+        Assert.Contains("\"resident\":true", json);
+        Assert.Contains("\"introduced\":[{\"id\":\"CS1061\"", json);
+        Assert.Contains("\"resolved\":[]", json);
+        Assert.Contains("\"claims\":\"claims (1", json);
+    }
 }

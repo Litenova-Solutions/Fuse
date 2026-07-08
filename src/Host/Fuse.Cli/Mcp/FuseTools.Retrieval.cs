@@ -246,6 +246,16 @@ public sealed partial class FuseTools
             "signature-change break set: unavailable (needs an oracle-grade tier-1 load; the enumeration above is " +
             "the graph-grade blast radius from the persisted reference and wiring edges).");
 
+        // The graded claims block (U2): the impact answer's statements, each graded from the evidence behind it.
+        // Both rest on the persisted graph, so they cap at partially_verified (not compiler-confirmed).
+        var claims = new List<Claim>
+        {
+            Claim.FromGraph($"{impact.Count} caller(s)/implementer(s) reach {symbol}", $"graph: {mode} reference and wiring edges"),
+            Claim.FromGraph($"{covering.Count} covering test(s) reach {symbol} (a lower bound)", "graph: R5 tests edges"),
+        };
+        builder.AppendLine();
+        builder.AppendLine(ClaimLedger.Render(claims));
+
         return builder.ToString();
     }
 

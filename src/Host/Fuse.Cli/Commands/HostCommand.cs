@@ -5,6 +5,7 @@ using DotMake.CommandLine;
 using Fuse.Cli.Extensions;
 using Fuse.Cli.Rpc;
 using Fuse.Cli.Services;
+using Fuse.Semantics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -74,7 +75,7 @@ public sealed class HostCommand
         // drive it from the same watcher's coalesced batches, so fuse_check answers resident-grade without a
         // rebuild. Off by default keeps the host path byte-identical until the S1 latency gate promotes it.
         using var resident = Services.ResidentWorkspaceHosting.OptIn()
-            ? Services.ResidentWorkspaceHosting.Enable(root, watcher, message => logger.LogInformation("{Message}", message), stopCts.Token)
+            ? Services.ResidentWorkspaceHosting.Enable(root, watcher, app.Services.GetRequiredService<SemanticIndexer>(), message => logger.LogInformation("{Message}", message), stopCts.Token)
             : null;
 
         logger.LogInformation("Fuse host {Version} serving {Root}", FuseHostService.HostVersion, root);

@@ -1,4 +1,7 @@
 using Fuse.Cli.Mcp;
+using Fuse.Indexing;
+using Fuse.Reduction.Caching;
+using Fuse.Semantics;
 using Fuse.Workspace;
 
 namespace Fuse.Cli.Services;
@@ -41,7 +44,7 @@ public static class ResidentWorkspaceHosting
     ///     default null provider. The caller owns the watcher's lifetime.
     /// </returns>
     public static IDisposable Enable(
-        string root, DebouncedFileWatcher watcher, Action<string>? log, CancellationToken cancellationToken)
+        string root, DebouncedFileWatcher watcher, SemanticIndexer indexer, Action<string>? log, CancellationToken cancellationToken)
     {
         var fullRoot = Path.GetFullPath(root);
         var registry = new ResidentWorkspaceRegistry();
@@ -60,13 +63,33 @@ public static class ResidentWorkspaceHosting
             }
         }, cancellationToken);
 
-        watcher.BatchChanged += (batch, _) =>
+        watcher.BatchChanged += async (batch, batchToken) =>
         {
             if (batch.Count > StormThreshold)
+            {
                 registry.Evict(fullRoot); // A bulk change outran incremental update; fall back to store-backed.
-            else
-                registry.ApplyBatch(fullRoot, batch, cancellationToken);
-            return Task.CompletedTask;
+                return;
+            }
+
+            var result = registry.ApplyBatch(fullRoot, batch, batchToken);
+            if (result is null || result.Applied + result.Added + result.Removed == 0)
+                return;
+
+            // Project the changed cone into the store so the store-backed read tools reflect the edit (S1 step 4).
+            // The resident watcher is the sole store writer (OpenIndexedAsync skips reconcile when resident), so
+            // this does not race the read path. Failures fall back to store-backed silently rather than crash.
+            try
+            {
+                var databasePath = FuseStorePaths.ResolveDatabasePath(fullRoot);
+                await using var store = new WorkspaceIndexStore(databasePath);
+                await store.InitializeAsync(batchToken);
+                var changedPaths = batch.Select(c => c.FullPath).ToList();
+                await registry.ProjectChangedAsync(fullRoot, indexer, store, changedPaths, batchToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                log?.Invoke($"resident store projection failed: {ex.Message}");
+            }
         };
 
         return new ResidentScope(registry);

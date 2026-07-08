@@ -102,6 +102,25 @@ public sealed class ResidentWorkspaceRegistry : IResidentWorkspaceProvider, IDis
         return service?.ApplyBatch(batch, cancellationToken);
     }
 
+    /// <summary>
+    ///     Projects the resident state of the projects touched by a batch of changed files for a root into the
+    ///     store (S1 step 4), delegating to that root's <see cref="ResidentWorkspaceService" />; a no-op when the
+    ///     root is not warmed.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="indexer">The semantic indexer providing the projection.</param>
+    /// <param name="store">The index store to project into.</param>
+    /// <param name="changedAbsolutePaths">The absolute paths of the changed files.</param>
+    /// <param name="cancellationToken">A token to cancel the projection.</param>
+    /// <returns>The number of projects re-projected, or 0 when the root is not warmed.</returns>
+    public async Task<int> ProjectChangedAsync(
+        string root, Fuse.Semantics.SemanticIndexer indexer, Fuse.Indexing.IWorkspaceIndexStore store,
+        IReadOnlyList<string> changedAbsolutePaths, CancellationToken cancellationToken)
+    {
+        var service = Resolve(root);
+        return service is null ? 0 : await service.ProjectChangedAsync(indexer, store, changedAbsolutePaths, cancellationToken);
+    }
+
     /// <inheritdoc />
     public ResidentStatus? DescribeResident(string root) => Resolve(root)?.DescribeResident(root);
 

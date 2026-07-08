@@ -52,18 +52,6 @@ public sealed class McpServeCommand
         // stderr so it never corrupts the JSON-RPC stream on stdout; cache-first, so it does not delay serving.
         FuseUpdatePrompt.Emit(Console.Error.WriteLine, allowAutoUpdate: true);
 
-        // Resident workspace (S1) is opt-in for now (FUSE_RESIDENT truthy), default off so the shipped serve path
-        // stays byte-identical until the latency gate promotes it. When on, warm the served root in the background
-        // (never blocking startup) so fuse_check answers resident-grade from the held compilation, and watch the
-        // tree to keep it current; a bulk change above the storm threshold evicts to store-backed rather than
-        // serving stale. Promotion to default-on with the recorded latency is the S1 gate.
-        using var residentWatcher = ResidentWorkspaceHosting.OptIn()
-            ? new DebouncedFileWatcher(Path.GetFullPath(Environment.CurrentDirectory), recursive: true, cancellationToken: context.CancellationToken)
-            : null;
-        using var resident = residentWatcher is null
-            ? null
-            : ResidentWorkspaceHosting.Enable(Environment.CurrentDirectory, residentWatcher, Console.Error.WriteLine, context.CancellationToken);
-
         var builder = Host.CreateApplicationBuilder();
 
         builder.Logging.ClearProviders();
@@ -117,9 +105,27 @@ public sealed class McpServeCommand
             .WithTools<FuseDeprecatedTools>()
             .WithResources<FuseResources>();
 
+        var app = builder.Build();
+
+        // Resident workspace (S1) is opt-in for now (FUSE_RESIDENT truthy), default off so the shipped serve path
+        // stays byte-identical until the latency gate promotes it. When on, warm the served root in the background
+        // (never blocking startup) so fuse_check answers resident-grade from the held compilation, watch the tree
+        // to keep it current, and project the changed cone into the store so store-backed reads reflect edits; a
+        // bulk change above the storm threshold evicts to store-backed rather than serving stale. Wired after Build
+        // so the SemanticIndexer (used for the store projection) is resolvable from the host services. Promotion to
+        // default-on with the recorded latency and single-writer validation is the S1 gate.
+        using var residentWatcher = ResidentWorkspaceHosting.OptIn()
+            ? new DebouncedFileWatcher(Path.GetFullPath(Environment.CurrentDirectory), recursive: true, cancellationToken: context.CancellationToken)
+            : null;
+        using var resident = residentWatcher is null
+            ? null
+            : ResidentWorkspaceHosting.Enable(
+                Environment.CurrentDirectory, residentWatcher,
+                app.Services.GetRequiredService<Fuse.Semantics.SemanticIndexer>(), Console.Error.WriteLine, context.CancellationToken);
+
         try
         {
-            await builder.Build().RunAsync(context.CancellationToken);
+            await app.RunAsync(context.CancellationToken);
         }
         finally
         {

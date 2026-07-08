@@ -79,6 +79,22 @@ public sealed class RepairPacketBuilderTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Static_member_access_CS0117_suggests_the_nearest_real_member()
+    {
+        // CS0117 shares CS1061's message shape ("'Type' does not contain a definition for 'Member'") for
+        // static/type-level access, so it lists the receiver type's real members with the nearest name first.
+        var diagnostic = new CheckDiagnostic("CS0117",
+            "Error", "'Shop.Order' does not contain a definition for 'GrandTotol'", "src/Order.cs", 6);
+
+        var packet = await _builder.BuildAsync(diagnostic, CancellationToken.None);
+
+        Assert.NotNull(packet);
+        Assert.Equal("CS0117", packet!.DiagnosticId);
+        Assert.Equal("GrandTotal", packet.Candidates.First());
+        Assert.Contains(packet.Members, m => m.Name == "GrandTotal");
+    }
+
+    [Fact]
     public async Task An_unhandled_diagnostic_returns_no_packet()
     {
         var diagnostic = new CheckDiagnostic("CS0029",

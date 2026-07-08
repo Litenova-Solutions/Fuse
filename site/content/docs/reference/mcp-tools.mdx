@@ -112,7 +112,7 @@ The find union: locate what a task needs, keyed by `kind`. One tool for exact lo
 
 - **Exact lookup** (`kind=symbol|path|text|all`): a symbol by name, a file by path fragment, or text by full-text search. Use instead of broad grep when the name or path is known.
 - **Wiring** (`kind=service|request|route|config`): resolve the query to its implementation, handler, action, or options type (folds the former `fuse_resolve`).
-- **`kind=signatures`**: the query symbol's exact signature (folds `fuse_signatures`).
+- **`kind=signatures`**: the query symbol's exact signature (folds `fuse_signatures`). When a resident workspace serves the root (`FUSE_RESIDENT`), a qualified name (a namespace-qualified type, or `Type.Member`) resolves from the compiler's real metadata, so a referenced package's API answers from the compiler rather than the store - the hallucinated-package-API check. Without a resident workspace, or for a name it does not resolve, the store-backed signature index answers.
 - **`kind=neighbors`**: the query symbol's callers and implementers, ranked with provenance (folds `fuse_neighbors`).
 - **`kind=task`**: rank candidate files and symbols for the query, with the graded refuse-and-route contract (folds `fuse_localize`; see [The graded response](#the-graded-response)).
 

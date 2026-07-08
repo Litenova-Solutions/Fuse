@@ -83,18 +83,37 @@ public sealed partial class FuseTools
         if (names is null || names.Length == 0)
             return "Error: provide one or more symbol names in 'names'.";
 
+        var root = Path.GetFullPath(path);
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
         var matches = await store.GetSignaturesByNamesAsync(names, limitPerName, cancellationToken);
 
         var builder = new StringBuilder();
-        builder.AppendLine(await OracleAvailabilityHeaderAsync(store, Path.GetFullPath(path), cancellationToken));
+        builder.AppendLine(await OracleAvailabilityHeaderAsync(store, root, cancellationToken));
         foreach (var requested in names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()).Distinct(StringComparer.Ordinal))
         {
+            builder.AppendLine($"# {requested}");
+
+            // U1b: resident-first. When a live resident workspace serves the root it resolves a qualified name
+            // (including a referenced package's API) from the compiler's real metadata, so a package signature is
+            // answered from the compiler rather than the store (which never indexed the package). Fall through to
+            // the store when no resident workspace serves the root, or it did not resolve this name.
+            var residentSignatures = ResidentWorkspaces.TryGetSignature(root, requested, limitPerName, cancellationToken);
+            if (residentSignatures is { Count: > 0 })
+            {
+                foreach (var s in residentSignatures)
+                {
+                    var residentContainer = string.IsNullOrEmpty(s.Container) ? "" : $" in {s.Container}";
+                    builder.AppendLine($"  {s.Signature}{residentContainer}");
+                    builder.AppendLine($"    [{s.Kind}] resident (metadata: {s.Assembly})");
+                }
+
+                continue;
+            }
+
             var forName = matches
                 .Where(m => string.Equals(m.Name, requested, StringComparison.OrdinalIgnoreCase)
                             || string.Equals(m.FullyQualifiedName, requested, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            builder.AppendLine($"# {requested}");
             if (forName.Count == 0)
             {
                 builder.AppendLine("  no match in the index (check the name, or run fuse_index if the file is new).");

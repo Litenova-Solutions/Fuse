@@ -95,6 +95,16 @@ top-to-bottom for the next eligible todo. The remaining eligible items are narro
 - **G2** `[>]`: the next analyzer iteration is C4-gated (corpus-v2 frequency data).
 - **B1/B3/B4, C2/C3/C4, F-track, G1/G4-G7**: corpus/install/model/maintainer/dependency-gated.
 - **S3** `[!]`: maintainer decision on the sub-100ms cold-start floor.
-Next session: assess whether C1's overlay-config application can proceed without installing packages (generating
-a nuget.config overlay + re-running restore against the existing cache is install-free), or tackle G3b's host
-git-spawn fix. If the eligible frontier is truly all gated, record that honestly and mark the blocked items.
+This session also advanced **F5** as far as its maintainer gate allows: F5's dependency (U2) is met, but its
+precondition is a maintainer-reviewed data-governance note before any collection code. That note is drafted at
+`roadmap/f5-data-governance-note.md` (off-by-default, local-only with no network path, fail-closed redaction,
+zero-findings export, disable/delete, three maintainer open questions); F5 is marked `[!]` pending the review, no
+collection code landed. And the G3b "git fragility" was investigated: it is test-host-only (the production host
+already spawns git for `changes` scoping), so G3b is unblocked - its real gate is a small design call (what git
+base a session maps to), and it is a deliberate deferred unit, not stuck.
+
+**Honest gated-frontier read:** after G3, every remaining checklist todo is externally gated (installs, corpus,
+a model run, or a maintainer decision) or a deliberate deferral (G3b). No ungated, ready-to-implement item remains
+that does not need one of those or a fresh multi-step protocol unit best begun with full context. Next session:
+(a) obtain a maintainer decision on S3 / F4 / F5, or (b) begin G3b's design+impl (protocol bump 5->6), or
+(c) advance C1's install-free overlay slice on a locally-built NU1507 fixture. Tree green and pushed.

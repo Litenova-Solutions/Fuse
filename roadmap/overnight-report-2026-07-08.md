@@ -6,6 +6,16 @@ bumps, or publishing. Tree is green and pushed at HEAD `041eb33` (T0 landed at `
 design checkpoint at `519a2d3`/`9d576bb`, S1 resident-engine primitives at `4bd7bd6`/`deb5594`/`041eb33`,
 C1 sub-steps at `a0b277f`/`065c591`/`f5739be`/`09ccb71`/`bab3026`, S1 step 2 seam at `38004d2`/`69cea59`).
 
+## S1 latency gate: MET (recorded)
+
+`fuse resident-latency tests/benchmarks/.corpus/NodaTime/src/NodaTime` (a new dedicated-process CLI command
+that never invokes MSBuildWorkspace, so it sidesteps the co-activation fragility below) recorded, to
+`results/resident-latency.json`: resident delta-check P50 19.9 ms, **P95 31.0 ms** (the S1 gate is P95 < 1000 ms
+warm at NodaTime scale -> **PASS**, far inside), resident warm (build+rehydrate) 14.1 s, resident RSS 164 MB, on
+NodaTime's main project (2 resident projects). The delta-check is `ResidentWorkspace.CheckOverlay`, the
+speculative typecheck `fuse_check` invokes when a resident workspace is live. The number is swept into AGENTS.md.
+FUSE_RESIDENT stays opt-in (not promoted to default-on) pending the co-activation resolution below.
+
 ## Co-activation finding (S1 architecture, verified)
 
 The shipped Cli's MSBuildWorkspace is NOT broken by co-presence of the resident `Basic.CompilerLog` closure:

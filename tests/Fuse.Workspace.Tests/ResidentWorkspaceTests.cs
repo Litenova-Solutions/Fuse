@@ -109,6 +109,50 @@ public sealed class ResidentWorkspaceTests
     }
 
     [Fact]
+    public async Task Removed_document_leaves_resident_state_and_its_types_stop_binding()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var binlog = Path.Combine(work, "build.binlog");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+            await File.WriteAllTextAsync(Path.Combine(work, "Helper.cs"),
+                "namespace Sample; public static class Helper { public static int Base() => 1; }");
+
+            if (!await TryBuildWithBinlogAsync(work, binlog))
+                return;
+
+            using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
+            var baseline = resident.GetDiagnostics(CancellationToken.None);
+            Assert.DoesNotContain(baseline, d => d.Severity == "Error");
+
+            // Remove Helper.cs from the resident state; a later check that references Helper no longer binds.
+            Assert.True(resident.RemoveDocument("Helper.cs", CancellationToken.None));
+            var afterRemoval = resident.CheckOverlay(
+                "Widget.cs",
+                "namespace Sample; public sealed class Widget { public int Spin() => Helper.Base(); }",
+                CancellationToken.None);
+            Assert.NotNull(afterRemoval);
+            Assert.Contains(afterRemoval!, d => d.Severity == "Error");
+
+            Assert.False(resident.RemoveDocument("Nowhere/Absent.cs", CancellationToken.None));
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public async Task Overlay_check_returns_null_for_a_file_not_in_any_compilation()
     {
         var work = Path.Combine(Path.GetTempPath(), "fuse-resident-ws-it", Guid.NewGuid().ToString("N"));

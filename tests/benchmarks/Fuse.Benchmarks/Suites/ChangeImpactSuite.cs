@@ -63,6 +63,9 @@ public sealed class ChangeImpactSuite : IEvalSuite
         var scores = new List<ReviewScore>();
         var modes = new Dictionary<string, int>(StringComparer.Ordinal);
         var adjudicatedCount = 0;
+        // T2: per-PR public-API delta section, recorded for the 10-PR hand adjudication gate. Non-empty only when a
+        // PR changes the public or protected surface, so the list is the adjudication set itself.
+        var apiDeltaLines = new List<string>();
         foreach (var repo in present)
         {
             var repoTasks = options.Limit > 0 ? repo.Tasks.Take(options.Limit).ToList() : repo.Tasks;
@@ -70,7 +73,7 @@ public sealed class ChangeImpactSuite : IEvalSuite
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var (taskScores, result, mode, adjudicated) =
-                    await ScoreTaskAsync(manager, repo, task, budgets, options, cancellationToken);
+                    await ScoreTaskAsync(manager, repo, task, budgets, options, apiDeltaLines, cancellationToken);
                 if (result is not null)
                     primary.Add(result);
                 scores.AddRange(taskScores);
@@ -85,6 +88,9 @@ public sealed class ChangeImpactSuite : IEvalSuite
             notes.Add("index modes: " + string.Join(", ", modes.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} {kv.Value}")));
         notes.Add($"adjudicated PRs (with a reading set): {adjudicatedCount}");
 
+        notes.Add($"api-delta PRs (non-empty public surface change): {apiDeltaLines.Count}");
+        notes.AddRange(apiDeltaLines);
+
         if (primary.Count == 0)
         {
             notes.Add("No tasks could be scored (indexing or worktree failures).");
@@ -96,7 +102,8 @@ public sealed class ChangeImpactSuite : IEvalSuite
     }
 
     private async Task<(IReadOnlyList<ReviewScore> Scores, TaskResult? Primary, string? Mode, bool Adjudicated)> ScoreTaskAsync(
-        CorpusManager manager, RepoTasks repo, PrTask task, IReadOnlyList<int> budgets, EvalOptions options, CancellationToken ct)
+        CorpusManager manager, RepoTasks repo, PrTask task, IReadOnlyList<int> budgets, EvalOptions options,
+        List<string> apiDeltaLines, CancellationToken ct)
     {
         if (task.HeadRef is null || task.BaseRef is null)
             return ([], null, null, false);
@@ -136,6 +143,32 @@ public sealed class ChangeImpactSuite : IEvalSuite
             }
 
             var engine = new SemanticRetrievalEngine(store, _changeSource);
+
+            // T2: the public-API delta for this PR (base ref versus the restored head worktree). Syntax-only, so it
+            // does not need a semantic load; recorded for the hand adjudication gate. Best-effort - a git failure
+            // leaves the line out rather than failing the scored task.
+            try
+            {
+                var changedFiles = await _changeSource.GetChangedFilesAsync(worktree, task.BaseRef, ct);
+                var delta = await ChangedApiSurfaceGatherer.GatherAsync(
+                    _changeSource, worktree, task.BaseRef, changedFiles,
+                    (relativePath, _) =>
+                    {
+                        var absolute = Path.Combine(worktree, relativePath);
+                        return Task.FromResult(File.Exists(absolute) ? File.ReadAllText(absolute) : null);
+                    },
+                    ct);
+                if (delta.Changes.Count > 0)
+                {
+                    var names = string.Join("; ", delta.Changes.Select(c => $"{(c.Breaking ? "BREAK " : "add ")}{c.Symbol}"));
+                    apiDeltaLines.Add($"apidelta {task.Id}: {delta.Breaking.Count} breaking, {delta.Changes.Count - delta.Breaking.Count} additive :: {names}");
+                }
+            }
+            catch (ChangeSourceException)
+            {
+                // git base unavailable in this worktree; the api-delta is simply not recorded for this PR.
+            }
+
             for (var i = 0; i < budgets.Count; i++)
             {
                 var budget = budgets[i];

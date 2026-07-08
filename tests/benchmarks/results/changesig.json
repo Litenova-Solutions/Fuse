@@ -1,10 +1,10 @@
 {
   "suite": "changesig",
-  "description": "T3 constrained change-signature matrix: verified-or-abstain over 20 call-site shapes",
-  "total": 20,
-  "returnedDiff": 15,
-  "abstained": 5,
-  "abstentionRate": 0.250,
+  "description": "T3/T3b change-signature matrix: verified-or-abstain over add/remove/reorder/thread call-site shapes",
+  "total": 25,
+  "returnedDiff": 17,
+  "abstained": 8,
+  "abstentionRate": 0.320,
   "badDiffs": 0,
   "cases": [
     { "name": "simple-one-call", "outcome": "diff", "files": 1, "detail": "verified" },
@@ -26,6 +26,11 @@
     { "name": "missing-method", "outcome": "abstain", "files": 0, "detail": "method 'Nope' was not found in the loaded solution's source" },
     { "name": "named-arg-call-site", "outcome": "diff", "files": 1, "detail": "verified" },
     { "name": "method-group-delegate", "outcome": "abstain", "files": 0, "detail": "the change introduced 1 new compile error(s), so it is refused: CS0123 at Source.cs:2 (No overload for 'Bar' matches delegate 'Func<int, int>')" },
-    { "name": "bad-param-type", "outcome": "abstain", "files": 0, "detail": "the change introduced 1 new compile error(s), so it is refused: CS0246 at Source.cs:2 (The type or namespace name 'NoSuchType' could not be found (are you missing a using directive or an assembly reference?))" }
+    { "name": "bad-param-type", "outcome": "abstain", "files": 0, "detail": "the change introduced 1 new compile error(s), so it is refused: CS0246 at Source.cs:2 (The type or namespace name 'NoSuchType' could not be found (are you missing a using directive or an assembly reference?))" },
+    { "name": "remove-dead-param", "outcome": "diff", "files": 1, "detail": "verified" },
+    { "name": "remove-used-param", "outcome": "abstain", "files": 0, "detail": "'y' is used in the body of Fix.C.Bar(int, int); remove-parameter abstains (it is not a dead parameter)" },
+    { "name": "remove-side-effect-arg", "outcome": "abstain", "files": 0, "detail": "call site at Source.cs:2 passes a non-trivial argument for 'dead' that would be dropped; remove-parameter abstains (possible side effect)" },
+    { "name": "reorder-named-calls", "outcome": "diff", "files": 1, "detail": "verified" },
+    { "name": "reorder-positional-calls", "outcome": "abstain", "files": 0, "detail": "call site at Source.cs:2 uses positional arguments; reorder abstains (only named-argument call sites are safe to reorder)" }
   ]
 }

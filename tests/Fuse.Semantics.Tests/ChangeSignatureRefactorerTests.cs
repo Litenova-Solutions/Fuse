@@ -197,6 +197,113 @@ public sealed class ChangeSignatureRefactorerTests
     }
 
     [Fact]
+    public async Task Remove_parameter_drops_a_dead_parameter_and_its_arguments()
+    {
+        var solution = SolutionWith("""
+            namespace Fix;
+            public class Calc
+            {
+                public int Bar(int x, int unused) => x + 1;
+            }
+            public class Caller
+            {
+                public int Use() => new Calc().Bar(41, 7);
+            }
+            """);
+
+        var result = await new ChangeSignatureRefactorer().RemoveParameterInSolutionAsync(
+            solution, "Bar", containingTypeName: "Calc", parameterName: "unused", CancellationToken.None);
+
+        Assert.True(result.Changed, result.Reason);
+        var text = string.Join("\n", result.Diffs.Select(d => d.UnifiedDiff));
+        Assert.Contains("Bar(int x)", text);       // the declaration lost the parameter
+        Assert.Contains("Bar(41)", text);          // the call site lost its argument
+    }
+
+    [Fact]
+    public async Task Remove_parameter_abstains_when_the_parameter_is_used()
+    {
+        var solution = SolutionWith("""
+            namespace Fix;
+            public class Calc { public int Bar(int x, int y) => x + y; }
+            """);
+
+        var result = await new ChangeSignatureRefactorer().RemoveParameterInSolutionAsync(
+            solution, "Bar", containingTypeName: "Calc", parameterName: "y", CancellationToken.None);
+
+        Assert.False(result.Changed);
+        Assert.Contains("used in the body", result.Reason);
+    }
+
+    [Fact]
+    public async Task Remove_parameter_abstains_when_a_call_site_passes_a_side_effecting_argument()
+    {
+        var solution = SolutionWith("""
+            namespace Fix;
+            public class Calc
+            {
+                public int Bar(int x, int unused) => x + 1;
+            }
+            public class Caller
+            {
+                private int SideEffect() => 7;
+                public int Use() => new Calc().Bar(41, SideEffect());
+            }
+            """);
+
+        var result = await new ChangeSignatureRefactorer().RemoveParameterInSolutionAsync(
+            solution, "Bar", containingTypeName: "Calc", parameterName: "unused", CancellationToken.None);
+
+        Assert.False(result.Changed);
+        Assert.Contains("side effect", result.Reason);
+    }
+
+    [Fact]
+    public async Task Reorder_parameters_rewrites_the_declaration_when_all_call_sites_are_named()
+    {
+        var solution = SolutionWith("""
+            namespace Fix;
+            public class Calc
+            {
+                public int Bar(int x, string y) => x;
+            }
+            public class Caller
+            {
+                public int Use() => new Calc().Bar(x: 1, y: "a");
+            }
+            """);
+
+        var result = await new ChangeSignatureRefactorer().ReorderParametersInSolutionAsync(
+            solution, "Bar", containingTypeName: "Calc", newOrder: ["y", "x"], CancellationToken.None);
+
+        Assert.True(result.Changed, result.Reason);
+        var text = string.Join("\n", result.Diffs.Select(d => d.UnifiedDiff));
+        Assert.Contains("Bar(string y, int x)", text);
+    }
+
+    [Fact]
+    public async Task Reorder_parameters_abstains_on_a_positional_call_site()
+    {
+        var solution = SolutionWith("""
+            namespace Fix;
+            public class Calc
+            {
+                public int Bar(int x, string y) => x;
+            }
+            public class Caller
+            {
+                public int Use() => new Calc().Bar(1, "a");
+            }
+            """);
+
+        var result = await new ChangeSignatureRefactorer().ReorderParametersInSolutionAsync(
+            solution, "Bar", containingTypeName: "Calc", newOrder: ["y", "x"], CancellationToken.None);
+
+        Assert.False(result.Changed);
+        Assert.Contains("positional", result.Reason);
+    }
+
+    [Fact]
     public async Task Integration_over_the_fixture_stages_or_abstains_cleanly()
     {
         var sln = SampleShopSolution();

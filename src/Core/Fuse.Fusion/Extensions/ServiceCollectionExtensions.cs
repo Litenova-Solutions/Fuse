@@ -51,16 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<FusionCollectionStage>();
         services.AddSingleton<FusionScopingStage>();
         services.AddSingleton<FusionReductionStage>();
-        services.AddSingleton<QueryScopingPipeline>();
         services.AddSingleton<ISecretRedactor, DefaultSecretRedactor>();
-        // Per-run relevance index: the BM25 index rebuilds all of its state per query and shares nothing, so a
-        // factory hands each fusion run a fresh instance instead of a serialized singleton.
-        services.AddSingleton<Func<IRelevanceIndex>>(_ => () => new Bm25RelevanceIndex());
-
-        // Process-lifetime cache of one built index, keyed by document content signature, so a warm query
-        // against an unchanged tree reuses the index instead of rebuilding its statistics (item 24).
-        services.AddSingleton<RelevanceIndexCache>();
-
         services.AddTransient<FileCollectionPipeline>();
         services.AddTransient<ContentReductionPipeline>();
         services.AddTransient<EmissionPipeline>();

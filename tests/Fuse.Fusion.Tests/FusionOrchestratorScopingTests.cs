@@ -201,37 +201,6 @@ public sealed class FusionOrchestratorScopingTests : IDisposable
     }
 
     [Fact]
-    public async Task FuseAsync_WithQuery_ScopesToRelevantCluster()
-    {
-        WriteFile("PaymentService.cs", """
-            public class PaymentService
-            {
-                public void ProcessPayment() {}
-            }
-            """);
-        WriteFile("CatalogService.cs", """
-            public class CatalogService
-            {
-                public void ListProducts() {}
-            }
-            """);
-
-        var orchestrator = _serviceProvider.GetRequiredService<FusionOrchestrator>();
-        var request = new FusionRequest(
-            new CollectionOptions(_sourceDirectory, extensions: [".cs"]),
-            new ReductionOptions(),
-            new EmissionOptions(),
-            inMemory: true,
-            query: new QueryOptions("payment process", TopFiles: 1, Depth: 1));
-
-        var result = await orchestrator.FuseAsync(request);
-
-        Assert.NotNull(result.InMemoryContent);
-        Assert.Contains("PaymentService.cs", result.InMemoryContent);
-        Assert.DoesNotContain("CatalogService.cs", result.InMemoryContent);
-    }
-
-    [Fact]
     public async Task FuseAsync_WithSecret_RedactsBeforeEmission()
     {
         WriteFile("Secrets.cs", """

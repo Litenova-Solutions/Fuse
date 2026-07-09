@@ -43,6 +43,48 @@ public sealed class BuildCaptureRehydrator
     }
 
     /// <summary>
+    ///     Builds the target and exports a portable compiler log (<c>.complog</c>) to <paramref name="complogPath" />
+    ///     (C2). The complog packages the compiler inputs (source, reference closure, generated documents, and
+    ///     command lines) self-contained and, unlike the binary log, WITHOUT the build's environment variables, so
+    ///     it is the artifact a bundle ships. Also rehydrates and returns the extracted graph so the caller can
+    ///     package the graph alongside the complog. The binary log is deleted; the complog is left at the path.
+    /// </summary>
+    /// <param name="buildTarget">The absolute path to the solution or project to build.</param>
+    /// <param name="complogPath">The absolute path to write the portable compiler log to.</param>
+    /// <param name="buildTimeout">The maximum time to allow the build to run.</param>
+    /// <param name="cancellationToken">A token to cancel the capture.</param>
+    /// <returns>The capture result (the extracted graph) on success, or a concrete failure; the complog is at <paramref name="complogPath" /> on success.</returns>
+    public async Task<CaptureResult> ExportCompilerLogAsync(
+        string buildTarget, string complogPath, TimeSpan buildTimeout, CancellationToken cancellationToken)
+    {
+        var binlogPath = Path.Combine(Path.GetTempPath(), $"fuse-capture-{Guid.NewGuid():N}.binlog");
+        try
+        {
+            var (exitCode, timedOut, firstError) = await RunBuildAsync(buildTarget, binlogPath, buildTimeout, cancellationToken);
+            if (timedOut)
+                return CaptureResult.Failed($"build timed out after {buildTimeout.TotalSeconds:F0}s");
+            if (exitCode != 0 || !File.Exists(binlogPath))
+                return CaptureResult.Failed(firstError is null ? $"build failed (exit {exitCode})" : $"build failed ({firstError})");
+
+            // Convert the binary log to the portable complog (all recorded compiler calls). The complog is a zip of
+            // the compiler inputs with no environment block, which is the C2 secret posture (the binlog never ships).
+            var conversion = CompilerLogUtil.ConvertBinaryLog(binlogPath, complogPath, static _ => true);
+            if (!File.Exists(complogPath))
+            {
+                var reason = conversion.Count > 0 ? conversion[0] : "no compiler calls were recorded";
+                return CaptureResult.Failed($"compiler-log export produced no file ({reason})");
+            }
+
+            // Rehydrate the graph from the binlog too, so the bundle carries the extracted graph next to the complog.
+            return RehydrateFromBinlog(binlogPath, cancellationToken);
+        }
+        finally
+        {
+            TryDelete(binlogPath);
+        }
+    }
+
+    /// <summary>
     ///     Speculatively typechecks a proposed single-file patch: builds and rehydrates the compilations, replaces
     ///     the target file's syntax tree with the proposed content in memory, and returns the compiler diagnostics
     ///     for that document (R1). No disk write of the patch, no second build.

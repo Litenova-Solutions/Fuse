@@ -176,17 +176,66 @@ public sealed class UpCommand
             }
         }
 
-        // Consent-gated install remedies are reported, never run without --allow-install (Do-not: no auto-install).
-        var installRemedies = plan.Remediable
-            .Where(i => i.Signature is { RequiresConsent: true })
-            .Select(i => i.Signature!.Id)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-        if (installRemedies.Count > 0 && !AllowInstall && !Json)
+        // Consent-gated install remedies (SDK band per global.json for NETSDK1045, workload for MSB4018). The
+        // blocker is the tier-1 probe's classification when available (the design-time load never surfaces these),
+        // else the load-plan classification. Without --allow-install they are reported, never run (Do-not: no
+        // auto-install). With --allow-install (Decision D17) the install runs and the tier-1 probe re-attempts.
+        var installBlocker = probeResult is { Succeeded: false, Blocker.RequiresConsent: true }
+            ? probeResult.Blocker
+            : plan.Remediable.Select(i => i.Signature).FirstOrDefault(s => s is { RequiresConsent: true });
+        if (installBlocker is not null)
         {
-            _consoleUI.WriteResult(
-                $"\nconsent-gated remedies present ({string.Join(", ", installRemedies)}): not run. " +
-                "Re-run with --allow-install to permit machine-changing installs.");
+            if (!AllowInstall)
+            {
+                if (!Json)
+                    _consoleUI.WriteResult(
+                        $"\nconsent-gated remedy present ({installBlocker.Id} -> {installBlocker.Remedy}): not run. " +
+                        "Re-run with --allow-install to permit machine-changing installs.");
+            }
+            else if (installBlocker.Remedy == "install-sdk")
+            {
+                // install-sdk is the reliable auto-remedy: the band is the global.json pin, installed into an
+                // isolated user-scoped directory (never the machine-wide SDK), and the re-probe builds with that
+                // SDK's own dotnet so the fix is verified without a global side effect.
+                var installer = new InstallRemediationApplier(TimeSpan.FromMinutes(15));
+                var band = InstallRemediationApplier.TryReadPinnedSdkBand(root);
+                if (band is null)
+                {
+                    if (!Json)
+                        _consoleUI.WriteError("install-sdk: no global.json pins an SDK band; nothing to install.");
+                }
+                else
+                {
+                    var installDir = System.IO.Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Fuse", "sdks", band);
+                    if (!Json)
+                        _consoleUI.WriteStep($"Installing SDK band {band} into {installDir} (--allow-install)");
+                    var install = await installer.InstallSdkAsync(band, installDir, context.CancellationToken);
+                    if (install.Success && install.DotnetPath is not null && Probe)
+                    {
+                        var reprobe = await probe.ProbeAsync(root, null, context.CancellationToken, install.DotnetPath);
+                        probeAfter = UpBuildProbe.From(reprobe);
+                        applied = true;
+                        if (!Json)
+                            _consoleUI.WriteResult(RenderProbe("tier-1 build probe (after SDK install)", reprobe));
+                    }
+                    else if (!Json)
+                    {
+                        _consoleUI.WriteError($"install-sdk ({band}) did not succeed. Tail:\n{Tail(install.Output)}");
+                    }
+                }
+            }
+            else // install-workload (MSB4018)
+            {
+                // MSB4018 is ambiguous: a missing workload or a repository-custom MSBuild task look identical, and
+                // the workload id is not reliably derivable from the message. Fuse does not guess a workload to
+                // install (that could install the wrong one); it names the class and the safe user step instead of
+                // auto-running an install that might not apply.
+                if (!Json)
+                    _consoleUI.WriteResult(
+                        $"\n{installBlocker.Id} ({installBlocker.Title}) is workload-or-custom-task ambiguous; Fuse does not " +
+                        "auto-install a guessed workload. If a workload is genuinely missing, run: dotnet workload restore");
+            }
         }
 
         // The machine-readable report: the same shape workspace status reads and the up-report harness (C1 gate)

@@ -6017,6 +6017,46 @@ real-world flips, recorded honestly.
 detected from real build output; validate on the broken-feed fixture (NU1507 surfaces -> overlay
 -> clean).
 
+#### 2026-07-09 C1 gate sub-step 2 DONE: the tier-1 build probe (detects real restore/build failures)
+
+**Shipped.** `TierOneBuildProbe` (Fuse.Semantics.Remediation): runs a real `dotnet build -c Release`
+at the discovered target (solution, else first project), captures the combined output, and on
+failure matches the knowledge base against that output to name the blocker (NU1507, NETSDK1045,
+MSB4018, or a classify-only compile error), returning `BuildProbeResult`. A `--probe` flag on
+`fuse up` runs it; the report (`UpResult`) gains `buildProbeBefore`/`buildProbeAfter`
+(`UpBuildProbe`), and on `--apply` the overlay is re-probed with `-p:RestoreConfigFile=<overlay>`
+(dotnet build has no `--configfile`). The overlay-remedy trigger now keys off the probe blocker,
+not only the design-time load plan (the load never surfaces NU1507). Fixed two real overlay bugs
+found by the probe: (1) `NuGetOverlayConfig.Build` wrote XML through a StringBuilder, emitting an
+`encoding="utf-16"` declaration while the file saves UTF-8/no-BOM, so NuGet rejected the overlay
+as invalid XML (the applier test's `DoesNotContain NU1507` had masked this - the invalid-XML error
+also lacks "NU1507"); fixed with a UTF-8 StringWriter. (2) `ReadSources` now resolves a relative
+local-folder source to an absolute path against the config's directory, because the overlay lives
+in a temp dir and a relative path would resolve against the temp location. Tests: TierOneBuildProbe
+(guarded real-build), 2 overlay regressions (utf-8 declaration, relative-path resolution), 2
+UpReport JSON; remediation suite 24 green.
+
+**NU1507 environment findings (honest, per D17).** NU1507 in SDK 10.0.109 (a) is raised only for
+2+ REMOTE (http) sources with no source mapping - a local-folder second source does not trip it;
+and (b) is a WARNING, so a bare build succeeds unless escalated. The broken-feed fixture therefore
+uses two distinct remote sources and escalates NU1507 to an error via `<WarningsAsErrors>NU1507`,
+so the probe deterministically DETECTS it (validated: `fuse up --probe --json` returns
+`blockerId: NU1507, blockerRemedy: overlay-nuget-source-mapping`). The overlay CLEARS NU1507
+(applier test, now meaningful post-encoding-fix). A full build-success FLIP additionally requires
+both feeds reachable; a committable, offline, deterministic two-reachable-remote-feed fixture is
+not achievable, so the detect-and-clear path is the deterministic engineered coverage and the
+full flip is bounded by network reachability (recorded, not papered over) - exactly D17's
+"engineered coverage everywhere, real-world flips where possible".
+
+**Gates.** build 0 errors; full suite pass; format clean (verified before commit).
+
+**Next action.** C1 sub-step 3: the up-report harness - run `fuse up --json --probe` over the
+broken-feed fixture + the four locally-available pinned corpus repos (Scrutor, NodaTime,
+Specification, eShopOnWeb) and consolidate `tests/benchmarks/results/up-report.json`, recording
+honestly which OSS bake-off repos were not provisioned. Then sub-step 4 (install-execution for
+NETSDK1045/MSB4018 behind `--allow-install` + their synthetic fixtures) and sub-step 5 (best-effort
+OSS provisioning for real-world flips).
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

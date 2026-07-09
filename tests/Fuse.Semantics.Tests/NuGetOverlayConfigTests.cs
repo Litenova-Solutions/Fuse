@@ -36,6 +36,50 @@ public sealed class NuGetOverlayConfigTests
     }
 
     [Fact]
+    public void Build_declares_utf8_so_the_file_saved_as_utf8_is_valid_xml()
+    {
+        // Regression: writing the overlay through a plain StringBuilder made the declaration read encoding="utf-16",
+        // while the file is saved as UTF-8 without a BOM, so NuGet rejected it ("no Unicode byte order mark. Cannot
+        // switch to Unicode."). The declaration must read utf-8.
+        var overlay = NuGetOverlayConfig.Build([new PackageSource("nuget.org", "https://api.nuget.org/v3/index.json")]);
+        Assert.Contains("encoding=\"utf-8\"", overlay);
+        Assert.DoesNotContain("utf-16", overlay);
+    }
+
+    [Fact]
+    public void ReadSources_resolves_a_relative_local_folder_to_an_absolute_path()
+    {
+        // The overlay is written to a temp directory, so a relative folder source must be made absolute against the
+        // original config's directory, else it would resolve against the temp location and point nowhere.
+        var dir = Path.Combine(Path.GetTempPath(), "fuse-nuget-overlay-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "NuGet.config"), """
+                <?xml version="1.0" encoding="utf-8"?>
+                <configuration>
+                  <packageSources>
+                    <clear />
+                    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+                    <add key="local" value="./local-feed" />
+                  </packageSources>
+                </configuration>
+                """);
+
+            var sources = NuGetOverlayConfig.ReadSources(dir);
+            var local = sources.Single(s => s.Key == "local");
+            Assert.True(Path.IsPathRooted(local.Value), $"expected an absolute path, got '{local.Value}'");
+            Assert.Equal(Path.GetFullPath(Path.Combine(dir, "local-feed")), local.Value);
+            // A URL source is left verbatim.
+            Assert.Equal("https://api.nuget.org/v3/index.json", sources.Single(s => s.Key == "nuget.org").Value);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public void ReadSources_reads_the_declared_sources_and_honors_clear()
     {
         var dir = Path.Combine(Path.GetTempPath(), "fuse-nuget-overlay-it", Guid.NewGuid().ToString("N"));

@@ -1,0 +1,98 @@
+{
+  "suite": "up-report",
+  "description": "C1 fuse up: per-repo tier-1 (build-capture) reachability and the classified blocker, over the synthetic remediation fixtures plus the locally-available pinned corpus. D17: engineered coverage plus real-world flips where possible.",
+  "generated": "2026-07-09",
+  "environment": {
+    "note": "Tier-1 reachability is a real dotnet build per repo (the design-time load does not surface restore/build failures). NU1507 is a warning in this SDK band, so the broken-feed fixture escalates it to an error to exercise the remedy deterministically."
+  },
+  "summary": {
+    "probed": 5,
+    "tier1_reachable": 3,
+    "blocked": 2,
+    "blockers": {
+      "NU1507": 2
+    },
+    "not_provisioned": [
+      "serilog",
+      "Polly",
+      "FluentValidation",
+      "MediatR",
+      "Newtonsoft.Json",
+      "RestSharp",
+      "AutoFixture",
+      "quartznet",
+      "AutoMapper",
+      "Dapper",
+      "Humanizer",
+      "StackExchange.Redis",
+      "Nancy"
+    ]
+  },
+  "repos": [
+    {
+      "name": "broken-feed",
+      "group": "fixture",
+      "present": true,
+      "loadTier": "oracle-grade (all projects loaded clean)",
+      "loadWorkable": "1 of 1 projects oracle-grade; blockers: none",
+      "tier1Attempted": true,
+      "tier1Reachable": false,
+      "blockerId": "NU1507",
+      "blockerRemedy": "overlay-nuget-source-mapping",
+      "applied": true,
+      "tier1AfterApply": true
+    },
+    {
+      "name": "Scrutor",
+      "group": "corpus",
+      "present": true,
+      "loadTier": "graph-grade (partial)",
+      "loadWorkable": "2 of 2 projects oracle-grade; blockers: none",
+      "tier1Attempted": true,
+      "tier1Reachable": false,
+      "blockerId": "NU1507",
+      "blockerRemedy": "overlay-nuget-source-mapping",
+      "applied": false,
+      "tier1AfterApply": null
+    },
+    {
+      "name": "Specification",
+      "group": "corpus",
+      "present": true,
+      "loadTier": "oracle-grade (all projects loaded clean)",
+      "loadWorkable": "20 of 20 projects oracle-grade; blockers: none",
+      "tier1Attempted": true,
+      "tier1Reachable": true,
+      "blockerId": null,
+      "blockerRemedy": null,
+      "applied": false,
+      "tier1AfterApply": null
+    },
+    {
+      "name": "NodaTime",
+      "group": "corpus",
+      "present": true,
+      "loadTier": "syntax",
+      "loadWorkable": "0 of 0 projects oracle-grade; blockers: none",
+      "tier1Attempted": true,
+      "tier1Reachable": true,
+      "blockerId": null,
+      "blockerRemedy": null,
+      "applied": false,
+      "tier1AfterApply": null
+    },
+    {
+      "name": "eShopOnWeb",
+      "group": "corpus",
+      "present": true,
+      "loadTier": "syntax",
+      "loadWorkable": "0 of 0 projects oracle-grade; blockers: none",
+      "tier1Attempted": true,
+      "tier1Reachable": true,
+      "blockerId": null,
+      "blockerRemedy": null,
+      "applied": false,
+      "tier1AfterApply": null
+    }
+  ]
+}

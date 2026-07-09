@@ -615,7 +615,7 @@ opening trigger; F5's governance contract is signed there with the three answers
 
 Wave 8: release (added 2026-07-09; decisions D14-D19)
 - [x] R1 Clean-slate purge: shims, legacy names, compatibility machinery (depends: -; D14) (2026-07-09: FuseDeprecatedTools + its test deleted; the dead changeset workflow purged (FuseChangesetAsync, ChangesetSessionStore + its tests, RenderDiagnoses, DiscoverBuildTargetAsync); WithTools<FuseDeprecatedTools>() unregistered; integration test asserts exactly 9 tools and 0 shims; every retired MCP tool name swept from code (tool Descriptions, breadcrumb/error strings, XML docs), the McpInstallService RuleBody rewritten to the 9-tool surface, and all docs (mcp-tools.mdx, scenarios, start, concepts, internals, performance, latency, changelog.mdx), README, LAUNCH, briefing; CHANGELOG consolidated to a single [4.0.0] entry; AGENTS.md upgrade invariant rewritten to apply from the first public tag. GATE PASS: repo-wide grep for shim types + retired names returns nothing outside roadmap/; three gates green (build 0 errors, full test suite passes, format clean); site builds. The TOC golden updated for the new breadcrumb string.)
-- [ ] R2 Remove the VS Code extension and its mirror surface (depends: -; D15)
+- [x] R2 Remove the VS Code extension and its mirror surface (depends: -; D15) (2026-07-09: ext/vscode deleted (git rm + on-disk remainder); ext-release.yml and ext-vscode.yml deleted; extension version+license sync removed from set-version.ps1 and verify-version.ps1; ci.yml stale six-RID comment corrected. Host RPC split recorded: hooks use fuse/handshake+fuse/check only (FuseHostClient.TryCheckDeltaAsync), so the three G3/G3b panel methods (fuse/sessions, fuse/session-view, fuse/session-diff) + their DTOs (SessionListDto/SessionSummaryDto/SessionViewDto/SessionDiffDto/SessionDiffFileDto) + JsonContext entries + the 3 FuseHostContractTests cases were deleted; the store session data (ListSessionsAsync/SessionSummary, test-covered) is retained per the Do-not. Ownership decided: fuse host stays as the minimal hook pipe endpoint (handshake/check/shutdown + general reads), the seed of G5, recorded in AGENTS.md. AGENTS.md host-RPC lockstep invariant rewritten (no TS mirror), version-sync + release-flow extension refs removed. Docs: vscode-extension.mdx deleted + nav swept; host-rpc.mdx reframed to the hook-pipe client; index.mdx + install.mdx extension refs removed. GATE PASS: build 0 errors, full suite passes (hook e2e via AmbientVerification/FuseHostServiceRpc/FuseHostClient/ClaudeHooksConfig tests green), format clean, site builds with no broken link; grep for ext/vscode in build/workflows/docs returns nothing.)
 - [ ] R3 Release hygiene and the v4 cut: canonical regen, assets, briefing refresh, release
       prep [tag is maintainer] (depends: R1, R2)
 
@@ -5872,6 +5872,74 @@ refresh remains R3's scope.
 none needed (no external users, D14).
 
 **Next action.** Start R2 (remove the VS Code extension and its mirror surface; depends: -; D15).
+
+#### 2026-07-09 R2 DONE [x]: remove the VS Code extension and its mirror surface
+
+**Item.** R2 (Wave 8 release; depends: -; Decision D15). Supersedes G3/G3b.
+
+**Preconditions (the host-surface split, recorded before editing).** The only in-repo host client
+is the ambient-verification hooks: `FuseHostClient.TryCheckDeltaAsync` calls `fuse/handshake` then
+`fuse/check` and nothing else (CheckCommand and GateCommand use it). The G3/G3b panel methods
+`fuse/sessions`, `fuse/session-view`, `fuse/session-diff` had no in-repo client (they served the
+removed extension's TS client only). The extension footprint: `ext/vscode` (client, protocol.ts
+mirror at v6, contract suite, panel), `.github/workflows/ext-release.yml` and `ext-vscode.yml`,
+version+license sync in `build/set-version.ps1` and `build/verify-version.ps1`, a stale six-RID
+comment in `ci.yml`, and docs (`start/vscode-extension.mdx`, host-rpc.mdx framing, index.mdx and
+install.mdx mentions). No literal `ext/vscode` string existed in docs. C# session-DTO contract
+tests lived in `FuseHostContractTests.cs`.
+
+**Ownership decision (recorded).** `fuse host` stays as the minimal hook pipe endpoint pending G5
+(the seed of the shared daemon), not folded into `serve`. It retains handshake, check, shutdown,
+and the general read methods (stats, index, graph, scope, explain, diagnostics) as the host API;
+only the three G3/G3b session panel methods are removed. Recorded in AGENTS.md.
+
+**Shipped.**
+- Deleted `ext/vscode` (git rm + the on-disk gitignored remainder) and both extension workflows
+  (`ext-release.yml`, `ext-vscode.yml`).
+- Removed the extension version and license entries from `set-version.ps1` and
+  `verify-version.ps1`; corrected the `ci.yml` six-RID comment (the RIDs are the self-contained
+  release binaries, not an extension host bundle).
+- Deleted the three panel RPC methods (`SessionsAsync`, `SessionViewAsync`, `SessionDiffAsync`)
+  from `FuseHostService`, their DTOs (`SessionListDto`, `SessionSummaryDto`, `SessionViewDto`,
+  `SessionDiffDto`, `SessionDiffFileDto`) from `FuseHostDtos`, their `FuseHostJsonContext`
+  entries, and the three `FuseHostContractTests` cases (SessionList/SessionView/SessionDiff
+  serialization). Kept `fuse/check` + `ToCheckDiagnosticDto` (the hook path) and the store's
+  `ListSessionsAsync`/`SessionSummary` (test-covered session data, retained per the Do-not).
+  Rewrote the `FuseHostService` and `ProtocolVersion` docs to drop the extension/TS-mirror framing.
+- AGENTS.md: the host-RPC lockstep invariant rewritten (no TS mirror; `fuse host` is the hook
+  endpoint), the version-sync convention and the one-tag release flow stripped of extension
+  references, the "extension contract suite" test example generalized.
+- Docs: deleted `start/vscode-extension.mdx` and removed it from `start/meta.json`; reframed
+  `internals/host-rpc.mdx` from "the VS Code extension calls" to "the ambient-verification hooks /
+  local clients", dropping the two deleted methods from its table; removed extension mentions from
+  `index.mdx` (the Start map line) and `install.mdx` (the self-update paragraph).
+
+**Commands / gates.**
+- `dotnet build Fuse.slnx -c Release` -> 0 errors (after removing the 3 session-DTO contract test
+  cases the first build flagged).
+- `dotnet test Fuse.slnx -c Release --no-build` -> all suites pass; Fuse.Cli.Tests 128 (the hook
+  e2e coverage - `AmbientVerificationTests`, `FuseHostServiceRpcTests`, `FuseHostClientTests`,
+  `ClaudeHooksConfigTests` - green; the 3 removed session contract tests account for the count
+  drop from 131).
+- `dotnet format Fuse.slnx --verify-no-changes` -> clean (exit 0).
+- `npm run build` in `site/` -> exit 0, no broken internal link to the deleted page.
+- Grep for `ext/vscode`, `ext-release`, `ext-vscode` in `build/`, `.github/`, `site/content`:
+  returns nothing.
+
+**Deviations.** Retained the pre-existing general host read methods (stats/index/graph/scope/
+explain/diagnostics) rather than reducing `fuse host` to check-only: they are served from the
+shared engine, have no extension coupling, and are the host API G5 will consume; the precondition
+framed only the three session methods as "panel methods" to delete. Reframed host-rpc.mdx rather
+than deleting it (the pipe endpoint and its security posture are still live for the hooks).
+
+**Gate.** Build and tests green with the extension gone; hooks e2e green; site builds; ext grep
+clean -> PASS. Fallback: none.
+
+**Next action.** Complete the C1 gate (the runway's next item): per D17, provision the bake-off
+OSS set at pinned commits under `D:\fuse-work` with a cold NuGet cache, run `fuse up` over it plus
+synthetic failing fixtures (broken feed, SDK pin, missing workload) for non-reproducing remedy
+classes, and record `up-report.json` against the re-derived gate. C2/C3/C4 depend on C1 being
+`[x]`, so C1's gate is the unblocker for the whole C-track.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

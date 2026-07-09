@@ -570,7 +570,7 @@ Wave 1: resident substrate and honesty floor
 - [x] S4 Analyzer and nullable parity in check (depends: S1, S2) (2026-07-08: fuse_check runs the repo's configured analyzers at editorconfig severities against the resident overlay and merges them, gated by the `analyzers` param (on for verify, off for delta per the 887ms cost); fixed the fork losing per-tree editorconfig severities (ForkedTreeOptionsProvider); Gate fixture tests prove an elevated rule surfaces and a silenced rule stays silent; docs + CHANGELOG swept; gate PASS)
 
 Wave 2: coverage and environments
-- [>] C1 `fuse up`: the environment remediation engine (depends: X1) (2026-07-08: preconditions recorded; sub-steps landed - RemediationKnowledgeBase (JSON-data KB + matcher), EnvironmentRemediationPlanner (classify-and-report core), NuGetOverlayConfig (NU1507 overlay generator), RemediationReport (renderer), and the report-only `fuse up` CLI command (runs doctor + planner + report, applies nothing, never touches the repo), all gate-green. 2026-07-09: the install-free apply sub-step landed (commit 9ee296c) - EnvironmentRemediationApplier + `fuse up --apply` applies the NU1507 overlay via `dotnet restore --configfile` and re-attempts the load, install remedies gated behind --allow-install; the "broken feed repaired via overlay" integration test PASSED on real restore. BLOCKED [!] on TWO things the autonomous environment cannot supply: (1) the consent-gated install remedies (SDK band per global.json via NETSDK1045; workload via MSB4018) require actually installing software, which MACHINE PREP forbids ("install NOTHING"), so their execution path is deferred to an environment where installs are permitted; (2) the Gate ("all 11 previously-buildable reach tier-1; >=2 of 6 previously-unbuildable gain tier-1; write up-report.json over 17 repos") cannot be exercised because the current pinned 4-repo corpus builds clean (verified: Scrutor loads 2/2 oracle-grade, no NU1507 reproduced at its pinned commit) - it needs the original problematic-commit bake-off set provisioned OR a maintainer decision to re-derive the Gate against a corpus that actually fails. Unblock: a maintainer decides the Gate corpus and permits installs (or provisions a failing corpus under D:\fuse-work), then the install-execution path + the up-report.json Gate run. 2026-07-09 UNBLOCKED (D17): consent-gated installs are permitted behind --allow-install (SDK bands per global.json, workloads), and the Gate is re-derived - reconstruct the bake-off OSS set at pinned commits under a cold NuGet cache and gate on what genuinely fails, plus synthetic failing fixtures (broken feed, SDK pin, missing workload) for remedy classes that do not reproduce, recorded honestly. Remaining: exercise the install remedies, provision the gate corpus, record up-report.json against the re-derived gate.)
+- [>] C1 `fuse up`: the environment remediation engine (depends: X1) (2026-07-08: preconditions recorded; sub-steps landed - RemediationKnowledgeBase (JSON-data KB + matcher), EnvironmentRemediationPlanner (classify-and-report core), NuGetOverlayConfig (NU1507 overlay generator), RemediationReport (renderer), and the report-only `fuse up` CLI command (runs doctor + planner + report, applies nothing, never touches the repo), all gate-green. 2026-07-09: the install-free apply sub-step landed (commit 9ee296c) - EnvironmentRemediationApplier + `fuse up --apply` applies the NU1507 overlay via `dotnet restore --configfile` and re-attempts the load, install remedies gated behind --allow-install; the "broken feed repaired via overlay" integration test PASSED on real restore. BLOCKED [!] on TWO things the autonomous environment cannot supply: (1) the consent-gated install remedies (SDK band per global.json via NETSDK1045; workload via MSB4018) require actually installing software, which MACHINE PREP forbids ("install NOTHING"), so their execution path is deferred to an environment where installs are permitted; (2) the Gate ("all 11 previously-buildable reach tier-1; >=2 of 6 previously-unbuildable gain tier-1; write up-report.json over 17 repos") cannot be exercised because the current pinned 4-repo corpus builds clean (verified: Scrutor loads 2/2 oracle-grade, no NU1507 reproduced at its pinned commit) - it needs the original problematic-commit bake-off set provisioned OR a maintainer decision to re-derive the Gate against a corpus that actually fails. Unblock: a maintainer decides the Gate corpus and permits installs (or provisions a failing corpus under D:\fuse-work), then the install-execution path + the up-report.json Gate run. 2026-07-09 UNBLOCKED (D17): consent-gated installs are permitted behind --allow-install (SDK bands per global.json, workloads), and the Gate is re-derived - reconstruct the bake-off OSS set at pinned commits under a cold NuGet cache and gate on what genuinely fails, plus synthetic failing fixtures (broken feed, SDK pin, missing workload) for remedy classes that do not reproduce, recorded honestly. Remaining: exercise the install remedies, provision the gate corpus, record up-report.json against the re-derived gate. 2026-07-09 sub-steps 1-3 landed: `fuse up --json` (facf71c/5b4cb15); the tier-1 build probe (TierOneBuildProbe) that surfaces real restore/build failures the design-time load misses, plus two overlay bug fixes (UTF-8 XML declaration, relative-source-path resolution) (5cb5ba1); and the up-report harness (up-report.ps1) with the first up-report.json over 5 workspaces - NU1507 detected real-world on Scrutor and flipped end-to-end on the engineered fixture (3/5 tier-1 reachable, 2/5 NU1507). Remaining: sub-step 4 install-execution (NETSDK1045/MSB4018) + fixtures; sub-step 5 OSS provisioning + Scrutor flip completion + final gate.)
 - [ ] C2 Portable capture artifact and the CI action; secret posture (depends: C1)
 - [ ] C3 Tier-1 default-on; worker bundled (depends: C1, C2)
 - [ ] C4 Corpus v2: buildable test-oracle task set and the health gate (depends: C1, C2)
@@ -6056,6 +6056,45 @@ Specification, eShopOnWeb) and consolidate `tests/benchmarks/results/up-report.j
 honestly which OSS bake-off repos were not provisioned. Then sub-step 4 (install-execution for
 NETSDK1045/MSB4018 behind `--allow-install` + their synthetic fixtures) and sub-step 5 (best-effort
 OSS provisioning for real-world flips).
+
+#### 2026-07-09 C1 gate sub-step 3 DONE: the up-report harness + first up-report.json
+
+**Shipped.** `tests/benchmarks/up-report.ps1`: runs `fuse up --json --probe [--apply]` over a workspace
+set (the synthetic broken-feed fixture + the four locally-available pinned corpus repos) and
+consolidates per-repo tier-1 reachability, the classified blocker, and the apply flip into
+`tests/benchmarks/results/up-report.json`. The 13 OSS bake-off repos not provisioned locally are
+listed under `summary.not_provisioned` (no silent tail).
+
+**Numbers (`up-report.json`, generated 2026-07-09, 5 workspaces probed).** tier-1 reachable 3/5;
+blocked 2/5, both NU1507. Detail:
+- broken-feed (fixture, engineered): tier-1 NOT reachable -> NU1507 -> overlay applied ->
+  `tier1AfterApply: true`. The full engineered flip works end to end: the probe detects NU1507 in
+  the real build output, the overlay supplies the source mapping, and the re-probe reaches tier-1.
+- Scrutor (corpus, REAL-WORLD): tier-1 NOT reachable -> NU1507 (remedy overlay-nuget-source-mapping),
+  detected from Scrutor's own `dotnet build` at its pinned commit - a genuine real-world
+  reproduction of the C1 named-target failure class. The overlay was applied but the flip did not
+  complete in this environment (the overlay restore did not fully succeed on Scrutor's own feed
+  config), recorded honestly (`applied: false`).
+- Specification, NodaTime, eShopOnWeb (corpus): tier-1 reachable (build succeeds). Note the
+  load-tier vs build-success split the finding predicted: NodaTime and eShopOnWeb load at syntax
+  under MSBuildWorkspace yet build to tier-1 - the design-time load understates oracle reachability,
+  which is exactly why the build probe exists.
+
+**Read against D17.** Engineered coverage demonstrates the NU1507 detect-and-flip end to end
+(fixture); the same class reproduces in the real corpus (Scrutor). The NETSDK1045 (SDK band) and
+MSB4018 (workload) classes need the install-execution path (sub-step 4) and their synthetic
+fixtures; Scrutor's real flip completion and the OSS bake-off set are sub-step 5. The original C1
+Gate's "Scrutor NU1507 is the named first target" is now detected real-world; the engineered flip
+proves the remedy; completing Scrutor's real flip + the install classes closes the gate.
+
+**Gates.** No solution code changed for this sub-step (harness is a `.ps1`, up-report.json is a
+result file); build/test/format were green at 5cb5ba1 and are unaffected.
+
+**Next action.** C1 sub-step 4: implement the consent-gated install-execution (SDK band per
+global.json via the dotnet-install script for NETSDK1045; `dotnet workload install` for MSB4018)
+behind `--allow-install`, add the SDK-pin and missing-workload synthetic fixtures, and extend the
+up-report over them. Then sub-step 5: provision the OSS bake-off set under D:\fuse-work and
+complete Scrutor's real flip; finalize up-report.json against the re-derived gate.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

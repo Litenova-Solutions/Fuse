@@ -157,7 +157,8 @@ public sealed class UpCommand
         }
 
         // The machine-readable report: the same shape workspace status reads and the up-report harness (C1 gate)
-        // consolidates. Emitted last so it is the sole output on the result channel when --json is set.
+        // consolidates. Written raw to stdout (not through the decorating console UI) so it pipes as valid JSON;
+        // every human line above was guarded by !Json, so stdout carries the JSON document alone.
         if (Json)
         {
             var report = new UpResult(
@@ -165,7 +166,7 @@ public sealed class UpCommand
                 applied,
                 UpRepoReport.From(plan),
                 afterPlan is null ? null : UpRepoReport.From(afterPlan));
-            _consoleUI.WriteResult(UpReportJson.Serialize(report));
+            Console.Out.WriteLine(UpReportJson.Serialize(report));
         }
     }
 

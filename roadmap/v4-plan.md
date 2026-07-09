@@ -5979,6 +5979,44 @@ or `fuse eval up` suite yet.
 
 **Next action.** Sub-step 1: add the machine-readable JSON report to `fuse up`.
 
+#### 2026-07-09 C1 gate sub-step 1 DONE + a build-probe finding that reshapes the remaining gate
+
+**Shipped (committed facf71c + the raw-output fix).** `fuse up --json` emits a machine-readable
+report (`UpResult` -> `UpRepoReport` -> per-project `UpProjectReport`, source-generated camelCase
+JSON via `UpReportJsonContext`), raw to stdout so it pipes as valid JSON; 2 serialization tests
+green; three gates green at commit. A persistent broken-feed NU1507 fixture landed under
+`tests/benchmarks/fixtures/remediation/broken-feed` (CPM + two sources + no source mapping).
+
+**FINDING (important; reshapes the C1 gate, recorded honestly).** Running `fuse up` (and
+`fuse up --json`) on the broken-feed fixture reports `oracle-grade (all projects loaded clean),
+1 of 1 projects, blockers: none` - it does NOT reproduce NU1507, even with a cold isolated
+`NUGET_PACKAGES`. Root cause: `fuse up`/`fuse doctor` classify against `DiagnoseLoadAsync`, which
+runs the MSBuildWorkspace DESIGN-TIME load (tier-2). That load resolves the C# compilation without
+enforcing NuGet restore the way `dotnet restore`/`dotnet build` do, so a restore/build failure
+class (NU1507, NETSDK1045, MSB4018) never appears in the load reason (the loader reports only a
+generic "no compilation (project unrestored, SDK mismatch, or a build error)"). But the KB
+patterns are the specific diagnostic CODES (NU1507, NETSDK1045, MSB4018), which appear only in
+restore/build OUTPUT - exactly as the C1 spec intends ("signature regex over restore/build
+output"). And true oracle grade is TIER-1 build-capture (needs `dotnet build` to succeed to emit
+the binlog), which NU1507 blocks even when the tier-2 design-time load succeeds. So the current
+`fuse up` conflates "tier-2 load succeeded" with "oracle-grade" and cannot surface or classify the
+remedy classes its KB targets.
+
+**Revised C1 sub-step plan (build-probe; in C1's design, not a reopening).** `fuse up` must attempt
+tier-1 by running a real `dotnet build`/`restore` probe (reusing the `BuildGradeChecker`
+process-runner pattern), capture the combined output, and match the KB against that output - not
+against the design-time load reason. Then: (2) the probe surfaces NU1507 on the broken-feed fixture
+-> the overlay remedy applies -> the re-probe is clean; (3) an up-report harness runs
+`fuse up --json --apply` over the fixtures + the local corpus and consolidates `up-report.json`;
+(4) install-execution (SDK band, workload) behind `--allow-install` + the SDK-pin/workload
+synthetic fixtures; (5) best-effort provision the OSS bake-off set under D:\fuse-work for
+real-world flips, recorded honestly.
+
+**Next action.** C1 sub-step 2: add the tier-1 build/restore probe to the `fuse up` diagnosis
+(run the build, feed its output to `RemediationKnowledgeBase.Match`) so the remedy classes are
+detected from real build output; validate on the broken-feed fixture (NU1507 surfaces -> overlay
+-> clean).
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

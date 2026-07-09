@@ -90,6 +90,19 @@ public sealed class TierOneBuildProbe
         if (overlayConfigPath is not null)
             psi.ArgumentList.Add($"-p:RestoreConfigFile={overlayConfigPath}");
 
+        // When building with a side-installed SDK (the install-sdk re-probe passes that SDK's own dotnet), reset the
+        // .NET host and MSBuild environment so the child resolves its own SDK rather than inheriting this process's
+        // .NET runtime paths. Without this the isolated SDK's MSBuild fails to load its resolvers (MSB4237, a wrong
+        // System.Runtime), because DOTNET_ROOT / MSBUILD_EXE_PATH / MSBuildSDKsPath point at the parent's runtime.
+        if (!string.Equals(dotnetExecutable, "dotnet", StringComparison.Ordinal))
+        {
+            var sdkRoot = Path.GetDirectoryName(Path.GetFullPath(dotnetExecutable));
+            if (sdkRoot is not null)
+                psi.Environment["DOTNET_ROOT"] = sdkRoot;
+            foreach (var contaminating in new[] { "MSBuildSDKsPath", "MSBUILD_EXE_PATH", "MSBuildExtensionsPath", "DOTNET_HOST_PATH", "MSBuildEnableWorkloadResolver" })
+                psi.Environment.Remove(contaminating);
+        }
+
         using var process = new Process { StartInfo = psi };
         var output = new StringBuilder();
         process.OutputDataReceived += (_, e) => { if (e.Data is not null) output.AppendLine(e.Data); };

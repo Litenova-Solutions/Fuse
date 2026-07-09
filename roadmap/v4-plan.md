@@ -6128,6 +6128,47 @@ caveat.
 add it to up-report.json; complete Scrutor's real NU1507 flip; best-effort provision the OSS bake-off
 set under D:\fuse-work; then evaluate the re-derived C1 Gate and record it.
 
+#### 2026-07-09 C1 gate sub-step 5: SDK-band install-execution VALIDATED end-to-end; both remedy classes flip
+
+**Shipped.** Added the `SDK_NOT_FOUND` KB signature (pattern `A compatible .NET SDK was not found`,
+remedy install-sdk, consent-gated) - the real global.json-pin failure the .NET host reports before
+the build, distinct from NETSDK1045 (which fires when a *present* SDK is too old for the target);
+the troubleshooting page updated in lockstep (drift guard green). Fixed an env-contamination bug in
+the install re-probe: spawning the isolated SDK's dotnet from the .NET 10 fuse process inherited the
+parent's host env (DOTNET_ROOT/MSBuild paths), so the child SDK's MSBuild failed to load its
+resolvers (MSB4237); `TierOneBuildProbe` now resets `DOTNET_ROOT` and clears the MSBuild env vars for
+a custom-SDK re-probe. Fixed the sdk-pin fixture csproj comment (`--` is illegal in XML comments;
+had caused MSB4025). The up-report harness gained the sdk-pin fixture with `--allow-install`.
+
+**End-to-end validation (the payoff).** `fuse up --probe --apply --allow-install` on the sdk-pin
+fixture: `buildProbeBefore` = SDK_NOT_FOUND (build fails, host cannot select the pinned 7.0.100
+band); the applier installs .NET 7.0.100 via the dotnet-install script into an isolated dir; the
+re-probe with that SDK's dotnet reaches tier-1 (`buildProbeAfter.succeeded: true`). The complete
+detect -> install -> re-probe -> tier-1 loop works on a real machine change.
+
+**Numbers (`up-report.json`, generated 2026-07-09, 6 workspaces).** tier-1 reachable 3/6; blocked 3
+(NU1507 x2, SDK_NOT_FOUND x1). Both engineered fixtures flip end-to-end: broken-feed
+(NU1507 -> overlay -> `tier1AfterApply: true`) and sdk-pin (SDK_NOT_FOUND -> install .NET 7 ->
+`tier1AfterApply: true`). Real-world: Scrutor NU1507 detected (overlay applied, flip incomplete on
+its feed config). Specification, NodaTime, eShopOnWeb reach tier-1 clean.
+
+**Environment change (recorded, consent-gated per D17).** .NET SDK 7.0.100 installed to
+`%LocalAppData%/Fuse/sdks/7.0.100` via the official dotnet-install script, behind `--allow-install`,
+during the sdk-pin validation. Isolated (never the machine-wide SDK); ~700 MB on C: (34 GB free ->
+still above the 15 GB floor). No other installs; no registry or Defender changes.
+
+**Read against the re-derived D17 gate.** Both environment-fixable remedy classes (NU1507 overlay,
+SDK-band install) are now demonstrated end-to-end on engineered fixtures, and NU1507 is reproduced
+real-world (Scrutor). "Engineered coverage everywhere" is met for the environment classes; the
+MSB4018 workload class is report-only by design (ambiguous id). Remaining to fully close the gate:
+Scrutor's real overlay flip completion, best-effort OSS bake-off provisioning (real-world flips),
+recorded honestly. Gates: build 0 errors, full suite pass (Fuse.Semantics 178), format clean.
+
+**Next action.** C1 sub-step 5b: best-effort provision the OSS bake-off set under D:\fuse-work
+(cold NuGet cache) and extend the up-report for real-world flips; investigate Scrutor's overlay
+flip; then evaluate and record the final re-derived C1 Gate verdict and set C1 to [x] or record the
+honest partial with the Fallback.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

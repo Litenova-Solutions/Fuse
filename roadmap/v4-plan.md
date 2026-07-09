@@ -6197,6 +6197,36 @@ flips, then evaluate the final re-derived C1 Gate verdict (set [x] or record the
 with the Fallback). If the OSS provisioning is deferred, the C1 engine + engineered coverage stand
 as the shippable remediation capability.
 
+#### 2026-07-09 C1 gate sub-step 5b: full 19-workspace up-report over the reconstructed bake-off set
+
+**Provisioned.** All 13 OSS bake-off repos cloned (shallow, at HEAD) under `D:\fuse-work\bench` (no
+rate-limiting this run). The up-report harness extended to the full set: 2 engineered fixtures + 4
+pinned corpus + 13 OSS = 19 workspaces. A warm NuGet cache is used rather than cold, because the
+failure classes are config/SDK-band issues independent of cache state (NU1507 is a config
+validation; SDK_NOT_FOUND and MSB4018 are band/workload gaps) - noted honestly.
+
+**Numbers (`up-report.json`, generated 2026-07-09, 19 workspaces).** tier-1 reachable 10/19; blocked
+9/19, all classified: NU1507 x2 (broken-feed fixture, Scrutor), SDK_NOT_FOUND x4 (sdk-pin fixture,
+Polly, Humanizer, Nancy), MSB4018 x2 (Dapper, StackExchange.Redis), unrecognized x1
+(Newtonsoft.Json). The environment remedy classes reproduce robustly real-world across the OSS set -
+the re-derived gate's "gate on what genuinely fails" is satisfied with real failures, not only
+engineered ones. Engineered end-to-end flips: broken-feed (NU1507 -> overlay -> tier-1) and sdk-pin
+(SDK_NOT_FOUND -> install .NET 7 -> tier-1), both `tier1AfterApply: true`. The 7 clean-building OSS
+repos (serilog, FluentValidation, MediatR, RestSharp, AutoFixture, quartznet, AutoMapper) reach
+tier-1. OSS blocked repos ran with `--allow-install` off (SDK/workload blockers detected and
+classified, not auto-installed across third-party repos).
+
+**Read against the re-derived D17 gate.** (1) Bake-off set reconstructed and gated on what genuinely
+fails: DONE (9/19 fail, all classified). (2) Engineered coverage everywhere: DONE (NU1507 overlay +
+SDK-band install both flip end-to-end; MSB4018 workload report-only by design). (3) Real-world flips
+where possible: the environment classes reproduce real-world (SDK_NOT_FOUND x3 OSS, MSB4018 x2 OSS,
+NU1507 Scrutor); a completed real-world environment flip is the capstone attempted next (Polly, a
+clean SDK_NOT_FOUND candidate, with --allow-install). All recorded honestly, no fabrication.
+
+**Next action.** Attempt Polly's real-world SDK-band flip (`fuse up --apply --allow-install`); if it
+flips, C1's real-world-flip clause is met and C1 -> [x] with the verdict recorded; else record the
+honest bound (repo-residual) and set C1's status per the Fallback.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

@@ -34,16 +34,22 @@ $targets = @(
     @{ Name = "eShopOnWeb";     Group = "corpus";  Path = "tests/benchmarks/.corpus/eShopOnWeb";               Apply = $true;  AllowInstall = $false }
 )
 
-# The bake-off OSS set (n4-bakeoff.json) not provisioned locally, listed so the report never reads as complete
-# coverage when it is not. Provisioning these under D:\fuse-work is C1 sub-step 5.
-$notProvisioned = @(
-    "serilog","Polly","FluentValidation","MediatR","Newtonsoft.Json","RestSharp","AutoFixture","quartznet",
-    "AutoMapper","Dapper","Humanizer","StackExchange.Redis","Nancy"
-)
+# The bake-off OSS set, provisioned under D:\fuse-work\bench (D17). Absolute paths; the harness includes any that
+# are present and lists the rest as not-run. apply=$true attempts the install-free overlay flip; allowInstall is
+# off (SDK-band blockers are detected and reported, not auto-installed across 13 third-party repos).
+$ossRoot = "D:/fuse-work/bench"
+$ossNames = @("serilog","Polly","FluentValidation","MediatR","Newtonsoft.Json","RestSharp","AutoFixture","quartznet","AutoMapper","Dapper","Humanizer","StackExchange.Redis","Nancy")
+foreach ($n in $ossNames) {
+    $targets += @{ Name = $n; Group = "oss"; Path = (Join-Path $ossRoot $n); Apply = $true; AllowInstall = $false; Absolute = $true }
+}
+
+# Any target the harness cannot find is recorded not-run (below), so the report never reads as complete coverage
+# when it is not; with the OSS set provisioned under D:\fuse-work this is normally empty.
+$notProvisioned = @()
 
 $results = @()
 foreach ($t in $targets) {
-    $path = Join-Path $repoRoot $t.Path
+    $path = if ($t.ContainsKey("Absolute") -and $t.Absolute) { $t.Path } else { Join-Path $repoRoot $t.Path }
     if (-not (Test-Path $path)) {
         Write-Host "SKIP $($t.Name): not present at $path"
         $results += [ordered]@{ name = $t.Name; group = $t.Group; present = $false }
@@ -86,6 +92,7 @@ foreach ($t in $targets) {
     }
 }
 
+$notProvisioned = @($results | Where-Object { $_.present -eq $false } | ForEach-Object { $_.name })
 $probed = $results | Where-Object { $_.present -eq $true -and $_.tier1Attempted -eq $true }
 $reachable = @($probed | Where-Object { $_.tier1Reachable -eq $true }).Count
 $blocked = @($probed | Where-Object { $_.tier1Reachable -eq $false })

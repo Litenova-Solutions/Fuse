@@ -6372,6 +6372,33 @@ in-repo GitHub Action (capture on main, upload artifact; marketplace publish [ma
 (capture page + AGENTS.md bundle-version invariant); Validation (no-restore rehydrate of NodaTime +
 known-bad fuse_check, time + bundle sizes to performance.json).
 
+#### 2026-07-09 C2 sub-step 2a DONE: fuse capture --out (the bundle producer)
+
+**Shipped.** The bundle model + producer. `CaptureManifest` (Fuse.Indexing): bundle-format version,
+producing `FuseBuildInfo.Current`, source commit, capture UTC, per-project summary; with
+`IsCompatibleWithRunningBuild` (format version matches AND `FuseBuildInfo.IsCompatible` by
+major.minor) and an actionable `IncompatibilityReason` (both `[JsonIgnore]`, so the manifest stores
+only the real fields). `CaptureBundleIo` writes/reads a bundle directory of {manifest.json,
+capture.complog, graph.json}. `BuildCaptureClient.CaptureBundleAsync` spawns the worker
+`--capture-bundle` mode. `fuse capture [path] --out <bundle>` (CaptureCommand): discovers the build
+target, runs the worker (build + complog export + fail-closed secret scan), stamps the commit
+(git rev-parse) and UTC, and writes the bundle; on any worker failure it writes nothing. Never
+embeds the binlog.
+
+**Validated end-to-end.** `FUSE_BUILD_CAPTURE_WORKER=... fuse capture <trivial net10 project> --out
+<dir>` produced a bundle: capture.complog (7 MB), graph.json (the extracted graph), manifest.json
+(format v1, fuse 4.0.0, 1 project, 1 type / 2 symbols / 1 node). Tests: `CaptureManifestTests` (4,
+green): JSON round-trip; running-version compatible; incompatible major.minor refused with reason;
+unknown format version refused with reason.
+
+**Gates.** build 0 errors; manifest tests green; full gates being run before commit.
+
+**Next action.** C2 sub-step 2b: `fuse index --from-capture <bundle>` - refuse an incompatible
+bundle via the manifest's `IncompatibilityReason`, then rehydrate the store from graph.json (no
+build, no worker) and note the resident-compilation rehydration from the complog as the oracle path;
+add the round-trip test (capture -> from-capture edge-set equality) and the version-mismatch refusal
+test. Then 2c/2d: the GitHub Action, docs, and the no-restore Validation with perf numbers.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

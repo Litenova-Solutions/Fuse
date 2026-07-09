@@ -6399,6 +6399,32 @@ build, no worker) and note the resident-compilation rehydration from the complog
 add the round-trip test (capture -> from-capture edge-set equality) and the version-mismatch refusal
 test. Then 2c/2d: the GitHub Action, docs, and the no-restore Validation with perf numbers.
 
+#### 2026-07-09 C2 sub-step 2b DONE: fuse index --from-capture (the bundle consumer)
+
+**Shipped.** `SemanticIndexer.IndexFromCaptureGraphAsync(root, store, CaptureResult, ct)` (public):
+scans the local source for files/chunks and writes the bundle's extracted graph (symbols, nodes,
+edges, routes, DI, options) to the store, stamping index_mode and fuse_version exactly as
+`IndexAsync` does - reusing the tested internal `IndexFromCaptureAsync`. `fuse index --from-capture
+<bundle>` (IndexCommand): reads the manifest, REFUSES an incompatible bundle with the manifest's
+`IncompatibilityReason` (the upgrade invariant), reads graph.json, and rehydrates the store with no
+build and no worker.
+
+**Validated end-to-end on a no-restore machine.** With an isolated empty `NUGET_PACKAGES` (cold
+cache, so no restore is possible), `fuse index <proj> --from-capture <bundle>` produced
+"Indexed [semantic] 2 files, 1 project, 2 symbols, 2 chunks" - the oracle-grade graph rehydrated
+from the bundle without building. This is C2's core promise demonstrated: a machine that cannot
+restore gets the semantic graph from the CI-produced bundle.
+
+**Gates.** build 0 errors; full suite + format being run before commit. Version-refusal is unit-
+tested (`CaptureManifestTests`); the rehydrate path reuses the tested `IndexFromCaptureAsync`.
+
+**Next action.** C2 sub-step 2c: an automated capture -> from-capture round-trip integration test
+(edge-set equality vs a direct tier-1 index on a fixture) + a planted-secret fail-closed integration
+check. Then 2d: the in-repo GitHub Action (capture on main, upload the bundle; marketplace publish
+[maintainer]), the capture docs page + AGENTS.md bundle-version invariant, and the Validation
+(no-restore NodaTime rehydrate + a known-bad fuse_check; end-to-end time + bundle sizes to
+performance.json) to meet the C2 Gate.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

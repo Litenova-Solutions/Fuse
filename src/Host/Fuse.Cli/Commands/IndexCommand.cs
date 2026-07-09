@@ -47,6 +47,10 @@ public sealed class IndexCommand
     [CliOption(Description = "Force a full re-index.")]
     public bool Force { get; set; }
 
+    /// <summary>Rehydrate the index from a portable capture bundle instead of building.</summary>
+    [CliOption(Name = "--from-capture", Description = "Rehydrate the index from a capture bundle directory (produced by fuse capture) instead of building. Refuses an incompatible bundle.")]
+    public string? FromCapture { get; set; }
+
     /// <summary>
     ///     Runs the index command.
     /// </summary>
@@ -72,7 +76,39 @@ public sealed class IndexCommand
         await using var store = new WorkspaceIndexStore(databasePath);
         await store.InitializeAsync(context.CancellationToken);
 
-        var result = await _indexer.IndexAsync(root, store, context.CancellationToken);
+        SemanticIndexResult result;
+        if (FromCapture is not null)
+        {
+            var bundle = System.IO.Path.GetFullPath(FromCapture);
+            var manifest = CaptureBundleIo.ReadManifest(bundle);
+            if (manifest is null)
+            {
+                _consoleUI.WriteError($"no capture bundle found at {bundle} (missing or unreadable {CaptureManifest.ManifestFileName}).");
+                return;
+            }
+
+            // Upgrade invariant: refuse an incompatible bundle with an actionable message rather than rehydrating
+            // into a wrong-shaped store.
+            if (!manifest.IsCompatibleWithRunningBuild)
+            {
+                _consoleUI.WriteError($"incompatible capture bundle: {manifest.IncompatibilityReason}");
+                return;
+            }
+
+            var graph = CaptureBundleIo.ReadGraph(bundle);
+            if (graph is null || !graph.Succeeded)
+            {
+                _consoleUI.WriteError($"capture bundle at {bundle} has no readable extracted graph ({CaptureManifest.GraphFileName}).");
+                return;
+            }
+
+            _consoleUI.WriteStep($"Rehydrating from capture bundle {bundle} (fuse {manifest.FuseVersion}, {manifest.Projects.Count} project(s)); no build");
+            result = await _indexer.IndexFromCaptureGraphAsync(root, store, graph, context.CancellationToken);
+        }
+        else
+        {
+            result = await _indexer.IndexAsync(root, store, context.CancellationToken);
+        }
 
         _consoleUI.WriteSuccess(
             $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects: " +

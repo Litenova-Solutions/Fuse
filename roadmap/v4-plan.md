@@ -6265,6 +6265,49 @@ preceding commits). up-report.json is the recorded artifact.
 **Next action.** C1 is [x]; the C-track unblocks. Per the runway, C2 (portable capture artifact +
 CI action + secret posture; depends: C1) is next.
 
+#### 2026-07-09 C2 PRECONDITIONS recorded (depends: C1 [x])
+
+**What the tier-1 worker serializes vs. what portable rehydration needs.** `CapturedProject`
+(`src/Core/Fuse.Indexing/BuildCaptureContract.cs:25-39`) carries only the extracted GRAPH -
+symbols, nodes, edges, routes, DI registrations, options bindings - which the parent writes to the
+store. It does NOT carry the compilation inputs. Rehydration to a live Roslyn compilation (needed
+for oracle-grade `fuse_check` on a no-restore machine) currently comes from the raw `.binlog`:
+`BuildCaptureRehydrator` (`src/Host/Fuse.BuildCaptureWorker/BuildCaptureRehydrator.cs:25,56,117`)
+uses `CompilerCallReaderUtil.Create(binlogPath)` + `GetCompilationAfterGenerators`. So the portable
+bundle must add the compiler-argument sets, the reference closure, source, and generated documents
+that a binlog holds but `CapturedProject` does not.
+
+**The portable artifact is a `.complog`.** The worker already references `Basic.CompilerLog.Util`
+(`src/Host/Fuse.BuildCaptureWorker/Fuse.BuildCaptureWorker.csproj:18`), whose compiler-log
+(`.complog`) format packages source + references + generated docs + compiler args self-contained,
+and - unlike the `.binlog` - does NOT embed environment variables. That directly serves C2's secret
+posture ("the binlog itself never ships"): a complog is inherently the no-env-var portable form.
+The worker converts binlog -> compilations in memory today but does not yet EXPORT a complog; C2
+adds the export + packaging (graph bundle + complog + metadata stamped with `fuse_version` + commit).
+
+**Secret redactor is callable against arbitrary text.** `ISecretRedactor`
+(`src/Core/Fuse.Reduction/Security/ISecretRedactor.cs`) exposes `Redact(string content, bool
+classifyCodeLiterals)` and `FindSecretSpans(string content)`; `DefaultSecretRedactor`
+(`src/Core/Fuse.Reduction/Security/DefaultSecretRedactor.cs:44,82`) implements both on plain strings.
+So C2's fail-closed scan of captured command lines and generated docs uses `FindSecretSpans` and
+fails the capture closed on any finding, reporting the match class (never the secret).
+
+**C2 implementation plan (next, fresh-context L item).** (1) `fuse capture --out <bundle>`: build
+with binlog, export a complog (env-var-free), scan command lines + generated docs with
+`DefaultSecretRedactor` (fail closed on a finding), package {complog, graph bundle, per-project
+metadata, test discovery} into a versioned bundle stamped `fuse_version` + commit; never embed the
+binlog. (2) `fuse index --from-capture <bundle>`: rehydrate the store + resident compilations from
+the complog with no build; refuse an incompatible bundle (upgrade invariant). (3) round-trip test
+(capture -> rehydrate edge-set equality vs. a direct tier-1 index), planted-secret fail-closed test,
+version-mismatch refusal. (4) the in-repo GitHub Action (capture on main, upload the bundle;
+marketplace publish is [maintainer]). (5) docs (capture page + AGENTS.md bundle-version invariant).
+(6) Validation: on a no-restore machine (redirected NuGet cache) rehydrate NodaTime from a bundle
+and run a known-bad `fuse_check`; record end-to-end time + bundle sizes to performance.json.
+
+**Next action.** Implement C2 sub-step 1: add the complog export to the build-capture worker and the
+`fuse capture --out` command with the fail-closed secret scan; then the bundle format + `fuse index
+--from-capture`.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

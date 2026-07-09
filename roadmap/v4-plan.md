@@ -6307,10 +6307,12 @@ and run a known-bad `fuse_check`; record end-to-end time + bundle sizes to perfo
 **API note (de-risking sub-step 1).** `Basic.CompilerLog.Util` 0.9.47 is the pinned version
 (`Directory.Packages.props:23`). Its `CompilerLogUtil` type exposes `GetOrCreateCompilerLogStream`
 and `ReadLogFromZip` (a complog is a zip), and `CompilerCallReaderUtil.Create` already reads both
-binlog and complog (used by the rehydrator). The exact binlog->complog export call in 0.9.47 needs a
-5-minute verification spike (the package XML doc omits undocumented members; likely
-`CompilerLogUtil.ConvertBinaryLog(binlogPath, complogStream, predicate)` or writing through
-`GetOrCreateCompilerLogStream`). Verify the signature first, then wire the export.
+binlog and complog (used by the rehydrator). The binlog->complog export call is CONFIRMED (reflection over the 0.9.47 DLL):
+`CompilerLogUtil.TryConvertBinaryLog(string binaryLogFilePath, string compilerLogFilePath,
+Func<CompilerCall,bool> predicate)` returns a `ConvertBinaryLogResult` (there is also a
+`ConvertBinaryLog(...)` overload returning a diagnostics list, and Stream overloads). One call
+produces the portable complog; `CompilerCallReaderUtil.Create` already reads it back (the rehydrator
+uses that today). So sub-step 1's export is a single, low-risk call - no spike remaining.
 
 **Next action.** Implement C2 sub-step 1: verify the `CompilerLogUtil` complog-export signature, add
 the complog export to the build-capture worker (a new `--capture-bundle <out>` mode) and the

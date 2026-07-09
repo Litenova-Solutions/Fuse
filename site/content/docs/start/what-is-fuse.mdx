@@ -46,7 +46,7 @@ For an open-ended task with no anchor to check or resolve, localization is the f
 rank candidate files first, then plan context for them:
 
 ```text
-fuse_localize(path="C:/Projects/MyApp/src", task="where is the discount applied at checkout?")
+fuse_find(path="C:/Projects/MyApp/src", kind="task", query="where is the discount applied at checkout?")
 fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], maxTokens=25000)
 ```
 

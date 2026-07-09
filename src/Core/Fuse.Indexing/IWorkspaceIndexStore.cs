@@ -171,7 +171,7 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
 
     /// <summary>
     ///     Returns exact signature records for a batch of symbol names (matched by simple name or fully qualified
-    ///     name), the store side of <c>fuse_signatures</c>.
+    ///     name), the store side of <c>fuse_find</c> (kind=signatures).
     /// </summary>
     /// <param name="names">The symbol names to look up (simple or fully qualified).</param>
     /// <param name="limitPerName">The maximum number of matches to return per requested name.</param>

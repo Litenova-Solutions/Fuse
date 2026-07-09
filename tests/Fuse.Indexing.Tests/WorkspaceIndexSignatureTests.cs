@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Fuse.Indexing.Tests;
 
-// R6: the store side of fuse_signatures. GetSignaturesByNamesAsync returns exact signatures for a batch of names,
+// The store side of fuse_find (kind=signatures). GetSignaturesByNamesAsync returns exact signatures for a batch of names,
 // matched by simple name or fully qualified name, public-API first, and returns nothing for an unknown name.
 public sealed class WorkspaceIndexSignatureTests : IAsyncLifetime
 {

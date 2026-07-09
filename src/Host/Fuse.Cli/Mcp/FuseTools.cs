@@ -12,13 +12,13 @@ using ModelContextProtocol.Server;
 namespace Fuse.Cli.Mcp;
 
 /// <summary>
-///     MCP tool definitions for Fuse V3, exposed to AI agents through the Model Context Protocol server.
+///     MCP tool definitions for Fuse, exposed to AI agents through the Model Context Protocol server.
 /// </summary>
 /// <remarks>
 ///     Each method maps to an MCP tool whose name is set by <see cref="McpServerToolAttribute" /> (for example
-///     <c>fuse_resolve</c>). The fifteen tools (index, map, localize, resolve, context, review, find, neighbors,
-///     signatures, impact, check, test, refactor, changeset, reduce) work over the persistent semantic index;
-///     read tools build the index on first use. Tools return errors as descriptive strings rather than throwing.
+///     <c>fuse_find</c>). The eight loop tools (workspace, find, context, impact, check, test, refactor, review)
+///     plus <c>fuse_reduce</c> work over the persistent semantic index; read tools build the index on first use.
+///     Tools return errors as descriptive strings rather than throwing.
 /// </remarks>
 [McpServerToolType]
 public sealed partial class FuseTools
@@ -30,8 +30,7 @@ public sealed partial class FuseTools
     /// <param name="path">The workspace directory.</param>
     /// <param name="cancellationToken">A token to cancel indexing.</param>
     /// <returns>A summary of the index pass, or a descriptive error.</returns>
-    // Folded into fuse_workspace (action=index) in U1; kept as an internal helper the workspace tool calls, and
-    // shimmed under its old name in FuseDeprecatedTools.
+    // Reached through fuse_workspace (action=index); kept as an internal helper the workspace tool calls.
     public static async Task<string> FuseIndexAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
@@ -56,8 +55,7 @@ public sealed partial class FuseTools
     /// <param name="maxRows">The maximum rows per section.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The workspace map.</returns>
-    // Folded into fuse_workspace (action=map) in U1; kept as an internal helper the workspace tool calls, and
-    // shimmed under its old name in FuseDeprecatedTools.
+    // Reached through fuse_workspace (action=map); kept as an internal helper the workspace tool calls.
     public static async Task<string> FuseMapAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
@@ -71,11 +69,11 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
-    ///     The workspace status and lifecycle tool (U1): the single entry point for the state of the workspace and
+    ///     The workspace status and lifecycle tool: the single entry point for the state of the workspace and
     ///     its index. <c>action=status</c> reports the index mode, verify grade, and freshness; <c>index</c> builds
     ///     or refreshes the index; <c>map</c> prints the symbol and route map; <c>doctor</c> diagnoses the semantic
-    ///     load per project. The read actions fold the former <c>fuse_index</c> and <c>fuse_map</c>; the explicit
-    ///     apply-diff write path (Decision D2) is added as a later action.
+    ///     load per project; <c>apply</c> is the one explicit tree-write path (Decision D2), a dry run unless
+    ///     <c>write=true</c>.
     /// </summary>
     /// <param name="indexer">The semantic indexer.</param>
     /// <param name="action">The action: status, index, map, or doctor.</param>
@@ -85,7 +83,7 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The action's result, or a descriptive error.</returns>
     [McpServerTool(Name = "fuse_workspace", ReadOnly = false)]
-    [Description("Workspace status and lifecycle (the loop's first stop). action=status (default): the index mode, verification grade, and freshness. action=index: build or refresh the persistent semantic index. action=map: the symbols, routes, and counts. action=doctor: the per-project semantic-load diagnosis. action=apply: write a proposed single-file edit (file + content) to the working tree - the one explicit apply path (Decision D2); it is a dry run that only reports the change unless write=true, and it refuses any path that escapes the workspace root. The read actions fold fuse_index and fuse_map.")]
+    [Description("Workspace status and lifecycle (the loop's first stop). action=status (default): the index mode, verification grade, and freshness. action=index: build or refresh the persistent semantic index. action=map: the symbols, routes, and counts. action=doctor: the per-project semantic-load diagnosis. action=apply: write a proposed single-file edit (file + content) to the working tree - the one explicit apply path (Decision D2); it is a dry run that only reports the change unless write=true, and it refuses any path that escapes the workspace root.")]
     public static async Task<string> FuseWorkspaceAsync(
         SemanticIndexer indexer,
         [Description("The action: status, index, map, doctor, or apply.")] string action = "status",
@@ -196,7 +194,7 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The matches grouped by kind.</returns>
     [McpServerTool(Name = "fuse_find", ReadOnly = true)]
-    [Description("The find union: locate what a task needs by kind. Exact lookup - kind=symbol (by name), path (by fragment), text (full-text), or all. Wiring - kind=service, request, route, or config resolves the query to its implementation/handler/action/options (folds fuse_resolve). kind=signatures returns the query symbol's exact signature (folds fuse_signatures). kind=neighbors returns the query symbol's callers and implementers (folds fuse_neighbors). kind=task ranks candidate files for the query with the graded refuse-and-route contract (folds fuse_localize). Use instead of broad grep when the name, wiring, or task is known.")]
+    [Description("The find union: locate what a task needs by kind. Exact lookup - kind=symbol (by name), path (by fragment), text (full-text), or all. Wiring - kind=service, request, route, or config resolves the query to its implementation/handler/action/options. kind=signatures returns the query symbol's exact signature. kind=neighbors returns the query symbol's callers and implementers. kind=task ranks candidate files for the query with the graded refuse-and-route contract. Use instead of broad grep when the name, wiring, or task is known.")]
     public static async Task<string> FuseFindAsync(
         SemanticIndexer indexer,
         IChangeSource changeSource,
@@ -210,8 +208,7 @@ public sealed partial class FuseTools
 
         var normalizedKind = kind.Trim().ToLowerInvariant();
 
-        // The union folds (U1): a wiring, signatures, neighbors, or task kind routes to the specialized engine
-        // logic (formerly fuse_resolve / fuse_signatures / fuse_neighbors / fuse_localize), keyed by the query.
+        // A wiring, signatures, neighbors, or task kind routes to the specialized engine logic, keyed by the query.
         switch (normalizedKind)
         {
             case "service":
@@ -321,14 +318,7 @@ public sealed partial class FuseTools
     /// </summary>
     public static SemanticUpgradeSupervisor UpgradeSupervisor { get; set; } = new();
 
-    /// <summary>
-    ///     The speculative staging area for <c>fuse_changeset</c> (M1). Sessions persist across MCP calls in the
-    ///     long-lived serve host, so an agent can create a changeset, stage edits, diagnose and select, then
-    ///     promote or discard across separate tool calls. Held in memory, keyed by an opaque session id.
-    /// </summary>
-    public static Fuse.Retrieval.ChangesetSessionStore ChangesetSessions { get; } = new();
-
-    // Opens the store and builds the index on first use, so read tools work without an explicit fuse_index call.
+    // Opens the store and builds the index on first use, so read tools work without an explicit index call.
     // In the long-lived serve host, cold start serves the syntax tier in a few seconds, then upgrades to the
     // semantic graph in the background so the first read does not block on the MSBuild load. In a short-lived
     // in-process caller the index is built synchronously, so no background task outlives the call.

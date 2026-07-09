@@ -80,9 +80,9 @@ config, or git base) rather than returning a low-precision guess. The calling mo
 exploring anyway, then issues a better-anchored query.
 
 Since 4.0.0, Fuse also ships compiler-oracle tools (`fuse_check`, `fuse_impact`,
-`fuse_refactor`, `fuse_signatures`, `fuse_changeset`) that answer edit-time questions from a
-build-captured compilation when tier-1 is configured, and abstain with "cannot verify" when it is
-not. Section 12 summarizes what shipped, what remains, and the load-success ceiling that gates
+`fuse_refactor`, `fuse_test`, and the `fuse_find` signatures kind) that answer edit-time questions
+from a build-captured compilation when tier-1 is configured, and abstain with "cannot verify" when
+it is not. Section 12 summarizes what shipped, what remains, and the load-success ceiling that gates
 realized value.
 
 ---
@@ -482,45 +482,39 @@ strings rather than throwing, and building the index on first use. MCP warm read
 (section 4) before answering. Store-backed reads prepend the oracle availability header (index
 mode, tier-1 configured or not, stale-as-of when present).
 
-**Retrieval and context (nine):**
+**The loop surface (eight tools plus `fuse_reduce`):**
 
-- `fuse_index` (not read-only) - build or refresh the index; returns a text summary.
-- `fuse_map` - workspace map of symbols, routes, counts.
-- `fuse_find` - exact lookup by symbol, path, or text.
-- `fuse_reduce` - compact a known file set or raw content at a chosen level.
-- `fuse_localize` - rank candidate files/symbols for a task, no bodies; carries the graded
-  signal-sufficiency contract.
-- `fuse_neighbors` - graph neighborhood of a file, callers/implementers of a symbol, or the
-  central files of an area.
-- `fuse_resolve` - deterministic wiring resolution: service to impl, request to handler, route to
-  action, config to options, symbol to declaration. No bodies.
+- `fuse_workspace` (not read-only for `index`/`apply`) - status and lifecycle: `status` (index
+  mode, verify grade, freshness), `index` (build or refresh), `map` (symbols, routes, counts),
+  `doctor` (per-project load diagnosis), and `apply` (the one explicit tree-write path, a dry run
+  unless `write=true`, refusing a path that escapes the root).
+- `fuse_find` - the find union keyed by `kind`: `symbol|path|text|all` (exact lookup),
+  `service|request|route|config` (deterministic wiring resolution), `signatures` (a symbol's exact
+  signature, reporting syntax-tier gaps rather than inventing them; resident-metadata resolution
+  when a resident workspace serves the root), `neighbors` (callers and implementers), and `task`
+  (rank candidate files with the graded signal-sufficiency contract). No bodies.
 - `fuse_context` - plan and emit scoped, reduced source (bodies, mixed tiers, manifest,
   provenance) for selected seeds; a `sessionId` elides files already sent.
-- `fuse_review` - diff-first semantic impact since a git ref: changed files plus blast radius
-  (callers, DI consumers, route/request handlers, options consumers, tests) plus packed context.
-
-**Oracle tools (five, tier-1 opt-in; abstain when unconfigured or partial load):**
-
-- `fuse_signatures` - batch exact signatures for named symbols from the symbol store; reports
-  syntax-tier gaps rather than inventing signatures.
 - `fuse_impact` - blast radius for a symbol (callers, implementers, referencers from the
-  persisted graph) plus covering tests (lower bound); abstains on the tier-1 signature-change
-  break set.
-- `fuse_check` - speculative single-file typecheck of proposed content against the
-  build-captured compilation; R6 repair packets on API-shape diagnostics (CS1061, CS0246).
-- `fuse_refactor` - compiler-executed solution-wide rename staged as a unified diff; never writes
-  disk; abstains on partial load or rename failure.
-- `fuse_changeset` (not read-only) - speculative staging area: create, stage, list, diagnose,
-  select, promote, discard; in-memory sessions across MCP calls; only `promote` touches the tree.
+  persisted graph) plus covering tests (lower bound); a package-upgrade break set via
+  `package:{id,fromVersion,toVersion}`; abstains on the tier-1 signature-change break set.
+- `fuse_check` - speculative single-file typecheck of proposed content; the grade ladder answers
+  oracle-grade against the build-captured compilation, else build-grade via `dotnet build`, else
+  abstains; R6 repair packets on API-shape diagnostics; a delta mode over persisted sessions.
+- `fuse_test` - run the covering tests for a symbol (the tests that reach it through the persisted
+  `tests` edges), scoped by filter so the whole suite never runs (build grade).
+- `fuse_refactor` - compiler-executed, verify-gated refactors staged as a unified diff (rename,
+  the change-signature family, extract-interface, move-type, apply-codefix); never writes disk;
+  abstains on partial load or a recompile that introduces a diagnostic.
+- `fuse_review` - diff-first semantic impact since a git ref: changed files plus blast radius
+  (callers, DI consumers, route/request handlers, options consumers, tests) plus packed context,
+  with the public API delta and a paste-ready PR handoff packet.
+- `fuse_reduce` - compact a known file set or raw content at a chosen level (the one out-of-loop
+  utility).
 
-A deprecation shim (`FuseDeprecatedTools`) keeps the retired V2 tool names registered (fuse_toc,
-fuse_skeleton, fuse_search, fuse_focus, fuse_changes, fuse_ask, fuse_dotnet, fuse_generic) as
-no-ops that return an actionable "renamed in V3" message pointing at the replacement, so an
-upgrade never shows a bare "Unknown tool". MCP resources cover the four workflow reads (map,
-localize, context, review) in a fixed-default addressable form; there are no resources for the
-oracle tools. R3 (tool surface reshape) is partial: the availability header and V2 shims shipped;
-collapsing the fourteen tools into a smaller oracle-shaped router is deferred pending maintainer
-review of the final surface shape.
+MCP resources cover the map, localize, context, and review workflow reads plus the status, diff,
+diagnostics, and session-ledger reads in a fixed-default addressable form. v4 is the first public
+release and ships exactly these nine tools with no deprecation shims and no legacy names (D14).
 
 ### 7.3 The VS Code host (JSON-RPC)
 
@@ -1050,9 +1044,9 @@ format), every number sourced, weaknesses published.
   fix plus suite), N2 part 1 (archive plus citations), N5 (harness retirement), N6 (freshness
   contract), N4 tier-1 build capture (out-of-process worker, default off), N4 `fuse doctor`, N4
   tier-1 localize re-run (no recall lift), N3 part 1 (supervised background upgrade), R5
-  (`references` and `tests` edges, schema 15), R6 (`fuse_signatures`, repair packets on
+  (`references` and `tests` edges, schema 15), R6 (the signatures lookup, repair packets on
   `fuse_check`), R2 (`fuse_impact`), R1 (`fuse_check` plus Suite F), R7 part 1 (`fuse_refactor`
-  rename), M1 (`fuse_changeset` lifecycle plus covering-test selection), R4 loop suite (numbers
+  rename), M1 (the changeset lifecycle plus covering-test selection), R4 loop suite (numbers
   recorded), G2 docs (analyzer coverage table). **Partial or deferred:** N2 in-memory ranker
   deletion, N3 resident workspace plus dependency-scoped semantic re-index, R3 tool-surface
   collapse (availability header only), R7 part 2 (change-signature), M2 (stretch, 4.1), G1
@@ -1074,13 +1068,13 @@ The v4 thesis, carried in [roadmap/v4-plan.md](roadmap/v4-plan.md): Fuse is the 
 oracle, the tool that answers the questions only a compiler can answer, at edit speed. The
 one-line pitch: Fuse gives your agent the compiler.
 
-**What 4.0.0 shipped.** Five oracle MCP tools (`fuse_check`, `fuse_impact`, `fuse_refactor`,
-`fuse_signatures`, `fuse_changeset`) plus tier-1 build capture (opt-in, out-of-process),
-`fuse doctor`, the availability header, R5 graph edges, Suite F (check gate), and Suite R4 (loop
-metric with recorded numbers). Resolve and review were already oracle-shaped retrieval queries;
-the new tools close the edit-verify loop: typecheck a proposed edit, list blast radius before
-changing a signature, rename across the solution as a staged diff, and stage a changeset that
-diagnoses before promote.
+**What 4.0.0 shipped.** The compiler-oracle MCP tools (`fuse_check`, `fuse_impact`,
+`fuse_refactor`, `fuse_test`, and the `fuse_find` signatures kind) plus tier-1 build capture
+(opt-in, out-of-process), `fuse doctor`, the availability header, R5 graph edges, Suite F (check
+gate), and Suite R4 (loop metric with recorded numbers). Wiring resolution and review were already
+oracle-shaped retrieval queries; the oracle tools close the edit-verify loop: typecheck a proposed
+edit, list blast radius before changing a signature, rename across the solution as a staged diff,
+and diagnose a proposed edit before writing it.
 
 **What the evidence still says.** See section 9.12 for the cross-suite synthesis. In short:
 open-ended retrieval recall remains about 15 percent (Suite C); the tier-1 re-run did not lift it.

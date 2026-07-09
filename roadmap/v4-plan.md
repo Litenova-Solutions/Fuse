@@ -614,7 +614,7 @@ Wave 7: frontier [HARD GATE: B1 recorded before F2]
 opening trigger; F5's governance contract is signed there with the three answers recorded)
 
 Wave 8: release (added 2026-07-09; decisions D14-D19)
-- [ ] R1 Clean-slate purge: shims, legacy names, compatibility machinery (depends: -; D14)
+- [x] R1 Clean-slate purge: shims, legacy names, compatibility machinery (depends: -; D14) (2026-07-09: FuseDeprecatedTools + its test deleted; the dead changeset workflow purged (FuseChangesetAsync, ChangesetSessionStore + its tests, RenderDiagnoses, DiscoverBuildTargetAsync); WithTools<FuseDeprecatedTools>() unregistered; integration test asserts exactly 9 tools and 0 shims; every retired MCP tool name swept from code (tool Descriptions, breadcrumb/error strings, XML docs), the McpInstallService RuleBody rewritten to the 9-tool surface, and all docs (mcp-tools.mdx, scenarios, start, concepts, internals, performance, latency, changelog.mdx), README, LAUNCH, briefing; CHANGELOG consolidated to a single [4.0.0] entry; AGENTS.md upgrade invariant rewritten to apply from the first public tag. GATE PASS: repo-wide grep for shim types + retired names returns nothing outside roadmap/; three gates green (build 0 errors, full test suite passes, format clean); site builds. The TOC golden updated for the new breadcrumb string.)
 - [ ] R2 Remove the VS Code extension and its mirror surface (depends: -; D15)
 - [ ] R3 Release hygiene and the v4 cut: canonical regen, assets, briefing refresh, release
       prep [tag is maintainer] (depends: R1, R2)
@@ -5805,6 +5805,73 @@ unblocker for the entire C-track and, through C4, the model-driven B-track; (2) 
 re-attempt-tier-1, then C2 portable capture. Every ungated code unit reachable in THIS environment is done and
 green; the remaining work needs a corpus, a model run, installs, or a maintainer decision. Tree green and pushed
 at every step; nothing is half-done.
+
+#### 2026-07-09 R1 DONE [x]: clean-slate purge of shims, legacy names, compatibility machinery
+
+**Item.** R1 (Wave 8 release; depends: -; Decision D14). First runway item.
+
+**Preconditions (recorded before editing).** Enumerated the shim surface: `FuseDeprecatedTools`
+(15 shims: fuse_toc, fuse_skeleton, fuse_search, fuse_focus, fuse_changes, fuse_ask, fuse_dotnet,
+fuse_generic, fuse_index, fuse_map, fuse_localize, fuse_resolve, fuse_neighbors, fuse_signatures,
+fuse_changeset) registered via `.WithTools<FuseDeprecatedTools>()` in
+[McpServeCommand.cs:101](../src/Host/Fuse.Cli/Commands/McpServeCommand.cs#L101); the two name
+arrays in [McpServeIntegrationTests.cs](../tests/Fuse.Cli.Tests/Mcp/McpServeIntegrationTests.cs)
+and [FuseDeprecatedToolsTests.cs](../tests/Fuse.Cli.Tests/Mcp/FuseDeprecatedToolsTests.cs). No
+legacy env-var acceptance survived K1 (grep found none). Retired MCP tool names lived only in
+site docs plus source comments/strings; the CLI subcommands (`fuse map|localize|resolve|index`,
+space form) are live commands and NOT shims (confirmed in
+[Program.cs](../src/Host/Fuse.Cli/Program.cs)), so they stay.
+
+**Shipped.**
+- Deleted `FuseDeprecatedTools.cs` and `FuseDeprecatedToolsTests.cs`; removed the
+  `.WithTools<FuseDeprecatedTools>()` registration.
+- Purged the dead changeset workflow retained only behind the shim: `FuseTools.FuseChangesetAsync`,
+  its helpers `RenderDiagnoses` and `DiscoverBuildTargetAsync`, the `ChangesetSessions` property,
+  and the orphaned Core class `ChangesetSessionStore` (+ `ChangesetDiagnosis`) with its test file.
+- Integration test now asserts exactly the nine loop tools and zero shims (one array, no shim
+  call, renamed to `StdioServer_ListsExactlyTheNineLoopTools_...`).
+- Swept every retired MCP tool name from code: the `fuse_find` and `fuse_context` tool
+  Descriptions (agent-facing), the TOC and tiered-emission breadcrumb strings, the not-in-index
+  and public-API-undetermined error hints, the repair-packet hint, and the XML docs on
+  `FuseTools`, `LocalizationFormatter`, `IWorkspaceIndexStore`, `SearchQuery`,
+  `SemanticUpgradeSupervisor`, and a test comment. Retired-name index hints now read
+  `fuse_workspace action=index`.
+- Rewrote `McpInstallService.RuleBody` (live product output written into users' instruction
+  files) from the retired fuse_toc/search/focus/changes list to the 9-tool loop surface;
+  updated `McpInstallTests` assertions to match.
+- Docs: `reference/mcp-tools.mdx` (dropped the shim paragraph, the `fuse_changeset dissolved`
+  framing, and all "folded/formerly" notes); the scenario, start, concepts, internals,
+  performance, and latency pages (retired names -> current tools/CLI, via a subagent, verified);
+  `project/changelog.mdx`; README tool table + example; LAUNCH; briefing.md tool-surface section
+  + lineage notes.
+- `CHANGELOG.md` consolidated from ~1124 lines of intermediate/3.x/2.x history into a single
+  capability-organized `[4.0.0]` entry describing the product as it ships (versioning note: v4 is
+  the first public release).
+- AGENTS.md: the upgrade invariant rewritten to apply from the first public tag (v4) onward (no
+  shims in v4 because nothing was released to break; the shim requirement binds from v4 forward),
+  and the MCP Tools section's shim sentence removed.
+
+**Commands / gates.**
+- `dotnet build Fuse.slnx -c Release` -> 0 errors (96 warnings, pre-existing CS1573 param-doc).
+- `dotnet test Fuse.slnx -c Release --no-build` -> all suites pass after updating the
+  `table-of-contents.golden` breadcrumb line (the one intended failure: SampleShop TOC golden);
+  golden test re-run green (1/1).
+- `dotnet format Fuse.slnx --verify-no-changes` -> clean (exit 0).
+- `npm run build` in `site/` -> exit 0 (static export succeeds).
+- Repo-wide grep for shim types (`FuseDeprecatedTools`, `ChangesetSessionStore`) and every retired
+  MCP tool name over `*.cs/*.md/*.mdx/*.json/*.ps1`, excluding `roadmap/` and `site/.next/`:
+  returns nothing.
+
+**Deviations.** Removed the whole dead changeset workflow (not only the shim), because it was
+compatibility machinery reachable by no live tool and carried the `fuse_changeset` name; verified
+self-contained (only its own tests referenced it) before deleting, so no cascade. briefing.md
+retired-name references were cleaned in place here to satisfy the grep gate; its full narrative
+refresh remains R3's scope.
+
+**Gate.** Zero shims; suite green; grep clean outside roadmap/; site builds -> PASS. Fallback:
+none needed (no external users, D14).
+
+**Next action.** Start R2 (remove the VS Code extension and its mirror surface; depends: -; D15).
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

@@ -101,15 +101,15 @@ public static class TableOfContentsBuilder
         switch (detail)
         {
             case TableOfContentsDetail.PathsOnly:
-                sb.Append("     Type outlines omitted to fit the size budget; call fuse_skeleton for signatures.\n");
+                sb.Append("     Type outlines omitted to fit the size budget; call fuse_context for skeleton-tier signatures.\n");
                 break;
             case TableOfContentsDetail.Directories:
-                sb.Append("     Large codebase: showing directories and aggregate token costs only. Call fuse_toc\n");
-                sb.Append("     on a subdirectory, or fuse_search/fuse_focus, to drill into files.\n");
+                sb.Append("     Large codebase: showing directories and aggregate token costs only. Call fuse_workspace\n");
+                sb.Append("     (action=map) on a subdirectory, or fuse_find, to drill into files.\n");
                 break;
         }
 
-        sb.Append("     Fetch a file's full content with fuse_focus, fuse_search, or by path. -->\n");
+        sb.Append("     Fetch a file's full content with fuse_context, fuse_find, or by path. -->\n");
 
         if (detail == TableOfContentsDetail.Directories)
         {

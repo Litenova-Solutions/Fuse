@@ -59,7 +59,7 @@ Measured on NodaTime (512 files, 7,657 symbols, restore on) with `fuse eval perf
 | Syntax tier served (first answer, no MSBuild, no embedding) | about 20 seconds |
 | Full semantic pass (background, MSBuild + embedding) | about 70 seconds |
 
-With the syntax-first path the first answer does not wait on the MSBuild load: time to a usable syntax-tier index is about 20 seconds versus about 70 seconds for the full pass, a 3.5x reduction. The residual 20 seconds is the file scan, the parallel parse, and the full-text index construction (the subword, stem, and comment fields computed per chunk), plus first-call JIT, not MSBuild. The explicit `fuse index` command and the `fuse_index` tool stay synchronous full-semantic passes, since those are deliberate build-the-index calls where waiting is expected.
+With the syntax-first path the first answer does not wait on the MSBuild load: time to a usable syntax-tier index is about 20 seconds versus about 70 seconds for the full pass, a 3.5x reduction. The residual 20 seconds is the file scan, the parallel parse, and the full-text index construction (the subword, stem, and comment fields computed per chunk), plus first-call JIT, not MSBuild. The explicit `fuse index` command and the `fuse_workspace` tool's `action=index` stay synchronous full-semantic passes, since those are deliberate build-the-index calls where waiting is expected.
 
 Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. The numbers above run through an in-process warm store; the `fuse mcp serve` host holds the same store resident, so a resident session sees the same warm latencies after its one-time startup.
 

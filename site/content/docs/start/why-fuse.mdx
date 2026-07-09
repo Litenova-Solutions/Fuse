@@ -108,8 +108,9 @@ State the value against the three things you would otherwise reach for, stronges
    types and methods; the skeleton render tier removes 39 to 56 percent for an
    architecture view.
 
-Fuse is not only one call. Across a task it is a few cheap calls (survey with `fuse_map`,
-localize with `fuse_localize`, resolve wiring with `fuse_resolve`, review with
+Fuse is not only one call. Across a task it is a few cheap calls (survey with
+`fuse_workspace` (`action=map`), localize with `fuse_find` (`kind=task`), resolve wiring
+with `fuse_find` (`kind=service|request|route|config`), review with
 `fuse_review`) instead of dozens of blind reads, and a `sessionId` means later calls do
 not resend files already returned. A packer dumps once; it cannot refine. See
 [How Fuse works](/docs/concepts/how-fuse-works) and

@@ -18,8 +18,6 @@ Choosing a tool:
 - Use `fuse_context` after `fuse_find`, unless you want one-shot context.
 - Use `fuse_find` with `kind=symbol|path|text` for exact lookup, or `kind=neighbors` to explore the callers and implementers of a symbol.
 
-Every retired or folded name (`fuse_index`, `fuse_map`, `fuse_localize`, `fuse_resolve`, `fuse_neighbors`, `fuse_signatures`, `fuse_changeset`, and the older V2 names) stays registered as a deprecation shim that returns a message naming its replacement, so a client that cached an older tool list gets clear guidance instead of an opaque Unknown tool error. Reconnect the MCP server to refresh the tool list.
-
 ## fuse_workspace
 
 Workspace status and lifecycle: the loop's first stop and the one explicit tree-write path. Select the operation with `action`.
@@ -40,11 +38,9 @@ Workspace status and lifecycle: the loop's first stop and the one explicit tree-
 | `content` | string | required (`apply`) | For `apply`: the full new content to write |
 | `write` | bool | false | For `apply`: actually write (otherwise a dry run) |
 
-(The former `fuse_index` and `fuse_map` tools folded into this tool; their old names remain as deprecation shims.)
-
 ## Task localization (fuse_find kind=task)
 
-Localize a task to ranked candidate files and symbols with `fuse_find` and `kind=task` (formerly the standalone `fuse_localize` tool, now folded). Returns candidates with reasons and token costs, no source bodies. The cheap first step of an iterative workflow; follow with `fuse_context`. Pass the task as `query`.
+Localize a task to ranked candidate files and symbols with `fuse_find` and `kind=task`. Returns candidates with reasons and token costs, no source bodies. The cheap first step of an iterative workflow; follow with `fuse_context`. Pass the task as `query`.
 
 ### The graded response
 
@@ -65,11 +61,11 @@ or a name from the navigation map, to get a confident answer.
 
 ## Wiring resolution (fuse_find kind=service|request|route|config)
 
-Deterministically resolve .NET wiring with `fuse_find`: `kind=service` (to its implementation), `request` (to its handler), `route` (to its action), or `config` (to its options type). No source bodies. Pass the identifier as `query`. (Formerly the standalone `fuse_resolve` tool, now folded; the old name remains a deprecation shim.)
+Deterministically resolve .NET wiring with `fuse_find`: `kind=service` (to its implementation), `request` (to its handler), `route` (to its action), or `config` (to its options type). No source bodies. Pass the identifier as `query`.
 
 ## fuse_context
 
-Plan and emit context (source bodies at mixed render tiers, a semantic manifest, and per-file provenance) for a set of seeds. Feed it the file paths from `fuse_localize` or the names from `fuse_resolve`.
+Plan and emit context (source bodies at mixed render tiers, a semantic manifest, and per-file provenance) for a set of seeds. Feed it the file paths from `fuse_find` (`kind=task`) or the names it resolves from wiring.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -111,18 +107,16 @@ With `handoff=true` the tool returns a paste-ready PR body instead of the review
 The find union: locate what a task needs, keyed by `kind`. One tool for exact lookup, wiring resolution, signatures, neighbors, and task localization, so a client learns one entry point instead of five. The `query` carries the input for the selected kind.
 
 - **Exact lookup** (`kind=symbol|path|text|all`): a symbol by name, a file by path fragment, or text by full-text search. Use instead of broad grep when the name or path is known.
-- **Wiring** (`kind=service|request|route|config`): resolve the query to its implementation, handler, action, or options type (folds the former `fuse_resolve`).
-- **`kind=signatures`**: the query symbol's exact signature (folds `fuse_signatures`). When a resident workspace serves the root (`FUSE_RESIDENT`), a qualified name (a namespace-qualified type, or `Type.Member`) resolves from the compiler's real metadata, so a referenced package's API answers from the compiler rather than the store - the hallucinated-package-API check. Without a resident workspace, or for a name it does not resolve, the store-backed signature index answers.
-- **`kind=neighbors`**: the query symbol's callers and implementers, ranked with provenance (folds `fuse_neighbors`).
-- **`kind=task`**: rank candidate files and symbols for the query, with the graded refuse-and-route contract (folds `fuse_localize`; see [The graded response](#the-graded-response)).
+- **Wiring** (`kind=service|request|route|config`): resolve the query to its implementation, handler, action, or options type.
+- **`kind=signatures`**: the query symbol's exact signature. When a resident workspace serves the root (`FUSE_RESIDENT`), a qualified name (a namespace-qualified type, or `Type.Member`) resolves from the compiler's real metadata, so a referenced package's API answers from the compiler rather than the store - the hallucinated-package-API check. Without a resident workspace, or for a name it does not resolve, the store-backed signature index answers.
+- **`kind=neighbors`**: the query symbol's callers and implementers, ranked with provenance.
+- **`kind=task`**: rank candidate files and symbols for the query, with the graded refuse-and-route contract (see [The graded response](#the-graded-response)).
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
 | `query` | string | required | The name, path fragment, text, wiring identifier, or task |
 | `path` | string | `.` | Workspace directory |
 | `kind` | string | `all` | `symbol`, `path`, `text`, `all`, `service`, `request`, `route`, `config`, `signatures`, `neighbors`, or `task` |
-
-(The former `fuse_localize`, `fuse_resolve`, `fuse_neighbors`, and `fuse_signatures` tools folded into this tool; their old names remain as deprecation shims.)
 
 ## fuse_refactor
 
@@ -225,13 +219,11 @@ Run the covering tests for a symbol: the tests that reach it through the persist
 
 ## Exact signatures (fuse_find kind=signatures)
 
-Look up a symbol's exact signature (declared signature, kind, accessibility, containing type, and location) with `fuse_find` and `kind=signatures`, the compiler-shaped answer to "what is the exact shape of this member" instead of grep-and-read. A signature is recorded at the semantic tier; in syntax mode a symbol may have no recorded signature, and the tool says so rather than inventing one. Pass the symbol name as `query`. (Formerly the standalone `fuse_signatures` tool, now folded; the old name remains a deprecation shim. Answering over referenced-assembly metadata when a resident workspace serves the root is a tracked follow-up.)
+Look up a symbol's exact signature (declared signature, kind, accessibility, containing type, and location) with `fuse_find` and `kind=signatures`, the compiler-shaped answer to "what is the exact shape of this member" instead of grep-and-read. A signature is recorded at the semantic tier; in syntax mode a symbol may have no recorded signature, and the tool says so rather than inventing one. Pass the symbol name as `query`. When a resident workspace serves the root (`FUSE_RESIDENT`), a qualified name resolves from the compiler's real metadata, so a referenced package's API answers from the compiler rather than the store.
 
-## The propose-verify-apply flow (fuse_changeset dissolved)
+## The propose-verify-apply flow
 
-The speculative staging workflow dissolved in the eight-tool reshape: instead of a stateful changeset session, the loop is direct. Diagnose a proposed single-file edit by passing its content to `fuse_check` (the speculative typecheck, oracle-grade when tier-1 is available). Make compiler-executed edits with `fuse_refactor` (each returns a verified staged diff or abstains). Select the covering tests for a changed symbol with `fuse_impact` (which lists them) or run them with `fuse_test`. When you choose to commit, write the result to the working tree with `fuse_workspace action=apply` (the one explicit write path, a dry run unless `write=true`). Nothing is written until that apply. (The old `fuse_changeset` name remains a deprecation shim naming this flow.)
-
-Only `promote` writes to disk, and only when called. A `discard` (or never promoting) leaves the working tree exactly as it was.
+The loop is direct: there is no stateful staging session. Diagnose a proposed single-file edit by passing its content to `fuse_check` (the speculative typecheck, oracle-grade when tier-1 is available). Make compiler-executed edits with `fuse_refactor` (each returns a verified staged diff or abstains). Select the covering tests for a changed symbol with `fuse_impact` (which lists them) or run them with `fuse_test`. When you choose to commit, write the result to the working tree with `fuse_workspace action=apply` (the one explicit write path, a dry run unless `write=true`). Nothing is written until that apply.
 
 ## fuse_reduce
 

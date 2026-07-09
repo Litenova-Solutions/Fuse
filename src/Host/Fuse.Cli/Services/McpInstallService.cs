@@ -335,12 +335,12 @@ public sealed class McpInstallService
         "\n",
         "## Fuse: codebase context",
         "",
-        "This repo has the Fuse MCP server. For gathering codebase context, prefer the `fuse_*` tools over reading files one by one or grepping broadly:",
+        "This repo has the Fuse MCP server. For gathering codebase context and verifying edits, prefer the `fuse_*` tools over reading files one by one or grepping broadly:",
         "",
-        "- Start with `fuse_toc` to survey structure and per-file token costs.",
-        "- Use `fuse_search` to find where a feature or concept lives (ranked files plus dependencies, reduced).",
-        "- Use `fuse_focus` for a known type or file and its dependency neighborhood.",
-        "- Use `fuse_changes` to scope a pull request or diff review.",
+        "- Start with `fuse_workspace` (action=map) to survey structure, symbols, routes, and counts.",
+        "- Use `fuse_find` with kind=task to find where a feature lives, or kind=service|request|route|config to resolve wiring; then `fuse_context` to read the selected seeds.",
+        "- Use `fuse_review` to scope a pull request or diff review.",
+        "- The verified-edit loop: after an edit run `fuse_check`; before a signature change run `fuse_impact`; before done run `fuse_review`.",
         "",
         "Use built-in grep and file reads for exact string or symbol lookups, where they are the better tool.");
 

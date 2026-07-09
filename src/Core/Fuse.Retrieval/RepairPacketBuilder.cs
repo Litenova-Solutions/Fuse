@@ -108,7 +108,7 @@ public sealed partial class RepairPacketBuilder
 
         if (candidates.Count == 0)
             return new RepairPacket(diagnostic.Id,
-                $"The type '{name}' is not in the index. Check the name, add a using directive, or run fuse_index if it is new.",
+                $"The type '{name}' is not in the index. Check the name, add a using directive, or run fuse_workspace action=index if it is new.",
                 [], []);
 
         return new RepairPacket(diagnostic.Id,

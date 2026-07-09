@@ -47,7 +47,7 @@ public sealed record SymbolListItem(
 
 /// <summary>
 ///     An exact signature lookup result for a symbol, returned by the batch signature query behind
-///     <c>fuse_signatures</c>: the compiler-shaped answer to "what is the exact shape of this member".
+///     <c>fuse_find</c> (kind=signatures): the compiler-shaped answer to "what is the exact shape of this member".
 /// </summary>
 /// <param name="Name">The simple symbol name.</param>
 /// <param name="Kind">The symbol kind (type, method, property, and so on).</param>

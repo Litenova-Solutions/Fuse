@@ -116,7 +116,7 @@ public sealed partial class FuseTools
                 .ToList();
             if (forName.Count == 0)
             {
-                builder.AppendLine("  no match in the index (check the name, or run fuse_index if the file is new).");
+                builder.AppendLine("  no match in the index (check the name, or run fuse_workspace action=index if the file is new).");
                 continue;
             }
 
@@ -245,7 +245,7 @@ public sealed partial class FuseTools
         }
 
         if (impact.Count == 0 && mode == "syntax")
-            builder.AppendLine("  (no edges: syntax mode has no semantic graph; run fuse_index on a semantically loadable checkout)");
+            builder.AppendLine("  (no edges: syntax mode has no semantic graph; run fuse_workspace action=index on a semantically loadable checkout)");
 
         builder.AppendLine();
         builder.AppendLine(await BuildImpactApiSurfaceLineAsync(store, symbol, mode, cancellationToken));
@@ -777,124 +777,6 @@ public sealed partial class FuseTools
     }
 
     /// <summary>
-    ///     The speculative staging area (M1): stage single-file edits into a changeset session, diagnose them
-    ///     with the speculative typecheck, select the covering tests, then promote the diff or discard it. The
-    ///     working tree is touched only on an explicit promote.
-    /// </summary>
-    /// <param name="indexer">The semantic indexer (builds the index on first use, for the select operation).</param>
-    /// <param name="op">The lifecycle operation: create, stage, list, diagnose, select, promote, or discard.</param>
-    /// <param name="path">The workspace directory.</param>
-    /// <param name="session">The session id (required for every op except create).</param>
-    /// <param name="file">The repo-relative file path (for stage).</param>
-    /// <param name="content">The proposed full new content of the file (for stage).</param>
-    /// <param name="limit">The maximum covering tests to return (for select).</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>The operation's result, or an error/abstention string.</returns>
-    // Dissolved in U1: the changeset workflow is now check-with-content (diagnose) + fuse_refactor (edits) +
-    // fuse_workspace action=apply (write, D2). The method is retained dormant behind the shim for one major.
-    public static async Task<string> FuseChangesetAsync(
-        SemanticIndexer indexer,
-        [Description("The lifecycle operation: create, stage, list, diagnose, select, promote, or discard.")] string op = "",
-        [Description("Absolute or relative path to the workspace directory.")] string path = ".",
-        [Description("The session id (required for every op except create).")] string? session = null,
-        [Description("The repo-relative file path (for stage).")] string? file = null,
-        [Description("The proposed full new content of the file (for stage).")] string? content = null,
-        [Description("Maximum covering tests to return (for select).")] int limit = 50,
-        CancellationToken cancellationToken = default)
-    {
-        var root = Path.GetFullPath(path);
-        var store = FuseTools.ChangesetSessions;
-        switch (op.Trim().ToLowerInvariant())
-        {
-            case "create":
-                return $"session {store.Create(root)} created. Stage edits, then diagnose/select, then promote or discard.";
-
-            case "stage":
-                if (string.IsNullOrWhiteSpace(session) || string.IsNullOrWhiteSpace(file) || content is null)
-                    return "Error: stage needs session, file, and content.";
-                return store.Stage(session, file, content)
-                    ? $"staged {file} in session {session} (not written to disk)."
-                    : $"unknown session {session}.";
-
-            case "list":
-                var staged = session is null ? null : store.StagedFiles(session);
-                return staged is null ? $"unknown session {session}." : $"staged in {session}: {string.Join(", ", staged)}";
-
-            case "diagnose":
-                if (string.IsNullOrWhiteSpace(session))
-                    return "Error: diagnose needs session.";
-                var target = await DiscoverBuildTargetAsync(root, cancellationToken);
-                if (target is null)
-                    return "cannot verify: no solution or project found to build. fuse_changeset diagnose abstains.";
-                var diagnoses = await store.DiagnoseAsync(
-                    session, target, new Fuse.Semantics.BuildCaptureClient(), TimeSpan.FromMinutes(10), cancellationToken,
-                    // Resident-first (S1): when a live resident workspace serves this root, each staged file is
-                    // diagnosed oracle-grade from the held compilation with no build; else the build-capture path runs.
-                    (file, content) => ResidentWorkspaces.TryCheckOverlay(root, file, content, cancellationToken));
-                if (diagnoses is null)
-                    return $"unknown session {session}.";
-                return RenderDiagnoses(diagnoses);
-
-            case "select":
-                if (string.IsNullOrWhiteSpace(session))
-                    return "Error: select needs session.";
-                await using (var idx = await OpenIndexedAsync(indexer, path, cancellationToken))
-                {
-                    var tests = await store.SelectCoveringTestsAsync(session, idx, new GraphNeighborhoodExplorer(idx), limit, cancellationToken);
-                    if (tests is null)
-                        return $"unknown session {session}.";
-                    return tests.Count == 0
-                        ? "covering tests: 0 (a lower bound from R5 tests edges; none reached the changed symbols)"
-                        : $"covering tests ({tests.Count}, a lower bound; run with your own --filter):\n  " + string.Join("\n  ", tests);
-                }
-
-            case "promote":
-                if (string.IsNullOrWhiteSpace(session))
-                    return "Error: promote needs session.";
-                var written = await store.PromoteAsync(session, cancellationToken);
-                return written is null
-                    ? $"unknown session {session}."
-                    : $"promoted session {session}: wrote {written.Count} file(s) to the working tree: {string.Join(", ", written)}";
-
-            case "discard":
-                if (string.IsNullOrWhiteSpace(session))
-                    return "Error: discard needs session.";
-                return store.Discard(session)
-                    ? $"discarded session {session}; the working tree is untouched."
-                    : $"unknown session {session}.";
-
-            default:
-                return "Error: op must be one of create, stage, list, diagnose, select, promote, discard.";
-        }
-    }
-
-    private static async Task<string?> DiscoverBuildTargetAsync(string root, CancellationToken cancellationToken)
-    {
-        var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
-        return discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
-    }
-
-    private static string RenderDiagnoses(IReadOnlyList<Fuse.Retrieval.ChangesetDiagnosis> diagnoses)
-    {
-        var builder = new StringBuilder();
-        foreach (var d in diagnoses)
-        {
-            if (!d.Check.Verified)
-                builder.AppendLine($"{d.File}: cannot verify ({d.Check.Reason}).");
-            else if (d.Check.IsClean)
-                builder.AppendLine($"{d.File}: clean (no errors in the changed document).");
-            else
-            {
-                builder.AppendLine($"{d.File}: {d.Check.Diagnostics.Count} diagnostic(s):");
-                foreach (var diag in d.Check.Diagnostics)
-                    builder.AppendLine($"  {diag.Severity} {diag.Id} at line {diag.Line}: {diag.Message}");
-            }
-        }
-
-        return builder.ToString().TrimEnd();
-    }
-
-    /// <summary>
     ///     Deterministically resolves .NET wiring to its target(s): no source bodies.
     /// </summary>
     /// <param name="indexer">The semantic indexer (builds the index on first use).</param>
@@ -980,14 +862,14 @@ public sealed partial class FuseTools
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The emitted context payload.</returns>
     [McpServerTool(Name = "fuse_context", ReadOnly = true)]
-    [Description("Plan and emit context (source bodies, mixed render tiers, manifest, provenance) for a set of seeds. Feed it the file paths from fuse_localize or the names from fuse_resolve. Pass a sessionId to elide files already sent in the session.")]
+    [Description("Plan and emit context (source bodies, mixed render tiers, manifest, provenance) for a set of seeds. Feed it the file paths from fuse_find (kind=task) or the names it resolves from wiring kinds. Pass a sessionId to elide files already sent in the session.")]
     public static async Task<string> FuseContextAsync(
         SemanticIndexer indexer,
         ContentReductionPipeline reductionPipeline,
         ContextSessionStore sessionStore,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("Symbol seeds.")] string[]? seeds = null,
-        [Description("File path seeds (for example the paths returned by fuse_localize).")] string[]? files = null,
+        [Description("File path seeds (for example the paths returned by fuse_find kind=task).")] string[]? files = null,
         [Description("Service seeds to resolve and expand.")] string[]? services = null,
         [Description("Request/command seeds to resolve and expand.")] string[]? requests = null,
         [Description("Config section seeds to resolve and expand.")] string[]? configs = null,
@@ -1236,7 +1118,7 @@ public sealed partial class FuseTools
         if (mode == "syntax" && allMembers)
         {
             return $"public API surface: undetermined for {symbol} in syntax mode (member accessibility is not "
-                + "resolved); run fuse_index on a semantically loadable checkout to classify.";
+                + "resolved); run fuse_workspace action=index on a semantically loadable checkout to classify.";
         }
 
         return $"public API surface: {symbol} is not on the public/protected surface; a change is internal to the assembly.";

@@ -200,15 +200,15 @@ public sealed class McpInstallTests
             CancellationToken.None);
 
         var claude = await File.ReadAllTextAsync(Path.Combine(root, "CLAUDE.md"));
-        Assert.Contains("fuse_search", claude);
+        Assert.Contains("fuse_find", claude);
         Assert.Contains("<!-- fuse:begin", claude);
 
         var cursor = await File.ReadAllTextAsync(Path.Combine(root, ".cursor", "rules", "fuse.mdc"));
         Assert.Contains("alwaysApply: true", cursor);
-        Assert.Contains("fuse_toc", cursor);
+        Assert.Contains("fuse_workspace", cursor);
 
         var copilot = await File.ReadAllTextAsync(Path.Combine(root, ".github", "copilot-instructions.md"));
-        Assert.Contains("fuse_focus", copilot);
+        Assert.Contains("fuse_review", copilot);
     }
 
     [Fact]

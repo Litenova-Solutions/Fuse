@@ -53,7 +53,7 @@ public sealed class SemanticUpgradeSupervisor : IAsyncDisposable
             }
             catch (OperationCanceledException)
             {
-                // Expected on shutdown; the syntax-tier index remains usable and a later fuse_index can retry.
+                // Expected on shutdown; the syntax-tier index remains usable and a later index pass can retry.
             }
             catch (Exception ex)
             {

@@ -13,8 +13,8 @@ There are three ways to seed a request.
 
 | Way | Tool / flag | Seeds on | Use when |
 |-----|-------------|----------|----------|
-| Localize | `fuse_localize` / `fuse localize` | The top-ranked files and symbols for a task | You have a topic but not a name |
-| Resolve | `fuse_resolve` / `fuse resolve` | The real target of a service, request, route, config, or symbol | The task names wiring |
+| Localize | `fuse_find` (kind=task) / `fuse localize` | The top-ranked files and symbols for a task | You have a topic but not a name |
+| Resolve | `fuse_find` (kind=service\|request\|route\|config) / `fuse resolve` | The real target of a service, request, route, config, or symbol | The task names wiring |
 | Review | `fuse_review` / `fuse review --changed-since` | Files changed since a git ref, plus their blast radius | Reviewing a branch or pull request |
 
 ## Localize: Scope by Task
@@ -63,7 +63,7 @@ agent that does not yet know the right symbol uses the map to find its next prob
 
 Strictness is opt-in with a graceful default. The default is best-effort-plus-flag, so a
 client that cannot refine still gets the partial set with a low-confidence flag. Passing
-`strict` (the `--strict` flag, or `strict: true` to `fuse_localize`) hard-requires an
+`strict` (the `--strict` flag, or `strict: true` to `fuse_find` with `kind=task`) hard-requires an
 anchor: an insufficient request returns only the navigation map, no file list. The
 no-signal classifier (a merge, dependency-bump, or CI title with no code reference) abstains
 in both modes, because a title that names no code can only return noise.

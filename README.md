@@ -88,7 +88,7 @@ fuse_impact  symbol="IBasketService.Checkout"
   -> callers, implementers, referencing types from the typed graph
 
 # Resolve .NET wiring: which implementation does the container give for IBasketService?
-fuse_resolve  service="IBasketService"
+fuse_find  kind="service" query="IBasketService"
   -> BasketService  (src/ApplicationCore/Services/BasketService.cs)
      edge: di_resolves_to  (registered services.AddScoped<IBasketService, BasketService>())
 
@@ -102,20 +102,15 @@ The rest of the surface, by what an agent does with it:
 
 | Verb | What it does |
 |------|--------------|
-| `fuse_check` | Typecheck a proposed single-file edit against the build-captured compilation; repair packets on API-shape errors. Oracle-grade, or abstains. |
-| `fuse_impact` | Blast radius for a symbol: callers, implementers, referencing types from the typed graph. |
-| `fuse_refactor` | Compiler-executed solution-wide rename staged as a diff; verified before it is returned. |
-| `fuse_changeset` | Speculative staging area: stage, diagnose, select, promote, or discard edits without touching the tree until an explicit promote. |
-| `fuse_resolve` | Resolve wiring: service to implementation, request to handler, route to action, config to options. |
-| `fuse_review` | Diff-first semantic impact and packed context for a change. |
-| `fuse_signatures` | Exact batch signatures for named symbols in one call, from the symbol store. |
-| `fuse_map` | Workspace map (symbols, routes, counts). The cheap first call. |
-| `fuse_localize` | Rank candidate files for a task. Refuses and hands back a map when the task names no code. |
+| `fuse_workspace` | Status and lifecycle: index mode and verify grade (`status`), build or refresh (`index`), symbols/routes/counts (`map`), per-project load diagnosis (`doctor`), and the one explicit tree-write path (`apply`). The cheap first call. |
+| `fuse_find` | The find union: exact symbol/path/text lookup; resolve wiring (service, request, route, config); a symbol's exact signature; its callers and implementers; or rank candidate files for a task (refuses and hands back a map when the task names no code). |
+| `fuse_check` | Typecheck a proposed single-file edit against the build-captured compilation; repair packets on API-shape errors. Oracle-grade, build-grade, or abstains. |
+| `fuse_impact` | Blast radius for a symbol: callers, implementers, referencing types from the typed graph; also a NuGet upgrade break set. |
+| `fuse_test` | Run the covering tests for a symbol, scoped by filter so the whole suite never runs. |
+| `fuse_refactor` | Compiler-executed, verify-gated refactors staged as a diff: rename, change-signature, extract-interface, move-type, apply-codefix. |
+| `fuse_review` | Diff-first semantic impact and packed context for a change, with the public API delta and a PR handoff packet. |
 | `fuse_context` | Emit scoped, reduced source (with provenance) for selected seeds. |
-| `fuse_neighbors` | Graph neighborhood of a file, callers and implementers of a symbol, central files of an area. |
-| `fuse_find` | Exact symbol, path, or text lookup. |
 | `fuse_reduce` | Compact a known set of files or raw content. |
-| `fuse_index` | Build or refresh the persistent semantic index (the read tools build it on first use). |
 
 Tool parameters and the full catalog: [MCP Tools](https://fuse.codes/docs/reference/mcp-tools).
 

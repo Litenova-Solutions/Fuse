@@ -96,9 +96,6 @@ public sealed class McpServeCommand
             })
             .WithStdioServerTransport()
             .WithTools<FuseTools>()
-            // Register the deprecation shims for the retired V2 tool names so a client that cached the old
-            // surface across an upgrade gets an actionable message instead of an opaque Unknown tool error.
-            .WithTools<FuseDeprecatedTools>()
             .WithResources<FuseResources>()
             // Register the playbook prompts (U3): selectable, anchored plans that teach the verified-edit loop.
             .WithPrompts<FusePrompts>();

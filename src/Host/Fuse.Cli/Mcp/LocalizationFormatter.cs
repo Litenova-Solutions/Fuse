@@ -4,7 +4,7 @@ using Fuse.Retrieval;
 namespace Fuse.Cli.Mcp;
 
 /// <summary>
-///     Renders a <see cref="LocalizationResult" /> as text for the CLI and the <c>fuse_localize</c> MCP tool,
+///     Renders a <see cref="LocalizationResult" /> as text for the CLI and the <c>fuse_find</c> (kind=task) MCP path,
 ///     including the graded signal-sufficiency state and, when the result is not confident, the navigation map
 ///     that lets a caller refine its query.
 /// </summary>

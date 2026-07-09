@@ -13,8 +13,8 @@ The persistent index is warm; each verb is the primitive the matching MCP tool c
 |-------------|----:|----:|----:|----:|
 | Exact symbol lookup (`fuse_find`) | 2.0 ms | 2.3 ms | 0.1 ms | 0.2 ms |
 | Blast radius (`fuse_impact`) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
-| Localize (`fuse_localize`) | 23.1 ms | 24.0 ms | 2.6 ms | 4.2 ms |
-| Resolve symbol (`fuse_resolve`) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
+| Localize (`fuse_find` kind=task) | 23.1 ms | 24.0 ms | 2.6 ms | 4.2 ms |
+| Resolve symbol (`fuse_find` kind=service) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
 | Review plan (`fuse_review`) | 95.6 ms | 100.2 ms | 38.3 ms | 41.6 ms |
 | Single-file incremental re-index | 19.6 ms | 22.1 ms | n/a | n/a |
 

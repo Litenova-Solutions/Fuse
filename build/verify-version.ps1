@@ -24,7 +24,6 @@ $server = Read-Json "mcp-registry/server.json"
 
 $sources = @(
     [pscustomobject]@{ Source = "Directory.Build.props"; Version = $dotnetVersion }
-    [pscustomobject]@{ Source = "ext/vscode/package.json"; Version = (Read-Json "ext/vscode/package.json").version }
     [pscustomobject]@{ Source = "mcp-registry/server.json (server)"; Version = $server.version }
     [pscustomobject]@{ Source = "mcp-registry/server.json (package)"; Version = $server.packages[0].version }
     [pscustomobject]@{ Source = "site/package.json"; Version = (Read-Json "site/package.json").version }
@@ -49,7 +48,6 @@ if ($licenseText -notmatch "Apache License") {
 $licenseSources = @(
     [pscustomobject]@{ Source = "Directory.Build.props"; Value = ([xml](Get-Content (Join-Path $root "Directory.Build.props"))).Project.PropertyGroup.PackageLicenseExpression | Where-Object { $_ } | Select-Object -First 1 }
     [pscustomobject]@{ Source = "src/Host/Fuse.Cli/Fuse.Cli.csproj"; Value = ([xml](Get-Content (Join-Path $root "src/Host/Fuse.Cli/Fuse.Cli.csproj"))).Project.PropertyGroup.PackageLicenseExpression | Where-Object { $_ } | Select-Object -First 1 }
-    [pscustomobject]@{ Source = "ext/vscode/package.json"; Value = (Read-Json "ext/vscode/package.json").license }
 )
 $badLicense = @($licenseSources | Where-Object { $_.Value -and $_.Value -ne "Apache-2.0" })
 if ($badLicense.Count -gt 0) {

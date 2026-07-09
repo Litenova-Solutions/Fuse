@@ -21,14 +21,17 @@ if (-not (Test-Path $fusePath)) { throw "fuse.dll not found at $fusePath; build 
 
 # The workspaces to probe. group=fixture is engineered coverage (deterministic); group=corpus is the local
 # pinned bake-off subset (real-world). apply=$true exercises the install-free overlay remedy and re-probes.
-# apply=$true exercises the install-free overlay remedy and re-probes; it never edits the repository (the overlay
-# is a temp config passed by RestoreConfigFile). On a repo with no install-free blocker the apply is a no-op.
+# apply=$true exercises the overlay remedy and re-probes; it never edits the repository (the overlay is a temp
+# config passed by RestoreConfigFile). On a repo with no matching blocker the apply is a no-op. allowInstall=$true
+# also permits the consent-gated SDK-band install remedy (D17); used for the sdk-pin fixture, which installs the
+# pinned .NET band into an isolated directory (never the machine-wide SDK) and re-probes with it.
 $targets = @(
-    @{ Name = "broken-feed";    Group = "fixture"; Path = "tests/benchmarks/fixtures/remediation/broken-feed"; Apply = $true },
-    @{ Name = "Scrutor";        Group = "corpus";  Path = "tests/benchmarks/.corpus/Scrutor";                  Apply = $true },
-    @{ Name = "Specification";  Group = "corpus";  Path = "tests/benchmarks/.corpus/Specification";            Apply = $true },
-    @{ Name = "NodaTime";       Group = "corpus";  Path = "tests/benchmarks/.corpus/NodaTime";                 Apply = $true },
-    @{ Name = "eShopOnWeb";     Group = "corpus";  Path = "tests/benchmarks/.corpus/eShopOnWeb";               Apply = $true }
+    @{ Name = "broken-feed";    Group = "fixture"; Path = "tests/benchmarks/fixtures/remediation/broken-feed"; Apply = $true;  AllowInstall = $false },
+    @{ Name = "sdk-pin";        Group = "fixture"; Path = "tests/benchmarks/fixtures/remediation/sdk-pin";      Apply = $true;  AllowInstall = $true },
+    @{ Name = "Scrutor";        Group = "corpus";  Path = "tests/benchmarks/.corpus/Scrutor";                  Apply = $true;  AllowInstall = $false },
+    @{ Name = "Specification";  Group = "corpus";  Path = "tests/benchmarks/.corpus/Specification";            Apply = $true;  AllowInstall = $false },
+    @{ Name = "NodaTime";       Group = "corpus";  Path = "tests/benchmarks/.corpus/NodaTime";                 Apply = $true;  AllowInstall = $false },
+    @{ Name = "eShopOnWeb";     Group = "corpus";  Path = "tests/benchmarks/.corpus/eShopOnWeb";               Apply = $true;  AllowInstall = $false }
 )
 
 # The bake-off OSS set (n4-bakeoff.json) not provisioned locally, listed so the report never reads as complete
@@ -55,6 +58,7 @@ foreach ($t in $targets) {
 
     $args = @($fusePath, "up", $path, "--json", "--probe")
     if ($t.Apply) { $args += "--apply" }
+    if ($t.AllowInstall) { $args += "--allow-install" }
     Write-Host "PROBE $($t.Name) ($($t.Group))..."
     $json = & dotnet @args 2>$null
     try {

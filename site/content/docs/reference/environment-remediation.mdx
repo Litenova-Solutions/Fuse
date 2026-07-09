@@ -17,6 +17,10 @@ Central Package Management needs a single package source or a source mapping. Mu
 
 The installed .NET SDK does not support the targeted version. The project targets an SDK band the machine does not have. Remedy: install the pinned SDK from global.json behind `--allow-install`; consent-gated because it changes the machine.
 
+### SDK_NOT_FOUND
+
+The SDK band pinned in `global.json` is not installed. The .NET host cannot select an SDK and fails before the build begins (distinct from NETSDK1045, which fires when a present SDK is too old for the target framework). Remedy: install the pinned band from `global.json` via the dotnet-install script into an isolated directory behind `--allow-install`; consent-gated because it changes the machine.
+
 ### MSB4018
 
 An MSBuild task failed to load or execute. Often a missing workload or SDK-band task assembly, which a workload install can fix (consent-gated). It can also be a repository-custom task, in which case Fuse classifies rather than remediates.

@@ -16,6 +16,14 @@
     "explanation": "The project targets an SDK band the machine does not have. Fuse can install the pinned SDK from global.json behind --allow-install; consent-gated because it changes the machine."
   },
   {
+    "id": "SDK_NOT_FOUND",
+    "pattern": "A compatible .NET SDK was not found",
+    "title": "The SDK band pinned in global.json is not installed",
+    "remedy": "install-sdk",
+    "requiresConsent": true,
+    "explanation": "global.json pins an SDK band the machine does not have, so the .NET host cannot select an SDK and fails before the build (distinct from NETSDK1045, which fires when a present SDK is too old for the target framework). Fuse can install the pinned band from global.json via the dotnet-install script into an isolated directory behind --allow-install; consent-gated because it changes the machine."
+  },
+  {
     "id": "MSB4018",
     "pattern": "MSB4018",
     "title": "An MSBuild task failed to load or execute",

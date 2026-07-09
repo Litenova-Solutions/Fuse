@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Synthetic C1 fixture for the NETSDK1045 (SDK band) remedy class. global.json pins SDK band 7.0.100 with
-       rollForward disabled; on a machine without a 7.0 SDK the build fails with NETSDK1045 (or the host resolver
-       reports the missing band). The consent-gated remedy (fuse up --apply --allow-install) installs the pinned
-       band via the dotnet-install script into an isolated directory and re-probes with that SDK's dotnet. .NET 7
-       is a real released band, so the remedy is genuinely applicable; the flip is validated where installs are
-       permitted (see the C1 progress log). -->
+  <!-- Synthetic C1 fixture for the SDK-band remedy class. global.json pins SDK band 7.0.100 with rollForward
+       disabled; on a machine without a 7.0 SDK the .NET host reports "A compatible .NET SDK was not found"
+       (classified SDK_NOT_FOUND) before the build begins. The consent-gated remedy (fuse up, apply plus
+       allow-install) installs the pinned band via the dotnet-install script into an isolated directory and
+       re-probes with that SDK's dotnet. .NET 7 is a real released band, so the remedy is genuinely applicable;
+       the flip is validated where installs are permitted (see the C1 progress log). -->
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>

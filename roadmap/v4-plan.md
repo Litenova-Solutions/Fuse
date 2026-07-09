@@ -6304,9 +6304,18 @@ marketplace publish is [maintainer]). (5) docs (capture page + AGENTS.md bundle-
 (6) Validation: on a no-restore machine (redirected NuGet cache) rehydrate NodaTime from a bundle
 and run a known-bad `fuse_check`; record end-to-end time + bundle sizes to performance.json.
 
-**Next action.** Implement C2 sub-step 1: add the complog export to the build-capture worker and the
-`fuse capture --out` command with the fail-closed secret scan; then the bundle format + `fuse index
---from-capture`.
+**API note (de-risking sub-step 1).** `Basic.CompilerLog.Util` 0.9.47 is the pinned version
+(`Directory.Packages.props:23`). Its `CompilerLogUtil` type exposes `GetOrCreateCompilerLogStream`
+and `ReadLogFromZip` (a complog is a zip), and `CompilerCallReaderUtil.Create` already reads both
+binlog and complog (used by the rehydrator). The exact binlog->complog export call in 0.9.47 needs a
+5-minute verification spike (the package XML doc omits undocumented members; likely
+`CompilerLogUtil.ConvertBinaryLog(binlogPath, complogStream, predicate)` or writing through
+`GetOrCreateCompilerLogStream`). Verify the signature first, then wire the export.
+
+**Next action.** Implement C2 sub-step 1: verify the `CompilerLogUtil` complog-export signature, add
+the complog export to the build-capture worker (a new `--capture-bundle <out>` mode) and the
+`fuse capture --out` command with the fail-closed `DefaultSecretRedactor` scan of command lines and
+generated docs; then the bundle format + `fuse index --from-capture`.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

@@ -28,5 +28,8 @@
          MSBuildWorkspace (only Basic.CompilerLog plus the analyzers, which are plain Roslyn), so the process-level
          conflict that blocks the two loaders in one process does not arise. -->
     <ProjectReference Include="..\..\Core\Fuse.Semantics\Fuse.Semantics.csproj" />
+    <!-- The secret redactor (C2): the worker fail-closed-scans the exported compiler log's generated documents
+         and additional files before the bundle ships, using the same detector the reduction pipeline uses. -->
+    <ProjectReference Include="..\..\Core\Fuse.Reduction\Fuse.Reduction.csproj" />
   </ItemGroup>
 </Project>

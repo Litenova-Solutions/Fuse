@@ -75,6 +75,27 @@ public sealed class BuildCaptureRehydrator
                 return CaptureResult.Failed($"compiler-log export produced no file ({reason})");
             }
 
+            // Fail-closed secret scan (C2): scan the build-injected artifacts the complog newly exposes (generated
+            // documents and additional files) with the shipped redactor. Any finding, or any error that prevents a
+            // complete scan, deletes the complog and fails the capture, naming the match class and artifact but
+            // never the secret value. A partial capture that might ship a secret is never preferred over abstaining.
+            ComplogSecretFinding? finding;
+            try
+            {
+                finding = ComplogSecretScanner.ScanCompilerLog(complogPath, redactor: null, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                TryDelete(complogPath);
+                return CaptureResult.Failed($"secret scan could not complete ({ex.GetType().Name}); the compiler log was not kept (fail closed)");
+            }
+
+            if (finding is not null)
+            {
+                TryDelete(complogPath);
+                return CaptureResult.Failed($"secret scan failed closed: a {finding.Kind} secret was detected in {finding.Label}; the compiler log was not kept");
+            }
+
             // Rehydrate the graph from the binlog too, so the bundle carries the extracted graph next to the complog.
             return RehydrateFromBinlog(binlogPath, cancellationToken);
         }

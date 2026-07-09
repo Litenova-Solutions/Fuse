@@ -63,6 +63,10 @@ public sealed class UpCommand
     [CliOption(Name = "--json", Description = "Emit the machine-readable JSON report (per-project tier, remedy, workable-subset) instead of the human-readable text.")]
     public bool Json { get; set; }
 
+    /// <summary>Run a real dotnet build to probe tier-1 (build-capture) reachability and classify the blocker from the build output.</summary>
+    [CliOption(Name = "--probe", Description = "Run a real dotnet build to probe tier-1 (build-capture) reachability. Surfaces restore/build failures (NU1507, NETSDK1045, MSB4018) the design-time load cannot, and classifies the blocker. Slower (a full build); off by default.")]
+    public bool Probe { get; set; }
+
     /// <summary>
     ///     Runs the up command.
     /// </summary>
@@ -88,13 +92,32 @@ public sealed class UpCommand
         // the re-attempted load; null until an install-free remedy is actually applied.
         RemediationPlan? afterPlan = null;
         var applied = false;
+        UpBuildProbe? probeBefore = null;
+        UpBuildProbe? probeAfter = null;
+        var probe = new TierOneBuildProbe(TimeSpan.FromMinutes(10));
+
+        // The tier-1 build probe (C1): the design-time load can succeed while a real dotnet build fails on a
+        // restore-only failure (NU1507) or an SDK/workload gap, so tier-1 (build-capture oracle grade) reachability
+        // is answered by running the build and classifying its output against the knowledge base. Off unless
+        // --probe, because it costs a full build.
+        BuildProbeResult? probeResult = null;
+        if (Probe)
+        {
+            if (!Json)
+                _consoleUI.WriteStep("Probing tier-1 (dotnet build) reachability");
+            probeResult = await probe.ProbeAsync(root, null, context.CancellationToken);
+            probeBefore = UpBuildProbe.From(probeResult);
+            if (!Json)
+                _consoleUI.WriteResult(RenderProbe("tier-1 build probe", probeResult));
+        }
 
         // For the NU1507 remedy (Central Package Management with no source mapping) the fix is an overlay
-        // NuGet.config, which installs nothing and is never written into the repository. Generate it now to a
-        // temp file so the concrete remedy is in hand: pass it to restore/build with --configfile. (Auto-applying
-        // it through the index/build pipeline and re-attempting tier-1 is the C1 apply step; this hands back the
-        // ready-to-use overlay without touching the repo.)
-        var hasOverlayRemedy = plan.Remediable.Any(i => i.Signature?.Remedy == "overlay-nuget-source-mapping");
+        // NuGet.config, which installs nothing and is never written into the repository. The blocker is detected by
+        // the tier-1 build probe (the design-time load does not surface NU1507) or, as a fallback, by the load-plan
+        // classification. Generate the overlay to a temp file (passed via --configfile), never into the repo.
+        var probeSaysOverlay = probeResult is { Succeeded: false, Blocker.Remedy: "overlay-nuget-source-mapping" };
+        var hasOverlayRemedy = probeSaysOverlay
+            || plan.Remediable.Any(i => i.Signature?.Remedy == "overlay-nuget-source-mapping");
         if (hasOverlayRemedy)
         {
             var overlay = NuGetOverlayConfig.Build(NuGetOverlayConfig.ReadSources(root));
@@ -139,6 +162,16 @@ public sealed class UpCommand
                         _consoleUI.WriteResult("\nafter applying the overlay:");
                         _consoleUI.WriteResult(RemediationReport.Render(afterPlan));
                     }
+
+                    // Re-probe tier-1 with the overlay config so the report shows whether the build now reaches
+                    // build-capture grade (the overlay supplies the source mapping the build's restore needs).
+                    if (Probe)
+                    {
+                        var reprobe = await probe.ProbeAsync(root, overlayPath, context.CancellationToken);
+                        probeAfter = UpBuildProbe.From(reprobe);
+                        if (!Json)
+                            _consoleUI.WriteResult(RenderProbe("tier-1 build probe (after overlay)", reprobe));
+                    }
                 }
             }
         }
@@ -165,9 +198,27 @@ public sealed class UpCommand
                 root,
                 applied,
                 UpRepoReport.From(plan),
-                afterPlan is null ? null : UpRepoReport.From(afterPlan));
+                afterPlan is null ? null : UpRepoReport.From(afterPlan),
+                probeBefore,
+                probeAfter);
             Console.Out.WriteLine(UpReportJson.Serialize(report));
         }
+    }
+
+    // Renders a tier-1 build-probe result for the human-readable report: whether the build reached tier-1, and the
+    // classified blocker (or that the failure is unrecognized) when it did not.
+    private static string RenderProbe(string label, BuildProbeResult result)
+    {
+        if (!result.Attempted)
+            return $"{label}: not attempted (no build target, or the toolchain is unavailable).";
+        if (result.TimedOut)
+            return $"{label}: timed out.";
+        if (result.Succeeded)
+            return $"{label}: tier-1 reachable (dotnet build succeeded).";
+        if (result.Blocker is null)
+            return $"{label}: build failed, unrecognized blocker (classify-only). Tail:\n{Tail(result.Output)}";
+        var consent = result.Blocker.RequiresConsent ? " (needs --allow-install)" : string.Empty;
+        return $"{label}: build failed -> {result.Blocker.Id} {result.Blocker.Title} -> remedy: {result.Blocker.Remedy}{consent}";
     }
 
     // The last few lines of a tool output, so an error report shows the actionable tail without flooding the console.

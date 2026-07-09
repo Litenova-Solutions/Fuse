@@ -70,19 +70,60 @@ public sealed record UpRepoReport(
 }
 
 /// <summary>
-///     The result of running <c>fuse up</c> on one workspace (C1): the plan before any remedy, the plan after the
-///     install-free remedies were applied (null when nothing was applied), and whether an apply ran. A consumer
-///     reads <see cref="After" /> when present, else <see cref="Before" />.
+///     A tier-1 build-probe result in the machine-readable report (C1): whether a real <c>dotnet build</c> reached
+///     tier-1 (build-capture oracle grade), and the classified blocker when it did not. This is the signal the
+///     design-time load tier cannot give, because a restore-only failure (NU1507) or an SDK/workload gap fails the
+///     build while the design-time load still resolves a compilation.
+/// </summary>
+/// <param name="Attempted">Whether the probe ran a build (false when no build target was found or the toolchain was absent).</param>
+/// <param name="Succeeded">Whether the build reached tier-1 (exited zero).</param>
+/// <param name="TimedOut">Whether the build exceeded the timeout.</param>
+/// <param name="BlockerId">The classified blocker signature id (for example <c>NU1507</c>), or null.</param>
+/// <param name="BlockerTitle">The blocker's one-line title, or null.</param>
+/// <param name="BlockerRemedy">The remedy key for the blocker, or null.</param>
+/// <param name="RequiresConsent">Whether the blocker's remedy needs <c>--allow-install</c>.</param>
+public sealed record UpBuildProbe(
+    bool Attempted,
+    bool Succeeded,
+    bool TimedOut,
+    string? BlockerId,
+    string? BlockerTitle,
+    string? BlockerRemedy,
+    bool RequiresConsent)
+{
+    /// <summary>Projects a <see cref="BuildProbeResult" /> into the machine-readable report shape.</summary>
+    /// <param name="result">The probe result.</param>
+    /// <returns>The JSON-friendly snapshot.</returns>
+    public static UpBuildProbe From(BuildProbeResult result) =>
+        new(
+            result.Attempted,
+            result.Succeeded,
+            result.TimedOut,
+            result.Blocker?.Id,
+            result.Blocker?.Title,
+            result.Blocker?.Remedy,
+            result.Blocker?.RequiresConsent ?? false);
+}
+
+/// <summary>
+///     The result of running <c>fuse up</c> on one workspace (C1): the design-time load plan before any remedy, the
+///     plan after the install-free remedies were applied (null when nothing was applied), and the optional tier-1
+///     build-probe results (the true oracle-reachability signal). A consumer reads <see cref="After" /> and
+///     <see cref="BuildProbeAfter" /> when present, else the before values.
 /// </summary>
 /// <param name="Root">The workspace root the report is for.</param>
 /// <param name="Applied">Whether an install-free remedy was applied and the load re-attempted.</param>
-/// <param name="Before">The plan before any remedy.</param>
-/// <param name="After">The plan after the install-free remedies, or null when none applied.</param>
+/// <param name="Before">The design-time load plan before any remedy.</param>
+/// <param name="After">The design-time load plan after the install-free remedies, or null when none applied.</param>
+/// <param name="BuildProbeBefore">The tier-1 build probe before any remedy, or null when the probe did not run.</param>
+/// <param name="BuildProbeAfter">The tier-1 build probe after the install-free remedies, or null.</param>
 public sealed record UpResult(
     string Root,
     bool Applied,
     UpRepoReport Before,
-    UpRepoReport? After);
+    UpRepoReport? After,
+    UpBuildProbe? BuildProbeBefore = null,
+    UpBuildProbe? BuildProbeAfter = null);
 
 /// <summary>
 ///     Source-generated JSON context for the <c>fuse up</c> machine-readable report, per the project invariant

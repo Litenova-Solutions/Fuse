@@ -6169,6 +6169,34 @@ recorded honestly. Gates: build 0 errors, full suite pass (Fuse.Semantics 178), 
 flip; then evaluate and record the final re-derived C1 Gate verdict and set C1 to [x] or record the
 honest partial with the Fallback.
 
+#### 2026-07-09 C1 Scrutor real-world flip: bounded by a repo-code residual (NU1008), honestly
+
+**Finding.** `fuse up --probe --apply` on the pinned Scrutor: the tier-1 probe detects NU1507
+(overlay remedy), the overlay restore clears NU1507 (fuse's part works), but the restore then fails
+with NU1008 ("PackageReference items cannot define a value for Version ... projects using Central
+Package Management must define a Version value on a PackageVersion item") across Scrutor.csproj and
+Scrutor.Tests.csproj. NU1008 is a repository-configuration error (Scrutor's csproj files carry
+`Version` on `PackageReference` items while CPM is on) that the current SDK band enforces more
+strictly than the SDK Scrutor was written against; it is repo code fuse must not edit (the C1 hard
+rule). So Scrutor does not fully flip to tier-1: the environment part (NU1507) is remediated, the
+residual (NU1008) is out of scope by design. This is the honesty contract working - fuse fixes what
+it owns and declines the repo-code residual - not a fuse limitation. Recorded in up-report.json as
+NU1507-blocked, applied=false (the overlay restore's overall exit is non-zero due to NU1008).
+
+**C1 status read.** Engineered coverage is complete: both environment remedy classes flip
+end-to-end on fixtures (NU1507 -> overlay -> tier-1; SDK_NOT_FOUND -> install .NET 7 -> tier-1).
+Real-world: NU1507 reproduces on Scrutor and the overlay clears it; a full corpus flip is bounded by
+repo-code residuals (Scrutor NU1008) which are correctly classify-only. Per D17 the OSS bake-off set
+reconstruction (13 repos under D:\fuse-work, cold NuGet) remains the "real-world flips where
+possible" tail; it is network- and build-heavy and best done in a fresh session. C1 stays [>] with
+the engine and engineered gate complete and this honest real-world read recorded.
+
+**Next action.** C1 sub-step 5b (fresh session, heavy): clone the OSS bake-off set at pinned
+commits under D:\fuse-work with a cold NuGet cache, run the up-report over them for real-world
+flips, then evaluate the final re-derived C1 Gate verdict (set [x] or record the honest partial
+with the Fallback). If the OSS provisioning is deferred, the C1 engine + engineered coverage stand
+as the shippable remediation capability.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

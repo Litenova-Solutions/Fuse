@@ -6425,6 +6425,34 @@ check. Then 2d: the in-repo GitHub Action (capture on main, upload the bundle; m
 (no-restore NodaTime rehydrate + a known-bad fuse_check; end-to-end time + bundle sizes to
 performance.json) to meet the C2 Gate.
 
+#### 2026-07-09 C2 sub-step 2c DONE: bundle round-trip + refusal + secret tests
+
+**Shipped.** `CaptureComplogRoundTripTests.Bundle_round_trip_preserves_the_captured_graph`
+(Fuse.BuildCaptureWorker.Tests): builds a fixture, exports a portable complog, writes a bundle from
+the captured graph (`CaptureBundleIo.Write`), then reads the bundle back with NO build and asserts
+edge-set equality - same projects, and per project the same symbol/node/edge/type counts AND the
+same extracted symbol identities (name set), proving the graph records themselves round-trip through
+graph.json, not just the counts. The manifest survives too (format version, commit, project count),
+and `IsCompatibleWithRunningBuild` holds. Guarded: abstains with a reason if the SDK cannot build
+here, matching the other worker integration tests. Removed a dangling orphaned doc comment at the
+end of `BuildCaptureRehydrator.cs` (CS1587) surfaced while wiring the test.
+
+**Coverage complete for 2c.** The three refusal/safety arms the sub-step named were already unit-
+tested and remain green: version-mismatch refusal (`CaptureManifestTests`: incompatible major.minor
++ unknown bundle format, 4 tests), planted-secret fail-closed (`ComplogSecretScannerTests`, 3 tests
+scanning generated trees + additional texts, never source), and the complog rehydrate round-trip
+(the existing `Exported_complog_rehydrates_the_compilation_without_a_build`).
+
+**Commands.** `dotnet test tests/Fuse.BuildCaptureWorker.Tests -c Release --no-build --filter
+CaptureComplogRoundTrip` -> Passed 2, Failed 0. Full build/test/format gates run before commit.
+
+**Gate.** build 0 errors; round-trip test PASS (2/2). Version-refusal and secret arms PASS.
+
+**Next action.** C2 sub-step 2d: the in-repo GitHub Action (capture on main, upload the bundle;
+marketplace publish [maintainer]), the capture docs page + the AGENTS.md bundle-version invariant,
+and the C2 Validation (no-restore NodaTime rehydrate + a known-bad fuse_check; end-to-end time +
+bundle sizes recorded to performance.json). Then mark C2 [x].
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

@@ -90,7 +90,7 @@ All numbers come from `tests/benchmarks/results` (the recorded data) and the ben
 
 ## Working a plan item
 
-Forward work is organized as a dependency-ordered program in [roadmap/v4.1-plan.md](roadmap/v4.1-plan.md). That file is the execution law; this section is the pointer plus the guardrails inline so they are read before any edit.
+Forward work is organized as a dependency-ordered program in [roadmap/v4-plan.md](roadmap/v4-plan.md) (the live program; the original oracle-wave plan is archived at the end of the same file). That file is the execution law; this section is the pointer plus the guardrails inline so they are read before any edit.
 
 - **Reading order for a fresh session.** The plan's Execution protocol section in full, then its Decision records, its Metrics dictionary, its Master checklist (the single source of item status), then the item you are about to work including its Preconditions and Gate.
 - **Item lifecycle.** Status lives only in the Master checklist: `[ ]` todo, `[>]` in progress, `[x]` done (gate recorded green in the progress log), `[!]` blocked (progress log names the blocker), `[-]` descoped (progress log names the written decision). Never record status inside item bodies.

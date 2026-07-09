@@ -61,9 +61,10 @@ public sealed class TierOneBuildProbe
     /// <param name="rootDirectory">The workspace root to probe.</param>
     /// <param name="overlayConfigPath">An optional overlay <c>NuGet.config</c> to pass by <c>--configfile</c> (the NU1507 remedy for the re-probe), or null.</param>
     /// <param name="cancellationToken">A token to cancel the probe.</param>
+    /// <param name="dotnetExecutable">The <c>dotnet</c> executable to build with; defaults to the system <c>dotnet</c>. Set to a freshly installed SDK's <c>dotnet</c> for the re-probe after an SDK-band install.</param>
     /// <returns>The probe result: whether the build succeeded and, on failure, the classified blocker.</returns>
     public async Task<BuildProbeResult> ProbeAsync(
-        string rootDirectory, string? overlayConfigPath, CancellationToken cancellationToken)
+        string rootDirectory, string? overlayConfigPath, CancellationToken cancellationToken, string dotnetExecutable = "dotnet")
     {
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await new DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
@@ -71,7 +72,7 @@ public sealed class TierOneBuildProbe
         if (target is null)
             return new BuildProbeResult(Attempted: false, Succeeded: false, TimedOut: false, Blocker: null, Output: string.Empty);
 
-        var psi = new ProcessStartInfo("dotnet")
+        var psi = new ProcessStartInfo(dotnetExecutable)
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,

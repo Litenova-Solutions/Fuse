@@ -6096,6 +6096,38 @@ behind `--allow-install`, add the SDK-pin and missing-workload synthetic fixture
 up-report over them. Then sub-step 5: provision the OSS bake-off set under D:\fuse-work and
 complete Scrutor's real flip; finalize up-report.json against the re-derived gate.
 
+#### 2026-07-09 C1 gate sub-step 4 DONE (engine): consent-gated SDK-band install-execution
+
+**Shipped.** `InstallRemediationApplier` (Fuse.Semantics.Remediation): `TryReadPinnedSdkBand(root)`
+reads the `sdk.version` a repo pins in the nearest global.json; `InstallSdkAsync(band, installDir, ct)`
+downloads the official dotnet-install script (pwsh `.ps1` on Windows, `.sh` elsewhere) and runs it
+to install the band into an isolated directory (never the machine-wide SDK), returning that
+install's `dotnet` executable so the tier-1 re-probe builds with it (no global side effect). Bounded
+argument lists, timed, killed on timeout. `TierOneBuildProbe.ProbeAsync` gained an optional
+`dotnetExecutable` so the re-probe uses the freshly installed SDK. `fuse up --allow-install` now
+executes the SDK-band remedy: on a NETSDK1045 blocker it reads the band, installs it under
+`%LocalAppData%/Fuse/sdks/<band>`, and re-probes with the installed dotnet, recording the flip in
+`buildProbeAfter`. Without `--allow-install` the consent-gated remedy is reported, never run
+(Do-not honored). The MSB4018 workload class is NOT auto-installed: the workload id is not reliably
+derivable (a repository-custom task looks identical), so `fuse up` reports it with the safe
+`dotnet workload restore` step rather than guessing a workload - honest classification over a wrong
+install. Synthetic SDK-pin fixture added (`tests/benchmarks/fixtures/remediation/sdk-pin`, global.json
+pins 7.0.100 rollForward=disable; .NET 7 is a real installable band, so the remedy applies). Tests:
+band-reader (reads the pin; null when unpinned), remediation suite green.
+
+**Gates.** build 0 errors; full suite pass; format clean (verified before commit).
+
+**Deviations / honest bounds.** The actual SDK-install RUN (dotnet-install downloading ~200 MB of
+.NET 7, then the re-probe flip) is machine-changing and network-bound; it is the sub-step 5
+validation, run behind `--allow-install` and recorded, not executed as part of this engine commit.
+Workload auto-install is deliberately not implemented (ambiguous id) - report-only, per the KB's own
+caveat.
+
+**Next action.** C1 sub-step 5: run the SDK-pin install validation (`fuse up
+--probe --apply --allow-install` on the sdk-pin fixture -> NETSDK1045 -> install 7.0 -> tier-1 flip),
+add it to up-report.json; complete Scrutor's real NU1507 flip; best-effort provision the OSS bake-off
+set under D:\fuse-work; then evaluate the re-derived C1 Gate and record it.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

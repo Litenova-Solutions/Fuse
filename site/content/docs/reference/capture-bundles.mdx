@@ -1,0 +1,58 @@
+---
+title: Capture bundles
+description: A portable capture bundle carries a build's exact Roslyn compilation so a machine that cannot restore or build the repository still gets oracle-grade answers, produced in CI and consumed with fuse index --from-capture.
+---
+
+The one environment where a serious repository builds by definition is its own CI. A capture bundle records the tier-1 compilation there, once, and every other machine gets the oracle without building: `fuse index --from-capture <bundle>` rehydrates the exact compilation and serves `fuse_check`, `fuse_impact`, and covering-test selection at oracle grade, with no restore and no build.
+
+## What a bundle is
+
+`fuse capture --out <bundle>` builds the workspace once through the out-of-process build-capture worker, then packages three files into the bundle directory:
+
+- `capture.complog` - the portable compiler log (Basic.CompilerLog format): the exact compiler inputs, self-contained, with none of the MSBuild binary log's environment variables. This is what rehydrates the compilation without a build.
+- `graph.json` - the extracted semantic graph (symbols, nodes, edges, routes, DI registrations, options bindings) the worker produced from the captured compilation.
+- `manifest.json` - versioned metadata: the bundle format version, the producing `fuse` version, the source commit, the capture time, and a per-project summary (type, symbol, node, and edge counts).
+
+```bash
+fuse capture ./MyService --out ./fuse-capture
+# on another machine, with no restore and no build:
+fuse index ./MyService --from-capture ./fuse-capture
+```
+
+## Secret posture
+
+The bundle is fail-closed on secrets:
+
+- It never contains the MSBuild binary log. An MSBuild binlog captures environment variables, so shipping one would leak whatever secrets the build environment held. Only the portable compiler log ships, which carries compiler inputs, not environment.
+- The capture scans the generated documents and additional files in the compiler log with the same redactor `fuse` uses everywhere (`DefaultSecretRedactor`). Source files are the repository's own code and are not scanned; generated and additional content is, because that is where a build can inject a value.
+- Any finding fails the capture closed: no bundle is written, and the report names the match class (for example `connection-string` or `github-token`), never the matched value.
+
+## Version compatibility
+
+A bundle is refused rather than rehydrated into a wrong-shaped store when it is incompatible with the running `fuse`:
+
+- The manifest stamps a `BundleFormatVersion`. A bundle whose format version differs from the running build's is refused (re-capture with the running version).
+- The manifest stamps the producing `fuse` version. A bundle produced by an incompatible `major.minor` is refused by the same `FuseBuildInfo.IsCompatible` check the on-disk index uses.
+
+In both cases `fuse index --from-capture` prints an actionable reason and writes nothing, so an upgrade never silently rehydrates a stale-shaped graph.
+
+## CI setup
+
+The in-repo GitHub Action at `.github/workflows/capture.yml` is the reference: on every push to `main` it builds the solution, points `FUSE_BUILD_CAPTURE_WORKER` at the built worker, runs `fuse capture`, and uploads the bundle as a workflow artifact. Adapt it to your repository by pointing the capture target at your solution or the project you serve most. The workflow uploads only to the workflow's own artifacts; publishing a bundle to a hosted or shared tier is a separate, deliberate step.
+
+The minimal shape of the capture step:
+
+```yaml
+- name: Build
+  run: dotnet build YourSolution.slnx --configuration Release
+- name: Capture bundle
+  shell: pwsh
+  run: |
+    $env:FUSE_BUILD_CAPTURE_WORKER = (Resolve-Path "path/to/fuse-build-capture.dll").Path
+    fuse capture . --out fuse-capture
+- name: Upload
+  uses: actions/upload-artifact@v4
+  with:
+    name: fuse-capture-${{ github.sha }}
+    path: fuse-capture/
+```

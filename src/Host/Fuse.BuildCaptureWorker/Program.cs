@@ -32,6 +32,26 @@ if (args.Length == 4 && args[0] == "--check")
     return check.Verified ? 0 : 1;
 }
 
+// --check-complog <complogPath> <relativeFilePath> <newContentFile>: speculative typecheck of a proposed
+// single-file patch against a captured compiler log, WITHOUT building (C2). The oracle-grade check answer on a
+// machine that cannot restore or build; the compilation is rehydrated from the bundle's portable compiler log.
+if (args.Length == 4 && args[0] == "--check-complog")
+{
+    CheckResult check;
+    try
+    {
+        var newContent = await File.ReadAllTextAsync(args[3]);
+        check = rehydrator.CheckFromLog(args[1], args[2], newContent, CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        check = CheckResult.Abstain($"check-complog error: {ex.Message}");
+    }
+
+    Console.Out.WriteLine(JsonSerializer.Serialize(check, BuildCaptureJsonContext.Default.CheckResult));
+    return check.Verified ? 0 : 1;
+}
+
 // --capture-bundle <target> <complogOut>: build the target and export a portable compiler log (the C2 capture
 // artifact) to <complogOut>, emitting the extracted graph as JSON on stdout so the parent can package both.
 if (args.Length == 3 && args[0] == "--capture-bundle")
@@ -52,7 +72,7 @@ if (args.Length == 3 && args[0] == "--capture-bundle")
 
 if (args.Length < 2 || args[0] is not ("--build" or "--binlog"))
 {
-    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --capture-bundle <target> <complogOut> | --check <target> <file> <newContentFile>)");
+    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --capture-bundle <target> <complogOut> | --check <target> <file> <newContentFile> | --check-complog <complogPath> <file> <newContentFile>)");
     return 2;
 }
 

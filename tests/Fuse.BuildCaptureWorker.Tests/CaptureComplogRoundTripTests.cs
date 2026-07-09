@@ -127,4 +127,55 @@ public sealed class CaptureComplogRoundTripTests
             try { Directory.Delete(work, recursive: true); } catch (IOException) { }
         }
     }
+
+    // C2 gate: the oracle-grade check from a captured compiler log, WITHOUT building. Export a complog, then check a
+    // proposed edit against it with no build: a type error in the edit is reported (the oracle answer a no-restore
+    // machine gets from the bundle), and a clean edit reports no errors. This is the check answer the C2 gate names
+    // as the payoff - correct oracle-grade diagnostics on a machine that cannot restore or build.
+    [Fact]
+    public async Task CheckFromLog_reports_a_known_bad_edit_and_a_clean_edit_without_building()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-complog-check-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var complogPath = Path.Combine(work, "capture.complog");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                    <Nullable>enable</Nullable>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+
+            var rehydrator = new BuildCaptureRehydrator();
+            var target = Path.Combine(work, "Widget.csproj");
+
+            var exported = await rehydrator.ExportCompilerLogAsync(target, complogPath, TimeSpan.FromMinutes(5), CancellationToken.None);
+            if (!exported.Succeeded)
+            {
+                Assert.False(string.IsNullOrEmpty(exported.Reason));
+                return;
+            }
+
+            // A type error in the proposed edit is reported oracle-grade from the complog, with no build.
+            var bad = rehydrator.CheckFromLog(complogPath, "Widget.cs",
+                "namespace Sample; public sealed class Widget { public int Spin() => \"not an int\"; }", CancellationToken.None);
+            Assert.True(bad.Verified, $"the check should verify from the complog: {bad.Reason}");
+            Assert.Contains(bad.Diagnostics, d => d.Severity == "Error");
+
+            // A clean edit reports no errors from the same complog.
+            var good = rehydrator.CheckFromLog(complogPath, "Widget.cs",
+                "namespace Sample; public sealed class Widget { public int Spin() => 7; public int Twirl() => 8; }", CancellationToken.None);
+            Assert.True(good.Verified, $"the clean check should verify from the complog: {good.Reason}");
+            Assert.DoesNotContain(good.Diagnostics, d => d.Severity == "Error");
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
 }

@@ -610,12 +610,29 @@ public sealed partial class FuseTools
         // the held compilation (no per-check rebuild). With no resident workspace wired the provider returns null and
         // this is a no-op, so the build-capture-worker path below is unchanged. Analyzer parity (S4): the single-file
         // verify defaults analyzers on, so the check reports what CI's build step enforces, not just compiler errors.
+        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+
         Fuse.Indexing.CheckResult? oracle = null;
         var residentDiagnostics = await ResidentWorkspaces.TryCheckOverlayAsync(root, file, content, analyzers, cancellationToken);
         if (residentDiagnostics is not null)
             oracle = Fuse.Indexing.CheckResult.Ok(residentDiagnostics);
 
         var client = new Fuse.Semantics.BuildCaptureClient();
+
+        // Bundle oracle (C2): when the workspace was rehydrated from a capture bundle, its compiler log answers
+        // oracle-grade WITHOUT building - the whole point on a machine that cannot restore or build. Preferred over
+        // the building CheckAsync below, which would rebuild the target.
+        if (oracle is null && client.IsAvailable)
+        {
+            var complogPath = await store.GetMetaAsync(Fuse.Indexing.WorkspaceIndexStore.CaptureComplogPathMetaKey, cancellationToken);
+            if (!string.IsNullOrEmpty(complogPath) && File.Exists(complogPath))
+            {
+                var candidate = await client.CheckFromComplogAsync(complogPath, file, content, TimeSpan.FromMinutes(2), cancellationToken);
+                if (candidate.Verified)
+                    oracle = candidate;
+            }
+        }
+
         var oracleTarget = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
         if (oracle is null && client.IsAvailable && oracleTarget is not null)
         {
@@ -660,7 +677,7 @@ public sealed partial class FuseTools
         // Repair packets (R6): for the API-shape errors an agent most often hits, attach the fix context (the
         // receiver type's real members, or the nearest type names) from the persisted symbol table, so the fix
         // does not cost another round-trip. Best-effort: only diagnostics with a concrete suggestion add a packet.
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        // Reuses the store opened above for the bundle-oracle meta lookup.
         var packetBuilder = new RepairPacketBuilder(store);
         var packets = new List<RepairPacket>();
         foreach (var d in result.Diagnostics.Where(d => d.Severity == "Error"))

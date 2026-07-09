@@ -187,8 +187,31 @@ public sealed class BuildCaptureClient
     /// <param name="timeout">The maximum time to allow the worker to run.</param>
     /// <param name="cancellationToken">A token to cancel the check.</param>
     /// <returns>The diagnostics, or an abstention when the worker is unavailable or cannot verify.</returns>
-    public async Task<CheckResult> CheckAsync(
-        string buildTarget, string relativeFilePath, string newContent, TimeSpan timeout, CancellationToken cancellationToken)
+    public Task<CheckResult> CheckAsync(
+        string buildTarget, string relativeFilePath, string newContent, TimeSpan timeout, CancellationToken cancellationToken) =>
+        RunCheckAsync("--check", buildTarget, relativeFilePath, newContent, timeout, cancellationToken);
+
+    /// <summary>
+    ///     Speculatively typechecks a proposed single-file patch against a captured compiler log WITHOUT building
+    ///     (C2): the worker rehydrates the compilation from the bundle's portable compiler log and applies the patch
+    ///     in memory, returning the compiler diagnostics for the changed document. This is the oracle-grade check
+    ///     answer on a machine that cannot restore or build the repository.
+    /// </summary>
+    /// <param name="complogPath">The absolute path to the bundle's portable compiler log.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="timeout">The maximum time to allow the worker to run.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>The diagnostics, or an abstention when the worker is unavailable or the file is not in the log.</returns>
+    public Task<CheckResult> CheckFromComplogAsync(
+        string complogPath, string relativeFilePath, string newContent, TimeSpan timeout, CancellationToken cancellationToken) =>
+        RunCheckAsync("--check-complog", complogPath, relativeFilePath, newContent, timeout, cancellationToken);
+
+    // Spawns the worker's check mode (--check builds the target; --check-complog rehydrates a captured log without
+    // building) with a fixed, bounded argument list; the unbounded new content is passed via a temp file, never an
+    // argument. Both modes return a CheckResult JSON object on stdout.
+    private async Task<CheckResult> RunCheckAsync(
+        string mode, string firstArg, string relativeFilePath, string newContent, TimeSpan timeout, CancellationToken cancellationToken)
     {
         if (!IsAvailable)
             return CheckResult.Abstain("build-capture worker not configured (set FUSE_BUILD_CAPTURE_WORKER)");
@@ -205,8 +228,8 @@ public sealed class BuildCaptureClient
             };
             // Fixed, bounded argument list; the (unbounded) new content is passed via the temp file, not an arg.
             psi.ArgumentList.Add(_workerDllPath!);
-            psi.ArgumentList.Add("--check");
-            psi.ArgumentList.Add(buildTarget);
+            psi.ArgumentList.Add(mode);
+            psi.ArgumentList.Add(firstArg);
             psi.ArgumentList.Add(relativeFilePath);
             psi.ArgumentList.Add(contentFile);
 

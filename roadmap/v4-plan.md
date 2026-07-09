@@ -571,7 +571,7 @@ Wave 1: resident substrate and honesty floor
 
 Wave 2: coverage and environments
 - [x] C1 `fuse up`: the environment remediation engine (depends: X1) (2026-07-09 GATE MET: real-world SDK-band flip on Polly (SDK_NOT_FOUND -> install .NET 10.0.301 -> tier-1) + engineered end-to-end flips for NU1507 (overlay) and SDK-band (install) + 19-workspace up-report.json classifying 9 genuine failures across the reconstructed bake-off set; see the 2026-07-09 progress-log verdict. History below.) (2026-07-08: preconditions recorded; sub-steps landed - RemediationKnowledgeBase (JSON-data KB + matcher), EnvironmentRemediationPlanner (classify-and-report core), NuGetOverlayConfig (NU1507 overlay generator), RemediationReport (renderer), and the report-only `fuse up` CLI command (runs doctor + planner + report, applies nothing, never touches the repo), all gate-green. 2026-07-09: the install-free apply sub-step landed (commit 9ee296c) - EnvironmentRemediationApplier + `fuse up --apply` applies the NU1507 overlay via `dotnet restore --configfile` and re-attempts the load, install remedies gated behind --allow-install; the "broken feed repaired via overlay" integration test PASSED on real restore. BLOCKED [!] on TWO things the autonomous environment cannot supply: (1) the consent-gated install remedies (SDK band per global.json via NETSDK1045; workload via MSB4018) require actually installing software, which MACHINE PREP forbids ("install NOTHING"), so their execution path is deferred to an environment where installs are permitted; (2) the Gate ("all 11 previously-buildable reach tier-1; >=2 of 6 previously-unbuildable gain tier-1; write up-report.json over 17 repos") cannot be exercised because the current pinned 4-repo corpus builds clean (verified: Scrutor loads 2/2 oracle-grade, no NU1507 reproduced at its pinned commit) - it needs the original problematic-commit bake-off set provisioned OR a maintainer decision to re-derive the Gate against a corpus that actually fails. Unblock: a maintainer decides the Gate corpus and permits installs (or provisions a failing corpus under D:\fuse-work), then the install-execution path + the up-report.json Gate run. 2026-07-09 UNBLOCKED (D17): consent-gated installs are permitted behind --allow-install (SDK bands per global.json, workloads), and the Gate is re-derived - reconstruct the bake-off OSS set at pinned commits under a cold NuGet cache and gate on what genuinely fails, plus synthetic failing fixtures (broken feed, SDK pin, missing workload) for remedy classes that do not reproduce, recorded honestly. Remaining: exercise the install remedies, provision the gate corpus, record up-report.json against the re-derived gate. 2026-07-09 sub-steps 1-3 landed: `fuse up --json` (facf71c/5b4cb15); the tier-1 build probe (TierOneBuildProbe) that surfaces real restore/build failures the design-time load misses, plus two overlay bug fixes (UTF-8 XML declaration, relative-source-path resolution) (5cb5ba1); and the up-report harness (up-report.ps1) with the first up-report.json over 5 workspaces - NU1507 detected real-world on Scrutor and flipped end-to-end on the engineered fixture (3/5 tier-1 reachable, 2/5 NU1507). Remaining: sub-step 4 install-execution (NETSDK1045/MSB4018) + fixtures; sub-step 5 OSS provisioning + Scrutor flip completion + final gate.)
-- [ ] C2 Portable capture artifact and the CI action; secret posture (depends: C1)
+- [x] C2 Portable capture artifact and the CI action; secret posture (depends: C1) (2026-07-09 GATE MET: no-build oracle check from a bundle complog - Polly.Core rehydrate 6.8 s + oracle fuse_check 4.0 s = ~11 s on an isolated empty NUGET_PACKAGES, CS0246 correctly reported at grade oracle, under the 60 s gate; zero secret findings across 4 corpus bundles (Polly/MediatR/Newtonsoft.Json/Serilog); round-trip equality green. Shipped: complog export (1a) + fail-closed secret scan (1b) + manifest/bundle writer + `fuse capture` (2a) + `fuse index --from-capture` with version-refusal (2b) + round-trip/refusal/secret tests (2c) + `CheckFromLog`/`--check-complog`/`CheckFromComplogAsync` no-build oracle + complog-path meta + FuseCheckAsync bundle-oracle preference + capture.yml CI action + capture-bundles docs + AGENTS.md bundle-version invariant (2d). See the 2026-07-09 C2 progress-log verdict.)
 - [ ] C3 Tier-1 default-on; worker bundled (depends: C1, C2)
 - [ ] C4 Corpus v2: buildable test-oracle task set and the health gate (depends: C1, C2)
       (2026-07-09 D18: curation may start now, in parallel, with plain builds; the C1/C2
@@ -6452,6 +6452,67 @@ CaptureComplogRoundTrip` -> Passed 2, Failed 0. Full build/test/format gates run
 marketplace publish [maintainer]), the capture docs page + the AGENTS.md bundle-version invariant,
 and the C2 Validation (no-restore NodaTime rehydrate + a known-bad fuse_check; end-to-end time +
 bundle sizes recorded to performance.json). Then mark C2 [x].
+
+#### 2026-07-09 C2 GATE MET -> C2 [x]: no-build oracle check from a bundle + CI action + docs + real-repo validation
+
+**The missing link built (the C2 payoff).** Sub-steps 1-2 made a bundle portable and rehydratable,
+but `fuse_check`'s oracle path still rebuilt the target (`BuildCaptureClient.CheckAsync` ->
+worker `--check` -> `dotnet build`), so on a no-restore machine the oracle answer was unreachable.
+This sub-step wires the bundle's compiler log INTO the check:
+- `BuildCaptureRehydrator.CheckFromLog(logPath, file, newContent, ct)` - the speculative typecheck
+  core extracted from `CheckAsync`, run against a `.complog` (or binlog) with NO build.
+- worker mode `--check-complog <complogPath> <file> <newContentFile>`; `BuildCaptureClient.
+  CheckFromComplogAsync` spawns it (the check spawn logic refactored into one `RunCheckAsync`).
+- `fuse index --from-capture` stamps the bundle's complog path into index_meta
+  (`WorkspaceIndexStore.CaptureComplogPathMetaKey`); `FuseCheckAsync` reads it and prefers the
+  no-build complog oracle over the building `CheckAsync`, so a rehydrated workspace answers
+  oracle-grade without a build.
+
+**Also shipped.** `.github/workflows/capture.yml` (build -> set FUSE_BUILD_CAPTURE_WORKER -> `fuse
+capture` -> upload the bundle artifact; guards that no binlog ships; marketplace publish
+[maintainer]); the capture docs page (`site/content/docs/reference/capture-bundles.mdx`, registered
+in meta.json: bundle contents, secret posture, version compatibility, CI setup); the AGENTS.md
+bundle-version invariant.
+
+**Validation (real third-party repo, no-restore machine state).** Captured Polly.Core once (the
+producer, built with the isolated 10.0.301 the repo pins; ~1.5 min, in CI this is the norm). Then on
+an isolated empty NUGET_PACKAGES (a machine that cannot restore or build):
+- rehydrate `fuse index --from-capture`: 6.8 s, index mode SEMANTIC, 175 files, 5881 symbols, no
+  build.
+- oracle `fuse_check` from the bundle complog (worker `--check-complog`): a known-bad edit to a real
+  Polly.Core file reported `CS0246` at grade `oracle`, `IsClean:false`, in 4.0 s; a clean edit
+  reported `IsClean:true`. End-to-end rehydrate+check ~11 s, inside the 60 s gate.
+- bundle sizes across four corpus repos (complog reference-closure dominated, graph scales with
+  symbols/TFMs): Polly.Core 24 MB / 5.3 MB; MediatR 25 MB / 1.1 MB; Newtonsoft.Json 21 MB / 28.9 MB;
+  Serilog 26 MB / 6.6 MB. Zero secret findings across all four (a finding fails the capture closed).
+  All numbers -> `tests/benchmarks/results/performance.json` notes.
+
+**Tests.** `CaptureComplogRoundTripTests.CheckFromLog_reports_a_known_bad_edit_and_a_clean_edit_
+without_building` (the no-build oracle typecheck core) and `BuildCaptureClientTests.Parent_checks_a_
+patch_against_a_complog_without_building` (the process-spawn contract, grade oracle) - both green.
+Round-trip equality (2c), version-mismatch refusal (`CaptureManifestTests`), and planted-secret
+fail-closed (`ComplogSecretScannerTests`) remain green.
+
+**Commands.** `dotnet build Fuse.slnx -c Release` -> 0 errors; full `dotnet test` -> all passed;
+`dotnet format --verify-no-changes` -> 0. (Pasted at commit time.)
+
+**Deviations / honest bounds.** (1) The item Validation names NodaTime; NodaTime loads syntax-only
+under the MSBuildWorkspace loader in this environment (briefing), so it cannot produce a tier-1
+oracle bundle. Polly is used instead - a real OSS repo that provably reaches tier-1 (the C1 capstone
+flip) - which is the stronger demonstration of the gate's intent (oracle-grade, not syntax). (2) The
+consumer numbers are a single local run, not a byte-reproducible suite; recorded as environment-
+dependent notes. (3) The full corpus-wide bundle-size sweep is bounded to four repos (each capture is
+a ~1.5 min build, several pin absent SDK bands); the zero-secret-findings result holds on all four
+and the fail-closed scan is unit-covered.
+
+**Gate.** Rehydration to a correct oracle-grade check answer on the no-restore machine in under 60 s
+-> PASS (6.8 s + 4.0 s = ~11 s, grade oracle, CS0246 correctly reported). Zero unredacted findings
+across corpus bundles -> PASS (0 across 4; fail-closed scan unit-covered). Round-trip equality green
+-> PASS (2c). C2 [x].
+
+**Next action.** C3 (tier-1 default-on; worker bundled): confirm worker discovery
+(FUSE_BUILD_CAPTURE_WORKER) and whether fuse-build-capture.dll ships in the tool package today, and
+the background-upgrade supervisor default state; record both before the first edit.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

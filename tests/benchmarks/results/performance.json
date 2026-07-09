@@ -24,6 +24,9 @@
     "warm impact callers\u002Bimplementers (25x): P50 0.0 ms, P95 0.0 ms",
     "warm review plan (25x): P50 97.8 ms, P95 101.3 ms",
     "incremental re-index of src/NodaTime/IClock.cs (25x): P50 20.9 ms, P95 25.4 ms",
-    "note: timings are environment-dependent; incremental re-index updates the file\u0027s syntax rows, not cross-file semantic edges."
+    "note: timings are environment-dependent; incremental re-index updates the file\u0027s syntax rows, not cross-file semantic edges.",
+    "C2 capture bundle (no-restore consumer path, Polly.Core, isolated empty NUGET_PACKAGES): rehydrate `fuse index --from-capture` 6.8 s (index mode semantic, 175 files, 5881 symbols, no build); oracle-grade `fuse_check` from the bundle complog 4.0 s (known-bad edit -> CS0246 reported, grade oracle, no build); clean edit -> IsClean true. End-to-end rehydrate+check ~11 s, well inside the 60 s gate.",
+    "C2 bundle sizes per corpus repo (complog is reference-closure dominated, graph scales with symbol count/TFMs): Polly.Core complog 24 MB / graph 5.3 MB (5 proj); MediatR complog 25 MB / graph 1.1 MB (5); Newtonsoft.Json complog 21 MB / graph 28.9 MB (9); Serilog complog 26 MB / graph 6.6 MB (7). Zero secret findings across all four captures (a finding fails the capture closed).",
+    "note: C2 numbers are from a single local run on this machine (SDK 10.0.109 ambient; Polly.Core built with the isolated 10.0.301 the repo pins); producer-side capture build time is ~1.5 min per repo and is not the gated path (capture runs in CI)."
   ]
 }

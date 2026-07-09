@@ -5941,6 +5941,44 @@ synthetic failing fixtures (broken feed, SDK pin, missing workload) for non-repr
 classes, and record `up-report.json` against the re-derived gate. C2/C3/C4 depend on C1 being
 `[x]`, so C1's gate is the unblocker for the whole C-track.
 
+#### 2026-07-09 C1 gate RECONNAISSANCE + sub-step plan (checkpoint; item stays [>])
+
+**Preconditions recorded for the C1 gate (D17 re-derived).** The bake-off corpus
+(`tests/benchmarks/results/n4-bakeoff.json`, 2026-07-03) is 17 evaluable repos (3 clone-failed
+excluded: Refit, CommunityToolkit.dotnet, CleanArchitecture). Buildable/tier-1 (11): Specification,
+NodaTime, serilog, Polly, FluentValidation, MediatR, Newtonsoft.Json, RestSharp, AutoFixture,
+quartznet, AutoMapper. Failing (6) with their classes: Scrutor (NU1507 CPM source-mapping),
+eShopOnWeb (CS0104 repo-code, classify-only), Dapper (MSB4018 workload/task-load),
+StackExchange.Redis (MSB4018), Humanizer (NETSDK1045 SDK skew), Nancy (CS2007 repo-code). The KB
+(`src/Core/Fuse.Semantics/Remediation/remediation-kb.json`) handles the environment classes
+(NU1507 overlay, NETSDK1045 SDK-band install, MSB4018 workload install); CS0104/CS2007/CS2007 are
+repo-code and classify-only.
+
+**Environment.** D:\fuse-work exists (360 GB free on D:, 34 GB free on C: > 15 GB floor); the 4
+pinned corpus repos are checked out at `tests/benchmarks/.corpus` (Scrutor, NodaTime, Specification,
+eShopOnWeb); the OSS bake-off set is NOT cloned; `D:/fuse-work/bench` is empty.
+
+**Engine state.** `fuse up` (`UpCommand`) runs doctor + planner + `RemediationReport.Render`
+(text), `--apply` applies the NU1507 overlay via `EnvironmentRemediationApplier.ApplyOverlayRestoreAsync`
+and re-attempts the load, install remedies gated behind `--allow-install`. Proven:
+`EnvironmentRemediationApplierTests` repairs a synthetic broken-feed NU1507 fixture on a real
+restore. GAP: `fuse up` emits no machine-readable JSON, and there is NO `up-report.json` generator
+or `fuse eval up` suite yet.
+
+**Sub-step plan (committed, gate-checked across sessions):**
+1. Add a machine-readable report mode to `fuse up` (per-project tier, remedies applied, unfixables
+   with reasons, the workable-subset line) - the same shape U1 status consumes.
+2. Synthetic failing fixtures for each environment remedy class D17 names (broken feed -> NU1507;
+   SDK pin -> NETSDK1045 via a global.json pinning an absent band; missing workload -> MSB4018),
+   under `tests/benchmarks` - the deterministic "engineered coverage everywhere" spine.
+3. An up-report harness that runs `fuse up` over the fixtures + the locally-available pinned corpus
+   (4 repos) and consolidates `tests/benchmarks/results/up-report.json`; record honestly which OSS
+   repos were not provisioned (no silent tail).
+4. Best-effort: provision as much of the OSS bake-off set under D:\fuse-work as feasible for the
+   "real-world flips where possible" half; installs only behind `--allow-install`, each recorded.
+
+**Next action.** Sub-step 1: add the machine-readable JSON report to `fuse up`.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

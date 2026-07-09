@@ -6342,6 +6342,36 @@ reconstructs the compilation. Guarded to abstain if the SDK cannot build.
 into a versioned bundle), then `fuse index --from-capture <bundle>` (rehydrate with no build +
 incompatible-bundle refusal), the secret/version tests, the in-repo GitHub Action, and docs.
 
+#### 2026-07-09 C2 sub-step 1b DONE: fail-closed secret scan of the compiler log
+
+**Shipped.** `ComplogSecretScanner` (worker): `FindFirstSecret(labelled texts, ISecretRedactor)` is
+the pure, unit-testable core; `ScanCompilerLog(complogPath, redactor, ct)` reads the complog via
+`CompilerCallReaderUtil` and scans, across each C# compiler call, the generated syntax trees
+(`GetGeneratedSyntaxTrees`) and the additional files (`AdditionalTexts`) with the shipped
+`DefaultSecretRedactor`. Scope choice (documented in the type): scan the build-injected artifacts a
+bundle NEWLY exposes (generated code, config additional files), not the repository's own source
+(pre-existing exposure already in version control, and scanning it would false-positive on a
+repo's secret-handling test data). `BuildCaptureRehydrator.ExportCompilerLogAsync` now runs the
+scan after export and is fail-closed: any finding, or any error that prevents a complete scan,
+deletes the complog and returns a failure that names the match class and artifact
+(for example "a aws-access-key secret was detected in generated:Config.g.cs") but NEVER the value.
+The worker references `Fuse.Reduction` for the redactor (no MSBuildWorkspace, so no loader conflict).
+
+**Tests.** `ComplogSecretScannerTests` (3, all green): clean texts produce no finding; a planted AWS
+access key fails closed naming the class ("aws-access-key") and artifact but not the value; the
+first secret across artifacts is reported. Pure-core tests, so deterministic and build-free.
+
+**Gates.** worker builds; scanner tests green; full gates being run before commit.
+
+**Next action.** C2 sub-step 2: `fuse capture --out <bundle>` (spawn the worker `--capture-bundle`
+mode - which now exports + fail-closed-scans - then package {complog, graph bundle JSON, manifest
+stamped `FuseBuildInfo.Current` + commit + bundle-format version} into a versioned bundle);
+`fuse index --from-capture <bundle>` (rehydrate store + resident from the complog, no build; refuse
+an incompatible bundle via `FuseBuildInfo.IsCompatible`); version-refusal + round-trip tests; the
+in-repo GitHub Action (capture on main, upload artifact; marketplace publish [maintainer]); docs
+(capture page + AGENTS.md bundle-version invariant); Validation (no-restore rehydrate of NodaTime +
+known-bad fuse_check, time + bundle sizes to performance.json).
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

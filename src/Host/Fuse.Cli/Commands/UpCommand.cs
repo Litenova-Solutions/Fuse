@@ -59,6 +59,10 @@ public sealed class UpCommand
     [CliOption(Name = "--allow-install", Description = "Consent to the machine-changing install remedies (SDK, workload). Off by default; without it those remedies are reported, never run.")]
     public bool AllowInstall { get; set; }
 
+    /// <summary>Emit the machine-readable JSON report (the same shape workspace status reads) instead of the text report.</summary>
+    [CliOption(Name = "--json", Description = "Emit the machine-readable JSON report (per-project tier, remedy, workable-subset) instead of the human-readable text.")]
+    public bool Json { get; set; }
+
     /// <summary>
     ///     Runs the up command.
     /// </summary>
@@ -73,10 +77,17 @@ public sealed class UpCommand
             return;
         }
 
-        _consoleUI.WriteStep($"Planning environment remediation for {root}");
+        if (!Json)
+            _consoleUI.WriteStep($"Planning environment remediation for {root}");
         var diagnosis = await _indexer.DiagnoseLoadAsync(root, context.CancellationToken);
         var plan = new EnvironmentRemediationPlanner().Plan(diagnosis);
-        _consoleUI.WriteResult(RemediationReport.Render(plan));
+        if (!Json)
+            _consoleUI.WriteResult(RemediationReport.Render(plan));
+
+        // Track the after-apply plan so the machine-readable report (and the text "after applying" block) reflects
+        // the re-attempted load; null until an install-free remedy is actually applied.
+        RemediationPlan? afterPlan = null;
+        var applied = false;
 
         // For the NU1507 remedy (Central Package Management with no source mapping) the fix is an overlay
         // NuGet.config, which installs nothing and is never written into the repository. Generate it now to a
@@ -93,33 +104,41 @@ public sealed class UpCommand
 
             if (!Apply)
             {
-                _consoleUI.WriteResult(
-                    $"\nNU1507 overlay written to {overlayPath}\n" +
-                    $"apply it (installs nothing, never edits the repo):\n" +
-                    $"  dotnet restore --configfile \"{overlayPath}\"\n" +
-                    $"or re-run with --apply to apply it and re-attempt the load.");
+                if (!Json)
+                    _consoleUI.WriteResult(
+                        $"\nNU1507 overlay written to {overlayPath}\n" +
+                        $"apply it (installs nothing, never edits the repo):\n" +
+                        $"  dotnet restore --configfile \"{overlayPath}\"\n" +
+                        $"or re-run with --apply to apply it and re-attempt the load.");
             }
             else
             {
                 // Apply the install-free overlay remedy (Hard rule: the overlay is a temp file, never written into
                 // the repo) and re-attempt the load once (Do-not: no unbounded retry; a single remediation round).
-                _consoleUI.WriteStep("Applying the NU1507 overlay (dotnet restore --configfile) and re-attempting the load");
+                if (!Json)
+                    _consoleUI.WriteStep("Applying the NU1507 overlay (dotnet restore --configfile) and re-attempting the load");
                 var applier = new EnvironmentRemediationApplier(TimeSpan.FromMinutes(5));
                 var result = await applier.ApplyOverlayRestoreAsync(root, overlayPath, context.CancellationToken);
                 if (result.TimedOut)
                 {
-                    _consoleUI.WriteError("overlay restore timed out; leaving the plan unchanged.");
+                    if (!Json)
+                        _consoleUI.WriteError("overlay restore timed out; leaving the plan unchanged.");
                 }
                 else if (!result.Success)
                 {
-                    _consoleUI.WriteError($"overlay restore did not succeed; the blocker may be more than NU1507. Restore tail:\n{Tail(result.Output)}");
+                    if (!Json)
+                        _consoleUI.WriteError($"overlay restore did not succeed; the blocker may be more than NU1507. Restore tail:\n{Tail(result.Output)}");
                 }
                 else
                 {
                     var after = await _indexer.DiagnoseLoadAsync(root, context.CancellationToken);
-                    var afterPlan = new EnvironmentRemediationPlanner().Plan(after);
-                    _consoleUI.WriteResult("\nafter applying the overlay:");
-                    _consoleUI.WriteResult(RemediationReport.Render(afterPlan));
+                    afterPlan = new EnvironmentRemediationPlanner().Plan(after);
+                    applied = true;
+                    if (!Json)
+                    {
+                        _consoleUI.WriteResult("\nafter applying the overlay:");
+                        _consoleUI.WriteResult(RemediationReport.Render(afterPlan));
+                    }
                 }
             }
         }
@@ -130,11 +149,23 @@ public sealed class UpCommand
             .Select(i => i.Signature!.Id)
             .Distinct(StringComparer.Ordinal)
             .ToList();
-        if (installRemedies.Count > 0 && !AllowInstall)
+        if (installRemedies.Count > 0 && !AllowInstall && !Json)
         {
             _consoleUI.WriteResult(
                 $"\nconsent-gated remedies present ({string.Join(", ", installRemedies)}): not run. " +
                 "Re-run with --allow-install to permit machine-changing installs.");
+        }
+
+        // The machine-readable report: the same shape workspace status reads and the up-report harness (C1 gate)
+        // consolidates. Emitted last so it is the sole output on the result channel when --json is set.
+        if (Json)
+        {
+            var report = new UpResult(
+                root,
+                applied,
+                UpRepoReport.From(plan),
+                afterPlan is null ? null : UpRepoReport.From(afterPlan));
+            _consoleUI.WriteResult(UpReportJson.Serialize(report));
         }
     }
 

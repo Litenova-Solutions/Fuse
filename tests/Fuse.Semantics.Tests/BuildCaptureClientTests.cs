@@ -79,6 +79,58 @@ public sealed class BuildCaptureClientTests
         }
     }
 
+    // C2: the parent spawns the worker's --check-complog mode against a captured compiler log and reads the
+    // oracle-grade diagnostics WITHOUT building. This is the no-restore consumer contract end to end across the
+    // process boundary: export a complog once, then check a proposed edit against it with no build.
+    [Fact]
+    public async Task Parent_checks_a_patch_against_a_complog_without_building()
+    {
+        var workerDll = WorkerDll();
+        if (workerDll is null)
+            return; // Worker not built in this layout; nothing to validate.
+
+        var work = Path.Combine(Path.GetTempPath(), "fuse-check-complog-client-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var complogPath = Path.Combine(work, "capture.complog");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+
+            var client = new BuildCaptureClient(workerDll);
+            Assert.True(client.IsAvailable);
+
+            // Produce the complog once (a real build); if the SDK cannot build here, abstain like the sibling tests.
+            var captured = await client.CaptureBundleAsync(
+                Path.Combine(work, "Widget.csproj"), complogPath, TimeSpan.FromMinutes(5), CancellationToken.None);
+            if (!captured.Succeeded)
+            {
+                Assert.False(string.IsNullOrEmpty(captured.Reason));
+                return;
+            }
+
+            // A type error in the proposed edit is reported oracle-grade from the complog, spawned worker, no build.
+            var bad = await client.CheckFromComplogAsync(
+                complogPath, "Widget.cs",
+                "namespace Sample; public sealed class Widget { public int Spin() => \"nope\"; }",
+                TimeSpan.FromMinutes(2), CancellationToken.None);
+            Assert.True(bad.Verified, $"the check should verify from the complog: {bad.Reason}");
+            Assert.Equal("oracle", bad.Grade);
+            Assert.Contains(bad.Diagnostics, d => d.Severity == "Error");
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
     [Fact]
     public void Unconfigured_client_is_unavailable()
         => Assert.False(new BuildCaptureClient(workerDllPath: "").IsAvailable);

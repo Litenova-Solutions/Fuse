@@ -438,12 +438,18 @@ public sealed class SemanticIndexer
     /// <param name="store">The index store to write to.</param>
     /// <param name="capture">The extracted graph read from the bundle.</param>
     /// <param name="cancellationToken">A token to cancel the index.</param>
+    /// <param name="capturedComplogPath">
+    ///     The absolute path to the bundle's portable compiler log, when present. Stamped into the index metadata
+    ///     (<see cref="WorkspaceIndexStore.CaptureComplogPathMetaKey" />) so <c>fuse_check</c> can answer
+    ///     oracle-grade from the captured compilation without building. Null when no compiler log is available.
+    /// </param>
     /// <returns>The index summary (semantic when every captured project was clean, else partial).</returns>
     public async Task<SemanticIndexResult> IndexFromCaptureGraphAsync(
         string rootDirectory,
         IWorkspaceIndexStore store,
         Fuse.Indexing.CaptureResult capture,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? capturedComplogPath = null)
     {
         var root = Path.GetFullPath(rootDirectory);
         var files = await ScanFilesAsync(root, cancellationToken);
@@ -451,6 +457,8 @@ public sealed class SemanticIndexer
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
         await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
+        if (!string.IsNullOrEmpty(capturedComplogPath) && File.Exists(capturedComplogPath))
+            await store.SetMetaAsync(WorkspaceIndexStore.CaptureComplogPathMetaKey, Path.GetFullPath(capturedComplogPath), cancellationToken);
         return result;
     }
 

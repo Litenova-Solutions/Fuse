@@ -41,6 +41,13 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     /// </summary>
     public const string FuseVersionMetaKey = "fuse_version";
 
+    /// <summary>
+    ///     The <c>index_meta</c> key under which <c>fuse index --from-capture</c> stamps the absolute path to the
+    ///     bundle's portable compiler log (C2), so <c>fuse_check</c> can answer oracle-grade from the captured
+    ///     compilation without building on a machine that cannot restore or build.
+    /// </summary>
+    public const string CaptureComplogPathMetaKey = "capture_complog_path";
+
     /// <summary>The absolute path to the index database file.</summary>
     public string DatabasePath => _connectionFactory.DatabasePath;
 

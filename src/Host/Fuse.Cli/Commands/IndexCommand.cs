@@ -103,7 +103,10 @@ public sealed class IndexCommand
             }
 
             _consoleUI.WriteStep($"Rehydrating from capture bundle {bundle} (fuse {manifest.FuseVersion}, {manifest.Projects.Count} project(s)); no build");
-            result = await _indexer.IndexFromCaptureGraphAsync(root, store, graph, context.CancellationToken);
+            // Stamp the bundle's compiler-log path so fuse_check answers oracle-grade from it without building.
+            var complog = CaptureBundleIo.CompilerLogPath(bundle);
+            result = await _indexer.IndexFromCaptureGraphAsync(
+                root, store, graph, context.CancellationToken, File.Exists(complog) ? complog : null);
         }
         else
         {

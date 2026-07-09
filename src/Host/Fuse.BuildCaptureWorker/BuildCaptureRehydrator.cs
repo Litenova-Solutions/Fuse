@@ -126,37 +126,55 @@ public sealed class BuildCaptureRehydrator
             if (timedOut || exitCode != 0 || !File.Exists(binlogPath))
                 return CheckResult.Abstain(timedOut ? "capture build timed out" : $"capture build did not succeed ({firstError ?? $"exit {exitCode}"}); cannot verify");
 
-            using var reader = CompilerCallReaderUtil.Create(binlogPath);
-            var normalized = relativeFilePath.Replace('\\', '/');
-            foreach (var data in reader.ReadAllCompilationData())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (data.CompilerCall.IsCSharp != true)
-                    continue;
-
-                var compilation = data.GetCompilationAfterGenerators(cancellationToken);
-                var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
-                    t.FilePath.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
-                if (tree is null)
-                    continue; // The changed file is not in this project; try the next.
-
-                var newTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(
-                    newContent, (Microsoft.CodeAnalysis.CSharp.CSharpParseOptions?)tree.Options, tree.FilePath, cancellationToken: cancellationToken);
-                var forked = compilation.ReplaceSyntaxTree(tree, newTree);
-                var diagnostics = forked.GetSemanticModel(newTree)
-                    .GetDiagnostics(cancellationToken: cancellationToken)
-                    .Where(d => d.Severity is Microsoft.CodeAnalysis.DiagnosticSeverity.Error or Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
-                    .Select(ToCheckDiagnostic)
-                    .ToList();
-                return CheckResult.Ok(diagnostics);
-            }
-
-            return CheckResult.Abstain($"the changed file '{relativeFilePath}' was not found in any captured C# project");
+            return CheckFromLog(binlogPath, relativeFilePath, newContent, cancellationToken);
         }
         finally
         {
             TryDelete(binlogPath);
         }
+    }
+
+    /// <summary>
+    ///     Speculatively typechecks a proposed single-file patch against a captured compiler log (a <c>.complog</c>
+    ///     or a binary log) WITHOUT building (C2). Rehydrates the compilations recorded in the log, replaces the
+    ///     target file's syntax tree with the proposed content in memory, and returns the compiler diagnostics for
+    ///     that document. This is the oracle-grade check answer on a machine that cannot restore or build: the
+    ///     compilation comes from the bundle's portable compiler log, not a fresh build.
+    /// </summary>
+    /// <param name="logPath">The path to the portable compiler log (or binary log) to rehydrate.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>The diagnostics for the changed document, or an abstention when the file is not in the log.</returns>
+    public CheckResult CheckFromLog(
+        string logPath, string relativeFilePath, string newContent, CancellationToken cancellationToken)
+    {
+        using var reader = CompilerCallReaderUtil.Create(logPath);
+        var normalized = relativeFilePath.Replace('\\', '/');
+        foreach (var data in reader.ReadAllCompilationData())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (data.CompilerCall.IsCSharp != true)
+                continue;
+
+            var compilation = data.GetCompilationAfterGenerators(cancellationToken);
+            var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
+                t.FilePath.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
+            if (tree is null)
+                continue; // The changed file is not in this project; try the next.
+
+            var newTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(
+                newContent, (Microsoft.CodeAnalysis.CSharp.CSharpParseOptions?)tree.Options, tree.FilePath, cancellationToken: cancellationToken);
+            var forked = compilation.ReplaceSyntaxTree(tree, newTree);
+            var diagnostics = forked.GetSemanticModel(newTree)
+                .GetDiagnostics(cancellationToken: cancellationToken)
+                .Where(d => d.Severity is Microsoft.CodeAnalysis.DiagnosticSeverity.Error or Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+                .Select(ToCheckDiagnostic)
+                .ToList();
+            return CheckResult.Ok(diagnostics);
+        }
+
+        return CheckResult.Abstain($"the changed file '{relativeFilePath}' was not found in any captured C# project");
     }
 
     private static CheckDiagnostic ToCheckDiagnostic(Microsoft.CodeAnalysis.Diagnostic d)

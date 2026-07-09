@@ -427,6 +427,33 @@ public sealed class SemanticIndexer
     // Tier 1 write path: the graph came from the out-of-process build-capture worker (exact compilations), so
     // the symbols, nodes, edges, routes, and DI/options are taken from its bundle. Chunks and syntax routes are
     // produced here from the parent's own syntax pass, exactly as the semantic path does.
+    /// <summary>
+    ///     Indexes a workspace from a portable capture bundle's extracted graph, without building (C2). The bundle
+    ///     carries the graph a tier-1 build already produced elsewhere (its CI), so this scans the local source for
+    ///     files and chunks and writes the bundle's symbols, nodes, edges, routes, and DI/options to the store -
+    ///     the oracle-grade graph on a machine that cannot restore or build. Stamps the index mode and Fuse version
+    ///     exactly as <see cref="IndexAsync" /> does.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root (its source is present locally; only restore/build is not).</param>
+    /// <param name="store">The index store to write to.</param>
+    /// <param name="capture">The extracted graph read from the bundle.</param>
+    /// <param name="cancellationToken">A token to cancel the index.</param>
+    /// <returns>The index summary (semantic when every captured project was clean, else partial).</returns>
+    public async Task<SemanticIndexResult> IndexFromCaptureGraphAsync(
+        string rootDirectory,
+        IWorkspaceIndexStore store,
+        Fuse.Indexing.CaptureResult capture,
+        CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var files = await ScanFilesAsync(root, cancellationToken);
+        var result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
+        await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
+        await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
+        await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
+        return result;
+    }
+
     internal async Task<SemanticIndexResult> IndexFromCaptureAsync(
         string root,
         IWorkspaceIndexStore store,

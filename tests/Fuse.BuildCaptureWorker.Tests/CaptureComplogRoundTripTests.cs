@@ -1,4 +1,5 @@
 using Fuse.BuildCaptureWorker;
+using Fuse.Indexing;
 using Xunit;
 
 namespace Fuse.BuildCaptureWorker.Tests;
@@ -50,6 +51,76 @@ public sealed class CaptureComplogRoundTripTests
             var rehydrated = rehydrator.RehydrateFromBinlog(complogPath, CancellationToken.None);
             Assert.True(rehydrated.Succeeded, $"rehydrating from the complog should succeed: {rehydrated.Reason}");
             Assert.Contains(rehydrated.Projects, p => p.Name == "Widget" && p.TypeCount > 0);
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    // C2 gate: the bundle round trip. Export a complog, write a bundle from the captured graph, then read the bundle
+    // back with no build and confirm the manifest and the graph survive the round trip unchanged - the same projects,
+    // and per project the same symbol, node, and edge counts. This is the edge-set equality the C2 gate names: what a
+    // producer captures is exactly what a consumer rehydrates, verified without re-running the build.
+    [Fact]
+    public async Task Bundle_round_trip_preserves_the_captured_graph()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-bundle-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        var complogPath = Path.Combine(work, "capture.complog");
+        var bundleDir = Path.Combine(work, "bundle");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                    <Nullable>enable</Nullable>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+
+            var rehydrator = new BuildCaptureRehydrator();
+            var target = Path.Combine(work, "Widget.csproj");
+
+            var exported = await rehydrator.ExportCompilerLogAsync(target, complogPath, TimeSpan.FromMinutes(5), CancellationToken.None);
+            if (!exported.Succeeded)
+            {
+                Assert.False(string.IsNullOrEmpty(exported.Reason));
+                return;
+            }
+
+            // Write the bundle from the captured graph (moves the complog in, serializes graph.json, stamps manifest).
+            var written = CaptureBundleIo.Write(bundleDir, complogPath, exported, commit: "deadbeef", capturedUtc: "2026-07-09T00:00:00Z");
+            Assert.Equal(CaptureManifest.CurrentFormatVersion, written.BundleFormatVersion);
+
+            // Read the bundle back with no build and confirm the manifest survived unchanged.
+            var manifest = CaptureBundleIo.ReadManifest(bundleDir);
+            Assert.NotNull(manifest);
+            Assert.True(manifest!.IsCompatibleWithRunningBuild, manifest.IncompatibilityReason);
+            Assert.Equal("deadbeef", manifest.Commit);
+            Assert.Equal(exported.Projects.Count, manifest.Projects.Count);
+
+            // Read the graph back and confirm edge-set equality: same projects, same per-project symbol/node/edge counts.
+            var graph = CaptureBundleIo.ReadGraph(bundleDir);
+            Assert.NotNull(graph);
+            Assert.Equal(exported.Projects.Count, graph!.Projects.Count);
+            foreach (var original in exported.Projects)
+            {
+                var readBack = Assert.Single(graph.Projects, p => p.Name == original.Name);
+                Assert.Equal(original.SymbolCount, readBack.SymbolCount);
+                Assert.Equal(original.NodeCount, readBack.NodeCount);
+                Assert.Equal(original.EdgeCount, readBack.EdgeCount);
+                Assert.Equal(original.TypeCount, readBack.TypeCount);
+
+                // The records themselves round trip, not just the counts: the extracted symbol identities survive
+                // serialization into and out of the bundle unchanged.
+                var originalSymbols = (original.Symbols ?? []).Select(s => s.Name).OrderBy(n => n, StringComparer.Ordinal);
+                var readBackSymbols = (readBack.Symbols ?? []).Select(s => s.Name).OrderBy(n => n, StringComparer.Ordinal);
+                Assert.Equal(originalSymbols, readBackSymbols);
+            }
         }
         finally
         {

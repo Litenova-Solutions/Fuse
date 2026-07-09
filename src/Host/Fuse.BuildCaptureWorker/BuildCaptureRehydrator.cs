@@ -289,10 +289,3 @@ public sealed class BuildCaptureRehydrator
         }
     }
 }
-
-/// <summary>One rehydrated C# project from a build capture.</summary>
-/// <param name="Name">The project name.</param>
-/// <param name="FilePath">The project file path.</param>
-/// <param name="AssemblyName">The output assembly name.</param>
-/// <param name="ErrorCount">The number of compile errors in the rehydrated compilation.</param>
-/// <param name="TypeCount">The number of named types the compilation declares.</param>

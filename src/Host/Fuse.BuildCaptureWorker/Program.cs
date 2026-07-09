@@ -32,9 +32,27 @@ if (args.Length == 4 && args[0] == "--check")
     return check.Verified ? 0 : 1;
 }
 
+// --capture-bundle <target> <complogOut>: build the target and export a portable compiler log (the C2 capture
+// artifact) to <complogOut>, emitting the extracted graph as JSON on stdout so the parent can package both.
+if (args.Length == 3 && args[0] == "--capture-bundle")
+{
+    CaptureResult bundle;
+    try
+    {
+        bundle = await rehydrator.ExportCompilerLogAsync(args[1], args[2], TimeSpan.FromMinutes(10), CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        bundle = CaptureResult.Failed($"capture-bundle error: {ex.Message}");
+    }
+
+    Console.Out.WriteLine(JsonSerializer.Serialize(bundle, BuildCaptureJsonContext.Default.CaptureResult));
+    return bundle.Succeeded ? 0 : 1;
+}
+
 if (args.Length < 2 || args[0] is not ("--build" or "--binlog"))
 {
-    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --check <target> <file> <newContentFile>)");
+    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --capture-bundle <target> <complogOut> | --check <target> <file> <newContentFile>)");
     return 2;
 }
 

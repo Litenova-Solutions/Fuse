@@ -6319,6 +6319,29 @@ the complog export to the build-capture worker (a new `--capture-bundle <out>` m
 `fuse capture --out` command with the fail-closed `DefaultSecretRedactor` scan of command lines and
 generated docs; then the bundle format + `fuse index --from-capture`.
 
+#### 2026-07-09 C2 sub-step 1a DONE: portable compiler-log (.complog) export in the worker
+
+**Shipped.** `BuildCaptureRehydrator.ExportCompilerLogAsync(buildTarget, complogPath, timeout, ct)`:
+builds the target with a binlog, converts it to a portable `.complog` via
+`CompilerLogUtil.ConvertBinaryLog` (all recorded compiler calls), and returns the extracted graph
+(so a bundle carries the graph next to the complog); the binlog is deleted, the complog persists.
+The complog is the compiler inputs (source, reference closure, generated docs, command lines)
+self-contained and WITHOUT the binlog's environment block - the C2 secret posture ("the binlog
+never ships") by construction. New worker mode `--capture-bundle <target> <complogOut>` in
+Program.cs emits the graph JSON and writes the complog. Round-trip test
+(`CaptureComplogRoundTripTests`): build a fixture -> export the complog -> rehydrate the compilation
+FROM the complog with no build (`RehydrateFromBinlog`/`CompilerCallReaderUtil` reads a complog too)
+-> same extracted graph. The test PASSED with a real build (not abstained): the portable artifact
+reconstructs the compilation. Guarded to abstain if the SDK cannot build.
+
+**Gates.** worker builds; round-trip test green; full gates being run before commit.
+
+**Next action.** C2 sub-step 1b: the `fuse capture --out <bundle>` CLI command (spawn the worker's
+`--capture-bundle` mode, fail-closed secret-scan the complog's command lines + generated docs with
+`DefaultSecretRedactor`, package {complog, graph bundle, metadata stamped fuse_version + commit}
+into a versioned bundle), then `fuse index --from-capture <bundle>` (rehydrate with no build +
+incompatible-bundle refusal), the secret/version tests, the in-repo GitHub Action, and docs.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

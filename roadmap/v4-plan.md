@@ -6753,6 +6753,36 @@ met on the current 6-repo corpus (expected - corpus-v2 curation is 4d, oracle-ta
 the new/changed tests FAIL on base and PASS on merge (mechanical double-run, flakes excluded), a
 `TaskOracle` verifier + synthetic-PR fixture test; then 4c the model-suite refusal gate.
 
+#### 2026-07-09 C4 sub-steps 4b+4c DONE: oracle-task verifier + model-suite refusal gate
+
+**4b - TaskOracle (Corpus/TaskOracle.cs).** `TestRunOutcome(Executed, Passed, Failed)` with `IsGreen`
+/ `ShowsFailure`; `TaskOracle.Decide(onBase, onMerge, onMergeRerun)` -> a task is a verified oracle
+iff the merge run is green, the base run shows failure (executed-and-failed OR did-not-compile, since
+new tests reference code absent on base), and a merge re-run agrees (flakes excluded). `VerifyAsync`
+runs the base/merge worktrees through an injected runner; `RunDotnetTestAsync` executes `dotnet test
+--filter` and `ParseTestOutput` parses the VSTest Passed:/Failed: summary (no summary => did not
+execute => counts as failure on base). Tested by `TaskOracleTests` (7 cases): fail-to-pass verified,
+non-compiling base counts as failure, green-on-base rejected, red-merge rejected, flaky-merge
+excluded, parser on a real summary and a build failure, and an end-to-end VerifyAsync over a synthetic
+PR through an injected runner.
+
+**4c - CorpusHealthGate (Corpus/CorpusHealthGate.cs).** `Evaluate(report, generatedUtc,
+manifestModifiedUtc)` -> refuse when the report is missing, older than the corpus manifest (stale), or
+below the minimums; allow only when fresh and MeetsMinimums. `CheckAsync` loads corpus-health.json +
+the manifest mtime. Wired into `LoopSuite.RunAsync` and `AgentSuite.RunAsync` at the top: a
+model-driven run now refuses with the named reason unless the corpus is proven healthy - the C4
+enforcement that a null-by-environment cannot recur silently. Tested by `CorpusHealthGateTests` (4
+refusal/allow paths). NOTE: with the current 6-repo corpus (meetsMinimums false), loop/agent now
+refuse by design until corpus-v2 exists; existing loop.json/agent.json remain the recorded pre-gate
+artifacts.
+
+**Gates.** build 0; full test + format run before commit; the three new suites add 17 Benchmarks.Tests
+cases (report 6, oracle 7, gate 4).
+
+**Next action.** C4 sub-step 4d: attempt corpus-v2 curation at the scale this environment permits +
+the benchmarks methodology docs + the gate evaluation with the pre-registered reduced-scope fallback
+recorded honestly (the full 20-repo/60-task gate is compute-bound here, like C3's review gate).
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

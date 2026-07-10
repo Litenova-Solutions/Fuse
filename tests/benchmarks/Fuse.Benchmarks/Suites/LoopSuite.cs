@@ -51,6 +51,16 @@ public sealed class LoopSuite : IEvalSuite
             "harness-first: the harness is the deliverable; numbers are recorded when the claude CLI and a model are provisioned",
         };
 
+        // C4 enforcement: a model-driven run must not start unless the corpus is proven healthy (a fresh,
+        // passing corpus-health.json). Refuse and name the reason rather than spending model time on a corpus
+        // that does not build.
+        var gate = await CorpusHealthGate.CheckAsync(options.BenchRoot, options.ResultsRoot, cancellationToken);
+        if (!gate.Allowed)
+        {
+            notes.Add($"corpus-health gate: {gate.Reason}");
+            return Skipped(notes);
+        }
+
         var fuseExe = Environment.ProcessPath;
         var manager = new CorpusManager(options.BenchRoot, options.ResolvedCorpusRoot, options.Log);
         var dataset = manager.LoadDataset("dotnet-prs-v1");

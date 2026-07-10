@@ -1,0 +1,34 @@
+---
+title: Shared daemon
+description: One Fuse daemon per repository holds the warm compilation as a shared asset, so multiple agent sessions and the ambient hooks read one resident workspace instead of each paying its own cold start and memory.
+---
+
+A Fuse daemon is one long-lived `fuse host` process per repository root. It owns the resident workspace (the live Roslyn compilation) so that every client reading the same repository shares one warm compilation instead of each holding its own. This is opt-in while it bakes: set `FUSE_DAEMON=1` for `fuse mcp serve` to delegate to a shared daemon.
+
+## What runs
+
+- One daemon per root. `fuse host` acquires a single-instance lock keyed by the repository root at startup; if another daemon already owns the root, the second process exits cleanly ("a daemon already serves ...; not starting a second"). A spawn race resolves to exactly one daemon.
+- `fuse mcp serve` with `FUSE_DAEMON=1` does not hold its own resident workspace. It ensures a daemon is running for the working-directory repo (spawning one on demand) and delegates resident-grade checks to it over the pipe. When the daemon cannot start, serve falls back to an in-process workspace, so a one-shot CLI and a no-daemon environment still work.
+- The ambient-verification hooks (`fuse check --delta`, `fuse gate`) already connect to the same per-root pipe, so they read the daemon's workspace too.
+
+The payoff is measured on NodaTime: one daemon holds the resident workspace at about 109 MB; a second daemon on the same root exits rather than duplicating it, so two sessions cost one workspace, not two.
+
+## How to see it
+
+`fuse workspace status` names the daemon serving the root, when one is:
+
+```
+daemon: PID 48612, uptime 45s, RSS 109 MB (fuse host 4.0.0)
+```
+
+When no daemon serves the root, the line reads `daemon: none (this process serves the workspace directly)`.
+
+## How to stop it
+
+- Idle shutdown. A daemon spawned on demand stops itself after `FUSE_DAEMON_IDLE_MINUTES` with no connected clients (the idle clock resets while a client is connected), so a daemon does not linger holding a workspace. A manually run `fuse host` defaults to no idle shutdown (window 0).
+- Version handshake. A client whose protocol version does not match the daemon's treats it as no daemon and refuses cleanly, so a stale client after an upgrade triggers a clean restart rather than a malformed exchange.
+- Manual stop. Stop the `fuse host` process by its PID (from the status line above).
+
+## Why one daemon
+
+The .NET ecosystem already normalizes a per-repository server that amortizes cold start (the compiler server, MSBuild node reuse), including its failure modes: orphaned processes, spawn races, and stale versions after an upgrade. Fuse's daemon addresses each by construction: the single-instance lock (one owner, crash-recoverable via an abandoned-mutex takeover), idle shutdown (no lingering process), and the protocol-version handshake (a stale client refuses). The warm compilation becomes a shared asset, so a second agent session on a repository is warm immediately.

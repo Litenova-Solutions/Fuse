@@ -34,6 +34,10 @@ The MCP server also exposes playbook prompts (anchored plans that teach the veri
 
 A resident workspace rehydrates a tier-1 build capture once and holds the per-project Roslyn compilations in memory, so a proposed edit typechecks against a live compilation with no build and no disk write, and a file watcher keeps it current. It is opt-in this release (`FUSE_RESIDENT`), projecting the changed cone into the store so store-backed reads reflect edits.
 
+### The shared daemon
+
+One `fuse host` daemon per repository can hold the resident workspace as a shared asset, so multiple agent sessions and the ambient hooks read one warm compilation instead of each paying its own cold start and memory. A daemon acquires a single-instance lock per root (a redundant second host exits cleanly), stops itself after an idle window (`FUSE_DAEMON_IDLE_MINUTES`), and refuses a protocol-mismatched client so a stale client after an upgrade triggers a clean restart. `fuse mcp serve` with `FUSE_DAEMON=1` delegates its resident checks to the daemon over the pipe instead of holding its own workspace, falling back to in-process when no daemon can start; `fuse workspace status` names the daemon (PID, uptime, memory). Measured on NodaTime: two sessions cost one resident workspace (about 109 MB) instead of two. Opt-in this release.
+
 ### Compiler-executed refactors
 
 `fuse_refactor` runs Roslyn-driven, verify-gated edits: rename (a same-named unrelated symbol is not renamed), the change-signature family (add/remove/reorder-parameter with semantic-safety abstentions, add-cancellation-token threading an in-scope token), extract-interface, move-type, and apply-codefix (driving a diagnostic to zero with the repository's own analyzer fixes). Every operation recompiles and returns a diff only when no new diagnostic is introduced, otherwise abstaining with the offending sites named.

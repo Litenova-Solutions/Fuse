@@ -25,12 +25,40 @@ public sealed class BuildCaptureClient
     /// <summary>
     ///     Initializes a new instance of the <see cref="BuildCaptureClient" /> class.
     /// </summary>
-    /// <param name="workerDllPath">An explicit path to the worker dll; when null, the <c>FUSE_BUILD_CAPTURE_WORKER</c> environment variable is used.</param>
+    /// <param name="workerDllPath">An explicit path to the worker dll; when null, the worker is discovered by <see cref="ResolveWorkerPath" />.</param>
     public BuildCaptureClient(string? workerDllPath = null) =>
-        _workerDllPath = workerDllPath ?? Environment.GetEnvironmentVariable("FUSE_BUILD_CAPTURE_WORKER");
+        _workerDllPath = workerDllPath ?? ResolveWorkerPath();
 
     /// <summary>Whether a worker dll is configured, so tier-1 build capture can be attempted.</summary>
     public bool IsAvailable => !string.IsNullOrWhiteSpace(_workerDllPath) && File.Exists(_workerDllPath);
+
+    /// <summary>
+    ///     Resolves the build-capture worker dll: the <c>FUSE_BUILD_CAPTURE_WORKER</c> environment variable when
+    ///     set (an explicit override), otherwise the worker published alongside the running tool (C3). The tool
+    ///     package ships the worker in an isolated <c>build-capture/</c> subfolder next to <c>fuse.dll</c> so its
+    ///     Basic.CompilerLog closure never lands in the parent's own assembly directory; a development build leaves
+    ///     it beside the running assembly. Returns null when no worker is found, so tier-1 degrades cleanly.
+    /// </summary>
+    /// <returns>The absolute path to the worker dll, or null when none is discoverable.</returns>
+    public static string? ResolveWorkerPath()
+    {
+        var configured = Environment.GetEnvironmentVariable("FUSE_BUILD_CAPTURE_WORKER");
+        if (!string.IsNullOrWhiteSpace(configured))
+            return configured;
+
+        var baseDir = AppContext.BaseDirectory;
+        foreach (var candidate in new[]
+                 {
+                     Path.Combine(baseDir, "build-capture", "fuse-build-capture.dll"),
+                     Path.Combine(baseDir, "fuse-build-capture.dll"),
+                 })
+        {
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        return null;
+    }
 
     /// <summary>
     ///     Runs the worker against a build target and returns the deserialized capture result.

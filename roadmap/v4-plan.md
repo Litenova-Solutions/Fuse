@@ -6514,6 +6514,75 @@ across corpus bundles -> PASS (0 across 4; fail-closed scan unit-covered). Round
 (FUSE_BUILD_CAPTURE_WORKER) and whether fuse-build-capture.dll ships in the tool package today, and
 the background-upgrade supervisor default state; record both before the first edit.
 
+#### 2026-07-09 C3 preconditions recorded; sub-step plan
+
+**Precondition 1 (worker discovery + packaging).**
+- Worker discovery is env-var-ONLY today: `BuildCaptureClient` ctor reads
+  `FUSE_BUILD_CAPTURE_WORKER` (src/Core/Fuse.Semantics/BuildCaptureClient.cs:29-30) or an explicit
+  path; there is NO install-relative fallback. `IsAvailable` is `File.Exists(_workerDllPath)` (:33).
+- The worker dll does NOT ship in the tool package today: `Fuse.Cli.csproj` (PackAsTool,
+  PackageId=Fuse) has no ProjectReference to `Fuse.BuildCaptureWorker` and no pack directive for
+  `fuse-build-capture.dll`; no csproj under src references the worker project (only itself). A plain
+  ProjectReference would be WRONG - it would pull the worker's Basic.CompilerLog closure into
+  fuse.dll's own directory, defeating the separate-process isolation - so the worker must be
+  published into an isolated subfolder of the tool and discovered there.
+- Tier-1 is additionally gated by `FUSE_BUILD_CAPTURE` (truthy) in `SemanticIndexer.
+  BuildCaptureEnabled()` (SemanticIndexer.cs:35-43), default OFF; `TryBuildCaptureAsync` returns
+  null when disabled or the worker is unavailable (:50), degrading to MSBuildWorkspace/syntax.
+
+**Precondition 2 (background-upgrade supervisor default + drain).**
+- `SemanticUpgradeSupervisor` (src/Host/Fuse.Cli/Mcp/SemanticUpgradeSupervisor.cs) is wired: per-root
+  deduped `Schedule`, failures logged to stderr (not swallowed), `DisposeAsync` cancels the shared
+  token and drains in-flight jobs bounded by a 10 s timeout. The serve host sets it with a stderr
+  sink (McpServeCommand.cs:49).
+- Syntax-first serve + background upgrade is OPT-IN via `FUSE_BG_UPGRADE` (McpServeCommand.
+  BackgroundUpgradeOptIn, :134-140), default OFF = synchronous `IndexAsync` on the first read
+  (FuseTools.OpenIndexedAsync :332-340). CLI `fuse index` is always synchronous.
+
+**Sub-step plan (C3 is M; committed gate-checked sub-steps).**
+- 1a: install-relative worker discovery (additive; `BuildCaptureClient` resolves the worker next to
+  the running assembly when the env var is unset; unit-tested). Safe before packaging: unresolved =>
+  IsAvailable false => clean degrade.
+- 1b: publish the worker into an isolated `build-capture/` subfolder of the tool package (pack
+  target), verified by inspecting the produced `.nupkg`.
+- 2: tier-1 default-on (BuildCaptureEnabled default true, opt-out `FUSE_BUILD_CAPTURE=0`) + serve
+  syntax-first/background-upgrade default-on (opt-out) + first-use "a build is running" header +
+  drain test.
+- 3: docs (install/index) + CHANGELOG behavior change + corpus validation (review/localize/ranking
+  --restore under shipping defaults, index-mode distributions) to meet the Gate; mark C3 [x].
+
+#### 2026-07-09 C3 sub-steps 1a+1b DONE: install-relative worker discovery + worker bundled in the tool package
+
+**1a - install-relative discovery.** `BuildCaptureClient.ResolveWorkerPath()` (static): returns the
+`FUSE_BUILD_CAPTURE_WORKER` override when set, else the worker published beside the running tool -
+`AppContext.BaseDirectory/build-capture/fuse-build-capture.dll` (then a bare-beside fallback). The
+ctor uses it, so `new BuildCaptureClient()` discovers the bundled worker with no env var. Unit test
+`ResolveWorkerPath_prefers_the_env_override_then_the_install_relative_subfolder` (env override wins;
+install-relative subfolder found with the override cleared) - PASS.
+
+**1b - worker bundled in the tool package.** `Fuse.Cli.csproj`: a ProjectReference to the worker
+with `ReferenceOutputAssembly=false ExcludeAssets=all PrivateAssets=all` (build ordering ONLY, no
+asset flow into fuse.dll), a `CopyBuildCaptureWorkerToOutput` target (AfterTargets Build) that copies
+the worker's framework-dependent output into `$(OutDir)build-capture/` for dev/eval discovery, and an
+`AddBuildCaptureWorkerToPackage` target (via `TargetsForTfmSpecificContentInPackage`) that packs the
+worker under `tools/<tfm>/any/build-capture/`. Verified in the produced nupkg:
+`tools/net10.0/any/build-capture/fuse-build-capture.dll` + `.deps.json` + its `Basic.CompilerLog.Util
+.dll` are present, so an installed `fuse` finds the worker beside itself.
+
+**Isolation check (false alarm resolved).** Basic.CompilerLog.Util.dll IS in fuse.dll's own output
+dir, but NOT from the worker ref (ExcludeAssets=all cuts that) - it arrives via `Fuse.Workspace`
+(the S1 resident engine already depends on Basic.CompilerLog). This is pre-existing and unchanged by
+C3; the process-isolation invariant (worker's closure never co-loads with MSBuildWorkspace) is
+unaffected - the resident path is opt-in for exactly that reason, and the worker runs in its own
+process from build-capture/.
+
+**Gates.** build 0 errors; full test + format run before commit; nupkg inspected (worker present
+under tools/.../build-capture/). Pre-existing NU1608 (VisualBasic 4.8 vs 4.14 pin) unchanged.
+
+**Next action.** C3 sub-step 2: tier-1 default-on (`SemanticIndexer.BuildCaptureEnabled` defaults
+true, opt-out `FUSE_BUILD_CAPTURE=0`) + serve syntax-first/background-upgrade default-on (opt-out
+`FUSE_BG_UPGRADE=0`) + the first-use "a build is running for tier-1" header line + the drain test.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

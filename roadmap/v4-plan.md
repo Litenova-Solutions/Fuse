@@ -7349,6 +7349,31 @@ end-to-end over corpus-v2. The curation infrastructure is a real shipped deliver
 manifest + the manifest-driven health runner); the tier-1 sweep and oracle-task extraction await a
 provisioned runner with build/test compute (and the SDK bands several repos pin).
 
+#### 2026-07-10 Terminal state CONFIRMED BY ATTEMPT: corpus-bound gates run, all blocks provisioning/maintainer
+
+The corpus-bound gates were attempted, not just reasoned, so the terminal state rests on empirical
+evidence:
+- C3 review-semantic gate: `fuse eval review --restore` under shipping defaults RAN -> 5/53 semantic
+  (below the 40/53 gate), bound by the pinned corpus's historical PR worktrees not building at tier-1
+  on this SDK. Attempted, measured, [!].
+- C4 corpus-health gate: `fuse eval corpus-health --manifest corpus-v2.json --restore` RAN and stalled
+  on the first large repo after 15+ minutes (71 dotnet build processes), confirming the tier-1 sweep is
+  compute-bound; a 3-repo no-restore sample validated the corpus-health engine end-to-end over
+  corpus-v2. Attempted, [!]; infrastructure shipped (corpus-v2 manifest + `--manifest` runner).
+- B1 (and thus F2, B3): the mandate's own BENCHMARKS rule forbids the model-driven suites until C4's
+  corpus-health gate is GREEN; it is not (compute-bound), so B1 is hard-blocked by the goal's
+  constraint, not merely by a reasoned inference.
+- B4 depends C3 [!]; G2 iteration 2 depends C4's corpus-v2 frequency data; R3's canonical numbers
+  depend C4 and its tag is [maintainer].
+
+Every remaining checklist item is done, or [!]-blocked on something only the user can supply: a
+provisioned build/test/model runner to complete C4's corpus-v2 sweep (which is what unblocks C3's
+review re-run, R3's numbers, G2's frequency data, then B1 and F2, and B4 off C3), or the [maintainer]
+merge and v4.0.0 tag. No eligible, unblocked item remains, and the ones that could be attempted in this
+environment were attempted and confirmed compute-bound. Resume path: on a provisioned runner, `fuse eval
+corpus-health --manifest tests/benchmarks/corpus-v2.json --restore` (with the pinned SDK bands) drives
+C4 to its gate, then the downstream items unblock in checklist order.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

@@ -68,6 +68,51 @@ public static class FuseHostClient
     }
 
     /// <summary>
+    ///     Fetches a running daemon's stats for a root (G5), or returns null when no compatible daemon serves it.
+    ///     Used by <c>fuse workspace status</c> to name the daemon's PID, uptime, and memory so a developer can see
+    ///     and stop it. Never throws for the absence of a daemon.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="connectTimeout">How long to wait for a connection before concluding no daemon serves the root.</param>
+    /// <param name="cancellationToken">A token to cancel the call.</param>
+    /// <returns>The daemon stats, or null when no compatible daemon serves the root.</returns>
+    public static async Task<FuseHostStats?> TryStatsAsync(
+        string root, TimeSpan connectTimeout, CancellationToken cancellationToken)
+    {
+        Stream? stream = null;
+        try
+        {
+            stream = await ConnectAsync(root, connectTimeout, cancellationToken);
+            if (stream is null)
+                return null;
+
+            var formatter = new SystemTextJsonFormatter();
+            formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+            formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            using var rpc = new JsonRpc(new HeaderDelimitedMessageHandler(
+                PipeWriter.Create(stream), PipeReader.Create(stream), formatter));
+            rpc.StartListening();
+
+            var handshake = await rpc.InvokeWithCancellationAsync<FuseHostHandshake>(
+                "fuse/handshake", [], cancellationToken);
+            if (handshake.ProtocolVersion != FuseHostService.ProtocolVersion)
+                return null;
+
+            return await rpc.InvokeWithCancellationAsync<FuseHostStats>(
+                "fuse/stats", [handshake.SessionToken], cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+        finally
+        {
+            if (stream is not null)
+                await stream.DisposeAsync();
+        }
+    }
+
+    /// <summary>
     ///     Probes whether a compatible daemon is serving a root (G5): connects to the root's endpoint and completes
     ///     the handshake, returning true only when a process answers and its protocol version matches. Used by the
     ///     daemon supervisor to decide whether to spawn a daemon or connect to the running one; never throws for the

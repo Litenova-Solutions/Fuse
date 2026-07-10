@@ -7107,14 +7107,28 @@ green (36 in the Host namespace).
 (this commit). These deliver the item's lifecycle gates at the primitive level: spawn race yields one
 daemon, spawn-on-demand, idle shutdown, version-mismatch refusal.
 
-**Next action.** G5 sub-step 5-ii (wiring) + 5-iv + 5-v, the remaining Gate-reaching integration:
-make `mcp serve` use `DaemonSupervisor` to spawn a daemon on demand and delegate the resident
-workspace to it (opt-in FUSE_DAEMON, single-process fallback preserved) - this is the piece that
-yields the RSS reduction, since today serve holds its own engine; then the one-truth behavior (an edit
-via one client's delta appears in another's), the `fuse workspace status` daemon line (PID, uptime,
-memory), docs, and the RSS before/after on NodaTime for the Gate. This delegation is the large
-architectural piece (the root model and what serve proxies); the lifecycle primitives it builds on
-are now committed and tested.
+#### 2026-07-10 G5 sub-step 5-iv (daemon status line) DONE
+
+**Shipped.** `FuseHostClient.TryStatsAsync(root, timeout, ct)` - fetches a daemon's `FuseHostStats`
+(PID, uptime, working set) over the pipe, null when none serves the root. `fuse workspace status`
+(WorkspaceStatusAsync) now appends a daemon line: "daemon: PID X, uptime Ys, RSS Z MB (fuse host V)"
+when a daemon serves the root, or "daemon: none (this process serves the workspace directly)" when
+not - the daemon visibility the Gate names. The daemon already exposed exactly these fields
+(`FuseHostService.Stats` -> `FuseHostStats(HostVersion, ProcessId, UptimeMs, WorkingSetBytes)`).
+
+**Tests.** `FuseHostClientProbeTests` (2): IsServingAsync is false and TryStatsAsync is null for a
+root no daemon serves (the probes never throw for absence).
+
+**Next action.** G5 remaining, the Gate-reaching integration: 5-ii wiring (make `mcp serve` use
+`DaemonSupervisor` to spawn a daemon on demand and delegate the resident workspace to it, opt-in
+FUSE_DAEMON, single-process fallback preserved - the piece that yields the RSS reduction since serve
+holds its own engine today), 5-iv one-truth (an edit via one client's delta appears in another's),
+and 5-v docs plus the RSS before/after on NodaTime with serve+host running for the Gate. This
+delegation is the large architectural piece (the root model, what serve proxies, the RSS delegation)
+and is the natural fresh-context increment; every lifecycle primitive it builds on is now committed
+and tested (DaemonLock, host single-instance, DaemonSupervisor, IsServingAsync, IdleShutdownMonitor,
+TryStatsAsync + the status line). Fallback if delegation proves too invasive: keep per-process engines
+(S1 status quo) and record why.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

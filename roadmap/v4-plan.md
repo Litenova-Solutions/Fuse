@@ -6916,6 +6916,23 @@ teach `CheckFromLog`/`--from-capture` to iterate them; bump `CaptureManifest.Cur
 2 with the incompatibility refusal + CHANGELOG re-capture note (C2 invariant); then 4-G2 the
 `Fuse.Capture.targets` package + fixture + overhead, and 4-G3 docs + Gate.
 
+CRITICAL design nuance for 4-G1b (do not lose): the v2 layout is ADDITIVE (a `fragments/` folder
+beside the v1 single `capture.complog`), so a v2 consumer must still read a v1 bundle. Therefore
+`IsCompatibleWithRunningBuild` must relax from `BundleFormatVersion == CurrentFormatVersion` to
+`BundleFormatVersion <= CurrentFormatVersion` (accept older layouts, refuse only NEWER/unknown),
+and `IncompatibilityReason` should fire only for `BundleFormatVersion > CurrentFormatVersion`. The
+existing `CaptureManifestTests.A_bundle_with_an_unknown_format_version_is_refused` (uses Current+1)
+still holds; add a test that a v1 bundle is still accepted after the bump. `CaptureBundleIo` gains a
+`WriteMerged(bundleDir, fragmentComplogPaths[], graph, commit, utc)` + a `FragmentComplogPaths(dir)`
+(enumerate `fragments/*.complog`, else the single `capture.complog` for v1); the worker gains a
+`--merge <fragmentsDir> <complogOutDir>` mode (per fragment binlog: `ConvertBinaryLog` -> a complog in
+`fragments/`, plus `MergeFragments` for the graph); `fuse capture --merge <dir>` writes the v2 bundle;
+and `FuseCheckAsync` (bundle-oracle path) + `fuse index --from-capture` iterate the fragment complogs
+(store the bundle dir, not a single complog path, in `CaptureComplogPathMetaKey` for v2 - or add a
+sibling meta key). This is a cohesive multi-file change (C2 format + oracle path); it is the natural
+fresh-context increment - the Gate's core merge-equality proof (graph side) is already committed
+(4-G1a, 3065b41).
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

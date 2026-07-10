@@ -161,6 +161,14 @@ public sealed class EvalCommand
         var result = await suite.RunAsync(options, context.CancellationToken);
         _consoleUI.WriteResult(Reporting.FormatScorecard(result));
 
+        // The corpus-health suite writes its own machine-readable report (corpus-health.json) inside RunAsync;
+        // skip the generic SuiteResult write so it is not clobbered. All other suites write their SuiteResult.
+        if (suite.Name == "corpus-health" && Output is null)
+        {
+            _consoleUI.WriteStep($"Wrote results to {Path.Combine(options.ResultsRoot, CorpusHealthReport.FileName)}");
+            return;
+        }
+
         var outputPath = Output is null
             ? Path.Combine(options.ResultsRoot, $"{suite.Name}.json")
             : Path.GetFullPath(Output);
@@ -178,6 +186,7 @@ public sealed class EvalCommand
         "diagbench" => new DiagBenchSuite(),
         "loop" => new LoopSuite(_indexer),
         "agent" => new AgentSuite(_indexer),
+        "corpus-health" => new CorpusHealthSuite(_indexer),
         "performance" => new PerformanceSuite(_indexer, _changeSource),
         "reduce" => new ReductionSuite((dir, files, level, ct) =>
             ReduceRunner.ReduceFilesAsync(_orchestrator, _templateRegistry, dir, files, ParseLevel(level), null, ct)),

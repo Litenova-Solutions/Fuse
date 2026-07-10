@@ -7087,13 +7087,34 @@ harmless.
 **Tests.** `DaemonSupervisorTests` (3): a running daemon is reused without spawning; a missing one is
 spawned once and awaited; a daemon that never answers is reported failed rather than hanging.
 
-**Next action.** G5 sub-step 5-ii (wiring): `mcp serve` uses `DaemonSupervisor` with the real probe
-(`FuseHostClient.IsServingAsync`) and a real `fuse host` spawn (a detached `dotnet <fuse.dll> host
---directory <root>`), opt-in initially (a FUSE_DAEMON flag, mirroring FUSE_RESIDENT), with the
-single-process fallback preserved when the flag is off or the spawn fails. Then 5-iii lifecycle (idle
-shutdown plus the ProtocolVersion=6 version-mismatch handshake), 5-iv one-truth plus the `fuse
-workspace status` daemon line (PID, uptime, memory), 5-v docs plus RSS before/after on NodaTime and
-the Gate (one-truth green; RSS reduction recorded; Fallback: keep per-process engines and record why).
+#### 2026-07-10 G5 sub-step 5-iii (idle shutdown) DONE: daemon self-stops when idle
+
+**Shipped.** `IdleShutdownMonitor` (Host/Rpc): watches the connection count and shuts the daemon down
+after a full idle window with no clients (the idle clock resets while a client is connected); a zero
+window disables it. Wired into `HostCommand`: `FUSE_DAEMON_IDLE_MINUTES` (default 0 = never, so a
+manually run `fuse host` keeps its always-on behavior; a spawned daemon sets a window) drives a
+background watch that cancels the host's stop token when idle, and the serve path awaits it on
+shutdown. The version-mismatch handshake the Gate names is already in place: `FuseHostClient`
+(IsServingAsync, TryCheckDeltaAsync) treats a `ProtocolVersion` mismatch as no daemon, so a stale
+client refuses cleanly and a fresh daemon can be spawned.
+
+**Tests.** `IdleShutdownMonitorTests` (3): an idle daemon shuts down after the window; a busy daemon
+never does; a zero window disables the watch. Existing 30 Host tests plus the daemon primitives all
+green (36 in the Host namespace).
+
+**G5 foundations committed so far:** DaemonLock single-instance (181cda7) + host acquires it
+(80eeab9) + DaemonSupervisor spawn-on-demand and IsServingAsync probe (8d93269) + IdleShutdownMonitor
+(this commit). These deliver the item's lifecycle gates at the primitive level: spawn race yields one
+daemon, spawn-on-demand, idle shutdown, version-mismatch refusal.
+
+**Next action.** G5 sub-step 5-ii (wiring) + 5-iv + 5-v, the remaining Gate-reaching integration:
+make `mcp serve` use `DaemonSupervisor` to spawn a daemon on demand and delegate the resident
+workspace to it (opt-in FUSE_DAEMON, single-process fallback preserved) - this is the piece that
+yields the RSS reduction, since today serve holds its own engine; then the one-truth behavior (an edit
+via one client's delta appears in another's), the `fuse workspace status` daemon line (PID, uptime,
+memory), docs, and the RSS before/after on NodaTime for the Gate. This delegation is the large
+architectural piece (the root model and what serve proxies); the lifecycle primitives it builds on
+are now committed and tested.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

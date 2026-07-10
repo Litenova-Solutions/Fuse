@@ -28,18 +28,21 @@ public sealed class SemanticIndexer
     private readonly GitCoChangeCollector _coChangeCollector = new();
     private readonly BuildCaptureClient _buildCaptureClient = new();
 
-    // N4 tier-1 build capture is opt-in via FUSE_BUILD_CAPTURE (truthy) and requires the worker to be configured
-    // (FUSE_BUILD_CAPTURE_WORKER); default off, so indexing behavior is unchanged unless both are set.
+    // N4/C3 tier-1 build capture is default-ON: the oracle is the product. Opt out with FUSE_BUILD_CAPTURE=0
+    // (or false/no/off); any other value, or unset, enables it. It still no-ops when no worker is discoverable
+    // (the tool bundles one - see BuildCaptureClient.ResolveWorkerPath) or there is no build target, so a
+    // deployment without the worker degrades cleanly to the MSBuildWorkspace and syntax tiers.
     private static readonly TimeSpan BuildCaptureTimeout = TimeSpan.FromMinutes(10);
 
-    private static bool BuildCaptureEnabled()
+    internal static bool BuildCaptureEnabled()
     {
         var value = Environment.GetEnvironmentVariable("FUSE_BUILD_CAPTURE");
-        return value is not null
-               && (value.Equals("1", StringComparison.Ordinal)
-                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
-                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
-                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
+        if (value is null)
+            return true;
+        return !(value.Equals("0", StringComparison.Ordinal)
+                 || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("off", StringComparison.OrdinalIgnoreCase));
     }
 
     // Runs the tier-1 build-capture worker for the discovered workspace. Returns the captured graph on success, or

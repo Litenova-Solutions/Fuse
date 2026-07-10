@@ -375,6 +375,11 @@ public sealed partial class FuseTools
     {
         var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
         var staleRaw = await store.GetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, cancellationToken);
+        // First-use signal (C3): with the syntax-first serve default, the first reads land on a syntax index while
+        // the semantic/tier-1 graph builds in the background. Name it, so a client knows a richer answer is coming
+        // and that a build is running for tier-1 rather than mistaking the syntax tier for the final word.
+        var pendingRaw = await store.GetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, cancellationToken);
+        var upgradePending = pendingRaw == "1";
         var tier1Available = new Fuse.Semantics.BuildCaptureClient().IsAvailable;
         var tier1 = tier1Available ? "configured" : "not configured";
         // Name the verification grade fuse_check can currently serve (T0, D11): oracle-grade when tier-1 build
@@ -391,7 +396,12 @@ public sealed partial class FuseTools
         var freshness = int.TryParse(staleRaw, out var stale) && stale > 0
             ? $"{stale} known file(s) changed since index, results may lag the working tree"
             : "up to date";
-        return $"availability: index mode {mode}; tier-1 build capture {tier1}; {verifyGrade}; workspace {residentClause}; {freshness}.";
+        var upgradeClause = upgradePending
+            ? (tier1Available
+                ? " semantic upgrade in progress (a build is running for tier-1);"
+                : " semantic upgrade in progress;")
+            : "";
+        return $"availability: index mode {mode}; tier-1 build capture {tier1}; {verifyGrade}; workspace {residentClause};{upgradeClause} {freshness}.";
     }
 
     // Runs the semantic upgrade in the background on its own store handle (the foreground store is disposed when

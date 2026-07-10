@@ -6583,6 +6583,45 @@ under tools/.../build-capture/). Pre-existing NU1608 (VisualBasic 4.8 vs 4.14 pi
 true, opt-out `FUSE_BUILD_CAPTURE=0`) + serve syntax-first/background-upgrade default-on (opt-out
 `FUSE_BG_UPGRADE=0`) + the first-use "a build is running for tier-1" header line + the drain test.
 
+#### 2026-07-09 C3 sub-step 2 DONE: defaults flipped (tier-1 + syntax-first serve on); header; CHANGELOG; docs
+
+**Shipped.**
+- `SemanticIndexer.BuildCaptureEnabled()` now defaults ON (internal for testing); opt out with
+  `FUSE_BUILD_CAPTURE=0` (or false/no/off). No-ops when no worker is discoverable or no build target
+  exists, so it degrades cleanly.
+- `McpServeCommand.BackgroundUpgradeOptIn()` now defaults ON; opt out with `FUSE_BG_UPGRADE=0`. The
+  CLI `fuse index` stays synchronous.
+- The availability header (`OracleAvailabilityHeaderAsync`) names the pending upgrade: when the
+  syntax-first index served and the semantic upgrade is in flight, it appends "semantic upgrade in
+  progress (a build is running for tier-1)" when tier-1 is configured, so a first-use client is told
+  a richer answer is coming rather than mistaking syntax for the final word.
+- CHANGELOG: two bullets under Semantic index and retrieval naming the default-on tier-1 + bundled
+  worker + syntax-first serve (opt-outs), and the portable capture bundles.
+- Docs: configuration-keys.mdx (FUSE_BG_UPGRADE flipped to on; new FUSE_BUILD_CAPTURE and
+  FUSE_BUILD_CAPTURE_WORKER rows), verification-grades.mdx (oracle availability reworded: tier-1 on
+  by default, worker bundled).
+
+**Test-suite safety verified.** The bundled worker is copied to Fuse.Cli's output `build-capture/`
+but does NOT propagate to test-project outputs, so in the test process `ResolveWorkerPath` finds no
+worker (no env var) and tier-1 is skipped even with the default flipped - the unit suite does not
+start spawning builds. Confirmed: no `build-capture/` under tests/Fuse.Cli.Tests/bin or the
+benchmarks bin.
+
+**Tests.** `BuildCaptureEnabled_is_default_on_and_opts_out_on_a_falsey_value` (8 InlineData cases) -
+PASS. The drain/cancel requirement is already covered by
+`SemanticUpgradeSupervisorTests.Dispose_cancels_and_drains_in_flight_jobs` (pre-existing).
+
+**Gates.** build 0 errors; full `dotnet test` all passed (Fuse.Semantics.Tests 180 -> 188; no header-
+format assertion broke, Fuse.Cli.Tests still 128); `dotnet format --verify-no-changes` -> 0.
+
+**Next action.** C3 sub-step 3 (the Gate): re-run `fuse eval review --restore`, `localize --restore`,
+`ranking --restore` under shipping defaults with the worker discoverable, record index-mode
+distributions, and evaluate the Gate (review semantic >= 40/53; localize main checkouts semantic >=
+2/4; ranking within CI). This needs the corpus buildable at tier-1 on this machine (via the bundled
+worker + C1 installs); if the corpus cannot reach the semantic thresholds here, apply the named
+Fallback (scope the default by a size heuristic and record) or record the environment bound honestly
+against the Gate.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

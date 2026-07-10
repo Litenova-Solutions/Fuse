@@ -27,6 +27,9 @@
       <Project Path="src/Host/Fuse.Cli/Fuse.Cli.csproj" />
       <Project Path="src/Host/Fuse.BuildCaptureWorker/Fuse.BuildCaptureWorker.csproj" />
     </Folder>
+    <Folder Name="/src/Packaging/">
+      <Project Path="src/Packaging/Fuse.Capture/Fuse.Capture.csproj" />
+    </Folder>
     <Folder Name="/src/Plugins/">
       <Project Path="src/Plugins/Fuse.Plugins.Abstractions/Fuse.Plugins.Abstractions.csproj" />
       <Project Path="src/Plugins/Fuse.Plugins.Languages.CSharp/Fuse.Plugins.Languages.CSharp.csproj" />

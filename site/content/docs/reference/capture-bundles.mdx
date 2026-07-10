@@ -40,6 +40,18 @@ In both cases `fuse index --from-capture` prints an actionable reason and writes
 
 The in-repo GitHub Action at `.github/workflows/capture.yml` is the reference: on every push to `main` it builds the solution, points `FUSE_BUILD_CAPTURE_WORKER` at the built worker, runs `fuse capture`, and uploads the bundle as a workflow artifact. Adapt it to your repository by pointing the capture target at your solution or the project you serve most. The workflow uploads only to the workflow's own artifacts; publishing a bundle to a hosted or shared tier is a separate, deliberate step.
 
+## Capture channels
+
+There are two ways to produce bundles. Prefer the CI Action; the build-target package is the invasive alternative.
+
+| Channel | How | Overhead | When |
+| --- | --- | --- | --- |
+| CI Action (recommended) | one workflow step runs `fuse capture` on `main` | one capture build per run | most repositories; the primary channel |
+| Direct | run `fuse capture --out <bundle>` locally or in any pipeline | one capture build | ad hoc, or a nonstandard pipeline |
+| Build-target package (experimental) | add the `Fuse.Capture` package; every build emits a per-project fragment, assembled with `fuse capture --merge <dir>` | roughly a second compile per project (measured ~90% of build time on a small fixture) | teams that cannot add a capture step and accept the build cost |
+
+The `Fuse.Capture` build-target package is invasive by design and ships experimental: it re-invokes the compiler for each project after the build to emit the fragment, so it roughly doubles build time. It is opt-out per project or solution (`<FuseCaptureEnabled>false</FuseCaptureEnabled>`), and the fragments it drops are assembled into a normal bundle with `fuse capture --merge`, equal in extracted graph to a direct capture. Use it only when neither the Action nor a direct capture fits.
+
 The minimal shape of the capture step:
 
 ```yaml

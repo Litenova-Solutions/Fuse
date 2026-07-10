@@ -156,6 +156,13 @@ public sealed partial class FuseTools
         builder.AppendLine(await OracleAvailabilityHeaderAsync(store, root, cancellationToken));
         builder.AppendLine($"workspace: {root}");
         builder.AppendLine($"index mode: {mode}");
+
+        // Daemon visibility (G5): name the shared daemon serving this root, if one is, so a developer can see and
+        // stop it. A short probe; when no daemon serves the root, say so rather than implying one must run.
+        var daemon = await Fuse.Cli.Rpc.FuseHostClient.TryStatsAsync(root, TimeSpan.FromMilliseconds(500), cancellationToken);
+        builder.AppendLine(daemon is null
+            ? "daemon: none (this process serves the workspace directly)"
+            : $"daemon: PID {daemon.ProcessId}, uptime {daemon.UptimeMs / 1000}s, RSS {daemon.WorkingSetBytes / (1024 * 1024)} MB (fuse host {daemon.HostVersion})");
         return builder.ToString().TrimEnd();
     }
 

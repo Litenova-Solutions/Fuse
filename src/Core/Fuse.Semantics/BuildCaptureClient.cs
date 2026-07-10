@@ -205,6 +205,78 @@ public sealed class BuildCaptureClient
     }
 
     /// <summary>
+    ///     Runs the worker to merge per-project fragment binary logs into a version-2 bundle's inputs (G4): the
+    ///     worker converts each fragment binlog under <paramref name="fragmentsDir" /> to a fail-closed-scanned
+    ///     per-project compiler log under <paramref name="complogOutDir" /> and emits the merged extracted graph on
+    ///     stdout. Returns the graph so the caller can assemble the bundle from the written complogs.
+    /// </summary>
+    /// <param name="fragmentsDir">The directory holding per-project fragment binary logs.</param>
+    /// <param name="complogOutDir">The directory the worker writes the per-project compiler logs to.</param>
+    /// <param name="timeout">The maximum time to allow the worker to run.</param>
+    /// <param name="cancellationToken">A token to cancel the merge.</param>
+    /// <returns>The merged graph on success, or a failed result (worker unavailable, timeout, or a secret finding).</returns>
+    public async Task<CaptureResult> MergeFragmentsAsync(
+        string fragmentsDir, string complogOutDir, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        if (!IsAvailable)
+            return CaptureResult.Failed("build-capture worker not configured (set FUSE_BUILD_CAPTURE_WORKER)");
+
+        var psi = new ProcessStartInfo("dotnet")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        // Fixed, bounded argument list (worker dll, mode, fragments dir, complog out dir); never a variable list.
+        psi.ArgumentList.Add(_workerDllPath!);
+        psi.ArgumentList.Add("--merge");
+        psi.ArgumentList.Add(fragmentsDir);
+        psi.ArgumentList.Add(complogOutDir);
+
+        using var process = new Process { StartInfo = psi };
+        var stdout = new StringBuilder();
+        process.OutputDataReceived += (_, e) => { if (e.Data is not null) stdout.AppendLine(e.Data); };
+        try
+        {
+            process.Start();
+        }
+        catch (Exception ex)
+        {
+            return CaptureResult.Failed($"could not start build-capture worker: {ex.Message}");
+        }
+
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(timeout);
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { /* best effort */ }
+            return CaptureResult.Failed($"build-capture worker timed out after {timeout.TotalSeconds:F0}s");
+        }
+
+        var line = stdout.ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .LastOrDefault(l => l.StartsWith('{'));
+        if (line is null)
+            return CaptureResult.Failed("build-capture worker produced no parseable output");
+
+        try
+        {
+            return JsonSerializer.Deserialize(line, BuildCaptureJsonContext.Default.CaptureResult)
+                   ?? CaptureResult.Failed("build-capture worker output deserialized to null");
+        }
+        catch (JsonException ex)
+        {
+            return CaptureResult.Failed($"could not parse build-capture worker output: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     ///     Speculatively typechecks a proposed single-file patch via the worker (R1 <c>fuse_check</c>): the worker
     ///     builds and rehydrates the compilation, applies the patch in memory, and returns the compiler
     ///     diagnostics for the changed document.

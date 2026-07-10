@@ -619,17 +619,27 @@ public sealed partial class FuseTools
 
         var client = new Fuse.Semantics.BuildCaptureClient();
 
-        // Bundle oracle (C2): when the workspace was rehydrated from a capture bundle, its compiler log answers
+        // Bundle oracle (C2/G4): when the workspace was rehydrated from a capture bundle, its compiler log answers
         // oracle-grade WITHOUT building - the whole point on a machine that cannot restore or build. Preferred over
-        // the building CheckAsync below, which would rebuild the target.
+        // the building CheckAsync below, which would rebuild the target. A direct bundle has one capture.complog; a
+        // merged (G4) bundle has per-project logs under fragments/, so iterate until one carries the changed file.
         if (oracle is null && client.IsAvailable)
         {
-            var complogPath = await store.GetMetaAsync(Fuse.Indexing.WorkspaceIndexStore.CaptureComplogPathMetaKey, cancellationToken);
-            if (!string.IsNullOrEmpty(complogPath) && File.Exists(complogPath))
+            var bundleDir = await store.GetMetaAsync(Fuse.Indexing.WorkspaceIndexStore.CaptureComplogPathMetaKey, cancellationToken);
+            if (!string.IsNullOrEmpty(bundleDir))
             {
-                var candidate = await client.CheckFromComplogAsync(complogPath, file, content, TimeSpan.FromMinutes(2), cancellationToken);
-                if (candidate.Verified)
-                    oracle = candidate;
+                var logs = Directory.Exists(bundleDir)
+                    ? Fuse.Indexing.CaptureBundleIo.CompilerLogPaths(bundleDir)
+                    : File.Exists(bundleDir) ? [bundleDir] : [];
+                foreach (var log in logs)
+                {
+                    var candidate = await client.CheckFromComplogAsync(log, file, content, TimeSpan.FromMinutes(2), cancellationToken);
+                    if (candidate.Verified)
+                    {
+                        oracle = candidate;
+                        break; // The file was found and checked in this log; no need to try the rest.
+                    }
+                }
             }
         }
 

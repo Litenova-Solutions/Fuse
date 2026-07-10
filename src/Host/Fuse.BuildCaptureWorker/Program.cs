@@ -52,6 +52,24 @@ if (args.Length == 4 && args[0] == "--check-complog")
     return check.Verified ? 0 : 1;
 }
 
+// --merge <fragmentsDir> <complogOutDir>: convert per-project fragment binlogs to portable compiler logs
+// (fail-closed secret scanned) and emit the merged extracted graph as JSON (the G4 fragment-merge channel).
+if (args.Length == 3 && args[0] == "--merge")
+{
+    CaptureResult merged;
+    try
+    {
+        merged = rehydrator.MergeFragmentsToBundle(args[1], args[2], CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        merged = CaptureResult.Failed($"merge error: {ex.Message}");
+    }
+
+    Console.Out.WriteLine(JsonSerializer.Serialize(merged, BuildCaptureJsonContext.Default.CaptureResult));
+    return merged.Succeeded ? 0 : 1;
+}
+
 // --capture-bundle <target> <complogOut>: build the target and export a portable compiler log (the C2 capture
 // artifact) to <complogOut>, emitting the extracted graph as JSON on stdout so the parent can package both.
 if (args.Length == 3 && args[0] == "--capture-bundle")
@@ -72,7 +90,7 @@ if (args.Length == 3 && args[0] == "--capture-bundle")
 
 if (args.Length < 2 || args[0] is not ("--build" or "--binlog"))
 {
-    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --capture-bundle <target> <complogOut> | --check <target> <file> <newContentFile> | --check-complog <complogPath> <file> <newContentFile>)");
+    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --capture-bundle <target> <complogOut> | --merge <fragmentsDir> <complogOutDir> | --check <target> <file> <newContentFile> | --check-complog <complogPath> <file> <newContentFile>)");
     return 2;
 }
 

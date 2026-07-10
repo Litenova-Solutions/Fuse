@@ -189,6 +189,66 @@ public sealed class BuildCaptureRehydrator
     }
 
     /// <summary>
+    ///     Merges per-project fragment binary logs into a version-2 bundle's inputs (G4): converts each fragment
+    ///     binlog to a portable per-project compiler log under <paramref name="complogOutDir" /> (fail-closed
+    ///     secret scanned, exactly as a direct capture) and returns the merged extracted graph. The caller
+    ///     assembles the bundle from the written complogs and the returned graph. Fails closed: any secret finding
+    ///     or scan error deletes every written complog and returns a failure, so a merged bundle never ships a
+    ///     secret a fragment exposed.
+    /// </summary>
+    /// <param name="fragmentsDir">The directory holding per-project fragment binary logs (<c>*.binlog</c>).</param>
+    /// <param name="complogOutDir">The directory to write the per-project portable compiler logs to.</param>
+    /// <param name="cancellationToken">A token to cancel the merge.</param>
+    /// <returns>The merged graph, or a failure when no fragment recorded a C# compilation or a secret was found.</returns>
+    public CaptureResult MergeFragmentsToBundle(string fragmentsDir, string complogOutDir, CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(fragmentsDir))
+            return CaptureResult.Failed($"fragments directory not found: {fragmentsDir}");
+        var binlogs = Directory.GetFiles(fragmentsDir, "*.binlog").OrderBy(p => p, StringComparer.Ordinal).ToList();
+        if (binlogs.Count == 0)
+            return CaptureResult.Failed("no fragment binary logs (*.binlog) found to merge");
+
+        Directory.CreateDirectory(complogOutDir);
+        var written = new List<string>();
+        var index = 0;
+        foreach (var binlog in binlogs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var complog = Path.Combine(complogOutDir, $"fragment-{index:D4}.complog");
+            index++;
+            CompilerLogUtil.ConvertBinaryLog(binlog, complog, static _ => true);
+            if (!File.Exists(complog))
+                continue; // A fragment with no C# compiler call produces no complog; the merge unions the rest.
+
+            ComplogSecretFinding? finding;
+            try
+            {
+                finding = ComplogSecretScanner.ScanCompilerLog(complog, redactor: null, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                written.Add(complog);
+                foreach (var w in written) TryDelete(w);
+                return CaptureResult.Failed($"secret scan could not complete ({ex.GetType().Name}); no bundle was kept (fail closed)");
+            }
+
+            if (finding is not null)
+            {
+                written.Add(complog);
+                foreach (var w in written) TryDelete(w);
+                return CaptureResult.Failed($"secret scan failed closed: a {finding.Kind} secret was detected in {finding.Label}; no bundle was kept");
+            }
+
+            written.Add(complog);
+        }
+
+        if (written.Count == 0)
+            return CaptureResult.Failed("no fragment recorded a C# compilation");
+
+        return MergeFragments(binlogs, cancellationToken);
+    }
+
+    /// <summary>
     ///     Merges per-project capture fragments (G4): rehydrates each fragment log and unions the resulting
     ///     projects into one capture result, so a bundle assembled from fragments carries the same extracted graph
     ///     as a direct whole-solution capture. Each fragment is a per-project binary (or compiler) log; a fragment

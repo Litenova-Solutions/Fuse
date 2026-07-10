@@ -6892,6 +6892,30 @@ proof) needs no new API - it is the union of per-fragment `CapturedProject`s via
 
 **Next action.** Implement 4-G1a: the graph-side `fuse capture --merge` + the edge-set equality test.
 
+#### 2026-07-09 G4 sub-step 4-G1a DONE: fragment-merge engine + edge-set equality proof
+
+**Shipped.** `BuildCaptureRehydrator.MergeFragments(fragmentLogPaths, ct)` - rehydrates each per-project
+fragment log (reusing `RehydrateFromBinlog`) and unions the projects, deduplicated by FilePath then
+name (so a fragment that a dependency build caused to also record a referenced project does not
+double-count). Returns the unioned `CaptureResult`, or a failure when no fragment recorded a C#
+compilation.
+
+**Proof (the Gate's merge-equality, real build).** `CaptureFragmentMergeTests
+.Merged_fragments_equal_a_direct_capture`: creates two independent projects + a solution via the
+dotnet CLI (`.slnx`, the .NET 10 format), captures the solution directly (2 projects rehydrated),
+builds each project alone with its own binlog (one compilation per fragment), merges the fragments,
+and asserts edge-set equality - same project set AND the same total symbol, node, and edge counts as
+the direct capture. Ran real builds (8 s), not the guarded-abstain path. Guarded: returns cleanly if
+the SDK cannot build here.
+
+**Gates.** build 0; full test + format run before commit. No public-format change in this sub-step
+(the complog storage is 4-G1b).
+
+**Next action.** G4 sub-step 4-G1b: bundle format v2 - store per-project complogs under `fragments/`;
+teach `CheckFromLog`/`--from-capture` to iterate them; bump `CaptureManifest.CurrentFormatVersion` to
+2 with the incompatibility refusal + CHANGELOG re-capture note (C2 invariant); then 4-G2 the
+`Fuse.Capture.targets` package + fixture + overhead, and 4-G3 docs + Gate.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

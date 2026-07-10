@@ -5,6 +5,7 @@ using DotMake.CommandLine;
 using Fuse.Cli.Extensions;
 using Fuse.Cli.Rpc;
 using Fuse.Cli.Services;
+using Fuse.Semantics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -43,6 +44,17 @@ public sealed class HostCommand
     {
         var root = Path.GetFullPath(Directory);
 
+        // Single-instance per root (G5): exactly one daemon serves a root, so the warm compilation is a shared
+        // asset instead of a per-process cost. If another daemon already owns the lock (for example two clients
+        // raced to spawn one), this redundant process exits cleanly and the existing daemon serves. The lock is
+        // held for the serve lifetime and released on shutdown, so a later process can take the root over.
+        using var daemonLock = DaemonLock.TryAcquire(root);
+        if (!daemonLock.IsOwner)
+        {
+            await Console.Error.WriteLineAsync($"Fuse host: a daemon already serves {root}; not starting a second.");
+            return;
+        }
+
         var builder = Host.CreateApplicationBuilder();
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
@@ -70,7 +82,23 @@ public sealed class HostCommand
             await notifier.BroadcastAsync("fuse/invalidated");
         };
 
+        // Resident workspace (S1), opt-in (FUSE_RESIDENT), default off: keep a live compilation for this root and
+        // drive it from the same watcher's coalesced batches, so fuse_check answers resident-grade without a
+        // rebuild. Off by default keeps the host path byte-identical until the S1 latency gate promotes it.
+        using var resident = Services.ResidentWorkspaceHosting.OptIn()
+            ? Services.ResidentWorkspaceHosting.Enable(root, watcher, app.Services.GetRequiredService<SemanticIndexer>(), message => logger.LogInformation("{Message}", message), stopCts.Token)
+            : null;
+
         logger.LogInformation("Fuse host {Version} serving {Root}", FuseHostService.HostVersion, root);
+
+        // Idle shutdown (G5): a daemon spawned on demand shuts itself down after FUSE_DAEMON_IDLE_MINUTES with no
+        // connected clients, so it does not linger holding a resident workspace. Default off (0 = never), so a
+        // manually run `fuse host` keeps its prior always-on behavior; a spawned daemon sets the window.
+        var idleMonitor = new IdleShutdownMonitor(
+            () => notifier.ConnectionCount,
+            () => { logger.LogInformation("Fuse host idle for the shutdown window; stopping."); stopCts.Cancel(); },
+            IdleWindowFromEnv());
+        var idleTask = idleMonitor.RunAsync(stopCts.Token);
 
         try
         {
@@ -84,7 +112,17 @@ public sealed class HostCommand
             // Normal shutdown path.
         }
 
+        await idleTask; // let the idle monitor observe cancellation and stop cleanly
         logger.LogInformation("Fuse host stopped.");
+    }
+
+    // The idle-shutdown window from FUSE_DAEMON_IDLE_MINUTES (minutes); zero, unset, or unparseable disables it.
+    private static TimeSpan IdleWindowFromEnv()
+    {
+        var value = Environment.GetEnvironmentVariable("FUSE_DAEMON_IDLE_MINUTES");
+        return int.TryParse(value, out var minutes) && minutes > 0
+            ? TimeSpan.FromMinutes(minutes)
+            : TimeSpan.Zero;
     }
 
     // Accept loop for Windows named pipes. Each accepted connection is served on its own task so a second editor

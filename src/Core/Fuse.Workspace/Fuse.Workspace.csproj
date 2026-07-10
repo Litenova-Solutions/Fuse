@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseFileScopedNamespaces>true</UseFileScopedNamespaces>
+    </PropertyGroup>
+    <!-- S1 (the resident workspace): this library holds live rehydrated compilations between calls. It references
+         Basic.CompilerLog.Util (the rehydration closure) but never Microsoft.CodeAnalysis.Workspaces.MSBuild, so a
+         process that hosts a resident workspace loads only the rehydration closure, never MSBuildWorkspace (D7/D8).
+         The two Roslyn-loading closures conflict when both are active in one process; keeping MSBuildWorkspace out
+         of this assembly is what lets the serve/host process hold resident compilations in-process. -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="Fuse.Workspace.Tests"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Basic.CompilerLog.Util"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
+        <!-- Basic.CompilerLog.Util has a floor dependency on Microsoft.CodeAnalysis.VisualBasic 4.8; reference it
+             explicitly so it resolves to the pinned 4.14 (matching CodeAnalysis.Common 4.14), exactly as the
+             build-capture worker does. Without this the 4.8 VB assembly loads over a 4.14 Common and rehydration
+             throws a TypeLoadException (CommonGetSemanticModel). -->
+        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Fuse.Indexing\Fuse.Indexing.csproj"/>
+    </ItemGroup>
+</Project>

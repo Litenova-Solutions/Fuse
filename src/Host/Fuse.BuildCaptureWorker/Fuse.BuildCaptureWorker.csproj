@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- N4 tier-1 build-capture worker. A standalone executable, spawned as a child process by the main Fuse
+       process, so its Basic.CompilerLog.Util Roslyn closure never shares a process with the parent's
+       MSBuildWorkspace (the two conflict in one process). It runs the repository build, rehydrates exact
+       compilations from the binary log, and emits their data to stdout. It never invokes MSBuildWorkspace. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>fuse-build-capture</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fuse.BuildCaptureWorker.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Basic.CompilerLog.Util" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <!-- Version-consistency pin only (never used to compile VB): Basic.CompilerLog's floor dependency on
+         VisualBasic 4.8 must resolve to 4.14 to match CodeAnalysis.Common 4.14, or a mismatched VB assembly
+         throws TypeLoadException at runtime. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The worker runs Fuse's semantic extraction (symbol extraction plus the wiring analyzers) over the
+         rehydrated compilation. This pulls MSBuildWorkspace assemblies transitively, but the worker never calls
+         MSBuildWorkspace (only Basic.CompilerLog plus the analyzers, which are plain Roslyn), so the process-level
+         conflict that blocks the two loaders in one process does not arise. -->
+    <ProjectReference Include="..\..\Core\Fuse.Semantics\Fuse.Semantics.csproj" />
+    <!-- The secret redactor (C2): the worker fail-closed-scans the exported compiler log's generated documents
+         and additional files before the bundle ships, using the same detector the reduction pipeline uses. -->
+    <ProjectReference Include="..\..\Core\Fuse.Reduction\Fuse.Reduction.csproj" />
+  </ItemGroup>
+</Project>

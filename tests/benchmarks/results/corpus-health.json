@@ -1,0 +1,61 @@
+{
+  "generated": "2026-07-10T07:54:34.4293065Z",
+  "reposTotal": 6,
+  "reposTier1": 5,
+  "tasksTotal": 0,
+  "tasksVerified": 0,
+  "minReposTier1": 20,
+  "minTasksVerified": 60,
+  "repos": [
+    {
+      "name": "Scrutor",
+      "tier": "partial",
+      "tier1": false,
+      "testProjects": 2,
+      "testFiles": 45,
+      "note": null
+    },
+    {
+      "name": "Specification",
+      "tier": "semantic",
+      "tier1": true,
+      "testProjects": 11,
+      "testFiles": 233,
+      "note": null
+    },
+    {
+      "name": "NodaTime",
+      "tier": "semantic",
+      "tier1": true,
+      "testProjects": 17,
+      "testFiles": 488,
+      "note": null
+    },
+    {
+      "name": "eShopOnWeb",
+      "tier": "semantic",
+      "tier1": true,
+      "testProjects": 10,
+      "testFiles": 254,
+      "note": null
+    },
+    {
+      "name": "SampleShop",
+      "tier": "semantic",
+      "tier1": true,
+      "testProjects": 2,
+      "testFiles": 7,
+      "note": null
+    },
+    {
+      "name": "OrderingApp",
+      "tier": "semantic",
+      "tier1": true,
+      "testProjects": 1,
+      "testFiles": 16,
+      "note": null
+    }
+  ],
+  "notes": [],
+  "meetsMinimums": false
+}

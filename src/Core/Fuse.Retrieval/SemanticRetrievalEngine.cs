@@ -1,5 +1,4 @@
 using Fuse.Indexing;
-using Fuse.Plugins.Abstractions.Scoping;
 
 namespace Fuse.Retrieval;
 
@@ -44,12 +43,11 @@ public sealed class SemanticRetrievalEngine
     /// </summary>
     /// <param name="store">The index store to query.</param>
     /// <param name="changeSource">An optional change source so <c>ChangedSince</c> resolves to changed-file seeds.</param>
-    /// <param name="embedder">An optional text embedder; when available, a dense retrieval channel is added.</param>
-    public SemanticRetrievalEngine(IWorkspaceIndexStore store, IChangeSource? changeSource = null, ITextEmbedder? embedder = null)
+    public SemanticRetrievalEngine(IWorkspaceIndexStore store, IChangeSource? changeSource = null)
     {
         _store = store;
         _changeSource = changeSource;
-        _candidateGenerator = CandidateGenerator.CreateDefault(store, changeSource, embedder);
+        _candidateGenerator = CandidateGenerator.CreateDefault(store, changeSource);
         _scorer = new CandidateScorer();
         _expansion = new GraphExpansionEngine(store, new EdgeWeightProvider());
     }
@@ -81,11 +79,15 @@ public sealed class SemanticRetrievalEngine
         var candidates = await _candidateGenerator.GenerateAsync(request, cancellationToken);
         var scored = _scorer.Score(candidates);
         // Dependency-centrality prior: a widely-depended-on file outranks a leaf for an otherwise-tied query. A
-        // small capped multiplier, empty (no-op) in syntax mode where the graph has no edges.
-        scored = await new GraphCentralityPrior(_store).ApplyAsync(scored, cancellationToken);
+        // small capped multiplier, empty (no-op) in syntax mode where the graph has no edges. Gated so the ranking
+        // suite can score the base channels in isolation.
+        if (request.EnableCentralityPrior)
+            scored = await new GraphCentralityPrior(_store).ApplyAsync(scored, cancellationToken);
         // Git co-change prior: a file that historically changes alongside a strong hit is nudged up, recovering
         // the sibling files of a multi-file change. Capped multiplier, empty (no-op) when no co-change was mined.
-        scored = await new GitCoChangePrior(_store).ApplyAsync(scored, cancellationToken);
+        // Gated (N1/finding 9) so the ranking suite can re-adjudicate this default-on prior's effect.
+        if (request.EnableCoChangePrior)
+            scored = await new GitCoChangePrior(_store).ApplyAsync(scored, cancellationToken);
         var state = SignalGrader.Grade(scored);
 
         // Select the returned set by state. Confident returns only the leading cluster (the precision win); partial

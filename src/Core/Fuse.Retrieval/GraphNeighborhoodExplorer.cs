@@ -98,6 +98,43 @@ public sealed class GraphNeighborhoodExplorer
     }
 
     /// <summary>
+    ///     Returns the tests that cover a symbol: the test types that reach it through an incoming <c>tests</c>
+    ///     edge (R5). Because R5's <c>tests</c> edges are DI-resolved (a test injecting <c>IOrderService</c>
+    ///     carries an edge to the registered <c>OrderService</c>), the covering set follows the wiring, not just
+    ///     the literal type name. This is the M1 covering-test selection primitive: the small subset an agent can
+    ///     run with its own <c>dotnet test --filter</c> instead of the whole suite. It is best-effort, never "all
+    ///     the tests": a test reached only through reflection or a source generator has no edge and is not
+    ///     selected, so the set is a lower bound bounded by R5's edge completeness.
+    /// </summary>
+    /// <param name="symbol">The symbol display name whose covering tests to select.</param>
+    /// <param name="limit">The maximum tests to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The covering test items (the test type and its file), or empty when no <c>tests</c> edge reaches the symbol.</returns>
+    public async Task<IReadOnlyList<ExploredItem>> CoveringTestsAsync(
+        string symbol, int limit, CancellationToken cancellationToken)
+    {
+        var items = new Dictionary<string, ExploredItem>(StringComparer.Ordinal);
+        foreach (var node in await _store.FindNodesByDisplayNameAsync(SimpleName(symbol), cancellationToken))
+        {
+            foreach (var edge in await _store.GetIncomingEdgesAsync(node.NodeId, cancellationToken))
+            {
+                // Only tests edges select a covering test; a caller or implementer is blast radius, not coverage.
+                if (!string.Equals(edge.EdgeType, "tests", StringComparison.Ordinal))
+                    continue;
+                var source = await _store.GetNodeAsync(edge.FromNodeId, cancellationToken);
+                if (source?.FilePath is null)
+                    continue;
+                items.TryAdd(source.NodeId, new ExploredItem(Normalize(source.FilePath), source.DisplayName, source.Kind, "covers"));
+            }
+        }
+
+        return items.Values
+            .OrderBy(i => i.Path, StringComparer.Ordinal)
+            .Take(limit)
+            .ToList();
+    }
+
+    /// <summary>
     ///     Returns the structurally central files of an area (a folder prefix, or the whole workspace when empty):
     ///     the files whose declared types have the highest node degree in the semantic graph.
     /// </summary>

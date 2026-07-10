@@ -72,6 +72,63 @@ public static class Metrics
         => values.Count == 0 ? 0.0 : values.Sum() / values.Count;
 
     /// <summary>
+    ///     Computes the reciprocal rank of the first relevant item in a ranked list: <c>1 / rank</c> of the
+    ///     first hit (rank is 1-based), or <c>0.0</c> if no relevant item appears. The mean over queries is MRR.
+    /// </summary>
+    /// <param name="ranked">The retrieved items in rank order (most relevant first).</param>
+    /// <param name="groundTruth">The ground-truth relevant set.</param>
+    /// <returns>The reciprocal rank in <c>[0, 1]</c>.</returns>
+    public static double ReciprocalRank(IReadOnlyList<string> ranked, ISet<string> groundTruth)
+    {
+        for (var i = 0; i < ranked.Count; i++)
+            if (groundTruth.Contains(ranked[i]))
+                return 1.0 / (i + 1);
+        return 0.0;
+    }
+
+    /// <summary>
+    ///     Computes recall at rank <paramref name="k" />: the fraction of the ground-truth set that appears in
+    ///     the top <paramref name="k" /> of the ranked list.
+    /// </summary>
+    /// <param name="ranked">The retrieved items in rank order (most relevant first).</param>
+    /// <param name="groundTruth">The ground-truth relevant set.</param>
+    /// <param name="k">The rank cutoff.</param>
+    /// <returns>Recall@k in <c>[0, 1]</c>; <c>1.0</c> when the ground truth is empty.</returns>
+    public static double RecallAtK(IReadOnlyList<string> ranked, IReadOnlyCollection<string> groundTruth, int k)
+    {
+        if (groundTruth.Count == 0)
+            return 1.0;
+        var top = new HashSet<string>(ranked.Take(k));
+        var hits = groundTruth.Count(top.Contains);
+        return (double)hits / groundTruth.Count;
+    }
+
+    /// <summary>
+    ///     Computes the normalized discounted cumulative gain at rank <paramref name="k" /> under binary
+    ///     relevance: DCG over the top <paramref name="k" /> divided by the ideal DCG for the number of
+    ///     relevant items reachable within <paramref name="k" />. Rewards placing relevant items higher.
+    /// </summary>
+    /// <param name="ranked">The retrieved items in rank order (most relevant first).</param>
+    /// <param name="groundTruth">The ground-truth relevant set.</param>
+    /// <param name="k">The rank cutoff.</param>
+    /// <returns>nDCG@k in <c>[0, 1]</c>; <c>1.0</c> when the ground truth is empty, <c>0.0</c> when the ideal DCG is zero.</returns>
+    public static double NdcgAtK(IReadOnlyList<string> ranked, ISet<string> groundTruth, int k)
+    {
+        if (groundTruth.Count == 0)
+            return 1.0;
+        double dcg = 0.0;
+        var limit = Math.Min(k, ranked.Count);
+        for (var i = 0; i < limit; i++)
+            if (groundTruth.Contains(ranked[i]))
+                dcg += 1.0 / Math.Log2(i + 2); // gain 1, discount log2(rank+1) with rank 1-based
+        double idcg = 0.0;
+        var ideal = Math.Min(k, groundTruth.Count);
+        for (var i = 0; i < ideal; i++)
+            idcg += 1.0 / Math.Log2(i + 2);
+        return idcg == 0.0 ? 0.0 : dcg / idcg;
+    }
+
+    /// <summary>
     ///     Computes a percentile bootstrap confidence interval for the mean of a sample. Deterministic:
     ///     the resampling RNG is seeded from a fixed constant so a rerun over the same sample reproduces
     ///     the interval (Section 18.11 requires confidence intervals at small task counts).

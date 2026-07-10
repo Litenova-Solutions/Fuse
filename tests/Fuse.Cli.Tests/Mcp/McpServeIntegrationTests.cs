@@ -9,35 +9,24 @@ namespace Fuse.Cli.Tests.Mcp;
 /// </summary>
 public sealed class McpServeIntegrationTests
 {
-    private static readonly string[] ExpectedV3ToolNames =
+    // The eight-tool loop surface plus fuse_reduce, the one out-of-loop utility (it compacts arbitrary files
+    // and raw content, which fuse_context's indexed-seed emission does not cover). v4 is a clean-slate first
+    // public release (D14): no deprecation shims, no legacy names - the surface is exactly these nine tools.
+    private static readonly string[] ExpectedToolNames =
     [
+        "fuse_check",
         "fuse_context",
         "fuse_find",
-        "fuse_index",
-        "fuse_localize",
-        "fuse_map",
-        "fuse_neighbors",
+        "fuse_impact",
         "fuse_reduce",
-        "fuse_resolve",
+        "fuse_refactor",
         "fuse_review",
-    ];
-
-    // The retired V2 names are re-registered as deprecation shims (FuseDeprecatedTools) so a client that cached
-    // the old surface across an upgrade gets an actionable message instead of an Unknown tool error.
-    private static readonly string[] ExpectedDeprecatedToolNames =
-    [
-        "fuse_ask",
-        "fuse_changes",
-        "fuse_dotnet",
-        "fuse_focus",
-        "fuse_generic",
-        "fuse_search",
-        "fuse_skeleton",
-        "fuse_toc",
+        "fuse_test",
+        "fuse_workspace",
     ];
 
     [Fact]
-    public async Task StdioServer_ListsV3ToolsAndDeprecationShims_AndFuseMapReturnsIndexedSymbols()
+    public async Task StdioServer_ListsExactlyTheNineLoopTools_AndFuseWorkspaceMapReturnsIndexedSymbols()
     {
         using var fixture = new McpFixtureProject();
         fixture.AddFile("Services/WidgetService.cs", """
@@ -58,18 +47,78 @@ public sealed class McpServeIntegrationTests
         await using var client = await McpClient.CreateAsync(transport, cancellationToken: TestCancellation);
 
         var tools = await client.ListToolsAsync(cancellationToken: TestCancellation);
-        var expected = ExpectedV3ToolNames.Concat(ExpectedDeprecatedToolNames).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        var expected = ExpectedToolNames.OrderBy(n => n, StringComparer.Ordinal).ToArray();
         Assert.Equal(expected, tools.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
 
-        // fuse_map builds the index on first use (the fixture is a git repo, so the store stays inside it).
+        // fuse_workspace action=map builds the index on first use (the fixture is a git repo, so the store stays
+        // inside it).
         var result = await client.CallToolAsync(
-            "fuse_map",
-            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["detail"] = "symbols" },
+            "fuse_workspace",
+            new Dictionary<string, object?> { ["action"] = "map", ["path"] = fixture.ProjectPath, ["detail"] = "symbols" },
             cancellationToken: TestCancellation);
 
         var text = TextContent(result);
         Assert.Contains("workspace map", text);
         Assert.Contains("WidgetService", text);
+
+        // The fuse_find union works over the wire: kind=symbol is exact lookup; the union kinds route to the
+        // formerly-separate engines (kind=task ranks candidates).
+        var findSymbol = await client.CallToolAsync(
+            "fuse_find",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["query"] = "WidgetService", ["kind"] = "symbol" },
+            cancellationToken: TestCancellation);
+        Assert.Contains("WidgetService", TextContent(findSymbol));
+
+        var findTask = await client.CallToolAsync(
+            "fuse_find",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["query"] = "spin the widget", ["kind"] = "task" },
+            cancellationToken: TestCancellation);
+        Assert.Contains("localize", TextContent(findTask));
+
+        // (fuse_review --handoff (U2) is not exercised over the MCP subprocess here: calling it spawns git in the
+        // test-host+subprocess combo, which crashes the test host in this environment - the same git-process
+        // fragility the Fuse.Fusion GitStats test hits. The handoff carries a top-level guard that turns any such
+        // failure into a graceful abstention string; its red-gate decision is a simple introduced-error count.)
+
+        // fuse_impact carries the T2 public-surface line: a public type is flagged as external-facing so the agent
+        // knows a change to it is contract-relevant before editing.
+        var impact = await client.CallToolAsync(
+            "fuse_impact",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["symbol"] = "WidgetService" },
+            cancellationToken: TestCancellation);
+
+        var impactText = TextContent(impact);
+        Assert.Contains("public API surface:", impactText);
+        Assert.Contains("WidgetService is on the public/protected surface", impactText);
+        // fuse_impact carries the U2 graded claims block: its statements each carry a grade and an evidence ref,
+        // and graph-grade claims are capped at partially verified (not compiler-confirmed).
+        Assert.Contains("claims (", impactText);
+        Assert.Contains("partially verified", impactText);
+
+        // U3: the playbook prompts are registered and selectable by name.
+        var prompts = await client.ListPromptsAsync(cancellationToken: TestCancellation);
+        Assert.Equal(
+            ["add-endpoint", "fix-build-error", "implement-feature", "rename-symbol", "review-pr"],
+            prompts.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
+
+        // A selected prompt expands with its anchor argument into the loop-shaped playbook.
+        var fixPrompt = await client.GetPromptAsync(
+            "fix-build-error",
+            new Dictionary<string, object?> { ["diagnosticId"] = "CS1061" },
+            cancellationToken: TestCancellation);
+        var promptText = string.Concat(
+            fixPrompt.Messages.Select(m => (m.Content as TextContentBlock)?.Text));
+        Assert.Contains("CS1061", promptText);
+        Assert.Contains("fuse_check", promptText);
+
+        // U3: the addressable resources include the U2 session ledger and the new status/diff/diagnostics reads,
+        // alongside the map/localize/context/review workflow resources.
+        var resourceTemplates = await client.ListResourceTemplatesAsync(cancellationToken: TestCancellation);
+        var templateUris = resourceTemplates.Select(r => r.UriTemplate).ToArray();
+        Assert.Contains(templateUris, u => u.StartsWith("fuse://ledger/", StringComparison.Ordinal));
+        Assert.Contains(templateUris, u => u.StartsWith("fuse://status/", StringComparison.Ordinal));
+        Assert.Contains(templateUris, u => u.StartsWith("fuse://diff/", StringComparison.Ordinal));
+        Assert.Contains(templateUris, u => u.StartsWith("fuse://diagnostics/", StringComparison.Ordinal));
     }
 
     private static CancellationToken TestCancellation => default;

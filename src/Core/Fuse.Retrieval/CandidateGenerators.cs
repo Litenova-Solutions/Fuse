@@ -1,5 +1,4 @@
 using Fuse.Indexing;
-using Fuse.Plugins.Abstractions.Scoping;
 
 namespace Fuse.Retrieval;
 
@@ -36,17 +35,15 @@ public sealed class CandidateGenerator
     /// </summary>
     /// <param name="store">The index store to query.</param>
     /// <param name="changeSource">An optional change source so <c>ChangedSince</c> resolves to changed-file seeds.</param>
-    /// <param name="embedder">An optional text embedder; when available and the index holds embeddings, a dense channel is added.</param>
     /// <returns>A generator with the standard candidate sources.</returns>
     /// <remarks>
     ///     The lexical channel is <see cref="LexicalCandidateGenerator" />, which preserves the BM25F rank and
     ///     adds pseudo-relevance feedback. <see cref="FtsCandidateGenerator" /> remains available as the flat
-    ///     per-source variant but is no longer in the default set. The dense channel
-    ///     (<see cref="DenseCandidateGenerator" />) is added only when an embedder is available, so the no-model
-    ///     path is unchanged.
+    ///     per-source variant but is no longer in the default set. The <see cref="ICandidateGenerator" /> seam
+    ///     stays open for a future generator (for example a re-added dense channel via a plugin).
     /// </remarks>
     public static CandidateGenerator CreateDefault(
-        IWorkspaceIndexStore store, IChangeSource? changeSource = null, ITextEmbedder? embedder = null)
+        IWorkspaceIndexStore store, IChangeSource? changeSource = null)
     {
         var generators = new List<ICandidateGenerator>
         {
@@ -55,8 +52,6 @@ public sealed class CandidateGenerator
             new PathCandidateGenerator(store),
             new DiffCandidateGenerator(changeSource),
         };
-        if (embedder is { IsAvailable: true })
-            generators.Add(new DenseCandidateGenerator(store, embedder));
 
         return new CandidateGenerator(generators);
     }

@@ -1,0 +1,126 @@
+{
+  "suite": "loop",
+  "description": "Loop metric (R4): build-gated turns to green per toolbox (model-dependent; harness is the deliverable).",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 7,
+    "recall": 0,
+    "recallCiLow": 0,
+    "recallCiHigh": 0,
+    "precision": 0,
+    "f1": 0,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "NodaTime#621/native",
+      "repo": "NodaTime",
+      "category": "native",
+      "recall": 0,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NodaTime#621/fuse",
+      "repo": "NodaTime",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor#6/native",
+      "repo": "Scrutor",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor#6/fuse",
+      "repo": "Scrutor",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Specification#502/native",
+      "repo": "Specification",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Specification#502/fuse",
+      "repo": "Specification",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "eShopOnWeb#949/native",
+      "repo": "eShopOnWeb",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    }
+  ],
+  "notes": [
+    "model claude-sonnet-4-6",
+    "max turns 40",
+    "arms: native, fuse",
+    "metric: build-gated turns to green (iterations_to_green), build invocations; lower is better",
+    "harness-first: the harness is the deliverable; numbers are recorded when the claude CLI and a model are provisioned",
+    "sampled PRs (4): NodaTime#621, Scrutor#6, Specification#502, eShopOnWeb#949",
+    "arm fuse: n 3, reached-green 0%, median iters-to-green 0.0, mean build invocations 0.3",
+    "arm native: n 4, reached-green 25%, median iters-to-green 1.0, mean build invocations 0.8"
+  ]
+}

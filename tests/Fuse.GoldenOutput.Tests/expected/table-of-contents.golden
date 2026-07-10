@@ -1,6 +1,6 @@
 <!-- fuse:table-of-contents files=11 read-cost=~606 tokens
      A map of the codebase. Each file shows its token cost to read and the types it declares.
-     Fetch a file's full content with fuse_focus, fuse_search, or by path. -->
+     Fetch a file's full content with fuse_context, fuse_find, or by path. -->
 README.md (~177 tokens)
 src/
   SampleShop.Core/

@@ -4,9 +4,11 @@ using Fuse.Cli.Services;
 using Fuse.Collection.FileSystem;
 using Fuse.Context;
 using Fuse.Indexing;
+using Fuse.Cli.Mcp;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Retrieval;
+using Fuse.Semantics;
 
 namespace Fuse.Cli.Commands;
 
@@ -25,12 +27,13 @@ public sealed class ReviewCommand
     private readonly IConsoleUI _consoleUI;
     private readonly IChangeSource _changeSource;
     private readonly ContentReductionPipeline _reductionPipeline;
+    private readonly SemanticIndexer _indexer;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="ReviewCommand" /> class for CLI option binding only.
     /// </summary>
     /// <remarks>Used by DotMake.CommandLine to bind options; the dependencies are null, so this instance must not run.</remarks>
-    public ReviewCommand() : this(null!, null!, null!)
+    public ReviewCommand() : this(null!, null!, null!, null!)
     {
     }
 
@@ -40,11 +43,13 @@ public sealed class ReviewCommand
     /// <param name="consoleUI">The console UI for output.</param>
     /// <param name="changeSource">The change source for resolving the git base ref.</param>
     /// <param name="reductionPipeline">The reduction pipeline used to render file bodies.</param>
-    public ReviewCommand(IConsoleUI consoleUI, IChangeSource changeSource, ContentReductionPipeline reductionPipeline)
+    /// <param name="indexer">The semantic indexer (opens the store for the handoff packet).</param>
+    public ReviewCommand(IConsoleUI consoleUI, IChangeSource changeSource, ContentReductionPipeline reductionPipeline, SemanticIndexer indexer)
     {
         _consoleUI = consoleUI;
         _changeSource = changeSource;
         _reductionPipeline = reductionPipeline;
+        _indexer = indexer;
     }
 
     /// <summary>The workspace directory. Defaults to the current directory.</summary>
@@ -71,6 +76,14 @@ public sealed class ReviewCommand
     [CliOption(Name = "--plan-only", Description = "Print the preamble and plan without rendering source bodies.")]
     public bool PlanOnly { get; set; }
 
+    /// <summary>Produce a paste-ready PR handoff packet instead of the review context.</summary>
+    [CliOption(Name = "--handoff", Description = "Produce a paste-ready PR handoff packet (changed files, API delta, compiler-gate status, residual risk) instead of the review context.")]
+    public bool Handoff { get; set; }
+
+    /// <summary>The fuse_check session id the handoff red-gate consults.</summary>
+    [CliOption(Name = "--check-session", Description = "For --handoff: the fuse_check session id to gate on (refuses while it has unresolved introduced errors).")]
+    public string CheckSession { get; set; } = string.Empty;
+
     /// <summary>
     ///     Runs the review command.
     /// </summary>
@@ -79,6 +92,16 @@ public sealed class ReviewCommand
     public async Task RunAsync(CliContext context)
     {
         var root = System.IO.Path.GetFullPath(Path);
+
+        // U3 parity: --handoff produces the paste-ready PR packet (the same builder fuse_review --handoff uses),
+        // gated by the check session's red state. It opens the index itself, so it does not need a prior index.
+        if (Handoff)
+        {
+            var handoff = await FuseTools.BuildHandoffAsync(_indexer, _changeSource, root, ChangedSince, CheckSession, context.CancellationToken);
+            _consoleUI.WriteResult(handoff);
+            return;
+        }
+
         var databasePath = FuseStorePaths.ResolveDatabasePath(root);
         if (!File.Exists(databasePath))
         {

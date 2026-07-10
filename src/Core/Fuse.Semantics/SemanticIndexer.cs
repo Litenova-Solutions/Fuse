@@ -1,5 +1,4 @@
 using Fuse.Indexing;
-using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Semantics.Analyzers;
 
 namespace Fuse.Semantics;
@@ -25,9 +24,40 @@ public sealed class SemanticIndexer
     private readonly SyntaxRouteExtractor _routeExtractor;
     private readonly FileHashService _hashService;
     private readonly SemanticAnalysisRunner _analysisRunner;
-    private readonly ITextEmbedder? _embedder;
     private readonly LanguageSyntaxProviderRegistry _syntaxProviders;
     private readonly GitCoChangeCollector _coChangeCollector = new();
+    private readonly BuildCaptureClient _buildCaptureClient = new();
+
+    // N4/C3 tier-1 build capture is default-ON: the oracle is the product. Opt out with FUSE_BUILD_CAPTURE=0
+    // (or false/no/off); any other value, or unset, enables it. It still no-ops when no worker is discoverable
+    // (the tool bundles one - see BuildCaptureClient.ResolveWorkerPath) or there is no build target, so a
+    // deployment without the worker degrades cleanly to the MSBuildWorkspace and syntax tiers.
+    private static readonly TimeSpan BuildCaptureTimeout = TimeSpan.FromMinutes(10);
+
+    internal static bool BuildCaptureEnabled()
+    {
+        var value = Environment.GetEnvironmentVariable("FUSE_BUILD_CAPTURE");
+        if (value is null)
+            return true;
+        return !(value.Equals("0", StringComparison.Ordinal)
+                 || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("off", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Runs the tier-1 build-capture worker for the discovered workspace. Returns the captured graph on success, or
+    // null when capture is disabled, the worker is unavailable, there is no build target, or the build failed.
+    private async Task<Fuse.Indexing.CaptureResult?> TryBuildCaptureAsync(
+        WorkspaceDiscoveryResult discovery, CancellationToken cancellationToken)
+    {
+        if (!BuildCaptureEnabled() || !_buildCaptureClient.IsAvailable)
+            return null;
+        var buildTarget = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
+        if (buildTarget is null)
+            return null;
+        var result = await _buildCaptureClient.CaptureAsync(buildTarget, BuildCaptureTimeout, cancellationToken);
+        return result.Succeeded ? result : null;
+    }
 
     // Non-source file extensions the scanner still needs for project discovery and config indexing, beyond the
     // source extensions the language providers claim.
@@ -52,7 +82,6 @@ public sealed class SemanticIndexer
     /// <param name="routeExtractor">The syntax route extractor.</param>
     /// <param name="hashService">The content hash service, used for project hashes.</param>
     /// <param name="analysisRunner">The semantic analyzer runner producing graph edges (semantic mode only).</param>
-    /// <param name="embedder">An optional text embedder; when available, a dense vector is persisted per chunk for dense retrieval.</param>
     public SemanticIndexer(
         DotNetWorkspaceDiscoverer discoverer,
         RoslynWorkspaceLoader loader,
@@ -61,8 +90,7 @@ public sealed class SemanticIndexer
         SyntaxSymbolExtractor syntaxSymbols,
         SyntaxRouteExtractor routeExtractor,
         FileHashService hashService,
-        SemanticAnalysisRunner analysisRunner,
-        ITextEmbedder? embedder = null)
+        SemanticAnalysisRunner analysisRunner)
     {
         _discoverer = discoverer;
         _loader = loader;
@@ -72,7 +100,6 @@ public sealed class SemanticIndexer
         _routeExtractor = routeExtractor;
         _hashService = hashService;
         _analysisRunner = analysisRunner;
-        _embedder = embedder;
         // The syntax tier is provider-driven: C# behind the seam (unchanged behavior), plus a second-language
         // syntax spike. Built internally so the existing constructor and its callers are unaffected; a later
         // change can make the provider set injectable for an external language plugin.
@@ -93,12 +120,24 @@ public sealed class SemanticIndexer
     {
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
-        var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
         var files = await ScanFilesAsync(root, cancellationToken);
 
-        SemanticIndexResult result = snapshot.SemanticLoadSucceeded
-            ? await IndexSemanticAsync(root, store, files, snapshot, cancellationToken)
-            : await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
+        // Tier 1 (build capture, oracle-grade) when enabled and available: run the out-of-process worker, which
+        // builds the repo and rehydrates the exact compilations, and write its graph bundle. Falls back to the
+        // MSBuildWorkspace load (tier 2), which itself falls back to syntax (tier 3), on any capture failure.
+        var capture = await TryBuildCaptureAsync(discovery, cancellationToken);
+        SemanticIndexResult result;
+        if (capture is not null)
+        {
+            result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
+        }
+        else
+        {
+            var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
+            result = snapshot.SemanticLoadSucceeded
+                ? await IndexSemanticAsync(root, store, files, snapshot, cancellationToken)
+                : await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
+        }
 
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         // A full pass is the final word on the mode: clear any syntax-first pending flag a prior fast pass set.
@@ -119,6 +158,37 @@ public sealed class SemanticIndexer
         }
 
         return result;
+    }
+
+    /// <summary>
+    ///     Diagnoses the semantic load without writing the index: discovers the workspace, loads it through
+    ///     MSBuild/Roslyn, and reports the achieved tier and the concrete per-project outcome. This is what
+    ///     <c>fuse doctor</c> reports, so a downgrade names its reason per project (unrestored, SDK mismatch,
+    ///     build error) rather than failing opaquely at the solution level.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="cancellationToken">A token to cancel the load.</param>
+    /// <returns>The load diagnosis: the tier, per-project reports, and load diagnostics.</returns>
+    public async Task<LoadDiagnosis> DiagnoseLoadAsync(string rootDirectory, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
+        var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
+
+        // The oracle tier requires every loaded project to be error-free; a project loaded with compile errors is
+        // graph-grade (retrieval only), and any project that did not load at all drops the tier further.
+        var loaded = snapshot.ProjectReports.Count(p => p.Loaded);
+        var total = snapshot.ProjectReports.Count;
+        var anyErrors = snapshot.ProjectReports.Any(p => p.Loaded && p.Reason.Contains("error", StringComparison.OrdinalIgnoreCase));
+        string tier;
+        if (!snapshot.SemanticLoadSucceeded || loaded == 0)
+            tier = "syntax";
+        else if (loaded < total || anyErrors)
+            tier = "graph-grade (partial)";
+        else
+            tier = "oracle-grade (all projects loaded clean)";
+
+        return new LoadDiagnosis(tier, loaded, total, snapshot.ProjectReports, snapshot.Diagnostics);
     }
 
     /// <summary>
@@ -147,9 +217,10 @@ public sealed class SemanticIndexer
         var snapshot = new RoslynWorkspaceSnapshot(
             SemanticLoadSucceeded: false,
             Projects: [],
-            Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-first", "Syntax-tier index served first; the semantic graph upgrades in the background.")]);
+            Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-first", "Syntax-tier index served first; the semantic graph upgrades in the background.")],
+            ProjectReports: []);
 
-        var result = await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken, embed: false);
+        var result = await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "1", cancellationToken);
         // Stamp the Fuse build even on the syntax-first pass so a partial index also carries provenance.
@@ -228,6 +299,80 @@ public sealed class SemanticIndexer
         return extracted.Symbols.Count;
     }
 
+    /// <summary>The metadata key recording the dirty-file count when a freshness reconcile degraded to a stamp.</summary>
+    public const string StaleAsOfMetaKey = "stale_dirty_count";
+
+    // Storm protection: above this many dirty files (a bulk change such as a branch switch or a large pull), skip
+    // the per-file reconcile that would otherwise thrash the index one file at a time and instead stamp the result
+    // stale, so a caller re-runs a full index rather than paying a reconcile storm on every read.
+    private const int MaxReconcileFiles = 300;
+
+    /// <summary>
+    ///     Reconciles the index against the current on-disk content of its known files: the N6 freshness contract.
+    ///     Files edited since the index was written are re-indexed (syntax rows) and deleted files are removed, so a
+    ///     read tool serves fresh data rather than an index frozen at first call. When the number of dirty files
+    ///     exceeds a storm threshold the pass does not reconcile; it records a stale-as-of stamp instead, so a bulk
+    ///     change degrades to an explicit "run a full index" signal rather than a reconcile storm.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root.</param>
+    /// <param name="store">The index store to reconcile.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The freshness outcome (files checked, reconciled, remaining dirty, and whether it was stamped stale).</returns>
+    /// <remarks>
+    ///     This detects modified and deleted known files via a content-hash comparison; it does not discover new
+    ///     files added on disk since the last full index (that needs a directory walk, which a full
+    ///     <see cref="IndexAsync" /> performs). Cross-file semantic edges are not recomputed here (see
+    ///     <see cref="ReindexFileAsync" />); the resident-workspace path recomputes the affected neighborhood.
+    /// </remarks>
+    public async Task<FreshnessResult> ReconcileDirtyFilesAsync(
+        string rootDirectory, IWorkspaceIndexStore store, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var stored = await store.GetAllFileHashesAsync(cancellationToken);
+        if (stored.Count == 0)
+            return new FreshnessResult(0, 0, 0, Stamped: false);
+
+        var dirty = new List<string>();
+        foreach (var (normalizedPath, storedHash) in stored)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var absolute = Path.Combine(root, normalizedPath.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(absolute))
+            {
+                dirty.Add(normalizedPath); // deleted on disk
+                continue;
+            }
+
+            var currentHash = _hashService.ComputeHash(await File.ReadAllBytesAsync(absolute, cancellationToken));
+            if (!string.Equals(currentHash, storedHash, StringComparison.Ordinal))
+                dirty.Add(normalizedPath); // edited on disk
+        }
+
+        if (dirty.Count == 0)
+        {
+            await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
+            return new FreshnessResult(stored.Count, 0, 0, Stamped: false);
+        }
+
+        if (dirty.Count > MaxReconcileFiles)
+        {
+            // Storm: do not reconcile one-by-one. Stamp the count so the availability header (and fuse doctor)
+            // reports the answer as stale-as-of and the caller runs a full index.
+            await store.SetMetaAsync(StaleAsOfMetaKey, dirty.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken);
+            return new FreshnessResult(stored.Count, 0, dirty.Count, Stamped: true);
+        }
+
+        var reconciled = 0;
+        foreach (var path in dirty)
+        {
+            await ReindexFileAsync(root, path, store, cancellationToken);
+            reconciled++;
+        }
+
+        await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
+        return new FreshnessResult(stored.Count, reconciled, 0, Stamped: false);
+    }
+
     private async Task<SemanticIndexResult> IndexSemanticAsync(
         string root,
         IWorkspaceIndexStore store,
@@ -258,7 +403,6 @@ public sealed class SemanticIndexer
 
         var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
-        await EmbedAndPersistAsync(store, chunks, cancellationToken);
         // Syntax routes first (covers minimal APIs), then the semantic MVC routes overwrite by route id with
         // their resolved handler symbol ids.
         await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
@@ -283,13 +427,163 @@ public sealed class SemanticIndexer
         return new SemanticIndexResult(mode, linkedFiles.Count, projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
     }
 
+    // Tier 1 write path: the graph came from the out-of-process build-capture worker (exact compilations), so
+    // the symbols, nodes, edges, routes, and DI/options are taken from its bundle. Chunks and syntax routes are
+    // produced here from the parent's own syntax pass, exactly as the semantic path does.
+    /// <summary>
+    ///     Indexes a workspace from a portable capture bundle's extracted graph, without building (C2). The bundle
+    ///     carries the graph a tier-1 build already produced elsewhere (its CI), so this scans the local source for
+    ///     files and chunks and writes the bundle's symbols, nodes, edges, routes, and DI/options to the store -
+    ///     the oracle-grade graph on a machine that cannot restore or build. Stamps the index mode and Fuse version
+    ///     exactly as <see cref="IndexAsync" /> does.
+    /// </summary>
+    /// <param name="rootDirectory">The workspace root (its source is present locally; only restore/build is not).</param>
+    /// <param name="store">The index store to write to.</param>
+    /// <param name="capture">The extracted graph read from the bundle.</param>
+    /// <param name="cancellationToken">A token to cancel the index.</param>
+    /// <param name="captureBundleDir">
+    ///     The absolute path to the capture bundle directory, when present. Stamped into the index metadata
+    ///     (<see cref="WorkspaceIndexStore.CaptureComplogPathMetaKey" />) so <c>fuse_check</c> can answer
+    ///     oracle-grade from the bundle's compiler log(s) without building - the single <c>capture.complog</c> of a
+    ///     direct bundle or the per-project logs of a merged (G4) bundle, resolved by the consumer. Null when no
+    ///     compiler log is available.
+    /// </param>
+    /// <returns>The index summary (semantic when every captured project was clean, else partial).</returns>
+    public async Task<SemanticIndexResult> IndexFromCaptureGraphAsync(
+        string rootDirectory,
+        IWorkspaceIndexStore store,
+        Fuse.Indexing.CaptureResult capture,
+        CancellationToken cancellationToken,
+        string? captureBundleDir = null)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var files = await ScanFilesAsync(root, cancellationToken);
+        var result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
+        await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
+        await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
+        await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
+        if (!string.IsNullOrEmpty(captureBundleDir) && Directory.Exists(captureBundleDir))
+            await store.SetMetaAsync(WorkspaceIndexStore.CaptureComplogPathMetaKey, Path.GetFullPath(captureBundleDir), cancellationToken);
+        return result;
+    }
+
+    internal async Task<SemanticIndexResult> IndexFromCaptureAsync(
+        string root,
+        IWorkspaceIndexStore store,
+        IReadOnlyList<IndexedFileRecord> files,
+        Fuse.Indexing.CaptureResult capture,
+        CancellationToken cancellationToken)
+    {
+        var linkedFiles = files
+            .Select(f => f with { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
+            .ToList();
+        await store.UpsertFilesAsync(linkedFiles, cancellationToken);
+
+        var symbols = capture.Projects.SelectMany(p => p.Symbols ?? []).ToList();
+        await store.UpsertSymbolsAsync(symbols, cancellationToken);
+
+        var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
+        await store.UpsertChunksAsync(chunks, cancellationToken);
+        await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
+
+        // Nodes before edges so the edge foreign keys resolve, then the semantic routes/DI/options from the bundle.
+        var nodes = capture.Projects.SelectMany(p => p.Nodes ?? []).ToList();
+        var edges = capture.Projects.SelectMany(p => p.Edges ?? []).ToList();
+        var semanticRoutes = capture.Projects.SelectMany(p => p.Routes ?? []).ToList();
+        var registrations = capture.Projects.SelectMany(p => p.DiRegistrations ?? []).ToList();
+        var bindings = capture.Projects.SelectMany(p => p.OptionsBindings ?? []).ToList();
+        await store.UpsertNodesAsync(nodes, cancellationToken);
+        await store.UpsertEdgesAsync(edges, cancellationToken);
+        await store.UpsertRoutesAsync(semanticRoutes, cancellationToken);
+        await store.UpsertDiRegistrationsAsync(registrations, cancellationToken);
+        await store.UpsertOptionsBindingsAsync(bindings, cancellationToken);
+
+        // Build capture shares the real build's inputs, so a project with residual compile errors is graph-grade
+        // (partial); a clean capture across every project is the oracle-grade semantic tier.
+        var mode = capture.Projects.Any(p => p.ErrorCount > 0) ? "partial" : "semantic";
+        var diagnostics = new List<DiagnosticRecord>
+        {
+            new(DiagnosticSeverity.Info, "build-capture",
+                $"Tier-1 build capture: {capture.Projects.Count} project(s), {symbols.Count} symbols, {edges.Count} edges."),
+        };
+        var routeCount = syntaxRoutes.Count + semanticRoutes.Count;
+        return new SemanticIndexResult(mode, linkedFiles.Count, capture.Projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
+    }
+
+    /// <summary>
+    ///     Projects live (resident) compilations into the store (S1 step 4): for each compilation, extracts its
+    ///     symbols and wiring graph in-process (the same extraction the build-capture worker runs) and upserts them
+    ///     through <see cref="IndexFromCaptureAsync" />, so a cross-file relationship an edit introduced (for
+    ///     example a new DI registration) becomes queryable without a full re-index.
+    /// </summary>
+    /// <remarks>
+    ///     The store upserts are INSERT OR REPLACE by content-stable id, so re-projecting unchanged content is
+    ///     idempotent and an added or changed entity updates in place; this covers the add and change case.
+    ///     Entities REMOVED by an edit leave stale rows until the changed files' rows are cleared first, which is a
+    ///     follow-up. The caller supplies the projects' on-disk files (chunks are read from disk, so an edit must
+    ///     already be written). This is a store-write: per the single-writer invariant only one process (the serve
+    ///     watcher) may call it for a given root.
+    /// </remarks>
+    /// <param name="root">The workspace root.</param>
+    /// <param name="store">The index store to project into.</param>
+    /// <param name="compilations">Each project's file path paired with its live compilation.</param>
+    /// <param name="files">The on-disk file records for those projects (for the file rows and chunk extraction).</param>
+    /// <param name="cancellationToken">A token to cancel the projection.</param>
+    /// <returns>The index result (mode and counts) for the projected set.</returns>
+    public async Task<SemanticIndexResult> ProjectFromCompilationsAsync(
+        string root,
+        IWorkspaceIndexStore store,
+        IReadOnlyList<(string ProjectFilePath, Microsoft.CodeAnalysis.Compilation Compilation)> compilations,
+        IReadOnlyList<IndexedFileRecord> files,
+        CancellationToken cancellationToken)
+    {
+        // Clear each projected file's existing semantic rows first, so an entity an edit REMOVED does not linger
+        // as a stale row; the upsert below then reinserts the current set. Clear-then-reproject is an idempotent
+        // replace (the file row itself is kept, so symbols keep their foreign key). This covers add, change, and
+        // removal within the projected files.
+        foreach (var file in files)
+            await store.DeleteFileDataAsync(file.NormalizedPath, cancellationToken);
+
+        var captured = new List<CapturedProject>(compilations.Count);
+        foreach (var (projectFilePath, compilation) in compilations)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var projectDir = Path.GetDirectoryName(projectFilePath) ?? root;
+            var loaded = new LoadedProject(
+                Name: Path.GetFileNameWithoutExtension(projectFilePath),
+                FilePath: projectFilePath,
+                AssemblyName: compilation.AssemblyName,
+                Compilation: compilation);
+            var symbols = _semanticSymbols.Extract(loaded, projectDir, cancellationToken);
+            var graph = _analysisRunner.Run(new SemanticAnalysisContext(loaded, projectDir), cancellationToken);
+            var errorCount = compilation.GetDiagnostics(cancellationToken)
+                .Count(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+            captured.Add(new CapturedProject(
+                Name: loaded.Name,
+                FilePath: loaded.FilePath,
+                AssemblyName: compilation.AssemblyName,
+                ErrorCount: errorCount,
+                TypeCount: 0,
+                SymbolCount: symbols.Count,
+                NodeCount: graph.Nodes.Count,
+                EdgeCount: graph.Edges.Count,
+                Symbols: symbols,
+                Nodes: graph.Nodes,
+                Edges: graph.Edges,
+                Routes: graph.Routes,
+                DiRegistrations: graph.DiRegistrations,
+                OptionsBindings: graph.OptionsBindings));
+        }
+
+        return await IndexFromCaptureAsync(root, store, files, CaptureResult.Ok(captured), cancellationToken);
+    }
+
     private async Task<SemanticIndexResult> IndexSyntaxAsync(
         string root,
         IWorkspaceIndexStore store,
         IReadOnlyList<IndexedFileRecord> files,
         RoslynWorkspaceSnapshot snapshot,
-        CancellationToken cancellationToken,
-        bool embed = true)
+        CancellationToken cancellationToken)
     {
         // Tag each file with its language from the provider that claims its extension, so retrieval can
         // filter or blend by language; a file no provider claims (a config file) stays untagged.
@@ -337,53 +631,8 @@ public sealed class SemanticIndexer
         await store.UpsertSymbolsAsync(symbols, cancellationToken);
         await store.UpsertChunksAsync(chunks, cancellationToken);
         await store.UpsertRoutesAsync(routes, cancellationToken);
-        // The syntax-first fast pass skips embedding so it serves in a few seconds; the background semantic
-        // upgrade (a full pass) does the embedding, so dense lands together with the graph.
-        if (embed)
-            await EmbedAndPersistAsync(store, chunks, cancellationToken);
 
         return new SemanticIndexResult("syntax", files.Count, 0, symbols.Count, chunks.Count, routes.Count, snapshot.Diagnostics);
-    }
-
-    // Embeds each chunk's text representation (name, signature, body) and persists the vectors, when a text
-    // embedder is available. A no-op when no model is present, which keeps retrieval lexical when no model is present: the index still
-    // builds and retrieval stays lexical. Per-chunk text is truncated so tokenization cost stays bounded.
-    private async Task EmbedAndPersistAsync(IWorkspaceIndexStore store, IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken)
-    {
-        if (_embedder is null || !_embedder.IsAvailable || chunks.Count == 0)
-            return;
-
-        var embeddings = new List<ChunkEmbeddingRecord>(chunks.Count);
-        foreach (var chunk in chunks)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var text = BuildEmbedText(chunk);
-            if (text.Length == 0)
-                continue;
-            var vector = _embedder.Embed(text);
-            if (vector.Length == 0)
-                continue;
-            embeddings.Add(new ChunkEmbeddingRecord(chunk.ChunkId, vector.Length, vector));
-        }
-
-        await store.UpsertEmbeddingsAsync(embeddings, cancellationToken);
-    }
-
-    // The text a chunk is embedded from: its declared name and signature carry the most meaning, followed by a
-    // bounded slice of the body. Bounded to keep the model's tokenization within its context window.
-    private static string BuildEmbedText(ChunkRecord chunk)
-    {
-        const int maxChars = 2000;
-        var parts = new List<string>(3);
-        if (!string.IsNullOrWhiteSpace(chunk.Name))
-            parts.Add(chunk.Name!);
-        if (!string.IsNullOrWhiteSpace(chunk.Signature))
-            parts.Add(chunk.Signature!);
-        if (!string.IsNullOrWhiteSpace(chunk.Body))
-            parts.Add(chunk.Body!);
-
-        var text = string.Join('\n', parts).Trim();
-        return text.Length > maxChars ? text[..maxChars] : text;
     }
 
     // Chunks and routes always come from syntax so full-text search works in both modes. In semantic mode the
@@ -435,6 +684,20 @@ public sealed class SemanticIndexer
             bindings.AddRange(result.OptionsBindings);
             diagnostics.AddRange(result.Diagnostics);
         }
+
+        // R5 part 2: after the per-project analyzers merge, emit cross-project tests edges, resolving injected
+        // interfaces to their registered implementations through the di_resolves_to edges just collected. Runs
+        // here (not as a per-project analyzer) so it links across projects and only to nodes that already exist.
+        var existingNodeIds = new HashSet<string>(nodes.Keys, StringComparer.Ordinal);
+        var diResolvesTo = edges
+            .Where(e => e.EdgeType == "di_resolves_to")
+            .GroupBy(e => e.FromNodeId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(e => e.ToNodeId).Distinct(StringComparer.Ordinal).ToList(), StringComparer.Ordinal);
+        var (testNodes, testEdges) = new Analyzers.TestEdgeExtractor()
+            .Extract(snapshot.Projects, existingNodeIds, diResolvesTo, root, cancellationToken);
+        foreach (var node in testNodes)
+            nodes[node.NodeId] = node;
+        edges.AddRange(testEdges);
 
         return new SemanticAnalyzerResult(nodes.Values.ToList(), edges, routes, registrations, bindings, diagnostics);
     }
@@ -500,4 +763,34 @@ public sealed record SemanticIndexResult(
     int SymbolCount,
     int ChunkCount,
     int RouteCount,
+    IReadOnlyList<DiagnosticRecord> Diagnostics);
+
+/// <summary>
+///     The outcome of a freshness reconcile pass (the N6 contract): how many known files were checked against
+///     their on-disk content, how many were reconciled, how many remain dirty, and whether the pass degraded to a
+///     stale-as-of stamp instead of reconciling (a bulk change above the storm threshold).
+/// </summary>
+/// <param name="Checked">The number of known files whose on-disk hash was compared.</param>
+/// <param name="Reconciled">The number of dirty files re-indexed (or removed) by this pass.</param>
+/// <param name="DirtyRemaining">The number of dirty files left unreconciled (nonzero only when stamped).</param>
+/// <param name="Stamped">Whether the result is stamped stale-as-of rather than reconciled (storm protection).</param>
+public sealed record FreshnessResult(int Checked, int Reconciled, int DirtyRemaining, bool Stamped)
+{
+    /// <summary>Whether the index is fresh after this pass (nothing dirty remains).</summary>
+    public bool IsFresh => DirtyRemaining == 0;
+}
+
+/// <summary>
+///     The outcome of diagnosing a workspace's semantic load, reported by <c>fuse doctor</c>.
+/// </summary>
+/// <param name="Tier">The achieved load tier (oracle-grade, graph-grade (partial), or syntax).</param>
+/// <param name="ProjectsLoaded">The number of projects that produced a compilation.</param>
+/// <param name="ProjectsTotal">The total number of projects the loader opened.</param>
+/// <param name="Projects">The per-project load reports with their concrete reasons.</param>
+/// <param name="Diagnostics">The load diagnostics (SDK, restore, MSBuild) gathered during loading.</param>
+public sealed record LoadDiagnosis(
+    string Tier,
+    int ProjectsLoaded,
+    int ProjectsTotal,
+    IReadOnlyList<ProjectLoadReport> Projects,
     IReadOnlyList<DiagnosticRecord> Diagnostics);

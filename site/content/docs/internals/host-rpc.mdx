@@ -1,17 +1,17 @@
 ---
 title: Host RPC Threat Model
-description: Trust boundaries, transport security, and exposure for the fuse host JSON-RPC endpoint used by the VS Code extension.
+description: Trust boundaries, transport security, and exposure for the fuse host JSON-RPC endpoint the ambient-verification hooks connect to.
 ---
 
-The `fuse host` command runs a long-lived process that serves the warm fusion engine to the VS Code extension over JSON-RPC. The transport is a named pipe on Windows and a Unix domain socket elsewhere. This page states what the endpoint exposes, who can reach it on a typical developer machine, and the security assumptions the design makes today.
+The `fuse host` command runs a long-lived process that serves the warm semantic engine to local clients over JSON-RPC. Its primary client today is the ambient-verification hooks (`fuse check --delta`, `fuse gate`), which connect to it over the pipe to answer the diagnostics-delta of a session's edits without running a build; it is the seed of the shared resident daemon (G5). The transport is a named pipe on Windows and a Unix domain socket elsewhere. This page states what the endpoint exposes, who can reach it on a typical developer machine, and the security assumptions the design makes today.
 
-This page is for engineers operating or extending the host, security reviewers assessing local exposure, and contributors implementing hardening work. It does not replace the VS Code extension setup guide; see [Connect to your AI](/docs/start/connect-your-ai) for MCP wiring and the extension readme in the repository for `fuse host` launch details.
+This page is for engineers operating or extending the host, security reviewers assessing local exposure, and contributors implementing hardening work. For wiring an agent to Fuse over MCP, see [Connect to your AI](/docs/start/connect-your-ai).
 
 ## Role In The Product
 
-The host is the UI twin of `fuse mcp serve`. The MCP server exposes the same warm engine to an agent over stdio; the host exposes it to editor panels (index status, dependency graph, scope results, diagnostics) over a local IPC transport. Both surfaces share the same dependency graph, SQLite cache, and orchestrator path, so a scope the extension runs is the same scope an agent would get for the same options.
+The host is the local-IPC twin of `fuse mcp serve`. The MCP server exposes the warm engine to an agent over stdio; the host exposes it to a local client over an IPC transport, sharing the same semantic index, SQLite store, and engine path, so a read the host answers is the same read an agent would get for the same options. The ambient-verification hooks use it for the `fuse/check` delta; the remaining read methods are the general host surface a future editor client or the G5 daemon can consume.
 
-The endpoint address is derived from the repository root, not passed out of band. Given an absolute root path, the host and extension compute the same address: on Windows a pipe named `fuse-host-{hash}`, elsewhere a socket file `{temp}/fuse-host-{hash}.sock`, where `{hash}` is the first eight bytes of SHA-256 over the normalized root path. A second editor window for the same repository connects to the already-running host; two different repositories stay on distinct endpoints.
+The endpoint address is derived from the repository root, not passed out of band. Given an absolute root path, the host and its client compute the same address: on Windows a pipe named `fuse-host-{hash}`, elsewhere a socket file `{temp}/fuse-host-{hash}.sock`, where `{hash}` is the first eight bytes of SHA-256 over the normalized root path. A second client for the same repository connects to the already-running host; two different repositories stay on distinct endpoints.
 
 ## Transport And Wire Protocol
 
@@ -26,6 +26,7 @@ Connections use Content-Length framed JSON-RPC (the same framing VS Code languag
 | `fuse/scope` | Runs a scoped fusion and writes the emitted payload to a temp file |
 | `fuse/explain` | Returns the context plan without writing a payload |
 | `fuse/diagnostics` | Returns secret spans, token hotspots, graph gaps, and generated-file hints |
+| `fuse/check` | Returns the diagnostics a session's edits introduced or resolved since its baseline (the hook path, S3) |
 | `fuse/shutdown` | Stops the host |
 | `fuse/invalidated` | Server push when watched files change (notification, not a request) |
 
@@ -39,10 +40,10 @@ Fuse treats the host as a **local development tool**, not a network service.
 |------------|-------------|
 | The machine is a single-user developer workstation | Any process running as the same OS user can open local pipes and Unix sockets |
 | The repository root is not a secret | The pipe or socket name is a deterministic function of the root path |
-| The VS Code extension is the intended client | No caller identity is checked today |
+| A local client (the ambient-verification hooks today) is the intended caller | No caller identity is checked today |
 | Co-tenants on the machine are out of scope | Shared CI agents, remote desktops with untrusted peers, and multi-user servers are unsupported |
 
-There is **no authentication** on the wire today. The first RPC method a client typically calls is `fuse/handshake`, which returns version metadata only and does not issue a credential. Every other method accepts any connected peer with equal privilege: index, scope, diagnostics, and shutdown are all callable without proof that the caller is the extension.
+There is **no authentication** on the wire today beyond a per-session token (see below). The first RPC method a client calls is `fuse/handshake`, which returns version metadata and the session token. Every other method requires that token but is otherwise served to any connected peer with equal privilege: index, scope, diagnostics, check, and shutdown are all callable by a peer that has the token.
 
 On Windows, named pipes are reachable by local processes subject to the pipe's security descriptor (the default host uses the platform default for user-created pipes). On Linux and macOS, Unix domain socket files live under the system temp directory with permissions inherited from the creating process; any same-user process that knows the path can connect.
 
@@ -52,51 +53,47 @@ The table below lists realistic local threats given the current design. Severity
 
 | Threat | What an attacker gains | Current control |
 |--------|------------------------|-----------------|
-| Connect without being the extension | Full RPC surface | None |
+| Connect and observe the handshake | The session token, then the full RPC surface | Session token raises the bar from "know the pipe name" |
 | Derive the endpoint from a known repo path | Connection target | Endpoint is public given the root |
 | Call `fuse/scope` | Reduced source for arbitrary focus, search, or change scopes; path to a temp payload file | Secret redaction in emitted output is heuristic (see [Keep Secrets Out](/docs/scenarios/keep-secrets-out)) |
-| Call `fuse/diagnostics` | Precise file locations and kinds of detected secrets (not the secret values in the DTO, but enough to locate them in the tree) | None |
-| Call `fuse/index` or `fuse/graph` | CPU and disk load; reads the working tree | None |
-| Call `fuse/shutdown` | Denial of service for connected editor windows | None |
+| Call `fuse/diagnostics` | Precise file locations and kinds of detected secrets (not the secret values in the DTO, but enough to locate them in the tree) | Session token |
+| Call `fuse/index` or `fuse/graph` | CPU and disk load; reads the working tree | Session token |
+| Call `fuse/shutdown` | Denial of service for connected clients | Session token |
 | Read scope payload files | Copy of a recent emitted fusion from the temp payloads directory | OS temp-directory permissions; see payload lifecycle below |
-| Hold multiple connections | Same as a single connection; the host accepts several clients | None |
+| Hold multiple connections | Same as a single connection; the host accepts several clients | Session token |
 
-Scope responses write the emitted payload under `{temp}/fuse-host-payloads/` with a unique name per call. The extension opens that file read-only immediately after the RPC returns. Until the OS reclaims temp files, another same-user process that guesses or enumerates names could read a payload. Payload placement and cleanup are tightened separately (private application data and delete-on-shutdown); this page records the exposure either way.
+Scope responses write the emitted payload under `{temp}/fuse-host-payloads/` with a unique name per call. The client opens that file read-only immediately after the RPC returns. Until the OS reclaims temp files, another same-user process that guesses or enumerates names could read a payload. On Unix the payload files are restricted to owner read/write. This page records the exposure either way.
 
-The host watches the source tree and broadcasts `fuse/invalidated` to every connected client when files change. A rogue client can subscribe to the same stream of notifications if it keeps a connection open; it does not need to be the extension.
+The host watches the source tree and broadcasts `fuse/invalidated` to every connected client when files change. A rogue client that holds the token and a connection can subscribe to the same stream of notifications.
 
 ## What This Design Does Not Protect
 
 The host RPC surface is **not** a substitute for:
 
-- **Network isolation.** Nothing in the protocol encrypts or authenticates traffic; it is not exposed on a network port by design.
+- **Network isolation.** Nothing in the protocol encrypts traffic; it is not exposed on a network port by design.
 - **Multi-tenant hosts.** Do not run `fuse host` on a shared machine where untrusted users share the same OS account.
-- **Malware resistance.** Malware with user privileges can connect, scope the repository, and shut the host down.
+- **Malware resistance.** Malware with user privileges can observe the handshake, connect, scope the repository, and shut the host down.
 - **Compliance-grade secret scanning.** Diagnostics and scope output use the same heuristic redactor as fusion; they reduce accidental exposure but do not guarantee removal.
 
-Fuse does not sandbox repository access: a caller that can connect can ask the host to fuse any root path the host process can read. The host does not re-verify that the caller owns the workspace VS Code opened.
+Fuse does not sandbox repository access: a caller that can connect and holds the token can ask the host to read any root path the host process can read.
 
-## Planned Hardening (Session Token)
+## The Session Token
 
-Remediation work adds a **session token** issued at host start and returned in the `fuse/handshake` response. Subsequent RPC methods will require that token (for example in an `Authorization` header or a required JSON-RPC parameter). The extension will store the token from its handshake and attach it to later calls.
-
-That change raises the bar from "know the pipe name" to "observe the handshake or win a race against the legitimate client." It remains **local IPC security**: it blocks casual cross-process snooping and scripted port scanning of predictable pipe names, but it does not defend against a determined same-user attacker who can read the extension process memory or intercept the handshake on the same machine. The token is not a substitute for network TLS or user login.
-
-Document this threat model before shipping the token so operators know what improved and what did not.
+The host issues a **session token** at start, returned in the `fuse/handshake` response; every subsequent RPC method requires it. This raises the bar from "know the pipe name" to "observe the handshake or win a race against the legitimate client." It remains **local IPC security**: it blocks casual cross-process snooping and scripted scanning of predictable pipe names, but it does not defend against a determined same-user attacker who can read the client's process memory or intercept the handshake on the same machine. The token is not a substitute for network TLS or user login.
 
 ## Operational Guidance
 
 - Run `fuse host` only on machines you trust, under your own user account, for local editing.
 - Do not forward the pipe or socket over SSH remote development unless you accept that anyone with access to the remote user session can call the RPC surface.
 - Treat scope payloads and diagnostics as sensitive: they can summarize secret locations and reduced source from the repository.
-- Prefer shutting down the host when not using the extension (`fuse/shutdown` or stopping the process) on shared workstations.
+- Prefer shutting down the host when it is not needed (`fuse/shutdown` or stopping the process) on shared workstations.
 - For agent workflows, use `fuse mcp serve` over stdio with your editor's MCP client configuration; the MCP server has its own trust model (parent process owns the stdio pipe).
 
 ## Related Surfaces
 
 | Surface | Transport | Caller identity |
 |---------|-----------|-----------------|
-| `fuse host` | Named pipe or Unix socket | None today; session token planned |
+| `fuse host` | Named pipe or Unix socket | Session token issued at handshake |
 | `fuse mcp serve` | stdio to parent MCP client | Parent process spawns the server |
 | One-shot `fuse` CLI | In-process | Shell user |
 
@@ -104,7 +101,7 @@ Cache and index data written while serving live in `.fuse/fuse.db` at the reposi
 
 ## What This Page Does Not Cover
 
-This page does not document DTO field shapes (the wire contract is pinned by host and extension contract tests in the repository), VS Code extension packaging, or MCP tool semantics. It does not describe directory-walk path confinement or symlink handling in collection; those are separate hardening items for filesystem access during fusion.
+This page does not document DTO field shapes (the wire contract is pinned by the host contract tests in the repository) or MCP tool semantics. It does not describe directory-walk path confinement or symlink handling in collection; those are separate hardening items for filesystem access during fusion.
 
 ## Next
 

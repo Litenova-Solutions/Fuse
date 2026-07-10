@@ -1,0 +1,37 @@
+<Project>
+
+  <!--
+    Fuse.Capture (G4): the build-target capture channel. Adding this package to a solution makes every build
+    emit a per-project capture fragment (a binary log of that project's compilation) into a shared folder;
+    "fuse capture (merge)" over that folder then assembles a bundle equal in extracted graph to a direct capture.
+
+    This is the ALTERNATIVE channel and ships EXPERIMENTAL: it re-invokes the compiler for the project (once,
+    non-incrementally) after the build to produce the fragment, so the overhead is roughly a second compile per
+    project (measured ~90% of the build time on a small fixture, far above a light-touch budget). Teams that want
+    a lighter touch use the CI Action or a direct capture instead. Opt out per project or solution with
+    the FuseCaptureEnabled property set to false.
+  -->
+
+  <PropertyGroup>
+    <!-- On by default when the package is referenced; set false to opt a project (or the whole build) out. -->
+    <FuseCaptureEnabled Condition="'$(FuseCaptureEnabled)' == ''">true</FuseCaptureEnabled>
+    <!-- The shared fragments folder; defaults beside the repository so the merge step finds one place. -->
+    <FuseCaptureFragmentsDir Condition="'$(FuseCaptureFragmentsDir)' == ''">$(MSBuildProjectDirectory)\..\.fuse-fragments</FuseCaptureFragmentsDir>
+  </PropertyGroup>
+
+  <!--
+    After the build, emit this project's fragment. The fragment is produced by a nested, non-incremental build
+    of just this project with a binary log (a target cannot turn on the binary logger for its own build, so the
+    fragment is captured by a scoped re-compile). `_FuseCaptureInner=true` on the nested build disables this
+    target inside it, so there is no recursion. ContinueOnError keeps a capture failure from breaking the real
+    build - the capture is best-effort telemetry, never a gate on the developer's build.
+  -->
+  <Target Name="FuseEmitCaptureFragment"
+          AfterTargets="Build"
+          Condition="'$(FuseCaptureEnabled)' == 'true' And '$(_FuseCaptureInner)' != 'true'">
+    <MakeDir Directories="$(FuseCaptureFragmentsDir)" />
+    <Exec Command="dotnet build &quot;$(MSBuildProjectFullPath)&quot; --no-incremental -nologo -v:quiet -p:_FuseCaptureInner=true &quot;-bl:$(FuseCaptureFragmentsDir)\$(MSBuildProjectName).binlog&quot;"
+          ContinueOnError="true" />
+  </Target>
+
+</Project>

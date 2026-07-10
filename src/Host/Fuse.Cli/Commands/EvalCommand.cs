@@ -13,8 +13,11 @@ namespace Fuse.Cli.Commands;
 ///     Runs Fuse's evaluation suites. A thin entry point that delegates to the <c>Fuse.Benchmarks</c>
 ///     library, which owns the typed suites: <c>semantics</c> (Suite A, semantic graph vs edge gold),
 ///     <c>review</c> (Suite B, change-impact recall/precision over PR ground truth), <c>localize</c>
-///     (Suite C, open-ended localization by signal bucket), and <c>agent</c> (Suite D, agent context
-///     sufficiency via the Claude Code CLI).
+///     (Suite C, open-ended localization by signal bucket), <c>ranking</c> (the ranking regression suite:
+///     MRR, recall@k, nDCG@k for the lexical channel and the shipping default), <c>checkgate</c> (Suite F,
+///     the <c>fuse_check</c> false-green and false-red rates over known-good and known-bad edits),
+///     <c>loop</c> (Suite R4, the build-gated turns to green per toolbox), and <c>agent</c> (Suite D, agent
+///     context sufficiency via the Claude Code CLI).
 /// </summary>
 /// <remarks>
 ///     Corpus-bound suites (review/localize/agent) skip gracefully when the pinned corpus is absent, so
@@ -23,7 +26,7 @@ namespace Fuse.Cli.Commands;
 /// </remarks>
 [CliCommand(
     Name = "eval",
-    Description = "Run Fuse evaluation suites (semantics, review, localize, agent, reduce, performance).",
+    Description = "Run Fuse evaluation suites (semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance).",
     ShortFormAutoGenerate = CliNameAutoGenerate.None,
     Parent = typeof(FuseCliCommand))]
 public sealed class EvalCommand
@@ -33,7 +36,6 @@ public sealed class EvalCommand
     private readonly FusionOrchestrator _orchestrator;
     private readonly ProjectTemplateRegistry _templateRegistry;
     private readonly IConsoleUI _consoleUI;
-    private readonly Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? _embedder;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="EvalCommand" /> class for CLI option binding only.
@@ -51,25 +53,22 @@ public sealed class EvalCommand
     /// <param name="orchestrator">The fusion orchestrator used by the reduction suite.</param>
     /// <param name="templateRegistry">The template registry used by the reduction suite.</param>
     /// <param name="consoleUI">The console UI for output.</param>
-    /// <param name="embedder">An optional text embedder; present when a dense model is cached, enabling the dense channel.</param>
     public EvalCommand(
         SemanticIndexer indexer,
         IChangeSource changeSource,
         FusionOrchestrator orchestrator,
         ProjectTemplateRegistry templateRegistry,
-        IConsoleUI consoleUI,
-        Fuse.Plugins.Abstractions.Scoping.ITextEmbedder? embedder = null)
+        IConsoleUI consoleUI)
     {
         _indexer = indexer;
         _changeSource = changeSource;
         _orchestrator = orchestrator;
         _templateRegistry = templateRegistry;
         _consoleUI = consoleUI;
-        _embedder = embedder;
     }
 
-    /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, or <c>agent</c>.</summary>
-    [CliArgument(Description = "The suite to run: semantics, review, localize, agent, reduce, performance.")]
+    /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, <c>ranking</c>, or <c>agent</c>.</summary>
+    [CliArgument(Description = "The suite to run: semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance.")]
     public string Suite { get; set; } = "semantics";
 
     /// <summary>The benchmark root holding corpus.json, prs.json, and results. Defaults to tests/benchmarks under the current directory.</summary>
@@ -100,6 +99,10 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Model id for the agent suite.")]
     public string? Model { get; set; }
 
+    /// <summary>An alternate corpus manifest path (C4 corpus v2), or null for corpus.json.</summary>
+    [CliOption(Name = "--manifest", Required = false, Description = "Alternate corpus manifest path (corpus v2); defaults to corpus.json under the benchmark root.")]
+    public string? Manifest { get; set; }
+
     /// <summary>The number of agent rollouts per task.</summary>
     [CliOption(Required = false, Description = "Agent rollouts per task.")]
     public int Rollouts { get; set; } = 1;
@@ -112,13 +115,17 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Skip checkouts that index below semantic mode instead of scoring the fallback.")]
     public bool RequireSemantic { get; set; }
 
-    /// <summary>When set, force the deterministic lexical fallback (no dense channel), the A/B comparator for dense-by-default.</summary>
-    [CliOption(Required = false, Description = "Force the lexical fallback (disable the dense embedding channel), the A/B comparator for dense-by-default.")]
-    public bool Lexical { get; set; }
-
     /// <summary>When greater than zero, the semantics suite samples this many predicted edges per type over the corpus for adjudication.</summary>
     [CliOption(Required = false, Description = "Sample N predicted edges per type over the corpus (semantics adjudication).")]
     public int CorpusSample { get; set; }
+
+    /// <summary>When greater than zero, the checkgate suite runs this many compiler-verified mutants per class per fixture (the scaled honesty gate).</summary>
+    [CliOption(Required = false, Description = "Run N compiler-verified mutants per class per fixture through checkgate (the scaled honesty gate).")]
+    public int Mutations { get; set; }
+
+    /// <summary>When greater than zero and a build-capture worker is configured, checkgate runs this many mutants through both the oracle and build-grade paths and records their diagnostic-identity agreement (the T0 verify-agreement gate).</summary>
+    [CliOption(Required = false, Description = "Run N mutants through both the oracle and build-grade paths and record their diagnostic-identity agreement (the T0 verify-agreement gate; needs FUSE_BUILD_CAPTURE_WORKER).")]
+    public int VerifyAgreement { get; set; }
 
     /// <summary>An optional path to write the JSON results to. Defaults to results/&lt;suite&gt;.json under the benchmark root.</summary>
     [CliOption(Required = false, Description = "Path to write JSON results to.")]
@@ -143,19 +150,29 @@ public sealed class EvalCommand
             Rollouts: Rollouts,
             Restore: Restore,
             RequireSemantic: RequireSemantic,
-            Embedder: Lexical ? null : _embedder,
             CorpusSample: CorpusSample,
+            Mutations: Mutations,
+            VerifyAgreement: VerifyAgreement,
+            ManifestPath: Manifest is null ? null : Path.GetFullPath(Manifest),
             Log: _consoleUI.WriteStep);
 
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());
         if (suite is null)
         {
-            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, agent, reduce, performance.");
+            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance.");
             return;
         }
 
         var result = await suite.RunAsync(options, context.CancellationToken);
         _consoleUI.WriteResult(Reporting.FormatScorecard(result));
+
+        // The corpus-health suite writes its own machine-readable report (corpus-health.json) inside RunAsync;
+        // skip the generic SuiteResult write so it is not clobbered. All other suites write their SuiteResult.
+        if (suite.Name == "corpus-health" && Output is null)
+        {
+            _consoleUI.WriteStep($"Wrote results to {Path.Combine(options.ResultsRoot, CorpusHealthReport.FileName)}");
+            return;
+        }
 
         var outputPath = Output is null
             ? Path.Combine(options.ResultsRoot, $"{suite.Name}.json")
@@ -169,7 +186,12 @@ public sealed class EvalCommand
         "semantics" => new SemanticResolutionSuite(_indexer),
         "review" => new ChangeImpactSuite(_indexer, _changeSource),
         "localize" => new LocalizationSuite(_indexer, _changeSource),
+        "ranking" => new RankingSuite(_indexer, _changeSource),
+        "checkgate" => new CheckGateSuite(),
+        "diagbench" => new DiagBenchSuite(),
+        "loop" => new LoopSuite(_indexer),
         "agent" => new AgentSuite(_indexer),
+        "corpus-health" => new CorpusHealthSuite(_indexer),
         "performance" => new PerformanceSuite(_indexer, _changeSource),
         "reduce" => new ReductionSuite((dir, files, level, ct) =>
             ReduceRunner.ReduceFilesAsync(_orchestrator, _templateRegistry, dir, files, ParseLevel(level), null, ct)),

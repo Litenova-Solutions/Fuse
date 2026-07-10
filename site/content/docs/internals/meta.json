@@ -3,6 +3,8 @@
   "icon": "Cog",
   "pages": [
     "pipeline",
+    "resident-workspace",
+    "daemon",
     "capability-model",
     "scoping-internals",
     "caching-internals",

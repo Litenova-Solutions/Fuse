@@ -59,20 +59,6 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <remarks>Chunks whose owning file is not yet indexed are skipped.</remarks>
     Task UpsertChunksAsync(IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken);
 
-    /// <summary>Inserts or updates per-chunk dense embeddings (the persistent vector index).</summary>
-    /// <param name="embeddings">The chunk embeddings to upsert.</param>
-    /// <param name="cancellationToken">A token to cancel the write.</param>
-    /// <returns>A task that completes when the batch is committed.</returns>
-    /// <remarks>Each vector is stored against its chunk id; a re-indexed chunk replaces its prior vector.</remarks>
-    Task UpsertEmbeddingsAsync(IReadOnlyList<ChunkEmbeddingRecord> embeddings, CancellationToken cancellationToken);
-
-    /// <summary>
-    ///     Returns every persisted chunk embedding joined to its file, for dense retrieval over the workspace.
-    /// </summary>
-    /// <param name="cancellationToken">A token to cancel the read.</param>
-    /// <returns>All chunk embeddings; empty when none are persisted (no model was present at index time).</returns>
-    Task<IReadOnlyList<ChunkEmbedding>> GetEmbeddingsAsync(CancellationToken cancellationToken);
-
     /// <summary>
     ///     Returns the normalized paths of indexed files tagged with a given language, so retrieval can filter or
     ///     blend by language over the language-agnostic tables.
@@ -183,6 +169,35 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>The matching symbol summaries.</returns>
     Task<IReadOnlyList<SymbolListItem>> FindSymbolsByNameAsync(string nameFragment, int limit, CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     Returns exact signature records for a batch of symbol names (matched by simple name or fully qualified
+    ///     name), the store side of <c>fuse_find</c> (kind=signatures).
+    /// </summary>
+    /// <param name="names">The symbol names to look up (simple or fully qualified).</param>
+    /// <param name="limitPerName">The maximum number of matches to return per requested name.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The matching signatures, public-API and exact-name matches first; empty when nothing matches.</returns>
+    /// <remarks>
+    ///     Serves an agent's most common lookup (the exact shape of N members) from the persisted symbol table in
+    ///     one call instead of many grep-and-read round-trips. The signature is populated in semantic mode; in
+    ///     syntax mode it may be null, and the caller says so rather than implying a signature it does not have.
+    /// </remarks>
+    Task<IReadOnlyList<SymbolSignature>> GetSignaturesByNamesAsync(
+        IReadOnlyCollection<string> names, int limitPerName, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns the member signatures of a type, matched by the member's <c>containing_type</c> against a
+    ///     simple or fully qualified type name. The store side of the R6 repair packet: when a speculative
+    ///     typecheck reports a missing member on a type, this enumerates the members that type actually has so a
+    ///     nearest-name suggestion can be offered.
+    /// </summary>
+    /// <param name="typeName">The declaring type's simple or fully qualified name.</param>
+    /// <param name="limit">The maximum number of members to return.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The type's member signatures, public-API first; empty when the type is unknown or has no recorded members.</returns>
+    Task<IReadOnlyList<SymbolSignature>> GetMembersOfTypeAsync(
+        string typeName, int limit, CancellationToken cancellationToken);
+
     /// <summary>Sets a key in the index metadata table.</summary>
     /// <param name="key">The metadata key.</param>
     /// <param name="value">The value to store.</param>
@@ -261,4 +276,103 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     ///     byte-identical duplicates (for example copies that escaped exclusion) to one canonical result.
     /// </returns>
     Task<IReadOnlyDictionary<string, string>> GetContentHashesAsync(IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns the content hash of every indexed file, keyed by normalized path.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>A map from normalized path to content hash for all files currently in the index.</returns>
+    /// <remarks>
+    ///     Used by the freshness reconcile pass (the N6 contract): the reconciler hashes the current on-disk
+    ///     content of each known file and compares it to the stored hash to find files edited or deleted since
+    ///     the index was written, so a read tool reconciles them before answering rather than serving stale data.
+    /// </remarks>
+    Task<IReadOnlyDictionary<string, string>> GetAllFileHashesAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Persists (or replaces) a check session's diagnostic baseline (S2): the set of diagnostics as of the
+    ///     session's start or its last mark-green, against which <c>fuse_check</c> delta mode diffs the current
+    ///     diagnostics. Persisting to the store lets a restarted process resume the session with its baseline
+    ///     intact, so an hour of staged work is not lost to a crash.
+    /// </summary>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="root">The absolute workspace root the session is rooted at.</param>
+    /// <param name="baseline">The baseline diagnostics to record.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the baseline is persisted.</returns>
+    Task SaveCheckSessionBaselineAsync(
+        string sessionId, string root, IReadOnlyList<CheckDiagnostic> baseline, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns a persisted check session's baseline (S2), or <c>null</c> when no session with that id exists.
+    /// </summary>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The session baseline, or <c>null</c> when the session is unknown.</returns>
+    Task<CheckSessionBaseline?> GetCheckSessionBaselineAsync(string sessionId, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Persists a session's accumulated claims ledger (U2) as an opaque JSON payload, keyed by session id. The
+    ///     store keeps the payload verbatim (it does not know the claim shape, which lives in the retrieval layer),
+    ///     so the caller serializes and deserializes. Additive table, idempotent DDL, so no schema version bump.
+    /// </summary>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="root">The absolute workspace root the session is rooted at.</param>
+    /// <param name="claimsJson">The serialized claims payload.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the ledger is persisted.</returns>
+    Task SaveClaimLedgerAsync(string sessionId, string root, string claimsJson, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    /// <summary>
+    ///     Returns a session's persisted claims ledger (U2), or <c>null</c> when no session with that id exists.
+    /// </summary>
+    /// <param name="sessionId">The opaque session id.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The ledger record, or <c>null</c> when the session is unknown.</returns>
+    Task<ClaimLedgerRecord?> GetClaimLedgerAsync(string sessionId, CancellationToken cancellationToken)
+        => Task.FromResult<ClaimLedgerRecord?>(null);
+
+    /// <summary>
+    ///     Lists the sessions the store knows for a root (G3): every session with a recorded check-diagnostics
+    ///     baseline or an accumulated claim ledger, most recently written first. This is the read the extension
+    ///     observability panel uses to show what an agent has been doing. Additive read over the existing
+    ///     <c>check_sessions</c> and <c>claim_ledger</c> tables; no schema change.
+    /// </summary>
+    /// <param name="root">The absolute workspace root to filter sessions by.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The known sessions for the root, most recently written first (empty when there are none).</returns>
+    Task<IReadOnlyList<SessionSummary>> ListSessionsAsync(string root, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyList<SessionSummary>>([]);
 }
+
+/// <summary>
+///     One session the store knows for a root (G3): its id, when it was last written, and whether it has a
+///     check-diagnostics baseline and an accumulated claim ledger.
+/// </summary>
+/// <param name="SessionId">The opaque session id.</param>
+/// <param name="UpdatedUtc">The ISO-8601 UTC time the session was last written (baseline save or claim append).</param>
+/// <param name="HasBaseline">Whether the session has a recorded check-diagnostics baseline.</param>
+/// <param name="HasClaims">Whether the session has an accumulated claim ledger.</param>
+public sealed record SessionSummary(string SessionId, string UpdatedUtc, bool HasBaseline, bool HasClaims);
+
+/// <summary>
+///     A persisted check-session baseline (S2): the diagnostics recorded as of the session's start or last
+///     mark-green, plus the session's root and the time the baseline was last written.
+/// </summary>
+/// <param name="SessionId">The opaque session id.</param>
+/// <param name="Root">The absolute workspace root the session is rooted at.</param>
+/// <param name="Diagnostics">The baseline diagnostics the delta is computed against.</param>
+/// <param name="UpdatedUtc">The ISO-8601 UTC time the baseline was last written.</param>
+public sealed record CheckSessionBaseline(
+    string SessionId, string Root, IReadOnlyList<CheckDiagnostic> Diagnostics, string UpdatedUtc);
+
+/// <summary>
+///     A persisted claims ledger (U2): the serialized claims accumulated in a session, plus its root and the time
+///     it was last written. The JSON payload is opaque to the store; the retrieval layer owns the claim shape.
+/// </summary>
+/// <param name="SessionId">The opaque session id.</param>
+/// <param name="Root">The absolute workspace root the session is rooted at.</param>
+/// <param name="ClaimsJson">The serialized claims payload.</param>
+/// <param name="UpdatedUtc">The ISO-8601 UTC time the ledger was last written.</param>
+public sealed record ClaimLedgerRecord(string SessionId, string Root, string ClaimsJson, string UpdatedUtc);

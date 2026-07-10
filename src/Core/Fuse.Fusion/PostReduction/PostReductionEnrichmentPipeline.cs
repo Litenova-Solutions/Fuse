@@ -124,7 +124,7 @@ public sealed class PostReductionEnrichmentPipeline
         // pre-pack candidate set as an upper bound for sections whose size depends on the emitted files, so the
         // total never exceeds the budget; it can leave the body budget slightly under-filled, which is the safe
         // direction for a hard cap.
-        if ((request.Focus is not null || request.Query is not null) &&
+        if (request.Focus is not null &&
             request.Emission.MaxTokens is { } maxTokens)
         {
             // Two passes keep the guarantee tight and provable. Pass one packs the file bodies into the whole
@@ -178,7 +178,7 @@ public sealed class PostReductionEnrichmentPipeline
             emissionResult = await ApplyPatternSummaryAsync(emissionResult, patternSummary);
 
         // Item 30: a next-best-action breadcrumb for files emitted as signatures only by tiered emission, so the
-        // budget wall becomes a navigable step (call fuse_focus to expand a body) rather than a silent loss.
+        // budget wall becomes a navigable step (call fuse_context to expand a body) rather than a silent loss.
         var breadcrumb = BuildNavigationBreadcrumb(reducedContent, context);
         if (!string.IsNullOrEmpty(breadcrumb))
             emissionResult = await AppendToDiskOrMemoryAsync(emissionResult, breadcrumb);
@@ -416,7 +416,7 @@ public sealed class PostReductionEnrichmentPipeline
     private const int MaxBreadcrumbEntries = 20;
 
     // Builds the next-best-action breadcrumb (item 30): when tiered emission skeletonized dependency-expanded
-    // neighbours, list those that survived packing with the fuse_focus call that expands each one's body, or
+    // neighbours, list those that survived packing with the fuse_context call that expands each one's body, or
     // null when tiering is off, the run is not query/focus, or nothing was skeletonized. Deterministic.
     private static string? BuildNavigationBreadcrumb(
         IReadOnlyList<FusedContent> emitted,
@@ -424,7 +424,7 @@ public sealed class PostReductionEnrichmentPipeline
     {
         if (!context.Experimental.TieredEmission)
             return null;
-        if (context.Request.Focus is null && context.Request.Query is null)
+        if (context.Request.Focus is null)
             return null;
         if (context.Provenance is not { } provenance)
             return null;
@@ -444,11 +444,11 @@ public sealed class PostReductionEnrichmentPipeline
         sb.Append("<!-- fuse:next ");
         sb.Append(neighbours.Count);
         sb.Append(neighbours.Count == 1 ? " file was" : " files were");
-        sb.Append(" emitted as signatures only (tiered emission). Expand a body with fuse_focus:");
+        sb.Append(" emitted as signatures only (tiered emission). Expand a body with fuse_context:");
         foreach (var path in neighbours.Take(MaxBreadcrumbEntries))
         {
             var seed = Path.GetFileNameWithoutExtension(path);
-            sb.Append("\n  fuse_focus \"").Append(seed).Append("\"   (").Append(path).Append(')');
+            sb.Append("\n  fuse_context \"").Append(seed).Append("\"   (").Append(path).Append(')');
         }
 
         if (neighbours.Count > MaxBreadcrumbEntries)

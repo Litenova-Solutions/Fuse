@@ -3,9 +3,9 @@ title: Resources Reference
 description: The fuse:// URI templates an AI client can read for V3 semantic context using default options.
 ---
 
-The Fuse MCP server exposes its read workflows as resources in addition to tools. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools; a resource is the passive counterpart, a read addressed by a URI rather than a call with arguments. A client reads a `fuse://` URI and receives the result produced with default options against the persistent semantic index. This page documents the four V3 URI templates and what each returns.
+The Fuse MCP server exposes its read workflows as resources in addition to tools. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools; a resource is the passive counterpart, a read addressed by a URI rather than a call with arguments. A client reads a `fuse://` URI and receives the result produced with default options against the persistent semantic index. This page documents the URI templates and what each returns, plus the playbook prompts.
 
-This page is for engineers wiring resource reads into a client and for anyone deciding between a resource and the equivalent tool.
+This page is for engineers wiring resource reads into a client and for anyone deciding between a resource and the equivalent tool. It also documents the playbook prompts, the selectable plans that teach the verified-edit loop.
 
 ## Purpose and scope
 
@@ -17,12 +17,28 @@ In the templates below, `{path}` is the workspace directory and the remaining se
 
 | URI template | Returns | Mirrors |
 |--------------|---------|---------|
-| `fuse://map/{path}` | A workspace map: indexed symbols, routes, and counts | `fuse_map` |
-| `fuse://localize/{path}/{query}` | Ranked candidate files and symbols for the task, no source bodies | `fuse_localize` |
+| `fuse://map/{path}` | A workspace map: indexed symbols, routes, and counts | `fuse_workspace action=map` |
+| `fuse://status/{path}` | The workspace status: index mode, verification grade, freshness | `fuse_workspace action=status` |
+| `fuse://localize/{path}/{query}` | Ranked candidate files and symbols for the task, no source bodies | `fuse_find kind=task` |
 | `fuse://context/{path}/{seed}` | Planned and emitted context (source bodies, manifest, provenance) for a named seed | `fuse_context` |
 | `fuse://review/{path}/{since}` | The semantic impact of a change since the git ref: changed files, blast radius, packed context | `fuse_review` |
+| `fuse://ledger/{path}/{session}` | A session's accumulated graded claims (the evidence trail) | `fuse_impact` (with a session) |
+| `fuse://diff/{path}/{session}` | The diagnostics a session's edits introduced or resolved since its baseline (read-only) | `fuse_check --delta` |
+| `fuse://diagnostics/{path}/{session}` | A session's whole-state diagnostics (live resident set, or the recorded baseline) | `fuse_check --full` |
 
-The `{seed}` segment of the context resource is treated as a symbol seed; for service, request, route, or config seeds, or to pass several seeds, use the `fuse_context` tool. All four resources return content with the MIME type `text/plain`.
+The `{seed}` segment of the context resource is treated as a symbol seed; for service, request, route, or config seeds, or to pass several seeds, use the `fuse_context` tool. All resources return content with the MIME type `text/plain`. The session diff and diagnostics resources are read-only: unlike `fuse_check`, they never establish a baseline, so reading them is idempotent; they report a note when no resident workspace serves the root or the session has no baseline yet. See [claim grades](/docs/concepts/claim-grades) for the ledger and its grades.
+
+## Playbook prompts
+
+The server also exposes five playbook prompts: selectable, anchored plans that expand into an ordered walk of the eight-tool loop, so a model gets the phase order without a separate skill document. Select one by name and supply its anchor.
+
+| Prompt | Anchor | Plan |
+|--------|--------|------|
+| `fix-build-error` | a diagnostic id | locate the site, check the fix at compiler grade, impact any changed signature, review |
+| `implement-feature` | an issue, optionally a git base | localize, read context, edit and check each file, impact, test, review |
+| `review-pr` | a merge base | review the diff, impact the changed signatures, run covering tests, handoff |
+| `rename-symbol` | a symbol's fully qualified name | impact, verify-gated rename via `fuse_refactor`, apply, review |
+| `add-endpoint` | a route prefix | resolve the route neighborhood, read context, add and check the handler, resolve wiring, test, review |
 
 ## What this does not cover
 

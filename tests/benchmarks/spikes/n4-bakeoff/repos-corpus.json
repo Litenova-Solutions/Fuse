@@ -1,0 +1,6 @@
+[
+  { "name": "Scrutor", "local": "tests/benchmarks/.corpus/Scrutor" },
+  { "name": "Specification", "local": "tests/benchmarks/.corpus/Specification" },
+  { "name": "NodaTime", "local": "tests/benchmarks/.corpus/NodaTime" },
+  { "name": "eShopOnWeb", "local": "tests/benchmarks/.corpus/eShopOnWeb" }
+]

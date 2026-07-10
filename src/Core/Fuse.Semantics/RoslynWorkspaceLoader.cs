@@ -47,11 +47,12 @@ public sealed class RoslynWorkspaceLoader
             return new RoslynWorkspaceSnapshot(
                 SemanticLoadSucceeded: false,
                 Projects: [],
-                Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-only", "No solution or project found; indexing at the syntax level.")]);
+                Diagnostics: [new DiagnosticRecord(DiagnosticSeverity.Info, "syntax-only", "No solution or project found; indexing at the syntax level.")],
+                ProjectReports: []);
         }
 
         if (!TryRegisterLocator(out var locatorDiagnostic))
-            return new RoslynWorkspaceSnapshot(false, [], [locatorDiagnostic!]);
+            return new RoslynWorkspaceSnapshot(false, [], [locatorDiagnostic!], []);
 
         var diagnostics = new List<DiagnosticRecord>();
         try
@@ -64,7 +65,7 @@ public sealed class RoslynWorkspaceLoader
             diagnostics.Add(new DiagnosticRecord(
                 DiagnosticSeverity.Error, "msbuild-load-failed",
                 $"MSBuild workspace load failed: {ex.Message}. Falling back to syntax indexing."));
-            return new RoslynWorkspaceSnapshot(false, [], diagnostics);
+            return new RoslynWorkspaceSnapshot(false, [], diagnostics, []);
         }
     }
 
@@ -98,23 +99,36 @@ public sealed class RoslynWorkspaceLoader
         }
 
         var loadedProjects = new List<LoadedProject>();
+        var projectReports = new List<ProjectLoadReport>();
         foreach (var project in projects)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var compilation = await project.GetCompilationAsync(cancellationToken);
+            var filePath = project.FilePath ?? project.Name;
             if (compilation is null)
             {
+                const string reason = "no compilation (project unrestored, SDK mismatch, or a build error)";
                 diagnostics.Add(new DiagnosticRecord(
                     DiagnosticSeverity.Warning, "no-compilation",
                     $"Project produced no compilation: {project.Name}", project.FilePath));
+                projectReports.Add(new ProjectLoadReport(project.Name, filePath, Loaded: false, reason));
                 continue;
             }
 
+            // Per-project degradation: a project that loaded but whose compilation is missing metadata references
+            // (an approximate compilation) is graph-grade, not oracle-grade. We record it as loaded but note the
+            // approximation so fuse doctor and the oracle availability contract can distinguish the tiers.
+            var hasErrors = compilation.GetDiagnostics(cancellationToken)
+                .Any(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+            var report = hasErrors
+                ? "loaded with compile errors (graph-grade, not oracle-grade)"
+                : "loaded";
             loadedProjects.Add(new LoadedProject(
                 Name: project.Name,
-                FilePath: project.FilePath ?? project.Name,
+                FilePath: filePath,
                 AssemblyName: project.AssemblyName,
                 Compilation: compilation));
+            projectReports.Add(new ProjectLoadReport(project.Name, filePath, Loaded: true, report));
         }
 
         var succeeded = loadedProjects.Count > 0;
@@ -125,7 +139,7 @@ public sealed class RoslynWorkspaceLoader
                 "No projects loaded with a compilation; falling back to syntax indexing."));
         }
 
-        return new RoslynWorkspaceSnapshot(succeeded, loadedProjects, diagnostics);
+        return new RoslynWorkspaceSnapshot(succeeded, loadedProjects, diagnostics, projectReports);
     }
 
     // Registers MSBuildLocator once per process. Returns false with a diagnostic when no SDK/MSBuild is
@@ -179,4 +193,15 @@ public sealed record LoadedProject(
 public sealed record RoslynWorkspaceSnapshot(
     bool SemanticLoadSucceeded,
     IReadOnlyList<LoadedProject> Projects,
-    IReadOnlyList<DiagnosticRecord> Diagnostics);
+    IReadOnlyList<DiagnosticRecord> Diagnostics,
+    IReadOnlyList<ProjectLoadReport> ProjectReports);
+
+/// <summary>
+///     The per-project load outcome, surfaced by <c>fuse doctor</c> so a downgrade names its concrete reason
+///     (unrestored, SDK mismatch, build error) per project rather than as a single opaque solution-level failure.
+/// </summary>
+/// <param name="Name">The project name.</param>
+/// <param name="FilePath">The project file path.</param>
+/// <param name="Loaded">Whether the project produced a compilation.</param>
+/// <param name="Reason">The concrete outcome: loaded, loaded-with-errors (graph-grade), or why it did not load.</param>
+public sealed record ProjectLoadReport(string Name, string FilePath, bool Loaded, string Reason);

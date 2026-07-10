@@ -22,10 +22,10 @@ internal static class ContextPlanBuilder
         FilteredFileSet filterResult)
     {
         var seedLevel = request.Reduction.Level;
-        var isChangeMode = request.Focus is null && request.Query is null;
+        var isChangeMode = request.Focus is null;
 
         // Tiered emission reduces dependency-expanded neighbours to signature skeletons; it is active only for
-        // query and focus (change mode keeps its changed files in full) and only when provenance is available.
+        // focus mode (change mode keeps its changed files in full) and only when provenance is available.
         // This matches the former BuildTieredLevelResolver gating exactly, so the plan is behavior-neutral.
         var appliesTieredEmission =
             experimental.TieredEmission && !isChangeMode && filterResult.Provenance is not null;

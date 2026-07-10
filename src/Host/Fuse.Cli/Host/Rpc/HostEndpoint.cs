@@ -27,6 +27,15 @@ public static class HostEndpoint
     public static string SocketPath(string repositoryRoot) =>
         Path.Combine(Path.GetTempPath(), "fuse-host-" + RootHash(repositoryRoot) + ".sock");
 
+    /// <summary>
+    ///     The name of the single-instance daemon lock for a repository root (G5): a per-user named mutex keyed by
+    ///     the same stable root hash as the pipe, so a spawn race for one root resolves to exactly one daemon while
+    ///     a different root gets its own lock.
+    /// </summary>
+    /// <param name="repositoryRoot">The absolute repository root path.</param>
+    /// <returns>A stable mutex name such as <c>fuse-daemon-1a2b3c4d5e6f7a8b</c>.</returns>
+    public static string DaemonMutexName(string repositoryRoot) => "fuse-daemon-" + RootHash(repositoryRoot);
+
     // A short, stable hex hash of the normalized root. SHA-256 truncated to 8 bytes is collision-safe enough for
     // distinguishing repository roots on one machine and keeps the pipe and socket names short.
     private static string RootHash(string repositoryRoot)

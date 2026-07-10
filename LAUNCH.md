@@ -14,7 +14,7 @@ Fuse is a Model Context Protocol server for .NET. It reads your code with Roslyn
 
 What that looks like in practice, on the eShopOnWeb sample application:
 
-- Ask "what implements `IBasketService`, and what would a change to it touch?" Without Fuse, the assistant greps `IBasketService`, gets a page of hits, and opens files to work out which is the real implementation. With Fuse, `fuse_resolve service="IBasketService"` returns `BasketService` directly, tagged with the `di_resolves_to` edge and the registration that proves it.
+- Ask "what implements `IBasketService`, and what would a change to it touch?" Without Fuse, the assistant greps `IBasketService`, gets a page of hits, and opens files to work out which is the real implementation. With Fuse, `fuse_find kind="service" query="IBasketService"` returns `BasketService` directly, tagged with the `di_resolves_to` edge and the registration that proves it.
 - Ask it to review a branch. `fuse_review changedSince="main"` returns the changed files plus their semantic blast radius (the interface a changed type implements, its consumers) with provenance for each file, in about 958 tokens, keeping 100 percent of the changed files.
 
 The numbers, measured over a commit-pinned corpus (Scrutor, Ardalis.Specification, NodaTime, and eShopOnWeb), counted with `o200k_base`, and reproduced with `fuse eval`:

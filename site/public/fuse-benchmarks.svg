@@ -32,7 +32,7 @@
 <rect x="68.0" y="422.0" width="984.0" height="38.0" rx="9" stroke="#f3d8c4" stroke-width="1" fill="#fff4ec"/>
 <rect x="68.0" y="422.0" width="4.0" height="38.0" rx="2" fill="#0d9488"/>
 <text x="86.0" y="445.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#0d9488" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
-<text x="146.0" y="445.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">Every wiring edge in the fixture resolved correctly: 22 of 22, recall and precision 1.0 (Suite A).</text>
+<text x="146.0" y="445.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">Every wiring edge in the fixture resolved correctly: 23 of 23, recall and precision 1.0 (Suite A).</text>
 <rect x="40.0" y="504.0" width="1040.0" height="289.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
 <text x="68.0" y="542.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">02</text>
 <text x="98.0" y="542.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Scoping a Change</text>
@@ -109,5 +109,5 @@
 <text x="86.0" y="1399.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#0d9488" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
 <text x="146.0" y="1399.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">Fuse reached 30% of a change&#x27;s files versus 26% for bare tools, at comparable token cost (median ~211K vs ~209K), on a</text>
 <text x="146.0" y="1417.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">small, model-dependent 12-PR sample (Suite D).</text>
-<text x="40" y="1483" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#8a93a3">github.com/Litenova-Solutions/Fuse  .  MIT  .  o200k_base tokens  .  four suites reproducible via fuse eval, tests/benchmarks/results</text>
+<text x="40" y="1483" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#8a93a3">github.com/Litenova-Solutions/Fuse  .  Apache 2.0  .  o200k_base tokens  .  four suites reproducible via fuse eval, tests/benchmarks/results</text>
 </svg>

@@ -1,0 +1,29 @@
+{
+  "suite": "performance",
+  "description": "Performance: cold index time and warm resolve/localize P50/P95 latency.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 1,
+    "recall": 0,
+    "recallCiLow": 0,
+    "recallCiHigh": 0,
+    "precision": 0,
+    "f1": 0,
+    "medianTokens": 2.6474,
+    "meanTokens": 2795,
+    "lowSignalF1": 0
+  },
+  "tasks": [],
+  "notes": [
+    "cold start: syntax-tier served in 618 ms (mode syntax, semantic_pending=1); semantic-ready after a further 3,479 ms (mode syntax, semantic_pending=0)",
+    "repo eShopOnWeb, index mode syntax, 287 files, 1216 symbols",
+    "cold index (full semantic pass): 2,795 ms",
+    "warm localize (25x): P50 2.6 ms, P95 4.2 ms",
+    "warm resolve (25x): P50 0.0 ms, P95 0.0 ms",
+    "warm find symbol (25x): P50 0.1 ms, P95 0.2 ms",
+    "warm impact callers\u002Bimplementers (25x): P50 0.0 ms, P95 0.0 ms",
+    "warm review plan (25x): P50 38.3 ms, P95 41.6 ms",
+    "incremental re-index of src/Web/Program.cs (25x): P50 1.9 ms, P95 2.3 ms",
+    "note: timings are environment-dependent; incremental re-index updates the file\u0027s syntax rows, not cross-file semantic edges."
+  ]
+}

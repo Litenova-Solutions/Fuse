@@ -44,7 +44,6 @@ public sealed class FusionValidator
         ValidateScopingMutualExclusivity(request, errors);
         ValidateChangeConstraints(request, errors);
         ValidateDepthConstraints(request, errors);
-        ValidateQueryConstraints(request, errors);
 
         return errors;
     }
@@ -87,13 +86,12 @@ public sealed class FusionValidator
         var activeModes = 0;
         if (request.Focus is not null) activeModes++;
         if (request.Changes is not null) activeModes++;
-        if (request.Query is not null) activeModes++;
 
         if (activeModes <= 1)
             return;
 
         errors.Add(
-            "FocusOptions, ChangeOptions, and QueryOptions are mutually exclusive. Specify at most one of focus, query, or changedSince.");
+            "FocusOptions and ChangeOptions are mutually exclusive. Specify at most one of focus or changedSince.");
     }
 
     private static void ValidateChangeConstraints(FusionRequest request, List<string> errors)
@@ -110,27 +108,6 @@ public sealed class FusionValidator
         if (request.Focus is not null && (request.Focus.Depth < 1 || request.Focus.Depth > 10))
         {
             errors.Add("FocusOptions.Depth must be between 1 and 10.");
-        }
-
-        if (request.Query is not null && (request.Query.Depth < 1 || request.Query.Depth > 10))
-        {
-            errors.Add("QueryOptions.Depth must be between 1 and 10.");
-        }
-    }
-
-    private static void ValidateQueryConstraints(FusionRequest request, List<string> errors)
-    {
-        if (request.Query is null)
-            return;
-
-        if (string.IsNullOrWhiteSpace(request.Query.Query))
-        {
-            errors.Add("QueryOptions.Query is required when query scoping is enabled.");
-        }
-
-        if (request.Query.TopFiles < 1)
-        {
-            errors.Add("QueryOptions.TopFiles must be at least 1.");
         }
     }
 }

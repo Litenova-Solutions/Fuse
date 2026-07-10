@@ -1,0 +1,59 @@
+name: Capture bundle
+
+# C2: the one environment where a serious repo builds by definition is its own CI. This workflow captures the
+# tier-1 compilation on main and uploads a portable capture bundle as a workflow artifact, so a developer or an
+# agent VM that cannot restore or build the repository runs `fuse index --from-capture <bundle>` and gets
+# oracle-grade answers without building. The bundle never contains the MSBuild binary log (which would carry
+# environment variables); the capture fails closed if a secret is found in the generated documents or additional
+# files. Marketplace publishing of the bundle to a hosted tier is a separate, maintainer-gated step.
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Workspace directory to capture (a project or solution folder).'
+        required: false
+        default: 'src/Host/Fuse.Cli'
+
+jobs:
+  capture:
+    name: Capture and upload bundle
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build Fuse.slnx --configuration Release
+
+      - name: Capture bundle
+        shell: pwsh
+        run: |
+          # The build-capture worker is discovered by FUSE_BUILD_CAPTURE_WORKER (the same seam the tests use).
+          $worker = "src/Host/Fuse.BuildCaptureWorker/bin/Release/net10.0/fuse-build-capture.dll"
+          if (-not (Test-Path $worker)) { throw "worker not built at $worker" }
+          $env:FUSE_BUILD_CAPTURE_WORKER = (Resolve-Path $worker).Path
+          $target = "${{ github.event.inputs.target }}"
+          if ([string]::IsNullOrWhiteSpace($target)) { $target = "src/Host/Fuse.Cli" }
+          $fuse = "src/Host/Fuse.Cli/bin/Release/net10.0/fuse.dll"
+          dotnet $fuse capture $target --out fuse-capture
+          if ($LASTEXITCODE -ne 0) { throw "fuse capture failed" }
+          # The bundle never carries a binlog; fail the job if one somehow appears alongside the artifact.
+          if (Test-Path "fuse-capture/*.binlog") { throw "a binlog is present in the bundle; the secret posture forbids shipping it" }
+          Get-ChildItem fuse-capture | Format-Table Name, Length
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuse-capture-${{ github.sha }}
+          path: fuse-capture/
+          if-no-files-found: error
+          retention-days: 14

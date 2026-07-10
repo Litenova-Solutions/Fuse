@@ -20,14 +20,15 @@ when a git base is available (89 percent in the
 
 ## The Sequence
 
-1. **Survey.** Call `fuse_map` first. It lists indexed symbols, routes, and counts, a
-   low-token map of the workspace, no bodies, so the agent sees the shape before fetching
-   anything.
-2. **Localize or resolve.** When the task is open-ended, call `fuse_localize` with the task
-   text to rank candidate files and symbols. When the task names a route, interface,
-   request, or config section, call `fuse_resolve` to map it to the type that actually runs.
+1. **Survey.** Call `fuse_workspace` with `action=map` first. It lists indexed symbols,
+   routes, and counts, a low-token map of the workspace, no bodies, so the agent sees the
+   shape before fetching anything.
+2. **Localize or resolve.** When the task is open-ended, call `fuse_find` with `kind=task`
+   and the task text to rank candidate files and symbols. When the task names a route,
+   interface, request, or config section, call `fuse_find` with the matching wiring `kind`
+   (`service`, `request`, `route`, `config`) to map it to the type that actually runs.
    Neither returns bodies.
-3. **Plan context.** Feed the candidate file paths from `fuse_localize` (or the resolved
+3. **Plan context.** Feed the candidate file paths from `fuse_find` (or the resolved
    names) to `fuse_context` to fetch their bodies and dependency neighborhood, packed to a
    budget.
 4. **Review a change.** For a pull request, call `fuse_review` with the base branch; it
@@ -36,8 +37,8 @@ when a git base is available (89 percent in the
 ## Example Call Sequence
 
 ```text
-fuse_map(path="C:/Projects/MyApp/src", detail="all")
-fuse_localize(path="C:/Projects/MyApp/src", task="discount applied at checkout")
+fuse_workspace(action="map", path="C:/Projects/MyApp/src", detail="all")
+fuse_find(path="C:/Projects/MyApp/src", kind="task", query="discount applied at checkout")
 fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], depth=2, maxTokens=25000)
 ```
 
@@ -50,7 +51,7 @@ When the task names a service, request, route, or config section, skip localize 
 it directly:
 
 ```text
-fuse_resolve(path="C:/Projects/MyApp/src", service="IOrderService")
+fuse_find(path="C:/Projects/MyApp/src", kind="service", query="IOrderService")
 fuse_context(path="C:/Projects/MyApp/src", services=["IOrderService"], maxTokens=25000)
 ```
 
@@ -61,8 +62,8 @@ and expand them itself, so you can often plan context in one call once you know 
 
 | Stage | Tool | Typical tokens |
 |-------|------|----------------|
-| Survey | `fuse_map` | low, counts only |
-| Localize or resolve | `fuse_localize` or `fuse_resolve` | low, no bodies |
+| Survey | `fuse_workspace` (action=map) | low, counts only |
+| Localize or resolve | `fuse_find` (kind=task or wiring) | low, no bodies |
 | Plan context | `fuse_context` | 15,000 to 50,000 |
 | Change review | `fuse_review` | 15,000 to 50,000 |
 

@@ -37,10 +37,59 @@ public sealed class GitChangeDetector : IChangeDetector
         return GitDiffParser.Parse(stdout);
     }
 
+    /// <inheritdoc />
+    public async Task<string?> GetFileContentAtAsync(
+        string sourceDirectory,
+        string reference,
+        string relativePath,
+        CancellationToken cancellationToken = default)
+    {
+        // git show <ref>:<path> prints the file's content at that ref. A path absent at the ref (a newly added
+        // file has no base version) exits non-zero with a "does not exist" / "exists on disk, but not in" message;
+        // that is not an error for API-delta purposes - it means "no base symbols on this side", so return null.
+        // Git being unavailable or the directory not being a repository still throws, matching the other methods.
+        var spec = $"{reference}:{relativePath.Replace('\\', '/')}";
+        var result = await RunGitRawAsync(sourceDirectory, cancellationToken, "show", spec);
+        if (result.ExitCode == 0)
+            return result.Stdout;
+
+        if (result.Stderr.Contains("does not exist", StringComparison.OrdinalIgnoreCase) ||
+            result.Stderr.Contains("exists on disk, but not in", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        ThrowForGitFailure(result);
+        return null; // unreachable: ThrowForGitFailure always throws on a non-zero exit.
+    }
+
     // Runs git in the source directory and returns stdout, translating git failures into ChangeDetectionException
-    // so callers see a single failure type regardless of which git command was run. Arguments are passed as
-    // discrete tokens via ArgumentList so a ref containing spaces is never word-split and nothing is shell-quoted.
+    // so callers see a single failure type regardless of which git command was run.
     private static async Task<string> RunGitAsync(string sourceDirectory, CancellationToken cancellationToken, params string[] arguments)
+    {
+        var result = await RunGitRawAsync(sourceDirectory, cancellationToken, arguments);
+        if (result.ExitCode != 0)
+            ThrowForGitFailure(result);
+
+        return result.Stdout;
+    }
+
+    private static void ThrowForGitFailure(GitResult result)
+    {
+        if (result.Stderr.Contains("not a git repository", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ChangeDetectionException(
+                "Source directory is not a git repository. Change-scoped fusion requires a git repository.");
+        }
+
+        throw new ChangeDetectionException(string.IsNullOrWhiteSpace(result.Stderr)
+            ? $"git failed with exit code {result.ExitCode}."
+            : result.Stderr.Trim());
+    }
+
+    // Runs git and returns its exit code and captured streams without interpreting them, so callers can decide
+    // whether a non-zero exit is an error (RunGitAsync) or an expected "not present" (GetFileContentAtAsync).
+    // Arguments are passed as discrete tokens via ArgumentList so a ref containing spaces is never word-split
+    // and nothing is shell-quoted.
+    private static async Task<GitResult> RunGitRawAsync(string sourceDirectory, CancellationToken cancellationToken, params string[] arguments)
     {
         var gitPath = GitExecutableLocator.Find();
         if (gitPath is null)
@@ -78,19 +127,9 @@ public sealed class GitChangeDetector : IChangeDetector
         var stdout = await stdoutTask;
         var stderr = await stderrTask;
 
-        if (process.ExitCode != 0)
-        {
-            if (stderr.Contains("not a git repository", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ChangeDetectionException(
-                    "Source directory is not a git repository. Change-scoped fusion requires a git repository.");
-            }
-
-            throw new ChangeDetectionException(string.IsNullOrWhiteSpace(stderr)
-                ? $"git failed with exit code {process.ExitCode}."
-                : stderr.Trim());
-        }
-
-        return stdout;
+        return new GitResult(process.ExitCode, stdout, stderr);
     }
+
+    // The exit code and captured streams of one git invocation.
+    private readonly record struct GitResult(int ExitCode, string Stdout, string Stderr);
 }

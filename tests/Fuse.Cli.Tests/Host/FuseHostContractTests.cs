@@ -131,4 +131,34 @@ public sealed class FuseHostContractTests
         Assert.Contains("\"role\":\"Seed\"", json);
         Assert.Contains("\"tier\":\"Standard\"", json);
     }
+
+    [Fact]
+    public void CheckDelta_SerializesIntroducedAndResolvedCamelCase()
+    {
+        var delta = new CheckDeltaDto(
+            true,
+            [new CheckDiagnosticDto("CS1061", "Error", "'Order' does not contain a definition for 'Total'", "a/Order.cs", 12)],
+            [new CheckDiagnosticDto("CS0246", "Error", "type 'Widget' not found", "a/Widget.cs", 3)]);
+
+        var json = JsonSerializer.Serialize(delta, FuseHostJsonContext.Default.CheckDeltaDto);
+
+        Assert.Contains("\"resident\":true", json);
+        Assert.Contains("\"introduced\":[{\"id\":\"CS1061\",\"severity\":\"Error\"", json);
+        Assert.Contains("\"path\":\"a/Order.cs\",\"line\":12", json);
+        Assert.Contains("\"resolved\":[{\"id\":\"CS0246\"", json);
+    }
+
+    [Fact]
+    public void CheckOverlayResult_SerializesDiagnosticsCamelCase()
+    {
+        var overlay = new CheckOverlayResultDto(
+            true,
+            [new CheckDiagnosticDto("CS0246", "Error", "type 'Widget' not found", "a/Widget.cs", 3)]);
+
+        var json = JsonSerializer.Serialize(overlay, FuseHostJsonContext.Default.CheckOverlayResultDto);
+
+        Assert.Contains("\"hasResident\":true", json);
+        Assert.Contains("\"diagnostics\":[{\"id\":\"CS0246\",\"severity\":\"Error\"", json);
+        Assert.Contains("\"path\":\"a/Widget.cs\",\"line\":3", json);
+    }
 }

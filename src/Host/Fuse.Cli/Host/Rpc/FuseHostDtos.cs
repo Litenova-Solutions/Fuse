@@ -171,3 +171,42 @@ public sealed record ExplainFileDto(string Path, string Role, string Tier, doubl
 /// <param name="Mode">The scoping mode that produced the plan (<c>focus</c>, <c>search</c>, or <c>changes</c>).</param>
 /// <param name="Files">The planned files, in plan order.</param>
 public sealed record ExplainResultDto(string Mode, IReadOnlyList<ExplainFileDto> Files);
+
+/// <summary>
+///     One compiler diagnostic in a <c>fuse/check</c> delta (S3): the shape the ambient-verification hook renders
+///     after an edit. Mirrors <see cref="Fuse.Indexing.CheckDiagnostic" /> as a wire DTO so the host RPC contract
+///     does not leak the engine record.
+/// </summary>
+/// <param name="Id">The diagnostic id (for example <c>CS1061</c>).</param>
+/// <param name="Severity">The severity (<c>Error</c>, <c>Warning</c>, <c>Info</c>, <c>Hidden</c>).</param>
+/// <param name="Message">The diagnostic message.</param>
+/// <param name="Path">The file the diagnostic is in, when known.</param>
+/// <param name="Line">The 1-based line, when known.</param>
+public sealed record CheckDiagnosticDto(string Id, string Severity, string Message, string? Path, int Line);
+
+/// <summary>
+///     The result of the <c>fuse/check</c> method (S3): the diagnostics a session's edits introduced or resolved
+///     since its baseline, computed from a live resident workspace with no build. When no resident workspace
+///     serves the root, <see cref="Resident" /> is false and both lists are empty, so an ambient-verification hook
+///     exits silently rather than blocking editing.
+/// </summary>
+/// <param name="Resident">Whether a live resident workspace served the diagnostics (false means none did).</param>
+/// <param name="Introduced">Diagnostics present now but not at the session baseline (the edits introduced them).</param>
+/// <param name="Resolved">Diagnostics present at the baseline but not now (the edits resolved them).</param>
+public sealed record CheckDeltaDto(
+    bool Resident,
+    IReadOnlyList<CheckDiagnosticDto> Introduced,
+    IReadOnlyList<CheckDiagnosticDto> Resolved);
+
+/// <summary>
+///     The result of the <c>fuse/checkOverlay</c> method (G5): the diagnostics a proposed single-file edit would
+///     produce, typechecked against the daemon's live resident workspace with no build. This is the resident-grade
+///     answer a non-owner process (for example an <c>mcp serve</c> that delegates to the shared daemon) proxies
+///     over the pipe, so the warm compilation is a shared asset rather than duplicated per process.
+/// </summary>
+/// <param name="HasResident">Whether a live resident workspace served the check (false means the daemon has none).</param>
+/// <param name="Diagnostics">The diagnostics for the changed document, when a resident workspace served it.</param>
+public sealed record CheckOverlayResultDto(
+    bool HasResident,
+    IReadOnlyList<CheckDiagnosticDto> Diagnostics);
+

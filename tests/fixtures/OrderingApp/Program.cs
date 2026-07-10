@@ -28,6 +28,8 @@ public static class Program
         services.TryAddSingleton<ICache, MemoryCache>();
         // Multiple-implementation ambiguity: only FastShipping is registered.
         services.AddScoped<IShipping, FastShipping>();
+        // Keyed DI registration (the service key is ignored for service -> implementation resolution).
+        services.AddKeyedScoped<INotifier, EmailNotifier>("email");
     }
 
     public static void MapEndpoints(WebApplication app)

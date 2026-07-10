@@ -12,6 +12,8 @@ namespace Fuse.Context;
 /// <param name="EstimatedTokens">The total token count.</param>
 /// <param name="Entries">The file entries.</param>
 /// <param name="Notes">Warnings/notes.</param>
+/// <param name="ApiDelta">The rendered public-API delta section (T2) for a review plan, when present.</param>
+/// <param name="Claims">The rendered graded-claims block (U2) for the answer, when present.</param>
 public sealed record ContextJsonDto(
     string Mode,
     string? Root,
@@ -19,7 +21,9 @@ public sealed record ContextJsonDto(
     int Files,
     int EstimatedTokens,
     IReadOnlyList<ContextFileDto> Entries,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    string? ApiDelta = null,
+    string? Claims = null);
 
 /// <summary>
 ///     The JSON shape of a single emitted file.

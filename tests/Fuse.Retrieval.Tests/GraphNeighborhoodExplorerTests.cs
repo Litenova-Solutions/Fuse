@@ -73,6 +73,22 @@ public sealed class GraphNeighborhoodExplorerTests : IAsyncLifetime
         Assert.DoesNotContain(items, i => i.Path == "src/A/One.cs");
     }
 
+    [Fact]
+    public async Task CoveringTestsSelectsOnlyTheTestsEdgeSource()
+    {
+        // A change to OrderService is covered by the test that carries a tests edge to it; a caller (the
+        // controller, reached via di_injects) is blast radius, not a covering test, and must not be selected.
+        var covering = await _explorer.CoveringTestsAsync("OrderService", 20, CancellationToken.None);
+
+        Assert.Contains(covering, i => i.Path == "tests/OrderServiceTests.cs");
+        Assert.DoesNotContain(covering, i => i.Path == "src/Orders/OrdersController.cs");
+        Assert.All(covering, i => Assert.Equal("covers", i.Reason));
+    }
+
+    [Fact]
+    public async Task CoveringTestsIsEmptyWhenNoTestsEdgeReachesTheSymbol()
+        => Assert.Empty(await _explorer.CoveringTestsAsync("IOrderService", 20, CancellationToken.None));
+
     private async Task SeedAsync()
     {
         await _store.UpsertFilesAsync(
@@ -80,6 +96,7 @@ public sealed class GraphNeighborhoodExplorerTests : IAsyncLifetime
                 new IndexedFileRecord("src/Orders/IOrderService.cs", "src/Orders/IOrderService.cs", ".cs", 10, 1, "h1"),
                 new IndexedFileRecord("src/Orders/OrderService.cs", "src/Orders/OrderService.cs", ".cs", 10, 1, "h2"),
                 new IndexedFileRecord("src/Orders/OrdersController.cs", "src/Orders/OrdersController.cs", ".cs", 10, 1, "h3"),
+                new IndexedFileRecord("tests/OrderServiceTests.cs", "tests/OrderServiceTests.cs", ".cs", 10, 1, "h4"),
             ],
             CancellationToken.None);
         await _store.UpsertNodesAsync(
@@ -87,12 +104,15 @@ public sealed class GraphNeighborhoodExplorerTests : IAsyncLifetime
                 new NodeRecord("type:IOrderService", "interface", "IOrderService", "App.IOrderService", "src/Orders/IOrderService.cs"),
                 new NodeRecord("type:OrderService", "class", "OrderService", "App.OrderService", "src/Orders/OrderService.cs"),
                 new NodeRecord("type:OrdersController", "class", "OrdersController", "App.OrdersController", "src/Orders/OrdersController.cs"),
+                new NodeRecord("type:OrderServiceTests", "class", "OrderServiceTests", "App.Tests.OrderServiceTests", "tests/OrderServiceTests.cs"),
             ],
             CancellationToken.None);
         await _store.UpsertEdgesAsync(
             [
                 new SemanticEdgeRecord("type:IOrderService", "type:OrderService", "di_resolves_to", 0.95, 0.95),
                 new SemanticEdgeRecord("type:OrdersController", "type:IOrderService", "di_injects", 0.75, 1.0),
+                // R5 DI-resolved tests edge: the test injects IOrderService, resolved to OrderService.
+                new SemanticEdgeRecord("type:OrderServiceTests", "type:OrderService", "tests", 0.9, 1.0),
             ],
             CancellationToken.None);
     }

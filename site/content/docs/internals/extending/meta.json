@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "language-plugin",
+    "semantic-analyzer",
     "format-reducer",
     "pattern-detector",
     "template"

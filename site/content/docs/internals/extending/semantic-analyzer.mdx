@@ -1,0 +1,38 @@
+---
+title: Semantic Analyzer
+description: What the shipped semantic analyzers cover, and how to contribute a new one for a framework Fuse does not yet understand.
+---
+
+A semantic analyzer turns a loaded Roslyn compilation into typed graph edges: this service resolves to that implementation, this request is handled there, this route maps to that action. The analyzers are what make `fuse_find` (wiring and neighbors), `fuse_review`, and `fuse_impact` answer wiring questions a text search cannot. This page states exactly what the shipped analyzers cover, so the picture is honest, and shows how to add one for a framework they miss.
+
+## Coverage
+
+Every analyzer implements `ISemanticAnalyzer` and runs per project over the Roslyn compilation. The table lists what ships today. An analyzer sees only the project's own source plus its referenced symbols, so it discovers wiring declared in the code Fuse indexed, not wiring that lives in a dependency's compiled assembly.
+
+| Analyzer | Framework / pattern | Edge or record it produces |
+|----------|--------------------|----------------------------|
+| `DiRegistrationAnalyzer` | `Microsoft.Extensions.DependencyInjection` registrations (`AddScoped`, `AddSingleton`, `AddTransient`, `TryAdd*`, keyed `AddKeyed*`, open generics, factory lambdas, Scrutor scanning and decoration) | `di_resolves_to` (service to implementation) and DI registration records |
+| `ConstructorInjectionAnalyzer` | Constructor-injected dependencies | An edge from a type to each dependency it takes, resolved to the registered implementation |
+| `InterfaceImplementationAnalyzer` | Interface implementation and base-type inheritance among the project's own types | `implements` and inheritance edges |
+| `MediatRAnalyzer` | MediatR requests, notifications, and their handlers, plus send/publish sites | Request-to-handler edges |
+| `PipelineBehaviorAnalyzer` | MediatR `IPipelineBehavior<TRequest, TResponse>` implementations | Pipeline-behavior edges |
+| `AspNetRouteAnalyzer` | ASP.NET MVC controller routes | Route-to-action edges and route records |
+| `EndpointAnalyzer` | Minimal-API endpoints, gRPC services, and SignalR hubs mapped on the application builder | Endpoint edges and route records |
+| `OptionsBindingAnalyzer` | Options and configuration binding (a section to its options type, and the types that consume it) | Options-binding records and consumer edges |
+| `HostedServiceAnalyzer` | `IHostedService` and `BackgroundService` implementations | Hosted-service nodes |
+| `EfCoreAnalyzer` | EF Core `DbContext` entity sets and entity configuration classes | Entity and configuration edges |
+| `ReferenceEdgeAnalyzer` | Type-level use of another source type's member or type (R5) | `references` edges, the substrate `fuse_impact` reads |
+| `TestEdgeExtractor` | A test type's references to the source types it exercises (R5, runs after the per-project analyzers merge) | `tests` edges, the substrate for covering-test selection |
+
+The semantic (typed-graph) tier is C# and Roslyn only. The syntax tier is provider-driven and language-agnostic, but the analyzers above run against a Roslyn `Compilation`, so a second language reaches the semantic tier only when a semantic-tier provider for it is built. Suite A (`fuse eval semantics`) measures analyzer accuracy against a hand-built edge ground truth on the OrderingApp fixture; it is the gate any new analyzer extends.
+
+## Contributing an analyzer
+
+The steps to add coverage for a framework not in the table:
+
+1. Implement `ISemanticAnalyzer` in `src/Core/Fuse.Semantics/Analyzers`. `Analyze` receives a `SemanticAnalysisContext` (the loaded project and the workspace root) and returns a `SemanticAnalyzerResult` carrying the nodes and typed edges it discovered. Use `SemanticAnalyzerResult.FromGraph(nodes, edges)` when you emit only nodes and edges; include every node an edge references, so the endpoint exists before the edge is stored. Read the framework's wiring off the Roslyn semantic model (symbols and their attributes), not off syntax text, so the edge is only emitted when the types actually bind.
+2. Register it in `SemanticAnalysisRunner.CreateDefault()`. Order matters only where one analyzer consumes another's output (for example `ConstructorInjectionAnalyzer` takes the `DiRegistrationAnalyzer` so it can resolve a dependency to its registered implementation).
+3. Add a fixture and a golden edge test. Extend the OrderingApp wiring fixture (or add a focused fixture) with the new pattern, and assert the exact edges in Suite A's ground truth. An analyzer without a ground-truth edge is unmeasured, and the semantics suite is the moat: it must match the hand-built edges exactly.
+4. Keep the three gates green: `dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release --no-build`, `dotnet format Fuse.slnx --verify-no-changes`. Add XML docs on the public analyzer type per the project's documentation standard.
+
+A few rules keep an analyzer honest. Emit an edge only when the symbols resolve; a name-based guess that fires on a partial load produces a false edge, which is worse than a missing one. Weight a soft signal (a `references` edge is weight 0.15) below a hard wiring edge, so ranking reflects certainty. And measure precision, not just recall: `fuse eval semantics --corpus-sample N` samples predicted edges over the corpus for adjudication, which is how a new resolver's false-positive rate is checked before it ships.

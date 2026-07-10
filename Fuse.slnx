@@ -19,18 +19,22 @@
       <Project Path="src/Core/Fuse.Fusion/Fuse.Fusion.csproj" />
       <Project Path="src/Core/Fuse.Indexing/Fuse.Indexing.csproj" />
       <Project Path="src/Core/Fuse.Semantics/Fuse.Semantics.csproj" />
+      <Project Path="src/Core/Fuse.Workspace/Fuse.Workspace.csproj" />
       <Project Path="src/Core/Fuse.Retrieval/Fuse.Retrieval.csproj" />
       <Project Path="src/Core/Fuse.Context/Fuse.Context.csproj" />
     </Folder>
     <Folder Name="/src/Host/">
       <Project Path="src/Host/Fuse.Cli/Fuse.Cli.csproj" />
+      <Project Path="src/Host/Fuse.BuildCaptureWorker/Fuse.BuildCaptureWorker.csproj" />
+    </Folder>
+    <Folder Name="/src/Packaging/">
+      <Project Path="src/Packaging/Fuse.Capture/Fuse.Capture.csproj" />
     </Folder>
     <Folder Name="/src/Plugins/">
       <Project Path="src/Plugins/Fuse.Plugins.Abstractions/Fuse.Plugins.Abstractions.csproj" />
       <Project Path="src/Plugins/Fuse.Plugins.Languages.CSharp/Fuse.Plugins.Languages.CSharp.csproj" />
       <Project Path="src/Plugins/Fuse.Plugins.Languages.CSharp.Roslyn/Fuse.Plugins.Languages.CSharp.Roslyn.csproj" />
       <Project Path="src/Plugins/Fuse.Plugins.Formats.Web/Fuse.Plugins.Formats.Web.csproj" />
-      <Project Path="src/Plugins/Fuse.Plugins.Rerank.Onnx/Fuse.Plugins.Rerank.Onnx.csproj" />
     </Folder>
   </Folder>
   <Folder Name="/src/Core/">
@@ -40,6 +44,7 @@
     <Project Path="src/Core/Fuse.Reduction/Fuse.Reduction.csproj" />
     <Project Path="src/Core/Fuse.Indexing/Fuse.Indexing.csproj" />
     <Project Path="src/Core/Fuse.Semantics/Fuse.Semantics.csproj" />
+    <Project Path="src/Core/Fuse.Workspace/Fuse.Workspace.csproj" />
     <Project Path="src/Core/Fuse.Retrieval/Fuse.Retrieval.csproj" />
     <Project Path="src/Core/Fuse.Context/Fuse.Context.csproj" />
   </Folder>
@@ -57,12 +62,13 @@
     <Project Path="tests/Fuse.GoldenOutput.Tests/Fuse.GoldenOutput.Tests.csproj" />
     <Project Path="tests/Fuse.Plugins.Languages.CSharp.Tests/Fuse.Plugins.Languages.CSharp.Tests.csproj" />
     <Project Path="tests/Fuse.Plugins.Languages.CSharp.Roslyn.Tests/Fuse.Plugins.Languages.CSharp.Roslyn.Tests.csproj" />
-    <Project Path="tests/Fuse.Plugins.Rerank.Onnx.Tests/Fuse.Plugins.Rerank.Onnx.Tests.csproj" />
     <Project Path="tests/Fuse.Reduction.Tests/Fuse.Reduction.Tests.csproj" />
     <Project Path="tests/Fuse.Indexing.Tests/Fuse.Indexing.Tests.csproj" />
     <Project Path="tests/Fuse.Semantics.Tests/Fuse.Semantics.Tests.csproj" />
     <Project Path="tests/Fuse.Retrieval.Tests/Fuse.Retrieval.Tests.csproj" />
     <Project Path="tests/Fuse.Context.Tests/Fuse.Context.Tests.csproj" />
+    <Project Path="tests/Fuse.BuildCaptureWorker.Tests/Fuse.BuildCaptureWorker.Tests.csproj" />
+    <Project Path="tests/Fuse.Workspace.Tests/Fuse.Workspace.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/benchmarks/">
     <Project Path="tests/benchmarks/Fuse.Benchmarks/Fuse.Benchmarks.csproj" />

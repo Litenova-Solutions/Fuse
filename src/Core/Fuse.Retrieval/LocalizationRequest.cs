@@ -30,6 +30,14 @@ namespace Fuse.Retrieval;
 ///     radius, which widens recall but pressures precision, so it is an explicit operating point rather than the
 ///     default. A no-op in syntax mode where the graph has no edges.
 /// </param>
+/// <param name="EnableCentralityPrior">
+///     Whether to apply the dependency-centrality prior. On by default; the ranking suite (N1) sets it false to
+///     score the ranking channels in isolation and to re-adjudicate the priors as default-on features.
+/// </param>
+/// <param name="EnableCoChangePrior">
+///     Whether to apply the git co-change prior. On by default; the ranking suite (N1) toggles it to measure the
+///     A6 co-change prior's effect on ranking, per finding 9.
+/// </param>
 public sealed record LocalizationRequest(
     string RootDirectory,
     string? Query = null,
@@ -47,7 +55,9 @@ public sealed record LocalizationRequest(
     bool IncludeTests = true,
     bool IncludeConfig = true,
     bool Strict = false,
-    bool ExpandGraph = false);
+    bool ExpandGraph = false,
+    bool EnableCentralityPrior = true,
+    bool EnableCoChangePrior = true);
 
 /// <summary>
 ///     A candidate file or symbol produced by a candidate generator, before scoring and graph expansion.
@@ -103,9 +113,6 @@ public enum CandidateSource
     /// <summary>A full-text match on a body or comment field.</summary>
     FtsBody,
 
-    /// <summary>A dense (embedding) similarity match, ranking a chunk by meaning rather than shared words.</summary>
-    Dense,
-
     /// <summary>A git co-change neighbor.</summary>
     Cochange,
 
@@ -133,7 +140,6 @@ public static class CandidateSourceWeights
         CandidateSource.RequestExact => 0.95,
         CandidateSource.ConfigExact => 0.90,
         CandidateSource.FtsSymbol => 0.75,
-        CandidateSource.Dense => 0.72,
         CandidateSource.FtsPath => 0.70,
         CandidateSource.FtsBody => 0.55,
         CandidateSource.Cochange => 0.45,

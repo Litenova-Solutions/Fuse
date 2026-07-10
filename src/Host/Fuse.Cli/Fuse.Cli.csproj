@@ -11,12 +11,16 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>fuse</ToolCommandName>
         <PackageId>Fuse</PackageId>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/Litenova-Solutions/Fuse</PackageProjectUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>mcp;dotnet-tool;llm;codebase;context;fusion;csharp;token-reduction</PackageTags>
         <PackageOutputPath>./nupkg</PackageOutputPath>
         <RollForward>LatestMajor</RollForward>
+        <!-- C3: pack the build-capture worker into the tool so tier-1 is discovered with no env var. The worker's
+             published closure is added to the package under tools/<tfm>/any/build-capture/ by the target below. -->
+        <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);AddBuildCaptureWorkerToPackage</TargetsForTfmSpecificContentInPackage>
+        <_BuildCaptureWorkerDir>$(MSBuildThisFileDirectory)..\Fuse.BuildCaptureWorker\bin\$(Configuration)\net10.0\</_BuildCaptureWorkerDir>
     </PropertyGroup>
 
     <ItemGroup>
@@ -42,12 +46,47 @@
         <ProjectReference Include="..\..\Core\Fuse.Fusion\Fuse.Fusion.csproj" />
         <ProjectReference Include="..\..\Core\Fuse.Indexing\Fuse.Indexing.csproj" />
         <ProjectReference Include="..\..\Core\Fuse.Semantics\Fuse.Semantics.csproj" />
+        <ProjectReference Include="..\..\Core\Fuse.Workspace\Fuse.Workspace.csproj" />
         <ProjectReference Include="..\..\Core\Fuse.Retrieval\Fuse.Retrieval.csproj" />
         <ProjectReference Include="..\..\Core\Fuse.Context\Fuse.Context.csproj" />
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp\Fuse.Plugins.Languages.CSharp.csproj" />
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj" />
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Formats.Web\Fuse.Plugins.Formats.Web.csproj" />
-        <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Rerank.Onnx\Fuse.Plugins.Rerank.Onnx.csproj" />
         <ProjectReference Include="..\..\..\tests\benchmarks\Fuse.Benchmarks\Fuse.Benchmarks.csproj" />
+        <!-- C3: build the worker before this project so its output is available to bundle, but do NOT reference its
+             assembly - its Basic.CompilerLog closure must stay out of fuse.dll's own directory (the separate-process
+             isolation the worker exists for). ReferenceOutputAssembly=false gives build ordering without flowing
+             the worker's assemblies into this project's output or closure. -->
+        <ProjectReference Include="..\Fuse.BuildCaptureWorker\Fuse.BuildCaptureWorker.csproj"
+                          ReferenceOutputAssembly="false"
+                          ExcludeAssets="all"
+                          PrivateAssets="all"
+                          Private="false"
+                          SkipGetTargetFrameworkProperties="true" />
     </ItemGroup>
+
+    <!-- C3: copy the worker's framework-dependent output (its dll + deps.json + runtimeconfig + closure) into a
+         build-capture/ subfolder of this project's output, so a development build (and the eval harness) discovers
+         the worker install-relative via BuildCaptureClient.ResolveWorkerPath without an env var. The worker is run
+         as `dotnet build-capture/fuse-build-capture.dll` in its own process, so its closure never loads into fuse. -->
+    <Target Name="CopyBuildCaptureWorkerToOutput"
+            AfterTargets="Build"
+            Condition="'$(DesignTimeBuild)' != 'true' And Exists('$(_BuildCaptureWorkerDir)fuse-build-capture.dll')">
+        <ItemGroup>
+            <_BuildCaptureWorkerFiles Include="$(_BuildCaptureWorkerDir)**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(_BuildCaptureWorkerFiles)"
+              DestinationFiles="@(_BuildCaptureWorkerFiles->'$(OutDir)build-capture\%(RecursiveDir)%(Filename)%(Extension)')"
+              SkipUnchangedFiles="true" />
+    </Target>
+
+    <!-- C3: add the worker's output to the tool package under tools/<tfm>/any/build-capture/, so an installed
+         `fuse` finds the worker beside itself (AppContext.BaseDirectory/build-capture/) with no configuration. -->
+    <Target Name="AddBuildCaptureWorkerToPackage" Condition="Exists('$(_BuildCaptureWorkerDir)fuse-build-capture.dll')">
+        <ItemGroup>
+            <TfmSpecificPackageFile Include="$(_BuildCaptureWorkerDir)**\*.*">
+                <PackagePath>tools/$(TargetFramework)/any/build-capture/%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
 </Project>

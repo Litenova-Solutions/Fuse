@@ -7119,16 +7119,33 @@ not - the daemon visibility the Gate names. The daemon already exposed exactly t
 **Tests.** `FuseHostClientProbeTests` (2): IsServingAsync is false and TryStatsAsync is null for a
 root no daemon serves (the probes never throw for absence).
 
-**Next action.** G5 remaining, the Gate-reaching integration: 5-ii wiring (make `mcp serve` use
-`DaemonSupervisor` to spawn a daemon on demand and delegate the resident workspace to it, opt-in
-FUSE_DAEMON, single-process fallback preserved - the piece that yields the RSS reduction since serve
-holds its own engine today), 5-iv one-truth (an edit via one client's delta appears in another's),
-and 5-v docs plus the RSS before/after on NodaTime with serve+host running for the Gate. This
-delegation is the large architectural piece (the root model, what serve proxies, the RSS delegation)
-and is the natural fresh-context increment; every lifecycle primitive it builds on is now committed
-and tested (DaemonLock, host single-instance, DaemonSupervisor, IsServingAsync, IdleShutdownMonitor,
-TryStatsAsync + the status line). Fallback if delegation proves too invasive: keep per-process engines
-(S1 status quo) and record why.
+**Remaining-work scope CONFIRMED (read FuseHostService.cs).** The pipe RPC exposes fuse/handshake,
+stats, index, graph, scope, explain, diagnostics, shutdown, and check (delta). It does NOT expose the
+resident overlay-check (`TryCheckOverlayAsync`), signature lookup, or current-diagnostics operations
+that resident-grade `fuse_check` needs. So true resident-grade delegation (both serve and host answer
+at resident grade from ONE daemon-held workspace, the RSS + one-truth Gate) requires: (1) expand
+FuseHostService with resident operations (overlay check, signature, current diagnostics) as new
+`[JsonRpcMethod]`s and bump `ProtocolVersion` to 7 per the host-RPC change-safety invariant; (2) a
+proxy `IResidentWorkspaceProvider` over `FuseHostClient` that serve installs (via
+`FuseTools.ResidentWorkspaces`) when it delegates to a daemon; (3) resident-owner arbitration so the
+non-owner installs the proxy pointing at the owner; (4) the RSS before/after on NodaTime + the
+one-truth test for the Gate. This is a large cross-process change in the safety-critical resident
+path; it is the natural fresh-context increment.
+
+**G5 status: substantial committed progress; the resident-delegation Gate remainder is a large
+fresh-context sub-step.** Committed and tested this session: DaemonLock single-instance (181cda7),
+host acquires it (80eeab9), DaemonSupervisor spawn-on-demand + IsServingAsync probe (8d93269),
+IdleShutdownMonitor (6abf948), and the daemon status line + TryStatsAsync (fa54c7e). These deliver the
+item's lifecycle sub-gates at the primitive level (spawn race yields one daemon; spawn-on-demand;
+idle shutdown; version-mismatch refusal; daemon visibility). The RSS-reduction + one-truth Gate needs
+the resident-delegation above.
+
+**Next action.** G5 resident-delegation (the Gate remainder), as the four-part plan just scoped:
+expand the pipe RPC with resident operations (ProtocolVersion 7), add the proxy provider, wire
+serve/host resident-owner arbitration, then measure RSS before/after on NodaTime and add the
+one-truth test. If delegation proves too invasive for the resident path, the item's Fallback applies:
+keep per-process engines (S1 status quo) and record why (the single-instance daemon lock + lifecycle
+primitives still ship as the daemon foundation).
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

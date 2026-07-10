@@ -7043,11 +7043,27 @@ pattern already extends to multiple client kinds with no change. The version-mis
 Gate needs is `ProtocolVersion` in `FuseHostHandshake`. So the daemon reuses this substrate directly;
 5-i's remaining work is the race-safe single-instance lock + discovery (no auth change needed).
 
-**Next action.** G5 sub-step 5-i (remaining): add a race-safe single-instance daemon lock (a named
-Mutex keyed by repo root) + daemon discovery (does a daemon serve this root?), with a spawn-race test
-asserting exactly one daemon wins. This is concurrency-critical L work and is the natural
-fresh-context increment after this session's large committed body (R1, R2, C1, C2, C3-engine,
-C4-engine, G4 all committed and green); re-orient from this checkpoint and the Master checklist.
+#### 2026-07-10 G5 sub-step 5-i (core) DONE: race-safe single-instance daemon lock
+
+**Shipped.** `HostEndpoint.DaemonMutexName(root)` (a per-user named mutex keyed by the same stable
+root hash as the pipe) + `DaemonLock` (Host/Rpc/DaemonLock.cs): `TryAcquire(root)` returns a lock
+whose `IsOwner` is true for exactly one process per root; a spawn race resolves atomically (named
+mutex, no lock file to leak), an `AbandonedMutexException` from a crashed prior owner is taken as
+ownership (a crashed daemon does not wedge the root), and `Dispose` releases so a restarted daemon can
+take over. This is the kill-risk piece (lifecycle/race arbitration) built and tested in isolation
+before the process-spawn integration.
+
+**Tests.** `DaemonLockTests` (2): a cross-thread race for one root yields exactly one owner and a
+re-acquire wins after release (the spawn-race gate at the primitive level); different roots get
+independent locks. PASS.
+
+**Next action.** G5 sub-step 5-i (remaining) + 5-ii: wire `DaemonLock` into daemon spawn/discovery
+(the winner starts the host/daemon; a loser connects as a client), and make `mcp serve` a
+stdio<->pipe adapter when a daemon is running (spawn-on-demand under the lock) with the single-process
+fallback preserved. Then 5-iii lifecycle (idle shutdown + version-mismatch handshake via
+`FuseHostService.ProtocolVersion`=6), 5-iv one-truth + `fuse workspace status` daemon line, 5-v docs +
+RSS-before/after validation + Gate. This is process-spawn/multi-process integration - the natural
+fresh-context continuation; the concurrency primitive it builds on is now committed and tested.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

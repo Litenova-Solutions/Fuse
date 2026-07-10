@@ -128,6 +128,49 @@ public sealed class CaptureComplogRoundTripTests
         }
     }
 
+    // C3 regression: capture must succeed on an ALREADY-BUILT repository. Rehydration reads the Csc invocations
+    // from the binary log, but an up-to-date incremental build emits none ("the build log recorded no C# compiler
+    // invocations"). The build forces --no-incremental so a second capture of the same tree still carries the
+    // compiler calls. Capturing twice proves it: the second run builds against a warm/up-to-date tree.
+    [Fact]
+    public async Task Capture_of_an_already_built_project_still_rehydrates()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-rebuilt-it", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+
+            var rehydrator = new BuildCaptureRehydrator();
+            var target = Path.Combine(work, "Widget.csproj");
+
+            var first = await rehydrator.CaptureAsync(target, TimeSpan.FromMinutes(5), CancellationToken.None);
+            if (!first.Succeeded)
+            {
+                Assert.False(string.IsNullOrEmpty(first.Reason)); // SDK cannot build here; abstain.
+                return;
+            }
+
+            // Second capture against the now-built tree: with --no-incremental the compiler still runs, so the
+            // binlog carries Csc calls and rehydration finds the project rather than failing with an empty log.
+            var second = await rehydrator.CaptureAsync(target, TimeSpan.FromMinutes(5), CancellationToken.None);
+            Assert.True(second.Succeeded, $"capture of an already-built project should still rehydrate: {second.Reason}");
+            Assert.Contains(second.Projects, p => p.Name == "Widget" && p.TypeCount > 0);
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
     // C2 gate: the oracle-grade check from a captured compiler log, WITHOUT building. Export a complog, then check a
     // proposed edit against it with no build: a type error in the edit is reported (the oracle answer a no-restore
     // machine gets from the bundle), and a clean edit reports no errors. This is the check answer the C2 gate names

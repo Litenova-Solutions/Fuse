@@ -255,7 +255,11 @@ public sealed class BuildCaptureRehydrator
     }
 
     // Runs `dotnet build <target> -bl:<binlog>` with a fixed, bounded argument list (never a variable-length
-    // path or id list, per the change-safety invariant) and a timeout.
+    // path or id list, per the change-safety invariant) and a timeout. `--no-incremental` is required: rehydration
+    // reads the C# compiler (Csc) invocations from the binary log, but an already-built or up-to-date repository
+    // builds incrementally and emits NO Csc invocations, so the rehydrator would see an empty log and fail with
+    // "the build log recorded no C# compiler invocations". Forcing a non-incremental build makes every project
+    // compile, so the binlog always carries the Csc calls tier-1 needs (the cost is a full compile per capture).
     private static async Task<(int ExitCode, bool TimedOut, string? FirstError)> RunBuildAsync(
         string buildTarget, string binlogPath, TimeSpan timeout, CancellationToken cancellationToken)
     {
@@ -268,6 +272,7 @@ public sealed class BuildCaptureRehydrator
         };
         psi.ArgumentList.Add("build");
         psi.ArgumentList.Add(buildTarget);
+        psi.ArgumentList.Add("--no-incremental");
         psi.ArgumentList.Add($"-bl:{binlogPath}");
         psi.ArgumentList.Add("-nologo");
         psi.ArgumentList.Add("-v:quiet");

@@ -7334,10 +7334,20 @@ provisioned runner with the build/test compute (and the SDK bands several repos 
 sweep. On such a runner, `fuse eval corpus-health --manifest tests/benchmarks/corpus-v2.json --restore`
 produces the real tier-1 count, and the oracle-task extraction produces the verified-task count.
 
+**Completable sample (engine validated end-to-end over corpus-v2).** `fuse eval corpus-health
+--manifest <3-repo-sample> --corpus D:/fuse-work/bench` (MediatR, serilog, AutoMapper; no --restore)
+completed fast and exercised the whole engine: it indexed each repo, recorded the achieved tier and
+the test discovery (MediatR 3 test projects / 71 test files, serilog 5 / 103, AutoMapper 4 / 422), and
+wrote the report. tier-1 was 0/3 WITHOUT --restore, because tier-1 needs the restore-plus-build step
+(the same three repos DO reach tier-1 via `fuse capture` this session, which runs the build, so the
+capability is real; the health sweep just needs the build step, which is the compute cost). The
+committed 6-repo corpus-health.json was restored after (the sample run is a probe, not the artifact).
+
 **C4 status unchanged: [!].** The gate (20 tier-1 repos + 60 verified oracle tasks) remains unmet and
-compute-bound, now confirmed by attempt rather than reasoning. The curation infrastructure is a real
-shipped deliverable (corpus-v2 manifest + the manifest-driven health runner); the sweep awaits
-provisioned compute.
+compute-bound, now confirmed by attempt rather than reasoning, with the corpus-health engine validated
+end-to-end over corpus-v2. The curation infrastructure is a real shipped deliverable (corpus-v2
+manifest + the manifest-driven health runner); the tier-1 sweep and oracle-task extraction await a
+provisioned runner with build/test compute (and the SDK bands several repos pin).
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

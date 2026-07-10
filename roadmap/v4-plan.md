@@ -7001,6 +7001,44 @@ a [maintainer] decision (publish.yml currently ships the `Fuse` tool only).
 **Next action.** Continue the runway: next eligible item is G5 (shared resident daemon; depends S1,
 S3 both [x]).
 
+#### 2026-07-10 G5 preconditions recorded; sub-step plan
+
+**Preconditions (per the item).**
+- S1 memory numbers recorded (the cost being solved is known): resident RSS 162 MB on NodaTime (2
+  resident projects), warm build+rehydrate 14.1 s (resident-latency.json). Two processes each holding
+  a resident workspace (mcp serve + fuse host) therefore cost ~2x162 MB; one daemon collapses that to
+  ~162 MB - the RSS-reduction the Gate measures.
+- Pipe protocol + auth extends to multiple client kinds: `fuse host` already exposes the NamedPipe RPC
+  (src/Host/Fuse.Cli/Host/Rpc/FuseHostService.cs + FuseHostClient/Connection/Dtos) stamped with
+  `FuseHostService.ProtocolVersion` (the version-handshake substrate the upgrade invariant + G5's
+  version-mismatch gate reuse). This is "the seed of G5's daemon" (AGENTS.md). CONFIRM in 5-i: the
+  per-connection auth-token check in FuseHostService accepts more than one client kind (serve adapter,
+  hooks, status) - read the current token flow before extending it.
+- No single-instance lock/daemon spawn exists yet (grep: the only Mutex-ish hits are unrelated -
+  GitIgnoreFilter, TokenizerFactory). G5 adds the race-safe single-instance spawn.
+
+**Sub-step plan (G5 is L, concurrency-critical - the kill-risk is lifecycle bugs, so each sub-step is
+gate-checked and lifecycle-tested, not feature-tested).**
+- 5-i: confirm the pipe auth-token pattern extends to multiple client kinds (read FuseHostService);
+  record. Add a race-safe single-instance daemon lock (a named Mutex per repo root) + daemon discovery
+  (is a daemon serving this root?). Unit/integration test: a spawn race produces exactly one daemon.
+- 5-ii: `mcp serve` becomes a stdio<->pipe adapter when a daemon is running (spawn-on-demand under the
+  lock), with the single-process fallback preserved (one-shot CLI still works with no daemon). Test:
+  serve with no daemon still answers (fallback); serve with a daemon proxies.
+- 5-iii: lifecycle - idle shutdown (drain, like the SemanticUpgradeSupervisor drain) + the
+  version-mismatch handshake (a stale client refuses and triggers a clean restart, reusing
+  ProtocolVersion). Tests: idle shutdown drains; version-mismatch refuses cleanly.
+- 5-iv: daemon visibility in `fuse workspace status` (PID, uptime, memory); the one-truth behavior (an
+  edit observed via one client's delta appears in another's). Test: two clients see one truth.
+- 5-v: docs (internals architecture + a daemon page) + Validation (RSS before/after on NodaTime with
+  serve + host) + Gate (one-truth green; RSS reduction recorded). Fallback: keep per-process engines
+  (S1 status quo) and record why.
+
+**Next action.** G5 sub-step 5-i: read FuseHostService's connection/auth-token flow (confirm it
+extends to multiple client kinds), then add the race-safe single-instance daemon lock + discovery with
+a spawn-race test. This is a concurrency-critical L item; it is the natural fresh-context increment
+after this session's large body of committed work (R1, R2, C1, C2, C3-engine, C4-engine, G4).
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

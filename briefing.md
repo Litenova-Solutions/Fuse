@@ -37,9 +37,9 @@ full benchmark record (methodology, every canonical result file, and cross-suite
 planner can reason about roadmap tradeoffs from this file alone without the source tree.
 
 Everything here was assembled from the live codebase rather than from memory, so the file and
-line references are real and current as of Fuse version 4.0.0 (last verified 2026-07-07). Where
-a described behavior is still in flight, the section says so and points at the item in
-[roadmap/v4-plan.md](roadmap/v4-plan.md).
+line references are real and current as of Fuse version 4.0.0 (last verified 2026-07-10, through the
+v4 program's substrate and surface waves). Where a described behavior is still in flight, the section
+says so and points at the item in [roadmap/v4-plan.md](roadmap/v4-plan.md).
 
 Two conventions this project enforces, visible throughout: plain ASCII prose only (no em
 dashes, no smart quotes, no emoji outside code fences), and every performance number sourced to
@@ -85,15 +85,33 @@ from a build-captured compilation when tier-1 is configured, and abstain with "c
 it is not. Section 12 summarizes what shipped, what remains, and the load-success ceiling that gates
 realized value.
 
+The v4 program then hardened the tier-1 substrate so the oracle is the default, not an opt-in. Each
+capability names its mechanism: `fuse up` diagnoses a per-project load failure against a knowledge
+base and applies an install-free NuGet-source-mapping overlay or a consent-gated SDK-band install to
+reach tier-1 (C1); `fuse capture --out` packages a build's portable compiler log, extracted graph, and
+versioned manifest, and `fuse index --from-capture` rehydrates the semantic graph and answers
+`fuse_check` at oracle grade on a machine that cannot restore or build, never shipping the binlog and
+failing closed on a planted secret (C2); tier-1 build capture is default-on with the worker bundled in
+the tool and a `--no-incremental` capture so an already-built repo still yields the compiler calls,
+and `mcp serve` cold-starts syntax-first with a supervised background upgrade (C3); `fuse capture
+--merge` assembles a bundle from per-project build-target fragments, equal in graph to a direct
+capture, via a backward-compatible format-2 bundle (G4); a shared `fuse host` daemon holds one
+resident workspace per repository under a single-instance lock, with `mcp serve` delegating to it over
+the pipe, so multiple sessions share one warm compilation (G5); and `fuse eval corpus-health` plus a
+model-suite refusal gate enforce that a model-driven benchmark runs only on a corpus proven buildable
+with verified test oracles (C4). The corpus-bound benchmark numbers under these shipping defaults are
+being re-derived on the buildable corpus-v2 (C4); the roadmap progress log carries the interim
+measurements and their ceilings.
+
 ---
 
 ## 2. Repository layout
 
 Solution file: `Fuse.slnx`. Target framework: `net10.0` across all assemblies. SDK pinned to
 `10.0.100` in `global.json`. Single version source of truth: `Directory.Build.props`
-`<Version>` (currently 4.0.0), mirrored into the VS Code extension, the MCP registry manifest,
-and the docs site, all bumped together by `build/set-version.ps1`. License: Apache-2.0 (migrated
-from MIT in v4 item L1).
+`<Version>` (currently 4.0.0), mirrored into the MCP registry manifest and the docs site, all bumped
+together by `build/set-version.ps1` (the VS Code extension was removed in v4, Decision D15, so there is
+no extension to sync). License: Apache-2.0 (migrated from MIT in v4 item L1).
 
 - `src/Core` - the pipeline libraries:
   - `Fuse.Collection` - file discovery, filtering, gitignore, security guards.

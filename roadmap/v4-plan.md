@@ -6822,6 +6822,45 @@ tier-1 measured, 0 oracle tasks extracted here). Engine + enforcement + docs shi
 whose dependencies are all [x] - check G2 iteration 2, G4, G5, R3, B4 deps and work the first
 eligible.
 
+#### 2026-07-09 G4 preconditions recorded; fragment-merge feasibility + sub-step plan
+
+**Preconditions (per the item).**
+- "Confirm the capture bundle can be assembled from per-project fragments (C2's format supports
+  partial assembly or this item adds it)." Finding: C2's bundle has ONE `capture.complog` (all
+  projects), `graph.json`, `manifest.json`. It does NOT yet support assembly from per-project
+  fragments - G4 adds it. The graph side is easy (union of per-fragment `CapturedProject`s, the proven
+  `RehydrateFromBinlog` path per fragment). The complog side is the crux: producing one merged complog
+  from N per-project fragments.
+- Basic.CompilerLog API (0.9.47) available today: `CompilerLogUtil.ConvertBinaryLog(binlog, complog,
+  predicate)` (one binlog -> one complog, predicate selects compilations) and `CompilerCallReaderUtil
+  .Create(log)` (reads binlog or complog). The merge primitive is `CompilerLogBuilder.Add*`
+  (AddFromDisk/AddAssembly/AddGeneratedFiles/WriteContent) - present but sparsely documented; whether
+  its ctor/Add surface is public and stable enough to merge N fragment logs into one complog is the
+  empirical question G4 must answer (the item's named "Main uncertainty: fragment-merge fidelity" and
+  "Kill risk: teams distrust build-altering packages").
+
+**Fragment-format design (recommended).** Fragment = a per-project binlog emitted by a post-build
+MSBuild target (`Fuse.Capture.targets`) after CoreCompile. `fuse capture --merge <dir>`: reads every
+fragment, rehydrates each project's graph (reuse `RehydrateFromBinlog`), unions the projects for
+`graph.json` + `manifest.json`, and assembles the merged `capture.complog` from the fragments'
+compilations. If `CompilerLogBuilder` cannot merge cleanly, the Fallback is a bundle-format v2 holding
+per-project complogs with the oracle check searching across them (bump `CaptureManifest
+.CurrentFormatVersion`, per the C2 versioning invariant) - still edge-set-equal on the graph.
+
+**Sub-step plan (G4 is M; committed gate-checked sub-steps).**
+- 4-G1: the merge engine - `fuse capture --merge <dir>` assembling a bundle from per-project fragment
+  binlogs; empirically resolve the complog-merge (CompilerLogBuilder vs the format-v2 fallback);
+  edge-set equality test vs a direct capture on a fixture (the item's proof).
+- 4-G2: `Fuse.Capture.targets` NuGet package (post-build fragment target + opt-out property) + a
+  fixture build consuming it; overhead measurement.
+- 4-G3: docs (capture page channel-comparison table + invasiveness note); Gate (merge-equality green;
+  overhead < 5% of fixture build time, else ship experimental per the Fallback).
+
+**Next action.** G4 sub-step 4-G1: empirically probe whether `CompilerLogBuilder` merges N fragment
+logs into one complog (a throwaway probe over two fixture binlogs); if yes, build `fuse capture
+--merge` on it; if no, take the format-v2 per-project-complog fallback. Then the edge-set equality
+test vs a direct capture.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

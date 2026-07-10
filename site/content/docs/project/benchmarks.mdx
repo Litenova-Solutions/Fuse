@@ -210,6 +210,16 @@ The Roslyn skeleton keeps every public and protected type and 99 to 100 percent 
 
 A `fuse_check` repair packet is only useful if its suggested fix actually repairs the error. DiagBench (`fuse eval diagbench`) measures that directly and without a model: for each API-shape mutant (a misspelled member or type reference), it builds the shipped repair packet, auto-applies the packet's machine-applicable `TopRepair` (replace the offending token with the nearest recorded name), recompiles, and records whether the error went to zero with no new error. It runs in-process over a raw-Roslyn baseline and a store populated with the fixture's symbols, so it is deterministic and offline. The recorded run (`results/diagbench.json`) is 20 single-token near-miss mutants (14 `CS1061` missing-member, 6 `CS0246` unknown-type); every one carried a `TopRepair` and every one was auto-fixed, an auto-fix rate of 100 percent per class. The result is bounded by construction: these are one-edit typos whose original is the nearest real name, so the nearest-name heuristic recovers them reliably; it sets the baseline (the gate records it on first run, with no numeric pass bar) and is the feedback number for the repair-packet protocol. A class with no single-token fix (`CS7036` missing argument, `CS0029` type mismatch) carries no `TopRepair` and is excluded. This is a benchmark-harness path only; the product never auto-applies a repair without the agent asking.
 
+## Corpus health and corpus v2
+
+The model-driven suites (the loop metric and agent context sufficiency) are only as trustworthy as the arena they run in. A corpus whose repositories do not build at tier-1, or whose PRs cannot be scored by a test oracle, produces a null-by-environment that looks like a result. Corpus v2 and the health gate close that hole.
+
+- `fuse eval corpus-health` writes `results/corpus-health.json`: per repository the achieved index tier and the discovered test suite (test projects and test files), plus the count of verified oracle tasks. A repository counts toward the gate only when it reaches tier-1 (semantic) on the runner.
+- An oracle task is a PR turned into a fail-to-pass check: the PR's new or changed tests must fail on the base commit and pass on the merge commit, verified mechanically by running the tests at both commits. A task whose merge run is flaky (a re-run disagrees) is excluded, not counted.
+- The gate minimums are at least 20 tier-1 repositories and at least 60 verified oracle tasks. The model-driven suites refuse to start unless a `corpus-health.json` exists, is newer than the corpus manifest, and meets both minimums, printing the shortfall instead of scoring silently.
+
+Status: the health command, the oracle-task verifier, and the refusal gate ship and are unit-tested. Curating corpus v2 to the full 20-repo, 60-task scale is compute-bounded (it requires building 20 repositories at tier-1 and running 60 test-suite oracles) and is not produced in the reference environment; below the minimums, a model-driven run is scoped down per the pre-registered reduced-scope protocol (no headline below 40 tasks) and the shortfall is recorded as a finding about environment buildability, never hidden.
+
 ## What is not measured at scale
 
 These are honest gaps, not claims; do not read an absence here as a result:

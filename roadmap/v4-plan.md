@@ -6727,6 +6727,32 @@ reduced-scope fallback).**
 
 **Next action.** Implement 4a: the corpus-health suite + report model + registration + a fixture test.
 
+#### 2026-07-09 C4 sub-step 4a DONE: fuse eval corpus-health + machine-readable report
+
+**Shipped.** `CorpusHealthReport` / `CorpusRepoHealth` (Fuse.Benchmarks/Model/CorpusHealth.cs): the
+machine-readable proof, with `MeetsMinimums` (>= 20 tier-1 repos AND >= 60 verified oracle tasks;
+consts `GateMinReposTier1=20`, `GateMinTasksVerified=60`). `CorpusHealthSuite`
+(Suites/CorpusHealthSuite.cs): per repo, restores (when --restore) and indexes the checkout to record
+the achieved tier, discovers test projects + test files, and writes `results/corpus-health.json`;
+registered as `fuse eval corpus-health`; EvalCommand skips its generic SuiteResult write so the
+suite's own report is not clobbered. Added to `BenchmarkJsonContext`.
+
+**Validated (real run).** `fuse eval corpus-health` on the current corpus: tier-1 5/6 (Scrutor
+partial - NU1507; Specification/NodaTime/eShopOnWeb/SampleShop/OrderingApp semantic), verified tasks
+0 (4b not yet), meetsMinimums False (correct: 6 repos < 20, 0 tasks < 60). Report written to
+tests/benchmarks/results/corpus-health.json - the honest current snapshot. Test discovery per repo
+recorded (e.g. NodaTime 17 test projects / 488 test files).
+
+**Tests.** `CorpusHealthReportTests` (6 cases): MeetsMinimums boundary at both thresholds, below
+either fails, and the gate minimums are pinned at 20/60. PASS.
+
+**Gate (item, partial).** This is the report engine; the >= 20-tier-1 / >= 60-task minimums are NOT
+met on the current 6-repo corpus (expected - corpus-v2 curation is 4d, oracle-task extraction is 4b).
+
+**Next action.** C4 sub-step 4b: oracle-task extraction - for a PR whose diff changes tests, verify
+the new/changed tests FAIL on base and PASS on merge (mechanical double-run, flakes excluded), a
+`TaskOracle` verifier + synthetic-PR fixture test; then 4c the model-suite refusal gate.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

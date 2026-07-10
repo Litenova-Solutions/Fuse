@@ -68,6 +68,54 @@ public static class FuseHostClient
     }
 
     /// <summary>
+    ///     Asks the daemon serving a root to typecheck a proposed single-file edit against its live resident
+    ///     workspace (G5), or returns null when no compatible daemon serves the root. This is how a non-owner
+    ///     process gets a resident-grade check over the pipe without holding its own workspace.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="includeAnalyzers">Whether to also run the repository's analyzers and nullable warnings.</param>
+    /// <param name="connectTimeout">How long to wait for a connection before concluding no daemon serves the root.</param>
+    /// <param name="cancellationToken">A token to cancel the call.</param>
+    /// <returns>The overlay result, or null when no compatible daemon serves the root.</returns>
+    public static async Task<CheckOverlayResultDto?> TryCheckOverlayAsync(
+        string root, string relativeFilePath, string newContent, bool includeAnalyzers, TimeSpan connectTimeout, CancellationToken cancellationToken)
+    {
+        Stream? stream = null;
+        try
+        {
+            stream = await ConnectAsync(root, connectTimeout, cancellationToken);
+            if (stream is null)
+                return null;
+
+            var formatter = new SystemTextJsonFormatter();
+            formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+            formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            using var rpc = new JsonRpc(new HeaderDelimitedMessageHandler(
+                PipeWriter.Create(stream), PipeReader.Create(stream), formatter));
+            rpc.StartListening();
+
+            var handshake = await rpc.InvokeWithCancellationAsync<FuseHostHandshake>(
+                "fuse/handshake", [], cancellationToken);
+            if (handshake.ProtocolVersion != FuseHostService.ProtocolVersion)
+                return null;
+
+            return await rpc.InvokeWithCancellationAsync<CheckOverlayResultDto>(
+                "fuse/checkOverlay", [handshake.SessionToken, root, relativeFilePath, newContent, includeAnalyzers], cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+        finally
+        {
+            if (stream is not null)
+                await stream.DisposeAsync();
+        }
+    }
+
+    /// <summary>
     ///     Fetches a running daemon's stats for a root (G5), or returns null when no compatible daemon serves it.
     ///     Used by <c>fuse workspace status</c> to name the daemon's PID, uptime, and memory so a developer can see
     ///     and stop it. Never throws for the absence of a daemon.

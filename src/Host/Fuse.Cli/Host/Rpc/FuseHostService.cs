@@ -36,7 +36,7 @@ public sealed class FuseHostService : IDisposable
     ///     serialization error. There is no external client to mirror: the VS Code extension was removed in v4
     ///     (Decision D15), so the host is the minimal pipe endpoint the hooks need.
     /// </summary>
-    public const int ProtocolVersion = 6;
+    public const int ProtocolVersion = 7;
 
     private const int ListLimit = 100_000;
 
@@ -515,6 +515,34 @@ public sealed class FuseHostService : IDisposable
             true,
             delta.Introduced.Select(ToCheckDiagnosticDto).ToList(),
             delta.Resolved.Select(ToCheckDiagnosticDto).ToList());
+    }
+
+    /// <summary>
+    ///     Typechecks a proposed single-file edit against the daemon's live resident workspace and returns the
+    ///     diagnostics, with no build (G5). This is the resident-grade check a non-owner process delegates over the
+    ///     pipe, so one daemon-held compilation serves every client instead of each process holding its own.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="includeAnalyzers">Whether to also run the repository's analyzers and nullable warnings.</param>
+    /// <returns>
+    ///     The diagnostics for the changed document; when no resident workspace serves the root,
+    ///     <see cref="CheckOverlayResultDto.HasResident" /> is false and the caller falls back to its own path.
+    /// </returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    [JsonRpcMethod("fuse/checkOverlay")]
+    public async Task<CheckOverlayResultDto> CheckOverlayAsync(
+        string sessionToken, string root, string relativeFilePath, string newContent, bool includeAnalyzers)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        var resolved = Path.GetFullPath(root);
+        var diagnostics = await Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.TryCheckOverlayAsync(
+            resolved, relativeFilePath, newContent, includeAnalyzers, CancellationToken.None);
+        return diagnostics is null
+            ? new CheckOverlayResultDto(false, [])
+            : new CheckOverlayResultDto(true, diagnostics.Select(ToCheckDiagnosticDto).ToList());
     }
 
     private static CheckDiagnosticDto ToCheckDiagnosticDto(CheckDiagnostic diagnostic) =>

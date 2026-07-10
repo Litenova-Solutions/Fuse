@@ -484,6 +484,66 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task CheckOverlay_WithNoResidentWorkspace_ReturnsNoResident()
+    {
+        // With no resident workspace the daemon cannot answer resident-grade; the caller falls back to its own path.
+        Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
+        var source = NewFixture(("Widget.cs", "public class Widget { public void Run() { } }"));
+        try
+        {
+            var service = NewService();
+            var result = await service.CheckOverlayAsync(SessionToken(service), source, "Widget.cs", "public class Widget { }", includeAnalyzers: false);
+
+            Assert.False(result.HasResident);
+            Assert.Empty(result.Diagnostics);
+        }
+        finally
+        {
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CheckOverlay_DelegatesToTheResidentWorkspace()
+    {
+        // G5: the RPC delegates to the daemon's resident workspace, so a non-owner client gets resident-grade
+        // diagnostics over the pipe. A fake resident provider stands in for the daemon's live workspace.
+        Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = new FakeResidentProvider(
+            [new Fuse.Indexing.CheckDiagnostic("CS0246", "Error", "type 'Gadget' not found", "Widget.cs", 1)]);
+        var source = NewFixture(("Widget.cs", "public class Widget { }"));
+        try
+        {
+            var service = NewService();
+            var result = await service.CheckOverlayAsync(SessionToken(service), source, "Widget.cs", "public class Widget : Gadget { }", includeAnalyzers: true);
+
+            Assert.True(result.HasResident);
+            var diagnostic = Assert.Single(result.Diagnostics);
+            Assert.Equal("CS0246", diagnostic.Id);
+            Assert.Equal("Error", diagnostic.Severity);
+        }
+        finally
+        {
+            Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
+            Directory.Delete(source, recursive: true);
+        }
+    }
+
+    // A stand-in resident workspace that returns preset overlay diagnostics, so the RPC delegation is tested
+    // without a live compilation.
+    private sealed class FakeResidentProvider(IReadOnlyList<Fuse.Indexing.CheckDiagnostic> diagnostics)
+        : Fuse.Workspace.IResidentWorkspaceProvider
+    {
+        public Fuse.Workspace.ResidentStatus? DescribeResident(string root) => new(ProjectCount: 1, AsOf: "now");
+
+        public IReadOnlyList<Fuse.Indexing.CheckDiagnostic>? TryCheckOverlay(
+            string root, string relativeFilePath, string newContent, CancellationToken cancellationToken) => diagnostics;
+
+        public Task<IReadOnlyList<Fuse.Indexing.CheckDiagnostic>?> TryCheckOverlayAsync(
+            string root, string relativeFilePath, string newContent, bool includeAnalyzers, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<Fuse.Indexing.CheckDiagnostic>?>(diagnostics);
+    }
+
     public void Dispose()
     {
         Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;

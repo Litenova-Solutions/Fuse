@@ -6933,6 +6933,41 @@ sibling meta key). This is a cohesive multi-file change (C2 format + oracle path
 fresh-context increment - the Gate's core merge-equality proof (graph side) is already committed
 (4-G1a, 3065b41).
 
+#### 2026-07-09 G4 sub-step 4-G1b DONE: bundle format v2 (merge channel) + validated end-to-end
+
+**Shipped.** Format v2 (backward-compatible): `CaptureManifest.CurrentFormatVersion=2`,
+`IsCompatibleWithRunningBuild` relaxed to `BundleFormatVersion <= CurrentFormatVersion` (a newer Fuse
+reads an older bundle; only a NEWER-than-known bundle is refused), `FragmentsDirName="fragments"`.
+`CaptureBundleIo.WriteMerged(bundleDir, fragmentComplogs, graph, ...)` assembles a v2 bundle;
+`CaptureBundleIo.CompilerLogPaths(dir)` resolves the oracle logs (fragments/*.complog for v2, else the
+single capture.complog for v1). Worker `--merge <fragmentsDir> <complogOutDir>` +
+`BuildCaptureRehydrator.MergeFragmentsToBundle` convert each fragment binlog to a fail-closed-scanned
+complog and return the merged graph; `BuildCaptureClient.MergeFragmentsAsync` spawns it; `fuse capture
+--merge <dir>` writes the v2 bundle. `IndexFromCaptureGraphAsync`/`--from-capture` now stamp the
+bundle DIR into the capture meta; `FuseCheckAsync` iterates the bundle's compiler logs (fragments)
+and takes the first that carries the changed file.
+
+**Validated end-to-end (real builds, CLI).** Two independent projects -> per-project fragment binlogs
+-> `fuse capture --merge` produced a format-v2 bundle (fragments/fragment-0000.complog +
+fragment-0001.complog + graph.json + manifest v2, 2 projects) -> `fuse index --from-capture` on an
+EMPTY NUGET_PACKAGES rehydrated [semantic] 2 projects with no build -> the worker `--check-complog`
+on a known-bad edit to Alpha.cs reported CS0246 at grade oracle against the Alpha fragment and
+abstained "not in this complog" against the Beta fragment (the exact iterate-and-take-first-verified
+behavior FuseCheckAsync relies on).
+
+**Tests.** `CaptureBundleV2Tests` (2: WriteMerged -> v2 bundle + CompilerLogPaths returns the
+fragments; v1 fallback to the single complog) and `CaptureManifestTests.An_older_format_version_is_
+still_accepted` (backward compat). The existing C2 bundle round-trip + refusal tests updated for the
+"newer" refusal wording and still green.
+
+**Behavior change named.** CHANGELOG: the capture-bundle bullet gained the `--merge` channel + the
+backward-compatible format-version semantics.
+
+**Next action.** G4 sub-step 4-G2: the `Fuse.Capture.targets` NuGet package (a post-build target
+emitting a per-project fragment binlog + an opt-out property) + a fixture build consuming it +
+overhead measurement; then 4-G3 docs (channel-comparison table + invasiveness note) and the Gate
+(merge-equality green - already proven; overhead < 5%, else ship experimental per the Fallback).
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

@@ -47,6 +47,10 @@ public sealed class CaptureCommand
     [CliOption(Name = "--out", Description = "The output bundle directory (created if absent). Holds the manifest, the portable compiler log, and the extracted graph.")]
     public string Out { get; set; } = "fuse-capture";
 
+    /// <summary>Assemble a bundle from per-project fragment binlogs (the G4 build-target channel) instead of building.</summary>
+    [CliOption(Name = "--merge", Required = false, Description = "Assemble a bundle by merging per-project fragment binary logs in this directory (the build-target channel, G4), instead of building the workspace. Produces a format-2 bundle equal in graph to a direct capture.")]
+    public string? Merge { get; set; }
+
     /// <summary>
     ///     Runs the capture command.
     /// </summary>
@@ -65,6 +69,12 @@ public sealed class CaptureCommand
         if (!client.IsAvailable)
         {
             _consoleUI.WriteError("build-capture worker not configured; set FUSE_BUILD_CAPTURE_WORKER to fuse-build-capture.dll. Nothing was written.");
+            return;
+        }
+
+        if (Merge is not null)
+        {
+            await RunMergeAsync(client, root, context.CancellationToken);
             return;
         }
 
@@ -97,6 +107,58 @@ public sealed class CaptureCommand
             $"  fuse {manifest.FuseVersion}{(commit is null ? "" : $" @ {commit[..Math.Min(commit.Length, 12)]}")}, " +
             $"{manifest.Projects.Count} project(s), format v{manifest.BundleFormatVersion}\n" +
             $"  rehydrate on another machine with: fuse index --from-capture \"{outDir}\"");
+    }
+
+    // Assembles a version-2 bundle by merging per-project fragment binlogs (the G4 build-target channel): the
+    // worker converts each fragment to a fail-closed-scanned compiler log, and the merged graph plus those logs
+    // are packaged into the bundle. No build is run here; the fragments came from the team's own builds.
+    private async Task RunMergeAsync(BuildCaptureClient client, string root, CancellationToken cancellationToken)
+    {
+        var fragmentsDir = System.IO.Path.GetFullPath(Merge!);
+        if (!Directory.Exists(fragmentsDir))
+        {
+            _consoleUI.WriteError($"fragments directory not found: {fragmentsDir}. Nothing was written.");
+            return;
+        }
+
+        var outDir = System.IO.Path.GetFullPath(Out);
+        var complogTemp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"fuse-merge-{Guid.NewGuid():N}");
+        _consoleUI.WriteStep($"Merging capture fragments in {fragmentsDir} (secret scan per fragment); no build");
+
+        var result = await client.MergeFragmentsAsync(fragmentsDir, complogTemp, TimeSpan.FromMinutes(10), cancellationToken);
+        if (!result.Succeeded)
+        {
+            TryDeleteDir(complogTemp);
+            _consoleUI.WriteError($"merge failed: {result.Reason}. No bundle was written.");
+            return;
+        }
+
+        var complogs = Directory.Exists(complogTemp)
+            ? Directory.GetFiles(complogTemp, "*.complog").OrderBy(p => p, StringComparer.Ordinal).ToList()
+            : [];
+        var commit = TryReadCommit(root);
+        var capturedUtc = DateTime.UtcNow.ToString("O");
+        var manifest = CaptureBundleIo.WriteMerged(outDir, complogs, result, commit, capturedUtc);
+        TryDeleteDir(complogTemp);
+
+        _consoleUI.WriteResult(
+            $"wrote merged capture bundle to {outDir}\n" +
+            $"  fuse {manifest.FuseVersion}{(commit is null ? "" : $" @ {commit[..Math.Min(commit.Length, 12)]}")}, " +
+            $"{manifest.Projects.Count} project(s), format v{manifest.BundleFormatVersion} (merged from fragments)\n" +
+            $"  rehydrate on another machine with: fuse index --from-capture \"{outDir}\"");
+    }
+
+    private static void TryDeleteDir(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
+        }
+        catch (IOException)
+        {
+            // Best effort; a leftover temp dir is harmless.
+        }
     }
 
     // The source commit, read via `git rev-parse HEAD` in the workspace; null when git is absent or there is no HEAD.

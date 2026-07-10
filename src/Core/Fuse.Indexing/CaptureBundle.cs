@@ -41,26 +41,35 @@ public sealed record CaptureManifest(
     string? CapturedUtc,
     IReadOnlyList<CaptureProjectEntry> Projects)
 {
-    /// <summary>The current bundle layout version; a bundle with a different version is refused.</summary>
-    public const int CurrentFormatVersion = 1;
+    /// <summary>
+    ///     The current bundle layout version. Version 2 (G4) added an additive <c>fragments/</c> folder of
+    ///     per-project compiler logs beside the version-1 single <c>capture.complog</c>; a version-2 reader still
+    ///     reads a version-1 bundle, so a bundle is refused only when its version is NEWER than this.
+    /// </summary>
+    public const int CurrentFormatVersion = 2;
 
     /// <summary>The manifest file name inside a bundle directory.</summary>
     public const string ManifestFileName = "manifest.json";
 
-    /// <summary>The portable compiler-log file name inside a bundle directory.</summary>
+    /// <summary>The portable compiler-log file name inside a bundle directory (the version-1 single-log layout).</summary>
     public const string CompilerLogFileName = "capture.complog";
+
+    /// <summary>The folder holding per-project compiler logs in a merged (version-2, G4) bundle.</summary>
+    public const string FragmentsDirName = "fragments";
 
     /// <summary>The extracted-graph file name inside a bundle directory (a serialized <see cref="CaptureResult" />).</summary>
     public const string GraphFileName = "graph.json";
 
     /// <summary>
-    ///     Whether this bundle can be rehydrated by the running Fuse build: the bundle format version matches and
-    ///     the producing Fuse version is compatible by <c>major.minor</c> (<see cref="FuseBuildInfo.IsCompatible" />),
-    ///     so the extraction contract has not changed under it.
+    ///     Whether this bundle can be rehydrated by the running Fuse build: the bundle layout is one this build
+    ///     understands (its version is at most <see cref="CurrentFormatVersion" /> - newer, unknown layouts are
+    ///     refused; older layouts are read, since the format is backward-compatible) and the producing Fuse
+    ///     version is compatible by <c>major.minor</c> (<see cref="FuseBuildInfo.IsCompatible" />), so the
+    ///     extraction contract has not changed under it.
     /// </summary>
     [JsonIgnore]
     public bool IsCompatibleWithRunningBuild =>
-        BundleFormatVersion == CurrentFormatVersion && FuseBuildInfo.IsCompatible(FuseVersion);
+        BundleFormatVersion <= CurrentFormatVersion && FuseBuildInfo.IsCompatible(FuseVersion);
 
     /// <summary>
     ///     The actionable reason a bundle is incompatible with the running build, or null when it is compatible.
@@ -70,8 +79,8 @@ public sealed record CaptureManifest(
     {
         get
         {
-            if (BundleFormatVersion != CurrentFormatVersion)
-                return $"bundle format version {BundleFormatVersion} is not supported by this Fuse (expected {CurrentFormatVersion}); re-capture with this Fuse version.";
+            if (BundleFormatVersion > CurrentFormatVersion)
+                return $"bundle format version {BundleFormatVersion} is newer than this Fuse understands (supports up to {CurrentFormatVersion}); upgrade Fuse or re-capture with this version.";
             if (!FuseBuildInfo.IsCompatible(FuseVersion))
                 return $"bundle was produced by Fuse {FuseVersion}, incompatible with the running {FuseBuildInfo.Current} (major.minor differs); re-capture with the running version.";
             return null;
@@ -109,6 +118,32 @@ public static class CaptureBundleIo
     /// <returns>The graph path.</returns>
     public static string GraphPath(string bundleDirectory) => Path.Combine(bundleDirectory, CaptureManifest.GraphFileName);
 
+    /// <summary>The absolute path to a bundle's per-project fragments folder (version-2 merged bundle).</summary>
+    /// <param name="bundleDirectory">The bundle directory.</param>
+    /// <returns>The fragments folder path.</returns>
+    public static string FragmentsDir(string bundleDirectory) => Path.Combine(bundleDirectory, CaptureManifest.FragmentsDirName);
+
+    /// <summary>
+    ///     The compiler logs a bundle carries, for the oracle check (G4): the per-project logs under
+    ///     <c>fragments/</c> for a merged (version-2) bundle, or the single <c>capture.complog</c> for a direct
+    ///     (version-1) bundle. A consumer iterates these to find the one carrying the file it is checking.
+    /// </summary>
+    /// <param name="bundleDirectory">The bundle directory.</param>
+    /// <returns>The compiler-log paths, newest layout preferred; empty when the bundle carries no compiler log.</returns>
+    public static IReadOnlyList<string> CompilerLogPaths(string bundleDirectory)
+    {
+        var fragments = FragmentsDir(bundleDirectory);
+        if (Directory.Exists(fragments))
+        {
+            var logs = Directory.GetFiles(fragments, "*.complog").OrderBy(p => p, StringComparer.Ordinal).ToList();
+            if (logs.Count > 0)
+                return logs;
+        }
+
+        var single = CompilerLogPath(bundleDirectory);
+        return File.Exists(single) ? [single] : [];
+    }
+
     /// <summary>
     ///     Writes a bundle directory from an already-produced compiler log and extracted graph: moves the compiler
     ///     log in, serializes the graph, and writes the manifest stamped with the running Fuse version.
@@ -130,6 +165,52 @@ public static class CaptureBundleIo
             if (File.Exists(destComplog))
                 File.Delete(destComplog);
             File.Move(compilerLogPath, destComplog);
+        }
+
+        File.WriteAllText(GraphPath(bundleDirectory),
+            JsonSerializer.Serialize(graph, BuildCaptureJsonContext.Default.CaptureResult));
+
+        var manifest = new CaptureManifest(
+            CaptureManifest.CurrentFormatVersion,
+            FuseBuildInfo.Current,
+            commit,
+            capturedUtc,
+            graph.Projects.Select(p => new CaptureProjectEntry(
+                p.Name, p.AssemblyName, p.ErrorCount, p.TypeCount, p.SymbolCount, p.NodeCount, p.EdgeCount)).ToList());
+        File.WriteAllText(ManifestPath(bundleDirectory), CaptureManifestJson.Serialize(manifest));
+        return manifest;
+    }
+
+    /// <summary>
+    ///     Writes a merged (version-2, G4) bundle from per-project compiler-log fragments and a merged graph:
+    ///     moves each fragment log into the <c>fragments/</c> folder, serializes the graph, and writes the
+    ///     manifest. Used by <c>fuse capture --merge</c> to assemble a bundle from per-project fragments a build
+    ///     target emitted, equal in graph to a direct capture.
+    /// </summary>
+    /// <param name="bundleDirectory">The output bundle directory (created if absent).</param>
+    /// <param name="fragmentLogPaths">The per-project compiler logs to move into <c>fragments/</c>.</param>
+    /// <param name="graph">The merged extracted graph.</param>
+    /// <param name="commit">The source commit, when known.</param>
+    /// <param name="capturedUtc">The ISO-8601 UTC capture time, when recorded.</param>
+    /// <returns>The manifest written into the bundle.</returns>
+    public static CaptureManifest WriteMerged(
+        string bundleDirectory, IReadOnlyList<string> fragmentLogPaths, CaptureResult graph, string? commit, string? capturedUtc)
+    {
+        Directory.CreateDirectory(bundleDirectory);
+        var fragmentsDir = FragmentsDir(bundleDirectory);
+        Directory.CreateDirectory(fragmentsDir);
+
+        var index = 0;
+        foreach (var fragment in fragmentLogPaths)
+        {
+            // Name each fragment stably by index so the layout is deterministic; the content identifies the project.
+            var dest = Path.Combine(fragmentsDir, $"fragment-{index:D4}.complog");
+            index++;
+            if (Path.GetFullPath(fragment) == Path.GetFullPath(dest))
+                continue;
+            if (File.Exists(dest))
+                File.Delete(dest);
+            File.Move(fragment, dest);
         }
 
         File.WriteAllText(GraphPath(bundleDirectory),

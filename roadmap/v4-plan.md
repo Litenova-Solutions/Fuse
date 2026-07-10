@@ -572,7 +572,7 @@ Wave 1: resident substrate and honesty floor
 Wave 2: coverage and environments
 - [x] C1 `fuse up`: the environment remediation engine (depends: X1) (2026-07-09 GATE MET: real-world SDK-band flip on Polly (SDK_NOT_FOUND -> install .NET 10.0.301 -> tier-1) + engineered end-to-end flips for NU1507 (overlay) and SDK-band (install) + 19-workspace up-report.json classifying 9 genuine failures across the reconstructed bake-off set; see the 2026-07-09 progress-log verdict. History below.) (2026-07-08: preconditions recorded; sub-steps landed - RemediationKnowledgeBase (JSON-data KB + matcher), EnvironmentRemediationPlanner (classify-and-report core), NuGetOverlayConfig (NU1507 overlay generator), RemediationReport (renderer), and the report-only `fuse up` CLI command (runs doctor + planner + report, applies nothing, never touches the repo), all gate-green. 2026-07-09: the install-free apply sub-step landed (commit 9ee296c) - EnvironmentRemediationApplier + `fuse up --apply` applies the NU1507 overlay via `dotnet restore --configfile` and re-attempts the load, install remedies gated behind --allow-install; the "broken feed repaired via overlay" integration test PASSED on real restore. BLOCKED [!] on TWO things the autonomous environment cannot supply: (1) the consent-gated install remedies (SDK band per global.json via NETSDK1045; workload via MSB4018) require actually installing software, which MACHINE PREP forbids ("install NOTHING"), so their execution path is deferred to an environment where installs are permitted; (2) the Gate ("all 11 previously-buildable reach tier-1; >=2 of 6 previously-unbuildable gain tier-1; write up-report.json over 17 repos") cannot be exercised because the current pinned 4-repo corpus builds clean (verified: Scrutor loads 2/2 oracle-grade, no NU1507 reproduced at its pinned commit) - it needs the original problematic-commit bake-off set provisioned OR a maintainer decision to re-derive the Gate against a corpus that actually fails. Unblock: a maintainer decides the Gate corpus and permits installs (or provisions a failing corpus under D:\fuse-work), then the install-execution path + the up-report.json Gate run. 2026-07-09 UNBLOCKED (D17): consent-gated installs are permitted behind --allow-install (SDK bands per global.json, workloads), and the Gate is re-derived - reconstruct the bake-off OSS set at pinned commits under a cold NuGet cache and gate on what genuinely fails, plus synthetic failing fixtures (broken feed, SDK pin, missing workload) for remedy classes that do not reproduce, recorded honestly. Remaining: exercise the install remedies, provision the gate corpus, record up-report.json against the re-derived gate. 2026-07-09 sub-steps 1-3 landed: `fuse up --json` (facf71c/5b4cb15); the tier-1 build probe (TierOneBuildProbe) that surfaces real restore/build failures the design-time load misses, plus two overlay bug fixes (UTF-8 XML declaration, relative-source-path resolution) (5cb5ba1); and the up-report harness (up-report.ps1) with the first up-report.json over 5 workspaces - NU1507 detected real-world on Scrutor and flipped end-to-end on the engineered fixture (3/5 tier-1 reachable, 2/5 NU1507). Remaining: sub-step 4 install-execution (NETSDK1045/MSB4018) + fixtures; sub-step 5 OSS provisioning + Scrutor flip completion + final gate.)
 - [x] C2 Portable capture artifact and the CI action; secret posture (depends: C1) (2026-07-09 GATE MET: no-build oracle check from a bundle complog - Polly.Core rehydrate 6.8 s + oracle fuse_check 4.0 s = ~11 s on an isolated empty NUGET_PACKAGES, CS0246 correctly reported at grade oracle, under the 60 s gate; zero secret findings across 4 corpus bundles (Polly/MediatR/Newtonsoft.Json/Serilog); round-trip equality green. Shipped: complog export (1a) + fail-closed secret scan (1b) + manifest/bundle writer + `fuse capture` (2a) + `fuse index --from-capture` with version-refusal (2b) + round-trip/refusal/secret tests (2c) + `CheckFromLog`/`--check-complog`/`CheckFromComplogAsync` no-build oracle + complog-path meta + FuseCheckAsync bundle-oracle preference + capture.yml CI action + capture-bundles docs + AGENTS.md bundle-version invariant (2d). See the 2026-07-09 C2 progress-log verdict.)
-- [ ] C3 Tier-1 default-on; worker bundled (depends: C1, C2)
+- [!] C3 Tier-1 default-on; worker bundled (depends: C1, C2) (2026-07-09 ENGINE COMPLETE and committed: install-relative worker discovery + worker bundled in the tool package (3b96b1b), tier-1 + syntax-first serve default-on with opt-outs (721aeff), the --from-capture required-option regression fix (e8531c3), and the critical --no-incremental fix so tier-1 capture works on an already-built repo (5e76a3a). GATE: localize main checkouts 3/4 semantic MET; ranking within CI MET (recall@10 12.6% in CI 7-18%, MRR flat, modes flipped to semantic 3/partial 1); review semantic 5/53 NOT MET - bound by the current corpus's historical PR worktrees not building clean at tier-1 on this SDK (the documented corpus-build ceiling, not an engine defect; mechanism proven - NodaTime reaches semantic via tier-1 where MSBuildWorkspace gives syntax). BLOCKED on C4's buildable corpus for the review-semantic gate; C4 depends only on C1/C2 so the runway is unblocked. Re-run review after C4 to close. See the 2026-07-09 C3 sub-step 3 progress-log verdict.)
 - [ ] C4 Corpus v2: buildable test-oracle task set and the health gate (depends: C1, C2)
       (2026-07-09 D18: curation may start now, in parallel, with plain builds; the C1/C2
       dependency is a provisioning preference, not a barrier)
@@ -6649,15 +6649,46 @@ checkouts under shipping defaults (built fuse, bundled worker, tier-1 default-on
 semantic >= the gate's 2/4. Notable: NodaTime loads syntax-only under MSBuildWorkspace but reaches
 SEMANTIC via tier-1 - the core thesis that the build oracle beats the design-time loader.
 
-**Review + ranking gate: PENDING.** `fuse eval review --restore` under shipping defaults is running
-(53 PR worktrees: NodaTime 18, eShopOnWeb 18, Specification 14 all buildable -> expect semantic;
-Scrutor 3 NU1507). Expected review semantic well above the 40/53 gate. Ranking (lexical, tier-1-
-independent) to follow, expected within CI of the post-K1 baseline. Numbers + verdict on completion.
+**Ranking gate: MET (within CI).** `fuse eval ranking` under shipping defaults: index modes flipped
+to partial 1 / semantic 3 (was partial 2 / syntax 2 baseline - tier-1 default-on reaches semantic on
+3 of 4 main checkouts here too). Default config MRR 0.192, recall@10 12.6%, nDCG@10 0.122, versus the
+post-K1 baseline MRR 0.197, recall@10 15.0%, nDCG@10 0.139. recall@10 12.6% is inside its 95% CI
+(7%-18%) and MRR is flat, so ranking is within CI of the baseline - MET. (Minor, within-noise finding:
+semantic extraction slightly changed the lexical field content vs the syntax baseline.) Results file
+NOT overwritten - the canonical shipping-default ranking record belongs with C3's closure on the
+buildable corpus (below), not a mid-flight not-gated run.
 
-**Next action.** On review completion: parse the "index modes:" note in review.json for the semantic
-count; if review semantic >= 40/53 and ranking within CI, the C3 Gate is MET (localize already 3/4)
--> mark C3 [x]. If review semantic < 40 because Scrutor-class NU1507 repos drag it (unlikely given
-only 3/53 Scrutor PRs), record the honest bound and apply the size/remediation fallback.
+**Review gate: NOT MET here (5/53), corpus-build bound.** `fuse eval review --restore` under shipping
+defaults: index modes partial 24, semantic 5, syntax 24 (baseline was partial 27, semantic 1, syntax
+25 - so tier-1 lifted semantic 1 -> 5, proving it engages, but far below the 40/53 gate). recall held
+1.0, precision 72.6% (was 79.8%), F1 0.841, median 1130 tokens. Root cause: the review worktrees are
+HISTORICAL PR head commits; restored on the current SDK they mostly do NOT build clean at tier-1
+(partial restore, SDK drift, historical build errors), so the tier-1 build fails and the index falls
+to MSBuildWorkspace partial/syntax. The MAIN checkouts build (3/4 semantic, above); the historical
+per-PR worktrees do not. This is the documented corpus-build ceiling - exactly the arena C4 (a
+buildable, test-oracle corpus) exists to provide. Results file NOT overwritten (a worse, not-gated
+intermediate on a corpus that mostly cannot build is not a headline).
+
+**Gate verdict.** localize main checkouts semantic >= 2/4 -> MET (3/4). ranking within CI -> MET.
+review semantic >= 40/53 -> NOT MET (5/53) on the current corpus, bound by the corpus not building at
+tier-1 on this SDK (not an engine defect - the mechanism is proven: NodaTime, syntax-only under
+MSBuildWorkspace, reaches semantic via tier-1). No matching Fallback exists (the item's fallback
+addresses latency regression, not corpus buildability). C3 status -> [!] blocked on C4's buildable
+corpus for the review-semantic gate part only; the engine ships and is validated on two of three
+gate parts.
+
+**Disposition.** C3 engine is COMPLETE and committed (default-on tier-1, bundled worker,
+--no-incremental fix, syntax-first serve, header, opt-outs; docs + CHANGELOG landed). C4 depends only
+on C1, C2 (not C3), so the runway is not blocked. Mark C3 [!]; proceed to C4; after C4 delivers the
+buildable corpus, re-run `fuse eval review --restore` under shipping defaults and, if review semantic
+>= 40/53, regenerate the canonical review/ranking results (sweeping the docs for the superseded
+figures) and close C3 [x].
+
+**Next action.** Start C4 (Corpus v2: buildable test-oracle task set + health gate; depends C1,C2
+both [x]). Record C4 preconditions (corpus.json/prs.json shapes - confirmed prs.json is {repo, pr,
+merge, base, head, title, changed_cs[]}, no oracle field yet; CorpusManager.cs does merge-commit
+reconstruction; no corpus-health suite exists), then build the health gate and the oracle-verified
+task extraction.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

@@ -129,15 +129,18 @@ public sealed class McpServeCommand
         }
     }
 
-    // The background semantic upgrade is opt-in: FUSE_BG_UPGRADE set to a truthy value (1/true/yes/on) enables
-    // the syntax-first cold start; otherwise the first read indexes synchronously.
+    // C3: syntax-first cold start with a supervised background semantic upgrade is default-ON in `mcp serve`, so a
+    // first read returns in seconds (syntax tier) while the semantic/tier-1 graph builds behind it, supervised so
+    // shutdown cancels and drains it (N3). Opt out with FUSE_BG_UPGRADE=0 (or false/no/off) to index synchronously
+    // on the first read. The CLI `fuse index` is always synchronous regardless of this flag.
     private static bool BackgroundUpgradeOptIn()
     {
         var value = Environment.GetEnvironmentVariable("FUSE_BG_UPGRADE");
-        return value is not null
-               && (value.Equals("1", StringComparison.Ordinal)
-                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
-                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
-                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
+        if (value is null)
+            return true;
+        return !(value.Equals("0", StringComparison.Ordinal)
+                 || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("off", StringComparison.OrdinalIgnoreCase));
     }
 }

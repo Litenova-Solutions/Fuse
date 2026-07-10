@@ -7073,11 +7073,25 @@ doubled-RSS cost G5 removes).
 roots independent) plus the existing 30 Host tests green with the lock in place (each uses a unique
 root, so no false contention).
 
-**Next action.** G5 sub-step 5-ii: `mcp serve` probes for a daemon (via the existing FuseHostClient
-handshake) and, when none serves the root, spawns `fuse host` on demand (the spawned hosts arbitrate
-via the lock), then serves; the single-process fallback (index in-process, no daemon) is preserved so
-a one-shot CLI and a no-daemon environment still work. Then 5-iii lifecycle (idle shutdown plus the
-`FuseHostService.ProtocolVersion`=6 version-mismatch handshake), 5-iv one-truth plus the `fuse
+#### 2026-07-10 G5 sub-step 5-ii (core) DONE: daemon probe + spawn-on-demand supervisor
+
+**Shipped.** `FuseHostClient.IsServingAsync(root, timeout, ct)` - a public probe that connects to a
+root's endpoint and completes the handshake, returning true only when a process answers and its
+`ProtocolVersion` matches (never throws for the absence of a daemon). `DaemonSupervisor` (Host/Rpc):
+`EnsureRunningAsync(startTimeout, ct)` returns AlreadyRunning when a daemon serves the root, else
+spawns one (injected) and polls the probe until it answers (Started) or the timeout elapses
+(FailedToStart, never hangs). Probe and spawn are injected so the control flow is unit-tested without
+real processes; single-instance safety is the daemon's own DaemonLock, so a concurrent spawn is
+harmless.
+
+**Tests.** `DaemonSupervisorTests` (3): a running daemon is reused without spawning; a missing one is
+spawned once and awaited; a daemon that never answers is reported failed rather than hanging.
+
+**Next action.** G5 sub-step 5-ii (wiring): `mcp serve` uses `DaemonSupervisor` with the real probe
+(`FuseHostClient.IsServingAsync`) and a real `fuse host` spawn (a detached `dotnet <fuse.dll> host
+--directory <root>`), opt-in initially (a FUSE_DAEMON flag, mirroring FUSE_RESIDENT), with the
+single-process fallback preserved when the flag is off or the spawn fails. Then 5-iii lifecycle (idle
+shutdown plus the ProtocolVersion=6 version-mismatch handshake), 5-iv one-truth plus the `fuse
 workspace status` daemon line (PID, uptime, memory), 5-v docs plus RSS before/after on NodaTime and
 the Gate (one-truth green; RSS reduction recorded; Fallback: keep per-process engines and record why).
 

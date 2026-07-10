@@ -67,6 +67,47 @@ public static class FuseHostClient
         }
     }
 
+    /// <summary>
+    ///     Probes whether a compatible daemon is serving a root (G5): connects to the root's endpoint and completes
+    ///     the handshake, returning true only when a process answers and its protocol version matches. Used by the
+    ///     daemon supervisor to decide whether to spawn a daemon or connect to the running one; never throws for the
+    ///     absence of a daemon.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="connectTimeout">How long to wait for a connection before concluding no daemon serves the root.</param>
+    /// <param name="cancellationToken">A token to cancel the probe.</param>
+    /// <returns>True when a compatible daemon serves the root; false otherwise.</returns>
+    public static async Task<bool> IsServingAsync(string root, TimeSpan connectTimeout, CancellationToken cancellationToken)
+    {
+        Stream? stream = null;
+        try
+        {
+            stream = await ConnectAsync(root, connectTimeout, cancellationToken);
+            if (stream is null)
+                return false;
+
+            var formatter = new SystemTextJsonFormatter();
+            formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+            formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            using var rpc = new JsonRpc(new HeaderDelimitedMessageHandler(
+                PipeWriter.Create(stream), PipeReader.Create(stream), formatter));
+            rpc.StartListening();
+
+            var handshake = await rpc.InvokeWithCancellationAsync<FuseHostHandshake>(
+                "fuse/handshake", [], cancellationToken);
+            return handshake.ProtocolVersion == FuseHostService.ProtocolVersion;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (stream is not null)
+                await stream.DisposeAsync();
+        }
+    }
+
     // Connects to the deterministic endpoint for a root: a named pipe on Windows, a Unix domain socket elsewhere.
     // Returns null (not throw) when nothing is serving, so the caller stays silent.
     private static async Task<Stream?> ConnectAsync(string root, TimeSpan connectTimeout, CancellationToken cancellationToken)

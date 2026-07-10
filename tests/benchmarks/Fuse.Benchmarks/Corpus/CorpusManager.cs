@@ -33,17 +33,18 @@ public sealed partial class CorpusManager
     public string CorpusRoot => _corpusRoot;
 
     /// <summary>
-    ///     Loads and deserializes <c>corpus.json</c>.
+    ///     Loads and deserializes the corpus manifest (<c>corpus.json</c>, or an alternate path for corpus v2).
     /// </summary>
+    /// <param name="overridePath">An alternate manifest path (C4 corpus v2), or null for <c>corpus.json</c>.</param>
     /// <returns>The corpus manifest.</returns>
-    /// <exception cref="FileNotFoundException">Thrown when <c>corpus.json</c> is missing.</exception>
-    public CorpusManifest LoadManifest()
+    /// <exception cref="FileNotFoundException">Thrown when the manifest is missing.</exception>
+    public CorpusManifest LoadManifest(string? overridePath = null)
     {
-        var path = Path.Combine(_benchRoot, "corpus.json");
+        var path = overridePath ?? Path.Combine(_benchRoot, "corpus.json");
         if (!File.Exists(path))
-            throw new FileNotFoundException($"corpus.json not found at {path}.");
+            throw new FileNotFoundException($"corpus manifest not found at {path}.");
         var manifest = JsonSerializer.Deserialize(File.ReadAllText(path), BenchmarkJsonContext.Default.CorpusManifest);
-        return manifest ?? throw new InvalidOperationException("corpus.json deserialized to null.");
+        return manifest ?? throw new InvalidOperationException($"corpus manifest at {path} deserialized to null.");
     }
 
     /// <summary>

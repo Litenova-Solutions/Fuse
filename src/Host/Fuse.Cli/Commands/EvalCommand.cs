@@ -99,6 +99,10 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Model id for the agent suite.")]
     public string? Model { get; set; }
 
+    /// <summary>An alternate corpus manifest path (C4 corpus v2), or null for corpus.json.</summary>
+    [CliOption(Name = "--manifest", Required = false, Description = "Alternate corpus manifest path (corpus v2); defaults to corpus.json under the benchmark root.")]
+    public string? Manifest { get; set; }
+
     /// <summary>The number of agent rollouts per task.</summary>
     [CliOption(Required = false, Description = "Agent rollouts per task.")]
     public int Rollouts { get; set; } = 1;
@@ -149,6 +153,7 @@ public sealed class EvalCommand
             CorpusSample: CorpusSample,
             Mutations: Mutations,
             VerifyAgreement: VerifyAgreement,
+            ManifestPath: Manifest is null ? null : Path.GetFullPath(Manifest),
             Log: _consoleUI.WriteStep);
 
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());

@@ -30,7 +30,7 @@ public sealed class CorpusHealthSuite : IEvalSuite
     public async Task<SuiteResult> RunAsync(EvalOptions options, CancellationToken cancellationToken)
     {
         var manager = new CorpusManager(options.BenchRoot, options.ResolvedCorpusRoot, options.Log);
-        var manifest = manager.LoadManifest();
+        var manifest = manager.LoadManifest(options.ManifestPath);
         var notes = new List<string>();
 
         var repos = manifest.Repos

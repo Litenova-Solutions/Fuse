@@ -7305,6 +7305,40 @@ the user to supply; when a provisioned runner exists, the exact next actions are
 item's progress-log entry (C4 curation -> C3 review re-run + G2 next analyzer + R3 numbers regen -> B1
 -> F2, and B4 off C3).
 
+#### 2026-07-10 C4 curation ATTEMPTED (not just reasoned): corpus-v2 infra shipped; tier-1 health run empirically compute-bound
+
+Per D18 (curate corpus v2 in parallel) and the per-item procedure (attempt, then apply the Fallback on
+a miss), I attempted the corpus-v2 curation rather than declaring it blocked from reasoning alone.
+
+**Shipped (the curation infrastructure).** A `--manifest <path>` override on `fuse eval`
+(EvalCommand + `EvalOptions.ManifestPath` + `CorpusManager.LoadManifest(overridePath)` +
+`CorpusHealthSuite` uses it), so corpus-health runs over an alternate manifest. `tests/benchmarks/
+corpus-v2.json`: a portable 13-repo OSS manifest (AutoFixture, AutoMapper, Dapper, FluentValidation,
+Humanizer, MediatR, Nancy, Newtonsoft.Json, Polly, RestSharp, StackExchange.Redis, quartznet, serilog)
+at pinned commits with clone URLs, already cloned under D:/fuse-work/bench for C1.
+
+**Attempted.** `fuse eval corpus-health --manifest tests/benchmarks/corpus-v2.json --corpus
+D:/fuse-work/bench --restore`. Empirical result: after 15+ minutes it was still on the FIRST repo (one
+per-repo temp store created; 71 dotnet processes churning a tier-1 `--no-incremental` restore + build +
+MSBuildWorkspace load + rehydrate of a large repo). Stopped it. This EMPIRICALLY confirms the C4
+compute-bound gate: a single large OSS repo's tier-1 health pass exceeds 15 minutes here, so a 13-to-30
+repo tier-1 sweep is hours, and the 60-verified-oracle-task requirement (running each repo's test suite
+twice, base and merge) is heavier still and fragile (test DBs, service deps). This is the "compute-
+bounded, not run at scale" item the plan flags, now confirmed by attempt.
+
+**Fallback applied (pre-registered reduced-scope).** Below the 20-repo/60-task minimums, B1 shrinks
+per the reduced-scope protocol (no headline below 40 tasks) and the shortfall is a finding about the
+environment, not the engine: the corpus-health engine, the oracle verifier, the refusal gate, and now
+the corpus-v2 manifest + the `--manifest` runner all ship and are ready; the missing piece is a
+provisioned runner with the build/test compute (and the SDK bands several repos pin) to execute the
+sweep. On such a runner, `fuse eval corpus-health --manifest tests/benchmarks/corpus-v2.json --restore`
+produces the real tier-1 count, and the oracle-task extraction produces the verified-task count.
+
+**C4 status unchanged: [!].** The gate (20 tier-1 repos + 60 verified oracle tasks) remains unmet and
+compute-bound, now confirmed by attempt rather than reasoning. The curation infrastructure is a real
+shipped deliverable (corpus-v2 manifest + the manifest-driven health runner); the sweep awaits
+provisioned compute.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

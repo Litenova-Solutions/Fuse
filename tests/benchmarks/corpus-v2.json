@@ -1,0 +1,20 @@
+{
+  "$comment": "Corpus v2 (C4): a broader buildable OSS set for the corpus-health gate and the model-driven suites. Cloned under D:/fuse-work/bench at these pinned commits. This is the curation attempt seed; corpus-health measures how many reach tier-1 on the runner. Run: fuse eval corpus-health --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench.",
+  "tokenizer": "o200k_base",
+  "generated": "2026-07-10",
+  "repos": [
+    { "name": "AutoFixture", "url": "https://github.com/AutoFixture/AutoFixture.git", "commit": "331685e33c5a3ab45692da027b4b5246dcbdac9b", "cs_files": 1036 },
+    { "name": "AutoMapper", "url": "https://github.com/AutoMapper/AutoMapper.git", "commit": "dfa6dd587c5854b4beee5934beb39ba6e9569b84", "cs_files": 512 },
+    { "name": "Dapper", "url": "https://github.com/DapperLib/Dapper.git", "commit": "72a54c475f75e18cb93cba0809d00a5e6e49efd9", "cs_files": 157 },
+    { "name": "FluentValidation", "url": "https://github.com/FluentValidation/FluentValidation.git", "commit": "bae8916523805170e5dee6ee3e23c2937d2e2ec3", "cs_files": 218 },
+    { "name": "Humanizer", "url": "https://github.com/Humanizr/Humanizer.git", "commit": "f9292aa90948de0aea2d4fa7d6549b1b2432c0fb", "cs_files": 469 },
+    { "name": "MediatR", "url": "https://github.com/jbogard/MediatR.git", "commit": "916ef1b3d68ccdc96db8f914eaf1b32fc7db52c5", "cs_files": 154 },
+    { "name": "Nancy", "url": "https://github.com/NancyFx/Nancy.git", "commit": "e523defb12f5ea3ec7b7129ed2b4aaf70aebed2f", "cs_files": 959 },
+    { "name": "Newtonsoft.Json", "url": "https://github.com/JamesNK/Newtonsoft.Json.git", "commit": "4f73e74372445108d2c1bda37b36e6f5e43402e0", "cs_files": 945 },
+    { "name": "Polly", "url": "https://github.com/App-vNext/Polly.git", "commit": "0ce278cbae0de346c416c13928b7140085c09d3d", "cs_files": 797 },
+    { "name": "RestSharp", "url": "https://github.com/restsharp/RestSharp.git", "commit": "6a5082169257438cd085f822f050d93256a8e499", "cs_files": 255 },
+    { "name": "StackExchange.Redis", "url": "https://github.com/StackExchange/StackExchange.Redis.git", "commit": "cbbda97827b3decbec56a7e59beb94f3b346e964", "cs_files": 558 },
+    { "name": "quartznet", "url": "https://github.com/quartznet/quartznet.git", "commit": "327e08c95598ef1a1d167637ba98c1800cd472de", "cs_files": 659 },
+    { "name": "serilog", "url": "https://github.com/serilog/serilog.git", "commit": "6d9fc0b84e004418f2677b5961b9c8970349d0be", "cs_files": 216 }
+  ]
+}

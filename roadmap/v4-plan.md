@@ -7057,13 +7057,29 @@ before the process-spawn integration.
 re-acquire wins after release (the spawn-race gate at the primitive level); different roots get
 independent locks. PASS.
 
-**Next action.** G5 sub-step 5-i (remaining) + 5-ii: wire `DaemonLock` into daemon spawn/discovery
-(the winner starts the host/daemon; a loser connects as a client), and make `mcp serve` a
-stdio<->pipe adapter when a daemon is running (spawn-on-demand under the lock) with the single-process
-fallback preserved. Then 5-iii lifecycle (idle shutdown + version-mismatch handshake via
-`FuseHostService.ProtocolVersion`=6), 5-iv one-truth + `fuse workspace status` daemon line, 5-v docs +
-RSS-before/after validation + Gate. This is process-spawn/multi-process integration - the natural
-fresh-context continuation; the concurrency primitive it builds on is now committed and tested.
+**Next action.** G5 sub-step 5-i (remaining) plus 5-ii below.
+
+#### 2026-07-10 G5 sub-step 5-i (host single-instance) DONE: fuse host acquires the DaemonLock
+
+**Shipped.** `HostCommand.RunAsync` now acquires `DaemonLock.TryAcquire(root)` at startup; if it is not
+the owner (another daemon already serves the root), it writes a clear stderr line and exits cleanly
+(exit 0) without binding a second endpoint. The lock is held for the serve lifetime and released on
+shutdown. This enforces exactly one daemon per root at the daemon itself, so the item's "spawn race
+produces exactly one daemon" gate holds by construction: two hosts started for one root race the lock,
+one serves and the other exits. Before this, two hosts on one root both bound the shared pipe (the
+doubled-RSS cost G5 removes).
+
+**Tests.** `DaemonLockTests` (the primitive: one owner under a race, re-acquire after release, distinct
+roots independent) plus the existing 30 Host tests green with the lock in place (each uses a unique
+root, so no false contention).
+
+**Next action.** G5 sub-step 5-ii: `mcp serve` probes for a daemon (via the existing FuseHostClient
+handshake) and, when none serves the root, spawns `fuse host` on demand (the spawned hosts arbitrate
+via the lock), then serves; the single-process fallback (index in-process, no daemon) is preserved so
+a one-shot CLI and a no-daemon environment still work. Then 5-iii lifecycle (idle shutdown plus the
+`FuseHostService.ProtocolVersion`=6 version-mismatch handshake), 5-iv one-truth plus the `fuse
+workspace status` daemon line (PID, uptime, memory), 5-v docs plus RSS before/after on NodaTime and
+the Gate (one-truth green; RSS reduction recorded; Fallback: keep per-process engines and record why).
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

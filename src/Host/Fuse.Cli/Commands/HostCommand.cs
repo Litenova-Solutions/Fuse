@@ -44,6 +44,17 @@ public sealed class HostCommand
     {
         var root = Path.GetFullPath(Directory);
 
+        // Single-instance per root (G5): exactly one daemon serves a root, so the warm compilation is a shared
+        // asset instead of a per-process cost. If another daemon already owns the lock (for example two clients
+        // raced to spawn one), this redundant process exits cleanly and the existing daemon serves. The lock is
+        // held for the serve lifetime and released on shutdown, so a later process can take the root over.
+        using var daemonLock = DaemonLock.TryAcquire(root);
+        if (!daemonLock.IsOwner)
+        {
+            await Console.Error.WriteLineAsync($"Fuse host: a daemon already serves {root}; not starting a second.");
+            return;
+        }
+
         var builder = Host.CreateApplicationBuilder();
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);

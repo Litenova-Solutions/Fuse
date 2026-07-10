@@ -91,6 +91,15 @@ public sealed class HostCommand
 
         logger.LogInformation("Fuse host {Version} serving {Root}", FuseHostService.HostVersion, root);
 
+        // Idle shutdown (G5): a daemon spawned on demand shuts itself down after FUSE_DAEMON_IDLE_MINUTES with no
+        // connected clients, so it does not linger holding a resident workspace. Default off (0 = never), so a
+        // manually run `fuse host` keeps its prior always-on behavior; a spawned daemon sets the window.
+        var idleMonitor = new IdleShutdownMonitor(
+            () => notifier.ConnectionCount,
+            () => { logger.LogInformation("Fuse host idle for the shutdown window; stopping."); stopCts.Cancel(); },
+            IdleWindowFromEnv());
+        var idleTask = idleMonitor.RunAsync(stopCts.Token);
+
         try
         {
             if (OperatingSystem.IsWindows())
@@ -103,7 +112,17 @@ public sealed class HostCommand
             // Normal shutdown path.
         }
 
+        await idleTask; // let the idle monitor observe cancellation and stop cleanly
         logger.LogInformation("Fuse host stopped.");
+    }
+
+    // The idle-shutdown window from FUSE_DAEMON_IDLE_MINUTES (minutes); zero, unset, or unparseable disables it.
+    private static TimeSpan IdleWindowFromEnv()
+    {
+        var value = Environment.GetEnvironmentVariable("FUSE_DAEMON_IDLE_MINUTES");
+        return int.TryParse(value, out var minutes) && minutes > 0
+            ? TimeSpan.FromMinutes(minutes)
+            : TimeSpan.Zero;
     }
 
     // Accept loop for Windows named pipes. Each accepted connection is served on its own task so a second editor

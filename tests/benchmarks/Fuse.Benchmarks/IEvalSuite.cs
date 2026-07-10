@@ -17,6 +17,7 @@ namespace Fuse.Benchmarks;
 /// <param name="CorpusSample">When greater than zero, the semantics suite samples this many predicted edges per type over the corpus for adjudication.</param>
 /// <param name="Mutations">When greater than zero, the checkgate suite runs this many compiler-verified mutants per class per fixture (the scaled honesty gate, H1).</param>
 /// <param name="VerifyAgreement">When greater than zero and a build-capture worker is configured, the checkgate suite runs this many mutants through both the oracle path and the build-grade path and records their diagnostic-identity agreement (the T0 verify-agreement gate).</param>
+/// <param name="ManifestPath">An alternate corpus manifest path (C4 corpus v2), or null to use <c>corpus.json</c> under the benchmark root.</param>
 /// <param name="Log">A progress callback, or null for no output.</param>
 public sealed record EvalOptions(
     string BenchRoot,
@@ -32,6 +33,7 @@ public sealed record EvalOptions(
     int CorpusSample = 0,
     int Mutations = 0,
     int VerifyAgreement = 0,
+    string? ManifestPath = null,
     Action<string>? Log = null)
 {
     /// <summary>Writes a progress line through <see cref="Log" />, if one is set.</summary>

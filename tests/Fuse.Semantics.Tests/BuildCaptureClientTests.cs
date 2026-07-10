@@ -134,4 +134,43 @@ public sealed class BuildCaptureClientTests
     [Fact]
     public void Unconfigured_client_is_unavailable()
         => Assert.False(new BuildCaptureClient(workerDllPath: "").IsAvailable);
+
+    // C3: worker discovery. The FUSE_BUILD_CAPTURE_WORKER env var is an explicit override that wins; with no
+    // override, the worker is discovered in the install-relative build-capture/ subfolder next to the running
+    // assembly (where the tool package ships it). These run sequentially within the class, and the env var is
+    // saved and restored, so the mutation does not leak.
+    [Fact]
+    public void ResolveWorkerPath_prefers_the_env_override_then_the_install_relative_subfolder()
+    {
+        var original = Environment.GetEnvironmentVariable("FUSE_BUILD_CAPTURE_WORKER");
+        var explicitPath = Path.Combine(Path.GetTempPath(), $"explicit-worker-{Guid.NewGuid():N}.dll");
+        var subfolder = Path.Combine(AppContext.BaseDirectory, "build-capture");
+        var shipped = Path.Combine(subfolder, "fuse-build-capture.dll");
+        var createdShipped = false;
+        try
+        {
+            // Explicit override wins even without the file existing on disk.
+            Environment.SetEnvironmentVariable("FUSE_BUILD_CAPTURE_WORKER", explicitPath);
+            Assert.Equal(explicitPath, BuildCaptureClient.ResolveWorkerPath());
+
+            // With no override, an install-relative build-capture/fuse-build-capture.dll is discovered.
+            Environment.SetEnvironmentVariable("FUSE_BUILD_CAPTURE_WORKER", null);
+            if (!File.Exists(shipped))
+            {
+                Directory.CreateDirectory(subfolder);
+                File.WriteAllText(shipped, "stub");
+                createdShipped = true;
+            }
+
+            Assert.Equal(shipped, BuildCaptureClient.ResolveWorkerPath());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("FUSE_BUILD_CAPTURE_WORKER", original);
+            if (createdShipped)
+            {
+                try { File.Delete(shipped); } catch (IOException) { }
+            }
+        }
+    }
 }

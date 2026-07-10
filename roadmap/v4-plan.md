@@ -616,8 +616,8 @@ opening trigger; F5's governance contract is signed there with the three answers
 Wave 8: release (added 2026-07-09; decisions D14-D19)
 - [x] R1 Clean-slate purge: shims, legacy names, compatibility machinery (depends: -; D14) (2026-07-09: FuseDeprecatedTools + its test deleted; the dead changeset workflow purged (FuseChangesetAsync, ChangesetSessionStore + its tests, RenderDiagnoses, DiscoverBuildTargetAsync); WithTools<FuseDeprecatedTools>() unregistered; integration test asserts exactly 9 tools and 0 shims; every retired MCP tool name swept from code (tool Descriptions, breadcrumb/error strings, XML docs), the McpInstallService RuleBody rewritten to the 9-tool surface, and all docs (mcp-tools.mdx, scenarios, start, concepts, internals, performance, latency, changelog.mdx), README, LAUNCH, briefing; CHANGELOG consolidated to a single [4.0.0] entry; AGENTS.md upgrade invariant rewritten to apply from the first public tag. GATE PASS: repo-wide grep for shim types + retired names returns nothing outside roadmap/; three gates green (build 0 errors, full test suite passes, format clean); site builds. The TOC golden updated for the new breadcrumb string.)
 - [x] R2 Remove the VS Code extension and its mirror surface (depends: -; D15) (2026-07-09: ext/vscode deleted (git rm + on-disk remainder); ext-release.yml and ext-vscode.yml deleted; extension version+license sync removed from set-version.ps1 and verify-version.ps1; ci.yml stale six-RID comment corrected. Host RPC split recorded: hooks use fuse/handshake+fuse/check only (FuseHostClient.TryCheckDeltaAsync), so the three G3/G3b panel methods (fuse/sessions, fuse/session-view, fuse/session-diff) + their DTOs (SessionListDto/SessionSummaryDto/SessionViewDto/SessionDiffDto/SessionDiffFileDto) + JsonContext entries + the 3 FuseHostContractTests cases were deleted; the store session data (ListSessionsAsync/SessionSummary, test-covered) is retained per the Do-not. Ownership decided: fuse host stays as the minimal hook pipe endpoint (handshake/check/shutdown + general reads), the seed of G5, recorded in AGENTS.md. AGENTS.md host-RPC lockstep invariant rewritten (no TS mirror), version-sync + release-flow extension refs removed. Docs: vscode-extension.mdx deleted + nav swept; host-rpc.mdx reframed to the hook-pipe client; index.mdx + install.mdx extension refs removed. GATE PASS: build 0 errors, full suite passes (hook e2e via AmbientVerification/FuseHostServiceRpc/FuseHostClient/ClaudeHooksConfig tests green), format clean, site builds with no broken link; grep for ext/vscode in build/workflows/docs returns nothing.)
-- [ ] R3 Release hygiene and the v4 cut: canonical regen, assets, briefing refresh, release
-      prep [tag is maintainer] (depends: R1, R2)
+- [!] R3 Release hygiene and the v4 cut: canonical regen, assets, briefing refresh, release
+      prep [tag is maintainer] (depends: R1, R2) (2026-07-10 non-numbers prep DONE: version scripts verified green (verify-version.ps1 "Version OK: 4.0.0"); site builds clean (npm run build exit 0 with the new capture-bundles/daemon/config-key docs); briefing.md refreshed (verified date, stale VS Code extension fact fixed per D15, mechanism-named v4-surface paragraph for C1-C4/G4/G5). BLOCKED on C4 for the canonical benchmark-numbers regen: the C3 tier-1 flip shifts review/localize/ranking on the current corpus but the shift is a build-ceiling artifact (the corpus does not build at tier-1), so the product-representative shipping-default numbers + the docs figure-sweep come from C4's buildable corpus-v2; the briefing points to C4 rather than quoting a stale figure. PNG on the recorded Fallback (no SVG rasterizer in this env; SVG current). Merge/tag/publish are [maintainer]. See the 2026-07-10 R3 progress-log entry.)
 
 ---
 
@@ -7230,6 +7230,53 @@ resident-owner arbitration (the non-owner installs the proxy pointing at the own
 `FuseTools.ResidentWorkspaces`), and sub-step D: the RSS before/after on NodaTime + the one-truth test
 for the Gate. Fallback if the remaining wiring proves too invasive for the resident path: keep
 per-process engines (S1 status quo) and record why.
+
+#### 2026-07-10 R3 progress: version scripts + site build + briefing prose; numbers regen C4-bound; PNG fallback
+
+**Preconditions.** R1, R2 landed [x]. Follow-up list re-verified: (a) version scripts -
+`build/verify-version.ps1` prints "Version OK: 4.0.0", exit 0 (set-version/verify-version agree
+post-R2); (b) the benchmark PNG (2026-06-27) lags the SVG (2026-07-09) - stale; (c) briefing.md was
+"last verified 2026-07-07", pre-dating this session's C1-C4/G4/G5 work, and carried a stale fact
+(set-version "mirrored into the VS Code extension", removed in v4 per D15).
+
+**Shipped this pass.**
+- Version scripts verified green (Gate criterion MET).
+- Site builds: `npm run build` in site/ exits 0 and generates the docs routes, including the new
+  capture-bundles.mdx, daemon.mdx, and the FUSE_DAEMON/FUSE_BUILD_CAPTURE config-key rows (Gate
+  criterion MET). No MDX errors.
+- Briefing refresh (bounded, mechanism-named per the X1 rule, no marketing): updated the verified date
+  to 2026-07-10; fixed the stale VS Code extension version-sync fact (D15 removed it); added a
+  mechanism-named paragraph on the v4 program's shipped surface (C1 fuse up, C2 capture bundles, C3
+  tier-1 default-on + syntax-first serve, G4 merge channel, G5 shared daemon, C4 corpus-health), each
+  sentence naming its mechanism, with the corpus-bound numbers explicitly pointed at the C4 re-derivation
+  rather than quoting a stale figure.
+
+**Carve-outs (recorded, not silent).**
+- Canonical benchmark-numbers regen (review.json/localize.json/ranking.json under shipping defaults)
+  is C4-ENTANGLED: the C3 tier-1 default-on flip shifts these on the current corpus (measured this
+  session: review precision 79.8 -> 72.6 percent, ranking recall@10 15.0 -> 12.6 percent within CI,
+  review semantic 1 -> 5 of 53), but the shift is dominated by the corpus not building at tier-1
+  (a build-ceiling artifact), not the product. Regenerating now would bake that ceiling into the
+  release headline. The product-representative shipping-default numbers come from C4's buildable
+  corpus-v2; the regen + the AGENTS.md/benchmarks.mdx figure-sweep are deferred to C4, exactly as the
+  C3 review gate defers. The briefing already says so (points to C4), so it quotes no superseded
+  figure as final.
+- The benchmark PNG is stale and this environment has no SVG rasterizer (cairosvg/inkscape/rsvg/magick
+  absent; the only `convert` on PATH is the Windows NTFS tool). The item's Fallback applies: the PNG is
+  recorded pending a rasterizer; the SVG is current (regenerated at G2 iteration 1).
+
+**Gate.** Three gates green; site builds; version scripts agree; briefing quotes only canonical files
+(and points to C4 for the corpus numbers) -> the four core criteria MET; PNG on the recorded Fallback.
+The canonical-numbers regen + docs figure-sweep are C4-bound, and the actual merge/tag/publish is
+[maintainer]. R3 -> [!] blocked on C4 (canonical shipping-default numbers on the buildable corpus) and
+the [maintainer] tag; all non-numbers release-prep is done.
+
+**Next action.** After C4 delivers the buildable corpus-v2: regenerate review/localize/ranking under
+shipping defaults, sweep the superseded figures in AGENTS.md + benchmarks.mdx + briefing.md in the same
+change, then the maintainer merges and tags v4.0.0 (publish.yml/release.yml/mcp-registry.yml verify the
+tag against the codebase version). The remaining checklist items (B4 deps C3, B1 deps C4, F2 after B1,
+G2 iteration 2 deps C4 corpus data) are all blocked on C4's buildable corpus or B1's model compute -
+provisioning-bound, not code.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

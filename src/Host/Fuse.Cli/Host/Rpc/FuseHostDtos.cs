@@ -198,3 +198,15 @@ public sealed record CheckDeltaDto(
     IReadOnlyList<CheckDiagnosticDto> Introduced,
     IReadOnlyList<CheckDiagnosticDto> Resolved);
 
+/// <summary>
+///     The result of the <c>fuse/checkOverlay</c> method (G5): the diagnostics a proposed single-file edit would
+///     produce, typechecked against the daemon's live resident workspace with no build. This is the resident-grade
+///     answer a non-owner process (for example an <c>mcp serve</c> that delegates to the shared daemon) proxies
+///     over the pipe, so the warm compilation is a shared asset rather than duplicated per process.
+/// </summary>
+/// <param name="HasResident">Whether a live resident workspace served the check (false means the daemon has none).</param>
+/// <param name="Diagnostics">The diagnostics for the changed document, when a resident workspace served it.</param>
+public sealed record CheckOverlayResultDto(
+    bool HasResident,
+    IReadOnlyList<CheckDiagnosticDto> Diagnostics);
+

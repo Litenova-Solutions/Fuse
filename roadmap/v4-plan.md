@@ -7140,12 +7140,28 @@ item's lifecycle sub-gates at the primitive level (spawn race yields one daemon;
 idle shutdown; version-mismatch refusal; daemon visibility). The RSS-reduction + one-truth Gate needs
 the resident-delegation above.
 
-**Next action.** G5 resident-delegation (the Gate remainder), as the four-part plan just scoped:
-expand the pipe RPC with resident operations (ProtocolVersion 7), add the proxy provider, wire
-serve/host resident-owner arbitration, then measure RSS before/after on NodaTime and add the
-one-truth test. If delegation proves too invasive for the resident path, the item's Fallback applies:
-keep per-process engines (S1 status quo) and record why (the single-instance daemon lock + lifecycle
-primitives still ship as the daemon foundation).
+#### 2026-07-10 G5 resident-delegation sub-step A DONE: fuse/checkOverlay RPC (ProtocolVersion 7)
+
+**Shipped.** `FuseHostService.CheckOverlayAsync` (`[JsonRpcMethod("fuse/checkOverlay")]`): typechecks a
+proposed single-file edit against the daemon's live resident workspace
+(`FuseTools.ResidentWorkspaces.TryCheckOverlayAsync`, the same provider the MCP tools read) and returns
+the diagnostics with no build, so a non-owner process can get resident-grade answers over the pipe.
+`CheckOverlayResultDto(HasResident, Diagnostics)` added and registered in `FuseHostJsonContext`.
+`ProtocolVersion` bumped 6 -> 7 per the host-RPC change-safety invariant (a stale in-repo hook and a
+newer host surface the mismatch at handshake; the version-mismatch handshake in FuseHostClient already
+refuses cleanly).
+
+**Tests.** `FuseHostContractTests.CheckOverlayResult_SerializesDiagnosticsCamelCase` (the wire DTO) +
+`FuseHostServiceRpcTests` two cases (no resident -> HasResident false; a fake resident provider ->
+delegates the diagnostics). 13 in those two classes green.
+
+**Next action.** G5 resident-delegation sub-step B: a proxy `IResidentWorkspaceProvider`
+(RemoteResidentWorkspaceProvider) whose `TryCheckOverlayAsync` calls `fuse/checkOverlay` over
+`FuseHostClient`, plus a `FuseHostClient.TryCheckOverlayAsync` client method. Then sub-step C:
+resident-owner arbitration (the non-owner installs the proxy pointing at the owner daemon via
+`FuseTools.ResidentWorkspaces`), and sub-step D: the RSS before/after on NodaTime + the one-truth test
+for the Gate. Fallback if the remaining wiring proves too invasive for the resident path: keep
+per-process engines (S1 status quo) and record why.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

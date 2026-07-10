@@ -6861,6 +6861,37 @@ logs into one complog (a throwaway probe over two fixture binlogs); if yes, buil
 --merge` on it; if no, take the format-v2 per-project-complog fallback. Then the edge-set equality
 test vs a direct capture.
 
+#### 2026-07-09 G4 feasibility RESOLVED (empirical): no public complog-merge; format-v2 required
+
+**Empirical finding (PowerShell reflection over Basic.CompilerLog.Util 0.9.47).**
+`CompilerLogBuilder` is INTERNAL (`IsPublic=False`), so it cannot be used to merge N fragment logs
+into one complog. The only public complog-creation API is `CompilerLogUtil.ConvertBinaryLog(binlog ->
+complog, predicate)` (one binlog -> one complog) and its `TryConvertBinaryLog` variants; `CompilerCall
+ReaderUtil.Create` reads a binlog or a complog. There is NO public way to combine multiple logs into
+a single complog.
+
+**Resolved design.** The single-`capture.complog` bundle cannot be assembled from per-project
+fragments with public APIs. G4 therefore uses a format-v2 bundle: per-project complogs stored under a
+`fragments/` folder, with the oracle check (`CheckFromLog`) and `fuse index --from-capture` iterating
+the fragments. This bumps `CaptureManifest.CurrentFormatVersion` to 2 (per the C2 versioning
+invariant; the consumer refuses a v1-only build cleanly). The GRAPH side (the Gate's edge-set-equality
+proof) needs no new API - it is the union of per-fragment `CapturedProject`s via the proven
+`RehydrateFromBinlog`, so `graph.json` from merged fragments equals a direct capture's.
+
+**Revised sub-steps (each gated; added to avoid a silent tail).**
+- 4-G1a: `fuse capture --merge <dir>` GRAPH assembly - read per-project fragment binlogs, union the
+  graphs into `graph.json` + `manifest.json`; edge-set equality test vs a direct capture on a fixture
+  (the Gate's merge-equality proof, complog-independent). Tractable with proven APIs.
+- 4-G1b: bundle format v2 - store per-project complogs under `fragments/`; teach `CheckFromLog` /
+  `--from-capture` to iterate them; bump `CurrentFormatVersion` to 2 with the refusal + CHANGELOG
+  re-capture note (C2 invariant).
+- 4-G2: `Fuse.Capture.targets` NuGet package (post-build per-project binlog fragment + opt-out) + a
+  fixture build consuming it; overhead measurement.
+- 4-G3: docs (channel-comparison table + invasiveness note); Gate (merge-equality green; overhead <
+  5%, else experimental per the Fallback).
+
+**Next action.** Implement 4-G1a: the graph-side `fuse capture --merge` + the edge-set equality test.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

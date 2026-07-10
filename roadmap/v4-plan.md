@@ -7155,7 +7155,39 @@ refuses cleanly).
 `FuseHostServiceRpcTests` two cases (no resident -> HasResident false; a fake resident provider ->
 delegates the diagnostics). 13 in those two classes green.
 
-**Next action.** G5 resident-delegation sub-step B: a proxy `IResidentWorkspaceProvider`
+#### 2026-07-10 G5 resident-delegation sub-steps B+C DONE: proxy provider + serve delegation wiring
+
+**Shipped.** Sub-step B: `FuseHostClient.TryCheckOverlayAsync` (client call to fuse/checkOverlay) +
+`RemoteResidentWorkspaceProvider` (an `IResidentWorkspaceProvider` whose `TryCheckOverlayAsync` proxies
+to the daemon and maps the result back to `CheckDiagnostic`, returning null so the caller falls back
+when no daemon answers; injected fetch delegate for testability). Sub-step C:
+`DaemonProcessLauncher` (builds the detached `fuse host --directory <root>` start info with
+FUSE_RESIDENT + FUSE_DAEMON_IDLE_MINUTES, for both the apphost and `dotnet fuse.dll`) + the
+`McpServeCommand` FUSE_DAEMON opt-in wiring: serve ensures a shared daemon via `DaemonSupervisor`
+(spawn-on-demand) and installs `RemoteResidentWorkspaceProvider` (delegating resident checks over the
+pipe) instead of holding its own resident workspace; when the daemon cannot start it falls back to the
+in-process workspace. Default off (FUSE_DAEMON), so the shipped serve path is unchanged.
+
+**Tests.** `RemoteResidentWorkspaceProviderTests` (3: maps diagnostics, null on no daemon, null on no
+resident) + `DaemonProcessLauncherTests` (2: apphost and dotnet-hosted launch arg/env wiring). All
+green.
+
+**G5 architecture is complete and unit-tested.** The full shared-daemon resident-delegation path is
+wired: DaemonLock (single instance), host acquires it, DaemonSupervisor (spawn-on-demand), probes
+(IsServing/Stats/checkOverlay over the pipe, ProtocolVersion 7), RemoteResidentWorkspaceProvider
+(proxy), DaemonProcessLauncher, IdleShutdownMonitor, and the serve FUSE_DAEMON delegation + status
+line. Every piece has unit coverage.
+
+**Next action.** G5 sub-step D (the Gate): the RSS before/after measurement on NodaTime (two-process
+baseline with both resident, versus serve delegating to one daemon) and the one-truth check (an edit
+via one client's delta appears in another's), plus the docs (internals architecture + a daemon page).
+This is a multi-process measurement run; the architecture it exercises is now committed and
+unit-tested. Fallback if the measurement cannot be produced in this environment (NodaTime resident
+warm needs the tier-1 build): record the honest bound and keep the opt-in daemon as the shipped
+foundation, exactly as C3/C4 recorded their provisioning-bound gates.
+
+#### (superseded) earlier next-action note for sub-step B
+G5 resident-delegation sub-step B: a proxy `IResidentWorkspaceProvider`
 (RemoteResidentWorkspaceProvider) whose `TryCheckOverlayAsync` calls `fuse/checkOverlay` over
 `FuseHostClient`, plus a `FuseHostClient.TryCheckOverlayAsync` client method. Then sub-step C:
 resident-owner arbitration (the non-owner installs the proxy pointing at the owner daemon via

@@ -6690,6 +6690,43 @@ merge, base, head, title, changed_cs[]}, no oracle field yet; CorpusManager.cs d
 reconstruction; no corpus-health suite exists), then build the health gate and the oracle-verified
 task extraction.
 
+#### 2026-07-09 C4 preconditions recorded; sub-step plan
+
+**Preconditions.**
+- Corpus manifest shapes: `corpus.json` = {tokenizer, generated, repos:[{name, size, url, commit,
+  committed, cs_files, note}]}; `prs.json` = [{repo, pr, merge, base, head, title, changed_cs[]}] -
+  NO test-oracle field yet (C4 adds oracle-verified task extraction). Models: `CorpusManifest`,
+  `CorpusRepo`, `PrRecord` in Fuse.Benchmarks/Model/EvalModel.cs.
+- Merge-commit reconstruction: `CorpusManager.ReconstructPullRequestsAsync` (Corpus/CorpusManager.cs
+  :198) runs `git log --merges --grep="Merge pull request"`, parses %H|%P|%s into PrRecords; worktree
+  helpers `AddWorktreeAsync`/`RemoveWorktreeAsync` (:334/:349); `RestoreAsync` (:268); `IsTestPath`
+  (:179, matches "/test"). Consumable by the harness.
+- `fuse up` and capture outputs consumable: yes - the C1 `UpReport`/probe and C2 capture bundle are
+  produced by the same Fuse.Cli the harness invokes; the health suite can call index (tier) and, per
+  repo, the C1 doctor/up path.
+- NO existing corpus-health suite or model-suite refusal gate (the grep hits were refactorers that
+  "refuse"). C4 builds both new.
+- Suite contract: `IEvalSuite` (Name, Description, RunAsync(EvalOptions, ct) -> SuiteResult); dispatch
+  in EvalCommand.BuildSuite switch; results written to results/<name>.json.
+
+**Sub-step plan (C4 is L, compute-bound; full 20-repo/60-task gate is not reachable in this
+autonomous environment - the same build ceiling as C3's review gate. The ENGINE is built and
+fixture-tested here; the full-scale curation is attempted and recorded with the pre-registered
+reduced-scope fallback).**
+- 4a: `fuse eval corpus-health` suite + `CorpusHealthReport` machine-readable model written to
+  results/corpus-health.json (per-repo achieved tier, test-project + test-method discovery counts,
+  and a meetsMinimums flag). Fixture/unit test.
+- 4b: oracle-task extraction: for a PR whose diff changes tests, verify the new/changed tests FAIL on
+  base and PASS on merge (mechanical double-run via `dotnet test --filter`), flakes excluded by a
+  second run; a `TaskOracle` verifier + the extended task record. Synthetic-PR fixture test.
+- 4c: enforcement gate: the model-driven suites (loop, agent) refuse to start unless a
+  corpus-health.json newer than the corpus manifest meets the minimums, printing why. Refusal-path
+  test.
+- 4d: curation attempt at feasible scale + docs (benchmarks methodology for corpus v2 + the gate) +
+  gate evaluation with the reduced-scope fallback recorded honestly (a finding about `fuse up`).
+
+**Next action.** Implement 4a: the corpus-health suite + report model + registration + a fixture test.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

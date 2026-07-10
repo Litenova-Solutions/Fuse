@@ -7034,10 +7034,20 @@ gate-checked and lifecycle-tested, not feature-tested).**
   serve + host) + Gate (one-truth green; RSS reduction recorded). Fallback: keep per-process engines
   (S1 status quo) and record why.
 
-**Next action.** G5 sub-step 5-i: read FuseHostService's connection/auth-token flow (confirm it
-extends to multiple client kinds), then add the race-safe single-instance daemon lock + discovery with
-a spawn-race test. This is a concurrency-critical L item; it is the natural fresh-context increment
-after this session's large body of committed work (R1, R2, C1, C2, C3-engine, C4-engine, G4).
+**5-i precondition CONFIRMED (read FuseHostService.cs).** The pipe auth is a per-HOST session token,
+not per-client-kind: `FuseHostSessionToken.Generate()` at host start, returned by `Handshake()`
+alongside `HostVersion` + `ProtocolVersion` (currently 6), and validated on every RPC method via
+`FuseHostSessionToken.Validate`. It is kind-agnostic - any local client (the serve stdio adapter, the
+S3 hooks, a status query) that completes the handshake receives the token and is authorized - so the
+pattern already extends to multiple client kinds with no change. The version-mismatch handshake the
+Gate needs is `ProtocolVersion` in `FuseHostHandshake`. So the daemon reuses this substrate directly;
+5-i's remaining work is the race-safe single-instance lock + discovery (no auth change needed).
+
+**Next action.** G5 sub-step 5-i (remaining): add a race-safe single-instance daemon lock (a named
+Mutex keyed by repo root) + daemon discovery (does a daemon serve this root?), with a spawn-race test
+asserting exactly one daemon wins. This is concurrency-critical L work and is the natural
+fresh-context increment after this session's large committed body (R1, R2, C1, C2, C3-engine,
+C4-engine, G4 all committed and green); re-orient from this checkpoint and the Master checklist.
 
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 

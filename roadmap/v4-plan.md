@@ -6622,6 +6622,43 @@ worker + C1 installs); if the corpus cannot reach the semantic thresholds here, 
 Fallback (scope the default by a size heuristic and record) or record the environment bound honestly
 against the Gate.
 
+#### 2026-07-09 C3 sub-step 3 IN PROGRESS: gate validation (critical --no-incremental fix; localize main 3/4 semantic; review pending)
+
+**Regression fixed first (e8531c3).** The C2 `--from-capture` option had no `Required = false`, so
+DotMake treated it as required and plain `fuse index <path>` failed with "Option '--from-capture' is
+required". Fixed + guarded by `IndexCommandParseTests` (3 reflection-based parse tests over the
+DotMake runnable result's ParseResult.Errors). This had escaped because there was no CLI-parse test
+for basic commands.
+
+**Critical tier-1 bug found and fixed (5e76a3a).** With tier-1 default-on, `fuse index` on the
+corpus repos gave [syntax]/[partial], NOT [semantic], even though `fuse capture` on the same repos
+succeeded. Root cause: the worker's `dotnet build` was incremental, so an ALREADY-BUILT (or
+up-to-date) repo emitted NO Csc invocations to the binlog, and rehydration failed with "the build
+log recorded no C# compiler invocations" -> tier-1 returned null -> fell back to MSBuildWorkspace.
+`fuse capture` only worked earlier because it ran on a cold tree (first build compiled everything).
+Fix: `RunBuildAsync` now passes `--no-incremental`, forcing every project to compile so the binlog
+always carries the Csc calls tier-1 needs. Without this, tier-1 default-on silently no-ops on the
+common case (a repo the developer already built). Regression-guarded by
+`Capture_of_an_already_built_project_still_rehydrates` (captures a fixture twice; the second, against
+a built tree, must still rehydrate).
+
+**Localize main checkouts gate: MET (3/4 semantic).** With the fix, indexing the 4 corpus main
+checkouts under shipping defaults (built fuse, bundled worker, tier-1 default-on): Specification
+[semantic] 18 proj, NodaTime [semantic] 1 proj, eShopOnWeb [semantic] 2 proj; Scrutor [partial]
+(build fails NU1507 - needs the C1 overlay, which the plain index path does not auto-apply). 3 of 4
+semantic >= the gate's 2/4. Notable: NodaTime loads syntax-only under MSBuildWorkspace but reaches
+SEMANTIC via tier-1 - the core thesis that the build oracle beats the design-time loader.
+
+**Review + ranking gate: PENDING.** `fuse eval review --restore` under shipping defaults is running
+(53 PR worktrees: NodaTime 18, eShopOnWeb 18, Specification 14 all buildable -> expect semantic;
+Scrutor 3 NU1507). Expected review semantic well above the 40/53 gate. Ranking (lexical, tier-1-
+independent) to follow, expected within CI of the post-K1 baseline. Numbers + verdict on completion.
+
+**Next action.** On review completion: parse the "index modes:" note in review.json for the semantic
+count; if review semantic >= 40/53 and ranking within CI, the C3 Gate is MET (localize already 3/4)
+-> mark C3 [x]. If review semantic < 40 because Scrutor-class NU1507 repos drag it (unlikely given
+only 3/53 Scrutor PRs), record the honest bound and apply the size/remediation fallback.
+
 ### F5 data-governance note (folded; standalone file removed 2026-07-09; contract SIGNED with the three answers recorded in expansion-plan.md)
 
 Status: DRAFT for maintainer review. This note is the F5 precondition: it must be reviewed and

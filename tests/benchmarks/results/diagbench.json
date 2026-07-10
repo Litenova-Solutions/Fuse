@@ -1,0 +1,304 @@
+{
+  "suite": "diagbench",
+  "description": "Suite H2: repair-packet auto-apply (TopRepair) fix rate per diagnostic id.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 20,
+    "recall": 1,
+    "recallCiLow": 1,
+    "recallCiHigh": 1,
+    "precision": 1,
+    "f1": 1,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "Total-\u003ETota",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Total-\u003ETotla",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Subtotal-\u003ESubtota",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Subtotal-\u003ESubtotla",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Tax-\u003ETa",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Tax-\u003ETxa",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "LineCount-\u003ELineCoun",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "LineCount-\u003ELineCoutn",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Discount-\u003EDiscoun",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Discount-\u003EDiscoutn",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Number-\u003ENumbe",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Number-\u003ENumbre",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Name-\u003ENam",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Name-\u003ENaem",
+      "repo": "diagbench",
+      "category": "CS1061",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Order-\u003EOrde",
+      "repo": "diagbench",
+      "category": "CS0246",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Order-\u003EOrdre",
+      "repo": "diagbench",
+      "category": "CS0246",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Invoice-\u003EInvoic",
+      "repo": "diagbench",
+      "category": "CS0246",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Invoice-\u003EInvoiec",
+      "repo": "diagbench",
+      "category": "CS0246",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Customer-\u003ECustome",
+      "repo": "diagbench",
+      "category": "CS0246",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Customer-\u003ECustomre",
+      "repo": "diagbench",
+      "category": "CS0246",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    }
+  ],
+  "notes": [
+    "In-process: raw-Roslyn baseline \u002B a store populated with the fixture\u0027s symbols; grades the shipped RepairPacket TopRepair.",
+    "CS0246: 6 mutant(s), 6 carried a TopRepair, 6 auto-fixed (fix rate 100% of packeted).",
+    "CS1061: 14 mutant(s), 14 carried a TopRepair, 14 auto-fixed (fix rate 100% of packeted).",
+    "overall: 20 API-shape mutants, 20 packeted, 20 auto-fixed (100%)."
+  ]
+}

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- NU1507 (multiple sources, no source mapping under CPM) is a warning in this SDK band, so a bare build
+         still succeeds. This synthetic fixture escalates NU1507 to an error so the build genuinely fails on it,
+         exercising the fuse up remedy path deterministically (D17 engineered coverage): the tier-1 probe detects
+         NU1507 in the build output, the overlay supplies the source mapping, and the re-probe clears it. -->
+    <WarningsAsErrors>NU1507</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+</Project>

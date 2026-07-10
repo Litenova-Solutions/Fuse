@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Fuse.Fusion.Stages;
 
 /// <summary>
-///     The scoping stage of the fusion pipeline: narrows the collected file set by focus, git changes, or query.
+///     The scoping stage of the fusion pipeline: narrows the collected file set by focus or git changes.
 /// </summary>
 public sealed class FusionScopingStage
 {
@@ -21,7 +21,6 @@ public sealed class FusionScopingStage
     private readonly DependencyGraphBuilder _dependencyGraphBuilder;
     private readonly FocusSeedResolver _focusSeedResolver;
     private readonly IChangeDetector _changeDetector;
-    private readonly QueryScopingPipeline _queryScopingPipeline;
     private readonly CapabilityRegistry<IDependencyExtractor> _dependencyExtractors;
     private readonly CapabilityRegistry<ITypeNameLocator> _typeNameLocators;
     private readonly CapabilityRegistry<ISymbolSliceExtractor> _sliceExtractors;
@@ -34,7 +33,6 @@ public sealed class FusionScopingStage
         DependencyGraphBuilder dependencyGraphBuilder,
         FocusSeedResolver focusSeedResolver,
         IChangeDetector changeDetector,
-        QueryScopingPipeline queryScopingPipeline,
         CapabilityRegistry<IDependencyExtractor> dependencyExtractors,
         CapabilityRegistry<ITypeNameLocator> typeNameLocators,
         CapabilityRegistry<ISymbolSliceExtractor> sliceExtractors,
@@ -43,7 +41,6 @@ public sealed class FusionScopingStage
         _dependencyGraphBuilder = dependencyGraphBuilder;
         _focusSeedResolver = focusSeedResolver;
         _changeDetector = changeDetector;
-        _queryScopingPipeline = queryScopingPipeline;
         _dependencyExtractors = dependencyExtractors;
         _typeNameLocators = typeNameLocators;
         _sliceExtractors = sliceExtractors;
@@ -53,11 +50,10 @@ public sealed class FusionScopingStage
     /// <summary>
     ///     Applies the scoping mode configured on <paramref name="request" /> to the collected files.
     /// </summary>
-    /// <param name="request">The fusion request whose focus, change, or query options drive scoping.</param>
+    /// <param name="request">The fusion request whose focus or change options drive scoping.</param>
     /// <param name="files">The collected candidate files.</param>
     /// <param name="parallelism">Maximum degree of parallelism for graph construction.</param>
     /// <param name="index">Optional persistent analysis index for dependency extraction.</param>
-    /// <param name="fuseStore">Optional store for relevance postings during query scoping.</param>
     /// <param name="contentProvider">Run-scoped content provider for seed resolution and graph building.</param>
     /// <param name="experimental">Resolved experimental options for the run.</param>
     /// <param name="cancellationToken">Token used to cancel scoping work.</param>
@@ -69,7 +65,6 @@ public sealed class FusionScopingStage
         IReadOnlyList<SourceFile> files,
         int parallelism,
         Indexing.IAnalysisIndex? index,
-        IKeyValueStore? fuseStore,
         ISourceContentProvider contentProvider,
         ExperimentalOptions experimental,
         CancellationToken cancellationToken = default)
@@ -79,9 +74,6 @@ public sealed class FusionScopingStage
 
         if (request.Changes is not null)
             return await FilterByChangesAsync(request, files, parallelism, index, contentProvider, cancellationToken);
-
-        if (request.Query is not null)
-            return await FilterByQueryAsync(request, files, parallelism, index, fuseStore, contentProvider, experimental, cancellationToken);
 
         return new FilteredFileSet(files, null, null);
     }
@@ -141,22 +133,6 @@ public sealed class FusionScopingStage
         var expansion = _focusSeedResolver.Expand(graph, seedScores, options);
         var filtered = files.Where(f => expansion.IncludedPaths.Contains(f.NormalizedRelativePath)).ToArray();
         return new FilteredFileSet(filtered, expansion.ProvenanceChains, expansion.Scores, Slice: sliceRequest);
-    }
-
-    private async Task<FilteredFileSet> FilterByQueryAsync(
-        FusionRequest request,
-        IReadOnlyList<SourceFile> files,
-        int parallelism,
-        Indexing.IAnalysisIndex? index,
-        IKeyValueStore? fuseStore,
-        ISourceContentProvider contentProvider,
-        ExperimentalOptions experimental,
-        CancellationToken cancellationToken)
-    {
-        var graph = await BuildGraphAsync(files, parallelism, index, contentProvider, cancellationToken);
-        var proximity = ResolveProximity(experimental, files, request.Collection.SourceDirectory);
-        return await _queryScopingPipeline.ScopeAsync(
-            request, files, parallelism, index, fuseStore, contentProvider, experimental, graph, proximity, cancellationToken);
     }
 
     private async Task<FilteredFileSet?> FilterByChangesAsync(

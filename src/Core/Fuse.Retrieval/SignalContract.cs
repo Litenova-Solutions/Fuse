@@ -49,9 +49,17 @@ public sealed record NavigationMap(
 /// </summary>
 /// <remarks>
 ///     The rule is deliberately conservative on the insufficient side: a request that matches anything through
-///     full-text or dense retrieval clears the insufficient floor and lands in confident or partial, so an
-///     answerable query is rarely refused (the false-rejection error the contract must keep low). Only a
-///     near-empty or uniformly weak distribution is judged insufficient by score.
+///     full-text retrieval clears the insufficient floor and lands in confident or partial, so an answerable
+///     query is rarely refused (the false-rejection error the contract must keep low). Only a near-empty or
+///     uniformly weak distribution is judged insufficient by score.
+///     <para>
+///     The floor (<see cref="InsufficientCeiling" />) was lowered from 0.30 to 0.20 when the dense embedding
+///     channel was retired (item K1). Dense candidates carried a 0.72 base weight, so an answerable but
+///     lexically weak query used to clear the old floor on its dense match; without that channel the same
+///     queries score lower, and the 0.30 floor re-introduced false rejections (the lexical-only A/B recorded
+///     3 of 52). The genuine no-signal case is caught upstream by <see cref="QuerySignalClassifier" />, so the
+///     score floor only needs to reject a near-empty lexical distribution, which 0.20 still does.
+///     </para>
 /// </remarks>
 public static class SignalGrader
 {
@@ -65,7 +73,7 @@ public static class SignalGrader
     public const int ConfidentClusterMax = 3;
 
     /// <summary>Below this top score the distribution is too weak to anchor an answer; the verdict is insufficient.</summary>
-    public const double InsufficientCeiling = 0.30;
+    public const double InsufficientCeiling = 0.20;
 
     /// <summary>
     ///     Grades a ranked candidate set (highest score first) into a signal state.

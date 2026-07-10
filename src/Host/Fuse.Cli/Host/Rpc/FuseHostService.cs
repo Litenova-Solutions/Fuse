@@ -15,24 +15,28 @@ using StreamJsonRpc;
 namespace Fuse.Cli.Rpc;
 
 /// <summary>
-///     The JSON-RPC surface the VS Code extension calls over the UI transport. One instance is shared by the
-///     connection for a single repository root and reads the V3 semantic index (the same
+///     The JSON-RPC surface a local client calls over the pipe transport. Its client today is the
+///     ambient-verification hooks (<c>fuse check --delta</c>, <c>fuse gate</c>), which use <c>fuse/check</c>; the
+///     remaining read methods are the general host surface (the seed of the G5 daemon). One instance is shared by
+///     the connection for a single repository root and reads the semantic index (the same
 ///     <see cref="WorkspaceIndexStore" /> and <see cref="SemanticRetrievalEngine" /> the MCP tools use), so the
-///     UI and the agent see identical data.
+///     host and the agent see identical data.
 /// </summary>
 /// <remarks>
-///     Method names use the <c>fuse/</c> namespace to match the wire protocol the extension's <c>protocol.ts</c>
-///     mirrors. A random session token is generated at host start, returned from <c>fuse/handshake</c>, and
-///     required on every other RPC method. The service never throws across the wire for an expected condition; it
-///     returns a typed DTO so the client can render a clear state rather than parse an error.
+///     Method names use the <c>fuse/</c> namespace. A random session token is generated at host start, returned
+///     from <c>fuse/handshake</c>, and required on every other RPC method. The service never throws across the
+///     wire for an expected condition; it returns a typed DTO so the client can render a clear state rather than
+///     parse an error.
 /// </remarks>
 public sealed class FuseHostService : IDisposable
 {
     /// <summary>
-    ///     The wire protocol version. Bumped on any breaking change to a DTO or method shape so a stale extension
-    ///     and a newer host detect the mismatch at handshake instead of failing later on a serialization error.
+    ///     The wire protocol version. Bumped on any breaking change to a DTO or method shape so a stale in-repo
+    ///     client (the hooks) and a newer host detect the mismatch at handshake instead of failing later on a
+    ///     serialization error. There is no external client to mirror: the VS Code extension was removed in v4
+    ///     (Decision D15), so the host is the minimal pipe endpoint the hooks need.
     /// </summary>
-    public const int ProtocolVersion = 3;
+    public const int ProtocolVersion = 7;
 
     private const int ListLimit = 100_000;
 
@@ -470,6 +474,79 @@ public sealed class FuseHostService : IDisposable
         DeleteTrackedPayloads();
         _shutdownRequested.TrySetResult();
     }
+
+    /// <summary>
+    ///     Returns the diagnostics a check session's edits introduced or resolved since its baseline (S3 ambient
+    ///     verification): the delta the harness hook renders after an edit and the gate blocks a red turn on.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="session">The opaque check-session id whose baseline the delta is measured against.</param>
+    /// <returns>
+    ///     The introduced and resolved diagnostics. When no resident workspace serves the root,
+    ///     <see cref="CheckDeltaDto.Resident" /> is false and both lists are empty, so a hook exits silently rather
+    ///     than blocking editing (delta mode never runs a build). The first call for a session establishes its
+    ///     baseline and returns an empty delta.
+    /// </returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    [JsonRpcMethod("fuse/check")]
+    public async Task<CheckDeltaDto> CheckDeltaAsync(string sessionToken, string root, string session)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        var resolved = Path.GetFullPath(root);
+
+        // The current whole-state diagnostics come from a live resident workspace (the same process-wide provider
+        // the MCP fuse_check delta mode reads); delta mode must not run a build, so with no resident workspace this
+        // returns an empty, non-resident delta and the hook stays silent.
+        var current = Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.TryGetCurrentDiagnostics(resolved);
+        if (current is null)
+            return new CheckDeltaDto(false, [], []);
+
+        await using var store = await OpenStoreAsync(resolved);
+        var baseline = await store.GetCheckSessionBaselineAsync(session, CancellationToken.None);
+        if (baseline is null)
+        {
+            await store.SaveCheckSessionBaselineAsync(session, resolved, current, CancellationToken.None);
+            return new CheckDeltaDto(true, [], []);
+        }
+
+        var delta = DiagnosticDelta.Compute(baseline.Diagnostics, current);
+        return new CheckDeltaDto(
+            true,
+            delta.Introduced.Select(ToCheckDiagnosticDto).ToList(),
+            delta.Resolved.Select(ToCheckDiagnosticDto).ToList());
+    }
+
+    /// <summary>
+    ///     Typechecks a proposed single-file edit against the daemon's live resident workspace and returns the
+    ///     diagnostics, with no build (G5). This is the resident-grade check a non-owner process delegates over the
+    ///     pipe, so one daemon-held compilation serves every client instead of each process holding its own.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="includeAnalyzers">Whether to also run the repository's analyzers and nullable warnings.</param>
+    /// <returns>
+    ///     The diagnostics for the changed document; when no resident workspace serves the root,
+    ///     <see cref="CheckOverlayResultDto.HasResident" /> is false and the caller falls back to its own path.
+    /// </returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    [JsonRpcMethod("fuse/checkOverlay")]
+    public async Task<CheckOverlayResultDto> CheckOverlayAsync(
+        string sessionToken, string root, string relativeFilePath, string newContent, bool includeAnalyzers)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        var resolved = Path.GetFullPath(root);
+        var diagnostics = await Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.TryCheckOverlayAsync(
+            resolved, relativeFilePath, newContent, includeAnalyzers, CancellationToken.None);
+        return diagnostics is null
+            ? new CheckOverlayResultDto(false, [])
+            : new CheckOverlayResultDto(true, diagnostics.Select(ToCheckDiagnosticDto).ToList());
+    }
+
+    private static CheckDiagnosticDto ToCheckDiagnosticDto(CheckDiagnostic diagnostic) =>
+        new(diagnostic.Id, diagnostic.Severity, diagnostic.Message, diagnostic.FilePath, diagnostic.Line);
 
     /// <summary>
     ///     Deletes any scope payload files written during this host session. Called from <c>fuse/shutdown</c> and

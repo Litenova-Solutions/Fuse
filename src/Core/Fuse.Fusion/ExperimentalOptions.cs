@@ -78,16 +78,6 @@ public sealed record ExperimentalOptions
     public bool BudgetAwareExpansion { get; init; } = true;
 
     /// <summary>
-    ///     Whether the query path reranks its BM25 candidate pool with a dense embedding model, blending the
-    ///     lexical score with query-to-document similarity so a semantically matching file can outrank one that
-    ///     merely shares words. Requires a registered <see cref="Fuse.Plugins.Abstractions.Scoping.IReranker" /> with a present model; when
-    ///     no reranker is available (no model, offline, or absent assembly) the query path stays on the lexical
-    ///     BM25F floor regardless of this flag. Off by default; overridden by <c>FUSE_RERANK</c> (<c>1</c>,
-    ///     <c>on</c>, or <c>true</c> enables it).
-    /// </summary>
-    public bool DenseRerank { get; init; }
-
-    /// <summary>
     ///     The weight of a git churn and recency prior blended as a multiplier into the query candidate scores,
     ///     so a recently and frequently changed file ranks a little higher. <c>0</c> (the default) disables it.
     ///     Overridden by <c>FUSE_GIT_CHURN_WEIGHT</c>. This is a production-routing lever: the pinned benchmark
@@ -260,16 +250,6 @@ public sealed record ExperimentalOptions
             budgetAwareExpansion = false;
         }
 
-        var denseRerank = resolved.DenseRerank;
-        var rawRerank = Environment.GetEnvironmentVariable("FUSE_RERANK");
-        if (!string.IsNullOrWhiteSpace(rawRerank) &&
-            (rawRerank.Equals("1", StringComparison.Ordinal) ||
-             rawRerank.Equals("on", StringComparison.OrdinalIgnoreCase) ||
-             rawRerank.Equals("true", StringComparison.OrdinalIgnoreCase)))
-        {
-            denseRerank = true;
-        }
-
         var gitChurnWeight = resolved.GitChurnWeight;
         var rawChurn = Environment.GetEnvironmentVariable("FUSE_GIT_CHURN_WEIGHT");
         if (!string.IsNullOrWhiteSpace(rawChurn) &&
@@ -368,7 +348,6 @@ public sealed record ExperimentalOptions
             TieredEmission = tieredEmission,
             MultiQueryFusion = multiQueryFusion,
             BudgetAwareExpansion = budgetAwareExpansion,
-            DenseRerank = denseRerank,
             GitChurnWeight = gitChurnWeight,
             SketchHugeFiles = sketchHugeFiles,
             DowngradeBeforeDrop = downgradeBeforeDrop,

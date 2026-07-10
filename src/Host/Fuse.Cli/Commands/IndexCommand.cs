@@ -1,7 +1,6 @@
 using DotMake.CommandLine;
 using Fuse.Cli.Services;
 using Fuse.Indexing;
-using Fuse.Plugins.Rerank.Onnx;
 using Fuse.Reduction.Caching;
 using Fuse.Semantics;
 
@@ -48,6 +47,10 @@ public sealed class IndexCommand
     [CliOption(Description = "Force a full re-index.")]
     public bool Force { get; set; }
 
+    /// <summary>Rehydrate the index from a portable capture bundle instead of building.</summary>
+    [CliOption(Name = "--from-capture", Required = false, Description = "Rehydrate the index from a capture bundle directory (produced by fuse capture) instead of building. Refuses an incompatible bundle.")]
+    public string? FromCapture { get; set; }
+
     /// <summary>
     ///     Runs the index command.
     /// </summary>
@@ -70,15 +73,45 @@ public sealed class IndexCommand
         _consoleUI.WriteStep($"Indexing {root}");
         _consoleUI.WriteStep($"Store: {databasePath}");
 
-        // Dense is on by default: fetch and cache the bundled embedding model once before indexing so per-chunk
-        // vectors are persisted. Offline-safe: a failed fetch falls back to lexical without breaking the index.
-        await DenseModelProvisioner.EnsureModelAsync(
-            new Progress<string>(_consoleUI.WriteStep), logger: null, context.CancellationToken);
-
         await using var store = new WorkspaceIndexStore(databasePath);
         await store.InitializeAsync(context.CancellationToken);
 
-        var result = await _indexer.IndexAsync(root, store, context.CancellationToken);
+        SemanticIndexResult result;
+        if (FromCapture is not null)
+        {
+            var bundle = System.IO.Path.GetFullPath(FromCapture);
+            var manifest = CaptureBundleIo.ReadManifest(bundle);
+            if (manifest is null)
+            {
+                _consoleUI.WriteError($"no capture bundle found at {bundle} (missing or unreadable {CaptureManifest.ManifestFileName}).");
+                return;
+            }
+
+            // Upgrade invariant: refuse an incompatible bundle with an actionable message rather than rehydrating
+            // into a wrong-shaped store.
+            if (!manifest.IsCompatibleWithRunningBuild)
+            {
+                _consoleUI.WriteError($"incompatible capture bundle: {manifest.IncompatibilityReason}");
+                return;
+            }
+
+            var graph = CaptureBundleIo.ReadGraph(bundle);
+            if (graph is null || !graph.Succeeded)
+            {
+                _consoleUI.WriteError($"capture bundle at {bundle} has no readable extracted graph ({CaptureManifest.GraphFileName}).");
+                return;
+            }
+
+            _consoleUI.WriteStep($"Rehydrating from capture bundle {bundle} (fuse {manifest.FuseVersion}, {manifest.Projects.Count} project(s)); no build");
+            // Stamp the bundle directory so fuse_check answers oracle-grade from its compiler log(s) without
+            // building - the single capture.complog of a direct bundle or the per-project logs of a merged bundle.
+            result = await _indexer.IndexFromCaptureGraphAsync(
+                root, store, graph, context.CancellationToken, bundle);
+        }
+        else
+        {
+            result = await _indexer.IndexAsync(root, store, context.CancellationToken);
+        }
 
         _consoleUI.WriteSuccess(
             $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects: " +

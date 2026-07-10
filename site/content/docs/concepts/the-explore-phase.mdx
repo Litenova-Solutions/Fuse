@@ -56,24 +56,25 @@ reads:
 
 ```mermaid
 flowchart LR
-    A[Survey<br/>fuse_map] --> B[Localize<br/>fuse_localize]
-    B --> C[Resolve<br/>fuse_resolve]
+    A[Survey<br/>fuse_workspace map] --> B[Localize<br/>fuse_find task]
+    B --> C[Resolve<br/>fuse_find wiring]
     C --> D[Context<br/>fuse_context]
     D --> E[Review<br/>fuse_review]
     E -.next step.-> B
 ```
 
-Survey the workspace cheaply with `fuse_map`, localize a task to candidate files with
-`fuse_localize`, resolve the wiring a task names with `fuse_resolve`, plan and emit the
-context with `fuse_context`, and review a branch with `fuse_review`. Pass a `sessionId`
+Survey the workspace cheaply with `fuse_workspace` (`action=map`), localize a task to
+candidate files with `fuse_find` (`kind=task`), resolve the wiring a task names with
+`fuse_find` (`kind=service|request|route|config`), plan and emit the context with
+`fuse_context`, and review a branch with `fuse_review`. Pass a `sessionId`
 across calls so later calls do not resend files already returned. See
 [Sessions and deltas](/docs/concepts/sessions-and-deltas) for the refinement step and
 [Context for an agent](/docs/scenarios/context-for-an-agent) for a worked sequence.
 
 When a git base is available, `fuse_review` is the routed default: it seeds on the changed
 files and returns the blast radius and packed context in one call. When the task is
-open-ended, start with `fuse_localize`; when it names a route, interface, request, or
-config section, start with `fuse_resolve`.
+open-ended, start with `fuse_find` (`kind=task`); when it names a route, interface,
+request, or config section, start with `fuse_find` (`kind=service|request|route|config`).
 
 ## Honest Boundary
 

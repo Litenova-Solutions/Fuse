@@ -1,5 +1,6 @@
 using System.IO.Hashing;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -39,6 +40,13 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     ///     later run can detect an incompatible upgrade and rebuild.
     /// </summary>
     public const string FuseVersionMetaKey = "fuse_version";
+
+    /// <summary>
+    ///     The <c>index_meta</c> key under which <c>fuse index --from-capture</c> stamps the absolute path to the
+    ///     bundle's portable compiler log (C2), so <c>fuse_check</c> can answer oracle-grade from the captured
+    ///     compilation without building on a machine that cannot restore or build.
+    /// </summary>
+    public const string CaptureComplogPathMetaKey = "capture_complog_path";
 
     /// <summary>The absolute path to the index database file.</summary>
     public string DatabasePath => _connectionFactory.DatabasePath;
@@ -159,6 +167,101 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         {
             return null;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task SaveCheckSessionBaselineAsync(
+        string sessionId, string root, IReadOnlyList<CheckDiagnostic> baseline, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(
+            baseline.ToList(), BuildCaptureJsonContext.Default.ListCheckDiagnostic);
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO check_sessions(session_id, root, baseline_json, updated_utc) VALUES($id, $root, $json, $utc) " +
+            "ON CONFLICT(session_id) DO UPDATE SET root = excluded.root, baseline_json = excluded.baseline_json, updated_utc = excluded.updated_utc;";
+        command.Parameters.AddWithValue("$id", sessionId);
+        command.Parameters.AddWithValue("$root", root);
+        command.Parameters.AddWithValue("$json", json);
+        command.Parameters.AddWithValue("$utc", DateTime.UtcNow.ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<CheckSessionBaseline?> GetCheckSessionBaselineAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT root, baseline_json, updated_utc FROM check_sessions WHERE session_id = $id LIMIT 1;";
+        command.Parameters.AddWithValue("$id", sessionId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+            return null;
+
+        var root = reader.GetString(0);
+        var json = reader.GetString(1);
+        var updatedUtc = reader.GetString(2);
+        var diagnostics = JsonSerializer.Deserialize(json, BuildCaptureJsonContext.Default.ListCheckDiagnostic)
+            ?? [];
+        return new CheckSessionBaseline(sessionId, root, diagnostics, updatedUtc);
+    }
+
+    /// <inheritdoc />
+    public async Task SaveClaimLedgerAsync(string sessionId, string root, string claimsJson, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO claim_ledger(session_id, root, claims_json, updated_utc) VALUES($id, $root, $json, $utc) " +
+            "ON CONFLICT(session_id) DO UPDATE SET root = excluded.root, claims_json = excluded.claims_json, updated_utc = excluded.updated_utc;";
+        command.Parameters.AddWithValue("$id", sessionId);
+        command.Parameters.AddWithValue("$root", root);
+        command.Parameters.AddWithValue("$json", claimsJson);
+        command.Parameters.AddWithValue("$utc", DateTime.UtcNow.ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<ClaimLedgerRecord?> GetClaimLedgerAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT root, claims_json, updated_utc FROM claim_ledger WHERE session_id = $id LIMIT 1;";
+        command.Parameters.AddWithValue("$id", sessionId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+            return null;
+
+        return new ClaimLedgerRecord(sessionId, reader.GetString(0), reader.GetString(1), reader.GetString(2));
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<SessionSummary>> ListSessionsAsync(string root, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        // Union the two session tables by id (a session may have a baseline, a claim ledger, or both), taking the
+        // latest updated_utc and OR-ing the has-* flags. Filtered by root so the panel shows only this workspace.
+        command.CommandText =
+            "SELECT session_id, MAX(updated_utc) AS updated_utc, MAX(has_baseline) AS has_baseline, MAX(has_claims) AS has_claims FROM (" +
+            "  SELECT session_id, updated_utc, 1 AS has_baseline, 0 AS has_claims FROM check_sessions WHERE root = $root" +
+            "  UNION ALL" +
+            "  SELECT session_id, updated_utc, 0 AS has_baseline, 1 AS has_claims FROM claim_ledger WHERE root = $root" +
+            ") GROUP BY session_id ORDER BY updated_utc DESC;";
+        command.Parameters.AddWithValue("$root", root);
+
+        var sessions = new List<SessionSummary>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            sessions.Add(new SessionSummary(
+                reader.GetString(0),
+                reader.GetString(1),
+                reader.GetInt64(2) != 0,
+                reader.GetInt64(3) != 0));
+        }
+
+        return sessions;
     }
 
     /// <inheritdoc />
@@ -748,14 +851,18 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         // bm25() takes one weight per column in declaration order: chunk_id (unindexed, weight ignored),
-        // path, name, symbols, signature, comments, body, subtokens, stems. Name/signature/symbols outrank path,
-        // which outranks comments and body. The subtokens column (subword expansion of identifiers) is weighted
-        // below the exact name but above the body, so an exact name match still wins over a subword match. The
-        // stems column (Porter-stemmed identifiers and comments) is weighted lowest, as a fuzzy inflection bridge.
-        // bm25 is lower-is-better, so the score is negated to make higher better.
+        // path, name, symbols, signature, comments, body, subtokens, stems. The intended ordering (N1, finding 4)
+        // is name > symbols > signature > subtokens > path > comments > body > stems: a term hitting a declared
+        // symbol name or signature must outrank the same term appearing only in a folder path, so a symbol-name
+        // match wins over a folder-name match. subtokens (subword expansion of identifiers) sits below the exact
+        // name but above the body, so an exact name still beats a subword match; stems (Porter-stemmed identifiers
+        // and comments) is lowest, a fuzzy inflection bridge. This is the single intended weight table, guarded by
+        // the ranking suite (RankingSuite). Before this fix the path column was weighted highest (4.0), inverting
+        // the documented intent and letting folder-name matches outrank symbol-name matches. bm25 is
+        // lower-is-better, so the score is negated to make higher better.
         command.CommandText = """
             SELECT f.chunk_id, files.normalized_path, c.kind, c.name, c.start_line, c.end_line,
-                   -bm25(chunk_fts, 0.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.7, 0.9, 0.5) AS score
+                   -bm25(chunk_fts, 0.0, 2.0, 5.0, 4.0, 3.0, 1.5, 1.0, 2.5, 0.7) AS score
             FROM chunk_fts f
             JOIN chunks c ON c.chunk_id = f.chunk_id
             JOIN files ON files.file_id = c.file_id
@@ -847,6 +954,107 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         }
 
         return items;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<SymbolSignature>> GetSignaturesByNamesAsync(
+        IReadOnlyCollection<string> names, int limitPerName, CancellationToken cancellationToken)
+    {
+        var distinct = names
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (distinct.Count == 0)
+            return [];
+
+        var results = new List<SymbolSignature>();
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        // One query per requested name so the per-name limit and ordering (public API and exact-name first) apply
+        // independently; the name count is the caller's small batch, not a variable-length repo-scale list.
+        foreach (var name in distinct)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT s.name, s.kind, s.fully_qualified_name, s.signature, s.accessibility, s.containing_type,
+                       files.normalized_path, s.start_line, s.is_public_api
+                FROM symbols s
+                JOIN files ON files.file_id = s.file_id
+                WHERE s.name = $n COLLATE NOCASE OR s.fully_qualified_name = $n COLLATE NOCASE
+                ORDER BY s.is_public_api DESC, length(s.fully_qualified_name), s.fully_qualified_name COLLATE NOCASE
+                LIMIT $limit;
+                """;
+            command.Parameters.AddWithValue("$n", name);
+            command.Parameters.AddWithValue("$limit", limitPerName);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                results.Add(new SymbolSignature(
+                    Name: reader.GetString(0),
+                    Kind: reader.GetString(1),
+                    FullyQualifiedName: reader.GetString(2),
+                    Signature: reader.IsDBNull(3) ? null : reader.GetString(3),
+                    Accessibility: reader.IsDBNull(4) ? null : reader.GetString(4),
+                    ContainingType: reader.IsDBNull(5) ? null : reader.GetString(5),
+                    FilePath: reader.GetString(6),
+                    StartLine: reader.GetInt32(7),
+                    IsPublicApi: reader.GetInt64(8) != 0));
+            }
+        }
+
+        return results;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<SymbolSignature>> GetMembersOfTypeAsync(
+        string typeName, int limit, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(typeName))
+            return [];
+
+        // A member's containing_type and the requested type name may each be simple or fully qualified, and they
+        // need not agree. Match four ways so a request in either form finds a stored value in either form: exact
+        // on the request, exact on the request's simple suffix, and a suffix match ('%.' || simple) against a
+        // stored fully qualified containing_type. A diagnostic message usually carries the fully qualified name.
+        var simple = typeName.Contains('.', StringComparison.Ordinal)
+            ? typeName[(typeName.LastIndexOf('.') + 1)..]
+            : typeName;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT s.name, s.kind, s.fully_qualified_name, s.signature, s.accessibility, s.containing_type,
+                   files.normalized_path, s.start_line, s.is_public_api
+            FROM symbols s
+            JOIN files ON files.file_id = s.file_id
+            WHERE s.containing_type = $full COLLATE NOCASE
+               OR s.containing_type = $simple COLLATE NOCASE
+               OR s.containing_type LIKE '%.' || $simple COLLATE NOCASE
+            ORDER BY s.is_public_api DESC, s.name COLLATE NOCASE
+            LIMIT $limit;
+            """;
+        command.Parameters.AddWithValue("$full", typeName);
+        command.Parameters.AddWithValue("$simple", simple);
+        command.Parameters.AddWithValue("$limit", limit);
+
+        var results = new List<SymbolSignature>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new SymbolSignature(
+                Name: reader.GetString(0),
+                Kind: reader.GetString(1),
+                FullyQualifiedName: reader.GetString(2),
+                Signature: reader.IsDBNull(3) ? null : reader.GetString(3),
+                Accessibility: reader.IsDBNull(4) ? null : reader.GetString(4),
+                ContainingType: reader.IsDBNull(5) ? null : reader.GetString(5),
+                FilePath: reader.GetString(6),
+                StartLine: reader.GetInt32(7),
+                IsPublicApi: reader.GetInt64(8) != 0));
+        }
+
+        return results;
     }
 
     /// <inheritdoc />
@@ -1031,62 +1239,17 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     }
 
     /// <inheritdoc />
-    public async Task UpsertEmbeddingsAsync(IReadOnlyList<ChunkEmbeddingRecord> embeddings, CancellationToken cancellationToken)
+    public async Task<IReadOnlyDictionary<string, string>> GetAllFileHashesAsync(CancellationToken cancellationToken)
     {
-        if (embeddings.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "INSERT OR REPLACE INTO chunk_embeddings(chunk_id, dim, vector) VALUES($id, $dim, $vec);";
-        var idParam = command.Parameters.Add("$id", SqliteType.Text);
-        var dimParam = command.Parameters.Add("$dim", SqliteType.Integer);
-        var vecParam = command.Parameters.Add("$vec", SqliteType.Blob);
-
-        foreach (var embedding in embeddings)
-        {
-            // A chunk whose embedding row references a missing chunk would violate the foreign key, so skip
-            // empty vectors (an empty or untokenizable chunk) rather than write a zero-length blob.
-            if (embedding.Vector.Length == 0)
-                continue;
-            cancellationToken.ThrowIfCancellationRequested();
-            idParam.Value = embedding.ChunkId;
-            dimParam.Value = embedding.Dimension;
-            vecParam.Value = ToBlob(embedding.Vector);
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<ChunkEmbedding>> GetEmbeddingsAsync(CancellationToken cancellationToken)
-    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT e.chunk_id, files.normalized_path, c.name, e.dim, e.vector
-            FROM chunk_embeddings e
-            JOIN chunks c ON c.chunk_id = e.chunk_id
-            JOIN files ON files.file_id = c.file_id;
-            """;
-
-        var embeddings = new List<ChunkEmbedding>();
+        command.CommandText = "SELECT normalized_path, content_hash FROM files;";
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
-        {
-            var dim = reader.GetInt32(3);
-            var blob = (byte[])reader[4];
-            embeddings.Add(new ChunkEmbedding(
-                ChunkId: reader.GetString(0),
-                FilePath: reader.GetString(1),
-                Name: reader.IsDBNull(2) ? null : reader.GetString(2),
-                Vector: FromBlob(blob, dim)));
-        }
+            result[reader.GetString(0)] = reader.GetString(1);
 
-        return embeddings;
+        return result;
     }
 
     /// <inheritdoc />
@@ -1234,22 +1397,6 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         }
 
         return results;
-    }
-
-    // Embedding vectors are stored as a packed little-endian float32 blob; Buffer.BlockCopy is the fast,
-    // allocation-light round trip and SQLite stores the bytes verbatim.
-    private static byte[] ToBlob(float[] vector)
-    {
-        var bytes = new byte[vector.Length * sizeof(float)];
-        Buffer.BlockCopy(vector, 0, bytes, 0, bytes.Length);
-        return bytes;
-    }
-
-    private static float[] FromBlob(byte[] bytes, int dim)
-    {
-        var vector = new float[dim];
-        Buffer.BlockCopy(bytes, 0, vector, 0, Math.Min(bytes.Length, dim * sizeof(float)));
-        return vector;
     }
 
     /// <inheritdoc />

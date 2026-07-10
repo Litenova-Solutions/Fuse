@@ -5,9 +5,18 @@ description: The problem agentic coding tools hit on large .NET codebases, what 
 
 Most tools that feed code to a language model fall into two camps: packers that dump
 the repository as text, and retrieval indexes that return fuzzy chunks. Fuse is
-neither. It is a Roslyn-backed semantic context engine for .NET that resolves what code
-actually runs and hands an agent the exact context a task needs, with the public API
-intact. This page explains the problem, the landscape, and the trade-offs.
+neither. It is the compiler oracle for .NET coding agents: it verifies an edit against the
+compiler before it lands, computes what a change breaks, and resolves what code actually
+runs, from a Roslyn graph. Finding and serving context (the packer-and-RAG problem this
+page compares against) is the machinery that feeds those answers, and Fuse does it with the
+public API intact and scoped to the task. This page explains the problem that machinery
+solves, the landscape, and the trade-offs.
+
+The deeper difference is not how much context Fuse returns but what it can promise about it.
+A packer and a RAG index both answer "here is some text that might be relevant". Fuse also
+answers "this edit does not compile, here is the error and the fix" and "changing this
+signature breaks these nine call sites", which is a different kind of answer than any
+retrieval tool gives, and the one the rest of the program is built around.
 
 ## The Problem: Finding the Code That Actually Runs
 
@@ -99,8 +108,9 @@ State the value against the three things you would otherwise reach for, stronges
    types and methods; the skeleton render tier removes 39 to 56 percent for an
    architecture view.
 
-Fuse is not only one call. Across a task it is a few cheap calls (survey with `fuse_map`,
-localize with `fuse_localize`, resolve wiring with `fuse_resolve`, review with
+Fuse is not only one call. Across a task it is a few cheap calls (survey with
+`fuse_workspace` (`action=map`), localize with `fuse_find` (`kind=task`), resolve wiring
+with `fuse_find` (`kind=service|request|route|config`), review with
 `fuse_review`) instead of dozens of blind reads, and a `sessionId` means later calls do
 not resend files already returned. A packer dumps once; it cannot refine. See
 [How Fuse works](/docs/concepts/how-fuse-works) and
@@ -125,8 +135,8 @@ makes a different set of choices:
   methods.
 - **Deterministic.** Same index, same answer. Resolution comes from the parsed graph, not
   similarity ranking, so there is no index drift in the answer.
-- **MCP-native.** `fuse mcp serve` is a Model Context Protocol server with eight tools,
-  so the agent fetches resolved context in one call instead of reading files one by one.
+- **MCP-native.** `fuse mcp serve` is a Model Context Protocol server, so the agent verifies
+  edits and fetches resolved context in one call instead of reading files one by one.
 
 ## How It Compares
 
@@ -140,7 +150,7 @@ makes a different set of choices:
 | Keeps the whole public API | Only by including everything | No, partial recall | 99 to 100 percent, verified |
 | Deterministic output | Yes | No, similarity-ranked | Yes |
 | Scope to a task | No | By query only | Localize, resolve, or git change, with graph expansion |
-| Built for agents (MCP) | Rarely | Varies | Eight tools, built in |
+| Built for agents (MCP) | Rarely | Varies | Verify and context verbs, built in |
 | Setup and freshness | None | Build and refresh an index | A persistent index, refreshed on demand |
 
 Fuse is complementary to the other two where their strengths lie. For a polyglot

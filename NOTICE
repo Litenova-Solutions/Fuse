@@ -1,0 +1,15 @@
+Fuse
+Copyright 2026 Litenova Solutions
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product depends on third-party components distributed under their own
+licenses. The NuGet and npm dependency graphs record each component's SPDX
+license expression; those licenses (predominantly MIT and Apache-2.0) are
+compatible with this product's Apache-2.0 license and are not restated here.
+
+Dense retrieval, when enabled, fetches the all-MiniLM-L6-v2 sentence-embedding
+model (Xenova/all-MiniLM-L6-v2) once at index time and caches it locally. That
+model is distributed by its authors under the Apache License, Version 2.0. The
+model is not redistributed as part of this product; it is downloaded on demand
+from its upstream source.

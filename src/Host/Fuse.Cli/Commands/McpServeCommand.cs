@@ -44,6 +44,9 @@ public sealed class McpServeCommand
         // detached background task outlives a request; making it the default is deferred with the resident-Roslyn-
         // workspace work that lets the host manage the background task's lifetime cleanly.
         FuseTools.BackgroundSemanticUpgradeEnabled = BackgroundUpgradeOptIn();
+        // The resident host owns the background semantic-upgrade jobs' lifetime (N3): failures go to stderr (never
+        // the JSON-RPC stdout), and shutdown drains them so none is orphaned. Replaces the old fire-and-forget path.
+        FuseTools.UpgradeSupervisor = new Mcp.SemanticUpgradeSupervisor(Console.Error.WriteLine);
 
         // Tell the client (or auto-apply, when FUSE_AUTO_UPDATE is set) that a newer Fuse is available. Writes to
         // stderr so it never corrupts the JSON-RPC stream on stdout; cache-first, so it does not delay serving.
@@ -75,36 +78,102 @@ public sealed class McpServeCommand
                 options.ServerInstructions =
                     "Fuse is a .NET semantic context engine for AI agents. It indexes a workspace with Roslyn and " +
                     "serves precise, provenance-backed context from a typed semantic graph.\n\n" +
+                    "THE LOOP: after an edit, fuse_check; before a signature change, fuse_impact; before done, fuse_review.\n\n" +
                     "Use fuse_review for PR/change work when a git base exists.\n" +
-                    "Use fuse_resolve when a task names a route, interface, service, request, handler, or config section.\n" +
-                    "Use fuse_localize for open-ended tasks.\n" +
-                    "Use fuse_context only after localize/resolve unless the user asks for one-shot context.\n" +
-                    "Use fuse_find for exact text/path/symbol lookup.\n\n" +
+                    "Use fuse_find with kind=service|request|route|config when a task names wiring, or kind=task for an open-ended task.\n" +
+                    "Use fuse_context only after fuse_find unless the user asks for one-shot context.\n" +
+                    "Use fuse_find with kind=symbol|path|text for exact lookup.\n\n" +
                     "TOOLS:\n" +
-                    "- fuse_index: Build or refresh the persistent semantic index. The read tools build it on first use.\n" +
-                    "- fuse_map: Workspace map (symbols, routes, counts). The cheap first call.\n" +
-                    "- fuse_localize: Rank candidate files/symbols for a task. No bodies.\n" +
-                    "- fuse_resolve: Resolve wiring (service->impl, request->handler, route->action, config->options, symbol). No bodies.\n" +
+                    "- fuse_workspace: Workspace status and lifecycle. action=status (index mode, verify grade, freshness), index (build/refresh), map (symbols/routes/counts), doctor (per-project load diagnosis), apply (write a proposed file edit - the one explicit tree-write path, D2; a dry run unless write=true, refuses paths outside the root). The cheap first call.\n" +
+                    "- fuse_find: The find union. kind=symbol|path|text|all (exact lookup); service|request|route|config (wiring to impl/handler/action/options); signatures (a symbol's exact signature); neighbors (callers and implementers); task (rank candidate files, graded refuse-and-route). No bodies.\n" +
                     "- fuse_context: Emit source context (mixed tiers, manifest, provenance) for selected seeds.\n" +
                     "- fuse_review: Diff-first semantic impact and packed context for a change.\n" +
-                    "- fuse_find: Exact symbol/path/text lookup.\n" +
-                    "- fuse_reduce: Compact a known set of files or raw content.";
+                    "- fuse_impact: Blast radius for a symbol (callers, implementers, referencers) before an edit; also package:{id,fromVersion,toVersion} for a NuGet upgrade break set.\n" +
+                    "- fuse_check: Speculatively typecheck a proposed single-file edit (oracle-grade; abstains otherwise).\n" +
+                    "- fuse_test: Run the covering tests for a symbol (build-grade, scoped by filter).\n" +
+                    "- fuse_refactor: Compiler-executed, verify-gated refactors staged as a diff (rename, add/remove/reorder-parameter, add-cancellation-token, extract-interface, move-type, apply-codefix).\n" +
+                    "- fuse_reduce: Compact a known set of files or raw content (the one utility outside the loop).";
             })
             .WithStdioServerTransport()
             .WithTools<FuseTools>()
-            // Register the deprecation shims for the retired V2 tool names so a client that cached the old
-            // surface across an upgrade gets an actionable message instead of an opaque Unknown tool error.
-            .WithTools<FuseDeprecatedTools>()
-            .WithResources<FuseResources>();
+            .WithResources<FuseResources>()
+            // Register the playbook prompts (U3): selectable, anchored plans that teach the verified-edit loop.
+            .WithPrompts<FusePrompts>();
 
-        await builder.Build().RunAsync(context.CancellationToken);
+        var app = builder.Build();
+
+        // Resident workspace (S1) is opt-in for now (FUSE_RESIDENT truthy), default off so the shipped serve path
+        // stays byte-identical until the latency gate promotes it. When on, warm the served root in the background
+        // (never blocking startup) so fuse_check answers resident-grade from the held compilation, watch the tree
+        // to keep it current, and project the changed cone into the store so store-backed reads reflect edits; a
+        // bulk change above the storm threshold evicts to store-backed rather than serving stale. Wired after Build
+        // so the SemanticIndexer (used for the store projection) is resolvable from the host services. Promotion to
+        // default-on with the recorded latency and single-writer validation is the S1 gate.
+        // Shared daemon (G5), opt-in via FUSE_DAEMON: instead of holding its own resident workspace, serve ensures
+        // one shared `fuse host` daemon runs for this root (spawning it on demand; the daemon's single-instance
+        // lock resolves any race) and delegates resident-grade checks to it over the pipe, so one warm compilation
+        // serves every client. Falls back to an in-process workspace when the daemon cannot start.
+        var daemonRoot = Path.GetFullPath(Environment.CurrentDirectory);
+        var delegatedToDaemon = false;
+        if (DaemonOptIn())
+        {
+            var supervisor = new Rpc.DaemonSupervisor(
+                ct => Rpc.FuseHostClient.IsServingAsync(daemonRoot, TimeSpan.FromMilliseconds(500), ct),
+                () => Rpc.DaemonProcessLauncher.Spawn(daemonRoot, idleMinutes: 30));
+            var outcome = await supervisor.EnsureRunningAsync(TimeSpan.FromSeconds(20), context.CancellationToken);
+            if (outcome != Rpc.DaemonSupervisor.Outcome.FailedToStart)
+            {
+                FuseTools.ResidentWorkspaces = new Rpc.RemoteResidentWorkspaceProvider();
+                delegatedToDaemon = true;
+                Console.Error.WriteLine($"Fuse serve: resident workspace delegated to the shared daemon for {daemonRoot} ({outcome}).");
+            }
+            else
+            {
+                Console.Error.WriteLine($"Fuse serve: could not start a daemon for {daemonRoot}; serving in-process.");
+            }
+        }
+
+        // Own resident workspace (S1) when not delegating to a daemon and FUSE_RESIDENT is opt-in.
+        using var residentWatcher = !delegatedToDaemon && ResidentWorkspaceHosting.OptIn()
+            ? new DebouncedFileWatcher(daemonRoot, recursive: true, cancellationToken: context.CancellationToken)
+            : null;
+        using var resident = residentWatcher is null
+            ? null
+            : ResidentWorkspaceHosting.Enable(
+                daemonRoot, residentWatcher,
+                app.Services.GetRequiredService<Fuse.Semantics.SemanticIndexer>(), Console.Error.WriteLine, context.CancellationToken);
+
+        try
+        {
+            await app.RunAsync(context.CancellationToken);
+        }
+        finally
+        {
+            // Cancel and drain in-flight background semantic upgrades so shutdown leaves no orphaned task.
+            await FuseTools.UpgradeSupervisor.DisposeAsync();
+        }
     }
 
-    // The background semantic upgrade is opt-in: FUSE_BG_UPGRADE set to a truthy value (1/true/yes/on) enables
-    // the syntax-first cold start; otherwise the first read indexes synchronously.
+    // C3: syntax-first cold start with a supervised background semantic upgrade is default-ON in `mcp serve`, so a
+    // first read returns in seconds (syntax tier) while the semantic/tier-1 graph builds behind it, supervised so
+    // shutdown cancels and drains it (N3). Opt out with FUSE_BG_UPGRADE=0 (or false/no/off) to index synchronously
+    // on the first read. The CLI `fuse index` is always synchronous regardless of this flag.
     private static bool BackgroundUpgradeOptIn()
     {
         var value = Environment.GetEnvironmentVariable("FUSE_BG_UPGRADE");
+        if (value is null)
+            return true;
+        return !(value.Equals("0", StringComparison.Ordinal)
+                 || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("off", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // The shared-daemon delegation (G5) is opt-in via FUSE_DAEMON truthy, default off, so the shipped serve path
+    // holds its own workspace unchanged until the daemon consolidation is promoted (its RSS and one-truth gate).
+    private static bool DaemonOptIn()
+    {
+        var value = Environment.GetEnvironmentVariable("FUSE_DAEMON");
         return value is not null
                && (value.Equals("1", StringComparison.Ordinal)
                    || value.Equals("true", StringComparison.OrdinalIgnoreCase)

@@ -16,7 +16,17 @@ public static class WorkspaceIndexSchema
     ///     The current schema version. The existing cache database carries a lower or absent version,
     ///     so it is dropped and rebuilt on the first V3 run.
     /// </summary>
-    public const int TargetVersion = 14;
+    /// <remarks>
+    ///     Version 15 (v4 R5): the semantic analyzers now emit type-level <c>references</c> edges. That is an
+    ///     extraction-contract change (a stale index has no reference edges), so the version bump forces a
+    ///     rebuild rather than serving an index missing the new edges.
+    ///     <para>
+    ///     Version 16 (v4.1 K1): the dense embedding channel was retired. The <c>chunk_embeddings</c> table is
+    ///     dropped from the schema; the version bump forces a stale index that still carries the table to rebuild
+    ///     without it (the migrator drops and recreates, so the bump is the whole migration).
+    ///     </para>
+    /// </remarks>
+    public const int TargetVersion = 16;
 
     /// <summary>
     ///     Database-level pragmas applied once at schema creation. WAL journaling and
@@ -207,11 +217,18 @@ public static class WorkspaceIndexSchema
         CREATE INDEX IF NOT EXISTS idx_cochange_a ON git_cochange(path_a);
         CREATE INDEX IF NOT EXISTS idx_cochange_b ON git_cochange(path_b);
 
-        CREATE TABLE IF NOT EXISTS chunk_embeddings(
-          chunk_id TEXT PRIMARY KEY,
-          dim INTEGER NOT NULL,
-          vector BLOB NOT NULL,
-          FOREIGN KEY(chunk_id) REFERENCES chunks(chunk_id) ON DELETE CASCADE
+        CREATE TABLE IF NOT EXISTS check_sessions(
+          session_id TEXT PRIMARY KEY,
+          root TEXT NOT NULL,
+          baseline_json TEXT NOT NULL,
+          updated_utc TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS claim_ledger(
+          session_id TEXT PRIMARY KEY,
+          root TEXT NOT NULL,
+          claims_json TEXT NOT NULL,
+          updated_utc TEXT NOT NULL
         );
         """;
 

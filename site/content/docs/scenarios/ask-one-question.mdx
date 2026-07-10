@@ -11,13 +11,13 @@ question names a concrete piece of wiring or is open-ended.
 
 ## A Named Question: Resolve
 
-When the question names a service, request, route, or config section, `fuse_resolve`
-answers it deterministically by walking the graph to the real target:
+When the question names a service, request, route, or config section, `fuse_find` with the
+matching `kind` answers it deterministically by walking the graph to the real target:
 
 ```text
-fuse_resolve(path="C:/Projects/MyApp/src", request="CreateOrderCommand")
-fuse_resolve(path="C:/Projects/MyApp/src", route="POST /api/orders/{id}")
-fuse_resolve(path="C:/Projects/MyApp/src", service="IOrderService")
+fuse_find(path="C:/Projects/MyApp/src", kind="request", query="CreateOrderCommand")
+fuse_find(path="C:/Projects/MyApp/src", kind="route", query="POST /api/orders/{id}")
+fuse_find(path="C:/Projects/MyApp/src", kind="service", query="IOrderService")
 ```
 
 Each returns the resolved target (the handler, the action, the concrete implementation)
@@ -26,13 +26,14 @@ type that actually runs, not the one a name matches.
 
 ## An Open-Ended Question: Localize
 
-When the question is a topic rather than a name, `fuse_localize` ranks the files and
-symbols most likely to hold the answer, with reasons and token costs and no bodies:
+When the question is a topic rather than a name, `fuse_find` with `kind=task` ranks the
+files and symbols most likely to hold the answer, with reasons and token costs and no bodies:
 
 ```text
-fuse_localize(
+fuse_find(
   path="C:/Projects/MyApp/src",
-  task="where is the discount applied at checkout?"
+  kind="task",
+  query="where is the discount applied at checkout?"
 )
 ```
 
@@ -43,7 +44,7 @@ generic-packer dump at the same single call.
 
 ## When the Answer Is Not Confident: Refine and Retry
 
-`fuse_localize` grades its answer. When a candidate stands clear it returns a confident
+`fuse_find` with `kind=task` grades its answer. When a candidate stands clear it returns a confident
 tight set. When it does not, it refuses to guess and instead hands back a **navigation map**
 so you can sharpen the question and call again:
 
@@ -61,7 +62,7 @@ that fits, and reissue the call with a structured input. Here the `DiscountPolic
 the obvious probe:
 
 ```text
-fuse_localize(path="C:/Projects/MyApp/src", symbol="DiscountPolicy")
+fuse_find(path="C:/Projects/MyApp/src", kind="symbol", query="DiscountPolicy")
 ```
 
 A title that names no code at all (a merge note, a dependency bump, or an empty query)
@@ -80,8 +81,8 @@ fuse_context(path="C:/Projects/MyApp/src", requests=["CreateOrderCommand"], maxT
 
 ## When to Use It
 
-Use `fuse_resolve` when the question names wiring you can quote (an interface, a request,
-a route, a config section) and `fuse_localize` when it is a topic. The full progressive
+Use `fuse_find` with a wiring `kind` (`service`, `request`, `route`, `config`) when the
+question names wiring you can quote, and `fuse_find` with `kind=task` when it is a topic. The full progressive
 flow for a larger task is in [Context for an agent](/docs/scenarios/context-for-an-agent).
 
 ## Related Concept

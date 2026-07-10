@@ -3,16 +3,16 @@ title: Connect to your AI
 description: Register Fuse with Claude Code, Cursor, or GitHub Copilot so your agent fetches scoped context directly.
 ---
 
-Fuse runs as a Model Context Protocol (MCP) server. Once registered, your agent gets
-eight tools for indexing a workspace, surveying it, localizing a task, resolving .NET
-wiring, planning context, and reviewing a change, all returning scoped, provenance-backed
-context in a single call.
+Fuse runs as a Model Context Protocol (MCP) server. Once registered, your agent gets a set
+of verbs for checking a proposed edit against the compiler, computing a change's blast
+radius, resolving .NET wiring, and planning scoped context, all returning graded,
+provenance-backed answers in a single call.
 
 You do not run `fuse mcp serve` manually for normal use. Fuse uses stdio MCP: your AI client
 launches `fuse mcp serve` as a child process when MCP is enabled, talks JSON-RPC over
 stdin/stdout, and tears the process down when the session ends. Your job is a one-time
-registration; after that the agent calls `fuse_localize`, `fuse_review`, and the rest
-whenever it needs context.
+registration; after that the agent calls `fuse_check`, `fuse_review`, and the rest
+whenever it needs an answer.
 
 ## Register in One Command
 
@@ -139,21 +139,22 @@ Use `--scope user` instead of `--scope project` to make Fuse available in every 
 
 When your client needs Fuse, it spawns `fuse mcp serve` and keeps it alive for the session.
 Stdout carries the protocol byte stream, so all logging is routed to stderr. Each read call
-returns its result in the tool response; only `fuse_index` writes (the index). The server
+returns its result in the tool response; only `fuse_workspace` with `action=index` writes (the index). The server
 keeps the on-disk index at `.fuse/fuse.db` warm across calls, so a multi-call task pays the
 analysis cost once.
 
-## The Eight Tools
+## The Nine Tools
 
 | Tool | Use it to |
 |------|-----------|
-| `fuse_index` | Build or refresh the persistent semantic index (optional; read tools build it on first use). |
-| `fuse_map` | Survey the workspace cheaply: indexed symbols, routes, and counts, no bodies. |
-| `fuse_localize` | Rank candidate files and symbols for a task, with reasons and token costs, no bodies. |
-| `fuse_resolve` | Resolve .NET wiring: a service to its implementation, a request to its handler, a route to its action, a config to its options, or a symbol to its declaration. |
+| `fuse_workspace` | Status and lifecycle: `action=status` (index mode, freshness), `index` (build or refresh the persistent semantic index), `map` (survey symbols, routes, and counts), `doctor`, and `apply` (write a proposed single-file edit to the working tree). |
+| `fuse_find` | The find union: `kind=symbol\|path\|text\|all` for exact lookup, `service\|request\|route\|config` to resolve .NET wiring to its target, `signatures` for a symbol's signature, `neighbors` for its callers and implementers, and `task` to rank candidate files for a task. No bodies. |
 | `fuse_context` | Plan and emit context for a set of seeds: source bodies at mixed render tiers, a manifest, and per-file provenance. |
+| `fuse_impact` | Blast radius for a symbol: callers, implementers, and referencing types from the persisted graph, plus a NuGet upgrade break set. |
+| `fuse_check` | Typecheck a proposed single-file edit and return the diagnostics it would produce, with a machine-applicable fix on API-shape diagnostics, each answer stamped with its verification grade. |
+| `fuse_test` | Run the covering tests for a symbol - the tests that reach it through the graph - scoped by filter so the whole suite is never run. |
+| `fuse_refactor` | Run a compiler-executed, verify-gated refactor staged as a diff: rename, add or remove a parameter, extract an interface, move a type, apply a code fix. |
 | `fuse_review` | Review the semantic impact of a change since a git base: changed files, blast radius, and packed context. |
-| `fuse_find` | Exact lookup over the index: a symbol, a path fragment, or full-text. |
 | `fuse_reduce` | Compact a specific set of files, or raw content, you already identified, without indexing a directory. |
 
 The full parameter list for each is in the [MCP tools reference](/docs/reference/mcp-tools),

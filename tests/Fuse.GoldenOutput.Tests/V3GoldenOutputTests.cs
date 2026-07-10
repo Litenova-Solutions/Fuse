@@ -63,6 +63,26 @@ public sealed class V3GoldenOutputTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ReviewWithClaimsEmitIsStable()
+    {
+        // U2: the review payload carrying a graded-claims block. The block is a deterministic rendered string the
+        // tool computes (changed-file count is git-truth/verified; the API-surface delta is graph-grade). Pinning it
+        // here fixes the manifest shape (claims after the api-delta, ahead of the seeds).
+        var engine = new SemanticRetrievalEngine(_store, new StubChangeSource(["src/OrderService.cs"]));
+        var plan = await engine.ReviewAsync(new ReviewRequest(_root, "origin/main"), CancellationToken.None);
+        var rendered = await Renderer().RenderAsync(plan, _root, CancellationToken.None);
+        var claims = ClaimLedger.Render(
+        [
+            Claim.FromCompiler("1 changed file(s) are seeded as must-keep", "git diff origin/main"),
+            Claim.FromGraph("the change alters the public API surface (see the api-delta section)", "graph: public-API delta (T2)"),
+        ]);
+        var output = SemanticContextEmitter.Emit(
+            plan, rendered, ContextOutputFormat.Xml, changedSince: "origin/main", claimsSection: claims);
+
+        GoldenOutputAssert.AssertMatches("v3-review-claims", output);
+    }
+
+    [Fact]
     public async Task MapIsStable()
     {
         var output = await new WorkspaceMapRenderer(_store).RenderAsync(MapDetail.All, 200, CancellationToken.None);

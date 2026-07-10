@@ -1,0 +1,64 @@
+---
+title: Latency SLOs
+description: Measured P50 and P95 latency for Fuse's read and verify verbs, sourced from the recorded benchmark result files.
+---
+
+The argument for a warm semantic index over grep plus `dotnet build` is a page of measured latencies. This page publishes them as a commitment: every number is traceable to a recorded result file under `tests/benchmarks/results`, regenerated with `fuse eval performance` and the verify commands. Latencies are environment-dependent; the numbers here are one development-class machine (a warm run on Windows over the pinned NodaTime checkout) and are read as within-environment SLOs and a regression fence, not a cross-machine guarantee.
+
+## Warm read verbs (two scales)
+
+The persistent index is warm; each verb is the primitive the matching MCP tool calls, timed over 25 iterations, at two scales: NodaTime (512 files, 7,657 symbols, `performance.json`) and eShopOnWeb (287 files, 1,216 symbols, `performance-eshop.json`).
+
+| Verb (tool) | NodaTime P50 | NodaTime P95 | eShopOnWeb P50 | eShopOnWeb P95 |
+|-------------|----:|----:|----:|----:|
+| Exact symbol lookup (`fuse_find`) | 2.0 ms | 2.3 ms | 0.1 ms | 0.2 ms |
+| Blast radius (`fuse_impact`) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
+| Localize (`fuse_find` kind=task) | 23.1 ms | 24.0 ms | 2.6 ms | 4.2 ms |
+| Resolve symbol (`fuse_find` kind=service) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
+| Review plan (`fuse_review`) | 95.6 ms | 100.2 ms | 38.3 ms | 41.6 ms |
+| Single-file incremental re-index | 19.6 ms | 22.1 ms | n/a | n/a |
+
+Every warm read is well inside a sub-second budget, and the verbs scale down with the repo (eShopOnWeb, a third of NodaTime's symbols, is proportionally faster). `fuse_impact` reads ~0 ms here because this checkout indexes in syntax mode (no semantic graph, so the blast-radius query returns an empty set immediately); on a semantically loaded checkout the query walks real edges and costs more, bounded by the neighborhood size. That syntax-mode ceiling is the same one described on the [benchmarks page](/docs/project/benchmarks); it bounds the recall suites too.
+
+## Verify verbs (NodaTime, `resident-latency.json`)
+
+`fuse_check` answers from a live resident workspace when one serves the root. The operations it invokes, timed over 25 iterations against the held compilations:
+
+| Verify operation | P50 | P95 | Gate |
+|------------------|----:|----:|------|
+| Delta check, analyzers off (S1 speculative typecheck) | 31.2 ms | 42.4 ms | P95 < 1000 ms: PASS |
+| Delta mode, whole-state diff (S2) | 203.9 ms | 699.3 ms | P95 < 1000 ms: PASS |
+| Delta check, analyzers on (S4, 284 analyzers) | 871.8 ms | 886.9 ms | (CI-parity, verify-class only) |
+
+Analyzers are off on the hot per-edit delta path (it stays well under a second) and on for an explicit single-file verify, where the measured analyzer cost of hundreds of milliseconds buys CI parity. The resident workspace warms once (build plus rehydrate) at 14,092 ms and holds the compilations at 162 MB RSS for the NodaTime checkout.
+
+## Test execution (`testexec.json`)
+
+The build-grade covering-test runner (behind `fuse_test`) runs the selected covering subset through the real `dotnet test`:
+
+| Operation | Median |
+|-----------|-------:|
+| Covering-test run (build-grade, incremental) | 1,792 ms |
+
+The first run pays the full build (about 12 s cold); each subsequent incremental run, the loop case where one file changed, is about 1.8 s, under the 10-second budget. The sub-second emit fast-path (run the covering subset in-process against the emitted assembly, no build) is a named follow-up.
+
+## Cold start (`performance.json`)
+
+| Milestone | Time |
+|-----------|-----:|
+| Syntax tier served | 19,139 ms |
+| Semantic-ready (background upgrade) | +90,150 ms |
+| Full synchronous semantic index (`fuse index`) | 26,068 ms |
+
+Cold start serves the syntax tier first (symbols, find, localize) in about 19 seconds with no MSBuild, then upgrades the semantic graph in the background; the explicit `fuse index` is always a synchronous full pass.
+
+## How these are regenerated
+
+```bash
+fuse eval performance --repo NodaTime     # warm reads + cold start -> performance.json
+fuse eval performance --repo eShopOnWeb    # second scale point -> performance-eshop.json
+fuse testexec                              # build-grade test execution -> testexec.json
+fuse resident-latency                      # verify verbs -> resident-latency.json
+```
+
+The one verb without a dedicated per-tool timer here is test selection; its latency is the covering-tests query inside `fuse_impact` (part of the ~0 ms blast-radius read), and a standalone timer for it is follow-up work. Every other number above is a dedicated measurement recorded on this environment.

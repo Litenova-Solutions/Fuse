@@ -72,8 +72,8 @@ This is non-negotiable and is itself part of the pitch (a tool that tells you wh
 Use these exact, recorded figures; re-verify against `tests/benchmarks/results` before quoting, and prefer the outcome framing over the raw ratio.
 
 - Change-impact context (`review.json`, 53 PRs): a PR's scoped context in a median 958 returned tokens at 100 percent changed-file recall and 79.8 percent precision.
-- .NET wiring resolution (Suite A, `semantics.json`): the extracted graph matches the hand-built edge ground truth exactly on the wiring fixture (22 of 22 edges, recall and precision 1.0).
+- .NET wiring resolution (Suite A, `semantics.json`): the extracted graph matches the hand-built edge ground truth exactly on the wiring fixture (23 of 23 edges, recall and precision 1.0).
 - Warm latency (`performance.json`): warm localize and resolve in tens of milliseconds or less once the index is warm.
-- Token reduction (`reduction.json`): the Roslyn skeleton keeps essentially all public API while removing roughly 37 to 55 percent of tokens at skeleton level (a support number, not the headline).
+- Token reduction (`reduce.json`): the Roslyn skeleton keeps essentially all public API while removing roughly 38 to 44 percent of tokens at skeleton level (a support number, not the headline).
 
 State the weak number too when completeness matters: open-ended localization from a bare title is about 15 percent changed-file recall on the current corpus (`localize.json`), which is why the contract refuses low-signal input and routes it to a better query.

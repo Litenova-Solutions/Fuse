@@ -42,15 +42,15 @@ The `performance` suite (`fuse eval performance`, `performance.json`) indexes a 
 | Operation | P50 | P95 | Target |
 |-----------|----:|----:|-------:|
 | Warm resolve (symbol) | sub-millisecond | sub-millisecond | under 100 ms |
-| Warm localize (query, 20 candidates) | 61 ms | 71 ms | under 500 ms |
-| Warm review plan (25K budget, vs HEAD~1) | 110 ms | 131 ms | under 2 s |
-| Single-file incremental re-index | 23 ms | 25 ms | under 1 s |
+| Warm localize (query, 20 candidates) | 42 ms | 55 ms | under 500 ms |
+| Warm review plan (25K budget, vs HEAD~1) | 117 ms | 136 ms | under 2 s |
+| Single-file incremental re-index | 24 ms | 28 ms | under 1 s |
 
-Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. The cold index of the same repository took about 70 seconds, which includes the MSBuild workspace load; cold index is paid once and amortized over every warm call.
+Every warm operation sits inside its target. A warm read is a SQLite lookup plus a bounded candidate merge or graph walk, not a re-parse. Single-file incremental re-index clears and re-extracts one file's syntax rows (symbols, chunks, full-text, routes); it does not recompute cross-file semantic graph edges, which a full re-index refreshes. This incremental path now backs the on-open freshness reconcile (see [operator internals](/docs/internals/operator)): a warm read reconciles the files edited since the index was written before answering, so the single-file re-index cost is paid per dirty file rather than never. The cold index of the same repository took about 58 seconds; NodaTime's main checkout loads in syntax mode under the current MSBuildWorkspace loader (see the v4 N4 bake-off), so this is the syntax pass rather than a full semantic load. Cold index is paid once and amortized over every warm call.
 
 ### Cold start: syntax-first, then semantic in the background
 
-The cold index is dominated by the MSBuild workspace load, not by the syntax extraction. The `mcp serve` host can serve the syntax tier on the first read (no MSBuild, no embedding) and upgrade to the full semantic graph in the background: the first pass produces a usable full-text and symbol index, sets the index mode to `syntax`, and flags `semantic_pending` so a caller knows the graph is not yet present; the host then runs the full semantic pass on a background store and clears the flag when it lands. Per-file syntax extraction runs in parallel (bounded to the processor count) with deterministic output. This background upgrade is opt-in (`FUSE_BG_UPGRADE=1`); by default the first read indexes synchronously.
+The cold index is dominated by the MSBuild workspace load, not by the syntax extraction. The `mcp serve` host can serve the syntax tier on the first read (no MSBuild, no embedding) and upgrade to the full semantic graph in the background: the first pass produces a usable full-text and symbol index, sets the index mode to `syntax`, and flags `semantic_pending` so a caller knows the graph is not yet present; the host then runs the full semantic pass on a background store and clears the flag when it lands. Per-file syntax extraction runs in parallel (bounded to the processor count) with deterministic output. This background upgrade is opt-in (`FUSE_BG_UPGRADE=1`); by default the first read indexes synchronously. When enabled, the upgrade jobs are supervised by the resident host rather than fire-and-forget: each runs under a cancellation token tied to host shutdown, a failure is logged to stderr rather than swallowed, and shutdown cancels and drains the in-flight jobs so none is orphaned.
 
 Measured on NodaTime (512 files, 7,657 symbols, restore on) with `fuse eval performance --repo NodaTime --restore` (`performance.json`):
 
@@ -59,7 +59,7 @@ Measured on NodaTime (512 files, 7,657 symbols, restore on) with `fuse eval perf
 | Syntax tier served (first answer, no MSBuild, no embedding) | about 20 seconds |
 | Full semantic pass (background, MSBuild + embedding) | about 70 seconds |
 
-With the syntax-first path the first answer does not wait on the MSBuild load: time to a usable syntax-tier index is about 20 seconds versus about 70 seconds for the full pass, a 3.5x reduction. The residual 20 seconds is the file scan, the parallel parse, and the full-text index construction (the subword, stem, and comment fields computed per chunk), plus first-call JIT, not MSBuild. The explicit `fuse index` command and the `fuse_index` tool stay synchronous full-semantic passes, since those are deliberate build-the-index calls where waiting is expected.
+With the syntax-first path the first answer does not wait on the MSBuild load: time to a usable syntax-tier index is about 20 seconds versus about 70 seconds for the full pass, a 3.5x reduction. The residual 20 seconds is the file scan, the parallel parse, and the full-text index construction (the subword, stem, and comment fields computed per chunk), plus first-call JIT, not MSBuild. The explicit `fuse index` command and the `fuse_workspace` tool's `action=index` stay synchronous full-semantic passes, since those are deliberate build-the-index calls where waiting is expected.
 
 Timings are environment-dependent (machine, disk, index mode), so read them as an order-of-magnitude signal rather than a fixed cross-machine number. The numbers above run through an in-process warm store; the `fuse mcp serve` host holds the same store resident, so a resident session sees the same warm latencies after its one-time startup.
 

@@ -134,6 +134,10 @@ namespace Microsoft.Extensions.DependencyInjection
         // Scrutor-style decoration registration.
         public static IServiceCollection Decorate<TService, TDecorator>(this IServiceCollection services)
             where TDecorator : TService => services;
+
+        // Keyed DI (net8+): the service key is a value argument; the service and implementation are the type args.
+        public static IServiceCollection AddKeyedScoped<TService, TImplementation>(this IServiceCollection services, object serviceKey)
+            where TImplementation : class, TService => services;
     }
 
     public static class OptionsServiceCollectionExtensions

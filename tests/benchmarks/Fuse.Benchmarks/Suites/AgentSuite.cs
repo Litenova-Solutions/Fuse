@@ -44,6 +44,15 @@ public sealed partial class AgentSuite : IEvalSuite
         var fuseExe = Environment.ProcessPath;
         var notes = new List<string> { $"model {model}", $"max turns {MaxTurns}", "arms: native, fuse" };
 
+        // C4 enforcement: refuse a model-driven run unless the corpus is proven healthy (fresh, passing
+        // corpus-health.json), naming the reason instead of spending model time on a corpus that does not build.
+        var gate = await CorpusHealthGate.CheckAsync(options.BenchRoot, options.ResultsRoot, cancellationToken);
+        if (!gate.Allowed)
+        {
+            notes.Add($"corpus-health gate: {gate.Reason}");
+            return Skipped(notes);
+        }
+
         if (!ToolOnPath("claude"))
         {
             notes.Add("claude CLI not found on PATH; agent suite requires it. Skipped (omit, never stub).");

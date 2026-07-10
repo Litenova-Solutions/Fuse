@@ -3,9 +3,12 @@
   "icon": "BookText",
   "pages": [
     "commands",
+    "environment-remediation",
+    "capture-bundles",
     "options",
     "mcp-tools",
     "mcp-resources",
+    "latency",
     "reducers",
     "templates",
     "tokenizers",

@@ -17,7 +17,9 @@ Cli.Ext.ConfigureServices(services =>
     services.AddTransient<LocalizeCommand>();
     services.AddTransient<ContextCommand>();
     services.AddTransient<ReviewCommand>();
+    services.AddTransient<ImpactCommand>();
     services.AddTransient<DiagnosticsCommand>();
+    services.AddTransient<DoctorCommand>();
     services.AddTransient<FindCommand>();
     services.AddTransient<EvalCommand>();
     services.AddTransient<InitCommand>();
@@ -26,7 +28,6 @@ Cli.Ext.ConfigureServices(services =>
     services.AddSingleton<McpInstallService>();
     services.AddTransient<McpServeCommand>();
     services.AddTransient<ReduceCommand>();
-    services.AddTransient<ModelsCommand>();
 });
 
 await Cli.RunAsync<FuseCliCommand>(args);

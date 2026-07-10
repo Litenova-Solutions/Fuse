@@ -521,6 +521,7 @@
     }
   ],
   "notes": [
+    "PROVENANCE CAVEAT (v4 N2, finding 8): 10 of the 12 sampled PRs are from the retired 5-library corpus (AutoMapper, FluentValidation, MediatR, NewtonsoftJson, Serilog); only the 2 eShopOnWeb PRs are current-corpus. This file is retained as the explicit DIRECTIONAL pre-R4 record only, not a current-corpus headline. It is superseded by the R4 task-resolution suite (loop metrics). Do not quote its recall/token figures as a current benchmark.",
     "model claude-sonnet-4-6",
     "max turns 25",
     "arms: native, fuse",

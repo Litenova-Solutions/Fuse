@@ -1,0 +1,168 @@
+{
+  "suite": "checkgate",
+  "description": "Suite F: fuse_check false-green and false-red rates over known-good and known-bad edits.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 8,
+    "recall": 1,
+    "recallCiLow": 0,
+    "recallCiHigh": 0,
+    "precision": 1,
+    "f1": 1,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "good-equivalent-rewrite",
+      "repo": "checkgate",
+      "category": "good",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "good-equivalent-rewrite"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "good-added-overload",
+      "repo": "checkgate",
+      "category": "good",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "good-added-overload"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "bad-missing-member",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-missing-member"
+        ],
+        "misses": [],
+        "extras": [
+          "CS1061"
+        ]
+      }
+    },
+    {
+      "id": "bad-wrong-return-type",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-wrong-return-type"
+        ],
+        "misses": [],
+        "extras": [
+          "CS0029"
+        ]
+      }
+    },
+    {
+      "id": "bad-undefined-type",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-undefined-type"
+        ],
+        "misses": [],
+        "extras": [
+          "CS0246"
+        ]
+      }
+    },
+    {
+      "id": "bad-syntax-error",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-syntax-error"
+        ],
+        "misses": [],
+        "extras": [
+          "CS1513"
+        ]
+      }
+    },
+    {
+      "id": "good-comment-only",
+      "repo": "checkgate",
+      "category": "good",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "good-comment-only"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "bad-init-only-assignment",
+      "repo": "checkgate",
+      "category": "bad",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [
+          "bad-init-only-assignment"
+        ],
+        "misses": [],
+        "extras": [
+          "CS8852"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "In-process core: a raw-Roslyn compilation, one document replaced per case, classified with the shipped CheckResult.IsClean rule.",
+    "curated cases 8: correct 8, false-green 0, false-red 0, abstained 0.",
+    "curated false-green rate 0.0%, false-red rate 0.0% (over 8 verified).",
+    "mutation fixture SampleShop: baseline has 13 in-process error(s) [CS0234, CS0246, CS0103]; skipped, not scored (the in-process compilation cannot bind it without its full project references).",
+    "mutation fixture OrderingApp: 1000 verified cases (500 breaking, 500 neutral); false-green 0, false-red 0, abstained 0, correct 1000.",
+    "mutation totals: 1000 cases, false-green 0, false-red 0 (false-green rate 0.00%, false-red rate 0.00% over 1000 verified).",
+    "GATE: PASS (false green 0; mutation false-red rate 0.00% \u003C 1%).",
+    "Tier-1 arm: build-capture worker configured; the in-process gate is the scored measure, the worker path is covered by BuildCaptureCheckTests.",
+    "verify-agreement arm: 24 OrderingApp mutants sampled, 24 comparable (oracle abstained 0, build abstained 0); diagnostic-id agreement 24/24 = 100.0%; verdict (clean/red) agreement 24/24.",
+    "T0 GATE (verify agreement): PASS (100.0% \u003E= 99% on 24 comparable mutants)."
+  ]
+}

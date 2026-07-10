@@ -37,3 +37,9 @@ The core libraries do not depend on the host, and language-specific behavior liv
 ## Pull requests
 
 Keep a change scoped to one part of the pipeline. New public API needs XML docs. Run the three commands above before opening a pull request, and describe what changed and why in the description.
+
+## License and sign-off
+
+Fuse is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text and [NOTICE](NOTICE) for attribution. Contributions are accepted under the same license. The project migrated from MIT to Apache 2.0 in the 4.0 release.
+
+Every commit must carry a Developer Certificate of Origin (DCO) sign-off. Add it with `git commit -s`, which appends a `Signed-off-by: Your Name <you@example.com>` trailer whose name and email match the commit author. The sign-off certifies the DCO 1.1 statement in [DCO.txt](DCO.txt): you attest you have the right to submit the change under the project license. A DCO check runs on every pull request and fails any commit missing a matching trailer; commits merged before adoption are grandfathered. Fuse uses the DCO in place of a Contributor License Agreement.

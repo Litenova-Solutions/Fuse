@@ -25,6 +25,25 @@ public interface IChangeSource
     /// <returns>One <see cref="ChangedFile" /> per changed file.</returns>
     /// <exception cref="ChangeSourceException">Thrown when git is unavailable or the diff fails.</exception>
     Task<IReadOnlyList<ChangedFile>> GetDiffsAsync(string rootDirectory, string since, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns the content of a file as it existed at the base ref, or <c>null</c> when the file did not exist
+    ///     there.
+    /// </summary>
+    /// <param name="rootDirectory">The repository root or working directory.</param>
+    /// <param name="since">The base ref (branch, commit, or <c>HEAD~N</c>).</param>
+    /// <param name="relativePath">The path of the file relative to <paramref name="rootDirectory" />.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The file's content at <paramref name="since" />, or <c>null</c> when it was absent at that ref.</returns>
+    /// <remarks>
+    ///     Backs the T2 public-API delta: review extracts the base-side public symbols of a changed file from this
+    ///     content and diffs them against the current surface, without rehydrating the whole base checkout. The
+    ///     default implementation returns <c>null</c> for sources that cannot read historical content.
+    /// </remarks>
+    /// <exception cref="ChangeSourceException">Thrown when git is unavailable or the read fails.</exception>
+    Task<string?> GetFileContentAtBaseAsync(
+        string rootDirectory, string since, string relativePath, CancellationToken cancellationToken) =>
+        Task.FromResult<string?>(null);
 }
 
 /// <summary>

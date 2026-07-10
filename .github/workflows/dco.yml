@@ -1,0 +1,62 @@
+name: DCO
+
+# Developer Certificate of Origin check (L2). Every commit in a pull request must carry a
+# "Signed-off-by:" trailer whose name and email match the commit author, attesting the DCO 1.1
+# statement in DCO.txt. Contributors add it with `git commit -s`. Commits merged before the DCO
+# adoption merge are grandfathered: the check only inspects commits in the PR range, so history
+# before the cutover is never re-validated.
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  dco:
+    name: Sign-off present on every commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR range
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Signed-off-by trailers
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # Inspect only the commits the PR adds (base..head), so pre-cutover history is grandfathered.
+          commits=$(git rev-list "${BASE_SHA}..${HEAD_SHA}")
+          if [ -z "$commits" ]; then
+            echo "No commits to check."
+            exit 0
+          fi
+          failed=0
+          for sha in $commits; do
+            # Merge commits carry no authored change; skip them.
+            parents=$(git rev-list --parents -n 1 "$sha" | wc -w)
+            if [ "$parents" -gt 2 ]; then
+              echo "skip merge commit $sha"
+              continue
+            fi
+            author_name=$(git show -s --format='%an' "$sha")
+            author_email=$(git show -s --format='%ae' "$sha")
+            expected="Signed-off-by: ${author_name} <${author_email}>"
+            body=$(git show -s --format='%B' "$sha")
+            if ! grep -qiF "$expected" <<<"$body"; then
+              echo "::error::commit $sha is missing a matching sign-off."
+              echo "  expected trailer: $expected"
+              echo "  add it with: git commit --amend -s   (or rebase with -s on the range)"
+              failed=1
+            else
+              echo "ok $sha"
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo ""
+            echo "One or more commits are missing a Developer Certificate of Origin sign-off."
+            echo "See DCO.txt and the contributing guide. Run: git rebase --signoff ${BASE_SHA}"
+            exit 1
+          fi

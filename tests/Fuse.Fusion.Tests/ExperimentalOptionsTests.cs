@@ -61,10 +61,9 @@ public sealed class ExperimentalOptionsTests
     }
 
     [Fact]
-    public void Defaults_DenseRerankOffAndNoChurnPrior()
+    public void Defaults_NoChurnPrior()
     {
         var options = new ExperimentalOptions();
-        Assert.False(options.DenseRerank);
         Assert.Equal(0, options.GitChurnWeight);
         Assert.False(options.SketchHugeFiles);
         Assert.True(options.DowngradeBeforeDrop);

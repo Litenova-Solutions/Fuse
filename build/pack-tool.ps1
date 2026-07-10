@@ -71,7 +71,7 @@ foreach ($rid in $Rids) {
     <version>$Version</version>
     <authors>Litenova Solutions</authors>
     <description>Self-contained runtime asset for Fuse on $rid.</description>
-    <license type="expression">MIT</license>
+    <license type="expression">Apache-2.0</license>
     <projectUrl>https://github.com/Litenova-Solutions/Fuse</projectUrl>
     <tags>fuse;dotnet-tool;self-contained</tags>
   </metadata>

@@ -4,7 +4,7 @@
     <!-- Single source of truth for the product version, applied to every Fuse assembly so the CLI, the host,
          and FuseBuildInfo (the index version stamp) all report the same number. The release tag must match this
          (enforced by build/verify-version.ps1); bump every package in lockstep with build/set-version.ps1. -->
-    <Version>3.2.0</Version>
+    <Version>4.0.0</Version>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -12,6 +12,10 @@
     <Authors>Litenova Solutions</Authors>
     <Company>Litenova Solutions</Company>
     <Copyright>Copyright © Litenova Solutions 2026</Copyright>
+    <!-- SPDX license expression stamped into every packable assembly; the LICENSE file holds the full text.
+         The 4.0 release migrated from MIT to Apache-2.0 (see CHANGELOG). Keep in lockstep with the LICENSE
+         file, the VS Code extension manifest, the winget locale, and the pack-tool nuspec. -->
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/Litenova-Solutions/Fuse.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <!-- The VS Threading analyzers (VSTHRD*) arrive transitively through StreamJsonRpc (the UI host transport)

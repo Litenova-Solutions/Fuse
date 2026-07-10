@@ -159,7 +159,7 @@ public sealed class FusionOrchestrator
 
             stageTimer.Restart();
             var filterResult = await _scopingStage.FilterAsync(
-                request, collectionResult.Files, parallelism, analysisIndex, fuseStore, contentProvider, experimental, cancellationToken);
+                request, collectionResult.Files, parallelism, analysisIndex, contentProvider, experimental, cancellationToken);
             if (filterResult is null)
             {
                 LogStageComplete("scoping", stageTimer.ElapsedMilliseconds, 0, ResolveScopingMode(request));
@@ -269,8 +269,6 @@ public sealed class FusionOrchestrator
             return "focus";
         if (request.Changes is not null)
             return "changes";
-        if (request.Query is not null)
-            return "query";
         return "none";
     }
 

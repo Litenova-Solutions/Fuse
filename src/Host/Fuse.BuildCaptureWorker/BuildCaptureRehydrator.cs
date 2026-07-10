@@ -189,6 +189,42 @@ public sealed class BuildCaptureRehydrator
     }
 
     /// <summary>
+    ///     Merges per-project capture fragments (G4): rehydrates each fragment log and unions the resulting
+    ///     projects into one capture result, so a bundle assembled from fragments carries the same extracted graph
+    ///     as a direct whole-solution capture. Each fragment is a per-project binary (or compiler) log; a fragment
+    ///     that records no C# compilation contributes nothing. The union is deduplicated by
+    ///     <see cref="CapturedProject.FilePath" /> then project name, so a fragment that a dependency build caused
+    ///     to also record a referenced project does not double-count it.
+    /// </summary>
+    /// <param name="fragmentLogPaths">The per-project fragment log paths (binary or compiler logs).</param>
+    /// <param name="cancellationToken">A token to cancel the merge.</param>
+    /// <returns>The unioned capture result, or a failure when no fragment recorded a C# compilation.</returns>
+    public CaptureResult MergeFragments(IReadOnlyList<string> fragmentLogPaths, CancellationToken cancellationToken)
+    {
+        var merged = new List<CapturedProject>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var fragment in fragmentLogPaths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!File.Exists(fragment))
+                continue;
+            var result = RehydrateFromBinlog(fragment, cancellationToken);
+            if (!result.Succeeded)
+                continue;
+            foreach (var project in result.Projects)
+            {
+                var key = string.IsNullOrEmpty(project.FilePath) ? project.Name : project.FilePath;
+                if (seen.Add(key))
+                    merged.Add(project);
+            }
+        }
+
+        return merged.Count == 0
+            ? CaptureResult.Failed("no capture fragment recorded a C# compilation")
+            : CaptureResult.Ok(merged);
+    }
+
+    /// <summary>
     ///     Rehydrates the C# compilations recorded in a binary log. Exposed so a test can rehydrate a binlog it
     ///     produced without re-running a build.
     /// </summary>

@@ -48,7 +48,7 @@ public sealed class IndexCommand
     public bool Force { get; set; }
 
     /// <summary>Rehydrate the index from a portable capture bundle instead of building.</summary>
-    [CliOption(Name = "--from-capture", Description = "Rehydrate the index from a capture bundle directory (produced by fuse capture) instead of building. Refuses an incompatible bundle.")]
+    [CliOption(Name = "--from-capture", Required = false, Description = "Rehydrate the index from a capture bundle directory (produced by fuse capture) instead of building. Refuses an incompatible bundle.")]
     public string? FromCapture { get; set; }
 
     /// <summary>

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- G4: the Fuse.Capture build-target channel package. It ships no assembly - only an MSBuild .targets file
+       under build/, so a `PackageReference` to it makes every build emit a per-project capture fragment. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <PackageId>Fuse.Capture</PackageId>
+    <Description>The Fuse capture build-target channel: emits a per-project capture fragment on every build, which `fuse capture --merge` assembles into a portable capture bundle. The alternative, invasive channel to the CI Action; opt out with FuseCaptureEnabled=false.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Litenova-Solutions/Fuse</PackageProjectUrl>
+    <PackageTags>fuse;capture;msbuild;build-target;compiler-log</PackageTags>
+    <PackageOutputPath>./nupkg</PackageOutputPath>
+    <!-- A build-logic-only package: the .targets goes under build/ so it imports into the consumer's build. -->
+    <DevelopmentDependency>true</DevelopmentDependency>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="build\Fuse.Capture.targets" Pack="true" PackagePath="build\Fuse.Capture.targets" />
+  </ItemGroup>
+
+</Project>

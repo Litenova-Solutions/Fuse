@@ -4,11 +4,11 @@ using Fuse.Cli.Services;
 namespace Fuse.Cli.Commands;
 
 /// <summary>
-///     Registers Fuse as an MCP server with Claude Code, Cursor, or GitHub Copilot.
+///     Registers Fuse as an MCP server with MCP clients (Cursor, Claude Code, and Copilot via the installer; others via manual config).
 /// </summary>
 [CliCommand(
     Name = "install",
-    Description = "Register Fuse as an MCP server with Claude Code, Cursor, or GitHub Copilot.",
+    Description = "Register Fuse with MCP clients (Cursor, Claude Code, Copilot, and others).",
     Parent = typeof(McpCommand))]
 public sealed class InstallCommand
 {

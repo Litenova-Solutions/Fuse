@@ -75,11 +75,9 @@ export default function HomePage() {
               Persistent semantic index and compiler verification for .NET agents
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-fd-muted-foreground">
-              Fuse indexes your solution once in <code className="font-mono text-fd-foreground">.fuse/fuse.db</code>,
-              then answers wiring questions from a typed graph: services to implementations, routes to
-              handlers, callers before a signature change. Before any file is written,{' '}
-              <code className="font-mono text-fd-foreground">fuse_check</code> runs the proposed edit
-              through the compiler.
+              Fuse builds a warm semantic index in <code className="font-mono text-fd-foreground">.fuse/fuse.db</code>,
+              resolves DI, routes, and callers from a typed graph, and typechecks proposed edits through
+              the compiler before write.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -87,49 +85,18 @@ export default function HomePage() {
                 <Link href="/docs/start/connect-your-ai">Connect Fuse</Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
-                <Link href="/docs/project/benchmarks">See the benchmarks</Link>
+                <Link href="/docs/start/quickstart">Quickstart</Link>
               </Button>
             </div>
 
-            <p className="mt-5 max-w-xl text-sm text-fd-muted-foreground">
-              Recorded runs: 0 false greens over 1,000 compiler-labeled edits; 24 of 24 wiring edges
-              resolved on the OrderingApp fixture with no false positives. Symbol lookup: 2.2 ms
-              median on the recorded NodaTime run.
-            </p>
-
-            <div className="mt-8 grid max-w-xl gap-4" aria-label="Install and connect Fuse">
-              <Command label="Install">dotnet tool install -g Fuse</Command>
-              <Command label="Connect and add agent rules">fuse mcp install --rules</Command>
-            </div>
-
-            <p className="mt-5 text-sm text-fd-muted-foreground">
-              Read{' '}
-              <Link
-                href="/docs/start/what-is-fuse"
-                className="font-medium text-fd-foreground underline underline-offset-4"
-              >
-                how the index and verify loop work
-              </Link>{' '}
-              or view the{' '}
-              <a
-                href={githubUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-fd-foreground underline underline-offset-4"
-              >
-                source on GitHub
-              </a>
-              .
-            </p>
-
             <p className="mt-6 flex max-w-xl flex-wrap gap-x-5 gap-y-1 text-xs text-fd-muted-foreground">
-              <span>Works with Cursor, Claude Code, and GitHub Copilot</span>
+              <span>Any MCP client, including Cursor, Claude Code, Copilot, and others</span>
               <span>Apache 2.0</span>
-              <span>Runs locally</span>
+              <span>Local only</span>
             </p>
           </div>
 
-          <HeroExamples />
+          <ToolExchangeExample />
         </div>
       </section>
 
@@ -160,6 +127,10 @@ export default function HomePage() {
               title="Answer in milliseconds"
               body="On the recorded NodaTime run, exact symbol lookup took 2.2 ms at the median, task localization 42 ms, and review planning 117 ms. Timings depend on the machine and repository."
             />
+          </div>
+
+          <div className="mt-10">
+            <WiringResolveExample />
           </div>
 
           <p className="mt-8 text-sm text-fd-muted-foreground">
@@ -369,8 +340,8 @@ export default function HomePage() {
               Warm reads, graded checks, clear abstention
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
-              Fuse is a .NET 10 global tool. Cursor, Claude Code, and compatible clients connect
-              through MCP. Source and the derived index stay on your machine; read and check
+              Fuse is a .NET 10 global tool. Any MCP-compatible agent connects through the
+              protocol, including Cursor, Claude Code, Copilot, and others. Source and the derived index stay on your machine; read and check
               operations do not change working files unless you call the explicit apply path.
             </p>
             <p className="mt-4 text-fd-muted-foreground">
@@ -425,28 +396,6 @@ export default function HomePage() {
   );
 }
 
-function Command({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-fd-muted-foreground">
-        {label}
-      </p>
-      <pre className="overflow-x-auto rounded-lg border border-fd-border bg-fd-card px-4 py-3 font-mono text-sm text-fd-foreground">
-        {children}
-      </pre>
-    </div>
-  );
-}
-
-function HeroExamples() {
-  return (
-    <div className="grid gap-5">
-      <ToolExchangeExample />
-      <WiringResolveExample />
-    </div>
-  );
-}
-
 function ToolExchangeExample() {
   return (
     <div
@@ -480,7 +429,7 @@ function ToolExchangeExample() {
         </div>
 
         <p className="home-example__contrast">
-          Without Fuse, the first version lands and the build fails after the edit.
+          Wiring resolution and branch review are covered in the sections below.
         </p>
       </div>
     </div>

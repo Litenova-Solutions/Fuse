@@ -6,15 +6,15 @@ author: "The Fuse team"
 ---
 
 Fuse v4 indexes your .NET solution locally, resolves DI and routes from a typed graph, and
-lets Claude Code, Cursor, and GitHub Copilot ask the compiler about a proposed C# file
-before writing it. Install and connect from your project directory:
+lets any MCP-compatible coding agent ask the compiler about a proposed C# file before writing
+it. Install and connect from your project directory:
 
 ```bash
 dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
-Reload the coding agent, then ask:
+Reload your MCP client, then ask:
 
 ```text
 Before changing OrderService.cs, check the proposed file with fuse_check and show the

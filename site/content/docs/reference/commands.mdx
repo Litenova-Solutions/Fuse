@@ -3,31 +3,33 @@ title: Commands
 description: The Fuse commands, what each one does, and the options they accept.
 ---
 
-Fuse commands index a workspace into a persistent Roslyn-backed graph and then query that graph: build the index, map it, localize a task, resolve wiring, plan and emit context, review a change, look things up, and report state. A further command (`fuse reduce`) and the server commands (`fuse init`, `fuse mcp install`, `fuse mcp serve`, `fuse host`) round out the surface. This page states what each command does, when to reach for it, and which option set applies.
+Fuse commands build and query a persistent code index, verify edits, run covering tests, and host the MCP server. This page documents the current public CLI. Benchmark-only commands are omitted.
 
 This page is for engineers choosing a command and for maintainers who need the exact dispatch behavior.
 
 ## Purpose and scope
 
-The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace (or `~/.fuse/fuse.db` outside a git repository). The read commands build the index on first use, so an explicit `fuse index` is optional. Running `fuse` with no command prints usage guidance.
+The index lives in `.fuse/fuse.db` inside a repository, or under `FUSE_USER_DATA` outside one. Run `fuse index [path]` before one-shot CLI read commands. MCP read tools build the index on first use. Running `fuse` with no command prints connection and workflow guidance.
 
 ## Summary
 
 | Command | Does | Reads index | Writes index |
 |---------|------|-------------|--------------|
 | `fuse index [path]` | Build or refresh the semantic index | n/a | yes |
-| `fuse map [path]` | Print a workspace map (symbols, routes, counts) | yes | first-use |
-| `fuse localize [path]` | Rank candidate files/symbols for a task (no bodies) | yes | first-use |
-| `fuse resolve [path]` | Resolve a service, request, route, config, or symbol | yes | first-use |
-| `fuse context [path]` | Plan and emit context for seeds (source bodies) | yes | first-use |
-| `fuse review [path]` | Review the semantic impact of a change (or `--handoff` for a PR packet) | yes | first-use |
-| `fuse impact <symbol>` | Blast radius for a symbol (or a NuGet package-upgrade break set) | yes | first-use |
-| `fuse test <symbol>` | Run the covering tests for a symbol, scoped | yes | first-use |
-| `fuse find <query>` | Exact symbol, path, or text lookup | yes | first-use |
+| `fuse map [path]` | Print a workspace map (symbols, routes, counts) | yes | no |
+| `fuse localize [path]` | Rank candidate files and symbols for a task (no bodies) | yes | no |
+| `fuse resolve [path]` | Resolve a service, request, route, config, or symbol | yes | no |
+| `fuse context [path]` | Plan and emit context for seeds (source bodies) | yes | no |
+| `fuse review [path]` | Review a change, or emit a handoff packet | yes | no |
+| `fuse impact <symbol>` | Compute symbol impact or a package upgrade break set | yes | no |
+| `fuse test <symbol>` | Run the covering tests for a symbol | yes | no |
+| `fuse find <query>` | Find an exact symbol, path, or text match | yes | no |
 | `fuse diagnostics [path]` | Report index state | yes | no |
 | `fuse doctor [path]` | Diagnose the semantic load tier and per-project downgrade reasons | no | no |
 | `fuse up [path]` | Report the environment-remediation plan (remedies per failure, workable subset); `--apply` applies the install-free NU1507 overlay and re-attempts the load | no | no |
 | `fuse reduce` | Compact a known set of files or content | no | no |
+| `fuse capture [path]` | Create a portable build-capture bundle | no | no |
+| `fuse verify [path] --ci-parity` | Report or run locally reproducible CI steps | no | no |
 | `fuse init` | Write a configuration file | no | no |
 | `fuse mcp install` | Register Fuse with an MCP client | no | no |
 | `fuse mcp serve` | Run the MCP server | n/a | first-use |
@@ -39,6 +41,8 @@ Build or refresh the persistent semantic index for a workspace. Loads the worksp
 
 ```text
 fuse index ./src
+fuse index . --force
+fuse index . --from-capture ./fuse-capture
 ```
 
 ## fuse map
@@ -46,7 +50,7 @@ fuse index ./src
 Print a map of the indexed workspace: symbols, routes, and counts.
 
 ```text
-fuse map ./src --detail all
+fuse map ./src --detail symbols
 ```
 
 ## fuse localize
@@ -57,7 +61,7 @@ Localize a task to ranked candidate files and symbols, with reasons and token co
 fuse localize ./src --task "billing endpoint"
 ```
 
-Accepts `--task`, `--route`, `--symbol`, `--service`, `--request`, `--config`, `--changed-since`, and `--max-candidates`.
+Accepts `--task`, `--route`, `--symbol`, `--service`, `--request`, `--config`, `--changed-since`, `--max-candidates`, `--strict`, and `--expand`. Best-effort localization is the default; `--strict` refuses an insufficient query and returns only its navigation map.
 
 ## fuse resolve
 
@@ -93,7 +97,7 @@ Accepts `--changed-since`, `--max-tokens`, `--include-tests`, `--format`, `--pla
 
 ## fuse impact
 
-Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, from the persisted semantic graph. Reads the index; builds it on first use.
+Blast radius for a symbol before you edit it: callers, implementers, consumers, and referencing types from the persisted graph.
 
 ```text
 fuse impact OrderService --path ./src
@@ -119,7 +123,7 @@ fuse gate ./src
 
 ## fuse test
 
-Run the covering tests for a symbol (the tests that reach it via the persisted `tests` edges) at build grade, scoped by filter so the whole suite never runs. Reads the index; run `fuse index` first.
+Run the covering tests for a symbol (the tests that reach it via persisted `tests` edges) at build grade, scoped by filter. Run `fuse index` first.
 
 ```text
 fuse test OrderService --path ./src

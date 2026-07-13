@@ -24,6 +24,19 @@ This writes two Claude Code hooks into your project's `.claude/settings.json`:
 The merge preserves any hooks and settings you already have, and re-running is idempotent.
 Remove the two `fuse` entries from the `hooks` section of that file to uninstall.
 
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant Hook
+    participant Host
+    Agent->>Hook: Edit or Write completes
+    Hook->>Host: fuse check --delta --fast
+    Host-->>Agent: introduced and resolved diagnostics
+    Agent->>Hook: Attempt to stop
+    Hook->>Host: fuse gate
+    Host-->>Agent: allow stop, or block on introduced errors
+```
+
 ## What The Agent Sees
 
 After an edit that breaks a call, the hook adds a line like:
@@ -59,3 +72,9 @@ The commands are not Claude-specific. Any harness that can run a command after a
 turn end can wire the same two commands: `fuse check --delta --fast` for the per-edit delta
 and `fuse gate` for the turn gate. `fuse mcp install --with-hooks` only automates the Claude
 Code wiring.
+
+## Verify the Hooks
+
+Make a reversible edit that introduces a compiler error. Confirm the post-edit hook reports
+that new diagnostic and the stop hook blocks while it remains. Revert the edit and confirm
+the resolved diagnostic clears the gate.

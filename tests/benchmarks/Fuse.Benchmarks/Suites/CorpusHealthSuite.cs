@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using Fuse.Indexing;
 using Fuse.Semantics;
@@ -159,7 +160,10 @@ public sealed class CorpusHealthSuite : IEvalSuite
             MinReposTier1: CorpusHealthReport.GateMinReposTier1,
             MinTasksVerified: CorpusHealthReport.GateMinTasksVerified,
             Repos: health,
-            Notes: notes);
+            Notes: notes,
+            ManifestSha256: await ManifestSha256Async(
+                options.ManifestPath ?? Path.Combine(options.BenchRoot, "corpus.json"),
+                cancellationToken));
 
         Directory.CreateDirectory(options.ResultsRoot);
         var reportPath = Path.Combine(options.ResultsRoot, CorpusHealthReport.FileName);
@@ -187,6 +191,12 @@ public sealed class CorpusHealthSuite : IEvalSuite
             new Scorecard(TaskCount: report.TasksVerified, 0, 0, 0, 0, 0, 0, 0),
             [],
             summaryNotes);
+    }
+
+    private static async Task<string> ManifestSha256Async(string path, CancellationToken cancellationToken)
+    {
+        var bytes = await File.ReadAllBytesAsync(path, cancellationToken);
+        return Convert.ToHexStringLower(SHA256.HashData(bytes));
     }
 
     // Mines candidate fail-to-pass tasks from one repository and verifies each mechanically, stopping once the

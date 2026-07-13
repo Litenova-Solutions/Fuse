@@ -3,7 +3,9 @@ title: How Fuse works
 description: "The warm-index pipeline behind a Fuse call: index, localize, resolve, expand, plan, render, and why it is shaped this way."
 ---
 
-Fuse answers a context request from a warm, persistent semantic graph of the workspace.
+Fuse answers a context request from a warm, persistent index of the workspace. The index
+contains a typed semantic graph when the project loads semantically and a thinner syntax
+view when it does not.
 This page is the model behind a call. For the exact parameters of each tool, see the
 [Tools reference](/docs/reference/mcp-tools); for how an agent strings calls together
 across a task, see [The iterative workflow](/docs/concepts/iterative-workflow).
@@ -14,10 +16,22 @@ and context planning cheap on the second and later calls.
 
 ## The Pipeline
 
+```mermaid
+flowchart LR
+    A[Workspace] --> B[Index<br/>semantic, partial, or syntax]
+    B --> C[(.fuse/fuse.db)]
+    C --> D[Select seeds<br/>localize, resolve, or Git diff]
+    D --> E[Expand<br/>typed graph]
+    E --> F[Plan<br/>token budget]
+    F --> G[Render<br/>manifest and provenance]
+```
+
+<Diagram src="/fuse-typed-wiring.svg" alt="Typed wiring edges from the OrderingApp fixture: DI service, MediatR request, config section, and HTTP route" />
+
 | Stage | What it does |
 |-------|--------------|
-| 1. Index | Load the workspace through MSBuild and Roslyn into a typed graph; persist it. |
-| 2. Localize | Rank candidate files and symbols for a task, no bodies. |
+| 1. Index | Extract the best available semantic or syntax view and persist it. |
+| 2. Localize | Rank candidate files and symbols through the lexical channel, no bodies. |
 | 3. Resolve | Map a service, request, route, config, or symbol to its real target. |
 | 4. Expand | Walk typed edges from the seeds, weighting and pruning the neighborhood. |
 | 5. Plan | Pick what to keep under the token budget; seeds are always kept. |
@@ -34,10 +48,11 @@ is paid once. The index mode is reported as `semantic`, `partial`, or `syntax`.
 
 ### 2. Localize
 
-Localization turns a free-text task (or a route, symbol, service, request, or config
-hint) into ranked candidate files and symbols, each with a reason and a token cost, and
-no source bodies. It is the cheap first step of an open-ended task: see what the graph
-thinks is relevant before fetching anything.
+Localization turns a free-text task into ranked candidate files and symbols, each with a
+reason and a token cost, and no source bodies. It uses deterministic lexical retrieval
+with subword, stem, comment, and dependency-centrality signals. Fuse ships no embedding
+model. Named routes, symbols, services, requests, and config sections use resolution
+instead.
 
 ### 3. Resolve
 
@@ -49,10 +64,11 @@ cannot do: it finds the type that actually runs, not the one a name matches.
 
 ### 4. Expand
 
-From the seeds (the localize candidates, the resolved targets, or a changed file set)
+From the seeds (the localize candidates, the resolved targets, or the files in a Git diff)
 Fuse walks typed edges outward to a configurable depth. Each hop is weighted, and the
-expansion prunes low-weight branches so the neighborhood stays the part a task needs
-rather than the whole transitive closure.
+expansion prunes low-weight branches so the result stays bounded rather than becoming the
+whole transitive closure. In review mode, Git supplies the changed files as must-keep
+seeds; expansion adds compact branch context rather than discovering the change set.
 
 ### 5. Plan
 
@@ -64,8 +80,8 @@ so the budget lands close to full. A budget of 0 means no limit.
 
 Rendering emits the planned set as source bodies at mixed **render tiers** (full,
 compressed, or signature-only **skeleton**), with a **manifest** that lists each file and
-its token cost and per-file **provenance** that records why each file is present. Secret
-redaction runs before any source reaches the payload, and the chosen output format
+its token cost and per-file **provenance** that records why each file is present. Best-effort
+secret redaction runs before source is added to the payload, and the chosen output format
 (`xml`, `markdown`, or `json`) is applied last.
 
 ## Why It Is Shaped This Way
@@ -85,8 +101,8 @@ it consumes and what it costs. Fuse counts with a real tokenizer rather than est
 from character length, so the manifest's numbers match what the target model sees.
 See [Tokenizers](/docs/reference/tokenizers).
 
-## Next
+## Inspect the Pipeline
 
-See [Scoping](/docs/concepts/scoping) for how localize and resolve narrow a task, the
-[Render tiers](/docs/concepts/reduction-levels) for how source is emitted, or the
-[Glossary](/docs/concepts/glossary) for the vocabulary in one place.
+Run `fuse diagnostics ./src` to read the index mode, then run
+`fuse context ./src --seed OrderService --max-tokens 15000 --format markdown`. Inspect
+the manifest to see each file's token cost, render tier, and provenance.

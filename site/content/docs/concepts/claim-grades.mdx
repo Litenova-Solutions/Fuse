@@ -1,18 +1,28 @@
 ---
 title: Claim grades and the evidence ledger
-description: Every statement Fuse emits in an answer is graded by the evidence behind it - verified, partially verified, stale, or contradicted - so an agent and its human know which claims are compiler-grade truth and which are weaker inferences that can go stale.
+description: Read whether a Fuse claim is verified, partially verified, stale, or contradicted, and inspect the evidence reference behind that state.
 ---
 
 A verification grade names the class of truth behind a single verify verdict. Claim grades
 extend the same idea to the statements Fuse makes inside any answer: an impact blast radius, a
-resolved wiring edge, a review summary, a covering-test run. Each such statement carries a
-**claim grade** computed from the evidence available, so a reader always knows which parts of
-an answer are compiler-grade truth and which are graph-grade inferences that may not hold.
+resolved wiring edge, a Git-seeded review summary, a covering-test run. Each such statement
+carries a **claim grade** computed from the available evidence, so a reader can separate
+compiler or test verdicts from graph inferences.
 
 The rule is one sentence: **grades are computed, never asserted.** Fuse grades only statements
 it emitted itself, from evidence it can point at; it never grades prose a model wrote.
 
 ## The grades
+
+```mermaid
+stateDiagram-v2
+    [*] --> PartiallyVerified: persisted graph evidence
+    [*] --> Verified: compiler, build, test, or Git evidence
+    PartiallyVerified --> Stale: evidence file changes
+    Verified --> Stale: evidence file changes
+    PartiallyVerified --> Contradicted: current evidence conflicts
+    Verified --> Contradicted: current evidence conflicts
+```
 
 | Grade | What it means | Evidence | Example |
 | --- | --- | --- | --- |
@@ -36,8 +46,9 @@ envelope):
 - `fuse_impact` - the caller/implementer count and the covering-test count, both graph-grade.
 - `fuse_find` (wiring kinds: service, request, route, config) - the resolved edge, graph-grade.
 - `fuse_test` - the covering tests run and their verdicts, compiler/test-grade (`verified`).
-- `fuse_review` - the changed-file set (git-truth, `verified`) and whether the change alters
-  the public API surface (graph-grade).
+- `fuse_review` - the changed-file set supplied by the Git diff (git-truth, `verified`) and
+  whether the change alters the public API surface (graph-grade). This grade confirms the
+  diff seeds; it does not claim that review discovered every file needed for the task.
 
 A claims block reads as one header plus one line per claim:
 
@@ -61,6 +72,12 @@ edited is re-graded `stale`, and a claim the current truth now conflicts with is
 `fuse_review --handoff` turns the accumulated evidence into a paste-ready PR body: the changed
 files, the public API delta, the compiler-gate status, and the named residual risk. It is
 gated, not a controller: while the check session still has unresolved introduced errors, the
-handoff **refuses** and returns the red summary instead of a packet. Fuse gates the change; it
-does not commit for you. This refusal is the gate-not-controller stance expressed as one
-behavior - you cannot hand off a change that does not yet pass the compiler.
+handoff **refuses** and returns the red summary instead of a packet. Fuse reports the gate
+result and does not commit for you. A handoff packet is unavailable until the compiler gate
+has no unresolved introduced errors.
+
+## Inspect a Ledger
+
+Reuse a `sessionId` for impact, test, and review calls, then read
+`fuse://ledger/{path}/{session}`. Check each claim's grade and evidence reference before
+copying it into a pull request description.

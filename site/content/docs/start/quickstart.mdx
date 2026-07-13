@@ -1,31 +1,65 @@
 ---
 title: Quickstart
-description: Index a .NET workspace, then localize, resolve, and review against it, reading the context Fuse produces, in about a minute.
+description: Connect Fuse to a coding agent, check a proposed C# edit, and run a branch review from a .NET project.
 ---
 
-This walks you from an installed tool to resolved context you can read. If you have
-not installed Fuse yet, see [Install](/docs/start/install).
-
-Fuse runs two ways: handed to an AI agent through the MCP server, or as a CLI in your
-terminal. The agent path is the primary use; the CLI walkthrough below is the local one.
-
-## Hand It to an Agent
-
-Register Fuse with your client once. From your project root:
+Install Fuse and connect it to the coding agent for the current .NET project:
 
 ```bash
+dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
-Your AI client (Claude Code, Cursor, or GitHub Copilot) then launches `fuse mcp serve`
-automatically when MCP is enabled. You do not run the server in a terminal yourself. The
-`--rules` flag also writes a short rule into your client's instruction file so the agent
-reaches for the `fuse_*` tools instead of grepping blindly; it is the recommended install.
-Use `--scope user` to register Fuse for every project on this machine. See
-[Connect to your AI](/docs/start/connect-your-ai) for per-client details.
+Reload your MCP client, then ask:
 
-The agent then resolves context in one or two calls instead of opening file after file.
-For change work, one `fuse_review` call returns the changed files and their blast radius:
+```text
+Before changing OrderService.cs, check the proposed file with fuse_check and show any
+compiler diagnostics before writing it.
+```
+
+The agent sends the proposed content to Fuse. Fuse returns a compiler-backed result
+without changing the source file.
+
+## Confirm the Connection
+
+Ask the agent to make a real status call:
+
+```text
+Call fuse_workspace with action=status for this repository. Return the workspace path,
+analysis mode, and freshness exactly as Fuse reports them.
+```
+
+A response with the repository path confirms the connection. A tool list or a statement
+that Fuse is available does not.
+
+The first MCP tool call builds `.fuse/fuse.db` automatically; you do not need to run
+`fuse index` first. A large repository can take from a few seconds to tens of seconds on
+that cold call. Run `fuse index` first if you want the agent's first turn to read a warm
+index. Later calls reuse the local store.
+
+## Check the First Proposed Edit
+
+Give the agent a concrete file and requested change:
+
+```text
+Add cancellation support to OrderService.PlaceOrderAsync. Before writing the edit, call
+fuse_check with the proposed OrderService.cs content. Apply it only if the result has no
+compiler diagnostic.
+```
+
+Each check names the compiler path that produced the answer. This label is the
+**verification grade**:
+
+- **Oracle grade** uses a compilation captured from the real build.
+- **Build grade** runs a scoped `dotnet build` for the owning project.
+- **Abstained** means neither compiler path could answer and names what is missing.
+
+The check call does not write the file. `fuse_workspace` with `action=apply` is the
+explicit write operation, and it is a dry run unless `write=true`.
+
+## Review the Current Branch
+
+Ask for the Git-changed files and focused context from related code:
 
 ```text
 fuse_review(
@@ -35,22 +69,27 @@ fuse_review(
 )
 ```
 
-For an open-ended task, localize first, then plan context for the candidate files:
+Each returned file states why it was included. The `maxTokens` value limits the amount of
+focused context in the response.
+
+## Follow Application Wiring
+
+Resolve a service interface to its registered implementation:
 
 ```text
-fuse_find(path="C:/Projects/MyApp/src", kind="task", query="where is the discount applied at checkout?")
-fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], maxTokens=25000)
+fuse_find(path="C:/Projects/MyApp/src", kind="service", query="IOrderService")
 ```
 
-See [Connect to your AI](/docs/start/connect-your-ai) for client setup and
-[Context for an agent](/docs/scenarios/context-for-an-agent) for the full workflow.
+The same operation can follow a request to its handler, a route to its action, or a
+configuration section to its options type.
 
-## Build the Index
+## Use Fuse from the Terminal
 
-Point Fuse at a .NET source directory once to build the persistent index:
+The command-line interface supports indexing and branch work:
 
 ```bash
 fuse index ./src
+fuse review ./src --changed-since origin/main --max-tokens 25000
 ```
 
 Fuse loads the workspace through MSBuild and Roslyn when it can, and falls back to
@@ -58,67 +97,13 @@ syntax-level indexing otherwise. The index lives in a single SQLite file at
 `.fuse/fuse.db`. The read commands build it on first use, so this explicit step is
 optional, but running it once up front makes the first read call fast.
 
-## Read What It Reports
-
-When indexing finishes, Fuse reports the shape of what it built:
-
-```text
-Indexed workspace ./src
-Mode: semantic
-Files: 218  Projects: 4  Symbols: 3,140  Routes: 12
-Store: .fuse/fuse.db
-```
-
-The mode is `semantic` when the workspace loaded through MSBuild and Roslyn, `partial`
-when some projects fell back, and `syntax` when no project loaded. The counts tell you
-what the graph holds. `fuse diagnostics ./src` prints this state at any time.
-
-## Survey the Workspace
-
-Print a cheap map of what was indexed before fetching any source:
-
-```bash
-fuse map ./src --detail all
-```
-
-`fuse map` lists indexed symbols, routes, and counts, no bodies, so you can judge the
-shape of the workspace at low token cost.
-
-## Resolve What Runs
-
-Ask the graph what a name actually maps to:
+You can also resolve .NET wiring directly:
 
 ```bash
 fuse resolve ./src --service IOrderService
 fuse resolve ./src --request CreateOrderCommand
 fuse resolve ./src --route "POST /api/orders/{id}"
 ```
-
-Each prints the resolved target (the concrete implementation, the handler, the action)
-with provenance, and no bodies.
-
-## Plan and Emit Context
-
-Turn a set of seeds into packed source bodies at a budget:
-
-```bash
-fuse context ./src --seed IOrderService --max-tokens 25000 --format xml
-```
-
-The output opens with a **manifest** that lists each included file with its token cost,
-then the source bodies at mixed render tiers, with per-file **provenance** that records
-why each file is present. Set `--format markdown` or `--format json` for other shapes.
-
-## Review a Change
-
-When a git base exists, review the semantic impact of a branch in one call:
-
-```bash
-fuse review ./src --changed-since origin/main --max-tokens 25000
-```
-
-This returns the changed files, the blast radius (callers, DI consumers, route and
-request handlers, options consumers, tests), and the packed context.
 
 ## Set Project Defaults
 
@@ -133,6 +118,7 @@ This scaffolds a `fuse.json` you can edit. See
 
 ## Next
 
-Hand the output to an agent automatically with the
-[MCP server](/docs/start/connect-your-ai), or learn the model behind a run in
-[How Fuse works](/docs/concepts/how-fuse-works).
+Read [Connect to your AI](/docs/start/connect-your-ai) for project, user, manual, and
+rollback setup. Continue with [Check an edit](/docs/scenarios/ambient-verification),
+[Follow .NET wiring](/docs/scenarios/ask-one-question), or
+[Review a branch](/docs/scenarios/scope-a-pr).

@@ -1,171 +1,104 @@
 ---
-title: Why Fuse, and how it compares
-description: The problem agentic coding tools hit on large .NET codebases, what generic packers and RAG indexers do and where they fall short, and what Fuse's semantic resolution does differently.
+title: Why use Fuse
+description: How a warm local index, graph-backed wiring lookup, and graded compiler checks extend an existing .NET agent workflow.
 ---
 
-Most tools that feed code to a language model fall into two camps: packers that dump
-the repository as text, and retrieval indexes that return fuzzy chunks. Fuse is
-neither. It verifies an edit against the compiler before it lands, computes what a change
-breaks, and resolves what code actually runs, from a Roslyn graph. Finding and serving context (the packer-and-RAG problem this
-page compares against) is the machinery that feeds those answers, and Fuse does it with the
-public API intact and scoped to the task. This page explains the problem that machinery
-solves, the landscape, and the trade-offs.
+Before your coding agent changes `OrderService.cs`, resolve the wiring it touches and have
+the compiler check the proposed file:
 
-The deeper difference is not how much context Fuse returns but what it can promise about it.
-A packer and a RAG index both answer "here is some text that might be relevant". Fuse also
-answers "this edit does not compile, here is the error and the fix" and "changing this
-signature breaks these nine call sites", which is a different kind of answer than any
-retrieval tool gives, and the one the rest of the program is built around.
+```bash
+dotnet tool install -g Fuse
+fuse mcp install --rules
+```
 
-## The Problem: Finding the Code That Actually Runs
+Then reload the agent and ask:
 
-An agentic coding tool such as Claude Code, Cursor, or GitHub Copilot does not start
-by editing. It starts by finding the right code. To make a safe change it has to learn
-the wiring: which concrete type is injected for an interface, which handler processes a
-request, which endpoint serves a route, what a change will break. So it lists
-directories, runs searches, and opens files one at a time, reading each result into its
-context window before deciding what to open next.
+```text
+Use fuse_check on the proposed OrderService.cs content before writing it.
+```
 
-On a small project that is cheap. On a solution with hundreds or thousands of C#
-files it is the expensive part of the task:
+Fuse adds a warm local index, graph-backed wiring lookup, and compiler checks to the
+editor and agent workflow you already use. It does not replace file editing, exact text
+search, or `dotnet build`.
 
-- **Token cost.** Every file the agent opens to orient itself consumes context window
-  it could have spent on the actual change. Much of that content is comments, using
-  directives, and boilerplate the agent does not need to reason about structure.
-- **Round-trips.** Discovery is sequential. The agent reads, decides, reads again.
-  Each hop is a model call with latency, and the agent often re-reads files it
-  already saw because nothing kept a compact map of the codebase.
-- **Lost wiring.** Reading files in isolation, the agent reconstructs the dependency
-  relationships, the DI registrations, the request and route handlers, and the public
-  surface by hand. Grep finds the interface but not the type that runs.
+## Check the Proposal, Not Just the Saved Files
 
-The measured shape of this is on the [Benchmarks](/docs/project/benchmarks) page.
-Over the real merged pull requests tested, a blind agent must read each file a
-change needs at least once, a lower bound of about seven round-trips, while one scoped
-Fuse review call scopes a change at 100 percent changed-file recall and 93.4 percent
-precision in a median 1,026 tokens. Open-ended localize from a title alone recalls 37.7
-percent of changed files at a median 1,348 tokens. The round-trip count is a bound from
-ground truth, not a measured agent; treat any wall-clock claim as illustrative, not a
-benchmark.
+`dotnet build` checks the files currently on disk. `fuse_check` checks one proposed file
+before the agent writes it. It returns compiler diagnostics and, for supported API-shape
+errors, a suggested repair. The working tree remains unchanged.
 
-## The Landscape
+The result also states which compiler path answered. Fuse calls this the
+**verification grade**:
 
-### Generic Repository Packers
+- **Oracle grade** uses the compilation captured from the real build.
+- **Build grade** runs a scoped `dotnet build` for the owning project.
+- **Abstained** means neither compiler path could answer and names what is missing.
 
-Tools such as Repomix, Code2Prompt, and Gitingest concatenate a repository into one
-text blob with a header and per-file separators. They are language-agnostic and easy
-to run, which is their strength.
+Faster repeated checks are available behind `FUSE_RESIDENT=1`. That mode is opt-in.
+The [benchmarks](/docs/project/benchmarks) record its measured latency and environment.
 
-Their limit for code structure is that they treat source as plain text. They do not
-know what a C# type or a method signature is, so they cannot reduce by structure,
-cannot preserve the public API while dropping noise, cannot resolve which type a DI
-registration injects, and cannot scope to the files a task touches. The
-envelope they add often makes the output larger than raw concatenation: on the benchmark
-corpus, Repomix output measured 1.3 to 3.9 percent larger than the raw files, while Fuse
-default was smaller than both. Because a packer dumps the whole repository, both arms
-acquire a task's context in one call, but the packer pays for everything: a whole-repo
-dump averages hundreds of thousands of tokens, while a scoped Fuse review call delivers a
-PR's context in a median 1,026 tokens on the benchmark corpus. The packer's recall is 1.00
-only because it includes the entire repository.
+## Index Once, Query Warm
 
-### RAG and Embedding Indexers
+Fuse builds `.fuse/fuse.db` on first use and reuses it across calls. On the recorded
+NodaTime run, exact symbol lookup took 2.2 ms at the median and task localization 42 ms
+(`performance.json`). Syntax mode serves quickly; semantic mode adds DI, handler, route,
+and call edges when the project loads through the compiler.
 
-Retrieval-augmented generation indexes a codebase into vector embeddings and returns
-the chunks most similar to a query. This is useful for open-ended search across a
-very large corpus and for natural-language questions.
+## Follow .NET Wiring, Not Just Matching Names
 
-Its limits for code are structural. Embeddings return ranked chunks, not whole types
-or a faithful public surface, so recall is partial and the result is non-deterministic:
-the same query can return different chunks as the index or model changes. A chunk
-boundary can split a method from its signature. And it answers "what looks similar to
-this text", not "which concrete type is injected here" or "give me this type and the
-handler that processes its request, intact". Fuse resolves wiring from a parsed graph,
-not similarity, so the answer is deterministic and structural.
+Text search can find `IBasketService`. It cannot establish which implementation a
+particular dependency injection registration supplies. Fuse uses Roslyn and
+framework-aware analysis to follow:
 
-## What Fuse Does Differently
+- service interfaces to registered implementations,
+- requests and commands to handlers,
+- routes to actions or endpoints,
+- configuration sections to options types.
 
-State the value against the three things you would otherwise reach for, strongest first.
+```text
+fuse_find(path="C:/Projects/MyApp/src", kind="service", query="IBasketService")
+```
 
-1. **Versus no tool, the baseline an agent lives in.** This is the headline. A blind
-   agent must read each file a task touches at least once before it has the context: a
-   measured structural lower bound of 6.9 files on average over the real merged pull
-   requests tested, and up to 11.9 on a large library. Fuse acquires the same context in
-   one scoped call. That is the round-trip collapse, and it is the value you feel.
+Reflection, runtime dispatch, and projects that cannot load through the compiler can hide
+connections. Fuse reports the workspace's analysis mode so a syntax-only lookup is not
+presented as a compiler-backed result.
 
-2. **Versus a generic packer (Repomix).** Both acquire context in one call, so Fuse ties
-   on round-trips and wins on tokens: a scoped review call delivers a PR's context in a
-   median 1,026 tokens against hundreds of thousands for a whole-repo dump, because Fuse
-   scopes and the packer dumps. To be plain: Fuse does not beat Repomix on round-trips; it ties at one
-   call and wins on tokens.
+## Start Branch Review from Git
 
-3. **Versus RAG and embedding indexes.** Fuse resolves .NET wiring and returns whole types
-   and their dependency neighborhood, deterministically, where a vector index returns
-   ranked fuzzy chunks and can split a method from its signature.
+Git already knows which files changed. `fuse_review` keeps those files and adds focused
+context from callers, implementations, handlers, configuration consumers, and tests.
+Each included file states why it was selected.
 
-4. **And the code it returns keeps the surface intact.** Default and `aggressive`
-   reduction remove 6 to 46 percent of tokens while keeping 99 to 100 percent of public
-   types and methods; the skeleton render tier removes 39 to 56 percent for an
-   architecture view.
+```bash
+fuse review ./src --changed-since origin/main --max-tokens 25000
+```
 
-Fuse is not only one call. Across a task it is a few cheap calls (survey with
-`fuse_workspace` (`action=map`), localize with `fuse_find` (`kind=task`), resolve wiring
-with `fuse_find` (`kind=service|request|route|config`), review with
-`fuse_review`) instead of dozens of blind reads, and a `sessionId` means later calls do
-not resend files already returned. A packer dumps once; it cannot refine. See
-[How Fuse works](/docs/concepts/how-fuse-works) and
-[Sessions and deltas](/docs/concepts/sessions-and-deltas).
+`max-tokens` limits the focused context returned. It does not make the review a complete
+substitute for reading the pull request.
 
-### The Choices Behind It
+## Keep Source and Writes Local
 
-Fuse is built specifically for finding and serving context on a .NET codebase, and it
-makes a different set of choices:
+Fuse runs as a local .NET process. It requires no hosted Fuse model and downloads no
+embedding model. Source and the derived `.fuse/fuse.db` index remain on the machine.
+Your coding agent still applies its own data policy to tool results.
 
-- **Semantic, not lexical.** It loads the workspace through MSBuild and Roslyn and builds
-  a typed graph of nodes (types, members, routes, registrations) and edges (calls,
-  implements, injects, handles, binds), with a syntax-only fallback when a project does
-  not load. It resolves the type that actually runs, not the one a name matches.
-- **Warm and persistent.** The index lives in a single SQLite file at `.fuse/fuse.db` and
-  stays built between calls, so a multi-call task pays the analysis cost once.
-- **Structural reduction.** It parses C# enough to render at mixed tiers: full bodies,
-  signature-only **skeletons**, or compressed source, and removes comments, usings, and
-  whitespace. The output represents the same source in fewer tokens.
-- **Fidelity-preserving.** Reduction is not deletion. An independent Roslyn oracle
-  confirms the default and `aggressive` tiers keep 99 to 100 percent of public types and
-  methods.
-- **Deterministic.** Same index, same answer. Resolution comes from the parsed graph, not
-  similarity ranking, so there is no index drift in the answer.
-- **MCP-native.** `fuse mcp serve` is a Model Context Protocol server, so the agent verifies
-  edits and fetches resolved context in one call instead of reading files one by one.
+Checks, reads, indexing, and review do not write source files. The explicit write path is
+`fuse_workspace` with `action=apply`, and it remains a dry run unless the caller requests
+a write.
 
-## How It Compares
+## Read the Measurements in Scope
 
-| Capability | Generic packers | RAG / embeddings | Fuse |
-|------------|-----------------|------------------|------|
-| Round-trips to acquire context | One dump | One query, partial | One scoped call, or a few cheap refining calls |
-| Context per call | Whole repo | Ranked chunks | Scoped set, about 11x fewer tokens than a packer dump |
-| Understands C# structure | No, plain text | No, opaque chunks | Yes, types and signatures |
-| Resolves DI / request / route wiring | No | No | Yes, from the typed graph |
-| Cuts tokens vs raw | Often larger than raw | Per chunk only | 6 to 46 percent at full API fidelity |
-| Keeps the whole public API | Only by including everything | No, partial recall | 99 to 100 percent, verified |
-| Deterministic output | Yes | No, similarity-ranked | Yes |
-| Scope to a task | No | By query only | Localize, resolve, or git change, with graph expansion |
-| Built for agents (MCP) | Rarely | Varies | Verify and context verbs, built in |
-| Setup and freshness | None | Build and refresh an index | A persistent index, refreshed on demand |
+The recorded checks cover 1,000 compiler-labeled edits in the OrderingApp test app, not
+every possible .NET edit. The wiring result covers 24 expected links in that app. The
+branch-review result covers 69 real pull requests and keeps their Git-changed files by
+construction.
 
-Fuse is complementary to the other two where their strengths lie. For a polyglot
-repository a generic packer is simpler, and for open-ended semantic search across a
-huge corpus an embedding index has its place. For giving a .NET agent the code that
-actually runs with the API intact and the tokens cut, Fuse is purpose-built.
-
-## Honest Boundaries
-
-When a project does not load through MSBuild, Fuse falls back to syntax-only indexing,
-which resolves fewer edges than the full semantic graph. Resolution can still miss edges
-that come from dynamic dispatch or reflection because those targets are not visible to
-static analysis. The [Benchmarks](/docs/project/benchmarks) page reports exactly where
-Fuse ties or loses, not only where it wins.
+The agent-loop run found similar build and test command counts for Fuse and native tools;
+it does not support a claim that Fuse halves build calls. Read the exact figures,
+confidence intervals, methods, and weaker modes on the
+[benchmarks page](/docs/project/benchmarks).
 
 ## Next
 
-See the measured results on the [Benchmarks](/docs/project/benchmarks) page, or
-[install Fuse](/docs/start/install) and try it on your own solution.
+Follow the [Quickstart](/docs/start/quickstart) for the first checked edit. Use
+[Connect to your AI](/docs/start/connect-your-ai) for project, user, and manual setup.

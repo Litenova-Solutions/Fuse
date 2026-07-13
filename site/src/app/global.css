@@ -11,14 +11,12 @@
   --color-fd-primary: #6d4aff;
   --color-fd-ring: #6d4aff;
   --brand: #6d4aff;
-  --brand-soft: #8f7bff;
 }
 
 .dark {
   --color-fd-primary: #8b74ff;
   --color-fd-ring: #8b74ff;
   --brand: #8b74ff;
-  --brand-soft: #a594ff;
 }
 
 html {
@@ -30,30 +28,249 @@ html > body[data-scroll-locked] {
   --removed-body-scroll-bar-size: 0px !important;
 }
 
-/* A subtle dotted grid used behind the hero. */
-.bg-grid {
-  background-image: radial-gradient(
-    color-mix(in oklch, var(--color-fd-foreground) 12%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 22px 22px;
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+.home-example {
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 1rem;
+  background: var(--color-fd-card);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 8%);
 }
 
-/* Gradient text for the hero headline accent. */
-.text-gradient {
-  background: linear-gradient(120deg, var(--brand), var(--brand-soft));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+.home-example__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-fd-border);
 }
 
-/* A soft brand glow used on the hero card. */
-.brand-glow {
-  background: radial-gradient(
-    60% 60% at 50% 0%,
-    color-mix(in oklch, var(--brand) 22%, transparent),
-    transparent 70%
-  );
+.home-example__header span {
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-example__header strong {
+  font-size: 1rem;
+}
+
+.home-example__exchange {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.home-example__turn {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.home-example__speaker {
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-example__turn > code,
+.home-example__result code {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+.home-example__result {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1rem;
+  border: 1px solid var(--color-fd-border);
+  border-left-width: 4px;
+  border-radius: 0.65rem;
+  background: var(--color-fd-background);
+}
+
+.home-example__result strong {
+  font-size: 0.875rem;
+}
+
+.home-example__contrast {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.home-example__result--error {
+  border-left-color: #b42318;
+}
+
+.home-example__result--ok {
+  border-left-color: var(--brand);
+}
+
+.home-flow {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+}
+
+.home-flow__step {
+  position: relative;
+  min-width: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.75rem;
+  background: var(--color-fd-background);
+}
+
+.home-flow__number {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 2px solid var(--brand);
+  border-radius: 999px;
+  color: var(--brand);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .home-flow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home-flow__step:not(:last-child)::after {
+    position: absolute;
+    top: 2.55rem;
+    right: -1.05rem;
+    z-index: 1;
+    width: 1.1rem;
+    height: 2px;
+    background: var(--color-fd-border);
+    content: '';
+  }
+
+  .home-flow--six {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-flow--six .home-flow__step::after {
+    content: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-flow--six {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.home-compare {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.75rem;
+  background: var(--color-fd-background);
+}
+
+.home-compare__row {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--color-fd-border);
+}
+
+.home-compare__row:first-child {
+  border-top: none;
+}
+
+.home-compare__row > div {
+  padding: 1rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.home-compare__row--head > div {
+  background: var(--color-fd-card);
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-compare__question {
+  font-weight: 600;
+}
+
+.home-compare__fuse {
+  color: var(--color-fd-foreground);
+}
+
+.home-compare__baseline {
+  color: var(--color-fd-muted-foreground);
+}
+
+@media (min-width: 768px) {
+  .home-compare__row {
+    grid-template-columns: 1.1fr 1fr 1fr;
+  }
+
+  .home-compare__row > div:not(:last-child) {
+    border-right: 1px solid var(--color-fd-border);
+  }
+}
+
+@media (max-width: 767px) {
+  .home-compare__row {
+    gap: 0.25rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .home-compare__row > div {
+    padding: 0;
+  }
+
+  .home-compare__row--head {
+    display: none;
+  }
+
+  .home-compare__question::before {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--color-fd-muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    content: 'Question';
+  }
+
+  .home-compare__baseline::before {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--color-fd-muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    content: 'Grep or write-then-build';
+  }
+
+  .home-compare__fuse::before {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--color-fd-muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    content: 'Fuse (recorded)';
+  }
 }

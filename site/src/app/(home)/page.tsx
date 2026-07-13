@@ -60,7 +60,7 @@ const softwareApplicationJsonLd = {
 
 export default function HomePage() {
   return (
-    <main className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
@@ -392,27 +392,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      <section className="border-t border-fd-border">
-        <div className="mx-auto w-full max-w-4xl px-6 py-20 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Install Fuse and connect it to your coding agent
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-fd-muted-foreground">
-            Install Fuse, connect it to your coding agent, and use it in the repository you already
-            have open.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg">
-              <Link href="/docs/start/connect-your-ai">Connect Fuse</Link>
-            </Button>
-            <Button asChild size="lg" variant="secondary">
-              <Link href="/docs/start/quickstart">Open the quickstart</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-    </main>
+    </div>
   );
 }
 

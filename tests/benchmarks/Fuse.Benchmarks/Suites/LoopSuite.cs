@@ -123,9 +123,11 @@ internal static class LoopTaskSource
 ///     Suite R4/B1: the loop metric. It measures what the oracle thesis actually moves, the number of build-gated
 ///     turns an agent takes to reach green (<see cref="LoopMetrics" />), not the per-payload token count that
 ///     Suite D showed does not change. One Claude Code CLI driver resolves each task (edit, build or
-///     <c>fuse_check</c>, repeat) in two arms, <c>native</c> (filesystem plus <c>dotnet build/test</c>) and
-///     <c>fuse</c> (the fuse MCP tools, so a verify can be a speculative <c>fuse_check</c> instead of a
-///     <c>dotnet build</c> round-trip). The claim is that the fuse arm reaches green in fewer build-gated turns.
+///     <c>fuse_check</c>, repeat) in the <c>native</c> arm (filesystem plus <c>dotnet build/test</c>) and the
+///     <c>fuse</c> arm (the Fuse MCP tools, so a verify can be a speculative <c>fuse_check</c> instead of a
+///     <c>dotnet build</c> round-trip). An explicit environment option adds a <c>fuse-resident</c> arm whose
+///     spawned MCP process receives <c>FUSE_RESIDENT=1</c>. The claim is that Fuse reaches green in fewer
+///     build-gated turns.
 /// </summary>
 /// <remarks>
 ///     Harness-first (the plan's R4 exception): the benchmark harness is the deliverable, and the numbers are
@@ -159,13 +161,20 @@ public sealed class LoopSuite : IEvalSuite
     public async Task<SuiteResult> RunAsync(EvalOptions options, CancellationToken cancellationToken)
     {
         var model = options.AgentModel ?? DefaultModel;
+        var shortStudy = IsTruthy(Environment.GetEnvironmentVariable("FUSE_LOOP_SHORT_STUDY"));
+        var residentArm = IsTruthy(Environment.GetEnvironmentVariable("FUSE_LOOP_RESIDENT"));
+        var arms = residentArm
+            ? new[] { "native", "fuse", "fuse-resident" }
+            : ["native", "fuse"];
         var notes = new List<string>
         {
-            $"model {model}", $"max turns {MaxTurns}", "arms: native, fuse",
+            $"model {model}", $"max turns {MaxTurns}", $"arms: {string.Join(", ", arms)}",
             "metric: TRUE pass@1 from the gold-test oracle post-check (D22a), plus the reached-green proxy, "
             + "iterations-to-green, agent-visible build+test invocations counted apart from fuse_check turns, and false-done",
             "harness-first: the harness is the deliverable; numbers are recorded when the claude CLI and a model are provisioned",
         };
+        if (residentArm)
+            notes.Add("resident arm enabled: fuse-resident spawns its MCP server with FUSE_RESIDENT=1.");
 
         // C4 enforcement: a model-driven run must not start unless the corpus is proven healthy (a fresh,
         // passing corpus-health.json). Refuse and name the reason rather than spending model time on a corpus
@@ -196,15 +205,27 @@ public sealed class LoopSuite : IEvalSuite
                     ? manager.ResolveRepoPath(repo)
                     : null,
                 options.RepoFilter,
-                options.Limit);
+                shortStudy ? 0 : options.Limit);
             notes.Add($"task source: {CorpusTaskSet.FileName} ({corpusSet.Tasks.Count} verified tasks, generated {corpusSet.Generated})");
         }
         else
         {
             var dataset = manager.LoadDataset("dotnet-prs-v1");
-            var perRepo = options.Limit > 0 ? options.Limit : 2;
+            var perRepo = shortStudy ? int.MaxValue : options.Limit > 0 ? options.Limit : 2;
             loopTasks = LoopTaskSource.FromDataset(dataset, options.RepoFilter, perRepo);
             notes.Add($"task source: dotnet-prs-v1 (fallback; {CorpusTaskSet.FileName} absent)");
+        }
+
+        if (shortStudy)
+        {
+            if (options.Limit <= 0)
+            {
+                notes.Add("short-study mode requires --limit N with N greater than zero; skipped.");
+                return Skipped(notes);
+            }
+
+            loopTasks = loopTasks.Take(options.Limit).ToList();
+            notes.Add($"SHORT STUDY: deterministic total-task cap {options.Limit}; one rollout per arm; no headline or significance claim.");
         }
 
         // Execution is opt-in. A loop rollout drives the real claude CLI per task per arm, which costs model time
@@ -234,18 +255,19 @@ public sealed class LoopSuite : IEvalSuite
             return Skipped(notes);
         }
 
-        var arms = new[] { "native", "fuse" };
-
         // Resume: load the per-model checkpoint so an interrupted long run continues where it stopped. A
         // checkpoint written under a different model is ignored (never mix rollouts across models).
-        var checkpointPath = Path.Combine(options.ResultsRoot, CheckpointFileName(model));
+        var checkpointVariant = shortStudy
+            ? $"short-{options.Limit}{(residentArm ? "-resident" : string.Empty)}"
+            : residentArm ? "resident" : null;
+        var checkpointPath = Path.Combine(options.ResultsRoot, CheckpointFileName(model, checkpointVariant));
         var (done, tasks) = LoadCheckpoint(checkpointPath, model);
         if (tasks.Count > 0)
             notes.Add($"resumed from checkpoint: {tasks.Count} rollout(s) already recorded ({checkpointPath})");
 
         // Rollouts per arm (D22b): each arm runs this many independent rollouts per task, so a headline run can
         // average over the model's variance (2 per arm per task for the B1 re-run) rather than a single draw.
-        var rolloutsPerArm = Math.Max(1, options.Rollouts);
+        var rolloutsPerArm = shortStudy ? 1 : Math.Max(1, options.Rollouts);
         notes.Add($"rollouts per arm: {rolloutsPerArm}");
 
         var wedged = 0;
@@ -327,12 +349,12 @@ public sealed class LoopSuite : IEvalSuite
         };
 
         string? mcpConfigPath = null;
-        if (arm == "fuse")
+        if (arm is "fuse" or "fuse-resident")
         {
             if (fuseExe is null)
                 return null;
             argv.AddRange(["mcp__fuse", "Read", "Edit", "Write", "Bash"]);
-            mcpConfigPath = WriteFuseMcpConfig(fuseExe);
+            mcpConfigPath = WriteFuseMcpConfig(fuseExe, resident: arm == "fuse-resident");
             argv.AddRange(["--mcp-config", mcpConfigPath, "--strict-mcp-config"]);
         }
         else
@@ -340,7 +362,9 @@ public sealed class LoopSuite : IEvalSuite
             argv.AddRange(["Read", "Grep", "Glob", "Edit", "Write", "Bash"]);
         }
 
+        var rolloutWatch = Stopwatch.StartNew();
         var transcript = await RunClaudeAsync(argv, worktree, ct);
+        rolloutWatch.Stop();
         if (mcpConfigPath is not null)
             TryDelete(mcpConfigPath);
         if (transcript is null)
@@ -353,7 +377,9 @@ public sealed class LoopSuite : IEvalSuite
         await SaveTranscriptAsync(options.ResultsRoot, rowId, transcript, ct);
 
         var turns = LoopTranscriptClassifier.Classify(transcript);
-        var loop = LoopMetrics.Compute(turns);
+        // Transcript events carry no reliable per-turn duration. The canonical latency is the measured driver
+        // process duration, which includes model generation and every tool round-trip in the rollout.
+        var loop = LoopMetrics.Compute(turns, Math.Max(1, rolloutWatch.ElapsedMilliseconds));
 
         // The oracle post-check (D22a): run the task's gold tests over the agent's finished edit for a TRUE
         // pass@1 and to expose false-done, independent of what the transcript claimed. Skipped (null) when the
@@ -364,6 +390,7 @@ public sealed class LoopSuite : IEvalSuite
         options.Report(
             $"loop: {rowId}: proxy-green {loop.ReachedGreen}, iters {loop.IterationsToGreen}, "
             + $"builds {loop.BuildInvocations}, checks {loop.CheckInvocations}, tests {loop.TestInvocations}, "
+            + $"rollout {loop.WallClockMs} ms, "
             + $"oracle {(verdict.OraclePassed is null ? "na" : verdict.OraclePassed.Value ? "pass" : "fail")}"
             + $"{(verdict.FalseDone ? " FALSE-DONE" : string.Empty)}");
 
@@ -459,15 +486,18 @@ public sealed class LoopSuite : IEvalSuite
         }
     }
 
-    // A filename-safe per-model checkpoint name, so runs under different models keep separate checkpoints.
-    private static string CheckpointFileName(string model)
+    // A filename-safe per-model checkpoint name. Short and resident studies use distinct files so their arm/task
+    // sets cannot silently mix with the pre-registered run.
+    private static string CheckpointFileName(string model, string? variant)
     {
         var safe = new string(model.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
-        return $"loop-rollouts-{safe}.json";
+        return variant is null ? $"loop-rollouts-{safe}.json" : $"loop-rollouts-{safe}-{variant}.json";
     }
 
     private static void AddArmNotes(IReadOnlyList<TaskResult> tasks, List<string> notes)
     {
+        var timing = LoopTimingMetrics.SummarizeArms(tasks);
+        var zeroDurations = tasks.Count(task => task.LatencyMs <= 0);
         foreach (var arm in tasks.GroupBy(t => t.Category).OrderBy(g => g.Key, StringComparer.Ordinal))
         {
             var greens = arm.Select(t => t.Recall).ToList();
@@ -477,6 +507,11 @@ public sealed class LoopSuite : IEvalSuite
             var meanBuilds = Metrics.Mean(arm.Select(t => t.Precision).ToList());
             var meanChecks = Metrics.Mean(arm.Select(t => (double)t.Checks).ToList());
             notes.Add($"arm {arm.Key}: n {arm.Count()}, reached-green (proxy) {greenRate:P0} (95% CI {ciLow:P0}-{ciHigh:P0}), median iters-to-green {medianIters:N1}, mean agent-visible build+test invocations {meanBuilds:N1}, mean fuse_check turns {meanChecks:N1}");
+            var armTiming = timing.SingleOrDefault(summary => summary.Arm == arm.Key);
+            if (armTiming is not null)
+                notes.Add($"arm {arm.Key}: elapsed n {armTiming.RolloutCount} rollouts across {armTiming.TaskCount} tasks, total {armTiming.TotalMs / 1000.0:N1}s, median rollout {armTiming.MedianRolloutMs / 1000.0:N1}s, task-clustered mean {armTiming.MeanTaskMs / 1000.0:N1}s and median {armTiming.MedianTaskMs / 1000.0:N1}s.");
+            else
+                notes.Add($"arm {arm.Key}: no positive rollout durations recorded.");
 
             // True pass@1 and false-done from the oracle post-check (D22a), over the rollouts the oracle could
             // score (an unscored rollout - no gold tests, or a gold run that did not build - is excluded from the
@@ -493,6 +528,17 @@ public sealed class LoopSuite : IEvalSuite
             {
                 notes.Add($"arm {arm.Key}: oracle post-check not run for any rollout (no gold tests persisted; regenerate corpus-tasks-v2.json with D22a to score true pass@1).");
             }
+        }
+
+        if (zeroDurations > 0)
+            notes.Add($"elapsed-time summaries excluded {zeroDurations} rollout(s) with zero latency from older checkpoints.");
+
+        foreach (var arm in timing.Where(summary => summary.Arm != "native"))
+        {
+            var paired = LoopTimingMetrics.ComparePaired(tasks, "native", arm.Arm);
+            notes.Add($"elapsed native vs {arm.Arm}: {paired.PairedTaskCount} paired tasks; task-clustered delta ({arm.Arm} minus native) mean {paired.MeanDeltaMs / 1000.0:N1}s, median {paired.MedianDeltaMs / 1000.0:N1}s; descriptive only, no significance claim.");
+            var verified = LoopTimingMetrics.ComparePairedVerified(tasks, "native", arm.Arm);
+            notes.Add($"verified elapsed native vs {arm.Arm}: {verified.VerifiedPairCount} paired tasks passed the gold-test oracle in both arms; median time saving {verified.MedianRelativeSavings:P1}, mean delta {verified.MeanDeltaMs / 1000.0:N1}s, median delta {verified.MedianDeltaMs / 1000.0:N1}s; use this speed estimate only with the separately reported pass rates and sample size.");
         }
     }
 
@@ -511,16 +557,30 @@ public sealed class LoopSuite : IEvalSuite
     private SuiteResult Skipped(List<string> notes) =>
         new(Name, Description, null, new Scorecard(0, 0, 0, 0, 0, 0, 0, 0), [], notes);
 
-    private static string WriteFuseMcpConfig(string fuseExe)
+    private static string WriteFuseMcpConfig(string fuseExe, bool resident)
     {
         var dir = Path.Combine(Path.GetTempPath(), "fuse-eval-loop", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         var path = Path.Combine(dir, "fuse.mcp.json");
+        object server = resident
+            ? new
+            {
+                command = fuseExe.Replace('\\', '/'),
+                args = new[] { "mcp", "serve" },
+                timeout = 120_000,
+                env = new Dictionary<string, string> { ["FUSE_RESIDENT"] = "1" },
+            }
+            : new
+            {
+                command = fuseExe.Replace('\\', '/'),
+                args = new[] { "mcp", "serve" },
+                timeout = 120_000,
+            };
         var json = JsonSerializer.Serialize(new
         {
             mcpServers = new Dictionary<string, object>
             {
-                ["fuse"] = new { command = fuseExe.Replace('\\', '/'), args = new[] { "mcp", "serve" }, timeout = 120_000 }
+                ["fuse"] = server
             }
         });
         File.WriteAllText(path, json);

@@ -63,9 +63,6 @@ fuse_find(path="C:/Projects/MyApp/src", kind="task", query="where is the discoun
 fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], maxTokens=25000)
 ```
 
-See [Connect to your AI](/docs/start/connect-your-ai) for client setup and
-[Context for an agent](/docs/scenarios/context-for-an-agent) for the full workflow.
-
 ## Build the Index
 
 Point Fuse at a .NET source directory once to build the persistent index:
@@ -154,9 +151,11 @@ This scaffolds a `fuse.json` you can edit. See
 
 ## Next
 
-Hand the output to an agent automatically with the
-[MCP server](/docs/start/connect-your-ai), or learn the model behind a run in
-[How Fuse works](/docs/concepts/how-fuse-works).
+Run a branch-scoped review and inspect the provenance attached to each included file:
+
+```bash
+fuse review ./src --changed-since origin/main --max-tokens 25000 --format markdown
+```
 
 To reset the walkthrough, stop the client and delete `.fuse/`. It contains derived data
 only. Remove MCP configuration and rule entries with the

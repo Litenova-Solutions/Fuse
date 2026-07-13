@@ -65,22 +65,13 @@ see exactly what fit.
 Across the four repositories in `reduce.json`, standard reduction removes 11 to 41 percent
 of tokens and aggressive removes 16 to 46 percent. Skeleton removes 38 to 44 percent, while
 public API removes 47 to 60 percent. An independent Roslyn parse checks declaration-name
-fidelity at skeleton level: all public and protected type names survive, and 96.3 to 99.4
-percent of public and protected method names survive. These measurements do not claim
-complete API preservation.
+fidelity at skeleton level: every public and protected type-name key survives, and 96.3
+to 99.4 percent of public and protected method-name keys survive. These measurements do
+not claim complete API preservation.
 
-## When to Use It
+## Choose the Current Cut
 
-Reach for `fuse reduce --level aggressive` when you have a known set of files and want a
-larger measured cut than standard reduction. Reach for `fuse context --max-tokens` when you want
-an area scoped and reduced to fit a window. Set a budget whenever the plan is destined for
-a model with a fixed window or when you are capping the cost of a run. If you only need
-the shape of the codebase, a [skeleton survey](/docs/scenarios/survey-cheaply) cuts far
-more. If the result is still too large, [scope it tighter](/docs/concepts/scoping) to the
-code the task touches.
-
-## Related Concepts
-
-The full ladder from light cleanup to skeletons is in
-[Reduction levels](/docs/concepts/reduction-levels). How the plan spends a budget is in
-[Scoping](/docs/concepts/scoping).
+For known files whose bodies matter, run `fuse reduce --level aggressive`. For a named
+area, run `fuse context --seed ... --max-tokens 25000`. For a branch, run
+`fuse review --changed-since origin/main --max-tokens 25000`. Read the manifest and lower
+the budget or narrow the seeds if peripheral files consume space needed by the task.

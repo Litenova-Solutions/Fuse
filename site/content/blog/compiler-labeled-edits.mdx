@@ -1,21 +1,17 @@
 ---
-title: "1,000 compiler-labeled edits: measuring whether a coding tool ever lies"
-description: "Self-reported benchmarks in this space grade their own homework. Here is how Fuse measures whether its verify tool ever calls a broken edit clean, with the compiler as the judge and the misses published."
+title: "1,000 compiler-labeled edits: measuring verification accuracy"
+description: "Fuse compares its edit verdicts with compiler-produced labels, reports false-green and false-red rates, and publishes the reduced-scope agent-loop result alongside the missed gate."
 date: "2026-07-13"
 author: "The Fuse team"
 ---
 
-A tool that tells your AI agent "this edit is fine" is only useful if it is right. The
-failure that matters is the quiet one: the tool says an edit compiles, the agent commits it,
-and the build breaks anyway. Call that a false green. It is worse than saying nothing,
-because the agent trusted it.
+A verification tool needs an independent reference verdict. The highest-risk error is a
+**false green**: the tool reports a broken edit as clean. A **false red** reports a clean
+edit as broken and can add an unnecessary repair turn.
 
-So the question for any verify tool is not "is it fast" or "does it look smart". It is: does
-it ever lie? And that is exactly the question a self-reported benchmark cannot answer,
-because the tool is grading its own homework. If the same code that decides "clean or broken"
-also writes the ground truth, the score is circular.
-
-The fix is to take the labeling away from the tool and give it to the compiler.
+The check-gate benchmark derives labels from the C# compiler, outside the Fuse verdict
+path. This avoids circular evaluation, where the implementation under test also defines
+the expected answer.
 
 ## Let the compiler label the data
 
@@ -25,71 +21,58 @@ the C# compiler decide the correct answer for each one.
 Roslyn syntax rewriters produce two classes of single-file edit over an in-repo fixture.
 Breaking edits rename a bound member access, swap a used type for an undefined one, change an
 expression to an incompatible literal, or delete a referenced private member. Neutral edits
-reorder members consistently, add redundant parentheses, or insert a comment. Then the
-compiler, not a human and not Fuse, assigns the label: a breaking mutant is kept only when
-the compilation actually reports an error located in the edited file, and a neutral mutant
-only when the compilation stays clean. Generation is deterministic from a recorded seed.
+reorder members consistently, add redundant parentheses, or insert a comment.
+
+The compiler assigns the label. The harness keeps a breaking mutant only when compilation
+reports an error in the edited file. It keeps a neutral mutant only when compilation remains
+clean. Generation is deterministic from a recorded seed.
 
 Now `fuse_check` runs against each edit and its verdict is compared to the compiler's label.
-Two ways to be wrong:
 
-- A **false green** reports a broken edit as clean. This is the dangerous one.
-- A **false red** reports a clean edit as broken. This is cheaper, but it wastes an agent's
-  turn chasing a phantom error.
-
-An abstention (the tool says it cannot answer at compiler grade) counts as neither, because
-abstaining is the honest answer when the oracle cannot run.
+An abstention counts as neither false-green nor false-red. It records that the available
+compiler path could not produce a supported verdict.
 
 ## The result
 
 The recorded run (`fuse eval checkgate --mutations 500`) produced 1,000 compiler-verified
 cases, 500 breaking and 500 neutral, over the OrderingApp fixture, plus 8 curated cases:
-zero false green and zero false red (`checkgate.json`). A compile-breaking edit is called
-broken, a clean edit is called clean, and when the substrate cannot answer at compiler grade
-the tool abstains.
+zero false-green and zero false-red verdicts (`checkgate.json`).
 
-The number to keep is the zero on the left: over a thousand edits the compiler itself
-labeled, the tool never once said "clean" about an edit that does not compile.
+This result applies to the OrderingApp fixture, the four breaking mutation families, the
+three neutral mutation families, and the curated cases. It does not establish the same rate
+for every C# project or edit shape.
 
-## But does the agent finish the task?
+## Agent-loop measurement
 
-Catching a broken edit is necessary, not sufficient. The metric that decides whether any of
-this helps is the loop: does an agent using the tool actually finish the task, and does it do
-so without silently shipping a wrong answer?
-
-The trap here is the same self-grading problem. An agent will often declare "done, the build
-is green" in its transcript. Believing the transcript is believing the tool about itself. So
-the agent loop comparison (`fuse eval loop`) scores a true pass@1 with a gold-test oracle: after
-the agent finishes, the task's own changed tests are checked out onto the agent's final edit
-and run. Success is the tests passing, not the agent claiming they pass. A rollout where the
-agent declared green but the oracle disagrees is a **false-done**.
+Edit classification does not establish task completion. The agent-loop comparison
+(`fuse eval loop`) therefore uses a separate gold-test oracle. After each rollout, the
+harness checks out the task's changed tests onto the agent's final edit and runs them.
+A rollout passes only when those tests pass. If the agent reports green and the oracle
+fails, the harness records a **false-done**.
 
 The arena is below the full size target (15 of 24 repositories with build capture, 59 of 60
-verified tasks), so this run is reported with confidence intervals. The driver
-is one model (`claude-sonnet-4-6`), over verified fail-to-pass tasks on the pinned library
-corpus, two rollouts per arm, 234 scored rollouts (`loop.json`).
+verified tasks), so the recorded run is reduced-scope. It uses one model
+(`claude-sonnet-4-6`), verified fail-to-pass tasks from the pinned library corpus, and two
+rollouts per arm. Of 236 planned rollouts, 234 were scored (`loop.json`).
 
-| Arm | True pass@1 (95% CI) | False-done | Mean build + test round-trips |
-|-----|---------------------:|-----------:|------------------------------:|
-| Fuse | 89% (95% CI 82-95) | 8 | 3.1 |
-| Native tools | 82% (95% CI 74-90) | 9 | 3.2 |
+- The Fuse arm recorded true pass@1 of 89 percent (95 percent CI 82 to 95), 8 false-done
+  rollouts, and 3.1 mean agent-visible build and test calls.
+- The native arm recorded true pass@1 of 82 percent (95 percent CI 74 to 90), 9 false-done
+  rollouts, and 3.2 mean agent-visible build and test calls.
 
-Read that with its scope. On this arena the Fuse arm finished more tasks (a 7-point true
-pass@1 edge) and shipped fewer silent wrong answers (false-done 8 versus 9).
+The observed pass@1 difference is 7 percentage points, but the confidence intervals
+overlap. The run supports reporting the observed values, not a general causal claim about
+all agents or repositories.
 
-## Publishing the miss
+## The missed gate
 
 Three success criteria were set before the run. Two hold: pass@1 within 5 points (Fuse
-is 7 points higher), and false-done at most the native count (8 versus 9). One misses. The
-criterion that Fuse's build-plus-test round-trips would be at most half of native is not met: the
-arms are essentially equal, 3.1 versus 3.2, not half. That miss is measured cleanly now that
-speculative `fuse_check` turns are counted separately from real builds, and it stays in the
-figure and in the numbers.
+is 7 points higher), and false-done at most the native count (8 versus 9). The
+build-call criterion misses. It required the Fuse arm's build and test calls to be at most
+half the native count; the measured means were 3.1 and 3.2.
 
-The honest reading is narrow on purpose. On this arena Fuse's edge is a higher true success
-rate and a lower silent-wrong-answer rate, not collapsing build round-trips by half. Stating
-that plainly is the point. A benchmark that only reports its wins is back to grading its own
-homework.
+The harness counts speculative `fuse_check` turns separately from agent-visible builds and
+tests. On this arena, the result does not show the proposed reduction in build calls.
 
 ## Reproduce it
 
@@ -105,8 +88,6 @@ fuse eval loop
 ```
 
 Every figure above is written to `tests/benchmarks/results` and reported in full, including
-the modes where Fuse is weak, on the [benchmarks page](/docs/project/benchmarks). The full
-method and the corpus are on the [reproduction page](/docs/project/reproduce).
-
-If you build .NET tooling and want to argue with the method, that is the right response to a
-benchmark. The harness is in the repository; run it.
+the weaker modes, on the [benchmarks page](/docs/project/benchmarks). The
+[reproduction page](/docs/project/reproduce) documents the corpus, prerequisites, result
+files, and model-driven suite controls.

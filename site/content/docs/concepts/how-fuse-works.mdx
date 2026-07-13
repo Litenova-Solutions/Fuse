@@ -16,6 +16,16 @@ and context planning cheap on the second and later calls.
 
 ## The Pipeline
 
+```mermaid
+flowchart LR
+    A[Workspace] --> B[Index<br/>semantic, partial, or syntax]
+    B --> C[(.fuse/fuse.db)]
+    C --> D[Select seeds<br/>localize, resolve, or Git diff]
+    D --> E[Expand<br/>typed graph]
+    E --> F[Plan<br/>token budget]
+    F --> G[Render<br/>manifest and provenance]
+```
+
 | Stage | What it does |
 |-------|--------------|
 | 1. Index | Extract the best available semantic or syntax view and persist it. |
@@ -68,8 +78,8 @@ so the budget lands close to full. A budget of 0 means no limit.
 
 Rendering emits the planned set as source bodies at mixed **render tiers** (full,
 compressed, or signature-only **skeleton**), with a **manifest** that lists each file and
-its token cost and per-file **provenance** that records why each file is present. Secret
-redaction runs before any source reaches the payload, and the chosen output format
+its token cost and per-file **provenance** that records why each file is present. Best-effort
+secret redaction runs before source is added to the payload, and the chosen output format
 (`xml`, `markdown`, or `json`) is applied last.
 
 ## Why It Is Shaped This Way
@@ -89,8 +99,8 @@ it consumes and what it costs. Fuse counts with a real tokenizer rather than est
 from character length, so the manifest's numbers match what the target model sees.
 See [Tokenizers](/docs/reference/tokenizers).
 
-## Next
+## Inspect the Pipeline
 
-See [Scoping](/docs/concepts/scoping) for how localize and resolve narrow a task, the
-[Render tiers](/docs/concepts/reduction-levels) for how source is emitted, or the
-[Glossary](/docs/concepts/glossary) for the vocabulary in one place.
+Run `fuse diagnostics ./src` to read the index mode, then run
+`fuse context ./src --seed OrderService --max-tokens 15000 --format markdown`. Inspect
+the manifest to see each file's token cost, render tier, and provenance.

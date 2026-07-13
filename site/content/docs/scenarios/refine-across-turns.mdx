@@ -40,15 +40,8 @@ in step 2 and is skipped, with a note saying so. Step 4 scopes the review to the
 shares the same session, so the changed files it has not sent before arrive while anything
 already delivered is elided.
 
-## When to Use It
+## Run a Two-Turn Check
 
-Use a shared session for any task that takes more than one context call: a change that
-touches several areas, an investigation that narrows over several turns, or a review that
-follows a drill-in. For a single call, the session id is harmless but does nothing.
-
-## Related Concept
-
-The omission rules are in [Sessions and deltas](/docs/concepts/sessions-and-deltas), the
-wider survey-localize-resolve-review loop is in
-[The iterative workflow](/docs/concepts/iterative-workflow), and the `sessionId` parameter
-is in the [MCP tools reference](/docs/reference/mcp-tools).
+Reuse one `sessionId` in two `fuse_context` calls with overlapping seeds. Read the
+omitted-file note in the second response. Then edit one omitted file and call again; the
+changed content should be returned instead of elided.

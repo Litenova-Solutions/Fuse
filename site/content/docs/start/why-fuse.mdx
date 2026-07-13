@@ -77,11 +77,11 @@ typed edge.
 The current `reduce.json` records these ranges across four repositories:
 
 - The skeleton tier removed 38% to 44% of tokens.
-- It retained 100% of public types and 97% to 100% of public methods.
+- An independent Roslyn parse found that skeleton retained 100% of public and protected
+  type-name keys and 96.3% to 99.4% of public and protected method-name keys.
 - The public-API tier removed 47% to 60% of tokens.
 
-These figures replace older claims based on other reduction levels or superseded
-comparisons.
+These figures measure declaration-name fidelity, not complete API preservation.
 
 ## What the Agent-Loop Result Supports
 
@@ -94,7 +94,7 @@ support a claim that Fuse halves build calls. The check gate likewise has a boun
 zero wrong verdicts across 1,000 compiler-labeled OrderingApp mutations, not zero wrong
 verdicts for every possible .NET edit.
 
-## Install and Connect
+## Try It on the Current Repository
 
 Install Fuse as a .NET global tool, then register its MCP server with the current agent:
 
@@ -103,6 +103,9 @@ dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
-See [Connect to your AI](/docs/start/connect-your-ai) for client-specific setup and
-[Benchmarks](/docs/project/benchmarks) for methods, confidence intervals, and recorded
-artifacts.
+Reload the MCP client, then ask it:
+
+```text
+Call fuse_workspace with action=status for this repository. Return the index mode,
+freshness, and verification grade exactly as Fuse reports them.
+```

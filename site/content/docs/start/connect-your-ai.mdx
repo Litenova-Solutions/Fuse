@@ -225,5 +225,12 @@ and the read-only [MCP resources](/docs/reference/mcp-resources) cover the
 
 ## Next
 
-Learn the recommended tool sequence for a real task in
-[Context for an agent on a large codebase](/docs/scenarios/context-for-an-agent).
+Run one task through the registered server:
+
+```text
+Call fuse_find with kind=task for "discount applied at checkout". If the result is
+confident, pass its candidate files to fuse_context with maxTokens=15000.
+```
+
+If the result is partial or insufficient, refine it with a symbol, route, service,
+request, config section, or git base from the returned navigation map.

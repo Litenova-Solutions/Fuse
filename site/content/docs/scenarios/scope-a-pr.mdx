@@ -12,6 +12,14 @@ impacts, not the whole repository.
 fuse review ./src --changed-since origin/main --max-tokens 25000
 ```
 
+```mermaid
+flowchart LR
+    A[Git diff from origin/main] --> B[Changed files<br/>must-keep seeds]
+    B --> C[Typed graph expansion<br/>callers, wiring, and tests]
+    C --> D[Token-budget plan]
+    D --> E[Review payload<br/>manifest and provenance]
+```
+
 The seed is every file changed since the git ref. `fuse review` then computes the **blast
 radius**, the callers, DI consumers, route and request handlers, options consumers, and
 related tests reachable from the changed files, and emits the changed files plus that
@@ -30,20 +38,20 @@ the changed files are always kept, so the cut falls on the periphery first.
 
 ## What You Get
 
-A context plan scoped to the change set and its blast radius, emitted with the changed
-files always kept. Change scoping is the strongest mode by measurement: over 69 real merged pull requests,
+A context plan scoped to the change set and its available graph blast radius, emitted with
+the changed files always kept. Change scoping is the strongest mode by measurement: over 69 real merged pull requests,
 `fuse review` keeps 100 percent of changed files at 93.4 percent precision in a median
-1,026 returned tokens ([benchmarks](/docs/project/benchmarks)). It is one call, not an
-explore loop.
+1,026 returned tokens ([benchmarks](/docs/project/benchmarks)). Changed-file recall is
+100 percent by construction because Git supplies the must-keep seeds.
 
 ## When to Use It
 
-Use this for branch and pull-request review, for understanding the blast radius of a
-change, and for handing an agent exactly the context a code review needs. It is the routed
-default whenever a git base is available. For the MCP equivalent, call `fuse_review`.
+Use this for branch and pull-request review and for inspecting the graph-visible blast
+radius. Static analysis can miss reflection and runtime dispatch, and syntax-tier projects
+carry fewer typed edges.
 
-## Related Concept
+## Review the Current Branch
 
-The git seed and blast-radius expansion are covered in
-[Scoping](/docs/concepts/scoping); the recall and precision numbers are in
-[Benchmarks](/docs/project/benchmarks).
+Run the command against the branch's real base. In the manifest, confirm that every
+Git-changed file is marked must-keep, then inspect which support files were included by
+typed-edge provenance.

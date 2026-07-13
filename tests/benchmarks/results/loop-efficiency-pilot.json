@@ -3,17 +3,256 @@
   "description": "Loop metric (R4/B1): build-gated turns to green per toolbox (model-dependent; harness is the deliverable).",
   "generated": null,
   "scorecard": {
-    "taskCount": 0,
-    "recall": 0,
-    "recallCiLow": 0,
-    "recallCiHigh": 0,
+    "taskCount": 14,
+    "recall": 0.8,
+    "recallCiLow": 0.4,
+    "recallCiHigh": 1,
     "precision": 0,
     "f1": 0,
-    "medianTokens": 0,
-    "meanTokens": 0,
+    "medianTokens": 1,
+    "meanTokens": 1,
     "lowSignalF1": 0
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "Ardalis.GuardClauses@6186c68d/native#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 568389,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": true,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@6186c68d/fuse#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 407277,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": true,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@6186c68d/fuse-resident#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse-resident",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 542750,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": true,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@9ee058e0/native#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 4,
+      "tokens": 2,
+      "latencyMs": 614887,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@9ee058e0/fuse#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 282161,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@9ee058e0/fuse-resident#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse-resident",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 424123,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 2,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@f26fb995/native#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 251782,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": true,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@f26fb995/fuse#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 4,
+      "tokens": 4,
+      "latencyMs": 449651,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 1,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@d54c66ae/native#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 4,
+      "tokens": 2,
+      "latencyMs": 316783,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": true,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@d54c66ae/fuse#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 347212,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 2,
+      "oraclePassed": true,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@d54c66ae/fuse-resident#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse-resident",
+      "recall": 1,
+      "precision": 4,
+      "tokens": 3,
+      "latencyMs": 204568,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": true,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@63cd557f/native#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 201961,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@63cd557f/fuse#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 5,
+      "tokens": 1,
+      "latencyMs": 467463,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 3,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses@63cd557f/fuse-resident#1",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse-resident",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 222941,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 1,
+      "oraclePassed": null,
+      "falseDone": false
+    }
+  ],
   "notes": [
     "model claude-sonnet-4-6",
     "max turns 40",
@@ -23,10 +262,23 @@
     "resident arm enabled: fuse-resident spawns its MCP server with FUSE_RESIDENT=1.",
     "REDUCED-SCOPE run (no headline; confidence intervals only): corpus below full minimums (15/20 tier-1 repos, 59/60 verified oracle tasks); running REDUCED-SCOPE (no headline, report with confidence intervals) per the pre-registered C4 fallback. The shortfall is an environment-buildability finding.",
     "task source: corpus-tasks-v2.json (59 verified tasks, generated 2026-07-11T11:42:50.6632998Z)",
-    "SHORT STUDY: deterministic total-task cap 1; one rollout per arm; no headline or significance claim.",
+    "SHORT STUDY: deterministic total-task cap 5; one rollout per arm; no headline or significance claim.",
     "claude CLI version 2.1.181 (Claude Code)",
     "rollouts per arm: 1",
-    "rollout blocker: model driver authentication failed; fix the Claude CLI credential before rerunning.",
-    "No rollouts produced a transcript; nothing scored."
+    "tasks 5; rollouts recorded 14; wedged/omitted this run 1",
+    "sampled this run (5): Ardalis.GuardClauses@6186c68d, Ardalis.GuardClauses@9ee058e0, Ardalis.GuardClauses@f26fb995, Ardalis.GuardClauses@d54c66ae, Ardalis.GuardClauses@63cd557f",
+    "arm fuse: n 5, reached-green (proxy) 80% (95% CI 40%-100%), median iters-to-green 1.0, mean agent-visible build\u002Btest invocations 2.8, mean fuse_check turns 1.2",
+    "arm fuse: elapsed n 5 rollouts across 5 tasks, total 1,953.8s, median rollout 407.3s, task-clustered mean 390.8s and median 407.3s.",
+    "arm fuse: oracle-scored 2/5, TRUE pass@1 100% (95% CI 100%-100%), false-done 0",
+    "arm fuse-resident: n 4, reached-green (proxy) 100% (95% CI 100%-100%), median iters-to-green 1.0, mean agent-visible build\u002Btest invocations 2.8, mean fuse_check turns 0.8",
+    "arm fuse-resident: elapsed n 4 rollouts across 4 tasks, total 1,394.4s, median rollout 323.5s, task-clustered mean 348.6s and median 323.5s.",
+    "arm fuse-resident: oracle-scored 2/4, TRUE pass@1 100% (95% CI 100%-100%), false-done 0",
+    "arm native: n 5, reached-green (proxy) 100% (95% CI 100%-100%), median iters-to-green 1.0, mean agent-visible build\u002Btest invocations 2.8, mean fuse_check turns 0.0",
+    "arm native: elapsed n 5 rollouts across 5 tasks, total 1,953.8s, median rollout 316.8s, task-clustered mean 390.8s and median 316.8s.",
+    "arm native: oracle-scored 3/5, TRUE pass@1 100% (95% CI 100%-100%), false-done 0",
+    "elapsed native vs fuse: 5 paired tasks; task-clustered delta (fuse minus native) mean -0.0s, median 30.4s; descriptive only, no significance claim.",
+    "verified elapsed native vs fuse: 2 paired tasks passed the gold-test oracle in both arms; median time saving 9.4%, mean delta -65.3s, median delta -65.3s; use this speed estimate only with the separately reported pass rates and sample size.",
+    "elapsed native vs fuse-resident: 4 paired tasks; task-clustered delta (fuse-resident minus native) mean -76.9s, median -68.9s; descriptive only, no significance claim.",
+    "verified elapsed native vs fuse-resident: 2 paired tasks passed the gold-test oracle in both arms; median time saving 20.0%, mean delta -68.9s, median delta -68.9s; use this speed estimate only with the separately reported pass rates and sample size."
   ]
 }

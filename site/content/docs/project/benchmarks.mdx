@@ -235,6 +235,24 @@ On this arena Fuse's pass@1 is 7 points higher (89 versus 82 percent). False-don
 
 The earlier single-rollout pilot (`loop-pilot.json`) is superseded by this run.
 
+### Short elapsed-time pilot (`loop-efficiency-pilot.json`)
+
+A separate five-task pilot measured the full Claude Code session time in three arms: native
+tools, standard Fuse, and Fuse with the resident workspace enabled. It ran one rollout per
+arm on five Ardalis.GuardClauses tasks. Fourteen of 15 planned rollouts completed; one
+resident rollout was omitted.
+
+The final test check executed in both compared arms for only two tasks. On those two pairs,
+standard Fuse recorded a median time saving of 9.4 percent and resident Fuse recorded 20.0
+percent. This is a directional pilot, not a developer-productivity result: two verified pairs
+cannot support a public "developers are X percent faster" claim.
+
+The broader timing rows reinforce that limit. Across all five native-to-standard-Fuse pairs,
+mean elapsed time was equal and median Fuse time was 30.4 seconds slower. Across the four
+native-to-resident pairs, resident Fuse was 68.9 seconds faster at the median. Every final
+test check that executed passed, but it executed for only three native, two Fuse, and two
+resident rollouts. The result file retains every duration, omission, and denominator.
+
 ## DiagBench: repair-packet auto-apply rate
 
 A `fuse_check` repair packet is only useful if its suggested fix repairs the error. DiagBench (`fuse eval diagbench`) measures that without a model: for each API-shape mutant (a misspelled member or type reference), it builds the shipped repair packet, auto-applies the machine-applicable `TopRepair`, recompiles, and records whether the error went to zero with no new error.
@@ -246,7 +264,7 @@ The recorded run (`results/diagbench.json`) is 20 single-token near-miss mutants
 These are honest gaps. Do not read an absence here as a result:
 
 - The model-driven peer comparison at full scale. All four arms run head-to-head, but the model-driven arms run a bounded 4-PR sample. A full 50-to-100-PR model-driven run needs a larger compute budget.
-- Full task resolution at scale: driving an agent across arms and scoring its patch against a test oracle over many tasks. The deterministic core of that harness is built and tested; the at-scale agent run needs provisioned model credentials and compute.
+- Elapsed task resolution at scale: the five-task timing pilot has only two verified pairs. A publishable time-savings estimate needs a larger task sample with final tests executing in both compared arms.
 - Cross-machine timing. The warm-index latency model is on [Performance and Benchmarking](/docs/project/performance); no fixed cross-machine number is published.
 
 ## How to read these results together

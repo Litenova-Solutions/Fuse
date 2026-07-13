@@ -68,13 +68,14 @@ export default function HomePage() {
       <section className="border-b border-fd-border">
         <div className="mx-auto grid w-full max-w-6xl gap-12 px-6 py-16 md:py-20 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
           <div>
-            <h1 className="max-w-2xl text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-              Catch the wrong edit before it reaches your code
+            <p className="text-sm font-medium text-[var(--brand)]">MCP server for .NET</p>
+            <h1 className="mt-3 max-w-2xl text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
+              Your agent&apos;s C# edits, compiler-checked before they land
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-fd-muted-foreground">
-              A coding agent can guess which service or handler runs, change the wrong file, and
-              discover compiler errors after the edit. Fuse helps Cursor, Claude Code, and Copilot
-              check the proposed change against your local .NET solution first.
+              Fuse lets your coding agent ask the local .NET compiler about a proposed edit before
+              writing it. The same typed index follows dependency injection, routes, and handlers
+              to the code that actually runs.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -82,13 +83,15 @@ export default function HomePage() {
                 <Link href="/docs/start/connect-your-ai">Connect Fuse</Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
-                <a href={githubUrl} target="_blank" rel="noreferrer">
-                  View source
-                </a>
+                <Link href="/docs/project/benchmarks">See the benchmarks</Link>
               </Button>
             </div>
 
-            <div className="mt-9 grid max-w-xl gap-4" aria-label="Install and connect Fuse">
+            <p className="mt-5 max-w-xl text-sm text-fd-muted-foreground">
+              In the recorded 1,000-edit compiler test, zero broken edits were reported clean.
+            </p>
+
+            <div className="mt-8 grid max-w-xl gap-4" aria-label="Install and connect Fuse">
               <Command label="Install">dotnet tool install -g Fuse</Command>
               <Command label="Connect and add agent rules">fuse mcp install --rules</Command>
             </div>
@@ -101,18 +104,26 @@ export default function HomePage() {
               >
                 technical details
               </Link>{' '}
-              or review the{' '}
-              <Link
-                href="/docs/project/benchmarks"
+              or view the{' '}
+              <a
+                href={githubUrl}
+                target="_blank"
+                rel="noreferrer"
                 className="font-medium text-fd-foreground underline underline-offset-4"
               >
-                benchmark methods
-              </Link>
+                source on GitHub
+              </a>
               .
+            </p>
+
+            <p className="mt-6 flex max-w-xl flex-wrap gap-x-5 gap-y-1 text-xs text-fd-muted-foreground">
+              <span>Works with Cursor, Claude Code, and GitHub Copilot</span>
+              <span>Apache 2.0</span>
+              <span>Runs locally</span>
             </p>
           </div>
 
-          <BeforeAfterExample />
+          <ToolExchangeExample />
         </div>
       </section>
 
@@ -150,7 +161,7 @@ export default function HomePage() {
         <div className="max-w-2xl">
           <p className="text-sm font-medium text-[var(--brand)]">Daily .NET work</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-            Four checks that prevent common agent mistakes
+            Six checks that prevent common agent mistakes
           </h2>
         </div>
 
@@ -179,10 +190,22 @@ export default function HomePage() {
             body="Select and run the test types connected to the changed symbol instead of starting with the entire test suite."
             example="Example: run CheckoutHandlerTests after changing the checkout handler."
           />
+          <TaskCard
+            number="05"
+            title="Stage a verified refactor"
+            body="Rename a symbol, change a parameter list, or apply a code fix. The refactor comes back as a diff only when the compiler reports no new diagnostic."
+            example="Example: add a CancellationToken parameter and update every call site."
+          />
+          <TaskCard
+            number="06"
+            title="Check a package upgrade"
+            body="Give Fuse a NuGet package id and two versions. It returns the code in your solution that the upgrade would break."
+            example="Example: see what breaks before moving Polly from 7.x to 8.x."
+          />
         </div>
 
         <p className="mt-8 text-sm text-fd-muted-foreground">
-          The landing page keeps the flow simple. See the{' '}
+          See the{' '}
           <Link
             href="/docs/reference/mcp-tools"
             className="font-medium text-fd-foreground underline underline-offset-4"
@@ -196,7 +219,7 @@ export default function HomePage() {
       <section className="border-y border-fd-border bg-fd-card/40">
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-20 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div>
-            <p className="text-sm font-medium text-[var(--brand)]">Recorded compiler test</p>
+            <p className="text-sm font-medium text-[var(--brand)]">Recorded results</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">
               In a 1,000-change compiler test, every broken change was caught
             </h2>
@@ -205,9 +228,16 @@ export default function HomePage() {
               Fuse&apos;s answer with the .NET compiler. Fuse reported all 500 broken edits and did
               not reject any of the 500 non-breaking edits.
             </p>
+            <p className="mt-4 text-fd-muted-foreground">
+              In a separate agent-loop comparison, edits from the Fuse arm passed the project&apos;s
+              own tests on the first attempt in 89 percent of scored runs versus 82 percent for
+              native tools, and Fuse declared success on an edit that failed the tests less often
+              (8 versus 9). The confidence intervals overlap, and build counts were essentially
+              equal.
+            </p>
             <p className="mt-4 text-sm text-fd-muted-foreground">
-              This is a bounded test on the recorded OrderingApp sample. It does not claim that
-              Fuse can catch every possible error in every repository.{' '}
+              These are bounded tests on the recorded OrderingApp sample and task corpus. They do
+              not claim that Fuse catches every possible error in every repository.{' '}
               <Link
                 href="/docs/project/benchmarks"
                 className="font-medium text-fd-foreground underline underline-offset-4"
@@ -244,10 +274,16 @@ export default function HomePage() {
         <div className="rounded-xl border border-fd-border bg-fd-card p-7">
           <h3 className="text-lg font-semibold">What a compiler check means</h3>
           <p className="mt-3 text-sm leading-6 text-fd-muted-foreground">
-            Fuse uses saved compiler state when that state is available. Otherwise, it runs a
-            scoped <code className="font-mono text-fd-foreground">dotnet build</code> and returns
-            those diagnostics. If neither path can run, Fuse reports that it could not check the
-            edit.
+            Every answer names how it was produced. Fuse calls this the verification grade:
+            oracle grade checks against compiler state captured from the real build, build grade
+            runs a scoped <code className="font-mono text-fd-foreground">dotnet build</code> and
+            returns those diagnostics, and if neither path can run, Fuse abstains and names what
+            is missing instead of guessing.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-fd-muted-foreground">
+            Warm answers are fast: on the recorded NodaTime run, an exact symbol lookup took 2.2
+            milliseconds at the median and the opt-in resident check answered in 31 milliseconds.
+            Timings are environment-dependent.
           </p>
           <p className="mt-3 text-sm leading-6 text-fd-muted-foreground">
             Fuse does not claim to remove all builds or prove that an application behaves
@@ -292,49 +328,38 @@ function Command({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function BeforeAfterExample() {
+function ToolExchangeExample() {
   return (
-    <div className="home-example" aria-label="Example of a coding agent working without and with Fuse">
+    <div className="home-example" aria-label="Example of one edit checked by fuse_check before it is written">
       <div className="home-example__header">
-        <span>Example task</span>
-        <strong>Add cancellation to checkout</strong>
+        <span>One checked edit</span>
+        <strong>Update the order total in OrderService.cs</strong>
       </div>
-      <div className="home-example__grid">
-        <section className="home-example__panel" aria-labelledby="without-fuse">
-          <p id="without-fuse" className="home-example__eyebrow">
-            Without Fuse
-          </p>
-          <div className="home-example__line">
-            <span>Guessed file</span>
-            <code>CheckoutService.cs</code>
-          </div>
-          <div className="home-example__line">
-            <span>Edit</span>
-            <code>Add CancellationToken</code>
-          </div>
-          <div className="home-example__result home-example__result--error">
-            <strong>Build fails after the edit</strong>
-            <code>CS7036: required argument missing</code>
-          </div>
-        </section>
+      <div className="home-example__exchange">
+        <div className="home-example__turn">
+          <p className="home-example__speaker">Agent proposes, before writing the file</p>
+          <code>return order.TotalAmount * quantity;</code>
+        </div>
 
-        <section className="home-example__panel" aria-labelledby="with-fuse">
-          <p id="with-fuse" className="home-example__eyebrow">
-            With Fuse
-          </p>
-          <div className="home-example__line">
-            <span>Route</span>
-            <code>POST /checkout</code>
+        <div className="home-example__turn">
+          <p className="home-example__speaker">fuse_check answers from the compiler</p>
+          <div className="home-example__result home-example__result--error">
+            <code>CS1061: &apos;Order&apos; has no member &apos;TotalAmount&apos;</code>
+            <code>Repair: &apos;Total&apos; exists on Order</code>
           </div>
-          <div className="home-example__line">
-            <span>Runs</span>
-            <code>CheckoutCommandHandler.Handle</code>
-          </div>
+        </div>
+
+        <div className="home-example__turn">
+          <p className="home-example__speaker">Agent revises and checks again</p>
           <div className="home-example__result home-example__result--ok">
-            <strong>Proposed edit checked first</strong>
-            <code>Callers and compiler errors returned</code>
+            <code>return order.Total * quantity;</code>
+            <strong>No diagnostics. The file is written once, correctly.</strong>
           </div>
-        </section>
+        </div>
+
+        <p className="home-example__contrast">
+          Without Fuse, the first version lands and the build fails after the edit.
+        </p>
       </div>
     </div>
   );

@@ -2,6 +2,25 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 4.0.0 is the first public release; it carries the whole product and there is no prior public version to migrate from.
 
+## [4.0.1] - 2026-07-13
+
+### Added
+
+- `fuse mcp install --rules` at project scope appends `.fuse/` to `.gitignore` when no equivalent entry exists (same helper as `fuse init`).
+- Connect-your-agent documentation covers manual registration for other MCP clients (Windsurf, Cline, Zed, and custom agents) over the same `fuse mcp serve` stdio server.
+
+### Changed
+
+- Consumer copy on fuse.codes, the README, and the docs index uses mechanism-first language for senior .NET developers and MCP authors (warm index, typed graph, verification grade) instead of two-beat marketing slogans.
+- Docs and install help state that MCP read tools build `.fuse/fuse.db` on first use; `fuse index` or `fuse_workspace action=index` remain optional pre-warm steps before the agent's first turn.
+- Product copy names Cursor, Claude Code, and Copilot as common MCP clients with auto-install, not as an exclusive list; any MCP-compatible client can run `fuse mcp serve`.
+- The landing page hero is simplified: one demo, Connect and Quickstart CTAs, proof stats and install blocks moved below the fold.
+
+### Fixed
+
+- Mermaid flowcharts and theme-aware SVG diagrams render on the documentation site instead of appearing as raw code blocks.
+- Portable capture bundles no longer fail the secret scan on Roslyn `RegexGenerator.g.cs` emitted files.
+
 ## [4.0.0]
 
 Fuse is a resident .NET compiler service for AI agents. It holds a workspace's Roslyn compilations in memory, verifies a proposed edit before it lands, computes a change's blast radius, stages compiler-executed refactors as diffs, runs the covering tests for a symbol, and resolves what the code actually runs. Every answer is stamped with a verification grade, and Fuse abstains honestly when it cannot answer at compiler grade rather than guessing. Scoped, reduced context and a deterministic lexical retrieval channel are the supporting machinery that feed those answers. It ships as a .NET global tool (`fuse`) and as a Model Context Protocol server (`fuse mcp serve`).

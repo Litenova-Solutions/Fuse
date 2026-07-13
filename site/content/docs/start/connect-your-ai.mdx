@@ -46,7 +46,7 @@ The available flags are:
 
 - `--client claude|cursor|copilot|all`, default `all`
 - `--scope project|user`, default `project`
-- `--rules`, which writes the recommended agent instructions
+- `--rules`, which writes the recommended agent instructions and, at project scope, adds `.fuse/` to `.gitignore`
 - `--command`, which changes the executable the client launches
 
 ## What Project Setup Writes
@@ -55,6 +55,7 @@ The available flags are:
 - Cursor: `.cursor/mcp.json`, plus `.cursor/rules/fuse.mdc` when `--rules` is set.
 - GitHub Copilot: `.vscode/mcp.json`, plus a Fuse-managed block in
   `.github/copilot-instructions.md` when `--rules` is set.
+- `.gitignore`: appends `.fuse/` at project scope when `--rules` is set (skipped when an equivalent entry already exists).
 
 Existing JSON and instruction files are merged rather than replaced. Re-running the
 command updates Fuse-managed entries in place. Project files can be committed so the team
@@ -88,9 +89,11 @@ Fuse labels the compiler path used for each check. This label is the verificatio
 oracle grade uses a build-captured compilation, while build grade runs a scoped real
 `dotnet build`. If neither path can answer, Fuse abstains and states what is missing.
 
-The first call builds the local `.fuse/fuse.db` index. A large repository can take from a
-few seconds to tens of seconds on that cold call. Fuse reports `partial` or `syntax`
-analysis when MSBuild cannot load every project.
+The first MCP tool call builds the local `.fuse/fuse.db` index automatically; you do not
+need to run `fuse index` first. A large repository can take from a few seconds to tens of
+seconds on that cold call. To pre-warm the index before the agent's first turn, run
+`fuse index` or ask the agent to call `fuse_workspace` with `action=index`. Fuse reports
+`partial` or `syntax` analysis when MSBuild cannot load every project.
 
 ## Local Process and Network Behavior
 

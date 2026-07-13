@@ -17,6 +17,10 @@ Resolve IOrderService to its implementation, then check the proposed OrderServic
 with fuse_check before writing it.
 ```
 
+The first MCP tool call builds `.fuse/fuse.db` automatically. Run `fuse index` first if
+you want a warm index before the agent's first turn. `fuse mcp install --rules` also adds
+`.fuse/` to `.gitignore` at project scope.
+
 <p align="center">
   <img src="assets/demo/fuse-check-demo.gif" alt="An agent proposes an edit with an invalid OrderOptions member. fuse_check returns CS1061 and a repair packet before the edit lands, then verifies the corrected proposal." width="820">
 </p>

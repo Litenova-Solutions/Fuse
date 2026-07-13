@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Generate the Fuse verify-loop diagram (self-contained, light/dark-adaptive SVG).
 
-Pure Python stdlib. The diagram shows the loop that no bar chart shows: an agent proposes
-an edit, fuse_check answers with diagnostics and a repair packet before the edit lands, the
-agent repairs and re-checks, then fuse_test runs only the covering tests, and it is done, with the
-full dotnet build round-trip drawn as the path this replaces. Verbs match the shipped v4
-tool surface (fuse_check, fuse_test). ASCII text only. Re-run:
+Pure Python stdlib. The diagram shows the graded verification paths: oracle grade uses a
+resident or captured compilation, build grade runs a scoped project build, and abstention
+reports that neither path can run. Repair packets appear only for supported diagnostics.
+fuse_test either runs selected covering test types or returns selection-only. ASCII text only.
 
     python fuse-loop-diagram.py                 # writes fuse-loop-diagram.svg
     python fuse-loop-diagram.py path/to/x.svg   # custom path
@@ -16,7 +15,7 @@ adapts on the fuse.codes landing page and in GitHub markdown (rendered via <img>
 import sys
 from html import escape
 
-W, H = 1000, 600
+W, H = 1000, 680
 el_list = []
 def el(s): el_list.append(s)
 
@@ -78,11 +77,11 @@ def compose():
 
     # heading
     text(60, 54, "The verify loop", size=24, cls="ink", weight="800", spacing="-0.3")
-    text(60, 80, "fuse_check answers with the compiler before the edit lands, so the agent repairs from real diagnostics without a build.",
+    text(60, 80, "Each answer names its verification grade. The fallback path may run a scoped project build.",
          size=13.5, cls="muted")
 
-    lx, lw = 60, 360           # left column boxes
-    rx, rw = 590, 350          # repair box (right)
+    lx, lw = 60, 360
+    rx, rw = 590, 350
     cx = lx + lw / 2
 
     # 1. propose
@@ -91,39 +90,52 @@ def compose():
 
     # 2. fuse_check
     arrow_down(cx, 166, 196)
-    box(lx, 196, lw, 92, cls="box-fuse")
+    box(lx, 196, lw, 78, cls="box-fuse")
     text(lx + 22, 228, "fuse_check", size=17, cls="brand", weight="800", font=MONO)
-    text(lx + 22, 252, "typecheck the proposed edit before it lands;", size=12.5, cls="muted")
-    text(lx + 22, 270, "oracle grade: checked against the real compilation, no build.", size=12.5, cls="muted")
+    text(lx + 22, 252, "typecheck one proposed file before it lands", size=12.5, cls="muted")
 
-    # loop with the repair box
-    box(rx, 200, rw, 84)
-    text(rx + 22, 232, "Agent applies the repair", size=16, cls="ink", weight="700")
-    text(rx + 22, 256, "the repair packet names the fix", size=12.5, cls="muted")
-    text(rx + 22, 273, "(the member that exists, the type to use).", size=12.5, cls="muted")
-    arrow_right(lx + lw, rx, 224, cls="loop", head="loophead")
-    text((lx + lw + rx) / 2, 216, "diagnostics + repair packet", size=11.5, cls="brand", anchor="middle", weight="600")
-    arrow_left(rx, lx + lw, 260, cls="loop", head="loophead")
-    text((lx + lw + rx) / 2, 278, "apply, re-check", size=11.5, cls="brand", anchor="middle", weight="600")
+    # Conditional repair loop belongs to diagnostics from fuse_check.
+    box(rx, 196, rw, 78)
+    text(rx + 20, 225, "Repair packet, when supported", size=15, cls="ink", weight="700")
+    text(rx + 20, 250, "API-shape diagnostics may include an applicable fix.", size=11.5, cls="muted")
+    arrow_right(lx + lw, rx, 218, cls="loop", head="loophead")
+    arrow_left(rx, lx + lw, 258, cls="loop", head="loophead")
+    text(505, 210, "diagnostic", size=11, cls="brand", anchor="middle")
+    text(505, 274, "apply and re-check", size=11, cls="brand", anchor="middle")
 
-    # 3. fuse_test
-    arrow_down(cx, 288, 330)
-    text(cx + 14, 313, "clean", size=11.5, cls="faint", anchor="start")
-    box(lx, 330, lw, 72, cls="box-fuse")
-    text(lx + 22, 361, "fuse_test", size=17, cls="brand", weight="800", font=MONO)
-    text(lx + 22, 385, "run only the covering tests, not the whole suite.", size=12.5, cls="muted")
+    # Three honest outcomes from fuse_check.
+    outcomes = [
+        (60, "ORACLE", "captured or resident compilation", "no build"),
+        (370, "SCOPED BUILD", "owning project via dotnet build", "build-grade fallback"),
+        (680, "ABSTAIN", "compiler and toolchain unavailable", "no clean verdict"),
+    ]
+    for ox, title, line1, line2 in outcomes:
+        box(ox, 310, 260, 88, cls="box")
+        text(ox + 18, 338, title, size=12, cls="brand", weight="800", font=MONO)
+        text(ox + 18, 362, line1, size=11.5, cls="muted")
+        text(ox + 18, 381, line2, size=11.5, cls="faint")
+    el('<path d="M240 274 V290 H810" class="arrow"/>')
+    arrow_down(240, 290, 310)
+    arrow_down(500, 290, 310)
+    arrow_down(810, 290, 310)
 
-    # 4. done
-    arrow_down(cx, 402, 438)
-    text(cx + 14, 424, "green", size=11.5, cls="faint", anchor="start")
-    box(lx, 438, lw, 56)
-    text(cx, 472, "Done: the edit is verified", size=16, cls="ink", weight="700", anchor="middle")
+    # Test selection has two outcomes.
+    box(lx, 420, lw, 76, cls="box-fuse")
+    text(lx + 22, 450, "fuse_test", size=17, cls="brand", weight="800", font=MONO)
+    text(lx + 22, 474, "select tests linked to the changed symbol", size=12.5, cls="muted")
+    arrow_down(190, 398, 420)
+    el('<path d="M500 398 V408 H290 V413" class="arrow"/>')
+    el('<polygon class="arrowhead" points="285,412 295,412 290,420"/>')
+    arrow_down(cx, 496, 530)
+    box(60, 530, 410, 70)
+    text(80, 558, "COVERAGE FOUND", size=12, cls="brand", weight="800", font=MONO)
+    text(80, 582, "run the selected test types at build grade", size=12.5, cls="muted")
+    box(530, 530, 410, 70)
+    text(550, 558, "NO COVERAGE EDGE", size=12, cls="brand", weight="800", font=MONO)
+    text(550, 582, "selection-only; no whole-suite fallback", size=12.5, cls="muted")
 
-    # avoided path (dim)
-    py = 524
-    box(60, py, W - 120, 52, cls="box-dim")
-    text(80, py + 22, "The round-trip this replaces", size=12.5, cls="faint", weight="700")
-    text(80, py + 40, "edit, dotnet build the solution, read the errors, edit again, dotnet test the whole suite; repeat until green.",
+    box(60, 620, W - 120, 40, cls="box-dim")
+    text(80, 645, "Fuse adds graded checks and targeted selection; normal builds and broader test runs remain available.",
          size=12.5, cls="faint")
 
     return

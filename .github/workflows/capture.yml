@@ -48,7 +48,9 @@ jobs:
           $target = "${{ github.event.inputs.target }}"
           if ([string]::IsNullOrWhiteSpace($target)) { $target = "src/Host/Fuse.Cli" }
           $fuse = "src/Host/Fuse.Cli/bin/Release/net10.0/fuse.dll"
-          dotnet $fuse capture $target --out fuse-capture
+          if (-not (Test-Path $fuse)) { throw "fuse CLI not built at $fuse" }
+          $fuse = (Resolve-Path $fuse).Path
+          dotnet exec $fuse capture $target --out fuse-capture
           if ($LASTEXITCODE -ne 0) { throw "fuse capture failed" }
           # The bundle never carries a binlog; fail the job if one somehow appears alongside the artifact.
           if (Test-Path "fuse-capture/*.binlog") { throw "a binlog is present in the bundle; the secret posture forbids shipping it" }

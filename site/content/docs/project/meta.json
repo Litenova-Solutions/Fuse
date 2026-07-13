@@ -3,9 +3,8 @@
   "icon": "FolderGit2",
   "pages": [
     "benchmarks",
+    "reproduce",
     "performance",
-    "launch",
-    "messaging",
     "roadmap",
     "changelog",
     "contributing"

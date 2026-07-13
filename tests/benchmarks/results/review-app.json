@@ -1,0 +1,246 @@
+{
+  "suite": "review",
+  "description": "Change impact: fuse review recall/precision/tokens over PR ground truth.",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 8,
+    "recall": 1,
+    "recallCiLow": 1,
+    "recallCiHigh": 1,
+    "precision": 0.842032967032967,
+    "f1": 0.9142431021625652,
+    "medianTokens": 366.5,
+    "meanTokens": 631.25,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "eShopOnWeb#176",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 70,
+      "latencyMs": 113,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+          "src/ApplicationCore/Specifications/OrderWithItemsByIdSpec.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "eShopOnWeb#154",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 359,
+      "latencyMs": 86,
+      "hit": {
+        "hits": [
+          "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
+          "src/Web/Features/MyOrders/GetMyOrders.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+          "src/Web/ViewModels/OrderDetailViewModel.cs",
+          "src/Web/ViewModels/OrderViewModel.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "eShopOnWeb#121",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 374,
+      "latencyMs": 101,
+      "hit": {
+        "hits": [
+          "src/BlazorAdmin/CustomAuthStateProvider.cs",
+          "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
+          "src/Web/Controllers/UserController.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "eShopOnWeb#120",
+      "repo": "eShopOnWeb",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 191,
+      "latencyMs": 92,
+      "hit": {
+        "hits": [
+          "src/PublicApi/Program.cs",
+          "src/Web/Configuration/ConfigureWebServices.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "eShopOnWeb#117",
+      "repo": "eShopOnWeb",
+      "category": "route-api",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 640,
+      "latencyMs": 85,
+      "hit": {
+        "hits": [
+          "src/PublicApi/CatalogBrandEndpoints/CatalogBrandListEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CatalogItemGetByIdEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/CreateCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/DeleteCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.cs",
+          "src/PublicApi/CatalogTypeEndpoints/CatalogTypeListEndpoint.cs",
+          "tests/PublicApiIntegrationTests/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "eShopOnWeb#62",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.3076923076923077,
+      "tokens": 1253,
+      "latencyMs": 96,
+      "hit": {
+        "hits": [
+          "src/Web/Pages/Basket/BasketViewModel.cs",
+          "src/Web/Pages/Basket/Index.cshtml.cs",
+          "src/Web/Pages/Index.cshtml.cs",
+          "tests/FunctionalTests/Web/Pages/Basket/IndexTest.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Web/Services/BasketViewModelService.cs",
+          "src/Web/Services/CachedCatalogViewModelService.cs",
+          "src/Web/Interfaces/IBasketViewModelService.cs",
+          "src/Web/Interfaces/ICatalogViewModelService.cs",
+          "tests/FunctionalTests/Web/WebTestFixture.cs",
+          "src/Web/Services/CatalogViewModelService.cs",
+          "tests/FunctionalTests/Web/WebPageHelpers.cs",
+          "src/Web/Pages/Basket/Checkout.cshtml.cs",
+          "src/Web/Pages/Shared/Components/BasketComponent/Basket.cs"
+        ]
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "eShopOnWeb#59",
+      "repo": "eShopOnWeb",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 56,
+      "latencyMs": 93,
+      "hit": {
+        "hits": [
+          "src/Infrastructure/Identity/AppIdentityDbContextSeed.cs",
+          "src/PublicApi/Program.cs",
+          "src/Web/Program.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "eShopOnWeb#51",
+      "repo": "eShopOnWeb",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 0.42857142857142855,
+      "tokens": 2107,
+      "latencyMs": 115,
+      "hit": {
+        "hits": [
+          "src/Web/Areas/Identity/Pages/Account/Login.cshtml.cs",
+          "src/Web/Controllers/ManageController.cs",
+          "src/Web/Controllers/OrderController.cs",
+          "src/Web/Pages/Basket/BasketItemViewModel.cs",
+          "src/Web/Pages/Basket/Checkout.cshtml.cs",
+          "src/Web/ViewModels/Manage/IndexViewModel.cs",
+          "tests/FunctionalTests/Web/Controllers/AccountControllerSignIn.cs",
+          "tests/FunctionalTests/Web/Pages/Basket/BasketPageCheckout.cs",
+          "tests/FunctionalTests/Web/Pages/Basket/CheckoutTest.cs",
+          "tests/FunctionalTests/Web/Pages/Basket/IndexTest.cs",
+          "tests/FunctionalTests/Web/WebPageHelpers.cs",
+          "tests/PublicApiIntegrationTests/AuthEndpoints/AuthenticateEndpointTest.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Web/Services/BasketViewModelService.cs",
+          "src/Web/Interfaces/IBasketViewModelService.cs",
+          "tests/FunctionalTests/Web/WebTestFixture.cs",
+          "src/Web/Features/MyOrders/GetMyOrders.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+          "src/Web/Pages/Basket/Index.cshtml.cs",
+          "src/Web/Pages/Shared/Components/BasketComponent/Basket.cs",
+          "src/ApplicationCore/Constants/AuthorizationConstants.cs",
+          "src/ApplicationCore/Extensions/JsonExtensions.cs",
+          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.AuthenticateRequest.cs",
+          "src/PublicApi/AuthEndpoints/AuthenticateEndpoint.AuthenticateResponse.cs",
+          "tests/PublicApiIntegrationTests/ProgramTest.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetMyOrders.cs",
+          "tests/UnitTests/MediatorHandlers/OrdersTests/GetOrderDetails.cs"
+        ]
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    }
+  ],
+  "notes": [
+    "token budgets 25,000",
+    "index modes: partial 6, semantic 2",
+    "adjudicated PRs (with a reading set): 0",
+    "api-delta PRs (non-empty public surface change): 6",
+    "apidelta eShopOnWeb#154: 2 breaking, 4 additive :: BREAK Microsoft.eShopWeb.Web.Features.OrderDetails.GetOrderDetailsHandler.Handle(GetOrderDetails,CancellationToken); BREAK Microsoft.eShopWeb.Web.ViewModels.OrderViewModel.OrderItems; add Microsoft.eShopWeb.ApplicationCore.Specifications.CustomerOrdersSpecification; add Microsoft.eShopWeb.ApplicationCore.Specifications.CustomerOrdersSpecification.CustomerOrdersSpecification(string); add Microsoft.eShopWeb.Web.ViewModels.OrderDetailViewModel; add Microsoft.eShopWeb.Web.ViewModels.OrderDetailViewModel.OrderItems",
+    "apidelta eShopOnWeb#121: 1 breaking, 2 additive :: BREAK Microsoft.eShopWeb.Web.Controllers.UserController.UserController(ITokenClaimsService); add Microsoft.eShopWeb.Web.Controllers.UserController.Logout(); add Microsoft.eShopWeb.Web.Controllers.UserController.UserController(ITokenClaimsService,SignInManager\u003CApplicationUser\u003E,ILogger\u003CUserController\u003E,IMemoryCache)",
+    "apidelta eShopOnWeb#117: 7 breaking, 8 additive :: BREAK Microsoft.eShopWeb.PublicApi.CatalogBrandEndpoints.CatalogBrandListEndpoint.HandleAsync(); BREAK Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.CatalogItemGetByIdEndpoint.HandleAsync(GetByIdCatalogItemRequest); BREAK Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.CatalogItemListPagedEndpoint.HandleAsync(ListPagedCatalogItemRequest); BREAK Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.CreateCatalogItemEndpoint.HandleAsync(CreateCatalogItemRequest); BREAK Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.DeleteCatalogItemEndpoint.HandleAsync(DeleteCatalogItemRequest); BREAK Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.UpdateCatalogItemEndpoint.HandleAsync(UpdateCatalogItemRequest); BREAK Microsoft.eShopWeb.PublicApi.CatalogTypeEndpoints.CatalogTypeListEndpoint.HandleAsync(); add Microsoft.eShopWeb.PublicApi.CatalogBrandEndpoints.CatalogBrandListEndpoint.HandleAsync(IRepository\u003CCatalogBrand\u003E); add Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.CatalogItemGetByIdEndpoint.HandleAsync(GetByIdCatalogItemRequest,IRepository\u003CCatalogItem\u003E); add Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.CatalogItemListPagedEndpoint.HandleAsync(ListPagedCatalogItemRequest,IRepository\u003CCatalogItem\u003E); add Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.CreateCatalogItemEndpoint.HandleAsync(CreateCatalogItemRequest,IRepository\u003CCatalogItem\u003E); add Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.DeleteCatalogItemEndpoint.HandleAsync(DeleteCatalogItemRequest,IRepository\u003CCatalogItem\u003E); add Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints.UpdateCatalogItemEndpoint.HandleAsync(UpdateCatalogItemRequest,IRepository\u003CCatalogItem\u003E); add Microsoft.eShopWeb.PublicApi.CatalogTypeEndpoints.CatalogTypeListEndpoint.HandleAsync(IRepository\u003CCatalogType\u003E); add PublicApiIntegrationTests.CatalogItemEndpoints.CatalogItemListPagedEndpoint.SuccessFullMutipleParallelCall(string)",
+    "apidelta eShopOnWeb#62: 1 breaking, 1 additive :: BREAK Microsoft.eShopWeb.Web.Pages.Basket.IndexModel.IndexModel(IBasketService,IBasketViewModelService); add Microsoft.eShopWeb.Web.Pages.Basket.IndexModel.IndexModel(IBasketService,IBasketViewModelService,IRepository\u003CCatalogItem\u003E)",
+    "apidelta eShopOnWeb#59: 1 breaking, 1 additive :: BREAK Microsoft.eShopWeb.Infrastructure.Identity.AppIdentityDbContextSeed.SeedAsync(UserManager\u003CApplicationUser\u003E,RoleManager\u003CIdentityRole\u003E); add Microsoft.eShopWeb.Infrastructure.Identity.AppIdentityDbContextSeed.SeedAsync(AppIdentityDbContext,UserManager\u003CApplicationUser\u003E,RoleManager\u003CIdentityRole\u003E)",
+    "apidelta eShopOnWeb#51: 2 breaking, 18 additive :: BREAK Microsoft.eShopWeb.Web.ViewModels.Manage.IndexViewModel.StatusMessage; BREAK Microsoft.eShopWeb.Web.ViewModels.Manage.IndexViewModel.Username; add Microsoft.eShopWeb.FunctionalTests.Web.Controllers.AccountControllerSignIn.UpdatePhoneNumberProfile(); add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.BasketPageCheckout; add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.BasketPageCheckout.BasketPageCheckout(TestApplication); add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.BasketPageCheckout.Client; add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.BasketPageCheckout.RedirectsToLoginIfNotAuthenticated(); add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.CheckoutTest; add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.CheckoutTest.CheckoutTest(TestApplication); add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.CheckoutTest.Client; add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.CheckoutTest.SucessfullyPay(); add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.IndexTest; add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.IndexTest.Client; add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.IndexTest.IndexTest(TestApplication); add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.IndexTest.OnPostUpdateTo0EmptyBasket(); add Microsoft.eShopWeb.FunctionalTests.Web.Pages.Basket.IndexTest.OnPostUpdateTo50Successfully(); add Microsoft.eShopWeb.FunctionalTests.Web.WebPageHelpers; add Microsoft.eShopWeb.FunctionalTests.Web.WebPageHelpers.GetId(string); add Microsoft.eShopWeb.FunctionalTests.Web.WebPageHelpers.GetRequestVerificationToken(string); add Microsoft.eShopWeb.FunctionalTests.Web.WebPageHelpers.TokenTag",
+    "budget 25,000 fuse vs changed: recall 100%, precision 84%, median tokens 366",
+    "budget 25,000 grep vs changed: recall 73%, precision 10%"
+  ]
+}

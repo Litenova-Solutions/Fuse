@@ -3,7 +3,7 @@ title: Output Specification
 description: The exact structure of the three Fuse output formats and the manifest, including how metadata, provenance, and git statistics appear.
 ---
 
-A fusion produces one of four output formats, each carrying the same content with a different structure: XML, Markdown, JSON, or compact. Every format begins with a manifest, followed by one entry per included file. This page documents the precise shape of each format and the manifest so that a tool, an agent, or a person can parse the output without inspecting the source.
+A fusion produces one of four output formats from `fuse context` and `fuse review`, each carrying the same content with a different structure: XML, Markdown, JSON, or compact. Every format begins with a manifest, followed by one entry per included file. This page documents the precise shape of each format and the manifest so that a tool, an agent, or a person can parse the output without inspecting the source.
 
 This page is for engineers writing parsers against Fuse output, agents consuming a fusion, and anyone who needs to know exactly what a flag adds to the result.
 
@@ -166,7 +166,7 @@ The `--report` flag writes a separate machine-readable JSON object summarizing t
 
 ## What This Does Not Cover
 
-This page does not explain the reduction that produces the content inside each entry, nor the token budget and part-splitting that govern how much is written. It documents structure only. For staying inside a budget, see [Stay under a token budget](/docs/scenarios/stay-under-a-budget). For the flags named here, see [Options](/docs/reference/options).
+This page does not explain the reduction that produces the content inside each entry, nor the token budget and part-splitting that govern how much is written. It documents structure only. For staying inside a budget, see [Cut tokens for a .NET project](/docs/scenarios/cut-tokens-dotnet). For the flags named here, see [Options](/docs/reference/options).
 
 ## Next
 

@@ -1,0 +1,7 @@
+{
+  "$comment": "Supplementary single-application manifest (D22c external-validity follow-up): eShopOnWeb, an ASP.NET Core application, pinned at the retired-corpus commit. Kept separate from corpus-v2.json so the recorded 24-library results are undisturbed; used to record an application-at-semantic-tier review number, the external-validity gap the library corpus does not cover.",
+  "tokenizer": "o200k_base",
+  "repos": [
+    { "name": "eShopOnWeb", "url": "https://github.com/dotnet-architecture/eShopOnWeb.git", "commit": "4da8212117e87d808d4bbc7da6286fd2147ce606" }
+  ]
+}

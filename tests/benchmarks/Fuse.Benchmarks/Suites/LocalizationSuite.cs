@@ -46,7 +46,7 @@ public sealed class LocalizationSuite : IEvalSuite
     public async Task<SuiteResult> RunAsync(EvalOptions options, CancellationToken cancellationToken)
     {
         var manager = new CorpusManager(options.BenchRoot, options.ResolvedCorpusRoot, options.Log);
-        var dataset = manager.LoadDataset("dotnet-prs-v1");
+        var dataset = manager.LoadDataset("dotnet-prs-v1", options.DatasetFile, options.ManifestPath);
         var notes = new List<string> { $"candidates@{CandidateK}, title-only input" };
 
         var present = dataset.Repos

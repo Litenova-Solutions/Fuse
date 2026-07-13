@@ -1,10 +1,11 @@
 ---
 title: Cut tokens for a .NET project
-description: Render a .NET solution, or a known set of files, into a token-efficient payload while keeping the public API intact.
+description: Render a .NET solution, or a known set of files, into a token-efficient payload while keeping the public API intact, and cap output to a budget when needed.
 ---
 
 **Goal:** take a .NET solution, or a set of files you already have, and produce a payload
-that costs far fewer tokens than the raw source, without losing the public API.
+that costs far fewer tokens than the raw source, without losing the public API. When the
+result must fit a model window, cap it with a hard token limit.
 
 ## Reduce a Known Set of Files
 
@@ -34,6 +35,31 @@ seeds in full and renders peripheral files more aggressively (compressed, or ske
 the whole set fits. The output opens with a manifest listing each file and its token cost,
 then the bodies, with per-file provenance.
 
+## Cap a Review the Same Way
+
+```bash
+fuse review ./src --changed-since origin/main --max-tokens 25000
+```
+
+`fuse review` honors the same budget. The changed files are always kept, so when the
+budget is tight the cut falls on the periphery of the blast radius first, never on the diff
+itself.
+
+## What Survives the Cut
+
+Because the plan fills by weight-per-token, the files closest to the seeds survive and the
+least relevant drop. The single most relevant entry is always kept, so a budgeted call
+never emits nothing. The manifest lists each emitted file and its token cost, so you can
+see exactly what fit.
+
+## Suggested Budgets
+
+| Workflow | Command shape | Budget |
+|----------|---------------|--------|
+| Architecture view | `fuse context --seed ... --max-tokens` | 15k to 50k |
+| Focused area | `fuse context --seed ...` | 15k to 50k |
+| Change review | `fuse review --changed-since ...` | 15k to 50k |
+
 ## The Measured Cut
 
 On the benchmark corpus, the default and `aggressive` reductions remove 6 to 46 percent of
@@ -46,11 +72,14 @@ there.
 
 Reach for `fuse reduce --level aggressive` when you have a known set of files and want the
 most reliable cut with the API intact. Reach for `fuse context --max-tokens` when you want
-an area scoped and reduced to fit a window. If you only need the shape of the codebase, a
-[skeleton survey](/docs/scenarios/survey-cheaply) cuts far more. If the result is still too
-large, [scope it tighter](/docs/concepts/scoping) to the code the task touches.
+an area scoped and reduced to fit a window. Set a budget whenever the plan is destined for
+a model with a fixed window or when you are capping the cost of a run. If you only need
+the shape of the codebase, a [skeleton survey](/docs/scenarios/survey-cheaply) cuts far
+more. If the result is still too large, [scope it tighter](/docs/concepts/scoping) to the
+code the task touches.
 
-## Related Concept
+## Related Concepts
 
 The full ladder from light cleanup to skeletons is in
-[Reduction levels](/docs/concepts/reduction-levels).
+[Reduction levels](/docs/concepts/reduction-levels). How the plan spends a budget is in
+[Scoping](/docs/concepts/scoping).

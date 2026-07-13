@@ -1,0 +1,1657 @@
+{
+  "suite": "loop",
+  "description": "Loop metric (R4/B1): build-gated turns to green per toolbox (model-dependent; harness is the deliverable).",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 116,
+    "recall": 0.9482758620689655,
+    "recallCiLow": 0.8793103448275862,
+    "recallCiHigh": 1,
+    "precision": 0,
+    "f1": 0,
+    "medianTokens": 1,
+    "meanTokens": 1,
+    "lowSignalF1": 0
+  },
+  "tasks": [
+    {
+      "id": "Scrutor@26049af5/native",
+      "repo": "Scrutor",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@26049af5/fuse",
+      "repo": "Scrutor",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@6186c68d/native",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@6186c68d/fuse",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@9ee058e0/native",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@9ee058e0/fuse",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@f26fb995/native",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 3,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@f26fb995/fuse",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@d54c66ae/native",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 4,
+      "tokens": 4,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@d54c66ae/fuse",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@63cd557f/native",
+      "repo": "Ardalis.GuardClauses",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.GuardClauses@63cd557f/fuse",
+      "repo": "Ardalis.GuardClauses",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@fc9b0a42/native",
+      "repo": "Ardalis.Specification",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 2,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@fc9b0a42/fuse",
+      "repo": "Ardalis.Specification",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 6,
+      "tokens": 3,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@0309d7ca/native",
+      "repo": "Ardalis.Specification",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@0309d7ca/fuse",
+      "repo": "Ardalis.Specification",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 5,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@2176ce2f/fuse",
+      "repo": "Ardalis.Specification",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 4,
+      "tokens": 4,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@8513acfd/native",
+      "repo": "Ardalis.Specification",
+      "category": "native",
+      "recall": 1,
+      "precision": 5,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@8513acfd/fuse",
+      "repo": "Ardalis.Specification",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 5,
+      "tokens": 2,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@acbd6788/native",
+      "repo": "Ardalis.Specification",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Ardalis.Specification@acbd6788/fuse",
+      "repo": "Ardalis.Specification",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@fed6e643/native",
+      "repo": "AutoMapper",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@fed6e643/fuse",
+      "repo": "AutoMapper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@b57c206d/native",
+      "repo": "AutoMapper",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@b57c206d/fuse",
+      "repo": "AutoMapper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@c343d02c/native",
+      "repo": "AutoMapper",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@c343d02c/fuse",
+      "repo": "AutoMapper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@0c96327b/native",
+      "repo": "AutoMapper",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@0c96327b/fuse",
+      "repo": "AutoMapper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 4,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@fd06570b/native",
+      "repo": "AutoMapper",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "AutoMapper@fd06570b/fuse",
+      "repo": "AutoMapper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@dffb7517/native",
+      "repo": "CommandLineParser",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@dffb7517/fuse",
+      "repo": "CommandLineParser",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@f5e8b167/native",
+      "repo": "CommandLineParser",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@f5e8b167/fuse",
+      "repo": "CommandLineParser",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@24e2be23/native",
+      "repo": "CommandLineParser",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@24e2be23/fuse",
+      "repo": "CommandLineParser",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@182e72fa/native",
+      "repo": "CommandLineParser",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@182e72fa/fuse",
+      "repo": "CommandLineParser",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@19e2c95c/native",
+      "repo": "CommandLineParser",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CommandLineParser@19e2c95c/fuse",
+      "repo": "CommandLineParser",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@34edcc60/native",
+      "repo": "CsvHelper",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@34edcc60/fuse",
+      "repo": "CsvHelper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@7dbb3fe7/native",
+      "repo": "CsvHelper",
+      "category": "native",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@7dbb3fe7/fuse",
+      "repo": "CsvHelper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@004c2851/native",
+      "repo": "CsvHelper",
+      "category": "native",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@0b6fa0a1/native",
+      "repo": "CsvHelper",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@0b6fa0a1/fuse",
+      "repo": "CsvHelper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@83d3951b/native",
+      "repo": "CsvHelper",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "CsvHelper@83d3951b/fuse",
+      "repo": "CsvHelper",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation@058865db/native",
+      "repo": "FluentValidation",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "FluentValidation@058865db/fuse",
+      "repo": "FluentValidation",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@f5cae963/native",
+      "repo": "MediatR",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@f5cae963/fuse",
+      "repo": "MediatR",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@1fd25f5b/native",
+      "repo": "MediatR",
+      "category": "native",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 3,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@1fd25f5b/fuse",
+      "repo": "MediatR",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@c3e24190/native",
+      "repo": "MediatR",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 2,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@c3e24190/fuse",
+      "repo": "MediatR",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 0,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@1325768a/native",
+      "repo": "MediatR",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@1325768a/fuse",
+      "repo": "MediatR",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@6baaeef7/native",
+      "repo": "MediatR",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "MediatR@6baaeef7/fuse",
+      "repo": "MediatR",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 0,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@fcce009e/native",
+      "repo": "NSubstitute",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@fcce009e/fuse",
+      "repo": "NSubstitute",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@b9569d94/native",
+      "repo": "NSubstitute",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@b9569d94/fuse",
+      "repo": "NSubstitute",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@6c37da9f/native",
+      "repo": "NSubstitute",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@6c37da9f/fuse",
+      "repo": "NSubstitute",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@41221874/native",
+      "repo": "NSubstitute",
+      "category": "native",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@41221874/fuse",
+      "repo": "NSubstitute",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@ba0da798/native",
+      "repo": "NSubstitute",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "NSubstitute@ba0da798/fuse",
+      "repo": "NSubstitute",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Polly@779aa834/native",
+      "repo": "Polly",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Polly@779aa834/fuse",
+      "repo": "Polly",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 0,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "RestSharp@5487cfd9/native",
+      "repo": "RestSharp",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "RestSharp@5487cfd9/fuse",
+      "repo": "RestSharp",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "RestSharp@2ae0b6a5/native",
+      "repo": "RestSharp",
+      "category": "native",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "RestSharp@2ae0b6a5/fuse",
+      "repo": "RestSharp",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "RestSharp@488091c9/native",
+      "repo": "RestSharp",
+      "category": "native",
+      "recall": 1,
+      "precision": 5,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "RestSharp@488091c9/fuse",
+      "repo": "RestSharp",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@0f0ad016/native",
+      "repo": "Scrutor",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 2,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@0f0ad016/fuse",
+      "repo": "Scrutor",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 0,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@e6a329e5/native",
+      "repo": "Scrutor",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@e6a329e5/fuse",
+      "repo": "Scrutor",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@5221bff4/native",
+      "repo": "Scrutor",
+      "category": "native",
+      "recall": 1,
+      "precision": 0,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@5221bff4/fuse",
+      "repo": "Scrutor",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@aabb77d1/native",
+      "repo": "Scrutor",
+      "category": "native",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 3,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Scrutor@aabb77d1/fuse",
+      "repo": "Scrutor",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 0,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Shouldly@94437619/native",
+      "repo": "Shouldly",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Shouldly@94437619/fuse",
+      "repo": "Shouldly",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 5,
+      "tokens": 2,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Shouldly@36b571fc/native",
+      "repo": "Shouldly",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Shouldly@36b571fc/fuse",
+      "repo": "Shouldly",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 5,
+      "tokens": 3,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Shouldly@34650135/native",
+      "repo": "Shouldly",
+      "category": "native",
+      "recall": 1,
+      "precision": 3,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "Shouldly@34650135/fuse",
+      "repo": "Shouldly",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 0,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@941fe12b/native",
+      "repo": "YamlDotNet",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@941fe12b/fuse",
+      "repo": "YamlDotNet",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@2867ff54/native",
+      "repo": "YamlDotNet",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@2867ff54/fuse",
+      "repo": "YamlDotNet",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@b7597073/native",
+      "repo": "YamlDotNet",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@b7597073/fuse",
+      "repo": "YamlDotNet",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 0,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@95e6f086/native",
+      "repo": "YamlDotNet",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@95e6f086/fuse",
+      "repo": "YamlDotNet",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@8d1a5cb7/native",
+      "repo": "YamlDotNet",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "YamlDotNet@8d1a5cb7/fuse",
+      "repo": "YamlDotNet",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@f9e2a486/native",
+      "repo": "quartznet",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@f9e2a486/fuse",
+      "repo": "quartznet",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@5e0672d4/native",
+      "repo": "quartznet",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@5e0672d4/fuse",
+      "repo": "quartznet",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@cef82e83/native",
+      "repo": "quartznet",
+      "category": "native",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@cef82e83/fuse",
+      "repo": "quartznet",
+      "category": "fuse",
+      "recall": 0,
+      "precision": 0,
+      "tokens": 0,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@5a87fe6e/native",
+      "repo": "quartznet",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@5a87fe6e/fuse",
+      "repo": "quartznet",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 4,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@92afb231/native",
+      "repo": "quartznet",
+      "category": "native",
+      "recall": 1,
+      "precision": 2,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "quartznet@92afb231/fuse",
+      "repo": "quartznet",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 5,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "serilog@63f1da33/native",
+      "repo": "serilog",
+      "category": "native",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    },
+    {
+      "id": "serilog@63f1da33/fuse",
+      "repo": "serilog",
+      "category": "fuse",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1,
+      "latencyMs": 0,
+      "hit": {
+        "hits": [],
+        "misses": [],
+        "extras": []
+      }
+    }
+  ],
+  "notes": [
+    "model claude-sonnet-4-6",
+    "max turns 40",
+    "arms: native, fuse",
+    "metric: build-gated turns to green (iterations_to_green), build invocations; lower is better",
+    "harness-first: the harness is the deliverable; numbers are recorded when the claude CLI and a model are provisioned",
+    "REDUCED-SCOPE run (no headline; confidence intervals only): corpus below full minimums (15/20 tier-1 repos, 59/60 verified oracle tasks); running REDUCED-SCOPE (no headline, report with confidence intervals) per the pre-registered C4 fallback. The shortfall is an environment-buildability finding.",
+    "task source: corpus-tasks-v2.json (59 verified tasks, generated 2026-07-10T23:10:02.0136611Z)",
+    "claude CLI version 2.1.181 (Claude Code)",
+    "resumed from checkpoint: 2 rollout(s) already recorded (C:\\Projects\\Fuse\\tests\\benchmarks\\results\\loop-rollouts-claude-sonnet-4-6.json)",
+    "tasks 59; rollouts recorded 116; wedged/omitted this run 2",
+    "sampled this run (58): Ardalis.GuardClauses@6186c68d, Ardalis.GuardClauses@9ee058e0, Ardalis.GuardClauses@f26fb995, Ardalis.GuardClauses@d54c66ae, Ardalis.GuardClauses@63cd557f, Ardalis.Specification@fc9b0a42, Ardalis.Specification@0309d7ca, Ardalis.Specification@2176ce2f, Ardalis.Specification@8513acfd, Ardalis.Specification@acbd6788, AutoMapper@fed6e643, AutoMapper@b57c206d, AutoMapper@c343d02c, AutoMapper@0c96327b, AutoMapper@fd06570b, CommandLineParser@dffb7517, CommandLineParser@f5e8b167, CommandLineParser@24e2be23, CommandLineParser@182e72fa, CommandLineParser@19e2c95c, CsvHelper@34edcc60, CsvHelper@7dbb3fe7, CsvHelper@004c2851, CsvHelper@0b6fa0a1, CsvHelper@83d3951b, FluentValidation@058865db, MediatR@f5cae963, MediatR@1fd25f5b, MediatR@c3e24190, MediatR@1325768a, MediatR@6baaeef7, NSubstitute@fcce009e, NSubstitute@b9569d94, NSubstitute@6c37da9f, NSubstitute@41221874, NSubstitute@ba0da798, Polly@779aa834, RestSharp@5487cfd9, RestSharp@2ae0b6a5, RestSharp@488091c9, Scrutor@0f0ad016, Scrutor@e6a329e5, Scrutor@5221bff4, Scrutor@aabb77d1, Shouldly@94437619, Shouldly@36b571fc, Shouldly@34650135, YamlDotNet@941fe12b, YamlDotNet@2867ff54, YamlDotNet@b7597073, YamlDotNet@95e6f086, YamlDotNet@8d1a5cb7, quartznet@f9e2a486, quartznet@5e0672d4, quartznet@cef82e83, quartznet@5a87fe6e, quartznet@92afb231, serilog@63f1da33",
+    "arm fuse: n 58, reached-green 95% (95% CI 88%-100%), median iters-to-green 1.0, mean build invocations 1.6",
+    "arm native: n 58, reached-green 86% (95% CI 78%-95%), median iters-to-green 1.0, mean build invocations 1.5"
+  ]
+}

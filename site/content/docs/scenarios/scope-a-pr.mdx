@@ -31,13 +31,10 @@ the changed files are always kept, so the cut falls on the periphery first.
 ## What You Get
 
 A context plan scoped to the change set and its blast radius, emitted with the changed
-files always kept. Change scoping is the strongest mode by measurement: 89 percent recall
-of the files real merged pull requests touched, at 54 percent precision in the
-[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests).
-It is also one call, not an explore loop: in the
-[Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
-the change-scoped arm reached 91 percent recall at about 29,500 tokens against roughly
-425,000 for a whole-repository packer dump at the same single call.
+files always kept. Change scoping is the strongest mode by measurement: over 69 real merged pull requests,
+`fuse review` keeps 100 percent of changed files at 93.4 percent precision in a median
+1,026 returned tokens ([benchmarks](/docs/project/benchmarks)). It is one call, not an
+explore loop.
 
 ## When to Use It
 

@@ -18,10 +18,10 @@ cannot run.
 `fuse_check` walks a ladder from the fastest, highest-fidelity answer down to an honest
 refusal:
 
-- **oracle** - a speculative typecheck against the tier-1 build-captured compilation. The
+- **oracle** - a speculative typecheck against the build-captured compilation. The
   proposed content is applied to the rehydrated compilation in memory, with no disk write and
   no build. This is the fast path (sub-second class when warm) and is available when the
-  repository builds and is captured at tier-1. Tier-1 is on by default: the out-of-process
+  repository builds and is captured with build capture. Build capture is on by default: the out-of-process
   build-capture worker ships inside the tool and is discovered with no configuration (opt out
   with `FUSE_BUILD_CAPTURE=0`), and a capture bundle produced elsewhere also serves it.
 - **build** - when no oracle substrate is available, Fuse runs the real `dotnet build`

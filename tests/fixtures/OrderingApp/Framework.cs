@@ -138,6 +138,13 @@ namespace Microsoft.Extensions.DependencyInjection
         // Keyed DI (net8+): the service key is a value argument; the service and implementation are the type args.
         public static IServiceCollection AddKeyedScoped<TService, TImplementation>(this IServiceCollection services, object serviceKey)
             where TImplementation : class, TService => services;
+
+        // Typed HttpClient (Microsoft.Extensions.Http): AddHttpClient<TClient, TImplementation>() registers the
+        // implementation as the typed client for TClient. The real method returns IHttpClientBuilder; the fixture
+        // returns the collection since it does not chain, which is all the analyzer's type-argument extraction needs.
+        public static IServiceCollection AddHttpClient<TClient, TImplementation>(this IServiceCollection services)
+            where TClient : class
+            where TImplementation : class, TClient => services;
     }
 
     public static class OptionsServiceCollectionExtensions

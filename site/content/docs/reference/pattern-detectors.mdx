@@ -3,7 +3,7 @@ title: Pattern Detectors
 description: The six C# convention detectors that produce a pattern summary, what each one matches, and the false positives to expect.
 ---
 
-Pattern detection scans C# for common conventions and summarizes which the codebase already uses, so generated code can match the existing style rather than introduce a competing one. In V3 this is an internal capability (`IPatternDetector`); it is not exposed as a dedicated command. All detection is name-based or text-based and best-effort, so false positives are possible and the counts are approximate rather than exact. This page documents what each detector matches.
+Pattern detection scans C# for common conventions and summarizes which the codebase already uses, so generated code can match the existing style rather than introduce a competing one. This is an internal capability (`IPatternDetector`); it is not exposed as a dedicated command. All detection is name-based or text-based and best-effort, so false positives are possible and the counts are approximate rather than exact. This page documents what each detector matches.
 
 This page is for engineers reading a pattern summary, agents deciding how to match a codebase, and maintainers who need the matching rule and limits of each detector.
 

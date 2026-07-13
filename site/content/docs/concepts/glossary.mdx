@@ -60,7 +60,7 @@ the edge chain that pulled it into the plan.
 
 **Round-trip.** One read-decide cycle an agent makes while exploring; Fuse cuts round-trips
 by answering a survey, a localize, a resolve, or a review in a single call. See
-[The iterative workflow](/docs/concepts/the-explore-phase).
+[The iterative workflow](/docs/concepts/iterative-workflow).
 
 **Session-delta.** A way to skip resending files an agent already has: pass a `sessionId`
 across calls in the same task and Fuse omits files it sent earlier (tracked by content
@@ -70,7 +70,7 @@ hash), so multi-turn refinement does not re-pay tokens. See
 **Roslyn structural analysis.** The C# parse-tree path that drives indexing, skeletons,
 dependency edges, type location, route maps, and semantic markers. Regex still handles
 content reduction, the project graph, and pattern detectors. See
-[Roslyn structural analysis vs regex](/docs/concepts/precision-tier).
+[Roslyn structural analysis vs regex](/docs/concepts/roslyn-vs-regex).
 
 ## Next
 

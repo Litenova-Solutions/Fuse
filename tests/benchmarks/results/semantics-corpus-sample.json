@@ -1,146 +1,2738 @@
 [
   {
-    "from": "type:FluentValidation.Internal.RuleBuilder\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.AbstractValidator\u003CT\u003E",
+    "from": "type:Scrutor.Tests.DecorationTests.DecoratedService",
+    "to": "type:Scrutor.Tests.DecorationTests.Decorator2",
+    "type": "di_decorates",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.IDecoratedService",
+    "to": "type:Scrutor.Tests.DecorationTests.Decorator",
+    "type": "di_decorates",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.IDecoratedService",
+    "to": "type:Scrutor.Tests.DecorationTests.Decorator3",
+    "type": "di_decorates",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.IDisposableService",
+    "to": "type:Scrutor.Tests.DecorationTests.DisposableServiceDecorator",
+    "type": "di_decorates",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.DependencyCondition",
+    "to": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.FooService",
+    "type": "di_depends_on_impl",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.DependencyFactory",
+    "to": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.FooService",
+    "type": "di_depends_on_impl",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.DependencyResolver",
+    "to": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.FooService",
+    "type": "di_depends_on_impl",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.DependencyValueConverter",
+    "to": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.FooService",
+    "type": "di_depends_on_impl",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.Mapper",
+    "to": "type:AutoMapper.MapperConfiguration",
+    "type": "di_depends_on_impl",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:DependencyResolver",
+    "to": "type:FooService",
+    "type": "di_depends_on_impl",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:Quartz.Configuration.ContainerConfigurationProcessor",
+    "to": "type:Quartz.Simpl.SimpleTypeLoadHelper",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Dashboard.Services.InProcessQuartzApiClient",
+    "to": "type:Quartz.Dashboard.Services.DashboardHistoryStore",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Examples.AspNetCore.AsyncDisposableJob",
+    "to": "type:Quartz.Examples.AspNetCore.AsyncDisposableDependency",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Impl.AdoJobStore.AdoUtil",
+    "to": "type:Quartz.Impl.AdoJobStore.Common.DataSourceDbProvider",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Impl.AdoJobStore.DBSemaphore",
+    "to": "type:Quartz.Impl.AdoJobStore.Common.DataSourceDbProvider",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Impl.AdoJobStore.PostgreSQLRowLockSemaphore",
+    "to": "type:Quartz.Impl.AdoJobStore.Common.DataSourceDbProvider",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Impl.AdoJobStore.StdRowLockSemaphore",
+    "to": "type:Quartz.Impl.AdoJobStore.Common.DataSourceDbProvider",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Impl.AdoJobStore.UpdateLockRowSemaphore",
+    "to": "type:Quartz.Impl.AdoJobStore.Common.DataSourceDbProvider",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Impl.AdoJobStore.UpdateLockRowSemaphoreMOT",
+    "to": "type:Quartz.Impl.AdoJobStore.Common.DataSourceDbProvider",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.QuartzHostedService",
+    "to": "type:Quartz.ServiceCollectionSchedulerFactory",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.ServiceCollectionSchedulerFactory",
+    "to": "type:Quartz.Configuration.ContainerConfigurationProcessor",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Tests.Unit.Simpl.MicrosoftDependencyInjectionJobFactoryTest.TestJob",
+    "to": "type:Quartz.Tests.Unit.Simpl.MicrosoftDependencyInjectionJobFactoryTest.Dependency",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Tests.Unit.TestListenerWithDependency",
+    "to": "type:Quartz.Tests.Unit.TestPluginDependency",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Tests.Unit.TestPluginWithDependency",
+    "to": "type:Quartz.Tests.Unit.TestPluginDependency",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Xml.XMLSchedulingDataProcessor",
+    "to": "type:Quartz.Simpl.SimpleTypeLoadHelper",
+    "type": "di_depends_on_impl",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.Decorated",
+    "to": "type:Scrutor.Tests.DecorationTests.SomeRandomService",
+    "type": "di_depends_on_impl",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.DecoratedService",
+    "to": "type:Scrutor.Tests.DecorationTests.SomeRandomService",
+    "type": "di_depends_on_impl",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.Decorator",
+    "to": "type:Scrutor.Tests.DecorationTests.Decorated",
+    "type": "di_depends_on_impl",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.Decorator",
+    "to": "type:Scrutor.Tests.DecorationTests.SomeRandomService",
+    "type": "di_depends_on_impl",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.Decorator2",
+    "to": "type:Scrutor.Tests.DecorationTests.DecoratedService",
+    "type": "di_depends_on_impl",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.Decorator3",
+    "to": "type:Scrutor.Tests.DecorationTests.Decorated",
+    "type": "di_depends_on_impl",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.DisposableServiceDecorator",
+    "to": "type:Scrutor.Tests.DecorationTests.DisposableService",
+    "type": "di_depends_on_impl",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Ardalis.Sample.App3.Pagination",
+    "to": "type:Ardalis.Sample.App3.PaginationSettings",
+    "type": "di_injects",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:AutoFixture.Fixture",
+    "to": "type:AutoFixture.Kernel.ISpecimenBuilder",
+    "type": "di_injects",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.Kernel.MethodInvoker",
+    "to": "type:AutoFixture.Kernel.IMethodQuery",
+    "type": "di_injects",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixtureDocumentationTest.Contact.ValidatingValueObject.Contact",
+    "to": "type:AutoFixtureDocumentationTest.Contact.ValidatingValueObject.DanishPhoneNumber",
+    "type": "di_injects",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoMapper.AutoMapperMappingException",
+    "to": "type:AutoMapper.Internal.TypePair",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.Execution.ProxyGenerator.PropertyEmitter",
+    "to": "type:AutoMapper.Execution.PropertyDescription",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.ProjectEnumerableOfIntToHashSet",
+    "to": "type:AutoMapper.IntegrationTests.DatabaseFixture",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MultipleLevelsSubqueryWithInheritance",
+    "to": "type:AutoMapper.IntegrationTests.DatabaseFixture",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.IncludeMembersFirstOrDefaultWithIheritance",
+    "to": "type:AutoMapper.IntegrationTests.DatabaseFixture",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.IncludeMembersFirstOrDefaultWithSubqueryMapFrom",
+    "to": "type:AutoMapper.IntegrationTests.DatabaseFixture",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ProjectionAdvanced",
+    "to": "type:AutoMapper.IntegrationTests.DatabaseFixture",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ProjectionOrderTest",
+    "to": "type:AutoMapper.IntegrationTests.DatabaseFixture",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.SubqueryMapFromWithIncludeMembersSelectMemberFirstOrDefaultWithIheritance",
+    "to": "type:AutoMapper.IntegrationTests.DatabaseFixture",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Constructors.MappingMultipleConstructorArguments.DestinationFoo",
+    "to": "type:AutoMapper.UnitTests.Constructors.MappingMultipleConstructorArguments.DestinationBar",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Constructors.When_configuring_ctor_param_members_without_source_property_2.Dest",
+    "to": "type:AutoMapper.UnitTests.Constructors.When_configuring_ctor_param_members_without_source_property_2.Dest.DestInner1",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Constructors.When_mapping_through_constructor_and_destination_has_setter.Destination",
+    "to": "type:AutoMapper.UnitTests.Constructors.When_mapping_through_constructor_and_destination_has_setter.MyType",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Projection.NestedConstructorsWithIheritance.DtoA",
+    "to": "type:AutoMapper.UnitTests.Projection.NestedConstructorsWithIheritance.DtoB",
+    "type": "di_injects",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:CommandLine.SequenceOutOfRangeError",
+    "to": "type:CommandLine.NameInfo",
+    "type": "di_injects",
+    "repo": "CommandLineParser"
+  },
+  {
+    "from": "type:CsvHelper.Expressions.ExpandoObjectRecordWriter",
+    "to": "type:CsvHelper.CsvWriter",
+    "type": "di_injects",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.Expressions.ExpressionManager",
+    "to": "type:CsvHelper.CsvWriter",
+    "type": "di_injects",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.Expressions.RecordCreatorFactory",
+    "to": "type:CsvHelper.CsvReader",
+    "type": "di_injects",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.HeaderValidationException",
+    "to": "type:CsvHelper.CsvContext",
+    "type": "di_injects",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.TypeConversion.TypeConverterException",
+    "to": "type:CsvHelper.Configuration.MemberMapData",
+    "type": "di_injects",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:FluentValidation.Tests.CollectionValidatorWithParentTests.AsyncOrderValidator",
+    "to": "type:FluentValidation.Tests.Person",
     "type": "di_injects",
     "repo": "FluentValidation"
   },
   {
-    "from": "type:FluentValidation.Internal.RuleComponent\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.Validators.IPropertyValidator\u003CT, TProperty\u003E",
+    "from": "type:Flurl.Http.Content.CapturedMultipartContent",
+    "to": "type:Flurl.Http.Configuration.FlurlHttpSettings",
     "type": "di_injects",
+    "repo": "Flurl"
+  },
+  {
+    "from": "type:JetBrains.Annotations.MeansImplicitUseAttribute",
+    "to": "type:JetBrains.Annotations.ImplicitUseTargetFlags",
+    "type": "di_injects",
+    "repo": "Shouldly"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.NextPostProcessor\u003CTRequest, TResponse\u003E",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Logger",
+    "type": "di_injects",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:NSubstitute.Core.ConfigureCall",
+    "to": "type:NSubstitute.Core.ICallResults",
+    "type": "di_injects",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Core.PendingSpecificationInfo",
+    "to": "type:NSubstitute.Core.ICallSpecification",
+    "type": "di_injects",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Core.PropertyHelper",
+    "to": "type:NSubstitute.Core.ICallFactory",
+    "type": "di_injects",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Core.RouteFactoryCacheWrapper",
+    "to": "type:NSubstitute.Routing.IRouteFactory",
+    "type": "di_injects",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Routing.Handlers.EventSubscriptionHandler",
+    "to": "type:NSubstitute.Core.IEventHandlerRegistry",
+    "type": "di_injects",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NodaTime.Benchmarks.BenchmarkRun",
+    "to": "type:NodaTime.Benchmarks.BenchmarkRun",
+    "type": "di_injects",
+    "repo": "NodaTime"
+  },
+  {
+    "from": "type:Quartz.Configuration.TriggerListenerConfiguration",
+    "to": "type:Quartz.ITriggerListener",
+    "type": "di_injects",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Core.SchedulerSignalerImpl",
+    "to": "type:Quartz.Core.QuartzScheduler",
+    "type": "di_injects",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Dashboard.Hubs.JobExecutionResultDto",
+    "to": "type:Quartz.Dashboard.Services.TriggerKeyDto",
+    "type": "di_injects",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:RestSharp.BodyParameter",
+    "to": "type:RestSharp.DataFormat",
+    "type": "di_injects",
+    "repo": "RestSharp"
+  },
+  {
+    "from": "type:RestSharp.Serializers.Xml.XmlRestSerializer",
+    "to": "type:RestSharp.Serializers.Xml.IXmlSerializer",
+    "type": "di_injects",
+    "repo": "RestSharp"
+  },
+  {
+    "from": "type:Serilog.Events.LogEvent",
+    "to": "type:Serilog.Events.LogEventLevel",
+    "type": "di_injects",
+    "repo": "serilog"
+  },
+  {
+    "from": "type:Shouldly.ShouldMatchConfigurationBuilder",
+    "to": "type:Shouldly.ShouldMatchConfiguration",
+    "type": "di_injects",
+    "repo": "Shouldly"
+  },
+  {
+    "from": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.ISomeService",
+    "to": "type:AutoMapper.Extensions.Microsoft.DependencyInjection.Tests.FooService",
+    "type": "di_resolves_to",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IConfigurationProvider",
+    "to": "type:AutoMapper.MapperConfiguration",
+    "type": "di_resolves_to",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:IReadRepository\u003CT\u003E",
+    "to": "type:ReadRepository\u003CT\u003E",
+    "type": "di_resolves_to",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:ISomeService",
+    "to": "type:FooService",
+    "type": "di_resolves_to",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:MediatR.IMediator",
+    "to": "type:MediatR.Mediator",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IMediator",
+    "to": "type:MediatR.Tests.PublishTests.SequentialMediator",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IPipelineBehavior\u003CMediatR.Tests.PipelineTests.Ping, MediatR.Tests.PipelineTests.Pong\u003E",
+    "to": "type:MediatR.Tests.PipelineTests.ConcreteBehavior",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IPipelineBehavior\u003CMediatR.Tests.PipelineTests.Ping, MediatR.Tests.PipelineTests.Pong\u003E",
+    "to": "type:MediatR.Tests.PipelineTests.OuterBehavior",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IPipelineBehavior\u003CMediatR.Tests.PipelineTests.VoidPing, MediatR.Unit\u003E",
+    "to": "type:MediatR.Tests.PipelineTests.InnerVoidBehavior",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IPipelineBehavior\u003CTRequest, TResponse\u003E",
+    "to": "type:MediatR.Pipeline.RequestPostProcessorBehavior\u003CTRequest, TResponse\u003E",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IPipelineBehavior\u003CTRequest, TResponse\u003E",
+    "to": "type:MediatR.Tests.PipelineTests.ConstrainedBehavior\u003CTRequest, TResponse\u003E",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IPublisher",
+    "to": "type:MediatR.Mediator",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IRequestHandler\u003CMediatR.Tests.SendTests.VoidGenericPing\u003CMediatR.Tests.SendTests.PongExtension\u003E\u003E",
+    "to": "type:MediatR.Tests.SendTests.TestClass1PingRequestHandler",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IStreamPipelineBehavior\u003CMediatR.Tests.StreamPipelineTests.Ping, MediatR.Tests.StreamPipelineTests.Pong\u003E",
+    "to": "type:MediatR.Tests.StreamPipelineTests.OuterBehavior",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IStreamPipelineBehavior\u003CTRequest, TResponse\u003E",
+    "to": "type:MediatR.Examples.GenericStreamPipelineBehavior\u003CTRequest, TResponse\u003E",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IStreamPipelineBehavior\u003CTRequest, TResponse\u003E",
+    "to": "type:MediatR.Tests.StreamPipelineTests.InnerBehavior\u003CTRequest, TResponse\u003E",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.IStreamRequestHandler\u003CMediatR.Examples.Sing, MediatR.Examples.Song\u003E",
+    "to": "type:MediatR.Examples.SingHandler",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Licensing.LicenseAccessor",
+    "to": "type:MediatR.Licensing.LicenseAccessor",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Licensing.LicenseAccessor",
+    "to": "type:System.InvalidOperationException",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Licensing.LicenseValidator",
+    "to": "type:MediatR.Licensing.LicenseValidator",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Pipeline.IRequestExceptionHandler\u003CMediatR.Tests.Pipeline.RequestExceptionHandlerTests.Ping, MediatR.Tests.Pipeline.RequestExceptionHandlerTests.Pong, MediatR.Tests.Pipeline.RequestExceptionHandlerTests.PingException\u003E",
+    "to": "type:MediatR.Tests.Pipeline.RequestExceptionHandlerTests.PingPongExceptionHandlerForType",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Pipeline.IRequestExceptionHandler\u003CMediatR.Tests.Pipeline.RequestExceptionHandlerTests.Ping, MediatR.Tests.Pipeline.RequestExceptionHandlerTests.Pong, System.Exception\u003E",
+    "to": "type:MediatR.Tests.Pipeline.RequestExceptionHandlerTests.PingPongExceptionHandler",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:Microsoft.Extensions.Logging.ILoggerFactory",
+    "to": "type:Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory",
+    "type": "di_resolves_to",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:Microsoft.Extensions.Options.IConfigureOptions\u003CQuartz.QuartzOptions\u003E",
+    "to": "type:Quartz.Configuration.DeferredQuartzConfiguration",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.AspNetCore.HttpApi.Util.EndpointHelper",
+    "to": "type:Quartz.AspNetCore.HttpApi.Util.EndpointHelper",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.AspNetCore.HttpApi.Util.ExceptionHandler",
+    "to": "type:Quartz.AspNetCore.HttpApi.Util.ExceptionHandler",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Dashboard.Services.DashboardActionLogService",
+    "to": "type:Quartz.Dashboard.Services.DashboardActionLogService",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Dashboard.Services.IDashboardHistoryStore",
+    "to": "type:Quartz.Dashboard.Services.DashboardHistoryStore",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Dashboard.Services.IQuartzApiClient",
+    "to": "type:Quartz.Dashboard.Services.InProcessQuartzApiClient",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Examples.AspNetCore.AsyncDisposableDependency",
+    "to": "type:Quartz.Examples.AspNetCore.AsyncDisposableDependency",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Examples.AspNetCore.ExampleJob",
+    "to": "type:Quartz.Examples.AspNetCore.ExampleJob",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.ITriggerListener",
+    "to": "type:Quartz.Examples.AspNetCore.SecondSampleTriggerListener",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Impl.AdoJobStore.Common.IDbProvider",
+    "to": "type:Quartz.Examples.AspNetCore.CustomSqlServerConnectionProvider",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Spi.IJobFactory",
+    "to": "type:Quartz.Simpl.MicrosoftDependencyInjectionJobFactory",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.Decorated",
+    "to": "type:Scrutor.Tests.DecorationTests.Decorated",
+    "type": "di_resolves_to",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.IDecoratedService",
+    "to": "type:Scrutor.Tests.DecorationTests.Decorated",
+    "type": "di_resolves_to",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.IService",
+    "to": "type:Scrutor.Tests.DecorationTests.SomeRandomService",
+    "type": "di_resolves_to",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.ISpecializedQueryHandler",
+    "to": "type:Scrutor.Tests.MySpecializedQueryHandler",
+    "type": "di_resolves_to",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Scrutor.Tests.QueryHandler\u003CScrutor.Tests.MyQuery, Scrutor.Tests.MyResult\u003E",
+    "to": "type:Scrutor.Tests.MyQueryHandler",
+    "type": "di_resolves_to",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:System.TimeProvider",
+    "to": "type:Quartz.Examples.AspNetCore.Startup.CustomTimeProvider",
+    "type": "di_resolves_to",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ProjectAndAllowNullCollections.Foo",
+    "to": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ProjectAndAllowNullCollections.FooConfiguration",
+    "type": "ef_configures",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AppDbContext",
+    "to": "type:Ardalis.Sample.Domain.Customer",
+    "type": "ef_entity",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:AppDbContext",
+    "to": "type:Ardalis.Sample.Domain.Customer",
+    "type": "ef_entity",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.DateTimeToNullableDateTime.TestContext",
+    "to": "type:AutoMapper.IntegrationTests.BuiltInTypes.DateTimeToNullableDateTime.Parent",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.EnumToEnum.Context",
+    "to": "type:AutoMapper.IntegrationTests.BuiltInTypes.EnumToEnum.Customer",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.NullableIntToLong.Context",
+    "to": "type:AutoMapper.IntegrationTests.BuiltInTypes.NullableIntToLong.Customer",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.NullableLongToLong.Context",
+    "to": "type:AutoMapper.IntegrationTests.BuiltInTypes.NullableLongToLong.Customer",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.ProjectEnumerableOfIntToHashSet.Context",
+    "to": "type:AutoMapper.IntegrationTests.BuiltInTypes.ProjectEnumerableOfIntToHashSet.Customer",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.StringTypeConverter.ApplicationDBContext",
+    "to": "type:AutoMapper.IntegrationTests.BuiltInTypes.StringTypeConverter.Planning",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.StringTypeConverter.ApplicationDBContext",
+    "to": "type:AutoMapper.IntegrationTests.BuiltInTypes.StringTypeConverter.Service",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CascadedIncludeMembersWithIheritance.Context",
+    "to": "type:AutoMapper.IntegrationTests.CascadedIncludeMembersWithIheritance.Source",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryCustomSourceWithInheritance.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryCustomSourceWithInheritance.Brand",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryExplicitExpansionWithInheritance.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryExplicitExpansionWithInheritance.Article",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollection.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollection.ProductArticle",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollectionSameNameWithInheritance.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollectionSameNameWithInheritance.Product",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollectionWithInheritance.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollectionWithInheritance.Product",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollectionWithInheritance.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollectionWithInheritance.ProductArticle",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithInheritance.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithInheritance.Product",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithInnerObject.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithInnerObject.ProductArticle",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomProjectionChildClasses.TestContext",
+    "to": "type:AutoMapper.IntegrationTests.CustomProjectionChildClasses.Source",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ExpandCollectionsWithStrings.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ExpandCollectionsWithStrings.TrainingContent",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ExpandMembersPath.TestContext",
+    "to": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ExpandMembersPath.Class2",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ExplicitlyExpandCollectionsAndChildReferences.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ExplicitlyExpandCollectionsAndChildReferences.Category",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ExplicitExpansion.NestedExplicitExpand.TestContext",
+    "to": "type:AutoMapper.IntegrationTests.ExplicitExpansion.NestedExplicitExpand.Class2",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ProjectAndAllowNullCollections.MyContext",
+    "to": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ProjectAndAllowNullCollections.Bar",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ICollectionAggregateProjections.Context",
+    "to": "type:AutoMapper.IntegrationTests.ICollectionAggregateProjections.Customer",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.IncludeMembers.Context",
+    "to": "type:AutoMapper.IntegrationTests.IncludeMembers.Source",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.Inheritance.DisablingPolymorphismTests.Context",
+    "to": "type:AutoMapper.IntegrationTests.Inheritance.DisablingPolymorphismTests.Motorcycle",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.Inheritance.PolymorphismTests.Context",
+    "to": "type:AutoMapper.IntegrationTests.Inheritance.PolymorphismTests.Car",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.Inheritance.ProjectToAbstractTypeWithInheritance.Context",
+    "to": "type:AutoMapper.IntegrationTests.Inheritance.ProjectToAbstractTypeWithInheritance.InstructionStep",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.Inheritance.ProjectToAbstractTypeWithInheritance.Context",
+    "to": "type:AutoMapper.IntegrationTests.Inheritance.ProjectToAbstractTypeWithInheritance.StepInput",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.MaxDepth.MaxDepthWithCollections.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.MaxDepth.MaxDepthWithCollections.TrainingContent",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ParameterizedQueries.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.ParameterizedQueries.Entity",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.SubqueryMapFromWithIncludeMembersFirstOrDefaultWithIheritance.Context",
+    "to": "type:AutoMapper.IntegrationTests.SubqueryMapFromWithIncludeMembersFirstOrDefaultWithIheritance.Source",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ValueTransformerTests.StackingTransformers.Context",
+    "to": "type:AutoMapper.IntegrationTests.ValueTransformerTests.StackingTransformers.Source",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ValueTransformerTests.StackingTypeMapAndRootAndProfileAndMemberConfig.Context",
+    "to": "type:AutoMapper.IntegrationTests.ValueTransformerTests.StackingTypeMapAndRootAndProfileAndMemberConfig.Source",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ValueTransformerTests.TransformingValueTypes.Context",
+    "to": "type:AutoMapper.IntegrationTests.ValueTransformerTests.TransformingValueTypes.Source",
+    "type": "ef_entity",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:EFCoreSeedDb.BloggingContext",
+    "to": "type:EFCoreSeedDb.Post",
+    "type": "ef_entity",
+    "repo": "Bogus"
+  },
+  {
+    "from": "type:Tests.Fixture.TestDbContext",
+    "to": "type:Tests.Fixture.Company",
+    "type": "ef_entity",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Fixture.TestDbContext",
+    "to": "type:Tests.Fixture.Foo",
+    "type": "ef_entity",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Fixture.TestDbContext",
+    "to": "type:Tests.Fixture.Product",
+    "type": "ef_entity",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "service:IHostedService",
+    "to": "type:Quartz.Examples.Worker.Worker",
+    "type": "hosted_service",
+    "repo": "quartznet"
+  },
+  {
+    "from": "service:IHostedService",
+    "to": "type:Quartz.NamedSchedulerHostedService",
+    "type": "hosted_service",
+    "repo": "quartznet"
+  },
+  {
+    "from": "service:IHostedService",
+    "to": "type:Quartz.QuartzHostedService",
+    "type": "hosted_service",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Ardalis.Specification.SpecificationValidator",
+    "to": "type:Ardalis.Specification.ISpecificationValidator",
+    "type": "implements",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:AutoFixture.Idioms.NullReferenceBehaviorExpectation",
+    "to": "type:AutoFixture.Idioms.IBehaviorExpectation",
+    "type": "implements",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.Idioms.WhiteSpaceStringBehaviorExpectation",
+    "to": "type:AutoFixture.Idioms.IBehaviorExpectation",
+    "type": "implements",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.Kernel.FieldSpecification",
+    "to": "type:AutoFixture.Kernel.IRequestSpecification",
+    "type": "implements",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.Kernel.NoSpecimenOutputGuard",
+    "to": "type:AutoFixture.Kernel.ISpecimenBuilderNode",
+    "type": "implements",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.Kernel.Omitter",
+    "to": "type:AutoFixture.Kernel.ISpecimenBuilder",
+    "type": "implements",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.SByteSequenceGenerator",
+    "to": "type:AutoFixture.Kernel.ISpecimenBuilder",
+    "type": "implements",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.SingleSequenceGenerator",
+    "to": "type:AutoFixture.Kernel.ISpecimenBuilder",
+    "type": "implements",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoMapper.Configuration.ICtorParamConfigurationExpression\u003CTSource\u003E",
+    "to": "type:AutoMapper.Configuration.ICtorParamConfigurationExpression",
+    "type": "implements",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.Configuration.SourceMappingExpression",
+    "to": "type:AutoMapper.Configuration.ISourceMemberConfiguration",
+    "type": "implements",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.Configuration.SourceMappingExpression",
+    "to": "type:AutoMapper.Configuration.ISourceMemberConfigurationExpression",
+    "type": "implements",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.MapperConfigurationExpression",
+    "to": "type:AutoMapper.Internal.IGlobalConfigurationExpression",
+    "type": "implements",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Bug.InterfaceMultipleInheritance.InterfaceMultipleInheritanceBug1016.iclass3",
+    "to": "type:AutoMapper.UnitTests.Bug.InterfaceMultipleInheritance.InterfaceMultipleInheritanceBug1016.iclass2",
+    "type": "implements",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.InterfaceMapping.When_mapping_a_derived_interface_to_an_derived_concrete_type.Source",
+    "to": "type:AutoMapper.UnitTests.InterfaceMapping.When_mapping_a_derived_interface_to_an_derived_concrete_type.ISource",
+    "type": "implements",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.InterfaceMapping.When_mapping_to_existing_object_through_interfaces.class2DTO",
+    "to": "type:AutoMapper.UnitTests.InterfaceMapping.When_mapping_to_existing_object_through_interfaces.iclass2DTO",
+    "type": "implements",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.PrimitiveExtensionsTester.DestinationClass",
+    "to": "type:AutoMapper.UnitTests.PrimitiveExtensionsTester.Interface",
+    "type": "implements",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:CsvHelper.Configuration.IHasNameOptions\u003CTClass, TMember\u003E",
+    "to": "type:CsvHelper.Configuration.IHasValidate\u003CTClass, TMember\u003E",
+    "type": "implements",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.Configuration.MemberMapBuilder\u003CTClass, TMember\u003E",
+    "to": "type:CsvHelper.Configuration.IHasMapOptions\u003CTClass, TMember\u003E",
+    "type": "implements",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.Factory",
+    "to": "type:CsvHelper.IFactory",
+    "type": "implements",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:Dapper.SimpleMemberMap",
+    "to": "type:Dapper.SqlMapper.IMemberMap",
+    "type": "implements",
+    "repo": "Dapper"
+  },
+  {
+    "from": "type:FluentValidation.Validators.IEnumValidator",
+    "to": "type:FluentValidation.Validators.IPropertyValidator",
+    "type": "implements",
     "repo": "FluentValidation"
   },
   {
-    "from": "type:FluentValidation.Internal.TrackingCollection\u003CT\u003E.EventDisposable",
-    "to": "type:FluentValidation.Internal.TrackingCollection\u003CT\u003E",
-    "type": "di_injects",
+    "from": "type:FluentValidation.Validators.IInclusiveBetweenValidator",
+    "to": "type:FluentValidation.Validators.IBetweenValidator",
+    "type": "implements",
     "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.Validators.PredicateValidator\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.Validators.IPredicateValidator",
+    "type": "implements",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.ConcreteTypeArgument",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.ITypeArgument",
+    "type": "implements",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests.TestClass2",
+    "to": "type:MediatR.Tests.SendTests.ITestInterface2",
+    "type": "implements",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:NSubstitute.Acceptance.Specs.ArgumentMatching.MyOtherStringArgument",
+    "to": "type:NSubstitute.Acceptance.Specs.ArgumentMatching.IMyArgument\u003CSystem.String\u003E",
+    "type": "implements",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Acceptance.Specs.Calls_to_members_on_generic_interface.GMParam1",
+    "to": "type:NSubstitute.Acceptance.Specs.Calls_to_members_on_generic_interface.IGMParam",
+    "type": "implements",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Core.Arguments.SuppliedArgumentSpecifications",
+    "to": "type:NSubstitute.Core.Arguments.ISuppliedArgumentSpecifications",
+    "type": "implements",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Core.CallRouter",
+    "to": "type:NSubstitute.Core.ICallRouter",
+    "type": "implements",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Core.ConfigureCall",
+    "to": "type:NSubstitute.Core.IConfigureCall",
+    "type": "implements",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Core.SubstituteFactory",
+    "to": "type:NSubstitute.Core.ISubstituteFactory",
+    "type": "implements",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:NSubstitute.Routing.Handlers.DoActionsCallHandler",
+    "to": "type:NSubstitute.Core.ICallHandler",
+    "type": "implements",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "type:Quartz.Dashboard.Services.InProcessQuartzApiClient",
+    "to": "type:Quartz.Dashboard.Services.IQuartzApiClient",
+    "type": "implements",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Examples.Example06.JobExecutionExceptionsExample",
+    "to": "type:Quartz.Examples.IExample",
+    "type": "implements",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.IContainerConfigurationSupport",
+    "to": "type:Quartz.IPropertyConfigurer",
+    "type": "implements",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.JobBuilder",
+    "to": "type:Quartz.IJobConfigurator",
+    "type": "implements",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Server.QuartzServer",
+    "to": "type:Quartz.Server.IQuartzServer",
+    "type": "implements",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Scrutor.Tests.DecorationTests.Decorator",
+    "to": "type:Scrutor.Tests.DecorationTests.IDecoratedService",
+    "type": "implements",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:Serilog.Core.Pipeline.MessageTemplateCache",
+    "to": "type:Serilog.Core.IMessageTemplateParser",
+    "type": "implements",
+    "repo": "serilog"
+  },
+  {
+    "from": "type:Serilog.Core.Sinks.DelegatingLoggingFailureListener",
+    "to": "type:Serilog.Core.ILoggingFailureListener",
+    "type": "implements",
+    "repo": "serilog"
+  },
+  {
+    "from": "type:AutoFixture.NUnit4.FavorArraysAttribute",
+    "to": "type:AutoFixture.NUnit4.CustomizeAttribute",
+    "type": "inherits",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.Xunit3.FavorListsAttribute",
+    "to": "type:AutoFixture.Xunit3.CustomizeAttribute",
+    "type": "inherits",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.ConvertUsingWithNullables.TestContext",
+    "to": "type:AutoMapper.IntegrationTests.LocalDbContext",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CascadedIncludeMembers",
+    "to": "type:AutoMapper.IntegrationTests.IntegrationTest\u003CAutoMapper.IntegrationTests.CascadedIncludeMembers.DatabaseInitializer\u003E",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQuery",
+    "to": "type:AutoMapper.IntegrationTests.IntegrationTest\u003CAutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQuery.DatabaseInitializer\u003E",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryCustomSourceWithInheritance.ProductReviewADto",
+    "to": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryCustomSourceWithInheritance.ProductReviewDto",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.IncludeMembersWithNullSubstitute.DatabaseInitializer",
+    "to": "type:AutoMapper.IntegrationTests.DropCreateDatabaseAlways\u003CAutoMapper.IntegrationTests.IncludeMembersWithNullSubstitute.Context\u003E",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.Inheritance.ProjectToAbstractTypeWithInheritance.DatabaseInitializer",
+    "to": "type:AutoMapper.IntegrationTests.DropCreateDatabaseAlways\u003CAutoMapper.IntegrationTests.Inheritance.ProjectToAbstractTypeWithInheritance.Context\u003E",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.Inheritance.QueryableInterfaceInheritanceIssue.ClientContext",
+    "to": "type:AutoMapper.IntegrationTests.LocalDbContext",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.QueryableExtensions.Impl.ParameterVisitor.PropertyVisitor",
+    "to": "type:AutoMapper.QueryableExtensions.Impl.ParameterVisitor",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.AttributeBasedMaps.When_specifying_member_value_resolver_via_attribute",
+    "to": "type:AutoMapper.UnitTests.NonValidatingSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Bug.GrandChild",
+    "to": "type:AutoMapper.UnitTests.Bug.Child",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Bug.IncludedMappingShouldInheritBaseMappings.ModelSubObject",
+    "to": "type:AutoMapper.UnitTests.Bug.IncludedMappingShouldInheritBaseMappings.ModelObject",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Bug.IncludedMappingShouldInheritBaseMappings.ModelSubObjectWithConstructor",
+    "to": "type:AutoMapper.UnitTests.Bug.IncludedMappingShouldInheritBaseMappings.ModelObjectWithConstructor",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Bug.NullableResolveUsing",
+    "to": "type:AutoMapper.UnitTests.AutoMapperSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.CustomValidations.When_using_custom_validation_for_convertusing_with_mappingfunction",
+    "to": "type:AutoMapper.UnitTests.NonValidatingSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.IncludeMembersWithValueConverter",
+    "to": "type:AutoMapper.UnitTests.AutoMapperSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.MappingExpressionFeatureWithReverseTest.TypeMapFeatureB",
+    "to": "type:AutoMapper.UnitTests.MappingExpressionFeatureWithReverseTest.TypeMapFeatureBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.MappingInheritance.Include.AbstractChild",
+    "to": "type:AutoMapper.UnitTests.MappingInheritance.Include.Concrete",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.NullBehavior.When_overriding_null_behavior_in_sub_profile",
+    "to": "type:AutoMapper.UnitTests.AutoMapperSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.OpenGenericsProfileValidationNonGenericMembers",
+    "to": "type:AutoMapper.UnitTests.NonValidatingSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.OpenGenerics_With_MemberConfiguration",
+    "to": "type:AutoMapper.UnitTests.AutoMapperSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.ProdTypeA",
+    "to": "type:AutoMapper.UnitTests.ProductTypeDto",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Projection.ConstructorToStringWithIheritance.DestinationB",
+    "to": "type:AutoMapper.UnitTests.Projection.ConstructorToStringWithIheritance.Destination",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.ShouldUseConstructorPublic",
+    "to": "type:AutoMapper.UnitTests.NonValidatingSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.When_mapping_to_a_destination_with_a_bidirectional_parent_one_to_one_child_relationship",
+    "to": "type:AutoMapper.UnitTests.AutoMapperSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.When_validating_only_against_source_members_and_unmatching_source_members_are_manually_mapped",
+    "to": "type:AutoMapper.UnitTests.AutoMapperSpecBase",
+    "type": "inherits",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:CommandLine.ValueAttribute",
+    "to": "type:CommandLine.BaseAttribute",
+    "type": "inherits",
+    "repo": "CommandLineParser"
+  },
+  {
+    "from": "type:CsvHelper.Tests.Reading.PrivateSettersInParentTests.Child",
+    "to": "type:CsvHelper.Tests.Reading.PrivateSettersInParentTests.Parent",
+    "type": "inherits",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.TypeConversion.ByteConverter",
+    "to": "type:CsvHelper.TypeConversion.DefaultTypeConverter",
+    "type": "inherits",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:Dapper.Tests.DataReaderTests\u003CTProvider\u003E",
+    "to": "type:Dapper.Tests.TestBase\u003CTProvider\u003E",
+    "type": "inherits",
+    "repo": "Dapper"
+  },
+  {
+    "from": "type:Dapper.Tests.Performance.DapperBenchmarks",
+    "to": "type:Dapper.Tests.Performance.BenchmarkBase",
+    "type": "inherits",
+    "repo": "Dapper"
   },
   {
     "from": "type:FluentValidation.Validators.ChildValidatorAdaptor\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.IValidator\u003CTProperty\u003E",
-    "type": "di_injects",
+    "to": "type:FluentValidation.Validators.NoopPropertyValidator\u003CT, TProperty\u003E",
+    "type": "inherits",
     "repo": "FluentValidation"
   },
   {
-    "from": "type:Serilog.Configuration.LoggerFilterConfiguration",
-    "to": "type:Serilog.LoggerConfiguration",
-    "type": "di_injects",
-    "repo": "Serilog"
+    "from": "type:FluentValidation.Validators.LessThanValidator\u003CT, TProperty\u003E",
+    "to": "type:FluentValidation.Validators.AbstractComparisonValidator\u003CT, TProperty\u003E",
+    "type": "inherits",
+    "repo": "FluentValidation"
   },
   {
-    "from": "type:Serilog.Configuration.LoggerSinkConfiguration",
-    "to": "type:Serilog.LoggerConfiguration",
-    "type": "di_injects",
-    "repo": "Serilog"
+    "from": "type:FluentValidation.Validators.PrecisionScaleValidator\u003CT\u003E",
+    "to": "type:FluentValidation.Validators.PropertyValidator\u003CT, System.Decimal\u003E",
+    "type": "inherits",
+    "repo": "FluentValidation"
   },
   {
-    "from": "type:Serilog.Context.EnricherStack",
-    "to": "type:Serilog.Core.ILogEventEnricher",
-    "type": "di_injects",
-    "repo": "Serilog"
+    "from": "type:NSubstitute.Acceptance.Specs.FormattingCallsWhenThrowingReceivedCallsExceptions.When_checking_delegate_call",
+    "to": "type:NSubstitute.Acceptance.Specs.FormattingCallsWhenThrowingReceivedCallsExceptions.Context",
+    "type": "inherits",
+    "repo": "NSubstitute"
   },
   {
-    "from": "type:Serilog.Core.LevelOverrideMap",
-    "to": "type:Serilog.Events.LogEventLevel",
-    "type": "di_injects",
-    "repo": "Serilog"
+    "from": "type:Quartz.Serialization.Json.Converters.JobKeyConverter",
+    "to": "type:Quartz.Serialization.Json.Converters.KeyConverter\u003CQuartz.JobKey\u003E",
+    "type": "inherits",
+    "repo": "quartznet"
   },
   {
-    "from": "type:FluentValidation.IRuleBuilderInitial\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.IRuleBuilder\u003CT, TProperty\u003E",
-    "type": "implements",
+    "from": "type:RestSharp.HeaderParameter",
+    "to": "type:RestSharp.Parameter",
+    "type": "inherits",
+    "repo": "RestSharp"
+  },
+  {
+    "from": "type:RestSharp.Tests.Serializers.Xml.SampleClasses.Event",
+    "to": "type:RestSharp.Tests.Serializers.Xml.SampleClasses.LastfmBase",
+    "type": "inherits",
+    "repo": "RestSharp"
+  },
+  {
+    "from": "type:Scrutor.RegistrationStrategy.AppendRegistrationStrategy",
+    "to": "type:Scrutor.RegistrationStrategy",
+    "type": "inherits",
+    "repo": "Scrutor"
+  },
+  {
+    "from": "type:MediatR.Benchmarks.Ping",
+    "to": "type:MediatR.Benchmarks.PingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Benchmarks.Pinged",
+    "to": "type:MediatR.Benchmarks.PingedHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.DependencyInjectionTests.Contracts.Notifications.Ding",
+    "to": "type:MediatR.DependencyInjectionTests.Contracts.Notifications.Ding.Door1",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.DependencyInjectionTests.Contracts.Notifications.Ding",
+    "to": "type:MediatR.DependencyInjectionTests.Contracts.Notifications.Ding.Door2",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.DependencyInjectionTests.Contracts.Notifications.Ding",
+    "to": "type:MediatR.DependencyInjectionTests.Contracts.Notifications.Ding.Door3",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.DependencyInjectionTests.Contracts.Requests.InternalVoidPing",
+    "to": "type:MediatR.DependencyInjectionTests.Contracts.Requests.InternalVoidPing.Handler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.DependencyInjectionTests.Contracts.Requests.PrivateVoidPing",
+    "to": "type:MediatR.DependencyInjectionTests.Contracts.Requests.PrivateVoidPing.Handler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.DependencyInjectionTests.Contracts.Requests.PublicPing",
+    "to": "type:MediatR.DependencyInjectionTests.Contracts.Requests.PublicPing.Handler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.ExceptionHandler.PingResource",
+    "to": "type:MediatR.Examples.ExceptionHandler.PingResourceHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.ExceptionHandler.PingResourceTimeout",
+    "to": "type:MediatR.Examples.ExceptionHandler.PingResourceTimeoutHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Jing",
+    "to": "type:MediatR.Examples.JingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Ping",
+    "to": "type:MediatR.Examples.PingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Pinged",
+    "to": "type:MediatR.Examples.PingedHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Pinged",
+    "to": "type:MediatR.Examples.PublishStrategies.AsyncPingedHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Pinged",
+    "to": "type:MediatR.Examples.PublishStrategies.SyncPingedHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Ponged",
+    "to": "type:MediatR.Examples.PongedHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DerivedPing",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DerivedPingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DuplicateTest",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DuplicateHandler1",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DuplicateTest",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DuplicateHandler2",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.InternalPing",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.InternalPingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Issue1118Tests.DerivedEvent",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Issue1118Tests.DerivedEventHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.OpenGenericReturnTypeRequest\u003CT\u003E",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.OpenGenericReturnTypeRequestHandler\u003CT\u003E",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Ping",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Pinged",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PingedHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineMultiCallToConstructorTests.ConstructorTestRequest",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineMultiCallToConstructorTests.ConstructorTestHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.ListPing",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.ListPingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.VoidGenericPing\u003CT\u003E",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.VoidGenericPingHandler\u003CT\u003E",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.INotification",
+    "to": "type:MediatR.Examples.GenericHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests.PingException",
+    "to": "type:MediatR.Tests.ExceptionTests.PingExceptionHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.NotificationHandlerTests.Ping",
+    "to": "type:MediatR.Tests.NotificationHandlerTests.PongChildHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.NotificationPublisherTests.Notification",
+    "to": "type:MediatR.Tests.NotificationPublisherTests.SecondHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.Pipeline.RequestExceptionActionTests.Ping",
+    "to": "type:MediatR.Tests.Pipeline.RequestExceptionActionTests.PingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.Pipeline.RequestExceptionHandlerTests.Ping",
+    "to": "type:MediatR.Tests.Pipeline.RequestExceptionHandlerTests.PingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.Pipeline.RequestPostProcessorTests.Ping",
+    "to": "type:MediatR.Tests.Pipeline.RequestPostProcessorTests.PingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.PipelineTests.Zing",
+    "to": "type:MediatR.Tests.PipelineTests.ZingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests.MultipleGenericTypeParameterRequest\u003CT1, T2, T3\u003E",
+    "to": "type:MediatR.Tests.SendTests.MultipleGenericTypeParameterRequestHandler\u003CT1, T2, T3\u003E",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests.Ping",
+    "to": "type:MediatR.Tests.SendTests.PingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests.TimeoutRequest2",
+    "to": "type:MediatR.Tests.SendTests.TimeoutRequest2Handler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests.VoidGenericPing\u003CMediatR.Tests.SendTests.PongExtension\u003E",
+    "to": "type:MediatR.Tests.SendTests.TestClass1PingRequestHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests.VoidPing",
+    "to": "type:MediatR.Tests.SendTests.VoidPingHandler",
+    "type": "mediatr_handles",
+    "repo": "MediatR"
+  },
+  {
+    "from": "config:Sample",
+    "to": "type:Quartz.Examples.AspNetCore.SampleOptions",
+    "type": "options_binds",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.AspNetCore.HttpApi.Util.ExceptionHandler",
+    "to": "type:Quartz.AspNetCore.HttpApi.QuartzHttpApiOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Configuration.ContainerConfigurationProcessor",
+    "to": "type:Quartz.QuartzOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Dashboard.Services.InProcessQuartzApiClient",
+    "to": "type:Quartz.QuartzDashboardOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Dashboard.Services.QuartzApiClient",
+    "to": "type:Quartz.QuartzDashboardOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Examples.AspNetCore.ApiKeyAuthenticationHandler",
+    "to": "type:Quartz.Examples.AspNetCore.ApiKeyAuthenticationOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Impl.AdoJobStore.Common.DataSourceDbProvider",
+    "to": "type:Quartz.QuartzOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.NamedSchedulerHostedService",
+    "to": "type:Quartz.QuartzHostedServiceOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.NamedSchedulerHostedService",
+    "to": "type:Quartz.QuartzOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.QuartzHostedService",
+    "to": "type:Quartz.QuartzHostedServiceOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.ServiceCollectionSchedulerFactory",
+    "to": "type:Quartz.QuartzOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Simpl.MicrosoftDependencyInjectionJobFactory",
+    "to": "type:Quartz.QuartzOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Quartz.Tests.AspNetCore.Dashboard.Support.TestAuthenticationHandler",
+    "to": "type:Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions",
+    "type": "options_consumes",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:RestSharp.Extensions.DependencyInjection.DefaultRestClientFactory",
+    "to": "type:RestSharp.Extensions.DependencyInjection.RestClientConfigOptions",
+    "type": "options_consumes",
+    "repo": "RestSharp"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Benchmarks.GenericPipelineBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Examples.GenericPipelineBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineMultiCallToConstructorTests.ConstructorTestBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.ClosedBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.ConstrainedBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.InnerBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.InnerBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.ListResponseBehavior\u003CTRequest, TItem\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.MultiOpenBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.NotAnOpenBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.Open2Behavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.OpenBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.OpenBehaviorMultipleRegistration0\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.OpenBehaviorMultipleRegistration1\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.OpenBehaviorMultipleRegistration2\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.OuterBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.OuterBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.ThrowingBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Pipeline.RequestExceptionActionProcessorBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Pipeline.RequestExceptionProcessorBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Pipeline.RequestPostProcessorBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Pipeline.RequestPreProcessorBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.PipelineTests.ConcreteBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.PipelineTests.ConstrainedBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.PipelineTests.InnerBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.PipelineTests.InnerBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.PipelineTests.InnerVoidBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.PipelineTests.OuterBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.PipelineTests.OuterBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.PipelineTests.OuterVoidBehavior",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "service:IPipelineBehavior",
+    "to": "type:MediatR.Tests.SendTests.TimeoutBehavior\u003CTRequest, TResponse\u003E",
+    "type": "pipeline_behavior",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:AutoFixture.Kernel.DelegateGenerator",
+    "to": "type:AutoFixture.Kernel.IRequestSpecification",
+    "type": "references",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixture.Kernel.FalseRequestSpecification",
+    "to": "type:AutoFixture.Kernel.IRequestSpecification",
+    "type": "references",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoFixtureUnitTest.EnumGeneratorTest",
+    "to": "type:AutoFixtureUnitTest.Kernel.DelegatingSpecimenContext",
+    "type": "references",
+    "repo": "AutoFixture"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.BuiltInTypes.ConvertUsingWithNullables",
+    "to": "type:AutoMapper.IntegrationTests.BuiltInTypes.ConvertUsingWithNullables.TestContext",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithCollectionSameNameWithInheritance",
+    "to": "type:AutoMapper.IntegrationTests.LocalDbContext",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.CustomMapFrom.MapObjectPropertyFromSubQueryWithInnerObjectWithInheritance",
+    "to": "type:AutoMapper.IntegrationTests.LocalDbContext",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ExplicitlyExpandCollectionsAndChildReferences.DatabaseInitializer",
+    "to": "type:AutoMapper.IntegrationTests.DropCreateDatabaseAlways\u003CTContext\u003E",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ProjectionWithExplicitExpansion",
+    "to": "type:AutoMapper.IntegrationTests.ExplicitExpansion.ProjectionWithExplicitExpansion.DatabaseInitializer",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.IntegrationTests.Inheritance.ProjectToAbstractType.ConcreteTypeA",
+    "to": "type:AutoMapper.IntegrationTests.Inheritance.ProjectToAbstractType.ITypeA",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.CyclesWithInheritance",
+    "to": "type:AutoMapper.UnitTests.NonValidatingSpecBase",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.IntToNullableIntConverter",
+    "to": "type:AutoMapper.UnitTests.AutoMapperSpecBase",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.InterfaceMapping.InterfaceInheritance",
+    "to": "type:AutoMapper.UnitTests.InterfaceMapping.InterfaceInheritance.IPropertyB",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Mappers.When_adding_an_object_based_custom_mapper",
+    "to": "type:AutoMapper.UnitTests.Mappers.When_adding_an_object_based_custom_mapper.Source",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Projection.ConstructorIncludeMembersWithIheritance.DestinationA",
+    "to": "type:AutoMapper.UnitTests.Projection.ConstructorIncludeMembersWithIheritance.Destination",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:AutoMapper.UnitTests.Tests.MapperTests",
+    "to": "type:AutoMapper.UnitTests.Tests.MapperTests.Source",
+    "type": "references",
+    "repo": "AutoMapper"
+  },
+  {
+    "from": "type:CsvHelper.IFactory",
+    "to": "type:CsvHelper.IWriter",
+    "type": "references",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.Tests.CsvWriterTests",
+    "to": "type:\u003Canonymous type: System.Int32 Id, System.String Name\u003E",
+    "type": "references",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.Tests.Mappings.ConstructorParameter.BooleanTrueValuesMapTests",
+    "to": "type:CsvHelper.Tests.Mappings.ConstructorParameter.BooleanTrueValuesMapTests.Foo",
+    "type": "references",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.Tests.Mappings.ConstructorParameter.NameMapTests.FooMap",
+    "to": "type:CsvHelper.Tests.Mappings.ConstructorParameter.NameMapTests.Foo",
+    "type": "references",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:CsvHelper.Tests.ReferenceMappingClassMapTests.HomeAddressMap",
+    "to": "type:CsvHelper.Tests.ReferenceMappingClassMapTests.Address",
+    "type": "references",
+    "repo": "CsvHelper"
+  },
+  {
+    "from": "type:Dapper.Tests.MultiMapTests\u003CTProvider\u003E",
+    "to": "type:Dapper.Tests.Address",
+    "type": "references",
+    "repo": "Dapper"
+  },
+  {
+    "from": "type:FluentValidation.DefaultValidatorExtensions",
+    "to": "type:FluentValidation.Validators.MaximumLengthValidator\u003CT\u003E",
+    "type": "references",
+    "repo": "FluentValidation"
+  },
+  {
+    "from": "type:FluentValidation.DefaultValidatorOptions",
+    "to": "type:FluentValidation.IRuleBuilderInitial\u003CT, TProperty\u003E",
+    "type": "references",
     "repo": "FluentValidation"
   },
   {
     "from": "type:FluentValidation.Internal.DefaultValidatorSelector",
-    "to": "type:FluentValidation.Internal.IValidatorSelector",
-    "type": "implements",
+    "to": "type:FluentValidation.IValidationContext",
+    "type": "references",
     "repo": "FluentValidation"
   },
   {
-    "from": "type:FluentValidation.Validators.ChildValidatorAdaptor\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.Validators.IAsyncPropertyValidator\u003CT, TProperty\u003E",
-    "type": "implements",
-    "repo": "FluentValidation"
+    "from": "type:Flurl.Http.FlurlHttp",
+    "to": "type:Flurl.Http.Configuration.IFlurlClientCache",
+    "type": "references",
+    "repo": "Flurl"
   },
   {
-    "from": "type:Serilog.Capturing.PropertyValueConverter.DepthLimiter",
-    "to": "type:Serilog.Core.ILogEventPropertyValueFactory",
-    "type": "implements",
-    "repo": "Serilog"
+    "from": "type:Quartz.Configuration.ContainerConfigurationProcessor",
+    "to": "type:Quartz.IJobDetail",
+    "type": "references",
+    "repo": "quartznet"
   },
   {
-    "from": "type:Serilog.Core.Enrichers.SafeAggregateEnricher",
-    "to": "type:Serilog.Core.ILogEventEnricher",
-    "type": "implements",
-    "repo": "Serilog"
+    "from": "type:Quartz.HttpApiContract.SchedulerDto",
+    "to": "type:Quartz.HttpApiContract.SchedulerStatus",
+    "type": "references",
+    "repo": "quartznet"
   },
   {
-    "from": "type:Serilog.Core.Logger",
-    "to": "type:Serilog.Core.ILogEventSink",
-    "type": "implements",
-    "repo": "Serilog"
+    "from": "type:Quartz.SchedulerBuilder",
+    "to": "type:Quartz.Util.ObjectExtensions",
+    "type": "references",
+    "repo": "quartznet"
   },
   {
-    "from": "type:Serilog.Core.Pipeline.SilentLogger",
-    "to": "type:Serilog.ILogger",
-    "type": "implements",
-    "repo": "Serilog"
+    "from": "type:Quartz.Tests.Unit.Simpl.JsonObjectSerializerTest",
+    "to": "type:Quartz.Tests.Unit.Simpl.JsonSerializationTestCalendar.SystemTextJsonSerializer",
+    "type": "references",
+    "repo": "quartznet"
   },
   {
-    "from": "type:Serilog.Core.Sinks.Batching.BatchingSink",
-    "to": "type:Serilog.Core.ISetLoggingFailureListener",
-    "type": "implements",
-    "repo": "Serilog"
+    "from": "type:RestSharp.RestRequestExtensions.extension(RestSharp.RestRequest)",
+    "to": "type:RestSharp.XmlParameter",
+    "type": "references",
+    "repo": "RestSharp"
   },
   {
-    "from": "type:FluentValidation.Tests.SharedConditionTests.Collision1",
-    "to": "type:FluentValidation.Tests.SharedConditionTests.CollisionBase",
-    "type": "inherits",
-    "repo": "FluentValidation"
+    "from": "type:Serilog.Log",
+    "to": "type:Serilog.Events.LogEvent",
+    "type": "references",
+    "repo": "serilog"
   },
   {
-    "from": "type:FluentValidation.Validators.CreditCardValidator\u003CT\u003E",
-    "to": "type:FluentValidation.Validators.PropertyValidator\u003CT, System.String\u003E",
-    "type": "inherits",
-    "repo": "FluentValidation"
+    "from": "type:Serilog.Policies.EnumScalarConversionPolicy",
+    "to": "type:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute",
+    "type": "references",
+    "repo": "serilog"
   },
   {
-    "from": "type:FluentValidation.Validators.GreaterThanOrEqualValidator\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.Validators.AbstractComparisonValidator\u003CT, TProperty\u003E",
-    "type": "inherits",
-    "repo": "FluentValidation"
+    "from": "type:Serilog.Settings.KeyValuePairs.KeyValuePairSettings",
+    "to": "type:Serilog.Configuration.LoggerFilterConfiguration",
+    "type": "references",
+    "repo": "serilog"
   },
   {
-    "from": "type:FluentValidation.Validators.LessThanOrEqualValidator\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.Validators.AbstractComparisonValidator\u003CT, TProperty\u003E",
-    "type": "inherits",
-    "repo": "FluentValidation"
+    "from": "type:Serilog.Settings.KeyValuePairs.SettingValueConversions",
+    "to": "type:System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute",
+    "type": "references",
+    "repo": "serilog"
   },
   {
-    "from": "type:FluentValidation.Validators.NotEqualValidator\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.Validators.PropertyValidator\u003CT, TProperty\u003E",
-    "type": "inherits",
-    "repo": "FluentValidation"
+    "from": "type:Serilog.Tests.Configuration.LoggerConfigurationTests",
+    "to": "type:Serilog.Tests.Support.AsyncDisposeTrackingSink",
+    "type": "references",
+    "repo": "serilog"
   },
   {
-    "from": "type:FluentValidation.Validators.PolymorphicValidator\u003CT, TProperty\u003E",
-    "to": "type:FluentValidation.Validators.ChildValidatorAdaptor\u003CT, TProperty\u003E",
-    "type": "inherits",
-    "repo": "FluentValidation"
+    "from": "type:Shouldly.MessageGenerators.ShouldBeIgnoringOrderMessageGenerator",
+    "to": "type:Shouldly.IShouldlyAssertionContext",
+    "type": "references",
+    "repo": "Shouldly"
   },
   {
-    "from": "type:Serilog.Data.LogEventPropertyValueRewriter\u003CTState\u003E",
-    "to": "type:Serilog.Data.LogEventPropertyValueVisitor\u003CTState, Serilog.Events.LogEventPropertyValue\u003E",
-    "type": "inherits",
-    "repo": "Serilog"
+    "from": "type:Shouldly.ShouldBeTestExtensions",
+    "to": "type:Shouldly.ShouldlyMethodsAttribute",
+    "type": "references",
+    "repo": "Shouldly"
   },
   {
-    "from": "type:Serilog.Events.SequenceValue",
-    "to": "type:Serilog.Events.LogEventPropertyValue",
-    "type": "inherits",
-    "repo": "Serilog"
+    "from": "type:Shouldly.Tests.TestHelpers.CustomComparer\u003CT\u003E",
+    "to": "type:Shouldly.Tests.TestHelpers.Custom",
+    "type": "references",
+    "repo": "Shouldly"
+  },
+  {
+    "from": "type:System.Diagnostics.TaskCompletionSource",
+    "to": "type:Polyfills.Polyfill",
+    "type": "references",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Fixture.SharedCollection",
+    "to": "type:Tests.Fixture.TestFactory",
+    "type": "references",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/_content/Quartz.Dashboard/{**path}",
+    "to": "method:Quartz.QuartzDashboardEndpointRouteBuilderExtensions.",
+    "type": "route_handles",
+    "repo": "quartznet"
+  },
+  {
+    "from": "route:GET:/customer-names/{id}",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/customers",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/customers",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/customers",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/customers/v2/{id}",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/customers/v3/{id}",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/customers/{id}",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/customers/{id}",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:GET:/customers/{id}",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:POST:/customers",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:POST:/customers",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:PUT:/customers/{id}",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "route:PUT:/customers/{id}",
+    "to": "method:Program.",
+    "type": "route_handles",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:MediatR.Benchmarks.Benchmarks",
+    "to": "type:MediatR.Benchmarks.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Benchmarks.Benchmarks",
+    "to": "type:MediatR.Benchmarks.Pinged",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Runner",
+    "to": "type:MediatR.Examples.ExceptionHandler.Overrides.PingResourceTimeout",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Runner",
+    "to": "type:MediatR.Examples.ExceptionHandler.PingNewResource",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Runner",
+    "to": "type:MediatR.Examples.ExceptionHandler.PingProtectedResource",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Runner",
+    "to": "type:MediatR.Examples.ExceptionHandler.PingResource",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Runner",
+    "to": "type:MediatR.Examples.ExceptionHandler.PingResourceTimeout",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Runner",
+    "to": "type:MediatR.Examples.Jing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Examples.Runner",
+    "to": "type:MediatR.Examples.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DerivingRequestsTests",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DerivedPing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.DerivingRequestsTests",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Issue1118Tests",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Issue1118Tests.DerivedEvent",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.FooRequest",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests.ListPing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.PipelineTests",
+    "to": "type:MediatR.Extensions.Microsoft.DependencyInjection.Tests.Zing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests",
+    "to": "type:MediatR.Tests.ExceptionTests.AsyncPing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests",
+    "to": "type:MediatR.Tests.ExceptionTests.AsyncPinged",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests",
+    "to": "type:MediatR.Tests.ExceptionTests.AsyncVoidPing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests",
+    "to": "type:MediatR.Tests.ExceptionTests.NullPing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests",
+    "to": "type:MediatR.Tests.ExceptionTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests",
+    "to": "type:MediatR.Tests.ExceptionTests.PingException",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests",
+    "to": "type:MediatR.Tests.ExceptionTests.Pinged",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.ExceptionTests",
+    "to": "type:MediatR.Tests.ExceptionTests.VoidNullPing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.GenericTypeConstraintsTests",
+    "to": "type:MediatR.Tests.GenericTypeConstraintsTests.Jing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.GenericTypeConstraintsTests",
+    "to": "type:MediatR.Tests.GenericTypeConstraintsTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.Pipeline.RequestExceptionActionTests",
+    "to": "type:MediatR.Tests.Pipeline.RequestExceptionActionTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.Pipeline.RequestPostProcessorTests",
+    "to": "type:MediatR.Tests.Pipeline.RequestPostProcessorTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.Pipeline.RequestPreProcessorTests",
+    "to": "type:MediatR.Tests.Pipeline.RequestPreProcessorTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.PipelineTests",
+    "to": "type:MediatR.Tests.PipelineTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.PipelineTests",
+    "to": "type:MediatR.Tests.PipelineTests.Zing",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.PublishTests",
+    "to": "type:MediatR.Tests.PublishTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests",
+    "to": "type:MediatR.Tests.SendTests.GenericPing\u003CMediatR.Tests.SendTests.Pong\u003E",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests",
+    "to": "type:MediatR.Tests.SendTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests",
+    "to": "type:MediatR.Tests.SendTests.TimeoutRequest",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests",
+    "to": "type:MediatR.Tests.SendTests.TimeoutRequest2",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests",
+    "to": "type:MediatR.Tests.SendTests.VoidGenericPing\u003CMediatR.Tests.SendTests.Pong\u003E",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendTests",
+    "to": "type:MediatR.Tests.SendTests.VoidGenericPing\u003CMediatR.Tests.SendTests.PongExtension\u003E",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:MediatR.Tests.SendVoidInterfaceTests",
+    "to": "type:MediatR.Tests.SendVoidInterfaceTests.Ping",
+    "type": "sends_request",
+    "repo": "MediatR"
+  },
+  {
+    "from": "type:NSubstitute.Acceptance.Specs.FieldReports.Issue291_CannotReconfigureThrowingConfiguration",
+    "to": "type:NSubstitute.Acceptance.Specs.FieldReports.Issue291_CannotReconfigureThrowingConfiguration.Message1",
+    "type": "sends_request",
+    "repo": "NSubstitute"
+  },
+  {
+    "from": "service:SignalR",
+    "to": "type:Quartz.Dashboard.Hubs.QuartzDashboardHub",
+    "type": "signalr_endpoint",
+    "repo": "quartznet"
+  },
+  {
+    "from": "type:Tests.Builders.Builder_AsTracking",
+    "to": "type:Ardalis.Specification.Specification\u003CT, TResult\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Builders.Builder_IgnoreAutoIncludes",
+    "to": "type:Ardalis.Specification.Specification\u003CT, TResult\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Builders.Builder_OrderByDescending",
+    "to": "type:Ardalis.Specification.Specification\u003CT, TResult\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Builders.Builder_Search",
+    "to": "type:Tests.Builders.Builder_Search.Customer",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Builders.Builder_TagWith",
+    "to": "type:Ardalis.Specification.Specification\u003CT\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Builders.Builder_ThenInclude",
+    "to": "type:Ardalis.Specification.SpecificationBuilderExtensions",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Builders.Builder_ThenInclude",
+    "to": "type:Tests.Builders.Builder_ThenInclude.Contact",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.AsSplitQueryEvaluatorTests",
+    "to": "type:Tests.Fixture.IntegrationTest",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.IgnoreAutoIncludesEvaluatorTests",
+    "to": "type:Tests.Fixture.TestFactory",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.InMemorySpecificationEvaluatorTests",
+    "to": "type:Ardalis.Specification.SelectorNotFoundException",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.IncludeEvaluatorTests",
+    "to": "type:Tests.Fixture.IntegrationTest",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.IncludeEvaluatorTests",
+    "to": "type:Tests.Fixture.OuterNavigation",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.IncludeStringEvaluatorTests",
+    "to": "type:Ardalis.Specification.SpecificationBuilderExtensions",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.IncludeStringEvaluatorTests",
+    "to": "type:Tests.Fixture.TestFactory",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.OrderEvaluatorTests",
+    "to": "type:Tests.Fixture.Store",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.OrderEvaluatorTests",
+    "to": "type:Tests.Fixture.TestFactory",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.QueryTagEvaluatorCustomTests",
+    "to": "type:Tests.Fixture.Country",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.QueryTagEvaluatorTests",
+    "to": "type:Ardalis.Specification.EntityFrameworkCore.QueryTagEvaluator",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.SearchEvaluatorTests",
+    "to": "type:Tests.Fixture.Company",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.SearchExtensionTests",
+    "to": "type:Tests.Fixture.IntegrationTest",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.SearchMemoryEvaluatorTests",
+    "to": "type:Ardalis.Specification.Specification\u003CT\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.SpecificationEvaluatorTests",
+    "to": "type:Ardalis.Specification.ConcurrentSelectorsException",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.SpecificationEvaluatorTests",
+    "to": "type:Ardalis.Specification.IEvaluator",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.SpecificationEvaluatorTests",
+    "to": "type:Ardalis.Specification.SelectorNotFoundException",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.SpecificationEvaluatorTests",
+    "to": "type:Tests.Fixture.TestFactory",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Evaluators.WhereEvaluatorTests",
+    "to": "type:Tests.Fixture.TestFactory",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Exceptions.DuplicateOrderChainExceptionTests",
+    "to": "type:Ardalis.Specification.DuplicateOrderChainException",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Expressions.OrderExpressionInfoTests",
+    "to": "type:Tests.Expressions.OrderExpressionInfoTests.Accessors\u003CT\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Expressions.OrderExpressionInfoTests",
+    "to": "type:Tests.Expressions.OrderExpressionInfoTests.Customer",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Expressions.SearchExpressionInfoTests",
+    "to": "type:Ardalis.Specification.SearchExpressionInfo\u003CT\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Extensions.Extensions_WithSpecification",
+    "to": "type:Ardalis.Specification.Specification\u003CT, TResult\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.QueryTests",
+    "to": "type:Ardalis.Specification.Specification\u003CT\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.QueryTests",
+    "to": "type:Tests.Fixture.TestFactory",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Repositories.Repository_AnyTests",
+    "to": "type:Ardalis.Specification.Specification\u003CT, TResult\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Repositories.Repository_ListTests",
+    "to": "type:Ardalis.Specification.Specification\u003CT, TResult\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Repositories.Repository_ListTests",
+    "to": "type:Ardalis.Specification.SpecificationBuilderExtensions",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Repositories.Repository_ListTests",
+    "to": "type:Tests.Fixture.Country",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.SpecificationSizeTests",
+    "to": "type:Ardalis.Specification.Specification\u003CT\u003E",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.SpecificationSizeTests",
+    "to": "type:Tests.SpecificationSizeTests.Customer",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
+  },
+  {
+    "from": "type:Tests.Validators.SpecificationValidatorTests",
+    "to": "type:Ardalis.Specification.SearchValidator",
+    "type": "tests",
+    "repo": "Ardalis.Specification"
   }
 ]

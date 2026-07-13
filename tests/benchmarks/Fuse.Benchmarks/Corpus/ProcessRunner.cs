@@ -43,7 +43,32 @@ public static class ProcessRunner
         process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-        await process.WaitForExitAsync(cancellationToken);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // A hard timeout (or an outer cancel) must actually stop the work: kill the whole process tree so
+            // a stalling test-oracle run does not leak an orphaned child through the rest of a sweep (D20).
+            TryKillTree(process);
+            throw;
+        }
+
         return new GitCli.GitResult(process.ExitCode, stdout.ToString(), stderr.ToString());
+    }
+
+    // Best-effort termination of the process and its descendants; a race where it already exited is benign.
+    private static void TryKillTree(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            // Already exited or not killable; nothing to reclaim.
+        }
     }
 }

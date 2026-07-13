@@ -1,0 +1,133 @@
+[
+  {
+    "repo": "eShopOnWeb",
+    "pr": 176,
+    "merge": "36746a52b725d432b0c82258b1d6a19c500d9268",
+    "base": "cd5302577dd9f7123d6cbd3446fea59593026325",
+    "head": "36746a52b725d432b0c82258b1d6a19c500d9268",
+    "title": "Remove the interface ISingleResultSpecification  usage from any specification (#959)",
+    "changed_cs": [
+      "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
+      "src/ApplicationCore/Specifications/OrderWithItemsByIdSpec.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 154,
+    "merge": "e7d71ea57289a1c3e7b322a53d5a2d2dc36d01f9",
+    "base": "896d75d55f6c7a6ea8d065245edb997c657f7645",
+    "head": "e7d71ea57289a1c3e7b322a53d5a2d2dc36d01f9",
+    "title": "Separate OrderViewModel from OrderDetailsViewModel (#904)",
+    "changed_cs": [
+      "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
+      "src/Web/Features/MyOrders/GetMyOrders.cs",
+      "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+      "src/Web/Features/OrderDetails/GetOrderDetails.cs",
+      "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
+      "src/Web/ViewModels/OrderDetailViewModel.cs",
+      "src/Web/ViewModels/OrderViewModel.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 121,
+    "merge": "61d2d6cdd0d36b4935d809d4580b8a11267e2325",
+    "base": "2e6fc6ca44b64578254896ee98ec2d00c41f0414",
+    "head": "61d2d6cdd0d36b4935d809d4580b8a11267e2325",
+    "title": "Feature/admin (#831)",
+    "changed_cs": [
+      "src/BlazorAdmin/CustomAuthStateProvider.cs",
+      "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
+      "src/Web/Controllers/UserController.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 120,
+    "merge": "2e6fc6ca44b64578254896ee98ec2d00c41f0414",
+    "base": "303f145ad3718eed6d6357a42eb655b37efaaf93",
+    "head": "2e6fc6ca44b64578254896ee98ec2d00c41f0414",
+    "title": "clean MediatR useless references (#830)",
+    "changed_cs": [
+      "src/PublicApi/Program.cs",
+      "src/Web/Configuration/ConfigureWebServices.cs",
+      "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
+      "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 117,
+    "merge": "707f8696f990dfafe14c76acb722a5c88713d3f8",
+    "base": "a72dd775eebe9898d2ef5acc97f7667c2cca0ed7",
+    "head": "707f8696f990dfafe14c76acb722a5c88713d3f8",
+    "title": "Fix/issue 826 support cross thread minimal api (#827)",
+    "changed_cs": [
+      "src/PublicApi/CatalogBrandEndpoints/CatalogBrandListEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/CatalogItemGetByIdEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/CreateCatalogItemEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/DeleteCatalogItemEndpoint.cs",
+      "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.cs",
+      "src/PublicApi/CatalogTypeEndpoints/CatalogTypeListEndpoint.cs",
+      "tests/PublicApiIntegrationTests/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 62,
+    "merge": "31be1d4d746de0e3c1df425f059da9e255f64187",
+    "base": "44534f5a8b4b91dd5e72f23ac207d3bdef8baef1",
+    "head": "31be1d4d746de0e3c1df425f059da9e255f64187",
+    "title": "fix fraud posibility the client sent the unit price (#702)",
+    "changed_cs": [
+      "src/Web/Pages/Basket/BasketViewModel.cs",
+      "src/Web/Pages/Basket/Index.cshtml.cs",
+      "src/Web/Pages/Index.cshtml.cs",
+      "tests/FunctionalTests/Web/Pages/Basket/IndexTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 59,
+    "merge": "07d72758603ec61819d05f40dfdbf0f12c974f99",
+    "base": "a87f571ff26a797e60c1dfab4220ab24d7dff882",
+    "head": "07d72758603ec61819d05f40dfdbf0f12c974f99",
+    "title": "Fix docker environment issues (#694)",
+    "changed_cs": [
+      "src/Infrastructure/Identity/AppIdentityDbContextSeed.cs",
+      "src/PublicApi/Program.cs",
+      "src/Web/Program.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "eShopOnWeb",
+    "pr": 51,
+    "merge": "87ae6c618c74a96c7f053cc4762944bc8ad89f35",
+    "base": "6847cdaa0c28b8bb86d1745bb05fa2ddb60200f5",
+    "head": "87ae6c618c74a96c7f053cc4762944bc8ad89f35",
+    "title": "fix some issue and cover by test (#669)",
+    "changed_cs": [
+      "src/Web/Areas/Identity/Pages/Account/Login.cshtml.cs",
+      "src/Web/Controllers/ManageController.cs",
+      "src/Web/Controllers/OrderController.cs",
+      "src/Web/Pages/Basket/BasketItemViewModel.cs",
+      "src/Web/Pages/Basket/Checkout.cshtml.cs",
+      "src/Web/ViewModels/Manage/IndexViewModel.cs",
+      "tests/FunctionalTests/Web/Controllers/AccountControllerSignIn.cs",
+      "tests/FunctionalTests/Web/Pages/Basket/BasketPageCheckout.cs",
+      "tests/FunctionalTests/Web/Pages/Basket/CheckoutTest.cs",
+      "tests/FunctionalTests/Web/Pages/Basket/IndexTest.cs",
+      "tests/FunctionalTests/Web/WebPageHelpers.cs",
+      "tests/PublicApiIntegrationTests/AuthEndpoints/AuthenticateEndpointTest.cs"
+    ],
+    "reading_set": null
+  }
+]

@@ -3,1344 +3,1775 @@
   "description": "Change impact: fuse review recall/precision/tokens over PR ground truth.",
   "generated": null,
   "scorecard": {
-    "taskCount": 53,
+    "taskCount": 69,
     "recall": 1,
     "recallCiLow": 1,
     "recallCiHigh": 1,
-    "precision": 0.7983727484152136,
-    "f1": 0.8878835037049649,
-    "medianTokens": 958,
-    "meanTokens": 1094.5094339622642,
+    "precision": 0.9338352468787251,
+    "f1": 0.9657857342149145,
+    "medianTokens": 1026,
+    "meanTokens": 2024.3478260869565,
     "lowSignalF1": 0
   },
   "tasks": [
     {
-      "id": "NodaTime#621",
-      "repo": "NodaTime",
+      "id": "Ardalis.GuardClauses#184",
+      "repo": "Ardalis.GuardClauses",
       "category": "identifier-rich",
       "recall": 1,
       "precision": 1,
-      "tokens": 2164,
-      "latencyMs": 172,
+      "tokens": 1792,
+      "latencyMs": 75,
       "hit": {
         "hits": [
-          "src/NodaTime.Test/DateIntervalTest.cs",
-          "src/NodaTime.Test/LocalTimeTest.cs",
-          "src/NodaTime.Test/TimeZones/BclDateTimeZoneSourceTest.cs",
-          "src/NodaTime.Test/TimeZones/DateTimeZoneCacheTest.cs",
-          "src/NodaTime/DateInterval.cs",
-          "src/NodaTime/DateTimeZone.cs",
-          "src/NodaTime/IDateTimeZoneProvider.cs",
-          "src/NodaTime/LocalTime.cs",
-          "src/NodaTime/TimeZones/DateTimeZoneCache.cs"
+          "src/GuardClauses/GuardAgainstNullExtensions.cs",
+          "src/GuardClauses/GuardAgainstOutOfRangeExtensions.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstDefault.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstNull.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstNullOrEmpty.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstNullOrInvalidInput.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstNullOrWhiteSpace.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnum.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableDecimal.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableDouble.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableFloat.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableInt.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableLong.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableShort.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableTimeSpan.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstStringLengthOutOfRange.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "NodaTime#620",
-      "repo": "NodaTime",
+      "id": "Ardalis.GuardClauses#178",
+      "repo": "Ardalis.GuardClauses",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 836,
+      "latencyMs": 64,
+      "hit": {
+        "hits": [
+          "src/GuardClauses/CompilerFixes/CallerArgumentExpressionAttribute.cs",
+          "src/GuardClauses/GuardAgainstExpressionExtensions.cs",
+          "src/GuardClauses/GuardAgainstNegativeExtensions.cs",
+          "src/GuardClauses/GuardAgainstNotFoundExtensions.cs",
+          "src/GuardClauses/GuardAgainstNullExtensions.cs",
+          "src/GuardClauses/GuardAgainstOutOfRangeExtensions.cs",
+          "src/GuardClauses/GuardAgainstStringLengthExtensions.cs",
+          "src/GuardClauses/GuardAgainstZeroExtensions.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.GuardClauses#174",
+      "repo": "Ardalis.GuardClauses",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 214,
+      "latencyMs": 54,
+      "hit": {
+        "hits": [
+          "src/GuardClauses/GuardAgainstOutOfRangeExtensions.cs",
+          "test/GuardClauses.UnitTests/GuardAgainstStringLengthOutOfRange.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.Specification#196",
+      "repo": "Ardalis.Specification",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 0.32142857142857145,
+      "tokens": 2267,
+      "latencyMs": 47,
+      "hit": {
+        "hits": [
+          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/IncludeStringEvaluatorCustomSpecTests.cs",
+          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/QueryTagEvaluatorCustomTests.cs",
+          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/SearchEvaluatorCustomSpecTests.cs",
+          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/GlobalUsings.cs",
+          "tests/Ardalis.Specification.Tests/Evaluators/SearchMemoryEvaluatorCustomSpecTests.cs",
+          "tests/Ardalis.Specification.Tests/Evaluators/WhereEvaluatorCustomSpecTests.cs",
+          "tests/Ardalis.Specification.Tests/GlobalUsings.cs",
+          "tests/Ardalis.Specification.Tests/Validators/SearchValidatorCustomSpecTests.cs",
+          "tests/Ardalis.Specification.Tests/Validators/WhereValidatorCustomSpecTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/IntegrationTest.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/TestFactory.cs",
+          "src/Ardalis.Specification/Evaluators/WhereEvaluator.cs",
+          "src/Ardalis.Specification/Expressions/WhereExpressionInfo.cs",
+          "src/Ardalis.Specification/ISpecification.cs",
+          "src/Ardalis.Specification/Validators/WhereValidator.cs",
+          "src/Ardalis.Specification/Evaluators/SearchMemoryEvaluator.cs",
+          "src/Ardalis.Specification/Expressions/SearchExpressionInfo.cs",
+          "src/Ardalis.Specification/Validators/SearchValidator.cs",
+          "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/QueryTagEvaluator.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Country.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/TestDbContext.cs",
+          "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/IncludeStringEvaluator.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Address.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Company.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/Data/Store.cs",
+          "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/SearchEvaluator.cs",
+          "src/Ardalis.Specification/Validators/IValidator.cs",
+          "src/Ardalis.Specification/Evaluators/IInMemoryEvaluator.cs"
+        ]
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.Specification#195",
+      "repo": "Ardalis.Specification",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 0.2727272727272727,
+      "tokens": 2122,
+      "latencyMs": 61,
+      "hit": {
+        "hits": [
+          "tests/Ardalis.Specification.Tests/Evaluators/OrderEvaluatorTests.cs",
+          "tests/Ardalis.Specification.Tests/Evaluators/PaginationEvaluatorTests.cs",
+          "tests/Ardalis.Specification.Tests/Evaluators/WhereEvaluatorTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Evaluators/OrderEvaluatorTests.cs",
+          "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/WhereEvaluatorTests.cs",
+          "src/Ardalis.Specification/Builders/Builder_Cache.cs",
+          "src/Ardalis.Specification/Evaluators/PaginationEvaluator.cs",
+          "src/Ardalis.Specification/Specification.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/IntegrationTest.cs",
+          "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/TestFactory.cs",
+          "src/Ardalis.Specification/ISpecification.cs"
+        ]
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Ardalis.Specification#192",
+      "repo": "Ardalis.Specification",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 0.2,
+      "tokens": 2066,
+      "latencyMs": 61,
+      "hit": {
+        "hits": [
+          "tests/Ardalis.Specification.Tests/Evaluators/WhereEvaluatorCustomSpecTests.cs",
+          "tests/Ardalis.Specification.Tests/Validators/WhereValidatorCustomSpecTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Ardalis.Specification/Builders/SpecificationBuilder.cs",
+          "src/Ardalis.Specification/Evaluators/WhereEvaluator.cs",
+          "src/Ardalis.Specification/Expressions/IncludeExpressionInfo.cs",
+          "src/Ardalis.Specification/Expressions/OrderExpressionInfo.cs",
+          "src/Ardalis.Specification/Expressions/SearchExpressionInfo.cs",
+          "src/Ardalis.Specification/Expressions/WhereExpressionInfo.cs",
+          "src/Ardalis.Specification/ISpecification.cs",
+          "src/Ardalis.Specification/Validators/WhereValidator.cs"
+        ]
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "AutoFixture#199",
+      "repo": "AutoFixture",
       "category": "identifier-rich",
       "recall": 1,
       "precision": 1,
-      "tokens": 1555,
-      "latencyMs": 195,
+      "tokens": 1881,
+      "latencyMs": 104,
       "hit": {
         "hits": [
-          "src/NodaTime.Test/LocalTimeTest.cs",
-          "src/NodaTime.Test/TimeZones/BclDateTimeZoneSourceTest.cs",
-          "src/NodaTime.Test/TimeZones/DateTimeZoneCacheTest.cs",
-          "src/NodaTime/DateTimeZone.cs",
-          "src/NodaTime/IDateTimeZoneProvider.cs",
-          "src/NodaTime/LocalTime.cs",
-          "src/NodaTime/TimeZones/DateTimeZoneCache.cs"
+          "tests/AutoFixtureUnitTest/FixtureTest.Build.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.DataAnnotations.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.DoAndGet.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.Initialization.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.InjectFreezeRecursion.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.IssueRegressions.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.ManyAndCustomize.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.SystemTypes.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.TypeCreation.cs",
+          "tests/AutoFixtureUnitTest/FixtureTest.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "NodaTime#571",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 91,
-      "latencyMs": 230,
-      "hit": {
-        "hits": [
-          "build/SummarizeBenchmarks/Benchmark.cs",
-          "build/SummarizeBenchmarks/Program.cs",
-          "build/SummarizeBenchmarks/Properties/AssemblyInfo.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#558",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 1206,
-      "latencyMs": 233,
-      "hit": {
-        "hits": [
-          "src/NodaTime.Test/DateTimeZoneTest.GetZoneIntervals.cs",
-          "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs",
-          "src/NodaTime/DateTimeZone.cs",
-          "src/NodaTime/TimeZones/ZoneEqualityComparer.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#549",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 97,
-      "latencyMs": 186,
-      "hit": {
-        "hits": [
-          "src/NodaTime.Web/Controllers/TzValidateController.cs",
-          "src/NodaTime.Web/Startup.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#547",
-      "repo": "NodaTime",
-      "category": "identifier-rich",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 112,
-      "latencyMs": 256,
-      "hit": {
-        "hits": [
-          "src/NodaTime.Web/App_Start/BundleConfig.cs",
-          "src/NodaTime.Web/App_Start/FilterConfig.cs",
-          "src/NodaTime.Web/App_Start/RouteConfig.cs",
-          "src/NodaTime.Web/Controllers/BenchmarksController.cs",
-          "src/NodaTime.Web/Controllers/TzValidateController.cs",
-          "src/NodaTime.Web/Global.asax.cs",
-          "src/NodaTime.Web/Log.cs",
-          "src/NodaTime.Web/Models/BenchmarkDiff.cs",
-          "src/NodaTime.Web/Models/BenchmarkRunAndSourceLogs.cs",
-          "src/NodaTime.Web/Models/MethodHistoryModel.cs",
-          "src/NodaTime.Web/Program.cs",
-          "src/NodaTime.Web/Properties/AssemblyInfo.cs",
-          "src/NodaTime.Web/Startup.cs",
-          "src/NodaTime.Web/Storage/BenchmarkRepository.cs",
-          "src/NodaTime.Web/Storage/CombiningReloader.cs",
-          "src/NodaTime.Web/Storage/FileWatchingReloader.cs",
-          "src/NodaTime.Web/Storage/GitLog.cs",
-          "src/NodaTime.Web/Storage/MercurialLog.cs",
-          "src/NodaTime.Web/Storage/SourceLogEntry.cs",
-          "src/NodaTime.Web/Storage/SourceLogEnumerable.cs",
-          "src/NodaTime.Web/TrivialDependencyResolver.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#546",
-      "repo": "NodaTime",
-      "category": "identifier-rich",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 719,
-      "latencyMs": 227,
-      "hit": {
-        "hits": [
-          "src/NodaTime.TzValidate.NodaDump/Options.cs",
-          "src/NodaTime.TzValidate.NodaDump/Program.cs",
-          "src/NodaTime.TzValidate.NodaDump/UserErrorException.cs",
-          "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/TzdbDatabase.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#545",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 460,
-      "latencyMs": 232,
-      "hit": {
-        "hits": [
-          "src/NodaTime.TzValidate.NodaDump/Options.cs",
-          "src/NodaTime.TzValidate.NodaDump/Program.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#531",
-      "repo": "NodaTime",
+      "id": "AutoFixture#198",
+      "repo": "AutoFixture",
       "category": "test-only",
       "recall": 1,
       "precision": 1,
-      "tokens": 0,
-      "latencyMs": 206,
+      "tokens": 257,
+      "latencyMs": 91,
       "hit": {
         "hits": [
-          "src/NodaTime.Serialization.Test/Program.cs",
-          "src/NodaTime.Test/Program.cs",
-          "src/NodaTime.TzdbCompiler.Test/Program.cs"
+          "tests/AutoFixtureUnitTest/DataAnnotations/NumericRangedRequestRelayTest.cs",
+          "tests/AutoFixtureUnitTest/Kernel/AsyncEnumerableRelayTest.cs",
+          "tests/AutoFixtureUnitTest/UseCultureAttribute.cs",
+          "tests/AutoMoqUnitTest/MockTypeTest.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "NodaTime#525",
+      "id": "AutoFixture#194",
+      "repo": "AutoFixture",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 356,
+      "latencyMs": 116,
+      "hit": {
+        "hits": [
+          "build/Build.cs",
+          "tests/AutoNSubstitute.NSubstitute5UnitTest/NSubstituteRegisterCallHandlerCommandTest.Compat.SinceV4.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Bogus#196",
+      "repo": "Bogus",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 596,
+      "latencyMs": 104,
+      "hit": {
+        "hits": [
+          "Source/Bogus.Tests/HandlebarsTests/ArgumentsTest.cs",
+          "Source/Bogus/Faker.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Bogus#194",
+      "repo": "Bogus",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2144,
+      "latencyMs": 103,
+      "hit": {
+        "hits": [
+          "Source/Bogus/Bson/Bson.cs",
+          "Source/Bogus/DataSets/Finance.cs",
+          "Source/Bogus/DataSets/System.cs",
+          "Source/Bogus/Extensions/Brazil/ExtensionsForBrazil.cs",
+          "Source/Bogus/Extensions/Canada/ExtensionsForCanada.cs",
+          "Source/Bogus/Extensions/Denmark/ExtensionsForDenmark.cs",
+          "Source/Bogus/Extensions/Finland/ExtensionsForFinland.cs",
+          "Source/Bogus/Extensions/Iran/ExtensionsForIran.cs",
+          "Source/Bogus/Extensions/Norway/ExtensionsForNorway.cs",
+          "Source/Bogus/Extensions/Poland/ExtensionsForPoland.cs",
+          "Source/Bogus/Extensions/Portugal/ExtensionsForPortugal.cs",
+          "Source/Bogus/Extensions/Romania/ExtensionsForRomania.cs",
+          "Source/Bogus/Extensions/Sweden/ExtensionsForSweden.cs",
+          "Source/Bogus/Extensions/UnitedKingdom/ExtensionsForUnitedKingdom.cs",
+          "Source/Bogus/Extensions/UnitedStates/ExtensionsForUnitedStates.cs",
+          "Source/Bogus/Faker[T].Extensions.cs",
+          "Source/Bogus/Premium/ContextHelper.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Bogus#193",
+      "repo": "Bogus",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 499,
+      "latencyMs": 103,
+      "hit": {
+        "hits": [
+          "Source/Bogus.Tests/RuleSetTests.cs",
+          "Source/Bogus/Rule.cs",
+          "Source/Bogus/Tokenizer.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "CommandLineParser#183",
+      "repo": "CommandLineParser",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 829,
+      "latencyMs": 68,
+      "hit": {
+        "hits": [
+          "src/CommandLine/UnParserExtensions.cs",
+          "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs",
+          "tests/CommandLine.Tests/Unit/UnParserExtensionsTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "CommandLineParser#182",
+      "repo": "CommandLineParser",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 247,
+      "latencyMs": 52,
+      "hit": {
+        "hits": [
+          "tests/CommandLine.Tests/Fakes/HelpTextWithLineBreaks_Options.cs",
+          "tests/CommandLine.Tests/Unit/UnParserExtensionsTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "CommandLineParser#177",
+      "repo": "CommandLineParser",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1717,
+      "latencyMs": 55,
+      "hit": {
+        "hits": [
+          "src/CommandLine/Core/InstanceBuilder.cs",
+          "src/CommandLine/Core/ReflectionExtensions.cs",
+          "src/CommandLine/Infrastructure/CSharpx/Maybe.cs",
+          "src/CommandLine/Parser.cs",
+          "tests/CommandLine.Tests/Fakes/Mutable_Without_Empty_Constructor.cs",
+          "tests/CommandLine.Tests/Fakes/Options_With_Only_Explicit_Interface.cs",
+          "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs",
+          "tests/CommandLine.Tests/Unit/Issue591ests.cs",
+          "tests/CommandLine.Tests/Unit/Issue70Tests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "CsvHelper#174",
+      "repo": "CsvHelper",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 629,
+      "latencyMs": 124,
+      "hit": {
+        "hits": [
+          "src/CsvHelper/FastDynamicObject.cs",
+          "tests/CsvHelper.Tests/Dynamic/FastDynamicTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "CsvHelper#168",
+      "repo": "CsvHelper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 987,
+      "latencyMs": 128,
+      "hit": {
+        "hits": [
+          "src/CsvHelper/CsvWriter.cs",
+          "tests/CsvHelper.Tests/Writing/EnumerableTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "CsvHelper#166",
+      "repo": "CsvHelper",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 625,
+      "latencyMs": 129,
+      "hit": {
+        "hits": [
+          "src/CsvHelper/FastDynamicObject.cs",
+          "tests/CsvHelper.Tests/Dynamic/CsvRowDynamicObjectTests.cs",
+          "tests/CsvHelper.Tests/Dynamic/FastDynamicTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Dapper#197",
+      "repo": "Dapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 4810,
+      "latencyMs": 51,
+      "hit": {
+        "hits": [
+          "Dapper/SqlMapper.Settings.cs",
+          "Dapper/SqlMapper.cs",
+          "tests/Dapper.Tests/PreferTypeHandlersForEnumsTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Dapper#196",
+      "repo": "Dapper",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 8677,
+      "latencyMs": 62,
+      "hit": {
+        "hits": [
+          "Dapper.SqlBuilder/SqlBuilder.cs",
+          "Dapper/DefaultTypeMap.cs",
+          "Dapper/DynamicParameters.cs",
+          "Dapper/FeatureSupport.cs",
+          "Dapper/SqlMapper.CacheInfo.cs",
+          "Dapper/SqlMapper.DontMap.cs",
+          "Dapper/SqlMapper.Link.cs",
+          "Dapper/SqlMapper.TypeDeserializerCache.cs",
+          "Dapper/SqlMapper.cs",
+          "benchmarks/Dapper.Tests.Performance/Massive/Massive.cs",
+          "benchmarks/Dapper.Tests.Performance/PetaPoco/PetaPoco.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Dapper#194",
+      "repo": "Dapper",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 5516,
+      "latencyMs": 55,
+      "hit": {
+        "hits": [
+          "Dapper/SqlMapper.cs",
+          "tests/Dapper.Tests/ParameterTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "FluentValidation#199",
+      "repo": "FluentValidation",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 563,
+      "latencyMs": 79,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/ValidatorTesterTester.cs",
+          "src/FluentValidation/TestHelper/TestValidationResult.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "FluentValidation#198",
+      "repo": "FluentValidation",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 272,
+      "latencyMs": 74,
+      "hit": {
+        "hits": [
+          "src/FluentValidation.Tests/PropertyChainTests.cs",
+          "src/FluentValidation/Internal/PropertyChain.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "FluentValidation#197",
+      "repo": "FluentValidation",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 156,
+      "latencyMs": 108,
+      "hit": {
+        "hits": [
+          "src/FluentValidation/Resources/LanguageManager.cs",
+          "src/FluentValidation/Resources/Languages/BelarusianLanguage.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Flurl#183",
+      "repo": "Flurl",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.10714285714285714,
+      "tokens": 13738,
+      "latencyMs": 60,
+      "hit": {
+        "hits": [
+          "src/Flurl.Http/FlurlHttp.cs",
+          "src/Flurl.Http/FlurlRequest.cs",
+          "test/Flurl.Test/Http/GlobalConfigTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Flurl.Http/FlurlClient.cs",
+          "test/Flurl.Test/Http/HttpTestFixtureBase.cs",
+          "test/Flurl.Test/Http/NewtonsoftTests.cs",
+          "src/Flurl.Http/IEventHandlerContainer.cs",
+          "src/Flurl.Http/IHeadersContainer.cs",
+          "src/Flurl.Http/ISettingsContainer.cs",
+          "src/Flurl.Http/CookieSession.cs",
+          "test/Flurl.Test/Http/CookieTests.cs",
+          "test/Flurl.Test/Http/FlurlClientTests.cs",
+          "test/Flurl.Test/Http/GetTests.cs",
+          "test/Flurl.Test/Http/HttpMethodTests.cs",
+          "test/Flurl.Test/Http/PostTests.cs",
+          "test/Flurl.Test/Http/RealHttpTests.cs",
+          "test/Flurl.Test/Http/SettingsTests.cs",
+          "test/Flurl.Test/Http/TestingTests.cs",
+          "test/Flurl.Test/Http/EventHandlerTests.cs",
+          "src/Flurl.Http/Configuration/FlurlClientBuilder.cs",
+          "src/Flurl.Http/Configuration/FlurlClientCache.cs",
+          "src/Flurl.Http/Configuration/FlurlHttpSettings.cs",
+          "src/Flurl.Http/GeneratedExtensions.cs"
+        ]
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Flurl#181",
+      "repo": "Flurl",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 0.2,
+      "tokens": 11178,
+      "latencyMs": 66,
+      "hit": {
+        "hits": [
+          "src/Flurl.CodeGen/Program.cs",
+          "src/Flurl.Http/FlurlRequest.cs",
+          "src/Flurl.Http/GeneratedExtensions.cs",
+          "test/Flurl.Test/Http/HttpTestFixtureBase.cs",
+          "test/Flurl.Test/Http/NewtonsoftTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "src/Flurl.Http/FlurlClient.cs",
+          "test/Flurl.Test/Http/GetTests.cs",
+          "src/Flurl.Http/IEventHandlerContainer.cs",
+          "src/Flurl.Http/IHeadersContainer.cs",
+          "src/Flurl.Http/ISettingsContainer.cs",
+          "test/Flurl.Test/Http/CookieTests.cs",
+          "test/Flurl.Test/Http/FlurlHttpExceptionTests.cs",
+          "test/Flurl.Test/Http/GlobalConfigTests.cs",
+          "test/Flurl.Test/Http/HttpMethodTests.cs",
+          "test/Flurl.Test/Http/RedirectTests.cs",
+          "test/Flurl.Test/Http/TestingTests.cs",
+          "src/Flurl.Http/CookieSession.cs",
+          "test/Flurl.Test/Http/PostTests.cs",
+          "test/Flurl.Test/Http/FlurlClientTests.cs",
+          "test/Flurl.Test/Http/RealHttpTests.cs",
+          "test/Flurl.Test/Http/SettingsTests.cs",
+          "test/Flurl.Test/Http/EventHandlerTests.cs",
+          "test/Flurl.Test/Http/HeadersTests.cs",
+          "test/Flurl.Test/Http/FlurlClientBuilderTests.cs",
+          "test/Flurl.Test/Http/MultipartTests.cs"
+        ]
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Flurl#174",
+      "repo": "Flurl",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 0.3333333333333333,
+      "tokens": 1613,
+      "latencyMs": 56,
+      "hit": {
+        "hits": [
+          "src/Flurl.Http/Configuration/FlurlClientCache.cs",
+          "src/Flurl.Http/FlurlHttp.cs",
+          "test/Flurl.Test/Http/FlurlClientCacheTests.cs"
+        ],
+        "misses": [],
+        "extras": [
+          "test/Flurl.Test/Http/GlobalConfigTests.cs",
+          "test/Flurl.Test/Http/NewtonsoftTests.cs",
+          "test/Flurl.Test/Http/HttpTestFixtureBase.cs",
+          "src/Flurl.Http/Configuration/FlurlHttpSettings.cs",
+          "src/Flurl.Http/FlurlClient.cs",
+          "src/Flurl.Http/ISettingsContainer.cs"
+        ]
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Humanizer#198",
+      "repo": "Humanizer",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 3198,
+      "latencyMs": 150,
+      "hit": {
+        "hits": [
+          "src/Humanizer.SourceGenerators/Generators/ProfileCatalogs/OrdinalizerProfileCatalogInput.cs",
+          "src/Humanizer/Localisation/Ordinalizers/ModuloSuffixOrdinalizer.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+          "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/tk/TurkmenLocaleParityTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Humanizer#197",
+      "repo": "Humanizer",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2666,
+      "latencyMs": 98,
+      "hit": {
+        "hits": [
+          "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+          "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/kok/KonkaniLocaleTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Humanizer#196",
+      "repo": "Humanizer",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2617,
+      "latencyMs": 148,
+      "hit": {
+        "hits": [
+          "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+          "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+          "tests/Humanizer.Tests/Localisation/eu/BasqueLocaleParityTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "MediatR#117",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 173,
+      "latencyMs": 58,
+      "hit": {
+        "hits": [
+          "samples/MediatR.Examples/GenericPipelineBehavior.cs",
+          "samples/MediatR.Examples/Streams/GenericStreamPipelineBehavior.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "MediatR#55",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 314,
+      "latencyMs": 74,
+      "hit": {
+        "hits": [
+          "test/MediatR.Benchmarks/Benchmarks.cs",
+          "test/MediatR.Benchmarks/DotTraceDiagnoser.cs",
+          "test/MediatR.Benchmarks/Program.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "MediatR#10",
+      "repo": "MediatR",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1072,
+      "latencyMs": 89,
+      "hit": {
+        "hits": [
+          "samples/MediatR.Examples.AspNetCore/Program.cs",
+          "samples/MediatR.Examples.Autofac/Program.cs",
+          "samples/MediatR.Examples.LightInject/Program.cs",
+          "samples/MediatR.Examples.Ninject/Program.cs",
+          "samples/MediatR.Examples.SimpleInjector/Program.cs",
+          "samples/MediatR.Examples.StructureMap/Program.cs",
+          "samples/MediatR.Examples.Unity/Program.cs",
+          "samples/MediatR.Examples.Windsor/Program.cs",
+          "samples/MediatR.Examples/ConstrainedRequestPostProcessor.cs",
+          "samples/MediatR.Examples/Pinged.cs",
+          "samples/MediatR.Examples/PingedHandler.cs",
+          "samples/MediatR.Examples/Ponged.cs",
+          "samples/MediatR.Examples/Runner.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "NSubstitute#187",
+      "repo": "NSubstitute",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 961,
+      "latencyMs": 78,
+      "hit": {
+        "hits": [
+          "src/NSubstitute/Core/DefaultForType.cs",
+          "src/NSubstitute/Routing/AutoValues/AutoObservableProvider.cs",
+          "src/NSubstitute/Routing/AutoValues/AutoTaskProvider.cs",
+          "tests/NSubstitute.Acceptance.Specs/ArgumentMatching.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "NSubstitute#165",
+      "repo": "NSubstitute",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2812,
+      "latencyMs": 78,
+      "hit": {
+        "hits": [
+          "src/NSubstitute/Extensions/ProtectedExtensions.cs",
+          "tests/NSubstitute.Acceptance.Specs/ArgumentMatching.cs",
+          "tests/NSubstitute.Acceptance.Specs/AutoValuesForSubs.cs",
+          "tests/NSubstitute.Acceptance.Specs/CallbackCalling.cs",
+          "tests/NSubstitute.Acceptance.Specs/ClearSubstitute.cs",
+          "tests/NSubstitute.Acceptance.Specs/CompatArgsTests.cs",
+          "tests/NSubstitute.Acceptance.Specs/EventChecking.cs",
+          "tests/NSubstitute.Acceptance.Specs/FieldReports/EqualsBehaviourOnClassSubs.cs",
+          "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue225_ConfiguredValueIsUsedInSubsequentSetups.cs",
+          "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue271_DelegateOutArgument.cs",
+          "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue282_MultipleReturnValuesParallelism.cs",
+          "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue291_CannotReconfigureThrowingConfiguration.cs",
+          "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue372_InterfaceSameNameOfMethods.cs",
+          "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue59_ArgDoWithReturns.cs",
+          "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue61_ArgAnyStringRegression.cs",
+          "tests/NSubstitute.Acceptance.Specs/OutAndRefParameters.cs",
+          "tests/NSubstitute.Acceptance.Specs/PartialSubs.cs",
+          "tests/NSubstitute.Acceptance.Specs/ReceivedCalls.cs",
+          "tests/NSubstitute.Acceptance.Specs/ReturnsAndDoes.cs",
+          "tests/NSubstitute.Acceptance.Specs/SubbingForConcreteTypesAndMultipleInterfaces.cs",
+          "tests/NSubstitute.Acceptance.Specs/SubstitutingForDelegates.cs",
+          "tests/NSubstitute.Acceptance.Specs/ThrowingAsyncExceptions.cs",
+          "tests/NSubstitute.Acceptance.Specs/ThrowingExceptions.cs",
+          "tests/NSubstitute.Acceptance.Specs/WhenCalledDo.cs",
+          "tests/NSubstitute.Documentation.Tests.Generator/DocumentationTestsGenerator.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "NSubstitute#164",
+      "repo": "NSubstitute",
+      "category": "route-api",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 918,
+      "latencyMs": 75,
+      "hit": {
+        "hits": [
+          "src/NSubstitute/Extensions/ExceptionExtensions.cs",
+          "tests/NSubstitute.Acceptance.Specs/ThrowingAsyncExceptions.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Nancy#198",
+      "repo": "Nancy",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 658,
+      "latencyMs": 191,
+      "hit": {
+        "hits": [
+          "src/Nancy/Security/ClaimsPrincipalExtensions.cs",
+          "src/Nancy/Security/ModuleSecurity.cs",
+          "src/Nancy/Security/SecurityHooks.cs",
+          "test/Nancy.Tests/Unit/Security/ClaimsPrincipalExtensionsFixture.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Nancy#196",
+      "repo": "Nancy",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 472,
+      "latencyMs": 154,
+      "hit": {
+        "hits": [
+          "src/Nancy.Hosting.Self/NancyHost.cs",
+          "src/Nancy.Hosting.Self/UrlReservations.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Nancy#195",
+      "repo": "Nancy",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 472,
+      "latencyMs": 110,
+      "hit": {
+        "hits": [
+          "src/Nancy.Hosting.Self/NancyHost.cs",
+          "src/Nancy.Hosting.Self/UrlReservations.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Newtonsoft.Json#199",
+      "repo": "Newtonsoft.Json",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2267,
+      "latencyMs": 71,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+          "Src/Newtonsoft.Json/Linq/JToken.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Newtonsoft.Json#196",
+      "repo": "Newtonsoft.Json",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 121,
+      "latencyMs": 200,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/Issues/Issue2775.cs",
+          "Src/Newtonsoft.Json.Tests/Issues/Issue3055.cs",
+          "Src/Newtonsoft.Json.Tests/Issues/Issue3056.cs",
+          "Src/Newtonsoft.Json.Tests/Issues/Issue3080.cs",
+          "Src/Newtonsoft.Json/Serialization/DynamicValueProvider.cs",
+          "Src/Newtonsoft.Json/Serialization/ExpressionValueProvider.cs",
+          "Src/Newtonsoft.Json/Utilities/ILGeneratorExtensions.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Newtonsoft.Json#193",
+      "repo": "Newtonsoft.Json",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1051,
+      "latencyMs": 137,
+      "hit": {
+        "hits": [
+          "Src/Newtonsoft.Json.Tests/ExceptionTests.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextWriterAsyncTests.cs",
+          "Src/Newtonsoft.Json.Tests/JsonTextWriterTest.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "NodaTime#197",
+      "repo": "NodaTime",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 577,
+      "latencyMs": 86,
+      "hit": {
+        "hits": [
+          "src/NodaTime.TzdbCompiler.Test/Tzdb/TzdbZoneInfoParserTest.cs",
+          "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoParser.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "NodaTime#193",
       "repo": "NodaTime",
       "category": "identifier-rich",
       "recall": 1,
       "precision": 1,
-      "tokens": 1831,
-      "latencyMs": 213,
+      "tokens": 247,
+      "latencyMs": 121,
       "hit": {
         "hits": [
-          "src/NodaTime.Benchmarks/NodaTimeTests/Calendars/SimpleWeekYearRuleBenchmarks.cs",
-          "src/NodaTime.Test/Calendars/BclWeekYearRuleTest.cs",
-          "src/NodaTime.Test/Calendars/IsoCalendarSystemTest.cs",
-          "src/NodaTime.Test/Calendars/SimpleWeekYearRuleTest.cs",
-          "src/NodaTime.TzValidate.NodaDump/Options.cs",
-          "src/NodaTime.TzValidate.NodaDump/Program.cs",
-          "src/NodaTime/Calendars/BclWeekYearRule.cs",
-          "src/NodaTime/Calendars/IWeekYearRule.cs",
-          "src/NodaTime/Calendars/SimpleWeekYearRule.cs",
-          "src/NodaTime/Calendars/WeekYearRules.cs",
-          "src/NodaTime/LocalDate.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#524",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 373,
-      "latencyMs": 205,
-      "hit": {
-        "hits": [
-          "src/NodaTime.TzValidate.NodaDump/Options.cs",
-          "src/NodaTime.TzValidate.NodaDump/Program.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#514",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 3975,
-      "latencyMs": 114,
-      "hit": {
-        "hits": [
-          "lib/commandline/CommandLine.cs",
-          "src/NodaTime.Demo/Program.cs",
-          "src/NodaTime.Serialization.Test/Program.cs",
-          "src/NodaTime.Test/Program.cs",
-          "src/NodaTime.Test/Text/Cultures.cs",
-          "src/NodaTime.TzValidate.NodaDump/Program.cs",
-          "src/NodaTime.TzdbCompiler.Test/Program.cs",
+          "src/NodaTime.TzdbCompiler.Test/Tzdb/CldrWindowsZonesParserTest.cs",
           "src/NodaTime.TzdbCompiler/Tzdb/CldrWindowsZonesParser.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/TzdbStreamWriter.cs",
+          "src/NodaTime/TimeZones/Cldr/WindowsZones.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "NodaTime#192",
+      "repo": "NodaTime",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 568,
+      "latencyMs": 96,
+      "hit": {
+        "hits": [
+          "src/NodaTime.NzdPrinter/Program.cs",
+          "src/NodaTime.Tools.Common/FileUtility.cs",
+          "src/NodaTime.TzValidate.NodaDump/Program.cs",
+          "src/NodaTime.TzValidate.NzdCompatibility/Program.cs",
+          "src/NodaTime.TzdbCompiler/Tzdb/FileSource.cs",
           "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "NodaTime#516",
-      "repo": "NodaTime",
+      "id": "Polly#195",
+      "repo": "Polly",
       "category": "test-only",
       "recall": 1,
       "precision": 1,
-      "tokens": 36,
-      "latencyMs": 208,
+      "tokens": 1026,
+      "latencyMs": 175,
       "hit": {
         "hits": [
-          "src/NodaTime.Test/Calendars/PersianCalendarSystemTest.cs",
-          "src/NodaTime.Test/Calendars/UmAlQuraYearMonthDayCalculatorTest.cs"
+          "src/Polly.Core/Utils/ObjectPool.cs",
+          "test/Polly.Extensions.Tests/Issues/IssuesTests.StrategiesPerEndpoint_1365.cs",
+          "test/Polly.Extensions.Tests/Telemetry/TelemetryListenerImplTests.cs",
+          "test/Polly.TestUtils/TestUtilities.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "NodaTime#515",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 3115,
-      "latencyMs": 214,
-      "hit": {
-        "hits": [
-          "src/NodaTime/CalendarSystem.cs",
-          "src/NodaTime/Calendars/IWeekYearRule.cs",
-          "src/NodaTime/Calendars/RegularWeekYearRule.cs",
-          "src/NodaTime/Duration.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#513",
-      "repo": "NodaTime",
+      "id": "Polly#161",
+      "repo": "Polly",
       "category": "identifier-rich",
       "recall": 1,
       "precision": 1,
-      "tokens": 333,
-      "latencyMs": 82,
+      "tokens": 1098,
+      "latencyMs": 120,
       "hit": {
         "hits": [
-          "src/NodaTime.Test/TimeZones/TzdbDateTimeZoneSourceTest.cs",
-          "src/NodaTime.TzdbCompiler/CompilerOptions.cs",
-          "src/NodaTime.TzdbCompiler/Program.cs",
-          "src/NodaTime/Extensions/DateTimeZoneProviderExtensions.cs"
+          "src/Polly.Core/Hedging/HedgingResilienceStrategy.cs",
+          "src/Polly.Core/Timeout/TimeoutResilienceStrategy.cs",
+          "src/Polly.Core/Utils/OutcomeUtilities.cs",
+          "test/Polly.Core.Tests/Hedging/HedgingResilienceStrategyTests.cs",
+          "test/Polly.Core.Tests/Issues/IssuesTests.CancellationTokenPropagation_3086.cs",
+          "test/Polly.Core.Tests/Timeout/TimeoutResilienceStrategyTests.cs",
+          "test/Polly.Core.Tests/Utils/OutcomeUtilitiesTests.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "NodaTime#512",
-      "repo": "NodaTime",
+      "id": "Polly#69",
+      "repo": "Polly",
       "category": "nl-domain",
       "recall": 1,
       "precision": 1,
-      "tokens": 347,
-      "latencyMs": 228,
+      "tokens": 1455,
+      "latencyMs": 170,
       "hit": {
         "hits": [
-          "src/NodaTime.TzValidate.NodaDump/Options.cs",
-          "src/NodaTime.TzValidate.NodaDump/Program.cs"
+          "src/Polly.Core/Registry/RegistryPipelineComponentBuilder.cs",
+          "src/Polly.Core/ResiliencePipelineBuilderBase.cs",
+          "src/Polly.Extensions/Telemetry/TelemetryListenerImpl.cs",
+          "src/Polly.Extensions/Telemetry/TelemetrySource.cs",
+          "test/Polly.Core.Tests/ResiliencePipelineBuilderTests.cs",
+          "test/Polly.Core.Tests/StrategyBuilderContextTests.cs",
+          "test/Polly.Core.Tests/Telemetry/ResilienceStrategyTelemetryTests.cs",
+          "test/Polly.Extensions.Tests/Telemetry/TelemetryListenerImplTests.cs",
+          "test/Polly.Extensions.Tests/Telemetry/TelemetrySourceTests.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "NodaTime#508",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 2702,
-      "latencyMs": 209,
-      "hit": {
-        "hits": [
-          "src/NodaTime.Test/CalendarSystemTest.Ids.cs",
-          "src/NodaTime.Test/CalendarSystemTest.cs",
-          "src/NodaTime.Test/Calendars/PersianCalendarSystemTest.cs",
-          "src/NodaTime.Test/Calendars/UmAlQuraYearMonthDayCalculatorTest.cs",
-          "src/NodaTime.TzValidate.NodaDump/Program.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/TzdbDatabase.cs",
-          "src/NodaTime/CalendarSystem.cs",
-          "src/NodaTime/Calendars/PersianYearMonthDayCalculator.cs",
-          "src/NodaTime/Calendars/UmAlQuraYearMonthDayCalculator.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "NodaTime#506",
-      "repo": "NodaTime",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 346,
-      "latencyMs": 78,
-      "hit": {
-        "hits": [
-          "src/NodaTime.TzValidate.NodaDump/Program.cs",
-          "src/NodaTime.TzdbCompiler/Tzdb/TzdbDatabase.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "Scrutor#6",
-      "repo": "Scrutor",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 1685,
-      "latencyMs": 40,
-      "hit": {
-        "hits": [
-          "src/Scrutor/AssemblySelector.cs",
-          "src/Scrutor/IImplementationTypeSelector.cs",
-          "src/Scrutor/ImplementationTypeSelector.cs",
-          "src/Scrutor/LifetimeSelector.cs",
-          "src/Scrutor/ReflectionExtensions.cs",
-          "src/Scrutor/ServiceTypeSelector.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "Scrutor#4",
-      "repo": "Scrutor",
+      "id": "RestSharp#191",
+      "repo": "RestSharp",
       "category": "identifier-rich",
       "recall": 1,
       "precision": 1,
-      "tokens": 1255,
-      "latencyMs": 43,
+      "tokens": 388,
+      "latencyMs": 59,
       "hit": {
         "hits": [
-          "src/Scrutor/IServiceTypeSelector.cs",
-          "src/Scrutor/LifetimeSelector.cs",
-          "src/Scrutor/ReflectionExtensions.cs",
-          "src/Scrutor/ServiceTypeSelector.cs",
-          "test/Scrutor.Tests/ScanningTests.cs"
+          "src/RestSharp/Extensions/HttpResponseExtensions.cs",
+          "src/RestSharp/Response/RestResponse.cs",
+          "src/RestSharp/RestClient.Extensions.cs",
+          "test/RestSharp.Tests.Integrated/SyncRequestTests.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "Scrutor#2",
-      "repo": "Scrutor",
+      "id": "RestSharp#188",
+      "repo": "RestSharp",
       "category": "nl-domain",
       "recall": 1,
       "precision": 1,
-      "tokens": 1611,
-      "latencyMs": 38,
-      "hit": {
-        "hits": [
-          "src/Scrutor/AssemblySelector.cs",
-          "src/Scrutor/AttributeSelector.cs",
-          "src/Scrutor/IImplementationTypeSelector.cs",
-          "src/Scrutor/ILifetimeSelector.cs",
-          "src/Scrutor/ISelector.cs",
-          "src/Scrutor/ImplementationTypeSelector.cs",
-          "src/Scrutor/LifetimeSelector.cs",
-          "src/Scrutor/ServiceCollectionExtensions.cs",
-          "src/Scrutor/ServiceDescriptorAttribute.cs",
-          "src/Scrutor/ServiceTypeSelector.cs",
-          "test/Scrutor.Tests/ScanningTests.cs",
-          "test/Scrutor.Tests/ServiceCollectionExtensions.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "Specification#502",
-      "repo": "Specification",
-      "category": "formatting",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 0,
-      "latencyMs": 69,
-      "hit": {
-        "hits": [
-          "tests/Ardalis.Specification.Benchmarks/GloblUsings.cs",
-          "tests/Ardalis.Specification.Benchmarks/Program.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "Specification#196",
-      "repo": "Specification",
-      "category": "identifier-rich",
-      "recall": 1,
-      "precision": 0.14285714285714285,
-      "tokens": 1338,
-      "latencyMs": 74,
-      "hit": {
-        "hits": [
-          "Specification/src/Ardalis.Specification/ISingleResultSpecificationOfT.cs",
-          "Specification/src/Ardalis.Specification/Specification.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "Specification/src/Ardalis.Specification/ISpecification.cs",
-          "Specification/src/Ardalis.Specification/ISingleResultSpecification.cs",
-          "Specification/src/Ardalis.Specification/Builder/SpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/IInMemorySpecificationEvaluator.cs",
-          "Specification/src/Ardalis.Specification/Builder/CacheSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/IncludableSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/OrderedSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/ISpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/InMemorySpecificationEvaluator.cs",
-          "Specification/src/Ardalis.Specification/Builder/ICacheSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/IIncludableSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/IOrderedSpecificationBuilder.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#188",
-      "repo": "Specification",
-      "category": "test-only",
-      "recall": 1,
-      "precision": 0.7586206896551724,
-      "tokens": 3679,
-      "latencyMs": 63,
-      "hit": {
-        "hits": [
-          "Specification.EntityFramework6/src/Ardalis.Specification.EntityFramework6/Evaluators/OrderEvaluator.cs",
-          "Specification.EntityFramework6/src/Ardalis.Specification.EntityFramework6/Evaluators/SearchEvaluator.cs",
-          "Specification.EntityFramework6/src/Ardalis.Specification.EntityFramework6/Extensions/SearchExtension.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/RepositoryOfT_GetBySpec.cs",
-          "Specification.EntityFrameworkCore/src/Ardalis.Specification.EntityFrameworkCore/CachedReadConcurrentDictionary.cs",
-          "Specification.EntityFrameworkCore/src/Ardalis.Specification.EntityFrameworkCore/Evaluators/IncludeEvaluator.cs",
-          "Specification.EntityFrameworkCore/src/Ardalis.Specification.EntityFrameworkCore/Evaluators/SearchEvaluator.cs",
-          "Specification.EntityFrameworkCore/src/Ardalis.Specification.EntityFrameworkCore/Evaluators/SpecificationEvaluator.cs",
-          "Specification.EntityFrameworkCore/src/Ardalis.Specification.EntityFrameworkCore/Extensions/IncludeExtensions.cs",
-          "Specification.EntityFrameworkCore/src/Ardalis.Specification.EntityFrameworkCore/Extensions/SearchExtension.cs",
-          "Specification.EntityFrameworkCore/src/Ardalis.Specification.EntityFrameworkCore/RepositoryBaseOfT.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/Fixture/IntegrationTestBase.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/Fixture/RepositoryOfT.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/RepositoryOfT_AnyAsync.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/RepositoryOfT_GetById.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/RepositoryOfT_GetBySpec.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/RepositoryOfT_ListAsync.cs",
-          "Specification/src/Ardalis.Specification/Builder/IncludableBuilderExtensions.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/BuilderTests/IncludableBuilderExtensions_ThenInclude.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/Fixture/Entities/Store.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/Fixture/Specs/StoreByIdIncludeCompanyAndCountryAndStoresForCompanySpec.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/Fixture/SpecsForIncludeTests/StoreIncludeCompanyThenStoresSpec.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/Fixture/IntegrationTestBase.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/Fixture/SharedDatabaseFixture.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/Fixture/SharedDatabaseFixture.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/Fixture/TestDbContext.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/RepositoryOfT_AnyAsync.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/RepositoryOfT_GetById.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/RepositoryOfT_ListAsync.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#183",
-      "repo": "Specification",
-      "category": "identifier-rich",
-      "recall": 1,
-      "precision": 0.4838709677419355,
-      "tokens": 3661,
-      "latencyMs": 61,
-      "hit": {
-        "hits": [
-          "Specification.EntityFramework6/src/Ardalis.Specification.EntityFramework6/RepositoryBaseOfT.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/RepositoryOfT_AnyAsync.cs",
-          "Specification.EntityFrameworkCore/src/Ardalis.Specification.EntityFrameworkCore/RepositoryBaseOfT.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/RepositoryOfT_AnyAsync.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/InMemorySpecificationEvaluator.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/SearchEvaluator.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/SearchExtension.cs",
-          "Specification/src/Ardalis.Specification/Exceptions/InvalidSearchPatternException.cs",
-          "Specification/src/Ardalis.Specification/IReadRepositoryBase.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/EvaluatorTests/SearchEvaluator_Evaluate.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/EvaluatorTests/SearchExtension_Like.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/ExceptionTests/InvalidSearchPatternExceptionTests.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/SpecificationEvaluatorTests.cs",
-          "Specification/tests/Ardalis.Specification.UnitTests/SpecificationEvaluator_GetQuery.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/Data/CachedCustomerRepository.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "sample/Ardalis.SampleApp.Core/Interfaces/IRepository.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/IInMemorySpecificationEvaluator.cs",
-          "Specification/src/Ardalis.Specification/IRepositoryBaseOfT.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/Fixture/IntegrationTestBase.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/Fixture/SharedDatabaseFixture.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/Fixture/IntegrationTestBase.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/Fixture/SharedDatabaseFixture.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/Data/MyRepository.cs",
-          "Specification/src/Ardalis.Specification/Specification.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/DataAccess/SampleDbContext.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/RepositoryOfT_GetById.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/RepositoryOfT_GetBySpec.cs",
-          "Specification.EntityFramework6/tests/Ardalis.Specification.EntityFramework6.IntegrationTests/RepositoryOfT_ListAsync.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/RepositoryOfT_GetById.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/RepositoryOfT_GetBySpec.cs",
-          "Specification.EntityFrameworkCore/tests/Ardalis.Specification.EntityFrameworkCore.IntegrationTests/RepositoryOfT_ListAsync.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#161",
-      "repo": "Specification",
-      "category": "identifier-rich",
-      "recall": 1,
-      "precision": 0.25,
-      "tokens": 1426,
-      "latencyMs": 62,
-      "hit": {
-        "hits": [
-          "Specification/src/Ardalis.Specification/Builder/CacheSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/ICacheSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/SpecificationBuilderExtensions.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "Specification/src/Ardalis.Specification/Specification.cs",
-          "Specification/src/Ardalis.Specification/Builder/ISpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/ISpecification.cs",
-          "Specification/src/Ardalis.Specification/Builder/IIncludableSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/IOrderedSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/SpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/IncludableSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/OrderedSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/IInMemorySpecificationEvaluator.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#151",
-      "repo": "Specification",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 0.25,
-      "tokens": 1538,
-      "latencyMs": 61,
-      "hit": {
-        "hits": [
-          "Specification/src/Ardalis.Specification/Builder/SpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/SpecificationBuilderExtensions.cs",
-          "Specification/src/Ardalis.Specification/Specification.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "Specification/src/Ardalis.Specification/Builder/ISpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/ISpecification.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/IInMemorySpecificationEvaluator.cs",
-          "Specification/src/Ardalis.Specification/Builder/IncludableSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/OrderedSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Evaluators/InMemorySpecificationEvaluator.cs",
-          "Specification/src/Ardalis.Specification/ISingleResultSpecificationOfT.cs",
-          "Specification/src/Ardalis.Specification/Builder/IIncludableSpecificationBuilder.cs",
-          "Specification/src/Ardalis.Specification/Builder/IOrderedSpecificationBuilder.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#131",
-      "repo": "Specification",
-      "category": "formatting",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 2247,
-      "latencyMs": 69,
-      "hit": {
-        "hits": [
-          "ArdalisSpecification/src/Ardalis.Specification/IReadRepositoryBase.cs",
-          "ArdalisSpecificationEF/src/Ardalis.Specification.EF/RepositoryBaseOfT.cs",
-          "ArdalisSpecificationEF/src/Ardalis.Specification.EntityFramework6/RepositoryBaseOfT.cs",
-          "sample/Ardalis.SampleApp.Core/Entities/CustomerAggregate/Customer.cs",
-          "sample/Ardalis.SampleApp.Core/Entities/CustomerAggregate/Store.cs",
-          "sample/Ardalis.SampleApp.Core/Entities/Seeds/CustomerSeed.cs",
-          "sample/Ardalis.SampleApp.Core/Interfaces/ICustomerRepository.cs",
-          "sample/Ardalis.SampleApp.Core/Specifications/CustomerByNameSpec.cs",
-          "sample/Ardalis.SampleApp.Core/Specifications/CustomerByNameWithStoresSpec.cs",
-          "sample/Ardalis.SampleApp.Core/Specifications/CustomerSpec.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/Data/CachedCustomerRepository.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/Data/CustomerRepository.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/DataAccess/Configurations/CustomerConfiguration.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/DataAccess/Configurations/StoreConfiguration.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/DataAccess/SampleDbContext.cs",
-          "sample/Ardalis.SampleApp.Infrastructure/DataAccess/SampleDbContextSeed.cs",
-          "sample/Ardalis.SampleApp.Web/AutomapperMaps.cs",
-          "sample/Ardalis.SampleApp.Web/Pages/Index.cshtml.cs",
-          "sample/Ardalis.SampleApp.Web/Services/CustomerUiService.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "Specification#83",
-      "repo": "Specification",
-      "category": "identifier-rich",
-      "recall": 1,
-      "precision": 0.8333333333333334,
-      "tokens": 1653,
-      "latencyMs": 57,
-      "hit": {
-        "hits": [
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IIncludableSpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IIncludeAggregator.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IncludableBuilderExtensions.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IncludableSpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IncludeAggregator.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/SpecificationBuilderExtensions.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/ISpecification.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/ISpecificationEvaluator.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/IncludeExpressionInfo.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/IncludeTypeEnum.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Specification.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/SpecificationEvaluatorBase.cs",
-          "ArdalisSpecification/tests/Ardalis.Specification.UnitTests/BuilderTests/IncludableBuilderExtensions_ThenInclude.cs",
-          "ArdalisSpecification/tests/Ardalis.Specification.UnitTests/BuilderTests/IncludeAggregator_IncludeString.cs",
-          "ArdalisSpecification/tests/Ardalis.Specification.UnitTests/BuilderTests/SpecificationBuilderExtensions_Include.cs",
-          "ArdalisSpecification/tests/Ardalis.Specification.UnitTests/Fixture/SpecificationEvaluator.cs",
-          "ArdalisSpecification/tests/Ardalis.Specification.UnitTests/IncludeExpressionInfoTests.cs",
-          "ArdalisSpecificationEF/src/Ardalis.Specification.EF/IncludeExtensions.cs",
-          "ArdalisSpecificationEF/src/Ardalis.Specification.EF/SearchExtension.cs",
-          "ArdalisSpecificationEF/src/Ardalis.Specification.EF/SpecificationEvaluator.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/SpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/ISpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/OrderedSpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IOrderedSpecificationBuilder.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#81",
-      "repo": "Specification",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 0.5,
-      "tokens": 1166,
-      "latencyMs": 56,
-      "hit": {
-        "hits": [
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IIncludeAggregator.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IncludeAggregator.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/IRepositoryBase.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/ISpecification.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/OrderTypeEnum.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Specification.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IncludableSpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/SpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IIncludableSpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/ISpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/OrderedSpecificationBuilder.cs",
-          "ArdalisSpecification/src/Ardalis.Specification/Builder/IOrderedSpecificationBuilder.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#44",
-      "repo": "Specification",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 422,
-      "latencyMs": 48,
-      "hit": {
-        "hits": [
-          "ArdalisSpecification/src/Ardalis.Specification/IRepositoryBase.cs",
-          "ArdalisSpecificationEF/src/Ardalis.Specification.EF/RepositoryBase.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "Specification#13",
-      "repo": "Specification",
-      "category": "test-only",
-      "recall": 1,
-      "precision": 0.8,
-      "tokens": 1209,
+      "tokens": 2030,
       "latencyMs": 51,
       "hit": {
         "hits": [
-          "src/Ardalis.Specification/BaseSpecification.cs",
-          "src/Ardalis.Specification/EfSpecificationEvaluator.cs",
-          "tests/Ardalis.Specification.IntegrationTests/DatabaseCommunicationTestBase.cs",
-          "tests/Ardalis.Specification.IntegrationTests/DatabaseCommunicationTests.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/EfRepository.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/BlogNamesSpecification.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/PostSelectSpecification.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SelectorTests.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "src/Ardalis.Specification/ISpecification.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/SampleDbContext.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#9",
-      "repo": "Specification",
-      "category": "no-signal",
-      "recall": 1,
-      "precision": 0.9375,
-      "tokens": 1324,
-      "latencyMs": 55,
-      "hit": {
-        "hits": [
-          "src/Ardalis.Specification/BaseSpecification.cs",
-          "src/Ardalis.Specification/QueryExtensions/Include/IIncludeQuery.cs",
-          "src/Ardalis.Specification/QueryExtensions/Include/IncludeAggregator.cs",
-          "src/Ardalis.Specification/QueryExtensions/Include/IncludeQuery.cs",
-          "src/Ardalis.Specification/QueryExtensions/Include/IncludeQueryExtensions.cs",
-          "src/Ardalis.Specification/QueryExtensions/Include/IncludeVisitor.cs",
-          "tests/Ardalis.Specification.IntegrationTests/DatabaseCommunicationTests.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/Post.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/BlogWithPostsAndAuthorSpec.cs",
-          "tests/Ardalis.Specification.UnitTests/QueryExtensions/Include/Builders/IncludeQueryBuilder.cs",
-          "tests/Ardalis.Specification.UnitTests/QueryExtensions/Include/Entities/Book.cs",
-          "tests/Ardalis.Specification.UnitTests/QueryExtensions/Include/Entities/Person.cs",
-          "tests/Ardalis.Specification.UnitTests/QueryExtensions/Include/IncludeAggregatorTests.cs",
-          "tests/Ardalis.Specification.UnitTests/QueryExtensions/Include/IncludeQueryTests.cs",
-          "tests/Ardalis.Specification.UnitTests/QueryExtensions/Include/IncludeVisitorTests.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "src/Ardalis.Specification/ISpecification.cs"
-        ]
-      }
-    },
-    {
-      "id": "Specification#4",
-      "repo": "Specification",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 527,
-      "latencyMs": 38,
-      "hit": {
-        "hits": [
-          "src/Ardalis.Specification/BaseSpecification.cs",
-          "src/Ardalis.Specification/ISpecification.cs",
-          "src/Ardalis.Specification/SpecificationEvaluator.cs"
+          "src/RestSharp/Authenticators/AuthenticatorBase.cs",
+          "src/RestSharp/Authenticators/IAuthenticator.cs",
+          "src/RestSharp/Authenticators/OAuth/OAuth1Authenticator.cs",
+          "src/RestSharp/Authenticators/OAuth2/OAuth2ClientCredentialsAuthenticator.cs",
+          "src/RestSharp/Authenticators/OAuth2/OAuth2EndpointAuthenticatorBase.cs",
+          "src/RestSharp/Authenticators/OAuth2/OAuth2RefreshTokenAuthenticator.cs",
+          "src/RestSharp/Authenticators/OAuth2/OAuth2Token.cs",
+          "src/RestSharp/Authenticators/OAuth2/OAuth2TokenAuthenticator.cs",
+          "src/RestSharp/Authenticators/OAuth2/OAuth2TokenRequest.cs",
+          "src/RestSharp/Authenticators/OAuth2/OAuth2TokenResponse.cs",
+          "src/RestSharp/RestClient.Async.cs",
+          "test/RestSharp.Tests/Auth/AuthenticatorTests.cs",
+          "test/RestSharp.Tests/Auth/OAuth2ClientCredentialsAuthenticatorTests.cs",
+          "test/RestSharp.Tests/Auth/OAuth2RefreshTokenAuthenticatorTests.cs",
+          "test/RestSharp.Tests/Auth/OAuth2TokenAuthenticatorTests.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "Specification#1",
-      "repo": "Specification",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 1193,
-      "latencyMs": 44,
-      "hit": {
-        "hits": [
-          "src/Ardalis.Specification/BaseSpecification.cs",
-          "src/Ardalis.Specification/ISpecification.cs",
-          "tests/Ardalis.Specification.IntegrationTests/DatabaseCommunicationTests.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/Author.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/Blog.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/BlogBuilder.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/EfRepository.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/Post.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleClient/SampleDbContext.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/BlogWithPostsSpec.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/BlogWithPostsUsingStringSpec.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/PostsByBlogOrderedSpec.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/PostsByBlogPaginatedSpec.cs",
-          "tests/Ardalis.Specification.IntegrationTests/SampleSpecs/PostsGroupedByIdSpec.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "eShopOnWeb#949",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 596,
-      "latencyMs": 100,
-      "hit": {
-        "hits": [
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/AddItemToBasket.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs",
-          "tests/UnitTests/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
-          "tests/UnitTests/ApplicationCore/Specifications/CatalogItemsSpecification.cs",
-          "tests/UnitTests/Builders/BasketBuilder.cs",
-          "tests/UnitTests/MediatorHandlers/OrdersTests/GetMyOrders.cs",
-          "tests/UnitTests/MediatorHandlers/OrdersTests/GetOrderDetails.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "eShopOnWeb#878",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 312,
-      "latencyMs": 110,
-      "hit": {
-        "hits": [
-          "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
-          "src/Web/Features/MyOrders/GetMyOrders.cs",
-          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
-          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
-          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
-          "src/Web/Program.cs",
-          "src/Web/ViewModels/OrderDetailViewModel.cs",
-          "src/Web/ViewModels/OrderViewModel.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "eShopOnWeb#876",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 312,
-      "latencyMs": 91,
-      "hit": {
-        "hits": [
-          "src/ApplicationCore/Specifications/CustomerOrdersSpecification.cs",
-          "src/Web/Features/MyOrders/GetMyOrders.cs",
-          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
-          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
-          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
-          "src/Web/ViewModels/OrderDetailViewModel.cs",
-          "src/Web/ViewModels/OrderViewModel.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "eShopOnWeb#1",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 538,
-      "latencyMs": 97,
-      "hit": {
-        "hits": [
-          "src/Web/AzureDeveloperCliCredential.cs",
-          "src/Web/Program.cs"
-        ],
-        "misses": [],
-        "extras": []
-      }
-    },
-    {
-      "id": "eShopOnWeb#818",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 0.8421052631578947,
-      "tokens": 1248,
-      "latencyMs": 100,
-      "hit": {
-        "hits": [
-          "src/BlazorAdmin/CustomAuthStateProvider.cs",
-          "src/PublicApi/CatalogBrandEndpoints/CatalogBrandListEndpoint.cs",
-          "src/PublicApi/CatalogItemEndpoints/CatalogItemGetByIdEndpoint.cs",
-          "src/PublicApi/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs",
-          "src/PublicApi/CatalogItemEndpoints/CreateCatalogItemEndpoint.cs",
-          "src/PublicApi/CatalogItemEndpoints/DeleteCatalogItemEndpoint.cs",
-          "src/PublicApi/CatalogItemEndpoints/UpdateCatalogItemEndpoint.cs",
-          "src/PublicApi/CatalogTypeEndpoints/CatalogTypeListEndpoint.cs",
-          "src/PublicApi/Program.cs",
-          "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
-          "src/Web/Configuration/ConfigureWebServices.cs",
-          "src/Web/Controllers/UserController.cs",
-          "src/Web/Features/MyOrders/GetMyOrdersHandler.cs",
-          "src/Web/Features/OrderDetails/GetOrderDetailsHandler.cs",
-          "src/Web/Program.cs",
-          "tests/PublicApiIntegrationTests/CatalogItemEndpoints/CatalogItemListPagedEndpoint.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "src/Web/Features/MyOrders/GetMyOrders.cs",
-          "src/Web/Features/OrderDetails/GetOrderDetails.cs",
-          "src/Web/Controllers/OrderController.cs"
-        ]
-      }
-    },
-    {
-      "id": "eShopOnWeb#541",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 0.6153846153846154,
-      "tokens": 777,
-      "latencyMs": 99,
-      "hit": {
-        "hits": [
-          "src/ApplicationCore/Interfaces/IFileSystem.cs",
-          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
-          "src/Infrastructure/Services/WebFileSystem.cs",
-          "src/PublicApi/CatalogItemEndpoints/Create.cs",
-          "src/PublicApi/CatalogItemEndpoints/Update.cs",
-          "src/PublicApi/Startup.cs",
-          "src/Web/Controllers/FileController.cs",
-          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/CreateEndpoint.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "tests/FunctionalTests/PublicApi/ApiTestFixture.cs",
-          "tests/FunctionalTests/PublicApi/AuthEndpoints/AuthenticateEndpoint.cs",
-          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/ApiCatalogControllerList.cs",
-          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/DeleteEndpoint.cs",
-          "tests/FunctionalTests/PublicApi/CatalogItemEndpoints/GetByIdEndpoint.cs"
-        ]
-      }
-    },
-    {
-      "id": "eShopOnWeb#322",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 0.21052631578947367,
-      "tokens": 1557,
-      "latencyMs": 281,
-      "hit": {
-        "hits": [
-          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
-          "src/ApplicationCore/Interfaces/IBasketService.cs",
-          "src/ApplicationCore/Services/BasketService.cs",
-          "src/Web/Pages/Basket/Index.cshtml.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
-          "src/Web/Services/BasketViewModelService.cs",
-          "src/ApplicationCore/Entities/BaseEntity.cs",
-          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
-          "src/Web/Interfaces/IBasketViewModelService.cs",
-          "src/ApplicationCore/Interfaces/IAppLogger.cs",
-          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
-          "src/Web/Pages/Basket/Checkout.cshtml.cs",
-          "src/Web/Pages/Shared/Components/BasketComponent/Basket.cs",
-          "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
-          "src/ApplicationCore/Entities/BuyerAggregate/Buyer.cs",
-          "src/ApplicationCore/Entities/CatalogBrand.cs",
-          "src/ApplicationCore/Entities/CatalogItem.cs",
-          "src/ApplicationCore/Entities/CatalogType.cs",
-          "src/ApplicationCore/Services/OrderService.cs"
-        ]
-      }
-    },
-    {
-      "id": "eShopOnWeb#300",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 0.35294117647058826,
-      "tokens": 1037,
-      "latencyMs": 278,
-      "hit": {
-        "hits": [
-          "src/ApplicationCore/Entities/BasketAggregate/Basket.cs",
-          "src/ApplicationCore/Services/BasketService.cs",
-          "tests/IntegrationTests/Repositories/BasketRepositoryTests/SetQuantities.cs",
-          "tests/UnitTests/ApplicationCore/Entities/BasketTests/BasketAddItem.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "src/ApplicationCore/Interfaces/IBasketService.cs",
-          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
-          "src/ApplicationCore/Entities/BaseEntity.cs",
-          "src/ApplicationCore/Interfaces/IAppLogger.cs",
-          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
-          "src/ApplicationCore/Entities/BuyerAggregate/Buyer.cs",
-          "src/ApplicationCore/Entities/CatalogBrand.cs",
-          "src/ApplicationCore/Entities/CatalogItem.cs",
-          "src/ApplicationCore/Entities/CatalogType.cs",
-          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
-          "src/ApplicationCore/Services/OrderService.cs"
-        ]
-      }
-    },
-    {
-      "id": "eShopOnWeb#296",
-      "repo": "eShopOnWeb",
+      "id": "RestSharp#187",
+      "repo": "RestSharp",
       "category": "identifier-rich",
       "recall": 1,
-      "precision": 0.3333333333333333,
-      "tokens": 373,
-      "latencyMs": 272,
+      "precision": 1,
+      "tokens": 817,
+      "latencyMs": 45,
       "hit": {
         "hits": [
-          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
-          "src/ApplicationCore/Entities/OrderAggregate/CatalogItemOrdered.cs"
+          "src/RestSharp.Extensions.DependencyInjection/ServiceCollectionExtensions.cs",
+          "src/RestSharp/RestClient.Async.cs",
+          "src/RestSharp/RestClient.cs",
+          "test/RestSharp.Tests/RestClientTests.cs"
         ],
         "misses": [],
-        "extras": [
-          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
-          "src/ApplicationCore/Entities/OrderAggregate/OrderItem.cs",
-          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
-          "src/ApplicationCore/Entities/BaseEntity.cs"
-        ]
-      }
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "eShopOnWeb#294",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
+      "id": "Scrutor#196",
+      "repo": "Scrutor",
+      "category": "test-only",
       "recall": 1,
-      "precision": 0.2727272727272727,
-      "tokens": 958,
-      "latencyMs": 269,
+      "precision": 1,
+      "tokens": 319,
+      "latencyMs": 40,
       "hit": {
         "hits": [
-          "src/ApplicationCore/Entities/OrderAggregate/Address.cs",
-          "src/ApplicationCore/Entities/OrderAggregate/CatalogItemOrdered.cs",
-          "src/Infrastructure/Data/CatalogContext.cs"
+          "src/Scrutor/AttributeSelector.cs",
+          "test/Scrutor.Tests/KeyedServiceTests.cs"
         ],
         "misses": [],
-        "extras": [
-          "src/ApplicationCore/Entities/OrderAggregate/Order.cs",
-          "src/ApplicationCore/Entities/OrderAggregate/OrderItem.cs",
-          "src/Infrastructure/Data/EfRepository.cs",
-          "src/Infrastructure/Data/OrderRepository.cs",
-          "src/ApplicationCore/Interfaces/IAggregateRoot.cs",
-          "src/ApplicationCore/Entities/BaseEntity.cs",
-          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
-          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
-        ]
-      }
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "eShopOnWeb#291",
-      "repo": "eShopOnWeb",
+      "id": "Scrutor#195",
+      "repo": "Scrutor",
       "category": "nl-domain",
       "recall": 1,
-      "precision": 0.7222222222222222,
-      "tokens": 992,
+      "precision": 1,
+      "tokens": 362,
+      "latencyMs": 43,
+      "hit": {
+        "hits": [
+          "src/Scrutor/AttributeSelector.cs",
+          "src/Scrutor/ServiceDescriptorAttribute.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Scrutor#194",
+      "repo": "Scrutor",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1847,
+      "latencyMs": 39,
+      "hit": {
+        "hits": [
+          "src/Scrutor/DecoratedService.cs",
+          "src/Scrutor/MaybeNullWhenAttribute.cs",
+          "src/Scrutor/ServiceCollectionExtensions.Decoration.cs",
+          "src/Scrutor/ServiceProviderExtensions.cs",
+          "test/Scrutor.Tests/DecorationTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Shouldly#197",
+      "repo": "Shouldly",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 398,
+      "latencyMs": 48,
+      "hit": {
+        "hits": [
+          "src/Shouldly.Tests/Strings/DetailedDifference/CaseSensitive/UnicodeScenarios.cs",
+          "src/Shouldly/DifferenceHighlighting/GraphemeClusterHelper.cs",
+          "src/Shouldly/DifferenceHighlighting/UnicodeWidth.cs",
+          "src/Shouldly/DifferenceHighlighting/UnicodeWidthTables.Generated.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Shouldly#189",
+      "repo": "Shouldly",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 186,
+      "latencyMs": 41,
+      "hit": {
+        "hits": [
+          "src/Shouldly.Tests/ShouldContain/NullStringScenario.cs",
+          "src/Shouldly/ShouldlyExtensionMethods/ShouldBe/StringContainsTestExtensions.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "Shouldly#181",
+      "repo": "Shouldly",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 16839,
+      "latencyMs": 49,
+      "hit": {
+        "hits": [
+          "src/DocumentationExamples/CodeExamples/ShouldSatisfyAllConditionsExamples.Satisfy.codeSample.approved.cs",
+          "src/DocumentationExamples/CodeExamples/ShouldSatisfyAllConditionsExamples.ShouldSatisfy.codeSample.approved.cs",
+          "src/DocumentationExamples/ShouldSatisfyAllConditionsExamples.cs",
+          "src/Shouldly.Tests/ConventionTests/ApprovePublicApi.ShouldlyApi.approved.cs",
+          "src/Shouldly.Tests/ShouldBe/EnumerableType/NonRetraversableEnumerable.cs",
+          "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario.cs",
+          "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario_MultiLine.cs",
+          "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario_MultiLine2.cs",
+          "src/Shouldly/MessageGenerators/ShouldSatisfyMessageGenerator.cs",
+          "src/Shouldly/ShouldStaticClasses/ShouldSatisfy.cs",
+          "src/Shouldly/ShouldlyExtensionMethods/ShouldSatisfyAllConditionsTestExtensions.cs",
+          "src/Shouldly/ShouldlyMessage.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "StackExchange.Redis#197",
+      "repo": "StackExchange.Redis",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2903,
+      "latencyMs": 213,
+      "hit": {
+        "hits": [
+          "src/StackExchange.Redis/MessageWriter.cs",
+          "src/StackExchange.Redis/ReadOnlySequenceExtensions.cs",
+          "src/StackExchange.Redis/RedisValue.cs",
+          "src/StackExchange.Redis/RespReaderExtensions.cs",
+          "tests/StackExchange.Redis.Tests/Issues/Issue1103Tests.cs",
+          "tests/StackExchange.Redis.Tests/RedisValueShortBlobTests.cs",
+          "tests/StackExchange.Redis.Tests/RedisValueStorageKindUnitTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "StackExchange.Redis#195",
+      "repo": "StackExchange.Redis",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 8047,
+      "latencyMs": 196,
+      "hit": {
+        "hits": [
+          "src/RESPite/Buffers/CycleBuffer.cs",
+          "src/RESPite/Messages/RespFrameScanner.cs",
+          "src/RESPite/Messages/RespReader.cs",
+          "src/RESPite/Shared/FrameworkShims.Encoding.cs",
+          "src/RESPite/Shared/FrameworkShims.Sequence.cs",
+          "src/StackExchange.Redis/EncodingExtensions.cs",
+          "src/StackExchange.Redis/Format.cs",
+          "src/StackExchange.Redis/MessageWriter.cs",
+          "src/StackExchange.Redis/PhysicalConnection.Read.cs",
+          "src/StackExchange.Redis/ReadOnlySequenceExtensions.cs",
+          "src/StackExchange.Redis/ReadOnlySequenceSegmentIterator.cs",
+          "src/StackExchange.Redis/RedisValue.cs",
+          "src/StackExchange.Redis/ValueCondition.cs",
+          "tests/RESPite.Tests/CycleBufferTests.cs",
+          "tests/StackExchange.Redis.Tests/FragmentedSegment.cs",
+          "tests/StackExchange.Redis.Tests/ParseTests.cs",
+          "tests/StackExchange.Redis.Tests/RedisValueEquivalencyTests.cs",
+          "tests/StackExchange.Redis.Tests/RedisValueSequenceServerTests.cs",
+          "tests/StackExchange.Redis.Tests/RedisValueSequenceTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "StackExchange.Redis#193",
+      "repo": "StackExchange.Redis",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1481,
+      "latencyMs": 216,
+      "hit": {
+        "hits": [
+          "tests/StackExchange.Redis.Tests/ClusterTests.cs",
+          "tests/StackExchange.Redis.Tests/KeyIdleAsyncTests.cs",
+          "tests/StackExchange.Redis.Tests/KeyIdleTests.cs",
+          "tests/StackExchange.Redis.Tests/RoleTests.cs",
+          "tests/StackExchange.Redis.Tests/SentinelTests.cs",
+          "tests/StackExchange.Redis.Tests/TestBase.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "YamlDotNet#125",
+      "repo": "YamlDotNet",
+      "category": "test-only",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1186,
+      "latencyMs": 72,
+      "hit": {
+        "hits": [
+          "YamlDotNet.Benchmark/Program.cs",
+          "YamlDotNet.Test/Serialization/SerializationTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "YamlDotNet#88",
+      "repo": "YamlDotNet",
+      "category": "nl-domain",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 954,
       "latencyMs": 68,
       "hit": {
         "hits": [
-          "src/Infrastructure/Data/CatalogContext.cs",
-          "src/Infrastructure/Data/Config/AddressConfiguration.cs",
-          "src/Infrastructure/Data/Config/BasketConfiguration.cs",
-          "src/Infrastructure/Data/Config/BasketItemConfiguration.cs",
-          "src/Infrastructure/Data/Config/CatalogBrandConfiguration.cs",
-          "src/Infrastructure/Data/Config/CatalogItemConfiguration.cs",
-          "src/Infrastructure/Data/Config/CatalogItemOrderedConfiguration.cs",
-          "src/Infrastructure/Data/Config/CatalogTypeConfiguration.cs",
-          "src/Infrastructure/Data/Config/OrderConfiguration.cs",
-          "src/Infrastructure/Data/Config/OrderItemConfiguration.cs",
-          "src/Infrastructure/Data/Migrations/20190818191507_UpdatedConstraints.cs",
-          "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs",
-          "src/Web/Startup.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "src/Infrastructure/Data/Migrations/20190818191507_UpdatedConstraints.Designer.cs",
-          "src/Infrastructure/Data/EfRepository.cs",
-          "src/Infrastructure/Data/OrderRepository.cs",
-          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
-          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
-        ]
-      }
-    },
-    {
-      "id": "eShopOnWeb#280",
-      "repo": "eShopOnWeb",
-      "category": "identifier-rich",
-      "recall": 1,
-      "precision": 0.3333333333333333,
-      "tokens": 1161,
-      "latencyMs": 280,
-      "hit": {
-        "hits": [
-          "src/ApplicationCore/Interfaces/ISpecification.cs",
-          "src/ApplicationCore/Specifications/BaseSpecification.cs",
-          "src/Infrastructure/Data/CatalogContext.cs",
-          "src/Infrastructure/Data/SpecificationEvaluator.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
-          "src/ApplicationCore/Specifications/CustomerOrdersWithItemsSpecification.cs",
-          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
-          "src/ApplicationCore/Specifications/CatalogFilterSpecification.cs",
-          "src/Infrastructure/Data/EfRepository.cs",
-          "src/Infrastructure/Data/OrderRepository.cs",
-          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
-          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
-        ]
-      }
-    },
-    {
-      "id": "eShopOnWeb#268",
-      "repo": "eShopOnWeb",
-      "category": "route-api",
-      "recall": 1,
-      "precision": 0.8,
-      "tokens": 210,
-      "latencyMs": 50,
-      "hit": {
-        "hits": [
-          "src/Web/Areas/Identity/Pages/Account/ConfirmEmail.cshtml.cs",
-          "src/Web/Controllers/AccountController.cs",
-          "src/Web/Extensions/UrlHelperExtensions.cs",
-          "tests/FunctionalTests/Web/Controllers/AccountControllerSignIn.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "tests/FunctionalTests/Web/CustomWebApplicationFactory.cs"
-        ]
-      }
-    },
-    {
-      "id": "eShopOnWeb#267",
-      "repo": "eShopOnWeb",
-      "category": "nl-domain",
-      "recall": 1,
-      "precision": 1,
-      "tokens": 241,
-      "latencyMs": 305,
-      "hit": {
-        "hits": [
-          "src/Web/Areas/Identity/Pages/Account/Logout.cshtml.cs",
-          "src/Web/Startup.cs"
+          "tools/build/BuildDefinition.cs",
+          "tools/build/Program.cs"
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "eShopOnWeb#264",
-      "repo": "eShopOnWeb",
-      "category": "formatting",
-      "recall": 1,
-      "precision": 0.5,
-      "tokens": 578,
-      "latencyMs": 94,
-      "hit": {
-        "hits": [
-          "src/ApplicationCore/Entities/BasketAggregate/BasketItem.cs",
-          "src/ApplicationCore/Services/BasketService.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
-        ],
-        "misses": [],
-        "extras": [
-          "src/ApplicationCore/Interfaces/IBasketService.cs",
-          "src/ApplicationCore/Entities/BaseEntity.cs",
-          "src/ApplicationCore/Interfaces/IAppLogger.cs",
-          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
-          "src/ApplicationCore/Services/OrderService.cs"
-        ]
-      }
-    },
-    {
-      "id": "eShopOnWeb#258",
-      "repo": "eShopOnWeb",
+      "id": "YamlDotNet#32",
+      "repo": "YamlDotNet",
       "category": "nl-domain",
       "recall": 1,
-      "precision": 0.375,
-      "tokens": 691,
-      "latencyMs": 104,
+      "precision": 1,
+      "tokens": 1127,
+      "latencyMs": 78,
       "hit": {
         "hits": [
-          "src/Infrastructure/Data/CatalogContext.cs",
-          "src/Infrastructure/Data/Migrations/20190601014740_UpdatingDefaultDataTypes.cs",
-          "src/Infrastructure/Data/Migrations/CatalogContextModelSnapshot.cs"
+          "YamlDotNet.Test/Serialization/SerializationTests.cs",
+          "YamlDotNet/Serialization/NodeDeserializers/ScalarNodeDeserializer.cs"
         ],
         "misses": [],
-        "extras": [
-          "src/Infrastructure/Data/Migrations/20190601014740_UpdatingDefaultDataTypes.Designer.cs",
-          "src/Infrastructure/Data/EfRepository.cs",
-          "src/Infrastructure/Data/OrderRepository.cs",
-          "src/ApplicationCore/Interfaces/IAsyncRepository.cs",
-          "src/ApplicationCore/Interfaces/IOrderRepository.cs"
-        ]
-      }
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "eShopOnWeb#243",
-      "repo": "eShopOnWeb",
+      "id": "quartznet#199",
+      "repo": "quartznet",
       "category": "identifier-rich",
       "recall": 1,
-      "precision": 0.42857142857142855,
-      "tokens": 575,
-      "latencyMs": 272,
+      "precision": 1,
+      "tokens": 3204,
+      "latencyMs": 280,
       "hit": {
         "hits": [
-          "src/ApplicationCore/Interfaces/ISpecification.cs",
-          "src/ApplicationCore/Specifications/BaseSpecification.cs",
-          "src/Infrastructure/Data/SpecificationEvaluator.cs"
+          "src/Quartz.Dashboard/Components/Shared/DisplayValueHelper.cs",
+          "src/Quartz.Dashboard/Services/IQuartzApiClient.cs",
+          "src/Quartz.Dashboard/Services/InProcessQuartzApiClient.cs",
+          "src/Quartz.Dashboard/Services/QuartzApiClient.cs",
+          "src/Quartz.Tests.AspNetCore/Dashboard/InProcessQuartzApiClientTest.cs"
         ],
         "misses": [],
-        "extras": [
-          "src/ApplicationCore/Specifications/BasketWithItemsSpecification.cs",
-          "src/ApplicationCore/Specifications/CustomerOrdersWithItemsSpecification.cs",
-          "src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs",
-          "src/ApplicationCore/Specifications/CatalogFilterSpecification.cs"
-        ]
-      }
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     },
     {
-      "id": "eShopOnWeb#242",
-      "repo": "eShopOnWeb",
+      "id": "quartznet#198",
+      "repo": "quartznet",
       "category": "identifier-rich",
       "recall": 1,
-      "precision": 0.5714285714285714,
-      "tokens": 457,
-      "latencyMs": 269,
+      "precision": 1,
+      "tokens": 1929,
+      "latencyMs": 288,
       "hit": {
         "hits": [
-          "src/ApplicationCore/Services/BasketService.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/DeleteBasket.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/SetQuantities.cs",
-          "tests/UnitTests/ApplicationCore/Services/BasketServiceTests/TransferBasket.cs"
+          "src/Quartz/CronExpression.cs",
+          "src/Quartz/Util/BitUtil.cs",
+          "src/Quartz/Util/SortedSetExtensions.cs"
         ],
         "misses": [],
-        "extras": [
-          "src/ApplicationCore/Interfaces/IBasketService.cs",
-          "src/ApplicationCore/Interfaces/IAppLogger.cs",
-          "src/ApplicationCore/Interfaces/IAsyncRepository.cs"
-        ]
-      }
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "quartznet#197",
+      "repo": "quartznet",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 2060,
+      "latencyMs": 166,
+      "hit": {
+        "hits": [
+          "src/Quartz.Benchmark/CronExpressionBenchmark.cs",
+          "src/Quartz.Tests.Unit/CronExpressionDifferentialTest.cs",
+          "src/Quartz/CronExpression.cs",
+          "src/Quartz/Util/BitUtil.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "serilog#197",
+      "repo": "serilog",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 1775,
+      "latencyMs": 66,
+      "hit": {
+        "hits": [
+          "src/Serilog/Core/Logger.cs",
+          "src/Serilog/Debugging/SelfLog.cs",
+          "src/Serilog/Debugging/SelfMetrics.cs",
+          "src/Serilog/LoggerConfiguration.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "serilog#196",
+      "repo": "serilog",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 325,
+      "latencyMs": 77,
+      "hit": {
+        "hits": [
+          "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+          "src/Serilog/Core/Sinks/RestrictedSink.cs",
+          "test/Serilog.Tests/Core/FailureListenerTests.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
+    },
+    {
+      "id": "serilog#195",
+      "repo": "serilog",
+      "category": "identifier-rich",
+      "recall": 1,
+      "precision": 1,
+      "tokens": 173,
+      "latencyMs": 71,
+      "hit": {
+        "hits": [
+          "src/Serilog/Core/Sinks/RestrictedSink.cs",
+          "test/Serilog.Tests/Core/FailureListenerTests.cs",
+          "test/Serilog.Tests/Support/ListenerTrackingSink.cs"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     }
   ],
   "notes": [
     "token budgets 25,000",
-    "index modes: partial 27, semantic 1, syntax 25",
+    "index modes: partial 18, semantic 33, syntax 18",
     "adjudicated PRs (with a reading set): 0",
-    "budget 25,000 fuse vs changed: recall 100%, precision 80%, median tokens 958",
-    "budget 25,000 grep vs changed: recall 53%, precision 14%"
+    "api-delta PRs (non-empty public surface change): 54",
+    "apidelta Ardalis.GuardClauses#184: 11 breaking, 11 additive :: BREAK Ardalis.GuardClauses.GuardClauseExtensions.Default\u003CT\u003E(IGuardClause,T,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.EnumOutOfRange\u003CT\u003E(IGuardClause,T,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.EnumOutOfRange\u003CT\u003E(IGuardClause,int,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.LengthOutOfRange(IGuardClause,string,int,int,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.Null\u003CT\u003E(IGuardClause,T?,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.NullOrEmpty(IGuardClause,Guid?,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.NullOrEmpty(IGuardClause,string?,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.NullOrEmpty\u003CT\u003E(IGuardClause,IEnumerable\u003CT\u003E?,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.NullOrInvalidInput\u003CT\u003E(IGuardClause,T?,string,Func\u003CT, bool\u003E,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.NullOrWhiteSpace(IGuardClause,string?,string?,string?,Exception?); BREAK Ardalis.GuardClauses.GuardClauseExtensions.OutOfRange\u003CT\u003E(IGuardClause,IEnumerable\u003CT\u003E,string,T,T,string?,Exception?); add Ardalis.GuardClauses.GuardClauseExtensions.Default\u003CT\u003E(IGuardClause,T,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.EnumOutOfRange\u003CT\u003E(IGuardClause,T,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.EnumOutOfRange\u003CT\u003E(IGuardClause,int,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.LengthOutOfRange(IGuardClause,string,int,int,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.Null\u003CT\u003E(IGuardClause,T?,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.NullOrEmpty(IGuardClause,Guid?,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.NullOrEmpty(IGuardClause,string?,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.NullOrEmpty\u003CT\u003E(IGuardClause,IEnumerable\u003CT\u003E?,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.NullOrInvalidInput\u003CT\u003E(IGuardClause,T?,string,Func\u003CT, bool\u003E,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.NullOrWhiteSpace(IGuardClause,string?,string?,string?,Func\u003CException\u003E?); add Ardalis.GuardClauses.GuardClauseExtensions.OutOfRange\u003CT\u003E(IGuardClause,IEnumerable\u003CT\u003E,string,T,T,string?,Func\u003CException\u003E?)",
+    "apidelta Ardalis.GuardClauses#174: 0 breaking, 9 additive :: add Ardalis.GuardClauses.GuardClauseExtensions.LengthOutOfRange(IGuardClause,string,int,int,string?,string?); add GuardClauses.UnitTests.GuardAgainstStringLengthOutOfRange; add GuardClauses.UnitTests.GuardAgainstStringLengthOutOfRange.DoesNothingGivenNonEmptyString(); add GuardClauses.UnitTests.GuardAgainstStringLengthOutOfRange.ReturnsExpectedValueWhenGivenLongerString(); add GuardClauses.UnitTests.GuardAgainstStringLengthOutOfRange.ThrowsGivenEmptyString(); add GuardClauses.UnitTests.GuardAgainstStringLengthOutOfRange.ThrowsGivenNonPositiveMinLength(); add GuardClauses.UnitTests.GuardAgainstStringLengthOutOfRange.ThrowsGivenStringLongerThanMaxLength(); add GuardClauses.UnitTests.GuardAgainstStringLengthOutOfRange.ThrowsGivenStringShorterThanMinLength(); add GuardClauses.UnitTests.GuardAgainstStringLengthOutOfRange.ThrowsWhenMinIsBiggerThanMax()",
+    "apidelta Ardalis.Specification#196: 170 breaking, 0 additive :: BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTracking; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.AsSplitQuery; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.AsTracking; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheEnabled; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheKey; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreAutoIncludes; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreQueryFilters; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeExpressions; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeStrings; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.Includes; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.IsSatisfiedBy(T); BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.Items; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.OrderExpressions; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.PostProcessingAction; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.Query; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.QueryTags; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.Search; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.SearchCriterias; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.Skip; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.Take; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.Where; BREAK Tests.Evaluators.IncludeStringEvaluatorCustomSpecTests.CustomSpecification\u00601.WhereExpressions; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.AsNoTracking; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.AsSplitQuery; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.AsTracking; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.CacheEnabled; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.CacheKey; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.IgnoreAutoIncludes; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.IgnoreQueryFilters; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.IncludeExpressions; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.IncludeStrings; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.IsSatisfiedBy(T); BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.Items; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.OrderExpressions; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.PostProcessingAction; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.Query; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.QueryTags; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.Search; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.SearchCriterias; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.Skip; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.Tags; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.Take; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.Where; BREAK Tests.Evaluators.QueryTagEvaluatorCustomTests.CustomSpecification\u00601.WhereExpressions; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTracking; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.AsSplitQuery; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.AsTracking; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheEnabled; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheKey; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreAutoIncludes; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreQueryFilters; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeExpressions; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeStrings; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.IsSatisfiedBy(T); BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.Items; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.OrderExpressions; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.PostProcessingAction; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.Query; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.QueryTags; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.Search; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.SearchCriterias; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.Skip; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.Take; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.Where; BREAK Tests.Evaluators.SearchEvaluatorCustomSpecTests.CustomSpecification\u00601.WhereExpressions; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTracking; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.AsSplitQuery; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.AsTracking; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheEnabled; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheKey; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreAutoIncludes; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreQueryFilters; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeExpressions; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeStrings; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.IsSatisfiedBy(T); BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.Items; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.OrderExpressions; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.PostProcessingAction; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.Query; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.QueryTags; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.Search; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.SearchCriterias; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.Skip; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.Take; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.Where; BREAK Tests.Evaluators.SearchMemoryEvaluatorCustomSpecTests.CustomSpecification\u00601.WhereExpressions; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTracking; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.AsSplitQuery; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.AsTracking; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheEnabled; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheKey; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreAutoIncludes; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreQueryFilters; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeExpressions; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeStrings; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IsSatisfiedBy(T); BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Items; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.OrderExpressions; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.PostProcessingAction; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Query; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.QueryTags; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Search; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.SearchCriterias; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Skip; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Take; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Where; BREAK Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.WhereExpressions; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.AsNoTracking; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.AsSplitQuery; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.AsTracking; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.CacheEnabled; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.CacheKey; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.IgnoreAutoIncludes; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.IgnoreQueryFilters; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.IncludeExpressions; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.IncludeStrings; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.IsSatisfiedBy(T); BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.Items; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.OrderExpressions; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.PostProcessingAction; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.Query; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.QueryTags; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.Search; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.SearchCriterias; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.Skip; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.Take; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.Where; BREAK Tests.Validators.SearchValidatorCustomSpecTests.CustomSpecification\u00601.WhereExpressions; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.AsNoTracking; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.AsSplitQuery; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.AsTracking; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.CacheEnabled; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.CacheKey; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IgnoreAutoIncludes; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IgnoreQueryFilters; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IncludeExpressions; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IncludeStrings; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IsSatisfiedBy(T); BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Items; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.OrderExpressions; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.PostProcessingAction; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Query; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.QueryTags; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Search; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.SearchCriterias; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Skip; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Take; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Where; BREAK Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.WhereExpressions",
+    "apidelta Ardalis.Specification#195: 0 breaking, 3 additive :: add Tests.Evaluators.OrderEvaluatorTests.ReturnFalse_IsCriteriaEvaluator(); add Tests.Evaluators.PaginationEvaluatorTests.ReturnFalse_IsCriteriaEvaluator(); add Tests.Evaluators.WhereEvaluatorTests.ReturnTrue_IsCriteriaEvaluator()",
+    "apidelta Ardalis.Specification#192: 0 breaking, 61 additive :: add Tests.Evaluators.WhereEvaluatorCustomSpecTests; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTracking; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.AsSplitQuery; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.AsTracking; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheEnabled; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.CacheKey; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreAutoIncludes; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IgnoreQueryFilters; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeExpressions; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IncludeStrings; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.IsSatisfiedBy(T); add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Items; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.OrderExpressions; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.PostProcessingAction; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Query; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.QueryTags; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Search; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.SearchCriterias; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Skip; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Take; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.Where; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.CustomSpecification\u00601.WhereExpressions; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.Customer; add Tests.Evaluators.WhereEvaluatorCustomSpecTests.DoesNotFilter_GivenNoWhereExpression(); add Tests.Evaluators.WhereEvaluatorCustomSpecTests.Filters_GivenMultipleWhereExpressions(); add Tests.Evaluators.WhereEvaluatorCustomSpecTests.Filters_GivenSingleWhereExpression(); add Tests.Validators.WhereValidatorCustomSpecTests; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.AsNoTracking; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.AsNoTrackingWithIdentityResolution; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.AsSplitQuery; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.AsTracking; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.CacheEnabled; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.CacheKey; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Evaluate(IEnumerable\u003CT\u003E); add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IgnoreAutoIncludes; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IgnoreQueryFilters; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IncludeExpressions; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IncludeStrings; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.IsSatisfiedBy(T); add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Items; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.OrderExpressions; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.PostProcessingAction; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Query; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.QueryTags; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Search; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.SearchCriterias; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Skip; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Take; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.Where; add Tests.Validators.WhereValidatorCustomSpecTests.CustomSpecification\u00601.WhereExpressions; add Tests.Validators.WhereValidatorCustomSpecTests.Customer; add Tests.Validators.WhereValidatorCustomSpecTests.ReturnsFalse_GivenSpecWithMultipleWhere_WithAllInvalidValues(); add Tests.Validators.WhereValidatorCustomSpecTests.ReturnsFalse_GivenSpecWithMultipleWhere_WithSingleInvalidValue(); add Tests.Validators.WhereValidatorCustomSpecTests.ReturnsFalse_GivenSpecWithSingleWhere_WithInvalidEntity(); add Tests.Validators.WhereValidatorCustomSpecTests.ReturnsTrue_GivenEmptySpec(); add Tests.Validators.WhereValidatorCustomSpecTests.ReturnsTrue_GivenSpecWithMultipleWhere_WithValidEntity(); add Tests.Validators.WhereValidatorCustomSpecTests.ReturnsTrue_GivenSpecWithSingleWhere_WithValidEntity()",
+    "apidelta AutoFixture#199: 1 breaking, 0 additive :: BREAK AutoFixtureUnitTest.FixtureTest",
+    "apidelta AutoFixture#198: 2 breaking, 2 additive :: BREAK AutoFixtureUnitTest.UseCultureAttribute.After(MethodInfo); BREAK AutoFixtureUnitTest.UseCultureAttribute.Before(MethodInfo); add AutoFixtureUnitTest.UseCultureAttribute.After(MethodInfo,IXunitTest); add AutoFixtureUnitTest.UseCultureAttribute.Before(MethodInfo,IXunitTest)",
+    "apidelta AutoFixture#194: 2 breaking, 0 additive :: BREAK AutoFixture.AutoNSubstitute.UnitTest.NSubstituteRegisterCallHandlerCommandTest; BREAK AutoFixture.AutoNSubstitute.UnitTest.NSubstituteRegisterCallHandlerCommandTest.ValidCallSpecificationFactoryIsPassedToHandler()",
+    "apidelta Bogus#196: 0 breaking, 4 additive :: add Bogus.Tests.HandlebarsTests.ArgumentsTest.can_parse_music(); add Bogus.Tests.HandlebarsTests.ArgumentsTest.can_parse_vehicle(); add Bogus.Tests.HandlebarsTests.ArgumentsTest.parse_music_returns_expected_value(); add Bogus.Tests.HandlebarsTests.ArgumentsTest.parse_vehicle_returns_expected_value()",
+    "apidelta CommandLineParser#183: 0 breaking, 2 additive :: add CommandLine.Tests.Unit.Core.InstanceBuilderTests.Should_not_parse_quoted_TimeSpan(); add CommandLine.Tests.Unit.UnParserExtensionsTests.UnParsing_instance_with_TimeSpan_returns_the_value_unquoted_in_command_line()",
+    "apidelta CommandLineParser#177: 0 breaking, 6 additive :: add CSharpx.MaybeExtensions.MapValueOrDefault\u003CT1, T2\u003E(Maybe\u003CT1\u003E,Func\u003CT1, T2\u003E,Func\u003CT2\u003E); add CommandLine.Tests.Unit.Core.InstanceBuilderTests.Can_define_options_on_explicit_interface_properties(string[],string); add CommandLine.Tests.Unit.Issue591ests; add CommandLine.Tests.Unit.Issue591ests.Parse_option_with_only_explicit_interface_implementation(); add CommandLine.Tests.Unit.Issue70Tests; add CommandLine.Tests.Unit.Issue70Tests.Create_instance_with_factory_method_should_not_fail()",
+    "apidelta CsvHelper#168: 0 breaking, 2 additive :: add CsvHelper.Tests.Writing.EnumerableTests; add CsvHelper.Tests.Writing.EnumerableTests.WriteRecords_WithProjection_CalledOnce()",
+    "apidelta CsvHelper#166: 2 breaking, 8 additive :: BREAK CsvHelper.Tests.Dynamic.CsvRowDynamicObjectTests; BREAK CsvHelper.Tests.Dynamic.CsvRowDynamicObjectTests.Dynamic_SetAndGet_Works(); add CsvHelper.Tests.Dynamic.FastDynamicObjectTests; add CsvHelper.Tests.Dynamic.FastDynamicObjectTests.CopyTo_IndexGreaterThanZeroAndSourceIsLargerThanDestination_Throws(); add CsvHelper.Tests.Dynamic.FastDynamicObjectTests.CopyTo_IndexLargerThanArrayLength_Throws(); add CsvHelper.Tests.Dynamic.FastDynamicObjectTests.CopyTo_NegativeIndex_Throws(); add CsvHelper.Tests.Dynamic.FastDynamicObjectTests.CopyTo_SourceIsLargerThanDestination_Throws(); add CsvHelper.Tests.Dynamic.FastDynamicObjectTests.CopyTo_StartAtZero_Copies(); add CsvHelper.Tests.Dynamic.FastDynamicObjectTests.CopyTo_StartGreaterThanZero_Copies(); add CsvHelper.Tests.Dynamic.FastDynamicObjectTests.Dynamic_SetAndGet_Works()",
+    "apidelta Dapper#197: 0 breaking, 5 additive :: add Dapper.SqlMapper.Settings.PreferTypeHandlersForEnums; add Dapper.Tests.PreferTypeHandlersForEnumsTests\u00601; add Dapper.Tests.PreferTypeHandlersForEnumsTests\u00601.EnumTypeHandler_NullableWithNull_ReturnsNull(); add Dapper.Tests.PreferTypeHandlersForEnumsTests\u00601.EnumTypeHandler_WriteAndRead_UsesHandlerWhenEnabled(); add Dapper.Tests.SystemSqlClientPreferTypeHandlersForEnumsTests",
+    "apidelta Dapper#194: 0 breaking, 4 additive :: add Dapper.Tests.ParameterTests\u00601.DbCustomParamStruct; add Dapper.Tests.ParameterTests\u00601.DbCustomParamStruct.AddParameter(IDbCommand,string); add Dapper.Tests.ParameterTests\u00601.DbCustomParamStruct.DbCustomParamStruct(IDbDataParameter); add Dapper.Tests.ParameterTests\u00601.TestCustomParameterValueType()",
+    "apidelta FluentValidation#199: 0 breaking, 1 additive :: add FluentValidation.Tests.ValidatorTesterTester.Does_not_throw_when_a_failure_has_a_null_property_name()",
+    "apidelta FluentValidation#198: 0 breaking, 4 additive :: add FluentValidation.Internal.PropertyChain.GetParentChain(); add FluentValidation.Tests.PropertyChainTests.GetParentChain_returns_chain_without_last_member(); add FluentValidation.Tests.PropertyChainTests.GetParentChain_returns_empty_chain_when_chain_is_empty(); add FluentValidation.Tests.PropertyChainTests.GetParentChain_returns_empty_chain_when_only_one_member()",
+    "apidelta Flurl#183: 0 breaking, 1 additive :: add Flurl.Test.Http.GlobalConfigTests.can_prepend_global_base_url()",
+    "apidelta Flurl#181: 14 breaking, 12 additive :: BREAK Flurl.Test.Http.HttpTestFixtureBase.CreateHttpTest(); BREAK Flurl.Test.Http.NewtonsoftConfigTests; BREAK Flurl.Test.Http.NewtonsoftConfigTests.can_register_with_builder(); BREAK Flurl.Test.Http.NewtonsoftConfigTests.can_register_with_cache(); BREAK Flurl.Test.Http.NewtonsoftGetTests; BREAK Flurl.Test.Http.NewtonsoftGetTests.CreateHttpTest(); BREAK Flurl.Test.Http.NewtonsoftGetTests.can_get_dynamic(); BREAK Flurl.Test.Http.NewtonsoftGetTests.can_get_dynamic_list(); BREAK Flurl.Test.Http.NewtonsoftGetTests.can_get_error_json_untyped(bool); BREAK Flurl.Test.Http.NewtonsoftGetTests.null_response_returns_null_dynamic(); BREAK Flurl.Test.Http.NewtonsoftPostTests; BREAK Flurl.Test.Http.NewtonsoftPostTests.CreateHttpTest(); BREAK Flurl.Test.Http.NewtonsoftPostTests.can_receive_json_dynamic(); BREAK Flurl.Test.Http.NewtonsoftPostTests.can_receive_json_dynamic_list(); add Flurl.Http.FlurlRequest.EnsureClient(); add Flurl.Http.IFlurlRequest.EnsureClient(); add Flurl.Test.Http.NewtonsoftTests; add Flurl.Test.Http.NewtonsoftTests.can_get_dynamic(); add Flurl.Test.Http.NewtonsoftTests.can_get_dynamic_list(); add Flurl.Test.Http.NewtonsoftTests.can_get_error_json_untyped(bool); add Flurl.Test.Http.NewtonsoftTests.null_response_returns_null_dynamic(); add Flurl.Test.Http.NewtonsoftTests.test_data_incompatible_with_default_serializer(); add Flurl.Test.Http.NewtonsoftTests.works_with_cached_clients(); add Flurl.Test.Http.NewtonsoftTests.works_with_clientless(); add Flurl.Test.Http.NewtonsoftTests.works_with_individual_cached_client(); add Flurl.Test.Http.NewtonsoftTests.works_with_individual_client()",
+    "apidelta Flurl#174: 4 breaking, 2 additive :: BREAK Flurl.Http.Configuration.FlurlClientCache.Add(string,string); BREAK Flurl.Http.Configuration.IFlurlClientCache.Add(string,string); BREAK Flurl.Http.Configuration.IFlurlClientCacheExtensions; BREAK Flurl.Http.Configuration.IFlurlClientCacheExtensions.Add(IFlurlClientCache,string,string,Action\u003CIFlurlClientBuilder\u003E); add Flurl.Http.Configuration.FlurlClientCache.Add(string,string,Action\u003CIFlurlClientBuilder\u003E); add Flurl.Http.Configuration.IFlurlClientCache.Add(string,string,Action\u003CIFlurlClientBuilder\u003E)",
+    "apidelta Humanizer#198: 0 breaking, 18 additive :: add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests; add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.ByteSizeHumanize_UsesTurkmenNumberFormatting(); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.ByteSizeToFullWords_UsesTurkmenDataUnits(); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.Compass_AbbreviatedDirectionsUseTurkmenLabels(double,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.Compass_FullDirections(double,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.DataUnitHumanize_UsesTurkmenNames(DataUnit,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.DateHumanize_UsesTurkmenRelativeDatePhrases(int,TimeUnit,Tense,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.DateTimeToOrdinalWords_UsesTurkmenDatePattern(int,int,int,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.ListHumanize_UsesTurkmenConjunction(); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.NullableDateHumanize_NullDateUsesTurkmenNeverPhrase(); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.NumberToOrdinalWords_ProducesTurkmenOrdinals(int,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.NumberToWords_ProducesTurkmenCardinals(long,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.Ordinalize_UsesTurkmenNumericSuffixes(int,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.TimeSpanHumanize_ComposesTurkmenDurationsWithTurkmenListJoiner(); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.TimeSpanHumanize_UsesTurkmenDurationPhrases(TimeUnit,int,bool,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.TimeUnitHumanize_UsesTurkmenLabels(TimeUnit,string); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.ToAge_UsesTurkmenAgeTemplate(); add Humanizer.Tests.Localisation.tk.TurkmenLocaleParityTests.WordsToNumber_ParsesTurkmenCardinalsAndOrdinals(string,long)",
+    "apidelta Humanizer#197: 0 breaking, 18 additive :: add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests; add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.AbbreviatedDirections(double,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.DataUnit_FullWordForms(DataUnit,int,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.DateHumanize_UsesKonkaniPhrases(int,TimeUnit,Tense,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.DateTime_ToOrdinalWords_ExactOutput(int,int,int,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.FullDirections(double,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.Hours(int,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.ListHumanize_UsesKonkaniConjunction(); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.Minutes(int,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.MultiPart_UsesKonkaniCollectionFormatter(); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.NullableDateHumanize_NullDateUsesKonkaniNeverPhrase(); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.NumberFormatting_UsesStableKonkaniSeparators(); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.NumberToWords_ProducesExpectedOutput(long,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.NumberToWords_UsesKonkaniNegativePrefix(long,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.TimeUnitSymbols(TimeUnit,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.ToOrdinalWords_UsesKonkaniGenderedOutput(int,GrammaticalGender,string); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.ToWords_UsesKonkaniWords(); add Humanizer.Tests.Localisation.kok.KonkaniLocaleTests.WordsToNumber_ParsesKonkaniWords(string,long)",
+    "apidelta Humanizer#196: 0 breaking, 9 additive :: add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests; add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests.CollectionFormatter_UsesBasqueConjunction(); add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests.Compass_UsesBasqueHeadings(double,string); add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests.DateToOrdinalWords_UsesBasqueDatePattern(int,int,int,string); add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests.Formatter_UsesBasquePhrases(); add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests.NumberToWords_UsesBasqueCardinals(long,string); add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests.NumberToWords_UsesBasqueOrdinals(int,string); add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests.Ordinalize_UsesBasqueNumericSuffix(int,string); add Humanizer.Tests.Localisation.eu.BasqueLocaleParityTests.WordsToNumber_ParsesBasqueCardinalsAndOrdinals(string,long)",
+    "apidelta MediatR#117: 2 breaking, 2 additive :: BREAK MediatR.Examples.GenericPipelineBehavior\u00602.Handle(TRequest,CancellationToken,RequestHandlerDelegate\u003CTResponse\u003E); BREAK MediatR.Examples.GenericStreamPipelineBehavior\u00602.Handle(TRequest,CancellationToken,StreamHandlerDelegate\u003CTResponse\u003E); add MediatR.Examples.GenericPipelineBehavior\u00602.Handle(TRequest,RequestHandlerDelegate\u003CTResponse\u003E,CancellationToken); add MediatR.Examples.GenericStreamPipelineBehavior\u00602.Handle(TRequest,StreamHandlerDelegate\u003CTResponse\u003E,CancellationToken)",
+    "apidelta MediatR#55: 0 breaking, 6 additive :: add MediatR.Benchmarks.Benchmarks; add MediatR.Benchmarks.Benchmarks.GlobalSetup(); add MediatR.Benchmarks.Benchmarks.PublishingNotifications(); add MediatR.Benchmarks.Benchmarks.SendingRequests(); add MediatR.Benchmarks.Program; add MediatR.Benchmarks.Program.Main(string[])",
+    "apidelta MediatR#10: 0 breaking, 24 additive :: add MediatR.Examples.ConstrainedPingedHandler\u00601; add MediatR.Examples.ConstrainedPingedHandler\u00601.ConstrainedPingedHandler(TextWriter); add MediatR.Examples.ConstrainedPingedHandler\u00601.Handle(TNotification,CancellationToken); add MediatR.Examples.ConstrainedRequestPostProcessor\u00602; add MediatR.Examples.ConstrainedRequestPostProcessor\u00602.ConstrainedRequestPostProcessor(TextWriter); add MediatR.Examples.ConstrainedRequestPostProcessor\u00602.Process(TRequest,TResponse); add MediatR.Examples.Ninject.BindingExtensions; add MediatR.Examples.Ninject.BindingExtensions.WhenNotificationMatchesType\u003CTNotification\u003E(IBindingWhenSyntax\u003Cobject\u003E); add MediatR.Examples.Ponged; add MediatR.Examples.PongedHandler; add MediatR.Examples.PongedHandler.Handle(Ponged,CancellationToken); add MediatR.Examples.PongedHandler.PongedHandler(TextWriter); add MediatR.Examples.RunResults; add MediatR.Examples.RunResults.ConstrainedGenericBehaviors; add MediatR.Examples.RunResults.ConstrainedGenericNotificationHandler; add MediatR.Examples.RunResults.CovariantNotificationHandler; add MediatR.Examples.RunResults.MultipleNotificationHandlers; add MediatR.Examples.RunResults.NotificationHandler; add MediatR.Examples.RunResults.OrderedPipelineBehaviors; add MediatR.Examples.RunResults.PipelineBehaviors; add MediatR.Examples.RunResults.RequestHandlers; add MediatR.Examples.RunResults.RequestPostProcessors; add MediatR.Examples.RunResults.RequestPreProcessors; add MediatR.Examples.RunResults.VoidRequestsHandlers",
+    "apidelta NSubstitute#187: 0 breaking, 6 additive :: add NSubstitute.Acceptance.Specs.ArgumentMatching.Any_on_struct_with_default_constructor_should_work(); add NSubstitute.Acceptance.Specs.ArgumentMatching.IWithStructWithDefaultConstructor; add NSubstitute.Acceptance.Specs.ArgumentMatching.IWithStructWithDefaultConstructor.MethodWithStruct(StructWithDefaultConstructor); add NSubstitute.Acceptance.Specs.ArgumentMatching.StructWithDefaultConstructor; add NSubstitute.Acceptance.Specs.ArgumentMatching.StructWithDefaultConstructor.StructWithDefaultConstructor(); add NSubstitute.Acceptance.Specs.ArgumentMatching.StructWithDefaultConstructor.Value",
+    "apidelta NSubstitute#165: 1 breaking, 0 additive :: BREAK NSubstitute.Extensions.ProtectedExtensions.Protected\u003CT\u003E(T,string,object[])",
+    "apidelta NSubstitute#164: 0 breaking, 37 additive :: add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask; add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.AssertDoesNotThrow(Func\u003CValueTask\u003E); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.AssertDoesNotThrow\u003CT\u003E(Func\u003CValueTask\u003CT\u003E\u003E); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.AssertFaultedTaskException\u003CT, TException\u003E(Func\u003CValueTask\u003CT\u003E\u003E); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.AssertFaultedTaskException\u003CTException\u003E(Func\u003CValueTask\u003E); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.DoesNotThrowForNonMatchingArgs(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.DoesNotThrowVoidForNonMatchingArgs(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.SetUp(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.TearDown(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowAsyncException(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowAsyncExceptionWithDefaultConstructor(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowExceptionCreatedByFactoryFuncForAnyArgs(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowExceptionForAnyArgs(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowExceptionUsingFactoryFunc(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowExceptionWithDefaultConstructorForAnyArgs(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowExceptionWithInnerException(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowExceptionWithMessage(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowVoidAsyncException(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowVoidAsyncExceptionWithDefaultConstructor(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowVoidExceptionCreatedByFactoryFuncForAnyArgs(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowVoidExceptionForAnyArgs(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowVoidExceptionUsingFactoryFunc(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowVoidExceptionWithDefaultConstructorForAnyArgs(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowVoidExceptionWithInnerException(); add NSubstitute.Acceptance.Specs.ThrowingAsyncExceptions.ForValueTask.ThrowVoidExceptionWithMessage(); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsync(ValueTask,Exception); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsync(ValueTask,Func\u003CCallInfo, Exception\u003E); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsync\u003CT\u003E(ValueTask\u003CT\u003E,Exception); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsync\u003CT\u003E(ValueTask\u003CT\u003E,Func\u003CCallInfo, Exception\u003E); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsync\u003CTException\u003E(ValueTask); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsync\u003CTResult, TException\u003E(ValueTask\u003CTResult\u003E); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsyncForAnyArgs(ValueTask,Exception); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsyncForAnyArgs(ValueTask,Func\u003CCallInfo, Exception\u003E); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsyncForAnyArgs\u003CT, TException\u003E(ValueTask\u003CT\u003E); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsyncForAnyArgs\u003CT\u003E(ValueTask\u003CT\u003E,Exception); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsyncForAnyArgs\u003CT\u003E(ValueTask\u003CT\u003E,Func\u003CCallInfo, Exception\u003E); add NSubstitute.ExceptionExtensions.ExceptionExtensions.ThrowsAsyncForAnyArgs\u003CTException\u003E(ValueTask)",
+    "apidelta Nancy#198: 0 breaking, 17 additive :: add Nancy.Security.ClaimsPrincipalExtensions.IsInAnyRole(ClaimsPrincipal,string[]); add Nancy.Security.ClaimsPrincipalExtensions.IsInRoles(ClaimsPrincipal,string[]); add Nancy.Security.ModuleSecurity.RequiresAnyRole(INancyModule,string[]); add Nancy.Security.ModuleSecurity.RequiresRoles(INancyModule,string[]); add Nancy.Security.SecurityHooks.RequiresAnyRole(string[]); add Nancy.Security.SecurityHooks.RequiresRoles(string[]); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_false_for_any_required_role_if_the_roles_are_null(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_false_for_any_required_role_if_the_user_does_not_have_any_role(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_false_for_any_required_role_if_the_user_is_null(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_false_for_required_role_if_the_roles_are_null(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_false_for_required_role_if_the_user_does_not_have_role(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_false_for_required_roles_if_the_roles_are_null(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_false_for_required_roles_if_the_user_does_not_have_all_roles(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_false_for_required_roles_if_the_user_is_null(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_true_for_any_required_role_if_the_user_does_have_any_of_role(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_true_for_required_role_if_the_user_does_have_role(); add Nancy.Tests.Unit.Security.ClaimsPrincipalExtensionsFixture.Should_return_true_for_required_roles_if_the_user_does_have_all_roles()",
+    "apidelta Newtonsoft.Json#199: 1 breaking, 0 additive :: BREAK Newtonsoft.Json.Linq.JToken.WriteTo(JsonWriter)",
+    "apidelta NodaTime#197: 0 breaking, 9 additive :: add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseDayOfWeek_ambiguousPrefix_exception(); add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseDayOfWeek_caseInsensitive(); add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseDayOfWeek_invalidDay_exception(); add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseDayOfWeek_nullOrEmpty(); add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseDayOfWeek_shortNames(); add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseDayOfWeek_unambiguousPrefix(); add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseMonth_ambiguousPrefix_exception(); add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseMonth_caseInsensitive(); add NodaTime.TzdbCompiler.Test.Tzdb.TzdbZoneInfoParserTest.ParseMonth_unambiguousPrefix()",
+    "apidelta NodaTime#193: 1 breaking, 1 additive :: BREAK NodaTime.TzdbCompiler.Test.Tzdb.CldrWindowsZonesParserTest.Versions_Present(); add NodaTime.TzdbCompiler.Test.Tzdb.CldrWindowsZonesParserTest.Versions_Present(string,string)",
+    "apidelta NodaTime#192: 1 breaking, 0 additive :: BREAK NodaTime.Tools.Common.FileUtility.LoadFileOrUrlAsync(string)",
+    "apidelta Polly#195: 1 breaking, 2 additive :: BREAK Polly.TestUtils.TestUtilities.EnablePollyMetering(ICollection\u003CMeteringEvent\u003E,Predicate\u003CInstrument\u003E?); add Polly.TestUtils.TestUtilities.EnablePollyMetering(ICollection\u003CMeteringEvent\u003E,Predicate\u003CInstrument\u003E?,Predicate\u003CMeteringEvent\u003E?); add Polly.TestUtils.TestUtilities.ForPipelines(string[])",
+    "apidelta Polly#161: 0 breaking, 17 additive :: add Polly.Core.Tests.Hedging.HedgingResilienceStrategyTests.ExecuteCore_CallerCancellation_EnsureExceptionCarriesCallerToken(); add Polly.Core.Tests.Issues.IssuesTests; add Polly.Core.Tests.Issues.IssuesTests.Hedging_CallerCancellation_ExceptionCarriesCallerToken_3086(); add Polly.Core.Tests.Issues.IssuesTests.NestedTimeouts_CallerCancellation_ExceptionCarriesCallerToken_3086(); add Polly.Core.Tests.Issues.IssuesTests.RetryThenTimeout_CallerCancellation_ExceptionCarriesCallerToken_3086(); add Polly.Core.Tests.Issues.IssuesTests.TimeoutThenRetry_CallerCancellation_ExceptionCarriesCallerToken_3086(); add Polly.Core.Tests.Issues.IssuesTests.Timeout_CallerCancellation_ExceptionCarriesCallerToken_3086(); add Polly.Core.Tests.Issues.IssuesTests.Timeout_RealTimeout_StillThrowsTimeoutRejectedException_3086(); add Polly.Core.Tests.Issues.IssuesTests.Timeout_UnrelatedCancellation_ExceptionPreserved_3086(); add Polly.Core.Tests.Issues.IssuesTests.WithoutTokenSubstitution_CallerCancellation_ExceptionCarriesCallerToken_3086(); add Polly.Core.Tests.Timeout.TimeoutResilienceStrategyTests.Execute_CallerCancellation_EnsureExceptionCarriesCallerToken(); add Polly.Core.Tests.Utils.OutcomeUtilitiesTests; add Polly.Core.Tests.Utils.OutcomeUtilitiesTests.WithCallerCancellation_CallerCancelled_DifferentToken_RewritesToCallerToken(); add Polly.Core.Tests.Utils.OutcomeUtilitiesTests.WithCallerCancellation_CallerCancelled_NonCancellationException_ReturnsOriginal(); add Polly.Core.Tests.Utils.OutcomeUtilitiesTests.WithCallerCancellation_CallerCancelled_SameToken_ReturnsOriginal(); add Polly.Core.Tests.Utils.OutcomeUtilitiesTests.WithCallerCancellation_CallerCancelled_SuccessOutcome_ReturnsOriginal(); add Polly.Core.Tests.Utils.OutcomeUtilitiesTests.WithCallerCancellation_CallerNotCancelled_ReturnsOriginal()",
+    "apidelta Polly#69: 2 breaking, 4 additive :: BREAK Polly.Core.Tests.StrategyBuilderContextTests; BREAK Polly.Core.Tests.StrategyBuilderContextTests.Ctor_EnsureDefaults(); add Polly.Core.Tests.ResiliencePipelineBuilderTests.CopyCtor_Reminder(); add Polly.Core.Tests.Telemetry.ResilienceStrategyTelemetryTests.Ctor_Ok(); add Polly.Extensions.Tests.Telemetry.TelemetrySourceTests; add Polly.Extensions.Tests.Telemetry.TelemetrySourceTests.TelemetrySource_CreatesMeter()",
+    "apidelta RestSharp#191: 0 breaking, 4 additive :: add RestSharp.Tests.Integrated.SyncRequestTests; add RestSharp.Tests.Integrated.SyncRequestTests.Sync_execute_from_multiple_threads_should_not_deadlock(); add RestSharp.Tests.Integrated.SyncRequestTests.Sync_execute_should_not_deadlock(); add RestSharp.Tests.Integrated.SyncRequestTests.Sync_execute_with_deserialization_should_not_deadlock()",
+    "apidelta RestSharp#188: 3 breaking, 63 additive :: BREAK RestSharp.Authenticators.AuthenticatorBase.Authenticate(IRestClient,RestRequest); BREAK RestSharp.Authenticators.IAuthenticator.Authenticate(IRestClient,RestRequest); BREAK RestSharp.Authenticators.OAuth1Authenticator.Authenticate(IRestClient,RestRequest); add RestSharp.Authenticators.AuthenticatorBase.Authenticate(IRestClient,RestRequest,CancellationToken); add RestSharp.Authenticators.IAuthenticator.Authenticate(IRestClient,RestRequest,CancellationToken); add RestSharp.Authenticators.OAuth1Authenticator.Authenticate(IRestClient,RestRequest,CancellationToken); add RestSharp.Authenticators.OAuth2.OAuth2ClientCredentialsAuthenticator; add RestSharp.Authenticators.OAuth2.OAuth2ClientCredentialsAuthenticator.BuildRequestParameters(); add RestSharp.Authenticators.OAuth2.OAuth2EndpointAuthenticatorBase; add RestSharp.Authenticators.OAuth2.OAuth2EndpointAuthenticatorBase.Authenticate(IRestClient,RestRequest,CancellationToken); add RestSharp.Authenticators.OAuth2.OAuth2EndpointAuthenticatorBase.BuildRequestParameters(); add RestSharp.Authenticators.OAuth2.OAuth2EndpointAuthenticatorBase.Dispose(); add RestSharp.Authenticators.OAuth2.OAuth2EndpointAuthenticatorBase.OAuth2EndpointAuthenticatorBase(OAuth2TokenRequest); add RestSharp.Authenticators.OAuth2.OAuth2EndpointAuthenticatorBase.OnTokenResponse(OAuth2TokenResponse); add RestSharp.Authenticators.OAuth2.OAuth2EndpointAuthenticatorBase.SetInitialToken(string,DateTimeOffset); add RestSharp.Authenticators.OAuth2.OAuth2EndpointAuthenticatorBase.TokenRequest; add RestSharp.Authenticators.OAuth2.OAuth2RefreshTokenAuthenticator; add RestSharp.Authenticators.OAuth2.OAuth2RefreshTokenAuthenticator.BuildRequestParameters(); add RestSharp.Authenticators.OAuth2.OAuth2RefreshTokenAuthenticator.OAuth2RefreshTokenAuthenticator(OAuth2TokenRequest,string,string,DateTimeOffset); add RestSharp.Authenticators.OAuth2.OAuth2RefreshTokenAuthenticator.OnTokenResponse(OAuth2TokenResponse); add RestSharp.Authenticators.OAuth2.OAuth2Token; add RestSharp.Authenticators.OAuth2.OAuth2TokenAuthenticator; add RestSharp.Authenticators.OAuth2.OAuth2TokenAuthenticator.Authenticate(IRestClient,RestRequest,CancellationToken); add RestSharp.Authenticators.OAuth2.OAuth2TokenAuthenticator.Dispose(); add RestSharp.Authenticators.OAuth2.OAuth2TokenAuthenticator.OAuth2TokenAuthenticator(Func\u003CCancellationToken, Task\u003COAuth2Token\u003E\u003E,string); add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest; add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.ClientId; add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.ClientSecret; add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.ExpiryBuffer; add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.ExtraParameters; add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.HttpClient; add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.OAuth2TokenRequest(string,string,string); add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.OnTokenRefreshed; add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.Scope; add RestSharp.Authenticators.OAuth2.OAuth2TokenRequest.TokenEndpointUrl; add RestSharp.Authenticators.OAuth2.OAuth2TokenResponse; add RestSharp.Authenticators.OAuth2.OAuth2TokenResponse.AccessToken; add RestSharp.Authenticators.OAuth2.OAuth2TokenResponse.ExpiresIn; add RestSharp.Authenticators.OAuth2.OAuth2TokenResponse.RefreshToken; add RestSharp.Authenticators.OAuth2.OAuth2TokenResponse.Scope; add RestSharp.Authenticators.OAuth2.OAuth2TokenResponse.TokenType; add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests; add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Dispose(); add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Should_cache_token_across_multiple_calls(); add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Should_invoke_callback_on_token_refresh(); add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Should_obtain_token_and_set_authorization_header(); add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Should_refresh_expired_token(); add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Should_send_scope_when_configured(); add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Should_throw_on_empty_access_token(); add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Should_throw_on_error_response(); add RestSharp.Tests.Auth.OAuth2ClientCredentialsAuthenticatorTests.Should_treat_missing_expires_in_as_non_expiring(); add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests; add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests.Dispose(); add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests.Should_invoke_callback_on_refresh(); add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests.Should_refresh_when_token_expired(); add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests.Should_send_refresh_token_in_request(); add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests.Should_send_scope_when_configured(); add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests.Should_throw_on_error_response(); add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests.Should_update_refresh_token_when_rotated(); add RestSharp.Tests.Auth.OAuth2RefreshTokenAuthenticatorTests.Should_use_initial_token_when_not_expired(); add RestSharp.Tests.Auth.OAuth2TokenAuthenticatorTests; add RestSharp.Tests.Auth.OAuth2TokenAuthenticatorTests.Dispose(); add RestSharp.Tests.Auth.OAuth2TokenAuthenticatorTests.Should_cache_token_across_calls(); add RestSharp.Tests.Auth.OAuth2TokenAuthenticatorTests.Should_call_delegate_and_set_authorization_header(); add RestSharp.Tests.Auth.OAuth2TokenAuthenticatorTests.Should_re_invoke_delegate_when_token_expired(); add RestSharp.Tests.Auth.OAuth2TokenAuthenticatorTests.Should_use_custom_token_type()",
+    "apidelta RestSharp#187: 0 breaking, 2 additive :: add RestSharp.Tests.RestClientTests.Should_not_set_expect_continue_on_new_http_client_default_headers(); add RestSharp.Tests.RestClientTests.Should_not_set_expect_continue_on_shared_http_client_default_headers()",
+    "apidelta Scrutor#196: 0 breaking, 31 additive :: add Scrutor.Tests.EnumKeyedService; add Scrutor.Tests.GenericKeyedService; add Scrutor.Tests.IKeyedTestService; add Scrutor.Tests.IOtherKeyedTestService; add Scrutor.Tests.KeyedServiceTests; add Scrutor.Tests.KeyedServiceTests.AllowsSameServiceTypeWithDifferentKeys(); add Scrutor.Tests.KeyedServiceTests.CanRegisterKeyedServiceWithDifferentServiceTypes(); add Scrutor.Tests.KeyedServiceTests.CanRegisterKeyedServiceWithEnumKey(); add Scrutor.Tests.KeyedServiceTests.CanRegisterKeyedServiceWithGenericAttribute(); add Scrutor.Tests.KeyedServiceTests.CanRegisterKeyedServiceWithNullServiceType(); add Scrutor.Tests.KeyedServiceTests.CanRegisterKeyedServiceWithObjectKey(); add Scrutor.Tests.KeyedServiceTests.CanRegisterKeyedServiceWithStringKey(); add Scrutor.Tests.KeyedServiceTests.CanRegisterMixedKeyedAndNonKeyedServices(); add Scrutor.Tests.KeyedServiceTests.CanRegisterMultipleKeyedServicesOnSameType(); add Scrutor.Tests.KeyedServiceTests.CanRegisterServiceWithNullKey(); add Scrutor.Tests.KeyedServiceTests.CanResolveKeyedServiceWithObjectKey(); add Scrutor.Tests.KeyedServiceTests.CanResolveKeyedServices(); add Scrutor.Tests.KeyedServiceTests.CanResolveServiceWithNullKey(); add Scrutor.Tests.KeyedServiceTests.KeyedServicesAreIsolatedFromNonKeyedServices(); add Scrutor.Tests.KeyedServiceTests.ThrowsWhenResolvingNonExistentKeyedService(); add Scrutor.Tests.KeyedServiceWithNullServiceType; add Scrutor.Tests.KeyedTransientService; add Scrutor.Tests.MixedKeyedService; add Scrutor.Tests.MultiServiceKeyedService; add Scrutor.Tests.MultipleKeyedService; add Scrutor.Tests.NullKeyedService; add Scrutor.Tests.ObjectKeyedService; add Scrutor.Tests.SameServiceTypeDifferentKeys; add Scrutor.Tests.TestEnum; add Scrutor.Tests.TestEnum.Value1; add Scrutor.Tests.TestEnum.Value2",
+    "apidelta Scrutor#195: 0 breaking, 4 additive :: add Scrutor.ServiceDescriptorAttribute.ServiceDescriptorAttribute(Type?,ServiceLifetime,object?); add Scrutor.ServiceDescriptorAttribute.ServiceKey; add Scrutor.ServiceDescriptorAttribute\u00601.ServiceDescriptorAttribute(ServiceLifetime,object?); add Scrutor.ServiceDescriptorAttribute\u00601.ServiceDescriptorAttribute(object?)",
+    "apidelta Scrutor#194: 0 breaking, 20 additive :: add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.Decorate(IServiceCollection,DecorationStrategy,DecoratedService\u003Cobject\u003E); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.Decorate(IServiceCollection,Type,Func\u003Cobject, IServiceProvider, object\u003E,DecoratedService\u003Cobject\u003E); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.Decorate(IServiceCollection,Type,Func\u003Cobject, object\u003E,DecoratedService\u003Cobject\u003E); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.Decorate(IServiceCollection,Type,Type,DecoratedService\u003Cobject\u003E); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.Decorate\u003CTService, TDecorator\u003E(IServiceCollection,DecoratedService\u003CTService\u003E); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.Decorate\u003CTService\u003E(IServiceCollection,Func\u003CTService, IServiceProvider, TService\u003E,DecoratedService\u003CTService\u003E); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.Decorate\u003CTService\u003E(IServiceCollection,Func\u003CTService, TService\u003E,DecoratedService\u003CTService\u003E); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.TryDecorate(IServiceCollection,DecorationStrategy,DecoratedService\u003Cobject\u003E?); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.TryDecorate(IServiceCollection,Type,Func\u003Cobject, IServiceProvider, object\u003E,DecoratedService\u003Cobject\u003E?); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.TryDecorate(IServiceCollection,Type,Func\u003Cobject, object\u003E,DecoratedService\u003Cobject\u003E?); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.TryDecorate(IServiceCollection,Type,Type,DecoratedService\u003Cobject\u003E?); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.TryDecorate\u003CTService, TDecorator\u003E(IServiceCollection,DecoratedService\u003CTService\u003E?); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.TryDecorate\u003CTService\u003E(IServiceCollection,Func\u003CTService, IServiceProvider, TService\u003E,DecoratedService\u003CTService\u003E?); add Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.TryDecorate\u003CTService\u003E(IServiceCollection,Func\u003CTService, TService\u003E,DecoratedService\u003CTService\u003E?); add Scrutor.DecoratedService\u00601; add Scrutor.ServiceProviderExtensions; add Scrutor.ServiceProviderExtensions.GetDecoratedServices\u003CTService\u003E(IServiceProvider,DecoratedService\u003CTService\u003E); add Scrutor.ServiceProviderExtensions.GetRequiredDecoratedService\u003CTService\u003E(IServiceProvider,DecoratedService\u003CTService\u003E); add Scrutor.Tests.DecorationTests.CanDecorateDifferentServicesAndReturnDecoratedServiceHandles(); add Scrutor.Tests.DecorationTests.CanDecorateMultipleLevelsAndReturnDecoratedServiceHandles()",
+    "apidelta Shouldly#197: 0 breaking, 2 additive :: add Shouldly.Tests.Strings.DetailedDifference.CaseSensitive.UnicodeScenarios.NarrowAstralCharacters(); add Shouldly.Tests.Strings.DetailedDifference.CaseSensitive.UnicodeScenarios.WideNonCjkCharacters()",
+    "apidelta Shouldly#189: 0 breaking, 3 additive :: add Shouldly.Tests.ShouldContain.NullStringScenario; add Shouldly.Tests.ShouldContain.NullStringScenario.NullStringScenarioShouldFail(); add Shouldly.Tests.ShouldContain.NullStringScenario.NullStringShouldNotContainShouldPass()",
+    "apidelta Shouldly#181: 10 breaking, 4 additive :: BREAK ShouldSatisfyAllConditionsExamples.ShouldSatisfyAllConditions(); BREAK ShouldSatisfyAllConditionsExamples.ShouldSatisfyAllConditionsGeneric(); BREAK Shouldly.ShouldSatisfyAllConditionsTestExtensions.ShouldSatisfy(object?,Action[],string?,string?); BREAK Shouldly.ShouldSatisfyAllConditionsTestExtensions.ShouldSatisfy(object?,System.Action[],string?,string?); BREAK Shouldly.Tests.ShouldSatisfyAllConditions.MultipleConditionsScenario_MultiLine; BREAK Shouldly.Tests.ShouldSatisfyAllConditions.MultipleConditionsScenario_MultiLine.MultipleConditionsScenario_MultiLineShouldFail(); BREAK Shouldly.Tests.ShouldSatisfyAllConditions.MultipleConditionsScenario_MultiLine.ShouldPass(); BREAK Shouldly.Tests.ShouldSatisfyAllConditions.MultipleConditionsScenario_MultiLine2; BREAK Shouldly.Tests.ShouldSatisfyAllConditions.MultipleConditionsScenario_MultiLine2.MultipleConditionsScenario_MultiLine2ShouldFail(); BREAK Shouldly.Tests.ShouldSatisfyAllConditions.MultipleConditionsScenario_MultiLine2.ShouldPass(); add ShouldSatisfyAllConditionsExamples.Satisfy(); add ShouldSatisfyAllConditionsExamples.ShouldSatisfy(); add Shouldly.Should.Satisfy(Action[],string?,string?); add Shouldly.Should.Satisfy(System.Action[],string?,string?)",
+    "apidelta StackExchange.Redis#197: 1 breaking, 14 additive :: BREAK StackExchange.Redis.Tests.Issues.Issue1103Tests.LargeUInt64StoredCorrectly(ulong,int); add StackExchange.Redis.Tests.Issues.Issue1103Tests.LargeUInt64StoredCorrectly(ulong,int,int); add StackExchange.Redis.Tests.RedisValueShortBlobTests; add StackExchange.Redis.Tests.RedisValueShortBlobTests.FromRaw_RoutesByLength(); add StackExchange.Redis.Tests.RedisValueShortBlobTests.ShortBlob_CompareTo_Sequence_NonEqualOrdering(); add StackExchange.Redis.Tests.RedisValueShortBlobTests.ShortBlob_IsIndistinguishableFromByteArray(string); add StackExchange.Redis.Tests.RedisValueShortBlobTests.ShortBlob_NonTextBytes_RoundTripAndEqualByteArray(); add StackExchange.Redis.Tests.RedisValueShortBlobTests.ShortBlob_NotNullOrEmpty(); add StackExchange.Redis.Tests.RedisValueShortBlobTests.ShortBlob_NumericContent_EqualsAndParsesLikeInteger(); add StackExchange.Redis.Tests.RedisValueShortBlobTests.ShortBlob_SpecialDouble_ParsesLikeByteArray(string,double); add StackExchange.Redis.Tests.RedisValueShortBlobTests.ShortBlob_StartsWith_MatchesByteArray(); add StackExchange.Redis.Tests.RedisValueShortBlobTests.ShortBlob_WriteBulkString_MatchesByteArray(); add StackExchange.Redis.Tests.RedisValueStorageKindUnitTests; add StackExchange.Redis.Tests.RedisValueStorageKindUnitTests.FetchedValue_StorageKindAndRoundTrip(string,string); add StackExchange.Redis.Tests.RedisValueStorageKindUnitTests.LiteralsResolveToExpectedStorageKinds()",
+    "apidelta StackExchange.Redis#195: 0 breaking, 18 additive :: add RESPite.Tests.CycleBufferTests.WriteMultiSegmentSequence_WritesEverySegment(); add StackExchange.Redis.RedisValue.implicit operator ReadOnlySequence\u003Cbyte\u003E(RedisValue); add StackExchange.Redis.RedisValue.implicit operator RedisValue(ReadOnlySequence\u003Cbyte\u003E); add StackExchange.Redis.Tests.RedisValueSequenceServerTests; add StackExchange.Redis.Tests.RedisValueSequenceServerTests.StringSetAsync_MultiSegmentSequence_RoundTrips(); add StackExchange.Redis.Tests.RedisValueSequenceServerTests.StringSet_MultiSegmentSequence_RoundTrips(); add StackExchange.Redis.Tests.RedisValueSequenceTests; add StackExchange.Redis.Tests.RedisValueSequenceTests.EqualValues_HashIdentically_AcrossAllStorageForms(string); add StackExchange.Redis.Tests.RedisValueSequenceTests.IntegerAndTextForms_HashIdentically(); add StackExchange.Redis.Tests.RedisValueSequenceTests.LargeMultiSegmentUtf8_UsesStreamingDecoderPath(); add StackExchange.Redis.Tests.RedisValueSequenceTests.MultiSegmentBytes_RoundTripToArray(); add StackExchange.Redis.Tests.RedisValueSequenceTests.MultiSegmentSequence_CompareTo_DifferenceAcrossBoundaries(); add StackExchange.Redis.Tests.RedisValueSequenceTests.MultiSegmentSequence_CompareTo_EqualContentDifferentBoundaries(); add StackExchange.Redis.Tests.RedisValueSequenceTests.MultiSegmentSequence_CompareTo_MatchesByteOrdinal(string,string); add StackExchange.Redis.Tests.RedisValueSequenceTests.MultiSegmentSequence_DoubleCast_MatchesByteArray(string); add StackExchange.Redis.Tests.RedisValueSequenceTests.MultiSegmentSequence_TryParse_MatchesByteArray(string); add StackExchange.Redis.Tests.RedisValueSequenceTests.MultiSegmentUtf8_DecodesAcrossBoundaries(string); add StackExchange.Redis.ValueCondition.CalculateDigest(ReadOnlySequence\u003Cbyte\u003E)",
+    "apidelta StackExchange.Redis#193: 0 breaking, 3 additive :: add StackExchange.Redis.Tests.KeyIdleAsyncTests.GetConfiguration(); add StackExchange.Redis.Tests.KeyIdleTests.GetConfiguration(); add StackExchange.Redis.Tests.TestBase.SkipOnWindowsRelease(string?)",
+    "apidelta YamlDotNet#32: 1 breaking, 2 additive :: BREAK YamlDotNet.Test.Serialization.SerializationTests.RoundtripEnums(); add YamlDotNet.Test.Serialization.SerializationTests.RoundtripEnums(EnumExample); add YamlDotNet.Test.Serialization.SerializationTests.RoundtripNullableEnums(EnumExample?)",
+    "apidelta quartznet#199: 0 breaking, 5 additive :: add Quartz.Dashboard.Services.TriggerHeaderDto.ScheduleSummary; add Quartz.Dashboard.Services.TriggerHeaderDto.TriggerType; add Quartz.Tests.AspNetCore.Dashboard.InProcessQuartzApiClientTest.GetJobExposesJobDataMapThatConvertsBackToJobDataMap(); add Quartz.Tests.AspNetCore.Dashboard.InProcessQuartzApiClientTest.GetJobTriggersPopulatesTypeAndScheduleSummary(); add Quartz.Tests.AspNetCore.Dashboard.InProcessQuartzApiClientTest.GetTriggerForSimpleTriggerIncludesTypeScheduleAndJobDataMap()",
+    "apidelta quartznet#197: 1 breaking, 9 additive :: BREAK Quartz.Benchmark.CronExpressionBenchmark.CreateExpressionsAndCalculateFireTimeAfter(); add Quartz.Benchmark.CronExpressionBenchmark.NextOccurrence(); add Quartz.Benchmark.CronExpressionBenchmark.NextOccurrences100(); add Quartz.Benchmark.CronExpressionBenchmark.Parse(); add Quartz.Benchmark.CronExpressionBenchmark.Setup(); add Quartz.Tests.Unit.CronExpressionDifferentialTest; add Quartz.Tests.Unit.CronExpressionDifferentialTest.BitmaskNextValue_MatchesReference(); add Quartz.Tests.Unit.CronExpressionDifferentialTest.GetNextValidTimeAfter_MatchesBruteForce_DayOfMonth(); add Quartz.Tests.Unit.CronExpressionDifferentialTest.GetNextValidTimeAfter_MatchesBruteForce_TimeOfDay(); add Quartz.Tests.Unit.CronExpressionDifferentialTest.TrailingZeroCount_MatchesReference()",
+    "apidelta serilog#196: 1 breaking, 0 additive :: BREAK Serilog.Tests.Core.FailureListenerTests.RestrictedSinkForwardsFailureListenerToInnerSink()",
+    "apidelta serilog#195: 0 breaking, 3 additive :: add Serilog.Tests.Core.FailureListenerTests.DefaultLevelAllowsFailureListenerPropagation(); add Serilog.Tests.Core.FailureListenerTests.RestrictedSinkForwardsFailureListenerToInnerSink(); add Serilog.Tests.Core.FailureListenerTests.RestrictedToMinimumLevelAllowsFailureListenerPropagation()",
+    "budget 25,000 fuse vs changed: recall 100%, precision 93%, median tokens 1,026",
+    "budget 25,000 grep vs changed: recall 67%, precision 8%"
   ]
 }

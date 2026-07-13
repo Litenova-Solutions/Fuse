@@ -30,6 +30,8 @@ public static class Program
         services.AddScoped<IShipping, FastShipping>();
         // Keyed DI registration (the service key is ignored for service -> implementation resolution).
         services.AddKeyedScoped<INotifier, EmailNotifier>("email");
+        // Typed HttpClient registration (G2 iteration 2): resolves IPricingClient -> PricingClient.
+        services.AddHttpClient<IPricingClient, PricingClient>();
     }
 
     public static void MapEndpoints(WebApplication app)

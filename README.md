@@ -1,5 +1,9 @@
 <!-- mcp-name: io.github.Litenova-Solutions/fuse -->
 
+<p align="center">
+  <img src="assets/fuse-icon.svg" alt="Fuse" width="72" height="72">
+</p>
+
 # Fuse
 
 Fuse is a local .NET tool with a persistent semantic index and pre-write compiler

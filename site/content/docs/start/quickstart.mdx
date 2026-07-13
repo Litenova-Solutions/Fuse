@@ -32,8 +32,10 @@ analysis mode, and freshness exactly as Fuse reports them.
 A response with the repository path confirms the connection. A tool list or a statement
 that Fuse is available does not.
 
-The first call builds `.fuse/fuse.db`. A large repository can take from a few seconds to
-tens of seconds on this cold call. Later calls reuse the local index.
+The first MCP tool call builds `.fuse/fuse.db` automatically; you do not need to run
+`fuse index` first. A large repository can take from a few seconds to tens of seconds on
+that cold call. Run `fuse index` first if you want the agent's first turn to read a warm
+index. Later calls reuse the local store.
 
 ## Check the First Proposed Edit
 

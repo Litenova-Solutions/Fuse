@@ -20,7 +20,9 @@ content with fuse_check before writing the file.
 
 Fuse runs on your machine. It stores a warm index in `.fuse/fuse.db`, walks typed
 wiring edges when the project loads through Roslyn, and returns compiler diagnostics for
-proposed single-file edits without changing the working tree.
+proposed single-file edits without changing the working tree. MCP read tools build the
+index on first use; run `fuse index` first if you want a warm store before the agent's
+first turn.
 
 <Diagram src="/fuse-product-boundary.svg" alt="Fuse local product boundary: MCP client, local Fuse process, repository, and .NET toolchain" />
 

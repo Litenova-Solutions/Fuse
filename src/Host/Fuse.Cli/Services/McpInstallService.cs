@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Fuse.Cli;
 using Fuse.Cli.Configuration.McpInstall;
 using Fuse.Cli.Serialization;
 
@@ -25,7 +26,8 @@ public sealed class McpInstallService
     /// <param name="writeRules">
     ///     When <see langword="true" />, also writes a rule biasing the agent toward the <c>fuse_*</c> tools into
     ///     each client's instruction file. Rule files are project-scoped; under user scope only Claude has a
-    ///     global equivalent and the others are skipped with a note.
+    ///     global equivalent and the others are skipped with a note. At project scope, also appends
+    ///     <c>.fuse/</c> to <c>.gitignore</c> when no equivalent entry exists.
     /// </param>
     /// <param name="consoleUI">The console UI for status output.</param>
     /// <param name="cancellationToken">A token that cancels Claude CLI registration.</param>
@@ -67,8 +69,18 @@ public sealed class McpInstallService
         }
 
         if (writeRules)
+        {
             foreach (var client in clients)
                 WriteClientRule(client, scope, projectRoot, consoleUI);
+
+            if (scope == McpInstallScope.Project)
+            {
+                GitIgnoreHelper.TryEnsureFuseEntry(
+                    projectRoot,
+                    consoleUI.WriteStep,
+                    consoleUI.WriteStep);
+            }
+        }
 
         return configured;
     }

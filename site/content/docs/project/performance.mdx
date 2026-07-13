@@ -3,13 +3,13 @@ title: Performance and latency
 description: Measured cold start, warm read latency, and verify-path timing for Fuse, sourced from the recorded benchmark result files.
 ---
 
-Fuse builds the semantic index once and reads it warm across calls. This page publishes measured latencies as a regression fence: every number is traceable to a recorded result file under `tests/benchmarks/results`, regenerated with `fuse eval performance`, `fuse resident-latency`, and `fuse testexec`. Timings are environment-dependent; read them as within-environment SLOs, not cross-machine guarantees.
+Fuse builds the persistent index once and reads it warm across calls. This page publishes measured latencies as a regression fence: every number is traceable to a recorded result file under `tests/benchmarks/results`, regenerated with `fuse eval performance`, `fuse resident-latency`, and `fuse testexec`. Timings are environment-dependent; read them as within-environment SLOs, not cross-machine guarantees.
 
 ## Warm persistent index
 
-Fuse analyzes each source file and stores the result in a persistent SQLite database at `.fuse/fuse.db` (WAL mode). The MCP server (`fuse mcp serve`) and the host process hold the index resident, so scoped calls reuse stored analysis instead of re-parsing unchanged files. Single-file incremental re-index clears and re-extracts only the changed file's syntax rows; it does not recompute cross-file semantic edges, which a full re-index refreshes.
+Fuse analyzes each source file and stores the result in a persistent SQLite database at `.fuse/fuse.db` (WAL mode). The MCP server (`fuse mcp serve`) and the host process reuse that store, so scoped calls do not re-parse unchanged files. Single-file incremental re-index clears and re-extracts only the changed file's syntax rows; it does not recompute cross-file semantic edges, which a full re-index refreshes.
 
-One-shot CLI commands pay startup cost on every invocation. The resident server pays it once per session; warm latencies below apply after that first pass. Cache key derivation and store layout are in [Caching Internals](/docs/internals/caching-internals).
+One-shot CLI commands pay startup cost on every invocation. A long-running server pays it once per session; warm latencies below apply after that first pass. The separate live compilation workspace is opt-in with `FUSE_RESIDENT=1`. Cache key derivation and store layout are in [Caching Internals](/docs/internals/caching-internals).
 
 ## Warm read verbs (two scales)
 
@@ -24,19 +24,19 @@ Each verb is the primitive the matching MCP tool calls, timed over 25 iterations
 | Review plan (`fuse_review`) | 97.8 ms | 101.3 ms | 38.3 ms | 41.6 ms |
 | Single-file incremental re-index | 20.9 ms | 25.4 ms | 1.9 ms | 2.3 ms |
 
-Every warm read sits well inside a sub-second budget. Verbs scale down with the repo: eShopOnWeb, about a third of NodaTime's symbols, is proportionally faster. `fuse_impact` reads ~0 ms on these syntax-mode checkouts because there is no semantic graph to walk; on a semantically loaded checkout the query walks real edges, bounded by neighborhood size.
+Every recorded warm read sits inside a sub-second budget on this machine. eShopOnWeb is faster in this run, but two repositories do not establish a proportional scaling law. `fuse_impact` reads ~0 ms on these syntax-mode checkouts because there is no semantic graph to walk; on a semantically loaded checkout the query walks real edges, bounded by neighborhood size.
 
 ## Verify verbs (NodaTime, `resident-latency.json`)
 
-`fuse_check` answers from a live resident workspace when one serves the root. The operations it invokes, timed over 25 iterations against held compilations:
+`fuse_check` answers from a live resident workspace when one serves the root. This path is opt-in with `FUSE_RESIDENT=1`; the default store-backed path is not represented by these timings. The operations below were timed over 25 iterations against held compilations:
 
 | Verify operation | P50 | P95 | Gate |
 |------------------|----:|----:|------|
 | Delta check, analyzers off (speculative typecheck) | 31.2 ms | 42.4 ms | P95 < 1000 ms: PASS |
 | Delta mode, whole-state diff | 203.9 ms | 699.3 ms | P95 < 1000 ms: PASS |
-| Delta check, analyzers on (284 analyzers) | 871.8 ms | 886.9 ms | (CI-parity, verify-class only) |
+| Raw analyzer execution (284 analyzers) | 871.8 ms | 886.9 ms | Informational |
 
-Analyzers are off on the hot per-edit delta path and on for an explicit single-file verify, where hundreds of milliseconds buys CI parity. The resident workspace warms once (build plus rehydrate) at 14,092 ms and holds the compilations at 162 MB RSS for the NodaTime checkout.
+The analyzer timing measures raw analyzer execution against the held compilation. It does not measure editorconfig severity mapping or establish full CI parity. The resident workspace warms once (build plus rehydrate) at 14,092 ms and holds the compilations at 162 MB RSS for the NodaTime checkout.
 
 ## Test execution (`testexec.json`)
 

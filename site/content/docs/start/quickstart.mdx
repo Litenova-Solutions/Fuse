@@ -1,30 +1,51 @@
 ---
 title: Quickstart
-description: Index a .NET workspace, then localize, resolve, and review against it, reading the context Fuse produces, in about a minute.
+description: Activate the local Fuse compiler service and get one graded result from your .NET workspace.
 ---
 
-This walks you from an installed tool to resolved context you can read. If you have
-not installed Fuse yet, see [Install](/docs/start/install).
+This takes an installed Fuse 4.0.0 tool to one graded result from a real
+repository. If you have not installed Fuse yet, see [Install](/docs/start/install).
 
 Fuse runs two ways: handed to an AI agent through the MCP server, or as a CLI in your
-terminal. The agent path is the primary use; the CLI walkthrough below is the local one.
+terminal. The agent path is primary because `fuse_check` can typecheck a proposed
+single-file edit before it is written. The CLI `fuse check` command is different: it
+reports the ambient delta from on-disk edits through a running host and does not accept
+proposed content.
 
 ## Hand It to an Agent
 
-Register Fuse with your client once. From your project root:
+From your project root, run one setup command:
 
 ```bash
 fuse mcp install --rules
 ```
 
-Your AI client (Claude Code, Cursor, or GitHub Copilot) then launches `fuse mcp serve`
-automatically when MCP is enabled. You do not run the server in a terminal yourself. The
-`--rules` flag also writes a short rule into your client's instruction file so the agent
-reaches for the `fuse_*` tools instead of grepping blindly; it is the recommended install.
-Use `--scope user` to register Fuse for every project on this machine. See
-[Connect to your AI](/docs/start/connect-your-ai) for per-client details.
+Restart or reload your AI client, then send one activation command:
 
-The agent then resolves context in one or two calls instead of opening file after file.
+```text
+Call fuse_workspace with action=status for this repository. Return its index mode,
+freshness, and verification grade exactly as Fuse reports them.
+```
+
+These two commands end in a real Fuse result with a grade. If the agent only lists tools
+or says the server is connected, ask it to make the `fuse_workspace` call.
+
+Your client launches `fuse mcp serve` as a local child process when MCP is enabled. Source
+and the derived `.fuse/fuse.db` index stay on the machine. The first call builds the index,
+so a large repository can take from a few seconds to tens of seconds before the first
+answer. Later calls reuse the warm index.
+
+Fuse serves a syntax index first, then attempts an MSBuild and Roslyn upgrade. Repositories
+with missing SDKs, failed restores, or project build errors can remain in `partial` or
+`syntax` mode. Fuse reports that downgrade. Compiler verification falls back to a scoped
+real `dotnet build` and labels the answer build grade when no resident or build-captured
+compilation is available.
+
+The `--rules` flag writes MCP configuration and client instruction files. Use
+`--scope user` to register Fuse for every project on this machine. See
+[Connect to your AI](/docs/start/connect-your-ai) for exact paths, network posture, and
+rollback steps.
+
 For change work, one `fuse_review` call returns the changed files and their blast radius:
 
 ```text
@@ -136,3 +157,7 @@ This scaffolds a `fuse.json` you can edit. See
 Hand the output to an agent automatically with the
 [MCP server](/docs/start/connect-your-ai), or learn the model behind a run in
 [How Fuse works](/docs/concepts/how-fuse-works).
+
+To reset the walkthrough, stop the client and delete `.fuse/`. It contains derived data
+only. Remove MCP configuration and rule entries with the
+[rollback steps](/docs/start/connect-your-ai#rollback).

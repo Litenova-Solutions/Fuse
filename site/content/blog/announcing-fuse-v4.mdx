@@ -1,78 +1,79 @@
 ---
 title: "Announcing Fuse v4: typecheck your agent's .NET edits before they land"
-description: "Fuse is a Model Context Protocol server that typechecks proposed .NET edits against the compiler. These scoped results describe its verification, wiring, review, and agent-loop measurements."
+description: "Fuse v4 helps coding agents check proposed C# edits, follow .NET application wiring, and review branches with local compiler-backed results."
 date: "2026-07-13"
 author: "The Fuse team"
 ---
 
-Fuse v4 is out. It is a Model Context Protocol server that connects your AI coding agent
-(Claude Code, Cursor, GitHub Copilot) to the .NET compiler.
-
-Fuse typechecks a proposed edit before the agent writes it (`fuse_check`), computes the
-typed impact of a change (`fuse_impact`), and stages compiler-executed refactors as
-verify-gated diffs (`fuse_refactor`). It also resolves service, request, route, and
-configuration wiring from a Roslyn graph. Compiler answers carry an evidence grade, and
-Fuse abstains when no available compiler path can support a verdict.
-
-## Five scoped observations
-
-Each is recorded under `tests/benchmarks/results` and reproduced with `fuse eval <suite>`.
-These results describe the named fixtures, corpora, and configurations.
-
-1. **Edit classification on OrderingApp.** Across 1,000 compiler-labeled edits (500
-   breaking and 500 neutral) plus 8 curated cases, `fuse_check` recorded zero false-green
-   and zero false-red verdicts. This result does not cover every .NET edit
-   (`checkgate.json`).
-2. **Agent-loop result on a reduced-scope arena.** With `claude-sonnet-4-6` over 234 scored
-   rollouts, the Fuse arm recorded true pass@1 of 89 percent (95 percent CI 82 to 95) and
-   the native arm recorded 82 percent (95 percent CI 74 to 90). False-done counts were 8
-   and 9. The confidence intervals overlap, and the arena was below its full size target
-   (`loop.json`).
-3. **Opt-in resident check latency.** With `FUSE_RESIDENT=1`, a dedicated NodaTime run
-   measured delta-check latency at P50 31.2 ms and P95 42.4 ms over 25 iterations. The
-   resident workspace is opt-in, and latency depends on the machine
-   (`resident-latency.json`).
-4. **Wiring agreement on a curated fixture.** The extracted graph matched all 24
-   hand-built OrderingApp wiring edges with no false positives (`semantics.json`).
-5. **Git-seeded review context.** Across 69 merged pull requests, `fuse review` retained
-   every git-changed file at 93.4 percent precision in a median 1,026 returned tokens.
-   Changed files were required seeds, so this is a precision result rather than evidence
-   that review discovered those files (`review.json`).
-
-How the first two were measured, including the gate that the run missed, is the subject of the
-companion post: [1,000 compiler-labeled edits](/blog/compiler-labeled-edits).
-
-## Install and connect
-
-Two commands. Install the .NET global tool, then register it with your agent:
+Fuse v4 lets Claude Code, Cursor, and GitHub Copilot ask the .NET compiler about a
+proposed C# file before writing it. Install and connect it from your project directory:
 
 ```bash
 dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
-The second command writes MCP config for Claude Code, Cursor, and GitHub Copilot in the
-current project. The `--rules` option adds a short instruction describing when to call the
-`fuse_*` tools. The read tools build the index on first use.
+Reload the coding agent, then ask:
 
-## Limits
+```text
+Before changing OrderService.cs, check the proposed file with fuse_check and show the
+compiler result before writing it.
+```
 
-- **Open-ended localization is the weakest mode.** From a task title alone, with no git base,
-  `fuse localize` recalls 37.7 percent of the changed files (95 percent CI 30 to 46). Rather
-  than return a low-precision candidate list on a no-signal title, Fuse refuses and returns a
-  workspace map. When a git base exists, Fuse routes the task to change review.
-- **The deep graph is .NET-only.** Other languages are supported at the syntax tier
-  (token-efficient context and search); the typed, compiler-backed graph is .NET, through
-  Roslyn.
-- **The millisecond delta-check is opt-in.** The resident workspace ships behind
-  `FUSE_RESIDENT=1` and its latency is environment-dependent. The default verify path runs at
-  oracle grade when a build capture is available and build grade otherwise, and names its
-  grade either way.
+That compiler-backed result is the main change in v4. `fuse_check` does not write the
+proposed content to the source file.
 
-The full method, corpus, and weaker modes are on the
-[benchmarks page](/docs/project/benchmarks); the reproduction steps are on the
-[reproduction page](/docs/project/reproduce).
+## What v4 Adds to Daily Work
 
-Install Fuse with the two commands above, confirm activation with `fuse_workspace
-action=status`, then follow the [quickstart](/docs/start/quickstart) for the first checked
-edit and wiring query.
+- `fuse_check` typechecks one proposed file and returns compiler diagnostics without
+  changing the working tree.
+- `fuse_impact` shows callers, implementations, and referencing types before a signature
+  change.
+- `fuse_find` follows dependency injection, requests, routes, and configuration to the
+  code that handles them.
+- `fuse_review` starts from the Git diff and gathers focused context from related files.
+- `fuse_refactor` stages a compiler-executed refactor as a diff and returns it only when
+  no new compiler diagnostic appears.
+
+Each check states which compiler path produced the answer. Fuse calls this the
+**verification grade**. Oracle grade uses a compilation captured from the real build.
+Build grade runs a scoped `dotnet build`. If neither path can answer, Fuse abstains and
+states what is missing.
+
+## What the Recorded Tests Support
+
+The results below come from `tests/benchmarks/results`. Each applies only to the named
+repository, edits, or pull requests.
+
+- In the recorded OrderingApp test app, `fuse_check` correctly separated all 1,000
+  compiler-labeled breaking and neutral edits. This does not cover every possible .NET
+  edit.
+- In that test app, Fuse matched all 24 expected .NET wiring links with no extra matches.
+  Reflection and runtime dispatch remain limits for static analysis.
+- Across 69 real pull requests, branch review retained every Git-changed file by
+  construction at 93.4 percent precision. It returned focused context with a median size
+  of 1,026 tokens. This does not prove that every file needed by a reviewer was returned.
+- In a reduced-size agent run, Fuse completed 89 percent of scored tasks and native tools
+  completed 82 percent. The confidence intervals overlap. Average build and test command
+  counts were 3.1 and 3.2, so the result does not support a claim that Fuse halves those
+  commands.
+
+The [benchmarks page](/docs/project/benchmarks) contains the exact methods, confidence
+intervals, and weaker results. The
+[reproduction page](/docs/project/reproduce) contains the commands.
+
+## Boundaries
+
+- File ranking from a task title alone is less reliable than a request anchored to Git,
+  a symbol, a route, a service, or a request type. Fuse can return a workspace map when
+  the title lacks enough code detail.
+- Compiler-backed wiring analysis is .NET-only. Other languages receive syntax-level
+  search and source reduction.
+- Faster repeated checks require the opt-in `FUSE_RESIDENT=1` mode. Its timing depends on
+  the repository and machine.
+- Fuse runs locally and does not write source during check, impact, review, or read
+  operations. `fuse_workspace` with `action=apply` is the explicit write path.
+
+Follow the [quickstart](/docs/start/quickstart) for the first checked edit, or
+[connect your coding agent](/docs/start/connect-your-ai) for project, user, and manual
+setup.

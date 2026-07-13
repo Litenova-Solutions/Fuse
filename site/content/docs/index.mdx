@@ -1,27 +1,34 @@
 ---
 title: Fuse documentation
-description: Install Fuse, connect your coding agent, and choose the workflow for checking edits, tracing .NET wiring, reviewing changes, or reducing context.
+description: Check proposed C# edits, trace .NET application wiring, and review branches with local compiler-backed results.
 ---
 
-Give your existing coding agent local compiler evidence and a typed graph of .NET
-application wiring:
+Catch compiler errors before your coding agent writes a proposed C# edit:
 
 ```bash
 dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
-Restart your MCP client, then ask it to call `fuse_workspace` with `action=status`.
+Reload your coding agent, then ask:
 
-## Choose an outcome
+```text
+Check the next edit with fuse_check before writing it.
+```
+
+Fuse runs against the repository on your machine. It also traces dependency injection,
+requests, routes, and configuration to the code that handles them.
+
+## Choose Your Next Task
 
 <Cards>
-  <Card title="Check an edit" href="/docs/scenarios/ambient-verification" description="Put compiler diagnostics into the agent loop after each change." />
-  <Card title="Trace .NET wiring" href="/docs/scenarios/ask-one-question" description="Resolve a service, request, route, or config section to its implementation." />
-  <Card title="Review a change" href="/docs/scenarios/scope-a-pr" description="Start from a git diff and add typed support context." />
-  <Card title="Reduce known context" href="/docs/scenarios/cut-tokens-dotnet" description="Compact selected files while preserving structural declarations." />
+  <Card title="Check a proposed edit" href="/docs/scenarios/ambient-verification" description="Get compiler diagnostics before the agent changes the file." />
+  <Card title="Follow application wiring" href="/docs/scenarios/ask-one-question" description="Find the implementation behind a service, request, route, or configuration section." />
+  <Card title="Review a branch" href="/docs/scenarios/scope-a-pr" description="Start from the git diff and gather focused context from related files." />
+  <Card title="Prepare selected source" href="/docs/scenarios/cut-tokens-dotnet" description="Reduce files you already chose while preserving their declarations." />
 </Cards>
 
-For setup, use the [quickstart](/docs/start/quickstart). For exact parameters, use the
-[MCP tool reference](/docs/reference/mcp-tools). For measured scope and limits, read
-[benchmarks](/docs/project/benchmarks).
+New to Fuse? Follow the [quickstart](/docs/start/quickstart), then
+[connect your coding agent](/docs/start/connect-your-ai). Use the
+[tool reference](/docs/reference/mcp-tools) for exact parameters and
+[benchmarks](/docs/project/benchmarks) for measured scope and limits.

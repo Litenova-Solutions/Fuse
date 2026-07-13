@@ -1,111 +1,96 @@
 ---
-title: Why Fuse, and how it compares
-description: Why existing coding agents benefit from a local .NET compiler service, typed wiring, graded evidence, and abstention.
+title: Why use Fuse
+description: How Fuse adds compiler-backed edit checks, .NET wiring lookup, and focused branch context to an existing coding agent.
 ---
 
-Coding agents already edit files, search repositories, run commands, and call language
-models. Fuse does not replace those capabilities. It adds a local evidence service for
-the questions where text search and model inference are weak: whether a proposed C# edit
-compiles, what typed references a signature change reaches, and how .NET services,
-requests, routes, and options are wired.
-
-## Compiler Evidence Instead of Inference
-
-An agent can propose a single-file edit and send the proposed content to `fuse_check`
-before writing it. Fuse returns compiler diagnostics and, for supported API-shape errors,
-a repair packet. The working tree remains unchanged.
-
-Every verdict identifies its evidence:
-
-- **Oracle grade** uses the build-captured compilation.
-- **Build grade** runs the real .NET build for the owning project.
-- **Abstention** reports that neither compiler path could answer and names the missing
-  prerequisite.
-
-Resident speculative checks are available behind `FUSE_RESIDENT=1`. In the recorded
-NodaTime run they completed at P50 31.2 ms and P95 42.4 ms, but resident mode is opt-in
-and timings depend on the machine. Default operation must not be described as
-millisecond verification.
-
-## Typed Wiring Instead of Name Matching
-
-Text search can find `IBasketService`; it cannot establish which implementation a
-particular dependency injection registration supplies. Fuse builds a typed graph with
-Roslyn and framework-aware analyzers, then resolves services, handlers, routes, and
-options through explicit edges.
-
-The semantic benchmark matched 24 of 24 hand-built edges with no false positives in the
-curated OrderingApp fixture. This result covers the patterns represented by that fixture.
-Reflection, dynamic dispatch, or a project that cannot load semantically can leave edges
-unresolved, so Fuse reports its index mode and does not present syntax-tier evidence as a
-compiler fact.
-
-## Local Operation
-
-Fuse runs as a .NET tool on the developer's machine. The MCP client launches
-`fuse mcp serve` and communicates with that local process. Fuse requires no hosted model,
-downloads no embedding model, and uses deterministic lexical retrieval for open-ended
-fallback queries.
-
-Checks, reads, indexing, and review do not write source files. The explicit write path is
-`fuse_workspace` with `action=apply`, which is a dry run unless the caller requests a
-write.
-
-This design lets teams add Fuse to Claude Code, Cursor, GitHub Copilot, or another MCP
-client without changing the agent model or editor workflow.
-
-## Branch Context, with a Defined Claim
-
-`fuse_review` starts from a git diff and packs the changed files plus graph-selected
-support files under a token budget. Each included file carries provenance.
-
-Across 69 recorded pull requests, review retained 100% of the git-changed files by
-construction at 93.4% precision, with a median 1,026 returned tokens. This measures compact
-git-seeded branch context. It does not establish that every file needed for a complete
-code review was returned.
-
-Open-ended localization is less precise. From a title alone, the recorded corpus reached
-37.7% changed-file recall. When a query lacks enough code signal, Fuse can abstain and
-return a map instead of presenting a weak ranking as certainty.
-
-## Context Reduction Is Supporting Machinery
-
-After Fuse has a symbol, wiring anchor, git diff, or selected file set, structural
-reduction fits source into a token budget. It does not provide the compiler verdict or
-typed edge.
-
-The current `reduce.json` records these ranges across four repositories:
-
-- The skeleton tier removed 38% to 44% of tokens.
-- An independent Roslyn parse found that skeleton retained 100% of public and protected
-  type-name keys and 96.3% to 99.4% of public and protected method-name keys.
-- The public-API tier removed 47% to 60% of tokens.
-
-These figures measure declaration-name fidelity, not complete API preservation.
-
-## What the Agent-Loop Result Supports
-
-The reduced-scope loop run observed 89% true pass@1 for the Fuse arm (95% CI 82%-95%) and
-82% for native tools (95% CI 74%-90%). The confidence intervals overlap. The Fuse arm made
-3.1 agent-visible build and test calls on average, compared with 3.2 for native tools.
-
-The result supports further evaluation of compiler-backed agent workflows. It does not
-support a claim that Fuse halves build calls. The check gate likewise has a bounded claim:
-zero wrong verdicts across 1,000 compiler-labeled OrderingApp mutations, not zero wrong
-verdicts for every possible .NET edit.
-
-## Try It on the Current Repository
-
-Install Fuse as a .NET global tool, then register its MCP server with the current agent:
+Before your coding agent changes `OrderService.cs`, have the compiler check the proposed
+file:
 
 ```bash
 dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
-Reload the MCP client, then ask it:
+Then reload the agent and ask:
 
 ```text
-Call fuse_workspace with action=status for this repository. Return the index mode,
-freshness, and verification grade exactly as Fuse reports them.
+Use fuse_check on the proposed OrderService.cs content before writing it.
 ```
+
+Fuse adds local .NET checks and lookups to the editor and agent workflow you already use.
+It does not replace file editing, exact text search, or `dotnet build`.
+
+## Check the Proposal, Not Just the Saved Files
+
+`dotnet build` checks the files currently on disk. `fuse_check` checks one proposed file
+before the agent writes it. It returns compiler diagnostics and, for supported API-shape
+errors, a suggested repair. The working tree remains unchanged.
+
+The result also states which compiler path answered. Fuse calls this the
+**verification grade**:
+
+- **Oracle grade** uses the compilation captured from the real build.
+- **Build grade** runs a scoped `dotnet build` for the owning project.
+- **Abstained** means neither compiler path could answer and names what is missing.
+
+Faster repeated checks are available behind `FUSE_RESIDENT=1`. That mode is opt-in.
+The [benchmarks](/docs/project/benchmarks) record its measured latency and environment.
+
+## Follow .NET Wiring, Not Just Matching Names
+
+Text search can find `IBasketService`. It cannot establish which implementation a
+particular dependency injection registration supplies. Fuse uses Roslyn and
+framework-aware analysis to follow:
+
+- service interfaces to registered implementations,
+- requests and commands to handlers,
+- routes to actions or endpoints,
+- configuration sections to options types.
+
+```text
+fuse_find(path="C:/Projects/MyApp/src", kind="service", query="IBasketService")
+```
+
+Reflection, runtime dispatch, and projects that cannot load through the compiler can hide
+connections. Fuse reports the workspace's analysis mode so a syntax-only lookup is not
+presented as a compiler-backed result.
+
+## Start Branch Review from Git
+
+Git already knows which files changed. `fuse_review` keeps those files and adds focused
+context from callers, implementations, handlers, configuration consumers, and tests.
+Each included file states why it was selected.
+
+```bash
+fuse review ./src --changed-since origin/main --max-tokens 25000
+```
+
+`max-tokens` limits the focused context returned. It does not make the review a complete
+substitute for reading the pull request.
+
+## Keep Source and Writes Local
+
+Fuse runs as a local .NET process. It requires no hosted Fuse model and downloads no
+embedding model. Source and the derived `.fuse/fuse.db` index remain on the machine.
+Your coding agent still applies its own data policy to tool results.
+
+Checks, reads, indexing, and review do not write source files. The explicit write path is
+`fuse_workspace` with `action=apply`, and it remains a dry run unless the caller requests
+a write.
+
+## Read the Measurements in Scope
+
+The recorded checks cover 1,000 compiler-labeled edits in the OrderingApp test app, not
+every possible .NET edit. The wiring result covers 24 expected links in that app. The
+branch-review result covers 69 real pull requests and keeps their Git-changed files by
+construction.
+
+The agent-loop run found similar build and test command counts for Fuse and native tools;
+it does not support a claim that Fuse halves build calls. Read the exact figures,
+confidence intervals, methods, and weaker modes on the
+[benchmarks page](/docs/project/benchmarks).
+
+## Next
+
+Follow the [Quickstart](/docs/start/quickstart) for the first checked edit. Use
+[Connect to your AI](/docs/start/connect-your-ai) for project, user, and manual setup.

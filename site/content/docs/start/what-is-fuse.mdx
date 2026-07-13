@@ -1,72 +1,77 @@
 ---
 title: What is Fuse
-description: Fuse is a local compiler and typed .NET wiring service for existing coding agents, with graded answers, abstention, and compact context as supporting machinery.
+description: Fuse helps an existing coding agent check C# edits, follow .NET application wiring, and gather focused branch context from the local repository.
 ---
 
-Fuse is a local compiler and typed .NET wiring service that plugs into an existing coding
-agent through Model Context Protocol (MCP). It does not replace Claude Code, Cursor,
-GitHub Copilot, or another MCP client. It gives that agent operations grounded in Roslyn
-and the .NET toolchain:
+Fuse helps your coding agent catch a C# compiler error before it changes the file. Install
+and connect it from a .NET project directory:
 
-- typecheck a proposed single-file edit without writing it,
-- inspect callers, implementers, and referencing types before a signature change,
-- resolve a service, request, route, or config section through typed wiring,
-- stage compiler-executed refactors as verified diffs,
-- assemble git-seeded branch context with provenance.
+```bash
+dotnet tool install -g Fuse
+fuse mcp install --rules
+```
 
-Fuse runs on the developer's machine. It requires no hosted model, sends no source to a
-Fuse service, and downloads no embedding model. Its persistent index lives in
-`.fuse/fuse.db`.
+Reload Claude Code, Cursor, or GitHub Copilot, then ask:
 
-<img
-  src="/fuse-product-boundary.svg"
-  alt="Fuse sits between an existing coding agent and local repository evidence from Roslyn, the .NET toolchain, Git, and the persistent index."
-/>
+```text
+Before changing OrderService.cs, check the proposed file with fuse_check.
+```
 
-## Ask the Compiler Before Writing
+Fuse works with the coding agent you already use. It runs on your machine and gives that
+agent compiler-backed results plus a typed map of the application.
 
-An agent can check an in-memory proposal and inspect typed impact before changing the
-working tree:
+## What It Adds to Daily Work
+
+- **Check a proposed edit.** `fuse_check` typechecks one proposed file without writing it.
+- **See the reach of a change.** `fuse_impact` finds callers, implementations, and
+  referencing types before a signature change.
+- **Follow application wiring.** `fuse_find` connects a registered service, request,
+  route, or configuration section to the code that handles it.
+- **Review a branch.** `fuse_review` starts from the git diff and gathers focused context
+  from related files.
+- **Stage a refactor.** `fuse_refactor` returns a diff only when the compiler finds no new
+  diagnostic.
+
+## A Compiler-Backed Result
+
+The agent sends the proposed content of one file to `fuse_check`. Fuse checks that content
+against the project and returns the diagnostics it would produce. The source file stays
+unchanged.
 
 ```text
 fuse_check(path="C:/Projects/MyApp/src", file="OrderService.cs", content="<proposed edit>")
   -> CS1061 at OrderService.cs:41: 'Order' has no member 'TotalAmount'
-     repair packet: 'Total' exists on Order; grade: oracle
-
-fuse_impact(path="C:/Projects/MyApp/src", symbol="IBasketService.Checkout")
-  -> callers, implementers, and referencing types from the typed graph
+     suggested repair: 'Total' exists on Order
 ```
 
-Each check reports its evidence grade. Oracle-grade means the build-captured compilation
-answered. When that compilation is unavailable, Fuse runs a scoped build and reports
-build grade. If neither compiler path can answer, Fuse abstains and names the missing
-prerequisite. Resident millisecond checks require the opt-in `FUSE_RESIDENT=1` mode; they
-are not the default.
+Every result names how it was checked. Fuse calls this the **verification grade**:
 
-`fuse_check` does not write the source file. The server's explicit write operation is
-`fuse_workspace` with `action=apply`; read, impact, and check operations leave the working
-tree unchanged.
+- **Oracle grade** means the build-captured compilation checked the proposal.
+- **Build grade** means Fuse ran a scoped `dotnet build` for the owning project.
+- **Abstained** means neither compiler path could answer; the result names the missing
+  prerequisite.
 
-## Resolve Typed .NET Wiring
+The opt-in `FUSE_RESIDENT=1` mode supports faster repeated checks. It is not the default,
+and its timing depends on the repository and machine.
 
-The graph connects code using compiler and framework evidence instead of vocabulary
-similarity. Fuse can resolve:
+## Follow What Runs
 
-- a service interface to a registered implementation,
-- a request or command to its handler,
-- a route to its action or endpoint,
-- a config section to its options type,
-- a symbol to its declaration and typed neighborhood.
+Text search can find `IOrderService`. Fuse can also follow its dependency injection
+registration to the concrete implementation and then show related callers. The same
+typed index covers request handlers, routes, and options binding.
 
-The recorded semantic benchmark matched all 24 hand-built edges in the curated
-OrderingApp wiring fixture, with no false positives. That result validates the fixture's
-covered patterns; it is not a claim that static analysis resolves every use of reflection
-or runtime dispatch.
+```text
+fuse_find(path="C:/Projects/MyApp/src", kind="service", query="IOrderService")
+```
 
-## Review a Branch from Its Git Diff
+Reflection and runtime dispatch can hide connections from static analysis. Fuse reports
+how much of the workspace loaded through MSBuild and Roslyn instead of presenting a
+syntax-only result as compiler-backed.
 
-For change and pull-request work, one call starts with the git-changed files and adds
-graph-selected support files under a token budget:
+## Review a Branch with Focused Context
+
+For pull-request work, `fuse_review` includes the git-changed files and selects related
+support files:
 
 ```text
 fuse_review(
@@ -76,71 +81,42 @@ fuse_review(
 )
 ```
 
-Across the recorded 69-PR corpus, this git-seeded context retained every changed file by
-construction, reached 93.4% precision, and used a median 1,026 tokens. It is compact branch
-context. It does not prove that the result contains every file a reviewer may need.
+The response records why each file was included. `maxTokens` caps the amount of focused
+context returned; it does not change which files Git reports as changed.
 
-For an open-ended task with no anchor to check or resolve, localization is the fallback:
-rank candidate files first, then plan context for them:
+If a task has no symbol, route, service, request, configuration section, or git base,
+Fuse can rank likely files. This is a fallback and is less precise than a compiler or
+Git-anchored request.
 
 ```text
 fuse_find(path="C:/Projects/MyApp/src", kind="task", query="where is the discount applied at checkout?")
 fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], maxTokens=25000)
 ```
 
-It also runs as a CLI for humans and CI:
+## Local by Default
+
+Fuse reads source, compiler state, and Git metadata on your machine. Its derived index
+lives at `.fuse/fuse.db`. Fuse requires no hosted model, sends no source to a Fuse service,
+and downloads no embedding model.
+
+Read, check, impact, refactor, and review operations do not write the working tree.
+`fuse_workspace` with `action=apply` is the explicit write path, and it is a dry run unless
+the caller sets `write=true`.
+
+## Use It from an Agent or Terminal
+
+The agent connection supports proposed edits before they are written. The command-line
+interface is useful for indexing, branch review, and scripted work:
 
 ```bash
-# install once
-dotnet tool install -g Fuse
-
-# build the index, then review a branch
 fuse index ./src
 fuse review ./src --changed-since origin/main --max-tokens 25000
 ```
 
-## Reduction Supports the Compiler Service
-
-Reduction is supporting machinery: the rendering step that fits context to a budget, not the
-product. Across the four repositories in `reduce.json`, the **skeleton** tier removed 38%
-to 44% of tokens. An independent Roslyn parse found that it retained every public and
-protected type-name key and 96.3% to 99.4% of public and protected method-name keys. The
-public-API tier removed 47% to 60%. These ranges describe the recorded corpus and do not
-claim complete API preservation.
-
-Every number comes from a harness anyone can rerun against the same pinned commits.
-See [Benchmarks](/docs/project/benchmarks) for the method and the full results,
-including where Fuse loses.
-
-## Two Ways to Run It
-
-Fuse ships from one package in two forms:
-
-- The **`fuse` global tool** indexes a workspace and writes context to a file from your
-  terminal. Start at the [Quickstart](/docs/start/quickstart).
-- The **`fuse mcp serve` MCP server** exposes a set of verbs to an AI client such as Claude
-  Code, Cursor, or GitHub Copilot, so the agent verifies edits and requests resolved context
-  directly. See [Connect to your AI](/docs/start/connect-your-ai).
-
-## Evidence Boundaries
-
-The current loop benchmark was reduced-scope. It observed 89% true pass@1 for Fuse (95%
-CI 82%-95%) and 82% for native tools (95% CI 74%-90%). The intervals overlap. Agent-visible
-build and test calls were 3.1 for Fuse and 3.2 for native tools, so the run does not show
-a build-round-trip collapse.
-
-The check gate returned no wrong verdicts on 1,000 compiler-labeled OrderingApp mutations,
-split evenly between breaking and neutral edits. That finding applies to the tested fixture,
-not universally. Fuse communicates these boundaries through evidence grades and abstention
-rather than treating every index mode as compiler truth.
+Recorded measurements cover a defined set of repositories, edits, and pull requests. See
+[Benchmarks](/docs/project/benchmarks) for the full methods, results, and limits.
 
 ## Next
 
-Install the tool, then produce one graded workspace result:
-
-```bash
-dotnet tool install -g Fuse
-fuse mcp install --rules
-```
-
-Reload your MCP client and ask it to call `fuse_workspace` with `action=status`.
+Follow the [Quickstart](/docs/start/quickstart) for the first checked edit, or read
+[Connect to your AI](/docs/start/connect-your-ai) for project, user, and manual setup.

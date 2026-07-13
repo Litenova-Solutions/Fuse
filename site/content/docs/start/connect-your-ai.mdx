@@ -1,46 +1,38 @@
 ---
-title: Connect to your AI
-description: Register Fuse with Claude Code, Cursor, or GitHub Copilot so your agent fetches scoped context directly.
+title: Connect your coding agent
+description: Register Fuse with Claude Code, Cursor, or GitHub Copilot and confirm a compiler-backed result from the current .NET project.
 ---
 
-Fuse runs as a local Model Context Protocol (MCP) server. Once registered, your agent gets
-compiler-service operations for checking a proposed edit, computing a change's blast
-radius, resolving .NET wiring, and planning scoped context. Results carry a grade and
-provenance.
-
-You do not run `fuse mcp serve` manually for normal use. Fuse uses stdio MCP: your AI client
-launches `fuse mcp serve` as a child process when MCP is enabled, talks JSON-RPC over
-stdin/stdout, and tears the process down when the session ends. Your job is a one-time
-registration; after that the agent calls `fuse_check`, `fuse_review`, and the rest
-whenever it needs an answer.
-
-Source files and the `.fuse/fuse.db` index remain on your machine. The server does not
-listen on a TCP port or send source to Fuse. Your AI client still applies its own data
-policy to prompts and tool results. Fuse can contact NuGet for its daily update check;
-set `FUSE_UPDATE_CHECK=0` in the server environment to disable it. Compiler fallback can
-run the repository's normal `dotnet build`, including any package-feed access that build
-requires.
-
-## Register in One Command
-
-From your project root, register Fuse and write the rule that points your agent at it:
+Connect Fuse to Claude Code, Cursor, or GitHub Copilot from the current .NET project:
 
 ```bash
 fuse mcp install --rules
 ```
 
-This writes MCP config for Claude Code, Cursor, and GitHub Copilot in the current
-directory. The `--rules` option also writes a short rule into each client's instruction
-file so the agent reaches for the `fuse_*` tools for broad context and verification. The
-rule keeps exact string lookup with the client's built-in search.
+Model Context Protocol (MCP) is the connection format that lets a coding agent launch
+Fuse and call its local tools. You do not keep `fuse mcp serve` running in a terminal.
+The agent starts it when needed.
 
-To register for every project you open on this machine:
+Reload the agent, then ask it to check the connection:
+
+```text
+Call fuse_workspace with action=status for this repository. Return the workspace path,
+analysis mode, and freshness exactly as Fuse reports them.
+```
+
+A response containing the current repository path confirms activation. A list of
+available tools does not.
+
+## Choose the Registration Scope
+
+The opening command registers all three supported clients for the current project. To
+register Fuse for every project on this machine:
 
 ```bash
 fuse mcp install --rules --scope user
 ```
 
-Pick one client only:
+To register one client:
 
 ```bash
 fuse mcp install --client cursor --rules
@@ -48,106 +40,72 @@ fuse mcp install --client claude --rules
 fuse mcp install --client copilot --rules
 ```
 
-| Flag | Values | Default |
-|------|--------|---------|
-| `--client` | `claude`, `cursor`, `copilot`, `all` | `all` |
-| `--scope` | `project`, `user` | `project` |
-| `--rules` | write the agent rule (recommended) | off |
-| `--command` | executable the client launches | running `fuse` |
+The available flags are:
 
-Project scope writes config files in the repo (commit them so your team gets Fuse
-automatically). User scope writes user-global config for Cursor and Copilot, and runs
-`claude mcp add` for Claude Code.
+- `--client claude|cursor|copilot|all`, default `all`
+- `--scope project|user`, default `project`
+- `--rules`, which writes the recommended agent instructions
+- `--command`, which changes the executable the client launches
 
-## Bias the Agent Toward Fuse
+## What Project Setup Writes
 
-Registering the server makes the `fuse_*` tools available, but each client still decides per
-turn whether to use them or fall back to its built-in grep. `--rules` writes a short,
-conservative rule into the client's instruction file so the agent prefers Fuse for surveying
-and scoping, and keeps grep for exact-string lookups:
+- Claude Code: `.mcp.json`, plus a Fuse-managed block in `CLAUDE.md` when `--rules` is set.
+- Cursor: `.cursor/mcp.json`, plus `.cursor/rules/fuse.mdc` when `--rules` is set.
+- GitHub Copilot: `.vscode/mcp.json`, plus a Fuse-managed block in
+  `.github/copilot-instructions.md` when `--rules` is set.
 
-| Client | Rule file (project scope) |
-|--------|---------------------------|
-| Claude Code | `CLAUDE.md` |
-| Cursor | `.cursor/rules/fuse.mdc` |
-| GitHub Copilot | `.github/copilot-instructions.md` |
+Existing JSON and instruction files are merged rather than replaced. Re-running the
+command updates Fuse-managed entries in place. Project files can be committed so the team
+receives the same setup.
 
-For Claude and Copilot the rule is a marker-delimited block, so re-running `--rules` updates
-it in place and leaves the rest of the file untouched. Rules are project-scoped; under
-`--scope user` only Claude has a global file (`~/.claude/CLAUDE.md`), and the Cursor and
-Copilot rules are skipped with a note. This biases the agent, it does not force it, which is
-intentional: grep is still the right tool for an exact string or symbol.
-
-## What Gets Written
-
-| Client | MCP config, project scope | Rule written by `--rules` |
-|--------|---------------------------|----------------------------|
-| Claude Code | `.mcp.json` | Fuse-managed block in `CLAUDE.md` |
-| Cursor | `.cursor/mcp.json` | `.cursor/rules/fuse.mdc` |
-| GitHub Copilot | `.vscode/mcp.json` | Fuse-managed block in `.github/copilot-instructions.md` |
-
-At user scope, Claude registration is managed by `claude mcp add`; its rule goes in
+At user scope, Claude registration uses `claude mcp add` and writes its rule to
 `~/.claude/CLAUDE.md`. Cursor writes `~/.cursor/mcp.json`. Copilot writes the VS Code user
-`mcp.json` under `%APPDATA%\Code\User` on Windows,
-`~/Library/Application Support/Code/User` on macOS, or `~/.config/Code/User` on Linux.
-Cursor and Copilot have no user-global rule file, so `--rules --scope user` skips those
-two rules. Existing JSON and instruction files are merged rather than replaced.
+`mcp.json` under:
+
+- Windows: `%APPDATA%\Code\User`
+- macOS: `~/Library/Application Support/Code/User`
+- Linux: `~/.config/Code/User`
+
+Cursor and Copilot do not have a user-global rule file, so `--rules --scope user` skips
+those two rules with a note.
 
 The optional `--with-hooks` flag also merges two Claude Code hooks into
 `.claude/settings.json`: a post-edit `fuse check --delta --fast` hook and a stop-time
 `fuse gate` hook.
 
-Each entry points the client at `fuse mcp serve`. The client invokes that command; you never
-keep a terminal open.
+## Get the First Compiler-Backed Result
 
-## Check Activation
-
-Run the registration command, restart or reload the AI client so it rereads MCP
-configuration, then send the second command to the agent:
-
-```bash
-fuse mcp install --rules
-```
+After the status call succeeds, ask the agent:
 
 ```text
-Call fuse_workspace with action=status for this repository. Return its index mode,
-freshness, and verification grade exactly as Fuse reports them.
+Before editing OrderService.cs, call fuse_check with the proposed file content. Show the
+compiler result before writing the change.
 ```
 
-The second command must produce one real Fuse result with a reported grade. A tool list
-or a statement that Fuse is connected is not the check.
+Fuse labels the compiler path used for each check. This label is the verification grade:
+oracle grade uses a build-captured compilation, while build grade runs a scoped real
+`dotnet build`. If neither path can answer, Fuse abstains and states what is missing.
 
-The first tool call builds the local index if none exists. On a large repository, expect
-that cold call to take from a few seconds to tens of seconds. It serves syntax-level
-results first while the MCP server upgrades the workspace in the background. If MSBuild
-cannot load every project, Fuse reports `partial` or `syntax` instead of claiming full
-semantics. Verification still uses the best compiler path available: a resident or
-build-captured compilation when present, otherwise a scoped real `dotnet build` reported
-as build grade.
+The first call builds the local `.fuse/fuse.db` index. A large repository can take from a
+few seconds to tens of seconds on that cold call. Fuse reports `partial` or `syntax`
+analysis when MSBuild cannot load every project.
 
-## Rollback
+## Local Process and Network Behavior
 
-There is no `fuse mcp uninstall` command. Remove only the `fuse` server entry from each MCP
-JSON file listed above, preserving other servers. For Claude user scope, run:
+The client launches `fuse mcp serve` as a child process and communicates over standard
+input and output. Fuse does not listen on a TCP port. Source files and the derived index
+remain on your machine, and Fuse does not send source to a hosted Fuse service.
 
-```bash
-claude mcp remove fuse --scope user
-```
-
-Delete `.cursor/rules/fuse.mdc`. In `CLAUDE.md`,
-`.github/copilot-instructions.md`, or `~/.claude/CLAUDE.md`, delete the block from
-`<!-- fuse:begin ... -->` through `<!-- fuse:end -->`. If you installed hooks, delete the
-two Fuse entries from `.claude/settings.json` under `hooks`.
-
-Stop or reload the AI client, then delete `.fuse/` at the repository root to remove the
-derived index. Deleting `.fuse/` does not change source files; a later Fuse read rebuilds
-it.
+Your coding agent still applies its own data policy to prompts and tool results. Fuse can
+contact NuGet for a daily update check; set `FUSE_UPDATE_CHECK=0` in the server environment
+to disable it. A compiler fallback can run the repository's normal `dotnet build`,
+including any package-feed access required by that build.
 
 ## Manual Registration
 
-If you prefer to edit JSON yourself, the shapes are:
+Use these files if you prefer to edit the client configuration yourself.
 
-**Claude Code** (`.mcp.json`):
+Claude Code, `.mcp.json`:
 
 ```json
 {
@@ -161,15 +119,15 @@ If you prefer to edit JSON yourself, the shapes are:
 }
 ```
 
-Or register with the Claude CLI:
+You can also use the Claude CLI:
 
 ```bash
 claude mcp add fuse --scope project -- fuse mcp serve
 ```
 
-Use `--scope user` instead of `--scope project` to make Fuse available in every project.
+Use `--scope user` to make it available in every project.
 
-**Cursor** (`.cursor/mcp.json`):
+Cursor, `.cursor/mcp.json`:
 
 ```json
 {
@@ -182,7 +140,7 @@ Use `--scope user` instead of `--scope project` to make Fuse available in every 
 }
 ```
 
-**GitHub Copilot in VS Code** (`.vscode/mcp.json`):
+GitHub Copilot in VS Code, `.vscode/mcp.json`:
 
 ```json
 {
@@ -196,41 +154,25 @@ Use `--scope user` instead of `--scope project` to make Fuse available in every 
 }
 ```
 
-## How the Server Runs
+## Roll Back the Setup
 
-When your client needs Fuse, it spawns `fuse mcp serve` and keeps it alive for the session.
-Stdout carries the protocol byte stream, so all logging is routed to stderr. Each read call
-returns its result in the tool response. Read calls can create or refresh the derived index
-at `.fuse/fuse.db`; only the explicit `fuse_workspace` `apply` action writes a proposed
-source edit. The server keeps the index warm across calls, so a multi-call task pays the
-analysis cost once.
+There is no `fuse mcp uninstall` command. Remove only the `fuse` entry from each client
+configuration file listed above, preserving other entries. For Claude user scope, run:
 
-## The Nine Tools
+```bash
+claude mcp remove fuse --scope user
+```
 
-| Tool | Use it to |
-|------|-----------|
-| `fuse_workspace` | Status and lifecycle: `action=status` (index mode, freshness), `index` (build or refresh the persistent semantic index), `map` (survey symbols, routes, and counts), `doctor`, and `apply` (write a proposed single-file edit to the working tree). |
-| `fuse_find` | The find union: `kind=symbol\|path\|text\|all` for exact lookup, `service\|request\|route\|config` to resolve .NET wiring to its target, `signatures` for a symbol's signature, `neighbors` for its callers and implementers, and `task` to rank candidate files for a task. No bodies. |
-| `fuse_context` | Plan and emit context for a set of seeds: source bodies at mixed render tiers, a manifest, and per-file provenance. |
-| `fuse_impact` | Blast radius for a symbol: callers, implementers, and referencing types from the persisted graph, plus a NuGet upgrade break set. |
-| `fuse_check` | Typecheck a proposed single-file edit and return the diagnostics it would produce, with a machine-applicable fix on API-shape diagnostics, each answer stamped with its verification grade. |
-| `fuse_test` | Run the covering tests for a symbol - the tests that reach it through the graph - scoped by filter so the whole suite is never run. |
-| `fuse_refactor` | Run a compiler-executed, verify-gated refactor staged as a diff: rename, add or remove a parameter, extract an interface, move a type, apply a code fix. |
-| `fuse_review` | Review the semantic impact of a change since a git base: changed files, blast radius, and packed context. |
-| `fuse_reduce` | Compact a specific set of files, or raw content, you already identified, without indexing a directory. |
+Delete `.cursor/rules/fuse.mdc`. In `CLAUDE.md`,
+`.github/copilot-instructions.md`, or `~/.claude/CLAUDE.md`, delete the block from
+`<!-- fuse:begin ... -->` through `<!-- fuse:end -->`. If you installed hooks, delete the
+two Fuse entries from `.claude/settings.json` under `hooks`.
 
-The full parameter list for each is in the [MCP tools reference](/docs/reference/mcp-tools),
-and the read-only [MCP resources](/docs/reference/mcp-resources) cover the
-`fuse://` URI forms.
+Stop or reload the coding agent, then delete `.fuse/` at the repository root to remove
+the derived index. Deleting `.fuse/` does not change source files. A later Fuse read
+rebuilds it.
 
 ## Next
 
-Run one task through the registered server:
-
-```text
-Call fuse_find with kind=task for "discount applied at checkout". If the result is
-confident, pass its candidate files to fuse_context with maxTokens=15000.
-```
-
-If the result is partial or insufficient, refine it with a symbol, route, service,
-request, config section, or git base from the returned navigation map.
+Continue with the [Quickstart](/docs/start/quickstart). Use the
+[tool reference](/docs/reference/mcp-tools) for every operation and parameter.

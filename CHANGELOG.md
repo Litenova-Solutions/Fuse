@@ -2,20 +2,41 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 4.0.0 is the first public release; it carries the whole product and there is no prior public version to migrate from.
 
+## [4.1.0] - 2026-07-14
+
+### Added
+
+- Host RPC threat-model documentation (`internals/host-rpc`) describes the local-trust IPC model: predictable per-root pipe or socket, handshake session token, and served-root binding on RPC methods that carry a `root` argument. The page documents `fuse/check` and `fuse/checkOverlay`.
+- Opt-in MCP metrics via `FUSE_METRICS=1` (`fuse.tool.duration`, `fuse.index.mode`, `fuse.reconcile.stamped`) using `System.Diagnostics.Metrics` (no OpenTelemetry dependency).
+- `WorkspacePathResolver` confines MCP file arguments (`fuse_check`, `fuse_test`, `fuse_reduce`, `fuse_context`, and related paths) to the workspace root.
+- `fuse.json` / `.fuserc` parse failures write a warning to stderr with the file path instead of failing silently.
+- `FUSE_MCP_INSTALL_HOME` redirects user-scope MCP install paths for isolated testing; user-scope install coverage for Cursor and Copilot.
+- Integration tests for split-store cache recovery, storm reconcile (>300 dirty files), MCP read-after-edit freshness, resident storm eviction (301-file batch), and workspace path escape refusal.
+
+### Changed
+
+- Derived key-value cache data (reduction cache and per-file analysis index) now lives in `.fuse/fuse-cache.db` instead of sharing `.fuse/fuse.db` with the semantic index. Existing cached entries in `fuse.db` are not migrated; rerun with `--use-cache` or `--use-persistent-index` to rebuild the derived cache. The semantic index in `fuse.db` is unchanged.
+- `ExperimentalOptions` now carries only focus/change scoping and emission-shaping knobs the fusion pipeline consumes (`CentralityWeight`, `TieredEmission`, `SketchHugeFiles`, `DowngradeBeforeDrop`, `ProximityEdges`, `ProjectGraph`). Query-path retrieval levers were removed from this type; open-ended localize and related lexical ranking live in `Fuse.Retrieval`.
+- Host RPC methods that carry a `root` argument reject calls where the root differs from the daemon's served root (the `--directory` the `fuse host` process started with).
+- Syntax indexing routes exclusively through `SemanticIndexer` and language syntax providers; the standalone `SyntaxIndexer` type is removed.
+- The retired flat FTS candidate generator is gated behind `FUSE_FLAT_FTS=1` diagnostic mode; shipping default remains `LexicalCandidateGenerator` only.
+- Performance documentation and README warm-latency figures align with `tests/benchmarks/results/performance.json` and `resident-latency.json`.
+- `briefing.md` opening reflects nine MCP tools, no VS Code extension (D15), and corpus-v2 localize recall (37.7 percent).
+
+### Fixed
+
+- When FTS5 is unavailable at index init, the store persists `fts_available=false` in index meta, names it in `fuse_workspace` status and the availability header, and `fuse_find kind=task` refuses with an actionable message instead of returning empty hits.
+- `SqliteKeyValueStore` corruption recovery refuses to delete the semantic index database; only `fuse-cache.db` is recreated on corruption.
+
 ## [4.0.1] - 2026-07-13
 
 ### Added
 
 - `fuse mcp install --rules` at project scope appends `.fuse/` to `.gitignore` when no equivalent entry exists (same helper as `fuse init`).
 - Connect-your-agent documentation covers manual registration for other MCP clients (Windsurf, Cline, Zed, and custom agents) over the same `fuse mcp serve` stdio server.
-- Host RPC threat-model documentation (`internals/host-rpc`) describes the local-trust IPC model: predictable per-root pipe or socket, handshake session token, and served-root binding on RPC methods that carry a `root` argument.
 
 ### Changed
 
-- Host RPC methods that carry a `root` argument reject calls where the root differs from the daemon's served root (the `--directory` the `fuse host` process started with), so a peer on the correct pipe cannot pivot to another repository path.
-
-- `ExperimentalOptions` now carries only focus/change scoping and emission-shaping knobs the fusion pipeline consumes (`CentralityWeight`, `TieredEmission`, `SketchHugeFiles`, `DowngradeBeforeDrop`, `ProximityEdges`, `ProjectGraph`). Query-path retrieval levers (`HopDecay`, `QueryExpansion`, `ExpansionWeight`, `MultiQueryFusion`, `BudgetAwareExpansion`, `GitChurnWeight`, `DistributionalThesaurus`, `MemberLevelRetrieval`, `HeuristicQueryRewrite`, `FieldedComments`) were removed from this type; open-ended localize and related lexical ranking live in `Fuse.Retrieval`. The corresponding `FUSE_*` environment overrides on the fusion path are dropped; set retrieval options on the retrieval entry points instead.
-- Derived key-value cache data (reduction cache and per-file analysis index) now lives in `.fuse/fuse-cache.db` instead of sharing `.fuse/fuse.db` with the semantic index. Existing cached entries in `fuse.db` are not migrated; rerun with `--use-cache` or `--use-persistent-index` to rebuild the derived cache. The semantic index in `fuse.db` is unchanged.
 - Consumer copy on fuse.codes, the README, and the docs index uses mechanism-first language for senior .NET developers and MCP authors (warm index, typed graph, verification grade) instead of two-beat marketing slogans.
 - Docs and install help state that MCP read tools build `.fuse/fuse.db` on first use; `fuse index` or `fuse_workspace action=index` remain optional pre-warm steps before the agent's first turn.
 - Product copy names Cursor, Claude Code, and Copilot as common MCP clients with auto-install, not as an exclusive list; any MCP-compatible client can run `fuse mcp serve`.
@@ -23,7 +44,6 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
-- When FTS5 is unavailable at index init, the store persists `fts_available=false` in index meta, names it in `fuse_workspace` status and the availability header, and `fuse_find kind=task` refuses with an actionable message instead of returning empty hits.
 - Mermaid flowcharts and theme-aware SVG diagrams render on the documentation site instead of appearing as raw code blocks.
 - Portable capture bundles no longer fail the secret scan on Roslyn `RegexGenerator.g.cs` emitted files.
 

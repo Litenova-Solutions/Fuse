@@ -645,6 +645,9 @@ public sealed class LoopSuite : IEvalSuite
         };
         foreach (var a in argv)
             psi.ArgumentList.Add(a);
+        // Claude Code should use its installed interactive login. An unrelated or stale external API key in the
+        // parent shell overrides that login and turns every rollout into an authentication failure.
+        psi.Environment.Remove("ANTHROPIC_API_KEY");
         psi.Environment["MCP_TOOL_TIMEOUT"] = "120000";
 
         using var process = new Process { StartInfo = psi };

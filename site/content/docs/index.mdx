@@ -1,39 +1,41 @@
 ---
 title: Fuse documentation
-description: Fuse typechecks a .NET coding agent's proposed edit before it lands, computes a change's blast radius, stages verified refactors, and resolves what code actually runs, from a warm Roslyn graph. Start here to install it, connect it to your agent, and learn how it works.
+description: Local .NET semantic index, typed-graph wiring resolution, and pre-write compiler verification for coding agents.
 ---
 
-Fuse answers a .NET coding agent's edit-time questions from the compiler: it typechecks a
-proposed edit before the agent writes it, computes the blast radius of a change, stages
-compiler-executed refactors as diffs that compile or are not handed over, and resolves
-what the code actually runs (which implementation is injected for an interface, which
-handler processes a request, which endpoint serves a route, what a git diff impacts).
-Every answer carries a grade, and Fuse abstains when it cannot answer at compiler grade.
-Scoped, reduced context and ranked retrieval are the supporting machinery that feed those
-answers. It ships as a Model Context Protocol server (`fuse mcp serve`) for an agent, and
-as a .NET global tool (`fuse`) for the terminal and CI.
+Fuse is a local .NET tool with a persistent semantic index and pre-write compiler
+verification for coding agents. Install and connect from a project directory:
 
-These docs are organized so you can read top to bottom to learn, or jump to a
-reference page for exact detail.
+```bash
+dotnet tool install -g Fuse
+fuse mcp install --rules
+```
 
-## Get Going
+Reload your MCP client, then ask:
+
+```text
+Resolve IOrderService to its implementation, then check the proposed OrderService.cs
+content with fuse_check before writing the file.
+```
+
+Fuse runs on your machine. It stores a warm index in `.fuse/fuse.db`, walks typed
+wiring edges when the project loads through Roslyn, and returns compiler diagnostics for
+proposed single-file edits without changing the working tree. MCP read tools build the
+index on first use; run `fuse index` first if you want a warm store before the agent's
+first turn.
+
+<Diagram src="/fuse-product-boundary.svg" alt="Fuse local product boundary: MCP client, local Fuse process, repository, and .NET toolchain" />
+
+## Choose Your Next Task
 
 <Cards>
-  <Card title="What is Fuse" href="/docs/start/what-is-fuse" description="The outcome, with a worked example and the benchmark figure." />
-  <Card title="Quickstart" href="/docs/start/quickstart" description="Index a workspace, then localize, resolve, and review." />
-  <Card title="Connect to your AI" href="/docs/start/connect-your-ai" description="Set up the MCP server for Claude Code, Cursor, or Copilot." />
-  <Card title="Why Fuse" href="/docs/start/why-fuse" description="The problem, the landscape, and how Fuse compares." />
+  <Card title="Pre-write compiler check" href="/docs/scenarios/ambient-verification" description="Typecheck a proposed file through fuse_check and read diagnostics before the working tree changes." />
+  <Card title="Wiring resolution" href="/docs/scenarios/ask-one-question" description="Resolve a service, request, route, or configuration section to its implementation or handler." />
+  <Card title="Git-seeded branch review" href="/docs/scenarios/scope-a-pr" description="Seed on the diff and return packed context with provenance under a token budget." />
+  <Card title="Source reduction" href="/docs/scenarios/cut-tokens-dotnet" description="Reduce a known file set while preserving public declarations." />
 </Cards>
 
-## The Map
-
-- **[Start](/docs/start/what-is-fuse)**: what Fuse is, why it exists, install, the first run, and MCP setup.
-- **[Scenarios](/docs/scenarios/context-for-an-agent)**: task-shaped how-tos. Each is a job with one command and real output.
-- **[Concepts](/docs/concepts/how-fuse-works)**: how the warm index works, scoping, render tiers, Roslyn vs regex analysis, and a glossary.
-- **[Reference](/docs/reference/commands)**: every command, flag, MCP tool, reducer, template, tokenizer, and output field.
-- **[Internals and Extending](/docs/internals/pipeline)**: the pipeline, capability model, scoping and caching internals, and the extension guides.
-- **[Project](/docs/project/benchmarks)**: benchmarks, performance, roadmap, changelog, and contributing.
-
-## Next
-
-New to Fuse? Start with [What is Fuse](/docs/start/what-is-fuse).
+New to Fuse? Follow the [quickstart](/docs/start/quickstart), then
+[connect your coding agent](/docs/start/connect-your-ai). Use the
+[tool reference](/docs/reference/mcp-tools) for exact parameters and
+[benchmarks](/docs/project/benchmarks) for measured scope and limits.

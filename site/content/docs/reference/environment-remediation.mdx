@@ -1,13 +1,36 @@
 ---
 title: Environment remediation
-description: The environment failures fuse up recognizes and the remedy it maps each to, so a fresh clone reaches the oracle tier or reports exactly what is blocking it.
+description: Diagnose compiler-service downgrades, apply bounded environment fixes, and roll them back without editing repository source.
 ---
 
 `fuse up` runs the same load diagnosis as `fuse doctor`, then classifies each downgraded project's failure against a knowledge base of known environment problems and names the remedy that would address it. The catalog below is that knowledge base. Repository-code failures (a compile error in the repository's own source) are named as not fixable by `fuse up`, never edited: the hard rule is that `fuse up` never edits files inside the repository, so every remedy is environment- or overlay-scoped.
 
 By default `fuse up` is report-only: it names what it would do. Add `--apply` to apply the install-free remedy (the NU1507 overlay NuGet config) and re-attempt the load: `fuse up` writes the overlay to a temp file, runs `dotnet restore --configfile <overlay>` (never editing the repository), then re-runs the load diagnosis and prints the new per-project tiers. The consent-gated remedies (the SDK and workload installs) are never run without `--allow-install`; without it they are reported, not applied. The apply path is bounded to a single remediation round.
 
-## Recognized failures
+```bash
+fuse up .
+fuse up . --apply
+```
+
+The report-only command reads local project and SDK state. `--apply` can contact the
+repository's configured NuGet feeds because it runs `dotnet restore`. `--allow-install`
+can download an SDK or workload and changes the machine or isolated SDK directory, so
+review the printed plan before granting that flag. Fuse does not send source code to a
+Fuse-hosted service.
+
+## A Downgrade Is Still Usable
+
+An imperfect repository does not make every Fuse operation unavailable. If MSBuild cannot
+load all projects, indexing reports `partial` or `syntax` and continues with source
+structure, exact lookup, and lexical task localization. Operations that require compiler
+truth either use the loaded subset or report that the graph claim is unavailable.
+
+`fuse_check` has a separate verification fallback. Without a resident or build-captured
+compilation, it mirrors the owning project to a temporary directory and runs a scoped real
+`dotnet build`; the result is labeled build grade. The CLI `fuse check --delta` is only the
+ambient on-disk edit delta from a running host. It does not accept proposed file content.
+
+## Recognized Failures
 
 ### NU1507
 
@@ -32,3 +55,19 @@ Ambiguous type reference in repository code. A compile error in the repository's
 ### CS2007
 
 Unrecognized compiler option in repository code. A legacy or repository-specific compiler option the current toolchain rejects. Fuse never edits repository files, so this is reported with its reason, not remediated.
+
+## Rollback and Reset
+
+The report-only command needs no rollback. The NU1507 remedy uses a temporary overlay
+NuGet configuration and does not modify the repository's `NuGet.config`; remove any
+temporary file named in the command output if the operating system has not already
+cleaned it.
+
+SDK or workload installation is an external `dotnet` machine change. Remove it with the
+same .NET installation mechanism named in the remediation plan; Fuse does not silently
+remove shared SDKs or workloads.
+
+Remediation can change the compiler tier recorded in the derived index. Stop the MCP
+client or host, then delete `.fuse/` at the repository root for a full reset. The next
+Fuse read rebuilds `.fuse/fuse.db` from source. Deleting it does not remove source,
+packages, SDKs, MCP configuration, or AI-client rules.

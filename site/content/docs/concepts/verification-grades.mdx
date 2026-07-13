@@ -1,32 +1,42 @@
 ---
 title: Verification grades
-description: Every verify answer from Fuse is stamped with the class of truth behind it - oracle, build, or abstain - so an agent always knows whether it read a speculative typecheck, a real build, or an honest refusal.
+description: Read whether a Fuse verification result came from a build-captured compilation, a scoped dotnet build, or an abstention.
 ---
 
 When Fuse answers a verify-class question ("would this edit compile?"), the useful thing is
-not just the verdict but how that verdict was reached. A sub-second speculative typecheck and
-a full `dotnet build` are both real answers, but they carry different guarantees and different
-latencies. Fuse names which one you got: every verify answer is stamped with a
+not just the verdict but how that verdict was reached. A speculative typecheck and a full
+`dotnet build` are both real answers, but they carry different guarantees and latencies.
+Fuse names which one you got: every verify answer is stamped with a
 **verification grade**.
 
-The rule behind the grades is one sentence: **verification never shrugs.** Fuse answers at the
-best grade the workspace can currently serve, and only refuses when even the real toolchain
-cannot run.
+Fuse attempts the fastest available compiler path, falls back to a scoped build, and
+abstains when neither path can produce a supported result.
 
 ## The ladder
 
 `fuse_check` walks a ladder from the fastest, highest-fidelity answer down to an honest
 refusal:
 
+```mermaid
+flowchart TD
+    A[Proposed single-file edit] --> B{Build-captured compilation available?}
+    B -- Yes --> C[Oracle grade<br/>in-memory compiler diagnostics]
+    B -- No --> D{Owning project can build?}
+    D -- Yes --> E[Build grade<br/>scoped dotnet build]
+    D -- No --> F[Abstain<br/>name the missing prerequisite]
+```
+
 - **oracle** - a speculative typecheck against the build-captured compilation. The
   proposed content is applied to the rehydrated compilation in memory, with no disk write and
-  no build. This is the fast path (sub-second class when warm) and is available when the
-  repository builds and is captured with build capture. Build capture is on by default: the out-of-process
-  build-capture worker ships inside the tool and is discovered with no configuration (opt out
-  with `FUSE_BUILD_CAPTURE=0`), and a capture bundle produced elsewhere also serves it.
+  no build during the check. It is available when the repository builds and is captured with
+  build capture. Build capture is on by default: the out-of-process build-capture worker ships
+  inside the tool and is discovered with no configuration (opt out with
+  `FUSE_BUILD_CAPTURE=0`), and a capture bundle produced elsewhere also serves it. The
+  sub-second measurements apply to the live resident workspace, which is opt-in with
+  `FUSE_RESIDENT=1`.
 - **build** - when no oracle substrate is available, Fuse runs the real `dotnet build`
   toolchain scoped to the owning project and parses its diagnostics into the exact same shape
-  the oracle path returns. This is ground truth: the compiler itself answered. It costs build
+  the oracle path returns. The compiler itself produced this verdict. It costs build
   latency (tens of seconds), and the response reports the elapsed time so the wait is never a
   surprise.
 - **abstain** - returned only when even the toolchain cannot run: no buildable project, or a
@@ -43,8 +53,8 @@ diagnostics for OrderService.cs: 1
 ```
 
 The workflow is identical at either grade - same call, same output shape - only the latency
-and the stamped grade differ. An agent that reads the grade knows whether it is holding a
-speculative result it may want to confirm, or ground truth it can trust directly.
+and the stamped grade differ. An agent can distinguish an in-memory compiler result from a
+real project build.
 
 ## The tree is never written
 
@@ -73,15 +83,14 @@ so an agent knows the class of truth before it makes the call.
 A green compiler check is not the whole story: CI's build step also runs the repository's
 configured analyzers (StyleCop, the .NET code-analysis rules, any package analyzers) and
 nullable warnings, at the severities the repository's editorconfig sets. A local green
-followed by a CI red on an analyzer warning is a wasted round trip. When a resident workspace
-serves the root, `fuse_check` closes that gap: it runs the same analyzers the build ran,
-against the overlay compilation, with the repository's editorconfig severities, and merges
-their diagnostics with the compiler diagnostics. An editorconfig-elevated rule surfaces; a
-silenced rule stays silent.
+followed by a CI red on an analyzer warning is a wasted round trip. When the opt-in resident
+workspace serves the root, `fuse_check` can run analyzers against the overlay compilation and
+merge their diagnostics with compiler diagnostics. The recorded resident benchmark measures
+raw analyzer execution against the held compilation; it does not establish editorconfig
+severity mapping or full CI parity.
 
-Analyzers cost real time (hundreds of milliseconds on a large analyzer set), so they are on
-by default for the single-file verify (`fuse_check` with content), where an explicit check
-tolerates the latency for CI parity, and off by default for the hot per-edit delta path, where
-the sub-second feel matters more; the `analyzers` parameter overrides either way. The
-build-grade fallback already has this parity for free, because it runs the real `dotnet build`,
-which runs the analyzers. Without a resident workspace the setting has no effect.
+Analyzers cost real time (hundreds of milliseconds on the recorded 284-analyzer set). They
+are off on the hot per-edit delta path; the `analyzers` parameter controls an explicit
+resident check. The build-grade fallback runs the real `dotnet build`, including its
+configured analyzers. Without a resident workspace the resident analyzer setting has no
+effect.

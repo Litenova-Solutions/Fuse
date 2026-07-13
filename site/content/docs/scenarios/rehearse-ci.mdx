@@ -9,7 +9,20 @@ The last trust gap before the pipeline is "local green, CI red." Fuse closes the
 fuse verify --ci-parity
 ```
 
-This is classification, not emulation. Full CI emulation is a tar pit; naming what cannot be rehearsed is not. Fuse scans `.github/workflows`, extracts every `dotnet` step (single-line `run:` and `run: |` blocks), and prints the sequence in CI order plus the steps it will not run locally, each with a reason.
+This is classification, not CI emulation. Fuse scans `.github/workflows`, extracts
+`dotnet` steps from single-line `run:` entries and `run: |` blocks, then prints the
+sequence in CI order. Steps it will not run locally carry a reason.
+
+```mermaid
+flowchart TD
+    A[GitHub Actions run step] --> B{Contains a dotnet command?}
+    B -- No --> C[Outside this report]
+    B -- Yes --> D{Needs a secret or publishes?}
+    D -- Yes --> E[Non-rehearsable<br/>name the reason]
+    D -- No --> F{Clean leading dotnet command?}
+    F -- Yes --> G[Rehearsable<br/>run with --run]
+    F -- No --> H[Report only<br/>wrapped invocation]
+```
 
 ## Example
 
@@ -47,4 +60,12 @@ Only a clean leading-`dotnet` command is executed; a dotnet invocation wrapped i
 | Publishes a package | A `dotnet nuget push`; it mutates a remote feed. |
 | Wrapped invocation (with `--run`) | A `dotnet` call embedded in another tool is reported but not auto-run. |
 
-Matrix legs (a `setup-dotnet` target-framework matrix) and workflow-specific service containers are environment concerns Fuse names rather than reproduces. When workflow extraction misses a step, run your own command list directly; the extraction is best-effort and the report is the contract.
+Matrix legs (a `setup-dotnet` target-framework matrix) and workflow-specific service
+containers are environment concerns Fuse names rather than reproduces. Workflow extraction
+is best-effort. If the report misses a command, run that command directly.
+
+## Rehearse the Current Workflow
+
+Run `fuse verify --ci-parity` and read every non-rehearsable reason. If the extracted
+leading `dotnet` commands are safe on your machine, rerun with `--run`. Execute any missed
+local command manually before pushing.

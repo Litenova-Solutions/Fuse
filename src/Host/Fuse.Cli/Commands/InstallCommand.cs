@@ -4,11 +4,11 @@ using Fuse.Cli.Services;
 namespace Fuse.Cli.Commands;
 
 /// <summary>
-///     Registers Fuse as an MCP server with Claude Code, Cursor, or GitHub Copilot.
+///     Registers Fuse as an MCP server with MCP clients (Cursor, Claude Code, and Copilot via the installer; others via manual config).
 /// </summary>
 [CliCommand(
     Name = "install",
-    Description = "Register Fuse as an MCP server with Claude Code, Cursor, or GitHub Copilot.",
+    Description = "Register Fuse with MCP clients (Cursor, Claude Code, Copilot, and others).",
     Parent = typeof(McpCommand))]
 public sealed class InstallCommand
 {
@@ -58,9 +58,10 @@ public sealed class InstallCommand
     /// <summary>
     ///     When set, also writes a short rule biasing the agent toward the <c>fuse_*</c> tools into each client's
     ///     instruction file (Claude <c>CLAUDE.md</c>, Cursor <c>.cursor/rules/fuse.mdc</c>, Copilot
-    ///     <c>.github/copilot-instructions.md</c>).
+    ///     <c>.github/copilot-instructions.md</c>). At project scope, also appends <c>.fuse/</c> to
+    ///     <c>.gitignore</c> when no equivalent entry exists.
     /// </summary>
-    [CliOption(Required = false, Description = "Also write a project rule that biases the agent toward the fuse_* tools (CLAUDE.md, .cursor/rules/fuse.mdc, .github/copilot-instructions.md). Recommended.")]
+    [CliOption(Required = false, Description = "Also write agent rules (CLAUDE.md, .cursor/rules/fuse.mdc, .github/copilot-instructions.md) and, at project scope, add .fuse/ to .gitignore. Recommended.")]
     public bool Rules { get; set; }
 
     /// <summary>

@@ -46,7 +46,8 @@ public sealed partial class AgentSuite : IEvalSuite
 
         // C4 enforcement: refuse a model-driven run unless the corpus is proven healthy (fresh, passing
         // corpus-health.json), naming the reason instead of spending model time on a corpus that does not build.
-        var gate = await CorpusHealthGate.CheckAsync(options.BenchRoot, options.ResultsRoot, cancellationToken);
+        var gate = await CorpusHealthGate.CheckAsync(
+            options.BenchRoot, options.ResultsRoot, options.ManifestPath, cancellationToken);
         if (!gate.Allowed)
         {
             notes.Add($"corpus-health gate: {gate.Reason}");

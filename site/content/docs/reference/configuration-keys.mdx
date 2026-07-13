@@ -3,13 +3,13 @@ title: Configuration Keys
 description: The keys Fuse reads from fuse.json or .fuserc, their discovery order, and how they combine with command-line flags.
 ---
 
-A configuration file lets a project set fusion defaults once instead of repeating flags on every run. Fuse reads these defaults from `fuse.json` or `.fuserc`, merges them with the command-line flags, and applies built-in defaults for anything left unspecified. This page lists every supported key, where Fuse looks for the file, and how a key's value combines with a flag of the same meaning.
+`fuse.json` and `.fuserc` configure the legacy directory-fusion pipeline. Current index, retrieval, verification, review, and `fuse reduce` commands do not consume these keys. Environment variables in this page apply to the current MCP and indexing paths where stated.
 
 This page is for engineers setting project defaults and for maintainers who need the exact discovery and precedence rules. The [Quickstart](/docs/start/quickstart) shows `fuse init` scaffolding a file in context.
 
 ## Purpose and Scope
 
-This page documents the configuration file: its discovery, its keys, and its precedence against flags. It does not document the flags themselves; each key corresponds to a flag whose full behavior is in the [Options reference](/docs/reference/options). All keys are optional.
+The file keys below remain for legacy pipeline commands and `fuse init` compatibility. Do not treat them as defaults for `fuse context`, `fuse review`, or `fuse reduce`. All keys are optional.
 
 ## Discovery
 
@@ -25,7 +25,7 @@ For any setting, Fuse resolves the value in this order, highest first:
 
 An explicit flag always overrides the configuration file, and the configuration file overrides the built-in default. A key omitted from the file leaves the flag or default in effect.
 
-## Supported Keys
+## Legacy Pipeline Keys
 
 | Key | Type | Maps to flag | Description |
 |-----|------|--------------|-------------|
@@ -42,7 +42,7 @@ An explicit flag always overrides the configuration file, and the configuration 
 | `recursive` | bool | `--recursive` | Search subdirectories recursively. |
 | `includeMetadata` | bool | `--include-metadata` | Include file metadata in output entries. |
 
-The full behavior, type conventions, and defaults for each corresponding flag are in the [Options reference](/docs/reference/options).
+The mapped flags are legacy pipeline-only. They are not accepted by current commands unless the command declaration explicitly lists them.
 
 ## Environment Variables
 
@@ -56,19 +56,22 @@ A few behaviors are controlled by environment variables rather than the config f
 | `FUSE_EXPANSION_WEIGHT` | `0.2` | The per-term weight of a pseudo-relevance-feedback expansion term relative to an original query term (weight `1.0`), used when query expansion is on. Higher values lean harder on co-occurring concept terms. An admission-tuning scalar. |
 | `FUSE_QUERY_EXPANSION` | `1` (on) | Pseudo-relevance feedback query expansion: a second ranking pass seeded with recurring declared-symbol terms from the first pass's top files, rewriting a sparse query in the codebase's vocabulary. Set to `0` (also `off` or `false`) to disable and reproduce the single-pass BM25F ordering exactly. |
 | `FUSE_BUDGET_EXPANSION` | `1` (on) | Budget-aware dependency expansion on the query path: when a token ceiling is set, the graph admits neighbours highest-score first only while their estimated reduced cost fits the budget, instead of admitting the whole neighbourhood and leaving the packer to cut it. The estimate uses the level each file will emit at (skeleton for neighbours when tiered emission is on). Seeds are always admitted, so this is a cost gate that mirrors the packer, not a recall lever. Set to `0` (also `off` or `false`) to disable and reproduce the unbounded expansion. |
-| `FUSE_BG_UPGRADE` | `1` (on) | In the `mcp serve` host, a cold first read serves the syntax tier in a few-to-twenty seconds and upgrades to the full semantic graph (and build capture) in the background, so the first answer does not block on the MSBuild load or the build. On by default; the availability header names when a build is running for build capture. Set to `0` (also `off`, `no`, or `false`) to index synchronously on the first read. Only affects the long-running server; the CLI `fuse index` is always a synchronous full pass. |
+| `FUSE_BG_UPGRADE` | `1` (on) | Syntax-first serving for `fuse mcp serve`. The first cold read can return the syntax tier while a supervised semantic upgrade runs in the background. Set to `0`, `false`, `no`, or `off` for synchronous first-read indexing. `fuse index` is always synchronous. |
 | `FUSE_BUILD_CAPTURE` | `1` (on) | Build capture: build the workspace once (through the bundled out-of-process worker) and rehydrate the exact Roslyn compilation, so `fuse_check` answers oracle-grade and the extracted graph is build-exact. On by default; it degrades cleanly to the MSBuild and syntax tiers when no build target exists or a build fails. Set to `0` (also `off`, `no`, or `false`) to skip build capture entirely. |
 | `FUSE_BUILD_CAPTURE_WORKER` | bundled | Absolute path to the build-capture worker (`fuse-build-capture.dll`). An override: by default the worker ships inside the tool (under `build-capture/` beside `fuse`) and is discovered with no configuration. Set this only to point at a worker outside the install (for example a development build). |
+| `FUSE_RESIDENT` | `0` (off) | Hold rehydrated Roslyn compilations live for low-latency overlay checks and watcher-driven updates. This path is opt-in; set to `1` (also `on` or `true`) on `fuse mcp serve` or `fuse host`. With it off, reads use the persistent store and `fuse_check` uses the available build-capture or build-grade path. |
 | `FUSE_DAEMON` | `0` (off) | Shared daemon: in `mcp serve`, delegate the resident workspace to one shared `fuse host` daemon per repository (spawned on demand) instead of holding an in-process one, so multiple sessions share one warm compilation. Off by default; set to `1` (also `on` or `true`) to enable. Falls back to an in-process workspace when a daemon cannot start. The single-instance daemon lock and idle shutdown are always on for `fuse host` regardless of this flag. |
 | `FUSE_DAEMON_IDLE_MINUTES` | `0` (never) | The idle-shutdown window for a `fuse host` daemon: after this many minutes with no connected client it stops itself, so a daemon spawned on demand does not linger holding a workspace. Zero (the default for a manually run host) disables idle shutdown; a daemon spawned by `mcp serve` sets a window. |
 | `FUSE_GIT_CHURN_WEIGHT` | `0` (off) | Weight of a git churn and recency prior multiplied into the query candidate scores, so a recently and frequently changed file ranks a little higher. A production-routing lever, off by default. The pinned benchmark cannot validate it (its worktrees are historical checkouts, so recent churn is empty, and a date-relative churn would leak because the changed files are the most recently changed by construction), so any value here is for real-world routing, not benchmark recall. A conservative value such as `0.15` is reasonable. |
-| Git co-change prior | on (automatic) | At index time Fuse mines a bounded git-history window (up to 1000 recent non-merge commits, wide commits over 40 source files skipped, pairs seen at least twice kept) into the `git_cochange` table, and the open-ended scorer boosts a candidate that co-changes with a strictly stronger candidate by a small capped factor (at most plus fifteen percent of the Jaccard coupling). No configuration key: the caps are fixed constants, mining is best-effort (a non-repository or a missing git executable leaves it empty and the prior a no-op), and the boost is bounded so it cannot promote a near-zero-score file. See the scoping and caching internals pages. |
+| Git co-change prior | off | Disabled in the shipping ranking after the corpus gate measured lower MRR and recall@10 with it enabled. It remains available only through the ranking diagnostic configuration; there is no public configuration key. |
 | `FUSE_SKETCH_HUGE` | `0` (off) | Replace a file still very large after reduction (over roughly 6,000 tokens) with a compact structural sketch (its type and member names, no bodies), so it keeps presence and navigation instead of consuming the budget several smaller files need. Off by default and leaves the default output unchanged; the corpus failure mode is multi-file truncation rather than single-giant-file pack-outs. Set to `1` (also `on` or `true`) to enable. |
 | `FUSE_MEMBER_LEVEL` | `0` (off) | Member-level retrieval on the query path: index each declared member as its own document, roll the scores up to a file score, and add a file the member pass surfaces (a match concentrated in one member of a large file) as an extra seed. Off by default because it re-parses files for member chunks every query and roughly doubles to triples warm latency; it trades latency for recall. Set to `1` (also `on` or `true`). |
 | `FUSE_PROJECT_GRAPH` | `0` (off) | Coarse project-reference graph expansion: parse `.csproj` `ProjectReference` elements into a coarse inter-project graph and link each candidate to the files in the projects its owning project references or is referenced by, bounded per file and followed at the same decayed weight as the proximity edges. A seed can then reach a related file across an assembly boundary (such as a changed library file and an integration test that does not name its type) that the intra-project type-reference graph misses. Off by default because the lift was within noise on the benchmark and it adds a `.csproj` disk scan per query; set to `1` (also `on` or `true`) to enable on the query and focus paths. |
-| `FUSE_DOWNGRADE_DROP` | `1` (on) | Downgrade before dropping when packing under a token budget: the lower-relevance tail that would be cut is replaced with a compact structural sketch instead, so a would-be-dropped file stays present. Applies to query and focus, not change mode. It only adds sketched files and never displaces a fuller one, so it cannot lower recall; it keeps a compact structural sketch of a would-be-dropped file, raising recall at tight budgets. Set to `0` (also `off` or `false`) to reproduce the drop-only packer. |
+| `FUSE_DOWNGRADE_DROP` | `1` (on) | Replace eligible lower-ranked files with structural sketches before dropping them under a query or focus budget. This preserves more file presence at the cost of body detail. It does not guarantee recall or semantic completeness. Set to `0`, `off`, or `false` for drop-only packing. |
 | `FUSE_QUERY_REWRITE` | `0` (off) | Rules-based, no-model query rewrite: the compound PascalCase identifiers in a query are emphasized over plain words via weighted-term ranking, so a query that names a type leans toward the file that declares it. An LLM-backed rewrite is a separate opt-in. Off by default because it measured neutral on the benchmark, where titles are identifier-rich and the symbol field is already weighted highly. Set to `1` (also `on` or `true`) to enable; it may help a deployment with prose queries. |
 | `FUSE_FIELDED_COMMENTS` | `0` (off) | Index comments and documentation comments as their own weighted BM25F field, above the body but below symbols and path, so a query term documented in a file's comments contributes a deliberate signal instead of being diluted in the body. Fully lexical, no model. Off by default because comments overlap the body and it measured neutral on the benchmark. Set to `1` (also `on` or `true`) to enable; it may help a deployment whose queries are prose. |
+
+Fuse has no embedding setting. The dense channel was retired; the tool does not fetch or ship an embedding model.
 
 ## The Scaffold from `fuse init`
 
@@ -85,7 +88,7 @@ Running `fuse init` writes the following `fuse.json` to the current directory wh
 }
 ```
 
-These values are a starting point, not a required set. Edit, remove, or add keys from the table above as needed; any key you remove falls back to its built-in default.
+These values scaffold the legacy pipeline configuration. They do not alter current semantic CLI or MCP commands.
 
 ## What This Does Not Cover
 

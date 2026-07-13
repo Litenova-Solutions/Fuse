@@ -39,10 +39,8 @@ public sealed class McpServeCommand
     /// </remarks>
     public async Task RunAsync(CliContext context)
     {
-        // Syntax-first cold start with a background semantic upgrade is opt-in: FUSE_BG_UPGRADE truthy
-        // enables it. The default indexes synchronously on the first read (the proven-stable path), so no
-        // detached background task outlives a request; making it the default is deferred with the resident-Roslyn-
-        // workspace work that lets the host manage the background task's lifetime cleanly.
+        // Syntax-first cold start with a supervised background semantic upgrade is default-on. Set
+        // FUSE_BG_UPGRADE=0 to make the first read index synchronously; `fuse index` is always synchronous.
         FuseTools.BackgroundSemanticUpgradeEnabled = BackgroundUpgradeOptIn();
         // The resident host owns the background semantic-upgrade jobs' lifetime (N3): failures go to stderr (never
         // the JSON-RPC stdout), and shutdown drains them so none is orphaned. Replaces the old fire-and-forget path.
@@ -76,23 +74,28 @@ public sealed class McpServeCommand
                         ?? "0.0.0"
                 };
                 options.ServerInstructions =
-                    "Fuse is a .NET semantic context engine for AI agents. It indexes a workspace with Roslyn and " +
-                    "serves precise, provenance-backed context from a typed semantic graph.\n\n" +
+                    "Fuse connects AI coding agents to the local .NET compiler and typed .NET wiring graph. " +
+                    "It verifies proposed edits, computes change impact, runs covering tests, and stages " +
+                    "compiler-verified refactors. Persistent indexed context supports these outcomes.\n\n" +
                     "THE LOOP: after an edit, fuse_check; before a signature change, fuse_impact; before done, fuse_review.\n\n" +
+                    "VERIFICATION: fuse_check tries oracle-grade compiler state first. Without oracle state, it runs " +
+                    "a scoped local dotnet build and returns build grade. It abstains only when neither path can run. " +
+                    "The default server is store-backed. FUSE_RESIDENT=1 enables the opt-in warm compilation path, " +
+                    "which can answer oracle-grade checks without a build; do not assume that speed on the default path.\n\n" +
                     "Use fuse_review for PR/change work when a git base exists.\n" +
-                    "Use fuse_find with kind=service|request|route|config when a task names wiring, or kind=task for an open-ended task.\n" +
+                    "Use fuse_find with kind=service|request|route|config for typed .NET wiring, or kind=task for an open-ended task.\n" +
                     "Use fuse_context only after fuse_find unless the user asks for one-shot context.\n" +
                     "Use fuse_find with kind=symbol|path|text for exact lookup.\n\n" +
                     "TOOLS:\n" +
-                    "- fuse_workspace: Workspace status and lifecycle. action=status (index mode, verify grade, freshness), index (build/refresh), map (symbols/routes/counts), doctor (per-project load diagnosis), apply (write a proposed file edit - the one explicit tree-write path, D2; a dry run unless write=true, refuses paths outside the root). The cheap first call.\n" +
-                    "- fuse_find: The find union. kind=symbol|path|text|all (exact lookup); service|request|route|config (wiring to impl/handler/action/options); signatures (a symbol's exact signature); neighbors (callers and implementers); task (rank candidate files, graded refuse-and-route). No bodies.\n" +
-                    "- fuse_context: Emit source context (mixed tiers, manifest, provenance) for selected seeds.\n" +
-                    "- fuse_review: Diff-first semantic impact and packed context for a change.\n" +
-                    "- fuse_impact: Blast radius for a symbol (callers, implementers, referencers) before an edit; also package:{id,fromVersion,toVersion} for a NuGet upgrade break set.\n" +
-                    "- fuse_check: Speculatively typecheck a proposed single-file edit (oracle-grade; abstains otherwise).\n" +
-                    "- fuse_test: Run the covering tests for a symbol (build-grade, scoped by filter).\n" +
-                    "- fuse_refactor: Compiler-executed, verify-gated refactors staged as a diff (rename, add/remove/reorder-parameter, add-cancellation-token, extract-interface, move-type, apply-codefix).\n" +
-                    "- fuse_reduce: Compact a known set of files or raw content (the one utility outside the loop).";
+                    "- fuse_check: Typecheck a proposed single-file edit without writing it; oracle, then scoped local build, then abstain.\n" +
+                    "- fuse_impact: Compute callers, implementers, referencers, and package-upgrade breaks before editing.\n" +
+                    "- fuse_test: Run the covering tests for a symbol at build grade, scoped by filter.\n" +
+                    "- fuse_review: Pack a diff's semantic impact and relevant context.\n" +
+                    "- fuse_refactor: Stage compiler-executed, verify-gated refactors as diffs.\n" +
+                    "- fuse_find: Find exact symbols and paths, typed wiring, signatures, neighbors, or task candidates. No bodies.\n" +
+                    "- fuse_context: Emit scoped, reduced source with provenance for selected seeds.\n" +
+                    "- fuse_workspace: Report status or manage the persistent index; apply is the only tree-write action and is dry-run unless write=true.\n" +
+                    "- fuse_reduce: Compact known files or raw content.";
             })
             .WithStdioServerTransport()
             .WithTools<FuseTools>()

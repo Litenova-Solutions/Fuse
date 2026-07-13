@@ -48,19 +48,18 @@ These four were once separate flags; the level applies all of them at once.
 attributes such as `DebuggerDisplay` and `MethodImpl`, removes the `this.` prefix,
 rewrites auto-properties to a compact form, and collapses whitespace around delimiters.
 These transforms are **regex-based**, not Roslyn-parsed. They preserve string-literal
-contents and keep 99 to 100 percent of public types and methods on the benchmark corpus,
-but the output is no longer guaranteed to compile and can rewrite syntax in ways a
+contents, but the output is no longer guaranteed to compile and can rewrite syntax in ways a
 Roslyn parse would reject. Use it when the reader is a model that needs the logic, not
-a compiler. On the benchmark corpus it removes 21 to 46 percent of tokens at full type
-and method fidelity, which makes it the dependable cut for bodies intact.
+a compiler. On the recorded corpus it removes 16 to 46 percent of tokens.
 
 ### skeleton
 
-`--level skeleton` drops method bodies entirely and emits class, interface, and method
-signatures only. Unlike `aggressive`, skeleton extraction uses **Roslyn syntax analysis**,
-so signatures match the source parse tree rather than a line-based regex guess. That
-makes skeleton the faithful architecture map: on the benchmark corpus it removes 39 to
-56 percent of tokens and keeps every method signature, so the architecture map is faithful rather than a line-based guess.
+`--level skeleton` drops method bodies entirely and emits class, interface, and member
+signatures. Unlike `aggressive`, skeleton extraction uses **Roslyn syntax analysis**.
+Across the four recorded repositories it removes 38 to 44 percent of tokens. An
+independent Roslyn parse found that it retained every public and protected type-name key
+and 96.3 to 99.4 percent of public and protected method-name keys. This measures
+declaration-name fidelity, not complete signature or API preservation.
 See [Roslyn structural analysis vs regex](/docs/concepts/roslyn-vs-regex) for the
 measured comparison.
 
@@ -84,12 +83,11 @@ keeping the must-keep seeds in full and reducing peripheral files further when t
 is tight. Best-effort secret redaction (regex and entropy heuristics) runs before token
 counting at every level. See [Keep secrets out](/docs/scenarios/keep-secrets-out).
 
-## Reduction Is Not Deletion
+## Read the Fidelity Claim Correctly
 
-The `none`, `standard`, and `aggressive` levels are designed to keep the public API. An
-independent Roslyn oracle confirms 99 to 100 percent of public types and methods survive.
-The `skeleton` and `publicApi` levels make no claim of body fidelity, by design: they keep
-signatures and drop bodies.
+The benchmark compares declaration names from reduced output with an independent Roslyn
+parse of the raw source. It does not verify every modifier, attribute, generic constraint,
+parameter, or return type. `skeleton` and `publicApi` intentionally drop bodies.
 
 ## Survey Before You Reduce
 
@@ -102,8 +100,11 @@ fuse map ./src --detail all
 `fuse map` lists indexed symbols, routes, and counts instead of file bodies. See
 [Survey a codebase cheaply](/docs/scenarios/survey-cheaply).
 
-## Next
+## Try Two Views
 
-The exact transforms each reducer performs are in the
-[Reducers reference](/docs/reference/reducers). To narrow which files get reduced at
-all, see [Scoping](/docs/concepts/scoping).
+Run both commands on one known file and compare whether the body is needed:
+
+```bash
+fuse reduce --files src/OrderService.cs --level aggressive
+fuse reduce --files src/OrderService.cs --level skeleton
+```

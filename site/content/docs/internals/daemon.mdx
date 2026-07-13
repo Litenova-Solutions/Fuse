@@ -15,7 +15,8 @@ The payoff is measured on NodaTime: one daemon holds the resident workspace at a
 
 ## How to see it
 
-`fuse workspace status` names the daemon serving the root, when one is:
+Ask a connected agent to call `fuse_workspace` with `action=status`. The response names the
+daemon serving the root, when one is:
 
 ```
 daemon: PID 48612, uptime 45s, RSS 109 MB (fuse host 4.0.0)

@@ -1,63 +1,60 @@
 ---
 title: The iterative workflow
-description: "How an AI agent uses Fuse across a whole task: survey, localize, resolve, plan context, and review, in a few cheap calls instead of dozens of blind reads."
+description: "How an AI agent uses Fuse across a task: survey, localize, resolve, plan context, verify, and review."
 ---
 
 An AI coding agent does not start a task by editing. It starts by finding the right code:
 which concrete type runs, which handler processes a request, what a change will break. On
-a large .NET solution, doing that with directory listings and blind file reads is the
-expensive part of the task. Fuse replaces it with a few cheap calls against a warm
-semantic index. This page is the mental model for how an agent strings those calls
+a large .NET solution, directory listings and blind file reads make that search expensive.
+Fuse provides targeted calls against a warm persistent index. This page is the mental
+model for how an agent strings those calls
 together. For what one call does internally, see [How Fuse works](/docs/concepts/how-fuse-works).
 
-## What Blind Exploration Costs
+## Where Fuse Fits
 
-Without a semantic index, the agent reads, decides, and reads again. Each hop is a model
-call with latency, and the loop has three costs that compound on a big codebase:
+Without a semantic index, the agent reads, decides, and reads again. Fuse supplies a
+compact map and typed evidence for the parts of that loop that the local index can answer:
 
 - **Tokens.** Every file opened to orient burns context window that could have gone to the
   change. Much of it is comments, using directives, and boilerplate the agent does not
   need to reason about structure.
-- **Round-trips.** Discovery is sequential. A **round-trip** is one read-decide cycle, and
-  the agent often re-reads files it already saw because nothing kept a compact map.
+- **Repeated context.** Discovery is sequential, and later calls can overlap files already
+  returned. A shared session elides unchanged repeats.
 - **Lost wiring.** Reading files in isolation, the agent reconstructs the DI registrations,
   the request and route handlers, and the public surface by hand. Grep finds the interface
   but not the type that runs.
 
-## The Measured Cost
+## The Measured Boundary
 
-The [benchmark corpus](/docs/project/benchmarks) puts numbers on the loop over real
-merged pull requests, counted with the `o200k_base` tokenizer.
+The [benchmark corpus](/docs/project/benchmarks) measures two distinct paths. Open-ended
+localization from a title alone recalls 37.7 percent of changed files at a median 1,348
+tokens. Review starts from a Git diff, keeps those changed files as must-keep seeds, and
+packs the branch context at 93.4 percent precision in a median 1,026 tokens. Review does
+not discover the changed files.
 
-A blind agent must read each file a change touches at least once before it has the
-context. That is a structural lower bound, not a measured agent: a mean of 6.9 files per
-change over the pull requests tested.
+The loop benchmark does not show fewer build and test calls. The Fuse arm records a mean
+3.1 agent-visible `dotnet build` plus `dotnet test` calls, compared with 3.2 for native.
+Its measured result is higher test-verified pass@1 (89 versus 82 percent) and one fewer
+false-done rollout (8 versus 9), not a build-round-trip reduction.
 
-## The Collapse: One Scoped Call
+## The Verified-Edit Loop
 
-Fuse acquires that context in one call. On the benchmark corpus, open-ended localize from a
-title alone recalls 37.7 percent of changed files at a median 1,348 tokens, and change
-review with a git base keeps 100 percent of changed files at 93.4 percent precision in a
-median 1,026 tokens.
-
-Against a generic packer (Repomix), which dumps the whole repository in one call, Fuse ties
-on round-trips and wins on tokens because Fuse scopes and the packer dumps. Fuse does not
-make fewer round-trips than a packer; both are one call. The win against a packer is tokens;
-the win against no tool is the round-trip collapse.
-
-## The Loop, in a Few Cheap Calls
-
-Across a task, Fuse is a few cheap calls against the warm index instead of dozens of blind
-reads:
+Across a task, an agent can use targeted calls against the warm index:
 
 ```mermaid
 flowchart LR
-    A[Survey<br/>fuse_workspace map] --> B[Localize<br/>fuse_find task]
-    B --> C[Resolve<br/>fuse_find wiring]
-    C --> D[Context<br/>fuse_context]
-    D --> E[Review<br/>fuse_review]
-    E -.next step.-> B
+    A[Choose scope<br/>Git diff, wiring, or task] --> B[Read context<br/>fuse_context]
+    B --> C[Propose one-file edit]
+    C --> D[fuse_check]
+    D -->|Diagnostics| C
+    D -->|Clean| E{Public signature changes?}
+    E -->|Yes| F[fuse_impact]
+    E -->|No| G[fuse_test]
+    F --> G
+    G --> H[fuse_review<br/>before handoff]
 ```
+
+<Diagram src="/fuse-loop-diagram.svg" alt="Agent verify loop: propose edit, fuse_check, optional fuse_impact and fuse_test, then fuse_review" />
 
 Survey the workspace cheaply with `fuse_workspace` (`action=map`), localize a task to
 candidate files with `fuse_find` (`kind=task`), resolve the wiring a task names with
@@ -74,14 +71,14 @@ request, or config section, start with `fuse_find` (`kind=service|request|route|
 
 ## Honest Boundary
 
-The no-tool round-trip count is a lower bound from ground truth, the count of files each
-real change touched, not a trace of a running agent; a real agent reads more while
-discovering them. A live multi-turn agent trace and end-to-end task resolution are not
-benchmarked. The token and recall figures above are measured; treat any wall-clock claim
-as illustrative.
+File count is not a round-trip count: an agent can read several files in one tool call or
+revisit one file across several calls. The loop suite counts actual agent-visible build and
+test calls and finds no material reduction. Review metrics describe compact Git-seeded
+branch context; localization metrics describe open-ended discovery.
 
-## Next
+## Run the Loop
 
-See the measured detail on the [Benchmarks](/docs/project/benchmarks) page,
-the narrowing strategies in [Scoping](/docs/concepts/scoping), and the multi-turn step in
-[Sessions and deltas](/docs/concepts/sessions-and-deltas).
+Start with the strongest anchor available. After the first edit, send the proposed file
+content to `fuse_check`. Before changing a public signature, call `fuse_impact`. Run
+`fuse_test` for the edited symbol, then call `fuse_review` against the branch base before
+handoff.

@@ -9,10 +9,10 @@ spending its window on files the task does not touch.
 The principle is to work from the warm index: a cheap map first, then localize or resolve
 the task, then plan context for the result. Each step is one MCP tool call. The payoff is
 measured on the [benchmark corpus](/docs/project/benchmarks): open-ended localize from a
-title alone recalls 37.7 percent of changed files at a median 1,348 tokens, while change
-review with a git base keeps 100 percent of changed files at 93.4 percent precision in a
-median 1,026 tokens. A blind agent must read each needed file at least once (a structural
-lower bound of about seven files per change over the pull requests tested).
+title alone recalls 37.7 percent of changed files at a median 1,348 tokens. Change review
+starts from a Git diff and packages the changed files plus blast-radius context at 93.4
+percent precision in a median 1,026 tokens. Its 100 percent changed-file recall follows
+from must-keep Git seeding; it is not a file-discovery result.
 
 ## The Sequence
 
@@ -27,8 +27,9 @@ lower bound of about seven files per change over the pull requests tested).
 3. **Plan context.** Feed the candidate file paths from `fuse_find` (or the resolved
    names) to `fuse_context` to fetch their bodies and dependency neighborhood, packed to a
    budget.
-4. **Review a change.** For a pull request, call `fuse_review` with the base branch; it
-   seeds on the changed files and returns the blast radius and packed context in one call.
+4. **Review a change.** For a pull request, call `fuse_review` with the base branch. It
+   uses Git-known changed files as must-keep seeds and returns compact branch context,
+   including the available semantic blast radius.
 
 ## Example Call Sequence
 
@@ -38,8 +39,8 @@ fuse_find(path="C:/Projects/MyApp/src", kind="task", query="discount applied at 
 fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], depth=2, maxTokens=25000)
 ```
 
-The first call orients the agent, the second ranks the files the task touches, and the
-third pulls those files and their dependency neighborhood as packed context.
+The first call orients the agent, the second ranks candidate files, and the third pulls
+the selected files and their dependency neighborhood as packed context.
 
 ## Resolve When the Task Names Wiring
 
@@ -72,11 +73,10 @@ already returned are not sent again. See
 ## When to Use It
 
 Use this progressive flow on any codebase too large to hand an agent whole. When a git
-base is available, `fuse_review` alone is often the fastest path to a change's context.
+base is available, `fuse_review` provides Git-seeded branch context directly.
 
-## Related Concept
+## Run the First Three Calls
 
-The mental model behind this flow is
-[The iterative workflow](/docs/concepts/iterative-workflow). The tool parameters are in the
-[MCP tools reference](/docs/reference/mcp-tools), and the modes behind them in
-[Scoping](/docs/concepts/scoping).
+Copy the example call sequence into your agent, replace the path and task text, and keep
+the `fuse_context` budget at 25,000 tokens. Check the returned manifest before asking the
+agent to edit: each included file should name its seed or graph provenance.

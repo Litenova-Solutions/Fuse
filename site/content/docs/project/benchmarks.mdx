@@ -3,9 +3,11 @@ title: Benchmarks
 description: Reproducible measurements of Fuse on real .NET repositories, with honest reporting of strengths and limits.
 ---
 
-Fuse answers a .NET coding agent's edit-time questions from a Roslyn-backed compilation, working from a warm persistent index. This page reports what it does on real .NET codebases across seven measurement suites. The main question is practical: can Fuse verify an edit honestly, resolve .NET wiring, scope a change with precision, help an agent gather the right files, and refuse to return junk on a low-signal query.
+Fuse answers a .NET coding agent's edit-time questions from a warm persistent index and, when available, a build-captured Roslyn compilation. This page reports the current recorded benchmark suites. The main question is practical: can Fuse verify an edit honestly, resolve .NET wiring, package branch context compactly, localize an open-ended task, and refuse to return junk on a low-signal query.
 
 The yardstick is compiler-grade behavior, not tokens saved. Token efficiency shows up in scoped output: a pull request's review context arrives at a median of 1,026 tokens.
+
+<Diagram src="/fuse-benchmarks.svg" alt="Recorded benchmark suites: check honesty, wiring resolution, branch review, and agent loop" />
 
 Three readers are served below. A stakeholder can read the suite headlines and the honest limits section. A new engineer can follow the reproduction steps and run a suite. A maintainer can read each suite's method, sample, index-mode distribution, and the cases where Fuse is weak.
 
@@ -16,8 +18,7 @@ The benchmark runs through a C# eval driver in `tests/benchmarks/Fuse.Benchmarks
 | A: semantic resolution | Does the extracted graph match hand-built wiring ground truth? | Yes |
 | B: change impact and review | Does `fuse review` scope a merged PR to changed files plus semantic blast radius? | Yes |
 | C: open-ended localization | Given only a PR title and no Git base, does `fuse localize` find the changed files? | Yes |
-| D: agent context sufficiency | Under a real model, does an agent gather the task's files with Fuse MCP tools? | No (model-dependent) |
-| E: token reduction and fidelity | How much each reduction level cuts tokens, and how much public API the skeleton keeps | Yes |
+| E: token reduction and fidelity | How much each reduction level cuts tokens, and which public and protected type and method names the skeleton keeps | Yes |
 | F: `fuse_check` honesty | How often the speculative typecheck lies on known-good and known-bad single-file edits | Yes |
 | Loop | How many build-gated turns an agent takes to finish a task correctly | No (model-dependent) |
 
@@ -29,24 +30,22 @@ The harness restores each checkout before indexing with the `--restore` flag (se
 
 ## The corpus
 
-The change-impact, localization, and ranking suites run on a **primary corpus**: 24 open-source .NET libraries pinned by commit, chosen to build on the .NET 10 SDK, counted with the `o200k_base` encoding. PR ground truth (`prs-v2.json`) keeps a merged commit as a task when it changes 2 to 25 C# files and its title describes a real change. Maintenance commits (CI tweaks, dependency bumps, reverts, formatting passes) are dropped because a title alone cannot locate their change set.
+The current corpus manifest (`corpus-v2.json`) pins 24 open-source .NET library repositories by commit. Corpus health records 15 of 24 at the build-captured semantic tier. The review, localization, and ranking scorecards select 69 merged changes across 23 repositories, three per repository; AutoMapper had no qualifying reconstructed change. PR ground truth (`prs-v2.json`) keeps a merged commit when it changes 2 to 25 C# files and its title describes a code change. Maintenance commits (CI changes, dependency bumps, reverts, formatting passes) are excluded because a title alone cannot locate their change set.
 
-One pinning caveat is recorded honestly: Scrutor uses central package management with two NuGet sources. Nested under Fuse's repository NuGet config it triggers a deterministic NU1507 source-mapping conflict and restores to syntax. NodaTime and Ardalis.Specification restore clean. eShopOnWeb restores per-PR-worktree in the review suite but its main checkout loads syntax in the localize suite, so the localize index-mode distribution is lower than review's.
+| Corpus fact | Current value | Source |
+|-------------|--------------:|--------|
+| Pinned repository candidates | 24 | `corpus-v2.json` |
+| Build-captured semantic repositories | 15 | `corpus-health.json` |
+| Repositories represented in PR scorecards | 23 | `review.json`, `localize.json`, `ranking.json` |
+| Selected merged changes | 69 | `review.json`, `localize.json`, `ranking.json` |
 
 ### Historical corpus (superseded, for provenance only)
 
-An earlier mixed corpus (three libraries plus the eShopOnWeb ASP.NET Core application, `prs.json`, 53 PRs) is preserved in `*-retired.json` result files. That corpus carried application wiring (DI, MVC and Razor Pages, EF Core, config sprawl) that the library-only primary corpus does not, so it remains an external-validity reference. Its numbers were bounded because most repositories did not build with a full semantic workspace in the benchmark environment. The primary corpus is the current run.
-
-| Repository | Size | C# files | PRs |
-|------------|------|---------:|----:|
-| Scrutor | micro | 45 | 3 |
-| Ardalis.Specification | small to mid | 233 | 14 |
-| NodaTime | mid | 488 | 18 |
-| eShopOnWeb (application) | mid | 254 | 18 |
+An earlier mixed corpus (three libraries plus the eShopOnWeb ASP.NET Core application, `prs.json`, 53 PRs) is preserved in `*-retired.json` result files. It is provenance, not the primary corpus. Application external validity now has its own supplementary eShopOnWeb scorecard described under Suite B.
 
 ## Reproduce
 
-Prerequisites: the .NET SDK 10.0 or later and Git. Corpus-bound suites (review, localize, agent) skip gracefully when the pinned corpus is absent, so a bare invocation stays offline. The semantics suite runs on the in-repo fixture with no corpus.
+Prerequisites: the .NET SDK 10.0 or later and Git. Corpus-bound suites skip gracefully when the pinned corpus is absent, so a bare invocation stays offline. The semantics suite runs on the in-repo fixture with no corpus.
 
 Run a suite by name:
 
@@ -58,20 +57,19 @@ fuse eval ranking
 fuse eval checkgate
 fuse eval diagbench
 fuse eval loop
-fuse eval agent
 fuse eval reduce
 ```
 
 There is one harness: the `Fuse.Benchmarks` C# library behind `fuse eval`. The peer comparison is the one exception: it uses `tests/benchmarks/harness/layer6-peers.ps1` to orchestrate external MCP servers.
 
-To index the corpus semantically, add `--restore`, which runs `dotnet restore` on each checkout (or, for review and agent, each PR worktree) before indexing:
+To index the corpus semantically, add `--restore`, which runs `dotnet restore` on each checkout or review worktree before indexing:
 
 ```bash
 fuse eval review --restore
 fuse eval localize --restore
 ```
 
-A repository that cannot restore on the installed SDK stays in syntax mode and is recorded as such. Add `--require-semantic` to skip any checkout that does not reach semantic mode rather than silently scoring at the syntax fallback. Each suite writes its scorecard to `tests/benchmarks/results/<suite>.json` with per-task hits, misses, and the index-mode distribution. The agent suite additionally requires a model and the Claude Code CLI. It is not byte-reproducible.
+A repository that cannot restore on the installed SDK stays in syntax mode and is recorded as such. Add `--require-semantic` to skip any checkout that does not reach semantic mode rather than silently scoring at the syntax fallback. Each suite writes its scorecard to `tests/benchmarks/results/<suite>.json` with per-task hits, misses, and the index-mode distribution. Model-driven suites are not byte-reproducible.
 
 Full reproduction steps and the recorded-run leaderboard are in [Reproduce the Benchmark](/docs/project/reproduce).
 
@@ -86,13 +84,13 @@ Suite A checks the extracted semantic graph against a hand-built edge ground tru
 | Edges matched | 24 of 24 |
 | False positives | 0 |
 
-When the workspace loads with semantics, Fuse resolves .NET wiring exactly. Nothing in this result depends on a model or a token budget.
+On the OrderingApp fixture, Fuse matches all 24 adjudicated wiring edges. This result does not establish 100 percent wiring accuracy for arbitrary repositories.
 
 A corpus sampled-adjudication mode (`fuse eval semantics --corpus-sample N`) indexes the corpus repositories, extracts predicted graph edges, samples a fixed number per edge type with a seeded shuffle, and writes them to `semantics-corpus-sample.json` for adjudication. A repository that loads syntax emits no graph edges to sample. One nuance: the constructor-injection edge captures any constructor-parameter dependency, including value and enum parameters, not only DI-container services.
 
 ## Suite B: change impact and review
 
-Suite B measures whether `fuse review` scopes a real merged PR to the files it touches plus the semantic blast radius around them. The primary run is on the 24-library corpus: 69 real merged pull requests (three per repository across 23 repositories) at a 25,000-token budget with `--restore` on. Changed files are seeded as must-keep, so the question this suite answers is precision: beyond the files the PR changed, what else does review return, and is it relevant?
+Suite B measures how compactly `fuse review` packages branch context after Git supplies the changed-file set. The primary run covers 69 real merged changes across 23 of the 24 corpus repositories at a 25,000-token budget with `--restore` on. Changed files are seeded as must-keep, then Fuse adds semantic blast-radius context. This suite measures packing precision, not discovery of the files a change needs.
 
 | Metric | Value |
 |--------|------:|
@@ -132,9 +130,9 @@ On the primary corpus (69 PRs, title only, restore on):
 
 By task category: identifier-rich titles 52 percent recall, natural-language domain titles 24 percent, test-only titles 46 percent. Localize main-checkout index modes: semantic 14, partial 4, syntax 5. Open-ended recall on the primary corpus is 37.7 percent versus 15.0 percent on the historical corpus (`localize-retired.json`). The reconstructed set drops maintenance titles, so it carries no no-signal tasks here. Low-signal refuse-and-route behavior is measured on the historical corpus, which did carry them: correct refusal was 100 percent at 0.0 percent false rejection.
 
-### The dense embedding channel was retired (v4.1)
+### No embedding channel
 
-Earlier releases ran a dense embedding channel (a small local all-MiniLM-L6-v2 model) on by default. On this corpus dense reached 14.9 percent overall recall against the lexical fallback's 13.3 percent. Its only clear win was removing the lexical path's false rejections. In v4.1 the channel was deleted and the tool carries no model. The false rejections were recovered by lowering the signal-sufficiency floor (the lexical-only path now grades those three answerable queries as partial rather than refusing them), which held overall recall at 15.0 percent with false rejection back to 0.0 percent on the lexical channel alone.
+The shipping retrieval path is lexical and ships no embedding model. The retired mixed-corpus results preserve earlier embedding experiments for provenance, but embeddings are absent from the current product and from the current ranking configurations.
 
 The signal-sufficiency contract is why the precision metrics hold despite the low recall. Every request is graded **confident** (a candidate stands clear; return the tight set), **partial** (some signal, no clear winner; return a small flagged set plus a navigation map), or **insufficient** (no usable anchor; return only a navigation map and ask for a symbol, route, service, request, config section, or git base). The grade is computed from the candidate score distribution with no model. Correct refusal on no-signal titles was 100 percent on the historical corpus (low-signal detection F1 1.0), with false rejection on answerable queries at or under the 0.10 target. With a Git base available, the routed mode is change impact (Suite B). Suite C reports what Fuse can do from a sentence with no base.
 
@@ -151,20 +149,7 @@ On the primary corpus (69 PRs, index modes semantic 14 / partial 4 / syntax 5):
 
 Both are materially higher than on the historical corpus (`ranking-retired.json`, MRR 0.197, recall@10 15.0 percent). On the primary corpus the git co-change prior is net-negative: re-adding it costs MRR -0.055 and recall@10 -1.9 percent, so it is dropped from the shipping default. The suite keeps a diagnostic config so the prior's effect stays measured.
 
-## Suite D: agent context sufficiency (model-dependent)
-
-Suite D runs one Claude Code CLI driver, model `claude-sonnet-4-6`, over 12 PRs (two per repository) in two arms (native filesystem Read/Grep/Glob, and Fuse MCP tools), one rollout each, for 24 rollouts. The run goes through the real `fuse.exe` with `--restore` so the fuse arm indexes semantically where a repository restores. It measures file recall of the set the agent gathered and cumulative tokens spent.
-
-This suite is model-dependent and not byte-reproducible. Read recall together with tokens.
-
-| Arm | Mean file recall | Mean precision | Median cumulative tokens |
-|-----|-----------------:|---------------:|-------------------------:|
-| fuse | 30% | 44% | 211,502 |
-| native | 26% | 43% | 209,182 |
-
-On this 12-PR sample the fuse arm reached 30 percent mean recall to native's 26 percent, at comparable precision (44 versus 43 percent) and comparable token cost. The sample is small (12 PRs, one rollout per arm, one model), so the confidence interval is wide. A full run of 50 to 100 tasks at three rollouts needs a larger agent-compute budget.
-
-### Peer comparison (Fuse versus CodeGraph, coa-codesearch, and Serena)
+## Peer comparison (Fuse versus CodeGraph, coa-codesearch, and Serena)
 
 The peer layer gives each tool the PR title and scores the returned file set against the changed files. Fuse runs through its index-then-localize path. CodeGraph (offline tree-sitter graph) runs `codegraph init` then `codegraph explore`. coa-codesearch (a .NET Lucene MCP server) and Serena (an LSP-backed symbol-search MCP server) are each driven by one headless `claude` rollout restricted to that server's search tools. At a 50,000-token budget (`layer6-peers.json`):
 
@@ -202,7 +187,7 @@ Suite E counts, for each repository, the raw `o200k_base` tokens of the C# files
 | Specification | 133,415 | 25% | 30% | 44% | 49% | 188/188, 336/349 |
 | eShopOnWeb | 65,569 | 11% | 16% | 42% | 47% | 226/226, 186/189 |
 
-Percentages are token reduction against the raw C# token count. The Roslyn skeleton keeps every public and protected type and 99 to 100 percent of public methods while removing 38 to 44 percent of tokens at skeleton level. Public-API level removes 47 to 60 percent.
+Percentages are token reduction against the raw C# token count. Across these four repositories, standard removes 11 to 41 percent, aggressive removes 16 to 46 percent, skeleton removes 38 to 44 percent, and public API removes 47 to 60 percent. The fidelity check compares public and protected declaration names against an independent Roslyn parse: skeleton retains 100 percent of type names and 96.3 to 99.4 percent of method names in the recorded repositories. It does not claim complete API preservation.
 
 ## Suite F: the fuse_check honesty gate
 
@@ -218,13 +203,13 @@ The recorded run (`--mutations 500`) produced 1,000 compiler-verified cases (500
 
 ### Fast check versus full build agreement
 
-`fuse_check` answers at the best available [verification grade](/docs/concepts/verification-grades): a sub-second speculative typecheck against a build-captured compilation (oracle grade), or, when no build capture is available, a real `dotnet build` scoped to the owning project (build grade). Build grade is ground truth by construction. The honesty question is whether the fast oracle path agrees with it.
+`fuse_check` answers at the best available [verification grade](/docs/concepts/verification-grades): a speculative typecheck against a build-captured compilation (oracle grade), or, when no build capture is available, a real `dotnet build` scoped to the owning project (build grade). The recorded sub-second timing applies to the opt-in resident workspace. Build grade is ground truth by construction. The honesty question is whether the oracle path agrees with it.
 
 `fuse eval checkgate --verify-agreement N` (with a build-capture worker provisioned) runs the same proposed content through both paths for a sample of mutants. The recorded run (`--verify-agreement 24`) sampled 24 OrderingApp mutants: all 24 comparable with no abstention on either side, diagnostic-id agreement 24 of 24 (100.0 percent), clean/red verdict agreement 24 of 24. The gate is at least 99 percent agreement, met at 100 percent on this sample.
 
 ## Loop metric (model-dependent)
 
-Per-payload token reduction does not change the cumulative token cost of an agent session (see Suite D). The loop suite measures how many build-gated turns an agent takes to finish a coding task correctly.
+Per-payload token reduction does not establish lower cumulative session cost. The loop suite measures how many build-gated turns an agent takes to finish a coding task correctly.
 
 **pass@1** means the agent's edit passes the project's own tests on the first attempt. The harness checks this with a gold-test oracle: the task's changed tests are checked out onto the agent's finished edit and run, so success means the tests pass, not that the transcript claimed green.
 
@@ -252,6 +237,24 @@ On this arena Fuse's pass@1 is 7 points higher (89 versus 82 percent). False-don
 
 The earlier single-rollout pilot (`loop-pilot.json`) is superseded by this run.
 
+### Short elapsed-time pilot (`loop-efficiency-pilot.json`)
+
+A separate five-task pilot measured the full Claude Code session time in three arms: native
+tools, standard Fuse, and Fuse with the resident workspace enabled. It ran one rollout per
+arm on five Ardalis.GuardClauses tasks. Fourteen of 15 planned rollouts completed; one
+resident rollout was omitted.
+
+The final test check executed in both compared arms for only two tasks. On those two pairs,
+standard Fuse recorded a median time saving of 9.4 percent and resident Fuse recorded 20.0
+percent. This is a directional pilot, not a developer-productivity result: two verified pairs
+cannot support a public "developers are X percent faster" claim.
+
+The broader timing rows reinforce that limit. Across all five native-to-standard-Fuse pairs,
+mean elapsed time was equal and median Fuse time was 30.4 seconds slower. Across the four
+native-to-resident pairs, resident Fuse was 68.9 seconds faster at the median. Every final
+test check that executed passed, but it executed for only three native, two Fuse, and two
+resident rollouts. The result file retains every duration, omission, and denominator.
+
 ## DiagBench: repair-packet auto-apply rate
 
 A `fuse_check` repair packet is only useful if its suggested fix repairs the error. DiagBench (`fuse eval diagbench`) measures that without a model: for each API-shape mutant (a misspelled member or type reference), it builds the shipped repair packet, auto-applies the machine-applicable `TopRepair`, recompiles, and records whether the error went to zero with no new error.
@@ -263,12 +266,12 @@ The recorded run (`results/diagbench.json`) is 20 single-token near-miss mutants
 These are honest gaps. Do not read an absence here as a result:
 
 - The model-driven peer comparison at full scale. All four arms run head-to-head, but the model-driven arms run a bounded 4-PR sample. A full 50-to-100-PR model-driven run needs a larger compute budget.
-- Full task resolution at scale: driving an agent across arms and scoring its patch against a test oracle over many tasks. The deterministic core of that harness is built and tested; the at-scale agent run needs provisioned model credentials and compute.
+- Elapsed task resolution at scale: the five-task timing pilot has only two verified pairs. A publishable time-savings estimate needs a larger task sample with final tests executing in both compared arms.
 - Cross-machine timing. The warm-index latency model is on [Performance and Benchmarking](/docs/project/performance); no fixed cross-machine number is published.
 
 ## How to read these results together
 
-Suite A is the clean deterministic claim: with a semantic workspace, Fuse resolves .NET wiring exactly (24 of 24 edges). Suite B is the practical strength: on the primary corpus review scopes a real PR at 93.4 percent precision and 100 percent changed-file recall in around a thousand tokens, beating a grep baseline, with a majority of PRs loading semantically. Suite C is the honest floor: from a title alone with no base, recall is the weakest axis (37.7 percent on the primary corpus, more than double the historical corpus at 15.0 percent), and the engine abstains on a no-signal title rather than returning junk. Suite D is a small model-dependent signal that Fuse MCP tools can gather the right files at comparable token cost. The loop suite shows a higher test-verified success rate with comparable build round-trips. The primary corpus is library-focused; the external-validity gap is covered by a supplementary eShopOnWeb run (`review-app.json`) at 100 percent recall and 84.2 percent precision. The historical corpus (`*-retired.json`) is preserved for provenance.
+Suite A is fixture-scoped: Fuse matches 24 of 24 adjudicated wiring edges in OrderingApp. Suite B shows that Git-seeded branch context is compact: 93.4 percent precision and a median 1,026 returned tokens, with changed-file recall fixed at 100 percent by must-keep seeding. Suite C is the open-ended floor: from a title alone with no base, recall is 37.7 percent. The loop suite records a higher test-verified success rate, while agent-visible build-plus-test counts remain essentially equal at 3.1 for Fuse and 3.2 for native. The primary corpus is library-focused; the supplementary eShopOnWeb run records 100 percent Git-seeded changed-file recall and 84.2 percent precision.
 
 ## Related pages
 

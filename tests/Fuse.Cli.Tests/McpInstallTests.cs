@@ -209,6 +209,47 @@ public sealed class McpInstallTests
 
         var copilot = await File.ReadAllTextAsync(Path.Combine(root, ".github", "copilot-instructions.md"));
         Assert.Contains("fuse_review", copilot);
+
+        var gitIgnore = await File.ReadAllTextAsync(Path.Combine(root, ".gitignore"));
+        Assert.Contains(".fuse/", gitIgnore);
+    }
+
+    [Fact]
+    public async Task InstallAsync_WriteRules_ProjectScope_DoesNotDuplicateGitIgnoreEntry()
+    {
+        var root = CreateTempDirectory();
+        await File.WriteAllTextAsync(Path.Combine(root, ".gitignore"), ".fuse/\n");
+
+        var service = new McpInstallService();
+        await service.InstallAsync(
+            [McpInstallClient.Cursor],
+            McpInstallScope.Project,
+            root,
+            "fuse",
+            writeRules: true,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        var gitIgnore = await File.ReadAllTextAsync(Path.Combine(root, ".gitignore"));
+        Assert.Equal(".fuse/\n", gitIgnore);
+    }
+
+    [Fact]
+    public async Task InstallAsync_ProjectScopeWithoutRules_DoesNotWriteGitIgnore()
+    {
+        var root = CreateTempDirectory();
+        var service = new McpInstallService();
+
+        await service.InstallAsync(
+            [McpInstallClient.Cursor],
+            McpInstallScope.Project,
+            root,
+            "fuse",
+            writeRules: false,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        Assert.False(File.Exists(Path.Combine(root, ".gitignore")));
     }
 
     [Fact]

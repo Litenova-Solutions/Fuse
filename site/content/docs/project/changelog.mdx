@@ -13,7 +13,9 @@ The repository CHANGELOG.md file documents every notable change by version, incl
 
 ## Most Recent Notable Changes
 
-Fuse 4.0.0 is the first public release. Fuse is a resident .NET compiler service for AI agents: it holds a workspace's Roslyn compilations in memory, verifies a proposed edit before it lands (`fuse_check`), computes a change's blast radius (`fuse_impact`), stages compiler-executed refactors as diffs (`fuse_refactor`), runs the covering tests for a symbol (`fuse_test`), and resolves what the code actually runs (`fuse_find`), with a verification grade on every answer and honest abstention when it cannot answer at compiler grade.
+**4.0.1** (2026-07-13): `fuse mcp install --rules` adds `.fuse/` to `.gitignore` at project scope; docs cover any MCP-compatible client and clarify that indexing happens on the first MCP read; consumer copy and the landing hero are retuned for a technical audience; diagram rendering on the site is fixed.
+
+**4.0.0** is the first public release. Its default MCP path uses the persistent store; the live resident-compilation path remains opt-in with `FUSE_RESIDENT=1`. Fuse verifies proposed edits (`fuse_check`), computes blast radius (`fuse_impact`), stages compiler-executed refactors (`fuse_refactor`), runs covering tests (`fuse_test`), and resolves typed .NET wiring (`fuse_find`).
 
 The MCP server exposes a loop-shaped surface of eight tools (`fuse_workspace`, `fuse_find`, `fuse_context`, `fuse_impact`, `fuse_check`, `fuse_test`, `fuse_refactor`, `fuse_review`) plus `fuse_reduce` as the one out-of-loop utility, alongside playbook prompts and addressable resources. Scoped, reduced context and a deterministic lexical retrieval channel are the supporting machinery that feed those answers.
 
@@ -21,7 +23,7 @@ The persistent index is a single SQLite database at `.fuse/fuse.db` (WAL mode), 
 
 The benchmark suites are run by a C# eval driver (`fuse eval semantics|review|localize|ranking|checkgate|loop|agent|reduce|performance`); the numbers and figure are regenerated from `tests/benchmarks/results`. See [Benchmarks](/docs/project/benchmarks).
 
-Fuse ships under the Apache License, Version 2.0. Release binaries are self-contained framework-dependent publishes that bundle the .NET runtime. Install paths are documented under [Install](/docs/start/install).
+Fuse ships under the Apache License, Version 2.0. The `Fuse` .NET global tool is framework-dependent and requires a compatible .NET runtime. Runtime-specific release archives and installer downloads are self-contained and bundle the runtime. Install paths are documented under [Install](/docs/start/install).
 
 ## What This Does Not Cover
 

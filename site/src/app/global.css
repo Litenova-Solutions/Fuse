@@ -11,14 +11,12 @@
   --color-fd-primary: #6d4aff;
   --color-fd-ring: #6d4aff;
   --brand: #6d4aff;
-  --brand-soft: #8f7bff;
 }
 
 .dark {
   --color-fd-primary: #8b74ff;
   --color-fd-ring: #8b74ff;
   --brand: #8b74ff;
-  --brand-soft: #a594ff;
 }
 
 html {
@@ -28,32 +26,4 @@ html {
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
-}
-
-/* A subtle dotted grid used behind the hero. */
-.bg-grid {
-  background-image: radial-gradient(
-    color-mix(in oklch, var(--color-fd-foreground) 12%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 22px 22px;
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
-}
-
-/* Gradient text for the hero headline accent. */
-.text-gradient {
-  background: linear-gradient(120deg, var(--brand), var(--brand-soft));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-/* A soft brand glow used on the hero card. */
-.brand-glow {
-  background: radial-gradient(
-    60% 60% at 50% 0%,
-    color-mix(in oklch, var(--brand) 22%, transparent),
-    transparent 70%
-  );
 }

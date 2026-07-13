@@ -42,7 +42,6 @@ ROW_GAP = 14
 CARD_GAP = 20
 
 el_list = []
-grad_n = [0]
 def el(s): el_list.append(s)
 
 def text(x, y, s, *, size=13, fill=TEXT, font=MONO, anchor="start", weight="400", spacing=None):
@@ -60,13 +59,6 @@ def line(x1, y1, x2, y2, stroke, sw=2):
 
 def circle(cx, cy, r, fill):
     el(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r}" fill="{fill}"/>')
-
-def grad(c1, c2):
-    grad_n[0] += 1
-    gid = f"g{grad_n[0]}"
-    el(f'<linearGradient id="{gid}" x1="0" y1="0" x2="1" y2="0">'
-       f'<stop offset="0" stop-color="{c1}"/><stop offset="1" stop-color="{c2}"/></linearGradient>')
-    return f"url(#{gid})"
 
 def pill(x, y, label, fg, bg):
     w = 11 + len(label) * 6.6
@@ -147,7 +139,7 @@ def make_bars(rows, dmax, *, base_tag="without Fuse", fuse_tag="with Fuse"):
             text(track_x - 16, cy + 12, tag, size=10, fill=(FAINT if is_base else accent), anchor="end", spacing="0.03em")
             rrect(track_x, by, track_w, BAR_H, 6, TRACK)
             bw = track_w * (value / dmax)
-            fill = BASE if is_base else grad(accent, accent2)
+            fill = BASE if is_base else accent
             rrect(track_x, by, bw, BAR_H, 6, fill)
             if bw >= 84:
                 text(track_x + bw - 12, cy + 4.5, vlabel, size=13, fill=(INK_ON_BASE if is_base else INK_ON_BAR), anchor="end", weight="700")
@@ -197,17 +189,17 @@ def make_tiles(tiles, footer_bar_label):
             text(tx + tw / 2, by0 + 87, l2, size=11, fill=FAINT, anchor="middle", font=SANS)
         bar_y = by0 + tile_h + 14
         rrect(x0, bar_y, avail, 26, 6, TRACK)
-        rrect(x0, bar_y, avail, 26, 6, grad(accent, accent2))
+        rrect(x0, bar_y, avail, 26, 6, accent)
         text(x0 + avail / 2, bar_y + 17.5, footer_bar_label, size=12.5, fill=INK_ON_BAR, weight="700", anchor="middle", font=SANS)
     return body_h, draw
 
 def header():
     text(PAD, 52, "FUSE", size=23, fill=EMBER, weight="800", spacing="1.5")
     text(PAD + 78, 52, "/  MCP Server for AI Coding Agents on .NET", size=13, fill=MUTED, font=SANS, weight="600")
-    text(PAD, 92, "Measured on Real .NET Codebases.", size=30, fill=TEXT, weight="800", spacing="-0.5")
+    text(PAD, 92, "Measured compiler, wiring, and review evidence.", size=30, fill=TEXT, weight="800", spacing="-0.5")
     lines = [
         "Fuse typechecks a proposed edit against the .NET compiler before an agent writes it, resolves how the code is",
-        "actually wired from a Roslyn graph, and scopes a change to its blast radius. Every answer carries a grade, and",
+        "actually wired from a Roslyn graph, and assembles Git-seeded changed-file context. Every answer carries a grade,",
         "Fuse abstains when it cannot answer at compiler grade.",
     ]
     for i, ln in enumerate(lines):
@@ -231,7 +223,7 @@ def compose():
     y = draw_card(
         y, "01", "Verifying an Edit Honestly",
         "fuse_check over compiler-labeled single-file edits: does it ever call a broken edit clean?",
-        ["Roslyn rewriters generate breaking and neutral edits; the compiler labels each one, not a human.",
+        ["OrderingApp fixture. Roslyn rewriters generate breaking and neutral edits; the compiler labels each one, not a human.",
          "A false green (a broken edit called clean) would let an agent commit a build break. The dangerous one."],
         "Zero false green and zero false red over 1,000 compiler-verified mutation edits (500 breaking, 500 neutral) plus 8 curated cases. When it cannot answer at compiler grade, fuse_check abstains (checkgate.json).",
         body_h, draw, accent=TEAL, accent2=TEAL2)
@@ -254,23 +246,23 @@ def compose():
     y = draw_card(
         y, "03", "Resolving .NET Wiring",
         "The extracted semantic graph versus hand-built edge ground truth on the wiring fixture.",
-        ["DI registration and constructor injection, MediatR request-to-handler, ASP.NET route-to-action, options binding.",
+        ["OrderingApp fixture. DI registration and constructor injection, MediatR request-to-handler, ASP.NET route-to-action, options binding.",
          "Deterministic: the edges are read from Roslyn. No model is involved, and the same index gives the same answer."],
         "Every wiring edge in the fixture resolved correctly: 24 of 24, recall and precision 1.0 across the wiring catalog (semantics.json).",
         body_h, draw, accent=TEAL, accent2=TEAL2)
 
     body_h, draw = make_bars(
         [("Changed-file recall", 100, "100%", "fuse"),
-         ("Blast-radius precision", 93, "93%", "fuse"),
+         ("Changed-file precision", 93.4, "93.4%", "fuse"),
          ("grep recall", 67, "67%", "base"),
          ("grep precision", 8, "8%", "base")],
         100, base_tag="grep baseline")
     y = draw_card(
-        y, "04", "Scoping a Change",
+        y, "04", "Git-seeded Changed-file Context",
         "fuse review over 69 real merged pull requests from pinned open-source .NET repositories, 25,000-token budget.",
-        ["Changed files are must-keep; the semantic blast radius is added: callers, DI consumers, handlers, tests.",
+        ["Git-changed files are must-keep; related callers, DI consumers, handlers, and tests are added.",
          "The whole review arrives in a median 1,026 tokens. Recall is 100% by construction, so precision is the signal."],
-        "100% of changed files kept at 93.4% precision, a median 1,026 returned tokens per review; a grep baseline reaches 67% recall at 8% precision (review.json).",
+        "Git-seeded changed-file context kept 100% of changed files at exactly 93.4% precision and a median 1,026 returned tokens; grep reached 67% recall at 8% precision (review.json).",
         body_h, draw, accent=EMBER, accent2=EMBER2)
 
     return y

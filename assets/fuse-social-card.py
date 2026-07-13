@@ -71,13 +71,13 @@ def compose():
     # --- what the tool does, centered ---
     text(cx, 430, "An MCP server that checks a proposed edit against the compiler,",
          size=25, fill=MUTED, anchor="middle")
-    text(cx, 466, "resolves .NET wiring from Roslyn, and scopes changes precisely.", size=25, fill=MUTED, anchor="middle")
+    text(cx, 466, "resolves .NET wiring from Roslyn, and assembles Git-seeded context.", size=25, fill=MUTED, anchor="middle")
 
     # --- stats, centered row (all deterministic, no model-caveat needed) ---
     stats = [
         (cx - 320, "0 false green", "over 1,000 compiler-labeled edits"),
-        (cx, "24 of 24", "wiring edges resolved exactly"),
-        (cx + 320, "~1,026 tokens", "a PR's context, 93% precision"),
+        (cx, "24 of 24", "OrderingApp fixture wiring edges"),
+        (cx + 320, "1,026 median tokens", "Git-seeded context, 93.4% precision"),
     ]
     for sx, val, label in stats:
         text(sx, 548, val, size=34, fill=TEXT, weight="800", anchor="middle")
@@ -89,7 +89,6 @@ def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "fuse-social-card.svg"
     head = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
             f'viewBox="0 0 {W} {H}" font-family="{SANS}"><defs></defs>')
-    # move gradient defs to <defs> not strictly needed; inline works in renderers.
     with open(path, "w", encoding="utf-8") as f:
         f.write(head + "".join(el) + "</svg>")
     print("wrote", path, W, "x", H)

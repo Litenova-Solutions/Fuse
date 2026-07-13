@@ -57,4 +57,21 @@ public sealed class ComplogSecretScannerTests
         Assert.NotNull(finding);
         Assert.Equal("additionalfile:secrets.config", finding!.Label);
     }
+
+    [Fact]
+    public void Regex_generator_output_is_not_scanned_for_high_entropy_false_positives()
+    {
+        // RegexGenerator.g.cs carries long mixed-case pattern literals that look like API keys.
+        const string patternLiteral = "aB3+/xYz9mN2pQ7rS1tU4vW6yZ8aC0dE2fG4hJ6kL8nP0qR2sT4uV6wX8yZ0";
+        var texts = new[]
+        {
+            ("generated:RegexGenerator.g.cs", $"namespace Fuse.Generated; static partial class Regex {{ private const string P = \"{patternLiteral}\"; }}"),
+            ("generated:Config.g.cs", $"namespace Sample; static class Config {{ public const string Key = \"{patternLiteral}\"; }}"),
+        };
+
+        var finding = ComplogSecretScanner.FindFirstSecret(texts, Redactor);
+
+        Assert.NotNull(finding);
+        Assert.Equal("generated:Config.g.cs", finding!.Label);
+    }
 }

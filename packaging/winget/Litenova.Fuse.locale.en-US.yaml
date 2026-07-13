@@ -23,5 +23,9 @@ Tags:
   - dotnet
   - cli
   - developer-tools
+Icons:
+  - IconUrl: https://fuse.codes/fuse-icon.png
+    IconFileType: png
+    IconResolution: custom
 ManifestType: defaultLocale
 ManifestVersion: 1.6.0

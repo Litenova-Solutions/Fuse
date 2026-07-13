@@ -10,6 +10,23 @@
     "subfolder": "src/Host/Fuse.Cli"
   },
   "websiteUrl": "https://fuse.codes",
+  "icons": [
+    {
+      "src": "https://fuse.codes/fuse-icon.png",
+      "mimeType": "image/png",
+      "sizes": ["128x128"]
+    },
+    {
+      "src": "https://fuse.codes/fuse-icon-256.png",
+      "mimeType": "image/png",
+      "sizes": ["256x256"]
+    },
+    {
+      "src": "https://fuse.codes/fuse-icon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
   "packages": [
     {
       "registryType": "nuget",

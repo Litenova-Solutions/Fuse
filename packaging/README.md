@@ -32,7 +32,23 @@ SDK install. The install scripts download those same release assets.
    (or `FUSE_VERSION`) and verify against `SHA256SUMS.txt` at install time.
 5. For WinGet, once the Release exists, set `PackageVersion` and `InstallerSha256`
    in `packaging/winget/*`, then submit the three manifests as a PR to
-   `microsoft/winget-pkgs` (the `wingetcreate` tool can do both).
+   `microsoft/winget-pkgs` (the `wingetcreate` tool can do both). The locale
+   manifest references `https://fuse.codes/fuse-icon.png` for the package icon.
+
+## Brand assets
+
+Canonical icons live under `assets/`:
+
+| File | Use |
+|------|-----|
+| `fuse-icon.svg` | Source vector mark (square, brand violet) |
+| `fuse-icon.png` | NuGet `PackageIcon` (128x128) |
+| `fuse-icon-256.png` | MCP Registry and Apple touch icon |
+
+The same files are published at `https://fuse.codes/fuse-icon.{png,svg}` from
+`site/public/` for MCP Registry and WinGet manifest URLs. Regenerate the PNGs
+from the SVG with `npx sharp-cli -i assets/fuse-icon.svg -o assets/fuse-icon.png resize 128 128`
+(and `256 256` for the larger asset) after changing the mark.
 
 ## Notes
 

@@ -6,6 +6,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Added
 
+- Fuse brand icon (`assets/fuse-icon.png`, `assets/fuse-icon.svg`) on the NuGet package gallery, MCP Registry manifest, WinGet locale, site favicons, and the repository README.
 - Host RPC threat-model documentation (`internals/host-rpc`) describes the local-trust IPC model: predictable per-root pipe or socket, handshake session token, and served-root binding on RPC methods that carry a `root` argument. The page documents `fuse/check` and `fuse/checkOverlay`.
 - Opt-in MCP metrics via `FUSE_METRICS=1` (`fuse.tool.duration`, `fuse.index.mode`, `fuse.reconcile.stamped`) using `System.Diagnostics.Metrics` (no OpenTelemetry dependency).
 - `WorkspacePathResolver` confines MCP file arguments (`fuse_check`, `fuse_test`, `fuse_reduce`, `fuse_context`, and related paths) to the workspace root.
@@ -22,6 +23,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 - The retired flat FTS candidate generator is gated behind `FUSE_FLAT_FTS=1` diagnostic mode; shipping default remains `LexicalCandidateGenerator` only.
 - Performance documentation and README warm-latency figures align with `tests/benchmarks/results/performance.json` and `resident-latency.json`.
 - `briefing.md` opening reflects nine MCP tools, no VS Code extension (D15), and corpus-v2 localize recall (37.7 percent).
+- The fuse.codes landing page uses a centered hero with terminal-style install commands, benchmark stats, and a shared site footer; WinGet manifests are included in `set-version.ps1` and `verify-version.ps1`.
 
 ### Fixed
 

@@ -15,6 +15,13 @@ export const metadata: Metadata = {
   },
   description:
     'Fuse indexes a .NET solution locally, resolves DI and routes from a typed graph, packs branch context, and typechecks proposed edits through the compiler before write.',
+  icons: {
+    icon: [
+      { url: '/fuse-icon.svg', type: 'image/svg+xml' },
+      { url: '/fuse-icon.png', type: 'image/png', sizes: '128x128' },
+    ],
+    apple: { url: '/fuse-icon-256.png', sizes: '256x256', type: 'image/png' },
+  },
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

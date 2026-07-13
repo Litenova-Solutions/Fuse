@@ -40,7 +40,7 @@ public static class ComplogSecretScanner
     {
         foreach (var (label, text) in texts)
         {
-            if (string.IsNullOrEmpty(text))
+            if (string.IsNullOrEmpty(text) || ShouldSkipLabel(label))
                 continue;
             var spans = redactor.FindSecretSpans(text);
             if (spans.Count > 0)
@@ -89,4 +89,18 @@ public static class ComplogSecretScanner
             }
         }
     }
+
+    // RegexGenerator.g.cs embeds compiled pattern literals that trip the high-entropy heuristic; they are
+    // deterministic regex bytecode, not secrets read from the environment at build time.
+    private static bool ShouldSkipLabel(string label)
+    {
+        const string generatedPrefix = "generated:";
+        if (!label.StartsWith(generatedPrefix, StringComparison.Ordinal))
+            return false;
+
+        return IsBenignGeneratedArtifact(label[generatedPrefix.Length..]);
+    }
+
+    private static bool IsBenignGeneratedArtifact(string fileName) =>
+        string.Equals(fileName, "RegexGenerator.g.cs", StringComparison.OrdinalIgnoreCase);
 }

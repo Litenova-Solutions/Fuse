@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Globalization;
 using System.Text.Json;
 
@@ -26,18 +27,28 @@ public sealed record GateDecision(bool Allowed, string Reason, bool ReducedScope
 public static class CorpusHealthGate
 {
     /// <summary>
-    ///     Decides whether a model-driven suite may run, from the loaded report and the manifest's last-write time.
-    ///     Pure, so the decision is unit-testable without files.
+    ///     Decides whether a model-driven suite may run. A matching manifest fingerprint is authoritative;
+    ///     timestamp comparison remains the compatibility path for reports produced before fingerprints shipped.
     /// </summary>
     /// <param name="report">The parsed corpus-health report, or null when the report is missing or unparseable.</param>
     /// <param name="reportGeneratedUtc">The report's generated timestamp, or null when absent or unparseable.</param>
     /// <param name="manifestModifiedUtc">The corpus manifest's last-write time (UTC).</param>
+    /// <param name="manifestSha256">The current corpus manifest SHA-256, or null when it cannot be read.</param>
     /// <returns>The gate decision.</returns>
-    public static GateDecision Evaluate(CorpusHealthReport? report, DateTime? reportGeneratedUtc, DateTime manifestModifiedUtc)
+    public static GateDecision Evaluate(
+        CorpusHealthReport? report,
+        DateTime? reportGeneratedUtc,
+        DateTime manifestModifiedUtc,
+        string? manifestSha256 = null)
     {
         if (report is null)
             return new GateDecision(false, "no corpus-health.json; run `fuse eval corpus-health` first (a model-driven suite requires proof the corpus builds and has runnable tests).");
-        if (reportGeneratedUtc is null || reportGeneratedUtc.Value < manifestModifiedUtc)
+        var fingerprintMatches = report.ManifestSha256 is not null
+            && manifestSha256 is not null
+            && report.ManifestSha256.Equals(manifestSha256, StringComparison.OrdinalIgnoreCase);
+        if (report.ManifestSha256 is not null && !fingerprintMatches)
+            return new GateDecision(false, "corpus-health.json was produced from a different corpus manifest; re-run `fuse eval corpus-health` for the current manifest.");
+        if (!fingerprintMatches && (reportGeneratedUtc is null || reportGeneratedUtc.Value < manifestModifiedUtc))
             return new GateDecision(false, "corpus-health.json is older than the corpus manifest; re-run `fuse eval corpus-health` so the health report reflects the current corpus.");
         if (report.MeetsMinimums)
             return new GateDecision(true, $"corpus healthy: {report.ReposTier1} tier-1 repos, {report.TasksVerified} verified oracle tasks.");
@@ -55,18 +66,31 @@ public static class CorpusHealthGate
     /// <summary>
     ///     Loads the report and manifest and evaluates the gate.
     /// </summary>
-    /// <param name="benchRoot">The benchmark root (holds <c>corpus.json</c>).</param>
+    /// <param name="benchRoot">The benchmark root (holds the default <c>corpus.json</c>).</param>
     /// <param name="resultsRoot">The results directory (holds <c>corpus-health.json</c>).</param>
+    /// <param name="manifestPath">The corpus manifest used by the suite, or null for <c>corpus.json</c>.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The gate decision.</returns>
-    public static async Task<GateDecision> CheckAsync(string benchRoot, string resultsRoot, CancellationToken cancellationToken)
+    public static async Task<GateDecision> CheckAsync(
+        string benchRoot,
+        string resultsRoot,
+        string? manifestPath,
+        CancellationToken cancellationToken)
     {
-        var manifestPath = Path.Combine(benchRoot, "corpus.json");
-        var manifestModifiedUtc = File.Exists(manifestPath) ? File.GetLastWriteTimeUtc(manifestPath) : DateTime.MinValue;
+        var resolvedManifestPath = manifestPath ?? Path.Combine(benchRoot, "corpus.json");
+        var manifestModifiedUtc = File.Exists(resolvedManifestPath)
+            ? File.GetLastWriteTimeUtc(resolvedManifestPath)
+            : DateTime.MinValue;
+        string? manifestSha256 = null;
+        if (File.Exists(resolvedManifestPath))
+        {
+            var bytes = await File.ReadAllBytesAsync(resolvedManifestPath, cancellationToken);
+            manifestSha256 = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        }
 
         var reportPath = Path.Combine(resultsRoot, CorpusHealthReport.FileName);
         if (!File.Exists(reportPath))
-            return Evaluate(null, null, manifestModifiedUtc);
+            return Evaluate(null, null, manifestModifiedUtc, manifestSha256);
 
         CorpusHealthReport? report;
         try
@@ -76,7 +100,7 @@ public static class CorpusHealthGate
         }
         catch (JsonException)
         {
-            return Evaluate(null, null, manifestModifiedUtc);
+            return Evaluate(null, null, manifestModifiedUtc, manifestSha256);
         }
 
         DateTime? generatedUtc = null;
@@ -84,6 +108,6 @@ public static class CorpusHealthGate
                 report.Generated, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed))
             generatedUtc = parsed;
 
-        return Evaluate(report, generatedUtc, manifestModifiedUtc);
+        return Evaluate(report, generatedUtc, manifestModifiedUtc, manifestSha256);
     }
 }

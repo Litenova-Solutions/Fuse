@@ -179,7 +179,8 @@ public sealed class LoopSuite : IEvalSuite
         // C4 enforcement: a model-driven run must not start unless the corpus is proven healthy (a fresh,
         // passing corpus-health.json). Refuse and name the reason rather than spending model time on a corpus
         // that does not build.
-        var gate = await CorpusHealthGate.CheckAsync(options.BenchRoot, options.ResultsRoot, cancellationToken);
+        var gate = await CorpusHealthGate.CheckAsync(
+            options.BenchRoot, options.ResultsRoot, options.ManifestPath, cancellationToken);
         if (!gate.Allowed)
         {
             notes.Add($"corpus-health gate: {gate.Reason}");
@@ -272,6 +273,7 @@ public sealed class LoopSuite : IEvalSuite
 
         var wedged = 0;
         var sampled = new List<string>();
+        var rolloutFailures = new HashSet<string>(StringComparer.Ordinal);
         foreach (var task in loopTasks)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -303,7 +305,8 @@ public sealed class LoopSuite : IEvalSuite
                     if (options.Restore)
                         await manager.RestoreAsync(worktree, cancellationToken);
 
-                    var row = await RunRolloutAsync(task, worktree, arm, rollout, model, fuseExe, options, cancellationToken);
+                    var row = await RunRolloutAsync(
+                        task, worktree, arm, rollout, model, fuseExe, options, rolloutFailures, cancellationToken);
                     if (row is null)
                     {
                         wedged++;
@@ -323,10 +326,12 @@ public sealed class LoopSuite : IEvalSuite
 
         if (tasks.Count == 0)
         {
+            notes.AddRange(rolloutFailures.Order(StringComparer.Ordinal));
             notes.Add("No rollouts produced a transcript; nothing scored.");
             return Skipped(notes);
         }
 
+        notes.AddRange(rolloutFailures.Order(StringComparer.Ordinal));
         notes.Add($"tasks {loopTasks.Count}; rollouts recorded {tasks.Count}; wedged/omitted this run {wedged}");
         notes.Add($"sampled this run ({sampled.Count}): {string.Join(", ", sampled)}");
         AddArmNotes(tasks, notes);
@@ -334,7 +339,15 @@ public sealed class LoopSuite : IEvalSuite
     }
 
     private async Task<TaskResult?> RunRolloutAsync(
-        LoopTask task, string worktree, string arm, int rollout, string model, string? fuseExe, EvalOptions options, CancellationToken ct)
+        LoopTask task,
+        string worktree,
+        string arm,
+        int rollout,
+        string model,
+        string? fuseExe,
+        EvalOptions options,
+        ISet<string> rolloutFailures,
+        CancellationToken ct)
     {
         var rowId = $"{task.Id}/{arm}#{rollout}";
         var prompt =
@@ -375,6 +388,13 @@ public sealed class LoopSuite : IEvalSuite
 
         // Retain the raw transcript (D22a): the classifier is auditable and a disputed rollout can be re-scored.
         await SaveTranscriptAsync(options.ResultsRoot, rowId, transcript, ct);
+        if (transcript.Contains("\"error\":\"authentication_failed\"", StringComparison.Ordinal))
+        {
+            const string failure = "rollout blocker: model driver authentication failed; fix the Claude CLI credential before rerunning.";
+            rolloutFailures.Add(failure);
+            options.Report($"loop: {rowId} authentication failed; omitted");
+            return null;
+        }
 
         var turns = LoopTranscriptClassifier.Classify(transcript);
         // Transcript events carry no reliable per-turn duration. The canonical latency is the measured driver

@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="auto" viewBox="0 0 1000 560" role="img" aria-label="Fuse local product boundary">
 <style>
-:root{--bg:#fff;--panel:#f7f8fb;--border:#dfe3eb;--ink:#171a21;--muted:#566072;--brand:#6d4aff;--soft:#efeaff;--line:#8b79e8;--safe:#137a68}
-@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--ink:#e6edf3;--muted:#9aa5b1;--brand:#a78bfa;--soft:#211b34;--line:#8b78d3;--safe:#45c7ae}}
+:root, svg{--bg:#fff;--panel:#f7f8fb;--border:#dfe3eb;--ink:#171a21;--muted:#566072;--brand:#6d4aff;--soft:#efeaff;--line:#8b79e8;--safe:#137a68}
+@media(prefers-color-scheme:dark){:root, svg{--bg:#0d1117;--panel:#161b22;--border:#30363d;--ink:#e6edf3;--muted:#9aa5b1;--brand:#a78bfa;--soft:#211b34;--line:#8b78d3;--safe:#45c7ae}}
+svg.dark{--bg:#0d1117;--panel:#161b22;--border:#30363d;--ink:#e6edf3;--muted:#9aa5b1;--brand:#a78bfa;--soft:#211b34;--line:#8b78d3;--safe:#45c7ae}
 .bg{fill:var(--bg)}.panel{fill:var(--panel);stroke:var(--border);stroke-width:1.5}.fuse{fill:var(--soft);stroke:var(--line);stroke-width:1.5}
 .boundary{fill:none;stroke:var(--border);stroke-width:2;stroke-dasharray:7 6}.ink{fill:var(--ink)}.muted{fill:var(--muted)}.brand{fill:var(--brand)}
 .safe{fill:var(--safe)}.edge{stroke:var(--line);stroke-width:2;fill:none}.head{fill:var(--line)}

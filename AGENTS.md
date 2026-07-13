@@ -121,6 +121,17 @@ The progress-log entry format (append to the log at the end of the plan file): d
 - Avoid filler jargon: seamless, robust, ensure, leverage.
 - Measured numbers are exact and sourced. Label any illustrative or theory-grounded claim as illustrative; never present it as a benchmark.
 
+### Consumer-facing tone (site, README, blog)
+
+Write for senior .NET developers and agent authors, not a non-technical buyer.
+
+- State what Fuse is in one technical sentence: persistent semantic index, typed-graph wiring resolution, pre-write compiler verification. Name the mechanism (Roslyn, MSBuild, `.fuse/fuse.db`, verification grade) when it clarifies limits.
+- Prefer nouns and verbs over slogans. Headlines name the subsystem, not a two-beat marketing line. Good: "Persistent semantic index and compiler verification for .NET agents". Avoid: "Find the code that runs. Check edits before they land."
+- Do not use sales cadence: no "before they land", "catch mistakes", "what changes when you stop guessing", or "six checks that prevent X" unless the page is explicitly listing tools.
+- Lead with capability and measured scope, then example. Cite the result file or suite when quoting a number. State abstention, index mode, and corpus limits in the same breath as a headline figure.
+- Honest negatives belong in consumer copy: Fuse does not halve `dotnet build` counts on the recorded loop run; open-ended localize recall is 37.7 percent on the corpus; benchmark SVGs and mermaid diagrams must render on the site, not only exist in `site/public`.
+- Diagrams: use mermaid in MDX for flowcharts; use `<Diagram src="/fuse-....svg" alt="..." />` or markdown images for static figures in `site/public`. Do not leave figures only in `assets/` if the docs page should show them.
+
 ## Code Documentation Standard
 
 ### Public API: XML (`///`)

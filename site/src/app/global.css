@@ -155,4 +155,122 @@ html > body[data-scroll-locked] {
     background: var(--color-fd-border);
     content: '';
   }
+
+  .home-flow--six {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-flow--six .home-flow__step::after {
+    content: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-flow--six {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.home-compare {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.75rem;
+  background: var(--color-fd-background);
+}
+
+.home-compare__row {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--color-fd-border);
+}
+
+.home-compare__row:first-child {
+  border-top: none;
+}
+
+.home-compare__row > div {
+  padding: 1rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.home-compare__row--head > div {
+  background: var(--color-fd-card);
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-compare__question {
+  font-weight: 600;
+}
+
+.home-compare__fuse {
+  color: var(--color-fd-foreground);
+}
+
+.home-compare__baseline {
+  color: var(--color-fd-muted-foreground);
+}
+
+@media (min-width: 768px) {
+  .home-compare__row {
+    grid-template-columns: 1.1fr 1fr 1fr;
+  }
+
+  .home-compare__row > div:not(:last-child) {
+    border-right: 1px solid var(--color-fd-border);
+  }
+}
+
+@media (max-width: 767px) {
+  .home-compare__row {
+    gap: 0.25rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .home-compare__row > div {
+    padding: 0;
+  }
+
+  .home-compare__row--head {
+    display: none;
+  }
+
+  .home-compare__question::before {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--color-fd-muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    content: 'Question';
+  }
+
+  .home-compare__baseline::before {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--color-fd-muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    content: 'Grep or write-then-build';
+  }
+
+  .home-compare__fuse::before {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--color-fd-muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    content: 'Fuse (recorded)';
+  }
 }

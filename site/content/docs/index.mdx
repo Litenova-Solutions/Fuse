@@ -1,9 +1,10 @@
 ---
 title: Fuse documentation
-description: Check proposed C# edits, trace .NET application wiring, and review branches with local compiler-backed results.
+description: Local .NET semantic index, typed-graph wiring resolution, and pre-write compiler verification for coding agents.
 ---
 
-Catch compiler errors before your coding agent writes a proposed C# edit:
+Fuse is a local .NET tool with a persistent semantic index and pre-write compiler
+verification for coding agents. Install and connect from a project directory:
 
 ```bash
 dotnet tool install -g Fuse
@@ -13,19 +14,23 @@ fuse mcp install --rules
 Reload your coding agent, then ask:
 
 ```text
-Check the next edit with fuse_check before writing it.
+Resolve IOrderService to its implementation, then check the proposed OrderService.cs
+content with fuse_check before writing the file.
 ```
 
-Fuse runs against the repository on your machine. It also traces dependency injection,
-requests, routes, and configuration to the code that handles them.
+Fuse runs on your machine. It stores a warm index in `.fuse/fuse.db`, walks typed
+wiring edges when the project loads through Roslyn, and returns compiler diagnostics for
+proposed single-file edits without changing the working tree.
+
+<Diagram src="/fuse-product-boundary.svg" alt="Fuse local product boundary: MCP client, local Fuse process, repository, and .NET toolchain" />
 
 ## Choose Your Next Task
 
 <Cards>
-  <Card title="Check a proposed edit" href="/docs/scenarios/ambient-verification" description="Get compiler diagnostics before the agent changes the file." />
-  <Card title="Follow application wiring" href="/docs/scenarios/ask-one-question" description="Find the implementation behind a service, request, route, or configuration section." />
-  <Card title="Review a branch" href="/docs/scenarios/scope-a-pr" description="Start from the git diff and gather focused context from related files." />
-  <Card title="Prepare selected source" href="/docs/scenarios/cut-tokens-dotnet" description="Reduce files you already chose while preserving their declarations." />
+  <Card title="Pre-write compiler check" href="/docs/scenarios/ambient-verification" description="Typecheck a proposed file through fuse_check and read diagnostics before the working tree changes." />
+  <Card title="Wiring resolution" href="/docs/scenarios/ask-one-question" description="Resolve a service, request, route, or configuration section to its implementation or handler." />
+  <Card title="Git-seeded branch review" href="/docs/scenarios/scope-a-pr" description="Seed on the diff and return packed context with provenance under a token budget." />
+  <Card title="Source reduction" href="/docs/scenarios/cut-tokens-dotnet" description="Reduce a known file set while preserving public declarations." />
 </Cards>
 
 New to Fuse? Follow the [quickstart](/docs/start/quickstart), then

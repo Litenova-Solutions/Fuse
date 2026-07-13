@@ -1,10 +1,10 @@
 ---
 title: Why use Fuse
-description: How Fuse adds compiler-backed edit checks, .NET wiring lookup, and focused branch context to an existing coding agent.
+description: How a warm local index, graph-backed wiring lookup, and graded compiler checks extend an existing .NET agent workflow.
 ---
 
-Before your coding agent changes `OrderService.cs`, have the compiler check the proposed
-file:
+Before your coding agent changes `OrderService.cs`, resolve the wiring it touches and have
+the compiler check the proposed file:
 
 ```bash
 dotnet tool install -g Fuse
@@ -17,8 +17,9 @@ Then reload the agent and ask:
 Use fuse_check on the proposed OrderService.cs content before writing it.
 ```
 
-Fuse adds local .NET checks and lookups to the editor and agent workflow you already use.
-It does not replace file editing, exact text search, or `dotnet build`.
+Fuse adds a warm local index, graph-backed wiring lookup, and compiler checks to the
+editor and agent workflow you already use. It does not replace file editing, exact text
+search, or `dotnet build`.
 
 ## Check the Proposal, Not Just the Saved Files
 
@@ -35,6 +36,13 @@ The result also states which compiler path answered. Fuse calls this the
 
 Faster repeated checks are available behind `FUSE_RESIDENT=1`. That mode is opt-in.
 The [benchmarks](/docs/project/benchmarks) record its measured latency and environment.
+
+## Index Once, Query Warm
+
+Fuse builds `.fuse/fuse.db` on first use and reuses it across calls. On the recorded
+NodaTime run, exact symbol lookup took 2.2 ms at the median and task localization 42 ms
+(`performance.json`). Syntax mode serves quickly; semantic mode adds DI, handler, route,
+and call edges when the project loads through the compiler.
 
 ## Follow .NET Wiring, Not Just Matching Names
 

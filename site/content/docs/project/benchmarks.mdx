@@ -7,6 +7,8 @@ Fuse answers a .NET coding agent's edit-time questions from a warm persistent in
 
 The yardstick is compiler-grade behavior, not tokens saved. Token efficiency shows up in scoped output: a pull request's review context arrives at a median of 1,026 tokens.
 
+<Diagram src="/fuse-benchmarks.svg" alt="Recorded benchmark suites: check honesty, wiring resolution, branch review, and agent loop" />
+
 Three readers are served below. A stakeholder can read the suite headlines and the honest limits section. A new engineer can follow the reproduction steps and run a suite. A maintainer can read each suite's method, sample, index-mode distribution, and the cases where Fuse is weak.
 
 The benchmark runs through a C# eval driver in `tests/benchmarks/Fuse.Benchmarks`. Reproduce any suite with `fuse eval <suite>`. Each suite writes its scorecard to `tests/benchmarks/results/<suite>.json`.

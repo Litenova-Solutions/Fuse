@@ -1,10 +1,11 @@
 ---
 title: What is Fuse
-description: Fuse helps an existing coding agent check C# edits, follow .NET application wiring, and gather focused branch context from the local repository.
+description: Local .NET semantic index, typed-graph wiring resolution, and pre-write compiler verification for coding agents.
 ---
 
-Fuse helps your coding agent catch a C# compiler error before it changes the file. Install
-and connect it from a .NET project directory:
+Fuse indexes your .NET solution locally, resolves application wiring from a typed graph, and
+lets your coding agent typecheck a proposed file before it changes on disk. Install and
+connect from a .NET project directory:
 
 ```bash
 dotnet tool install -g Fuse
@@ -17,8 +18,9 @@ Reload Claude Code, Cursor, or GitHub Copilot, then ask:
 Before changing OrderService.cs, check the proposed file with fuse_check.
 ```
 
-Fuse works with the coding agent you already use. It runs on your machine and gives that
-agent compiler-backed results plus a typed map of the application.
+Fuse works with the coding agent you already use. It runs on your machine, keeps a warm
+index at `.fuse/fuse.db`, and gives that agent graph-backed wiring lookup plus
+compiler-backed edit checks.
 
 ## What It Adds to Daily Work
 

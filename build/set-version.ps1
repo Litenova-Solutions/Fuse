@@ -1,6 +1,6 @@
 # Sets the product version across every package in one step: the .NET source of truth (Directory.Build.props),
-# the MCP registry manifest (both version fields), and the docs website. Run this, commit, then tag the matching
-# version; build/verify-version.ps1 enforces the match in CI.
+# the MCP registry manifest (both version fields), the docs website, and the WinGet manifests under packaging/winget.
+# Run this, commit, then tag the matching version; build/verify-version.ps1 enforces the match in CI.
 #
 #   ./build/set-version.ps1 3.1.2
 param(
@@ -28,5 +28,18 @@ $siteJson = Join-Path $root "site/package.json"
 (Get-Content $siteJson -Raw) -replace '"version":\s*"[^"]*"', "`"version`": `"$Version`"" |
     Set-Content $siteJson -NoNewline
 Write-Host "site/package.json -> $Version"
+
+# WinGet manifests: PackageVersion in all three files; installer URL tracks the release tag.
+$wingetDir = Join-Path $root "packaging/winget"
+foreach ($manifest in @("Litenova.Fuse.yaml", "Litenova.Fuse.locale.en-US.yaml", "Litenova.Fuse.installer.yaml")) {
+    $path = Join-Path $wingetDir $manifest
+    $content = Get-Content $path -Raw
+    $content = $content -replace 'PackageVersion:\s*[^\r\n]+', "PackageVersion: $Version"
+    if ($manifest -eq "Litenova.Fuse.installer.yaml") {
+        $content = $content -replace 'InstallerUrl:\s*[^\r\n]+', "InstallerUrl: https://github.com/Litenova-Solutions/Fuse/releases/download/v$Version/fuse-$Version-setup.exe"
+    }
+    Set-Content $path $content -NoNewline
+}
+Write-Host "packaging/winget/* -> $Version"
 
 & (Join-Path $PSScriptRoot "verify-version.ps1")

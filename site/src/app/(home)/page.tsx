@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { HeroInstallCommands } from '@/components/hero-install';
 import { githubUrl } from '@/lib/shared';
 
 const siteUrl = 'https://fuse.codes';
@@ -66,37 +67,56 @@ export default function HomePage() {
       />
 
       <section className="border-b border-fd-border">
-        <div className="mx-auto grid w-full max-w-6xl gap-12 px-6 py-16 md:py-20 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
-          <div>
-            <p className="text-sm font-medium text-[var(--brand)]">
-              Local .NET context for coding agents
-            </p>
-            <h1 className="mt-3 max-w-2xl text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-              Persistent semantic index and compiler verification for .NET agents
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-fd-muted-foreground">
-              Fuse builds a warm semantic index in <code className="font-mono text-fd-foreground">.fuse/fuse.db</code>,
-              resolves DI, routes, and callers from a typed graph, and typechecks proposed edits through
-              the compiler before write.
-            </p>
+        <div className="mx-auto w-full max-w-4xl px-6 py-16 text-center md:py-24">
+          <p className="text-sm font-medium text-[var(--brand)]">
+            Local .NET context for coding agents
+          </p>
+          <h1 className="mx-auto mt-3 max-w-3xl text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
+            Persistent semantic index and compiler verification for .NET agents
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-fd-muted-foreground">
+            Fuse builds a warm semantic index in <code className="font-mono text-fd-foreground">.fuse/fuse.db</code>,
+            resolves DI, routes, and callers from a typed graph, and typechecks proposed edits through
+            the compiler before write.
+          </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link href="/docs/start/connect-your-ai">Connect Fuse</Link>
-              </Button>
-              <Button asChild size="lg" variant="secondary">
-                <Link href="/docs/start/quickstart">Quickstart</Link>
-              </Button>
-            </div>
-
-            <p className="mt-6 flex max-w-xl flex-wrap gap-x-5 gap-y-1 text-xs text-fd-muted-foreground">
-              <span>Any MCP client, including Cursor, Claude Code, Copilot, and others</span>
-              <span>Apache 2.0</span>
-              <span>Local only</span>
-            </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button asChild size="lg">
+              <Link href="/docs/start/connect-your-ai">Connect Fuse</Link>
+            </Button>
+            <Button asChild size="lg" variant="secondary">
+              <Link href="/docs/start/quickstart">Quickstart</Link>
+            </Button>
           </div>
 
-          <ToolExchangeExample />
+          <HeroInstallCommands />
+
+          <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <HeroHighlight
+              value="24 / 24"
+              title="Wiring edges resolved"
+              detail="DI, MediatR, and route wiring on the OrderingApp fixture with recall and precision 1.0."
+            />
+            <HeroHighlight
+              value="0 / 1,000"
+              title="False greens on labeled edits"
+              detail="Compiler-generated breaking and neutral single-file edits; fuse_check matched the compiler on every case."
+            />
+            <HeroHighlight
+              value="89%"
+              title="pass@1 on scored rollouts"
+              detail="Agent loop on 59 verified tasks: 89% true pass@1 versus 82% for native file tools, with overlapping CIs."
+            />
+            <HeroHighlight
+              value="93.4%"
+              title="Review precision"
+              detail="Changed-file recall 100% on 69 PRs at a median 1,026 returned tokens; grep baseline was 8% precision."
+            />
+          </div>
+
+          <p className="mx-auto mt-10 max-w-2xl text-xs text-fd-muted-foreground">
+            Any MCP client, including Cursor, Claude Code, and Copilot. Apache 2.0. Source and index stay local.
+          </p>
         </div>
       </section>
 
@@ -396,42 +416,20 @@ export default function HomePage() {
   );
 }
 
-function ToolExchangeExample() {
+function HeroHighlight({
+  value,
+  title,
+  detail,
+}: {
+  value: string;
+  title: string;
+  detail: string;
+}) {
   return (
-    <div
-      className="home-example"
-      aria-label="Example of one edit checked by fuse_check before it is written"
-    >
-      <div className="home-example__header">
-        <span>Check before write</span>
-        <strong>Update the order total in OrderService.cs</strong>
-      </div>
-      <div className="home-example__exchange">
-        <div className="home-example__turn">
-          <p className="home-example__speaker">Agent proposes, before writing the file</p>
-          <code>return order.TotalAmount * quantity;</code>
-        </div>
-
-        <div className="home-example__turn">
-          <p className="home-example__speaker">fuse_check answers from the compiler</p>
-          <div className="home-example__result home-example__result--error">
-            <code>CS1061: &apos;Order&apos; has no member &apos;TotalAmount&apos;</code>
-            <code>Repair: &apos;Total&apos; exists on Order</code>
-          </div>
-        </div>
-
-        <div className="home-example__turn">
-          <p className="home-example__speaker">Agent revises and checks again</p>
-          <div className="home-example__result home-example__result--ok">
-            <code>return order.Total * quantity;</code>
-            <strong>No diagnostics. The file is written once, correctly.</strong>
-          </div>
-        </div>
-
-        <p className="home-example__contrast">
-          Wiring resolution and branch review are covered in the sections below.
-        </p>
-      </div>
+    <div className="home-hero-stat">
+      <div className="text-3xl font-bold tracking-tight text-[var(--brand)]">{value}</div>
+      <p className="mt-2 text-base font-semibold">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-fd-muted-foreground">{detail}</p>
     </div>
   );
 }

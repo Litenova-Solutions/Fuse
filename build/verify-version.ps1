@@ -1,5 +1,5 @@
-# Verifies the product version is consistent across every package that ships a version, and, when a release
-# tag is supplied, that the tag matches it. The version lives in the codebase (Directory.Build.props is the
+# Verifies the product version is consistent across every package that ships a version (including WinGet manifests),
+# and, when a release tag is supplied, that the tag matches it. The version lives in the codebase (Directory.Build.props is the
 # .NET source of truth); this guard is what keeps the tag honest and the sibling manifests from drifting.
 #
 #   ./build/verify-version.ps1                 # PR check: assert all files agree with each other
@@ -28,6 +28,16 @@ $sources = @(
     [pscustomobject]@{ Source = "mcp-registry/server.json (package)"; Version = $server.packages[0].version }
     [pscustomobject]@{ Source = "site/package.json"; Version = (Read-Json "site/package.json").version }
 )
+
+foreach ($manifest in @("Litenova.Fuse.yaml", "Litenova.Fuse.locale.en-US.yaml", "Litenova.Fuse.installer.yaml")) {
+    $path = Join-Path $root "packaging/winget/$manifest"
+    if (Test-Path $path) {
+        $match = Select-String -Path $path -Pattern '^PackageVersion:\s*(.+)$' | Select-Object -First 1
+        if ($match) {
+            $sources += [pscustomobject]@{ Source = "packaging/winget/$manifest"; Version = $match.Matches[0].Groups[1].Value.Trim() }
+        }
+    }
+}
 
 # @(...) forces an array so a single agreed value does not collapse to a scalar string (whose [0] would be a char).
 $distinct = @($sources | ForEach-Object { $_.Version } | Select-Object -Unique)

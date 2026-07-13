@@ -1,16 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="680" viewBox="0 0 1000 680" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
 <style>
-  :root{
+  :root, svg{
     --bg:#ffffff; --panel:#f7f8fb; --border:#e5e8ef; --ink:#171a21; --muted:#566072;
     --faint:#8a93a3; --brand:#6d4aff; --brand-soft:#efeaff; --brand-bd:#c9bcff;
     --dim:#c0c7d4; --dim-bg:#f1f3f7;
   }
   @media (prefers-color-scheme: dark){
-    :root{
+    :root, svg{
       --bg:#0d1117; --panel:#161b22; --border:#30363d; --ink:#e6edf3; --muted:#9aa5b1;
       --faint:#7d8590; --brand:#a78bfa; --brand-soft:#211b34; --brand-bd:#5b4b8a;
       --dim:#484f58; --dim-bg:#161b22;
     }
+  }
+  svg.dark{
+    --bg:#0d1117; --panel:#161b22; --border:#30363d; --ink:#e6edf3; --muted:#9aa5b1;
+    --faint:#7d8590; --brand:#a78bfa; --brand-soft:#211b34; --brand-bd:#5b4b8a;
+    --dim:#484f58; --dim-bg:#161b22;
   }
   .bg{fill:var(--bg);}
   .box{fill:var(--panel);stroke:var(--border);stroke-width:1.5;}

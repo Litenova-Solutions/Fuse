@@ -54,6 +54,8 @@ flowchart LR
     G --> H[fuse_review<br/>before handoff]
 ```
 
+<Diagram src="/fuse-loop-diagram.svg" alt="Agent verify loop: propose edit, fuse_check, optional fuse_impact and fuse_test, then fuse_review" />
+
 Survey the workspace cheaply with `fuse_workspace` (`action=map`), localize a task to
 candidate files with `fuse_find` (`kind=task`), resolve the wiring a task names with
 `fuse_find` (`kind=service|request|route|config`), plan and emit the context with

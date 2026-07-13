@@ -1,12 +1,13 @@
 ---
-title: "Announcing Fuse v4: typecheck your agent's .NET edits before they land"
+title: "Announcing Fuse v4: local semantic index and compiler verification for .NET agents"
 description: "Fuse v4 helps coding agents check proposed C# edits, follow .NET application wiring, and review branches with local compiler-backed results."
 date: "2026-07-13"
 author: "The Fuse team"
 ---
 
-Fuse v4 lets Claude Code, Cursor, and GitHub Copilot ask the .NET compiler about a
-proposed C# file before writing it. Install and connect it from your project directory:
+Fuse v4 indexes your .NET solution locally, resolves DI and routes from a typed graph, and
+lets Claude Code, Cursor, and GitHub Copilot ask the compiler about a proposed C# file
+before writing it. Install and connect from your project directory:
 
 ```bash
 dotnet tool install -g Fuse
@@ -20,8 +21,8 @@ Before changing OrderService.cs, check the proposed file with fuse_check and sho
 compiler result before writing it.
 ```
 
-That compiler-backed result is the main change in v4. `fuse_check` does not write the
-proposed content to the source file.
+The warm index and compiler-backed checks ship together in v4. `fuse_check` does not write
+the proposed content to the source file. Wiring lookup reads the same store.
 
 ## What v4 Adds to Daily Work
 
@@ -39,6 +40,18 @@ Each check states which compiler path produced the answer. Fuse calls this the
 **verification grade**. Oracle grade uses a compilation captured from the real build.
 Build grade runs a scoped `dotnet build`. If neither path can answer, Fuse abstains and
 states what is missing.
+
+## Why agents still run dotnet build
+
+The agent-loop benchmark counts agent-visible `dotnet build` and `dotnet test` calls
+separately from speculative `fuse_check` turns. On the recorded run those build counts
+were essentially equal: 3.1 for the Fuse arm versus 3.2 for native. Fuse's measured edge
+was higher test-verified pass@1 (89 versus 82 percent on scored rollouts) and one fewer
+false-done rollout (8 versus 9), not half the builds.
+
+Pre-write checks catch compile errors before the working tree changes. The warm index
+replaces serial file reads during discovery. Together they cut wrong finishes and blind
+searching; they do not remove the need for normal builds and tests before merge.
 
 ## What the Recorded Tests Support
 

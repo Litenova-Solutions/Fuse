@@ -1,10 +1,12 @@
 'use client';
 
+import { useTheme } from 'next-themes';
 import { useEffect, useId, useRef, useState } from 'react';
 
 export function Mermaid({ chart }: { chart: string }) {
   const id = useId().replace(/:/g, '');
   const containerRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,8 +18,8 @@ export function Mermaid({ chart }: { chart: string }) {
         const mermaid = (await import('mermaid')).default;
         mermaid.initialize({
           startOnLoad: false,
-          theme: 'neutral',
-          securityLevel: 'strict',
+          theme: resolvedTheme === 'dark' ? 'dark' : 'neutral',
+          securityLevel: 'loose',
         });
         const { svg: rendered } = await mermaid.render(`mermaid-${id}`, chart.trim());
         if (!cancelled) {
@@ -35,13 +37,14 @@ export function Mermaid({ chart }: { chart: string }) {
     return () => {
       cancelled = true;
     };
-  }, [chart, id]);
+  }, [chart, id, resolvedTheme]);
 
   if (error) {
     return (
-      <pre className="overflow-x-auto rounded-lg border border-fd-border bg-fd-card p-4 font-mono text-sm">
-        {chart}
-      </pre>
+      <div className="my-4 rounded-lg border border-fd-border bg-fd-card p-4">
+        <p className="text-sm text-fd-muted-foreground">Diagram failed to render: {error}</p>
+        <pre className="mt-3 overflow-x-auto font-mono text-xs text-fd-foreground">{chart}</pre>
+      </div>
     );
   }
 

@@ -4,10 +4,14 @@ using Xunit;
 namespace Fuse.Benchmarks.Tests;
 
 // C4: the model-suite refusal gate. A model-driven suite may run only behind a corpus-health.json that exists,
-// is newer than the corpus manifest, and meets the minimums. These pin every refusal path.
+// matches the corpus manifest (fingerprint preferred, timestamp for legacy reports), and meets the minimums.
 public sealed class CorpusHealthGateTests
 {
-    private static CorpusHealthReport Report(int reposTier1, int tasksVerified, string generated) => new(
+    private static CorpusHealthReport Report(
+        int reposTier1,
+        int tasksVerified,
+        string generated,
+        string? manifestSha256 = null) => new(
         Generated: generated,
         ReposTotal: reposTier1,
         ReposTier1: reposTier1,
@@ -16,7 +20,8 @@ public sealed class CorpusHealthGateTests
         MinReposTier1: CorpusHealthReport.GateMinReposTier1,
         MinTasksVerified: CorpusHealthReport.GateMinTasksVerified,
         Repos: [],
-        Notes: []);
+        Notes: [],
+        ManifestSha256: manifestSha256);
 
     private static readonly DateTime Manifest = new(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -35,6 +40,29 @@ public sealed class CorpusHealthGateTests
         var d = CorpusHealthGate.Evaluate(Report(20, 60, stale.ToString("O")), stale, Manifest);
         Assert.False(d.Allowed);
         Assert.Contains("older than the corpus manifest", d.Reason);
+    }
+
+    [Fact]
+    public void A_matching_fingerprint_survives_checkout_timestamp_changes()
+    {
+        var stale = Manifest.AddDays(-1);
+        var report = Report(20, 60, stale.ToString("O"), manifestSha256: "abc123");
+
+        var d = CorpusHealthGate.Evaluate(report, stale, Manifest, manifestSha256: "ABC123");
+
+        Assert.True(d.Allowed, d.Reason);
+    }
+
+    [Fact]
+    public void A_mismatched_fingerprint_is_refused()
+    {
+        var fresh = Manifest.AddDays(1);
+        var report = Report(20, 60, fresh.ToString("O"), manifestSha256: "old");
+
+        var d = CorpusHealthGate.Evaluate(report, fresh, Manifest, manifestSha256: "new");
+
+        Assert.False(d.Allowed);
+        Assert.Contains("different corpus manifest", d.Reason);
     }
 
     [Fact]

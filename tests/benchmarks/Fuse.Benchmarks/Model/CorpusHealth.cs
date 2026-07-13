@@ -35,6 +35,10 @@ public sealed record CorpusRepoHealth(
 /// <param name="MinTasksVerified">The minimum verified oracle tasks the gate requires.</param>
 /// <param name="Repos">The per-repository health.</param>
 /// <param name="Notes">Free-text notes (skips, environment facts, the reduced-scope decision).</param>
+/// <param name="ManifestSha256">
+///     SHA-256 of the corpus manifest used for the run. This survives checkout timestamp changes and is the
+///     preferred freshness check for model-driven suites.
+/// </param>
 public sealed record CorpusHealthReport(
     string Generated,
     int ReposTotal,
@@ -44,7 +48,8 @@ public sealed record CorpusHealthReport(
     int MinReposTier1,
     int MinTasksVerified,
     IReadOnlyList<CorpusRepoHealth> Repos,
-    IReadOnlyList<string> Notes)
+    IReadOnlyList<string> Notes,
+    string? ManifestSha256 = null)
 {
     /// <summary>The gate minimum for tier-1 repositories (C4).</summary>
     public const int GateMinReposTier1 = 20;

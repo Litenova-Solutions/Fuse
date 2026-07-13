@@ -91,4 +91,78 @@ public sealed class FuseConfigTests
         Assert.False(loaded.Recursive);
         Assert.True(loaded.IncludeMetadata);
     }
+
+    [Fact]
+    public void Load_InvalidFuseJson_WritesWarningToStderr()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-config-test", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var configPath = Path.Combine(root, "fuse.json");
+        File.WriteAllText(configPath, "{ invalid json }");
+
+        var stderr = new StringWriter();
+        var originalError = Console.Error;
+        try
+        {
+            Console.SetError(stderr);
+            var loaded = FuseConfigLoader.Load(root);
+
+            Assert.Null(loaded);
+            var output = stderr.ToString();
+            Assert.Contains("Warning:", output);
+            Assert.Contains(configPath, output);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    [Fact]
+    public void Load_InvalidFuserc_WritesWarningToStderr()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-config-test", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var configPath = Path.Combine(root, ".fuserc");
+        File.WriteAllText(configPath, "{ invalid json }");
+
+        var stderr = new StringWriter();
+        var originalError = Console.Error;
+        try
+        {
+            Console.SetError(stderr);
+            var loaded = FuseConfigLoader.Load(root);
+
+            Assert.Null(loaded);
+            var output = stderr.ToString();
+            Assert.Contains("Warning:", output);
+            Assert.Contains(configPath, output);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    [Fact]
+    public void Load_MissingConfig_DoesNotWriteToStderr()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-config-test", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+
+        var stderr = new StringWriter();
+        var originalError = Console.Error;
+        try
+        {
+            Console.SetError(stderr);
+            var loaded = FuseConfigLoader.Load(root);
+
+            Assert.Null(loaded);
+            Assert.Equal(string.Empty, stderr.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
 }

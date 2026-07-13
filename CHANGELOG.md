@@ -8,9 +8,14 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 - `fuse mcp install --rules` at project scope appends `.fuse/` to `.gitignore` when no equivalent entry exists (same helper as `fuse init`).
 - Connect-your-agent documentation covers manual registration for other MCP clients (Windsurf, Cline, Zed, and custom agents) over the same `fuse mcp serve` stdio server.
+- Host RPC threat-model documentation (`internals/host-rpc`) describes the local-trust IPC model: predictable per-root pipe or socket, handshake session token, and served-root binding on RPC methods that carry a `root` argument.
 
 ### Changed
 
+- Host RPC methods that carry a `root` argument reject calls where the root differs from the daemon's served root (the `--directory` the `fuse host` process started with), so a peer on the correct pipe cannot pivot to another repository path.
+
+- `ExperimentalOptions` now carries only focus/change scoping and emission-shaping knobs the fusion pipeline consumes (`CentralityWeight`, `TieredEmission`, `SketchHugeFiles`, `DowngradeBeforeDrop`, `ProximityEdges`, `ProjectGraph`). Query-path retrieval levers (`HopDecay`, `QueryExpansion`, `ExpansionWeight`, `MultiQueryFusion`, `BudgetAwareExpansion`, `GitChurnWeight`, `DistributionalThesaurus`, `MemberLevelRetrieval`, `HeuristicQueryRewrite`, `FieldedComments`) were removed from this type; open-ended localize and related lexical ranking live in `Fuse.Retrieval`. The corresponding `FUSE_*` environment overrides on the fusion path are dropped; set retrieval options on the retrieval entry points instead.
+- Derived key-value cache data (reduction cache and per-file analysis index) now lives in `.fuse/fuse-cache.db` instead of sharing `.fuse/fuse.db` with the semantic index. Existing cached entries in `fuse.db` are not migrated; rerun with `--use-cache` or `--use-persistent-index` to rebuild the derived cache. The semantic index in `fuse.db` is unchanged.
 - Consumer copy on fuse.codes, the README, and the docs index uses mechanism-first language for senior .NET developers and MCP authors (warm index, typed graph, verification grade) instead of two-beat marketing slogans.
 - Docs and install help state that MCP read tools build `.fuse/fuse.db` on first use; `fuse index` or `fuse_workspace action=index` remain optional pre-warm steps before the agent's first turn.
 - Product copy names Cursor, Claude Code, and Copilot as common MCP clients with auto-install, not as an exclusive list; any MCP-compatible client can run `fuse mcp serve`.
@@ -18,6 +23,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Fixed
 
+- When FTS5 is unavailable at index init, the store persists `fts_available=false` in index meta, names it in `fuse_workspace` status and the availability header, and `fuse_find kind=task` refuses with an actionable message instead of returning empty hits.
 - Mermaid flowcharts and theme-aware SVG diagrams render on the documentation site instead of appearing as raw code blocks.
 - Portable capture bundles no longer fail the secret scan on Roslyn `RegexGenerator.g.cs` emitted files.
 

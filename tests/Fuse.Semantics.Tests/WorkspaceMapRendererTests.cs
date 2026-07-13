@@ -37,14 +37,8 @@ public sealed class WorkspaceMapRendererTests : IAsyncLifetime
         _store = new WorkspaceIndexStore(_databasePath);
         await _store.InitializeAsync(CancellationToken.None);
 
-        var fileSystem = new PhysicalFileSystem();
-        var pipeline = new FileCollectionPipeline(
-            fileSystem,
-            new GitIgnoreParser(fileSystem),
-            [new GitIgnoreFilter(), new ExtensionFilter(), new ExcludedDirectoryFilter(), new EmptyFileFilter(), new BinaryFileFilter(fileSystem)]);
-        var scanner = new WorkspaceFileScanner(pipeline, new FileHashService());
-        var indexer = new SyntaxIndexer(scanner, _store, new SyntaxSymbolExtractor(), new SyntaxRouteExtractor());
-        await indexer.IndexAsync(_root, CancellationToken.None);
+        var indexer = CreateIndexer();
+        await indexer.IndexSyntaxFirstAsync(_root, _store, CancellationToken.None);
     }
 
     [Fact]
@@ -82,6 +76,24 @@ public sealed class WorkspaceMapRendererTests : IAsyncLifetime
         var lastPublic = symbols.ToList().FindLastIndex(s => s.IsPublicApi);
         if (firstPrivate >= 0 && lastPublic >= 0)
             Assert.True(lastPublic < firstPrivate, "public-API symbols should sort before non-public ones");
+    }
+
+    private static SemanticIndexer CreateIndexer()
+    {
+        var fileSystem = new PhysicalFileSystem();
+        var pipeline = new FileCollectionPipeline(
+            fileSystem,
+            new GitIgnoreParser(fileSystem),
+            [new GitIgnoreFilter(), new ExtensionFilter(), new ExcludedDirectoryFilter(), new EmptyFileFilter(), new BinaryFileFilter(fileSystem)]);
+        return new SemanticIndexer(
+            new DotNetWorkspaceDiscoverer(),
+            new RoslynWorkspaceLoader(),
+            new WorkspaceFileScanner(pipeline, new FileHashService()),
+            new SemanticSymbolExtractor(),
+            new SyntaxSymbolExtractor(),
+            new SyntaxRouteExtractor(),
+            new FileHashService(),
+            Fuse.Semantics.Analyzers.SemanticAnalysisRunner.CreateDefault());
     }
 
     public async Task DisposeAsync()

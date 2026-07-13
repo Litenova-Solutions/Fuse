@@ -19,10 +19,10 @@ Each verb is the primitive the matching MCP tool calls, timed over 25 iterations
 |-------------|----:|----:|----:|----:|
 | Exact symbol lookup (`fuse_find`) | 2.2 ms | 3.6 ms | 0.1 ms | 0.2 ms |
 | Blast radius (`fuse_impact`) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
-| Localize (`fuse_find` kind=task) | 42 ms | 55 ms | 2.6 ms | 4.2 ms |
+| Localize (`fuse_find` kind=task) | 23.4 ms | 25.2 ms | 2.6 ms | 4.2 ms |
 | Resolve symbol (`fuse_find` kind=service) | ~0 ms | 0.1 ms | ~0 ms | ~0 ms |
-| Review plan (`fuse_review`) | 117 ms | not recorded | 38.3 ms | 41.6 ms |
-| Single-file incremental re-index | 24 ms | not recorded | 1.9 ms | 2.3 ms |
+| Review plan (`fuse_review`) | 97.8 ms | 101.3 ms | 38.3 ms | 41.6 ms |
+| Single-file incremental re-index | 20.9 ms | 25.4 ms | 1.9 ms | 2.3 ms |
 
 Every recorded warm read sits inside a sub-second budget on this machine. eShopOnWeb is faster in this run, but two repositories do not establish a proportional scaling law. `fuse_impact` reads ~0 ms on these syntax-mode checkouts because there is no semantic graph to walk; on a semantically loaded checkout the query walks real edges, bounded by neighborhood size.
 
@@ -32,11 +32,11 @@ Every recorded warm read sits inside a sub-second budget on this machine. eShopO
 
 | Verify operation | P50 | P95 | Gate |
 |------------------|----:|----:|------|
-| Delta check, analyzers off (speculative typecheck) | 19.9 ms | 31.0 ms | P95 < 1000 ms: PASS |
+| Overlay check, analyzers off (speculative typecheck) | 31.2 ms | 42.4 ms | P95 < 1000 ms: PASS |
 | Delta mode, whole-state diff | 203.9 ms | 699.3 ms | P95 < 1000 ms: PASS |
 | Raw analyzer execution (284 analyzers) | 871.8 ms | 886.9 ms | Informational |
 
-The analyzer timing measures raw analyzer execution against the held compilation. It does not measure editorconfig severity mapping or establish full CI parity. The resident workspace warms once (build plus rehydrate) at about 14.1 seconds and holds the compilations at 164 MB RSS for the NodaTime checkout.
+The analyzer timing measures raw analyzer execution against the held compilation. It does not measure editorconfig severity mapping or establish full CI parity. The resident workspace warms once (build plus rehydrate) at about 14.1 seconds and holds the compilations at 162 MB RSS for the NodaTime checkout.
 
 ## Test execution (`testexec.json`)
 

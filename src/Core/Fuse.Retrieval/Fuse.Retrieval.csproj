@@ -14,7 +14,5 @@
     <ItemGroup>
         <ProjectReference Include="..\Fuse.Indexing\Fuse.Indexing.csproj"/>
         <ProjectReference Include="..\Fuse.Semantics\Fuse.Semantics.csproj"/>
-        <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
-        <ProjectReference Include="..\Fuse.Emission\Fuse.Emission.csproj"/>
     </ItemGroup>
 </Project>

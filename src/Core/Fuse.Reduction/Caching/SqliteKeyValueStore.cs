@@ -10,8 +10,9 @@ namespace Fuse.Reduction.Caching;
 /// <remarks>
 ///     Reads use pooled connections for concurrency; writes are buffered and committed once via
 ///     <see cref="FlushAsync" />. A malformed database is deleted and recreated on open, read, or flush rather than
-///     failing the run, because the file holds only derived cache data. Concurrent runs share the same file via
-///     WAL; <c>busy_timeout</c> and flush retries on <c>SQLITE_BUSY</c> tolerate overlapping writers.
+///     failing the run, because the file holds only derived cache data in <c>fuse-cache.db</c>. Recovery never
+///     deletes the semantic index at <c>fuse.db</c>. Concurrent runs share the same file via WAL;
+///     <c>busy_timeout</c> and flush retries on <c>SQLITE_BUSY</c> tolerate overlapping writers.
 /// </remarks>
 public sealed class SqliteKeyValueStore : IKeyValueStore
 {
@@ -39,6 +40,7 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
     private readonly ConcurrentDictionary<(string Store, string Key), byte[]> _pending = new();
     private readonly Lock _recoveryLock = new();
     private bool _recovered;
+    private bool _indexRecoveryRefused;
 
     /// <summary>
     ///     Opens or creates the database, recovering by recreating a corrupt file.
@@ -77,6 +79,12 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
     /// <inheritdoc />
     public bool TryGet(string store, string key, out byte[]? value)
     {
+        if (_indexRecoveryRefused)
+        {
+            value = null;
+            return false;
+        }
+
         // Read-your-writes: buffered entries are visible before they are flushed.
         if (_pending.TryGetValue((store, key), out var buffered))
         {
@@ -107,6 +115,11 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
             catch (SqliteException ex) when (IsCorruptDatabaseError(ex) && attempt == 0)
             {
                 RecoverCorruptDatabase();
+                if (_indexRecoveryRefused)
+                {
+                    value = null;
+                    return false;
+                }
             }
             catch (SqliteException ex) when (IsMissingTableError(ex) && attempt == 0)
             {
@@ -296,6 +309,16 @@ public sealed class SqliteKeyValueStore : IKeyValueStore
         {
             if (_recovered)
                 return;
+
+            if (FuseStorePaths.IsIndexDatabasePath(_databasePath))
+            {
+                _logger?.LogError(
+                    "Refusing to delete the semantic index database during derived-cache recovery at {DatabasePath}.",
+                    _databasePath);
+                _indexRecoveryRefused = true;
+                _recovered = true;
+                return;
+            }
 
             SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
             DeleteDatabaseFiles();

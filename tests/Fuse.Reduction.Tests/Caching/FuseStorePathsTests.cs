@@ -25,6 +25,36 @@ public sealed class FuseStorePathsTests
     }
 
     [Fact]
+    public void ResolveCacheDatabasePath_InsideGitRepo_ReturnsRepositoryRelativeCachePath()
+    {
+        var repo = CreateTempDirectory();
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(repo, ".git"));
+            var nested = Path.Combine(repo, "src", "Api");
+            Directory.CreateDirectory(nested);
+
+            var expected = Path.Combine(repo, ".fuse", "fuse-cache.db");
+            Assert.Equal(Path.GetFullPath(expected), FuseStorePaths.ResolveCacheDatabasePath(nested));
+        }
+        finally
+        {
+            Directory.Delete(repo, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(@"C:\repo\.fuse\fuse.db", true)]
+    [InlineData(@"/repo/.fuse/fuse.db", true)]
+    [InlineData(@"C:\repo\.fuse\fuse-cache.db", false)]
+    [InlineData(@"/repo/.fuse/FUSE-CACHE.DB", false)]
+    public void IsIndexDatabasePath_MatchesSemanticIndexFileNameOnly(string databasePath, bool expected)
+    {
+        Assert.Equal(expected, FuseStorePaths.IsIndexDatabasePath(databasePath));
+    }
+
+    [Fact]
     public void ResolveDatabasePath_NoGitDirectory_ReturnsUserDataPath()
     {
         var root = CreateTempDirectory();

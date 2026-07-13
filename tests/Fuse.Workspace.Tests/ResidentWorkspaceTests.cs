@@ -7,9 +7,9 @@ namespace Fuse.Workspace.Tests;
 // S1 step 1: the resident workspace holds live rehydrated compilations between calls and answers overlay checks
 // against them without a build or a disk write. The test builds a tiny self-contained project with a binary log
 // (no package references, so no restore network access), loads it resident, and proves the held compilation
-// answers two successive overlay checks (a clean edit and a broken edit) from the same in-memory state. When the
-// SDK cannot produce a binlog in this environment the test is skipped rather than failing, matching the guarded
-// style of the build-capture parent test.
+// answers two successive overlay checks (a clean edit and a broken edit) from the same in-memory state.
+// Category=RequiresSdk: CI excludes these from the default test run; publish smoke fails when dotnet build cannot run.
+[Trait("Category", "RequiresSdk")]
 public sealed class ResidentWorkspaceTests
 {
     [Fact]
@@ -31,8 +31,7 @@ public sealed class ResidentWorkspaceTests
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
                 "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
 
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return; // The SDK could not build a binlog here; nothing to validate.
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
             Assert.NotEmpty(resident.Projects);
@@ -94,8 +93,7 @@ public sealed class ResidentWorkspaceTests
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
                 "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
 
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
 
@@ -144,8 +142,7 @@ public sealed class ResidentWorkspaceTests
             await File.WriteAllTextAsync(Path.Combine(work, "Helper.cs"),
                 "namespace Sample; public static class Helper { public static int Base() => 1; }");
 
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
             var baseline = resident.GetDiagnostics(CancellationToken.None);
@@ -186,8 +183,7 @@ public sealed class ResidentWorkspaceTests
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
                 "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
 
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
 
@@ -233,8 +229,7 @@ public sealed class ResidentWorkspaceTests
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
                 "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
 
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
             var result = resident.CheckOverlay("Nowhere/Absent.cs", "namespace X; class Y { }", CancellationToken.None);
@@ -259,12 +254,10 @@ public sealed class ResidentWorkspaceTests
         try
         {
             await WriteAnalyzerFixtureAsync(work, "dotnet_diagnostic.CA1822.severity = warning");
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
-            if (resident.Projects.All(p => p.Analyzers.IsDefaultOrEmpty))
-                return; // No analyzers captured in this SDK build; nothing to validate.
+            RequiresSdk.RequireAnalyzersCaptured(!resident.Projects.All(p => p.Analyzers.IsDefaultOrEmpty));
 
             const string content = "namespace Sample; public sealed class Widget { public int Spin() => 42; }";
             var compilerOnly = resident.CheckOverlay("Widget.cs", content, CancellationToken.None);
@@ -292,12 +285,10 @@ public sealed class ResidentWorkspaceTests
         try
         {
             await WriteAnalyzerFixtureAsync(work, "dotnet_diagnostic.CA1822.severity = none");
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
-            if (resident.Projects.All(p => p.Analyzers.IsDefaultOrEmpty))
-                return;
+            RequiresSdk.RequireAnalyzersCaptured(!resident.Projects.All(p => p.Analyzers.IsDefaultOrEmpty));
 
             const string content = "namespace Sample; public sealed class Widget { public int Spin() => 42; }";
             var withAnalyzers = await resident.CheckOverlayAsync("Widget.cs", content, includeAnalyzers: true, CancellationToken.None);
@@ -331,8 +322,7 @@ public sealed class ResidentWorkspaceTests
                 """);
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
                 "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
             var project = resident.Projects.First();
@@ -369,8 +359,7 @@ public sealed class ResidentWorkspaceTests
                 """);
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
                 "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
             var output = ResidentEmit.EmitToDirectory(resident.Projects.First(), scratch, CancellationToken.None);
@@ -408,8 +397,7 @@ public sealed class ResidentWorkspaceTests
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),
                 "namespace Sample; public sealed class Widget { public int Spin(int turns) => turns * 42; }");
 
-            if (!await TryBuildWithBinlogAsync(work, binlog))
-                return;
+            RequiresSdk.RequireBinlogBuild(await TryBuildWithBinlogAsync(work, binlog));
 
             using var resident = ResidentWorkspace.LoadFromBinlog(binlog, CancellationToken.None);
 
@@ -483,6 +471,38 @@ public sealed class ResidentWorkspaceTests
         catch (Exception ex) when (ex is OperationCanceledException or System.ComponentModel.Win32Exception or IOException)
         {
             return false;
+        }
+    }
+
+    // CI excludes Category=RequiresSdk from the default test run:
+    //   dotnet test Fuse.slnx -c Release --no-build --filter "Category!=RequiresSdk"
+    // Release publish smoke sets FUSE_PUBLISH_SMOKE=1 and must not silently abstain when dotnet build fails.
+    private static class RequiresSdk
+    {
+        private static bool PublishSmoke =>
+            string.Equals(Environment.GetEnvironmentVariable("FUSE_PUBLISH_SMOKE"), "1", StringComparison.Ordinal)
+            || string.Equals(Environment.GetEnvironmentVariable("FUSE_PUBLISH_SMOKE"), "true", StringComparison.OrdinalIgnoreCase);
+
+        public static void RequireBinlogBuild(bool succeeded)
+        {
+            if (succeeded)
+                return;
+
+            if (PublishSmoke)
+                throw new Xunit.Sdk.XunitException("Publish smoke required dotnet build with binlog to succeed.");
+
+            throw Xunit.Sdk.SkipException.ForSkip("The SDK could not build a binlog here; skipped (RequiresSdk).");
+        }
+
+        public static void RequireAnalyzersCaptured(bool captured)
+        {
+            if (captured)
+                return;
+
+            if (PublishSmoke)
+                throw new Xunit.Sdk.XunitException("Publish smoke required analyzers in the captured binlog.");
+
+            throw Xunit.Sdk.SkipException.ForSkip("No analyzers captured in this SDK build; skipped (RequiresSdk).");
         }
     }
 }

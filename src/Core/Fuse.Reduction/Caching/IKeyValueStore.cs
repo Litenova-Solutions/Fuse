@@ -1,11 +1,12 @@
 namespace Fuse.Reduction.Caching;
 
 /// <summary>
-///     Content-addressed key-value persistence shared by the cache and index views.
+///     Content-addressed key-value persistence for derived cache data in <c>fuse-cache.db</c>.
 /// </summary>
 /// <remarks>
 ///     Writes are buffered and committed in a single transaction at flush. Implementations must be safe for
-///     concurrent readers and writers within one fusion run.
+///     concurrent readers and writers within one fusion run. This store is separate from the semantic index
+///     at <c>fuse.db</c>.
 /// </remarks>
 public interface IKeyValueStore : IAsyncDisposable
 {

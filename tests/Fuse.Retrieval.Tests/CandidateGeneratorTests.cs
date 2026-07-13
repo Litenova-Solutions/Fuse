@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Fuse.Retrieval.Tests;
 
-// P5.1: candidate generation per source (exact, FTS, path, diff).
+// P5.1: candidate generation per source (exact, lexical BM25F, path, diff).
 public sealed class CandidateGeneratorTests : IAsyncLifetime
 {
     private readonly string _databasePath =
@@ -31,13 +31,40 @@ public sealed class CandidateGeneratorTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task FtsQueryGeneratesFtsCandidate()
+    public async Task LexicalQueryGeneratesLexicalCandidate()
     {
         var candidates = await Generate(new LocalizationRequest(".", Query: "OrderService"));
 
         Assert.Contains(candidates, c =>
             (c.Source == CandidateSource.FtsSymbol || c.Source == CandidateSource.FtsBody)
             && c.FilePath == "src/OrderService.cs");
+    }
+
+    [Fact]
+    public async Task CreateDefaultPreservesLexicalRankOrder()
+    {
+        await _store.UpsertFilesAsync(
+            [
+                new IndexedFileRecord("src/Strong.cs", "src/Strong.cs", ".cs", 20, 1, "h3"),
+                new IndexedFileRecord("src/Weak.cs", "src/Weak.cs", ".cs", 20, 1, "h4"),
+            ],
+            CancellationToken.None);
+        await _store.UpsertChunksAsync(
+            [
+                new ChunkRecord("chunk:Strong", "src/Strong.cs", "type", "k", 1, 20, "th3", 50, 20,
+                    Name: "OrderService", Body: "the order service implementation"),
+                new ChunkRecord("chunk:Weak", "src/Weak.cs", "type", "k", 1, 20, "th4", 50, 20,
+                    Name: "Unrelated", Body: "the order word appears here once"),
+            ],
+            CancellationToken.None);
+
+        var candidates = await Generate(new LocalizationRequest(".", Query: "order service"));
+
+        var strong = candidates.Single(c => c.FilePath == "src/Strong.cs");
+        var weak = candidates.Single(c => c.FilePath == "src/Weak.cs");
+        Assert.Equal(CandidateSource.FtsSymbol, strong.Source);
+        Assert.True(strong.BaseScore > weak.BaseScore,
+            $"CreateDefault lexical channel should rank name match {strong.BaseScore} above body match {weak.BaseScore}");
     }
 
     [Fact]

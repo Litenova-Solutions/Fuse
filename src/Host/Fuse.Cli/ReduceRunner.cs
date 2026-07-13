@@ -35,9 +35,13 @@ internal static class ReduceRunner
         if (files.Count == 0)
             return "Error: no files to reduce. Provide at least one file path.";
 
-        var resolvedBase = Path.GetFullPath(baseDirectory);
+        var resolvedBase = WorkspacePathResolver.ResolveRoot(baseDirectory);
         if (!Directory.Exists(resolvedBase))
             return $"Error: Directory not found: {resolvedBase}";
+
+        var pathError = WorkspacePathResolver.ValidateWorkspacePaths(resolvedBase, files, "reduce");
+        if (pathError is not null)
+            return pathError;
 
         try
         {

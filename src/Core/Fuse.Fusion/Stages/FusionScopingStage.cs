@@ -13,6 +13,10 @@ namespace Fuse.Fusion.Stages;
 /// <summary>
 ///     The scoping stage of the fusion pipeline: narrows the collected file set by focus or git changes.
 /// </summary>
+/// <remarks>
+///     Open-ended task localization runs in <c>Fuse.Retrieval</c>; this stage applies only focus and change
+///     scoping over the dependency graph.
+/// </remarks>
 public sealed class FusionScopingStage
 {
     // The factor applied to a structural proximity neighbour's score, so it enters below a real type reference.

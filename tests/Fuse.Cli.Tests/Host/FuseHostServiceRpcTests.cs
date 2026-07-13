@@ -88,6 +88,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         clientRpc.StartListening();
 
         var handshake = await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
+        Assert.Equal(7, handshake.ProtocolVersion);
         Assert.Equal(FuseHostService.ProtocolVersion, handshake.ProtocolVersion);
         Assert.False(string.IsNullOrWhiteSpace(handshake.HostVersion));
         Assert.False(string.IsNullOrWhiteSpace(handshake.SessionToken));
@@ -124,6 +125,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         var handshake = await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
 
+        Assert.Equal(7, handshake.ProtocolVersion);
         Assert.Equal(FuseHostService.ProtocolVersion, handshake.ProtocolVersion);
         Assert.False(string.IsNullOrWhiteSpace(handshake.HostVersion));
         Assert.False(string.IsNullOrWhiteSpace(handshake.SessionToken));

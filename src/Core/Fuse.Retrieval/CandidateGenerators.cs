@@ -3,6 +3,23 @@ using Fuse.Indexing;
 namespace Fuse.Retrieval;
 
 /// <summary>
+///     Diagnostic-only retrieval flags. Off in shipping; the ranking gate (N1) scores
+///     <see cref="LexicalCandidateGenerator" /> via <see cref="CandidateGenerator.CreateDefault" />.
+/// </summary>
+public static class RetrievalDiagnosticFlags
+{
+    /// <summary>The environment variable that enables the retired flat per-source FTS generator.</summary>
+    public const string FlatFtsEnvironmentVariable = "FUSE_FLAT_FTS";
+
+    /// <summary>
+    ///     Whether the retired flat per-source FTS generator is enabled. Set <c>FUSE_FLAT_FTS</c> to
+    ///     <c>1</c>, <c>on</c>, or <c>true</c> to reproduce the pre-R1 lexical channel for diagnostics.
+    /// </summary>
+    public static bool EnableFlatFts =>
+        Environment.GetEnvironmentVariable(FlatFtsEnvironmentVariable) is "1" or "on" or "true";
+}
+
+/// <summary>
 ///     Produces candidate files and symbols for a localization request from one signal (exact resolution,
 ///     full-text, path, or diff).
 /// </summary>
@@ -38,9 +55,10 @@ public sealed class CandidateGenerator
     /// <returns>A generator with the standard candidate sources.</returns>
     /// <remarks>
     ///     The lexical channel is <see cref="LexicalCandidateGenerator" />, which preserves the BM25F rank and
-    ///     adds pseudo-relevance feedback. <see cref="FtsCandidateGenerator" /> remains available as the flat
-    ///     per-source variant but is no longer in the default set. The <see cref="ICandidateGenerator" /> seam
-    ///     stays open for a future generator (for example a re-added dense channel via a plugin).
+    ///     adds pseudo-relevance feedback. The retired flat per-source <see cref="FtsCandidateGenerator" /> is
+    ///     diagnostic-only (<see cref="RetrievalDiagnosticFlags.EnableFlatFts" />); it is not in this set. The
+    ///     <see cref="ICandidateGenerator" /> seam stays open for a future generator (for example a re-added
+    ///     dense channel via a plugin).
     /// </remarks>
     public static CandidateGenerator CreateDefault(
         IWorkspaceIndexStore store, IChangeSource? changeSource = null)
@@ -127,9 +145,11 @@ public sealed class ExactCandidateGenerator : ICandidateGenerator
 }
 
 /// <summary>
-///     Generates candidates from full-text search over indexed chunks.
+///     Diagnostic-only: generates candidates from full-text search with a flat per-source weight (the pre-R1
+///     lexical channel). Not used by <see cref="CandidateGenerator.CreateDefault" />; enable via
+///     <see cref="RetrievalDiagnosticFlags.EnableFlatFts" /> for conformance checks only.
 /// </summary>
-public sealed class FtsCandidateGenerator : ICandidateGenerator
+internal sealed class FtsCandidateGenerator : ICandidateGenerator
 {
     private readonly IWorkspaceIndexStore _store;
 

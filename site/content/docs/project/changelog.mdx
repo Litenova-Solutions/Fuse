@@ -13,6 +13,8 @@ The repository CHANGELOG.md file documents every notable change by version, incl
 
 ## Most Recent Notable Changes
 
+**4.1.0** (2026-07-14): Derived KV cache moves to `.fuse/fuse-cache.db` so corruption recovery cannot wipe the semantic index; FTS unavailability is surfaced and `fuse_find kind=task` refuses honestly; host RPC binds to the served root; MCP file paths are workspace-confined; opt-in metrics via `FUSE_METRICS=1`; performance docs aligned to recorded benchmark JSON.
+
 **4.0.1** (2026-07-13): `fuse mcp install --rules` adds `.fuse/` to `.gitignore` at project scope; docs cover any MCP-compatible client and clarify that indexing happens on the first MCP read; consumer copy and the landing hero are retuned for a technical audience; diagram rendering on the site is fixed.
 
 **4.0.0** is the first public release. Its default MCP path uses the persistent store; the live resident-compilation path remains opt-in with `FUSE_RESIDENT=1`. Fuse verifies proposed edits (`fuse_check`), computes blast radius (`fuse_impact`), stages compiler-executed refactors (`fuse_refactor`), runs covering tests (`fuse_test`), and resolves typed .NET wiring (`fuse_find`).

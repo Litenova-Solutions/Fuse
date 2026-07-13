@@ -4,9 +4,10 @@
 
 | Version | Supported |
 |---------|-----------|
+| 4.1.x   | Yes       |
 | 4.0.x   | Yes       |
 
-Security fixes ship in patch releases on the current minor version. Upgrade to the latest 4.0.x release.
+Security fixes ship in patch releases on the current minor version. Upgrade to the latest 4.1.x release.
 
 ## Reporting a Vulnerability
 

@@ -35,8 +35,10 @@ namespace Fuse.Retrieval;
 ///     score the ranking channels in isolation and to re-adjudicate the priors as default-on features.
 /// </param>
 /// <param name="EnableCoChangePrior">
-///     Whether to apply the git co-change prior. On by default; the ranking suite (N1) toggles it to measure the
-///     A6 co-change prior's effect on ranking, per finding 9.
+///     Whether to apply the git co-change prior. OFF by default (Decision D6, discharged): the semantic-mode
+///     corpus-v2 ranking re-adjudication recorded it as net-negative (default-with-prior MRR 0.434 versus 0.489
+///     without, recall@10 -1.9 percent), so the prior is dropped from the shipping default. The ranking suite
+///     still toggles it to keep the effect measured and guarded.
 /// </param>
 public sealed record LocalizationRequest(
     string RootDirectory,
@@ -57,7 +59,7 @@ public sealed record LocalizationRequest(
     bool Strict = false,
     bool ExpandGraph = false,
     bool EnableCentralityPrior = true,
-    bool EnableCoChangePrior = true);
+    bool EnableCoChangePrior = false);
 
 /// <summary>
 ///     A candidate file or symbol produced by a candidate generator, before scoring and graph expansion.

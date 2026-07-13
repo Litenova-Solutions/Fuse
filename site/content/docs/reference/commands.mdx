@@ -1,15 +1,15 @@
 ---
 title: Commands
-description: The Fuse V3 commands, what each one does, and the options they accept.
+description: The Fuse commands, what each one does, and the options they accept.
 ---
 
-Fuse is the .NET compiler oracle for coding agents. Its commands index a workspace into a persistent Roslyn-backed graph and then query that graph: build the index, map it, localize a task, resolve wiring, plan and emit context, review a change, look things up, and report state. A further command (`fuse reduce`) and the server commands (`fuse init`, `fuse mcp install`, `fuse mcp serve`, `fuse host`) round out the surface. This page states what each command does, when to reach for it, and which option set applies.
+Fuse commands index a workspace into a persistent Roslyn-backed graph and then query that graph: build the index, map it, localize a task, resolve wiring, plan and emit context, review a change, look things up, and report state. A further command (`fuse reduce`) and the server commands (`fuse init`, `fuse mcp install`, `fuse mcp serve`, `fuse host`) round out the surface. This page states what each command does, when to reach for it, and which option set applies.
 
 This page is for engineers choosing a command and for maintainers who need the exact dispatch behavior.
 
 ## Purpose and scope
 
-The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace (or `~/.fuse/fuse.db` outside a git repository). The read commands build the index on first use, so an explicit `fuse index` is optional. Running `fuse` with no command prints the V3 guidance.
+The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace (or `~/.fuse/fuse.db` outside a git repository). The read commands build the index on first use, so an explicit `fuse index` is optional. Running `fuse` with no command prints usage guidance.
 
 ## Summary
 

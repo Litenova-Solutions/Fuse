@@ -26,28 +26,24 @@ call with latency, and the loop has three costs that compound on a big codebase:
 
 ## The Measured Cost
 
-The [Layer 4 benchmark](/docs/project/benchmarks) puts numbers on the loop over the real
-merged pull requests tested, at a 50,000-token budget, counted with the `o200k_base`
-tokenizer.
+The [benchmark corpus](/docs/project/benchmarks) puts numbers on the loop over real
+merged pull requests, counted with the `o200k_base` tokenizer.
 
 A blind agent must read each file a change touches at least once before it has the
 context. That is a structural lower bound, not a measured agent: a mean of 6.9 files per
-change, from 4.7 on FluentValidation to 11.9 on Newtonsoft.Json. Reading the repository blind to
-find them averages about 409,154 tokens; the files that actually matter are about 25,809
-tokens of that.
+change over the pull requests tested.
 
 ## The Collapse: One Scoped Call
 
-Fuse acquires that context in one call. Read its token number with its recall: one scoped
-localize call delivers about 37,000 tokens at 49 percent recall of the changed files, and
-the review (change-scoping) mode reaches 91 percent recall when a git base is available
-(89 percent in the Layer 2A recall task).
+Fuse acquires that context in one call. On the benchmark corpus, open-ended localize from a
+title alone recalls 37.7 percent of changed files at a median 1,348 tokens, and change
+review with a git base keeps 100 percent of changed files at 93.4 percent precision in a
+median 1,026 tokens.
 
-Against a generic packer (Repomix), which dumps the whole repository in one call of about
-424,511 tokens, Fuse ties on round-trips and wins on tokens, roughly 11 times fewer,
-because Fuse scopes and the packer dumps. Fuse does not make fewer round-trips than a
-packer; both are one call. The win against a packer is tokens; the win against no tool is
-the round-trip collapse.
+Against a generic packer (Repomix), which dumps the whole repository in one call, Fuse ties
+on round-trips and wins on tokens because Fuse scopes and the packer dumps. Fuse does not
+make fewer round-trips than a packer; both are one call. The win against a packer is tokens;
+the win against no tool is the round-trip collapse.
 
 ## The Loop, in a Few Cheap Calls
 
@@ -86,6 +82,6 @@ as illustrative.
 
 ## Next
 
-See the measured detail on the [Benchmarks](/docs/project/benchmarks) page (Layer 4),
+See the measured detail on the [Benchmarks](/docs/project/benchmarks) page,
 the narrowing strategies in [Scoping](/docs/concepts/scoping), and the multi-turn step in
 [Sessions and deltas](/docs/concepts/sessions-and-deltas).

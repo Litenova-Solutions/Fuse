@@ -1,0 +1,37 @@
+name: Bug report
+description: Report incorrect behavior in Fuse CLI or MCP tools
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did Fuse do instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Fuse version
+      description: Output of `fuse --version`
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Commands, MCP tool calls, or a minimal repository layout
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - CLI
+        - MCP server
+        - Documentation
+        - Other
+    validations:
+      required: true

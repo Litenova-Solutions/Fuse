@@ -120,17 +120,19 @@ public sealed partial class CorpusManager
     ///     lifting each PR record into a <see cref="PrTask" /> with its ground truth and signal bucket.
     /// </summary>
     /// <param name="datasetName">The dataset name to stamp on the result.</param>
+    /// <param name="prsFileName">The PR ground-truth file name under the benchmark root, or null for <c>prs.json</c> (D22c points this at <c>prs-v2.json</c> for the corpus-v2 regen).</param>
+    /// <param name="manifestPath">An alternate manifest path used to resolve repository paths, or null for <c>corpus.json</c> (D22c passes the corpus-v2 manifest).</param>
     /// <returns>The dataset; repositories whose path cannot be resolved carry a null path.</returns>
-    /// <exception cref="FileNotFoundException">Thrown when <c>prs.json</c> is missing.</exception>
-    public EvalDataset LoadDataset(string datasetName)
+    /// <exception cref="FileNotFoundException">Thrown when the PR dataset file is missing.</exception>
+    public EvalDataset LoadDataset(string datasetName, string? prsFileName = null, string? manifestPath = null)
     {
-        var prsPath = Path.Combine(_benchRoot, "prs.json");
+        var prsPath = Path.Combine(_benchRoot, prsFileName ?? "prs.json");
         if (!File.Exists(prsPath))
-            throw new FileNotFoundException($"prs.json not found at {prsPath}.");
+            throw new FileNotFoundException($"PR dataset not found at {prsPath}.");
         var records = JsonSerializer.Deserialize(File.ReadAllText(prsPath), BenchmarkJsonContext.Default.PrRecordArray)
                       ?? [];
 
-        var manifest = LoadManifest();
+        var manifest = LoadManifest(manifestPath);
         var repoByName = manifest.Repos.ToDictionary(r => r.Name, StringComparer.OrdinalIgnoreCase);
 
         var repos = records

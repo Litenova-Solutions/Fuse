@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 """Generate the Fuse benchmark figure (self-contained SVG) for the README and social sharing.
 
-Pure Python stdlib, no dependencies. Light theme, one card per section, each pairing the
-"without Fuse" baseline with the Fuse result and stating the improvement. All four sections
-are measured and reproducible (tests/benchmarks/results, docs/project/benchmarks.md): sections 4
-and 5 are the layer-4 context-acquisition scenario. Edit the data in compose() or the theme, re-run:
+Pure Python stdlib, no dependencies. Light theme, one card per section. Four measured,
+reproducible panels (tests/benchmarks/results,
+site/content/docs/project/benchmarks.mdx): check honesty, the loop referendum, .NET wiring,
+and change scoping. Localize and agent recall are not on the figure; they live on the
+benchmarks page. Edit the data in compose() or the theme, re-run:
 
-    python generate_charts.py                      # writes fuse-benchmarks.svg
-    python generate_charts.py docs/assets/x.svg    # custom path
+    python fuse-benchmarks-chart.py                 # writes fuse-benchmarks.svg
+    python fuse-benchmarks-chart.py path/to/x.svg   # custom path
+
+To rasterize the SVG to the PNG (fuse-benchmarks.png), run from the site/ directory (which has
+sharp installed), so the bare `sharp` import resolves:
+
+    cd site && node -e "import('sharp').then(s=>s.default(require('fs').readFileSync('../assets/fuse-benchmarks.svg'),{density:144}).png().toFile('../assets/fuse-benchmarks.png'))"
+
+density 144 renders the SVG at 2x. If sharp is unavailable, headless Chrome also works:
+chrome --headless=new --window-size=<W>,<H> --screenshot=fuse-benchmarks.png fuse-benchmarks.svg
 """
 import sys
 from html import escape
@@ -18,7 +27,7 @@ TEXT, MUTED, FAINT = "#171a21", "#566072", "#8a93a3"
 TRACK = "#eceef3"
 EMBER, EMBER2 = "#ea580c", "#fb923c"
 TEAL, TEAL2 = "#0d9488", "#22c3ac"
-BASE = "#c0c7d4"          # "without Fuse" baseline bars
+BASE = "#c0c7d4"          # baseline bars (bare tools, grep)
 INK_ON_BAR = "#ffffff"    # label on bright (ember/teal) bars
 INK_ON_BASE = "#2b3140"   # label on gray baseline bars
 MONO = "ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace"
@@ -44,6 +53,13 @@ def text(x, y, s, *, size=13, fill=TEXT, font=MONO, anchor="start", weight="400"
 def rrect(x, y, w, h, r, fill, stroke=None, sw=1):
     s = f' stroke="{stroke}" stroke-width="{sw}"' if stroke else ""
     el(f'<rect x="{x:.1f}" y="{y:.1f}" width="{max(w,0):.1f}" height="{h:.1f}" rx="{r}"{s} fill="{fill}"/>')
+
+def line(x1, y1, x2, y2, stroke, sw=2):
+    el(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
+       f'stroke="{stroke}" stroke-width="{sw}" stroke-linecap="round"/>')
+
+def circle(cx, cy, r, fill):
+    el(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r}" fill="{fill}"/>')
 
 def grad(c1, c2):
     grad_n[0] += 1
@@ -74,17 +90,17 @@ def wrap(s, max_w, *, size, char_w=0.54):
         lines.append(cur)
     return lines or [""]
 
-def card(y, num, title, subtitle, subtexts, rows, dmax, conclusion, *, fuse=EMBER, fuse2=EMBER2, illustrative=False):
+def draw_card(y, num, title, subtitle, subtexts, conclusion, body_h, body_draw,
+              *, accent=EMBER, accent2=EMBER2, pill_label=None):
+    # Shared card shell: outer frame, heading block, a pluggable body, and the result box.
+    # body_h is the height the body_draw callback needs between the subtexts and the result.
     cx, cw = PAD, W - 2 * PAD
     o_title = 38
     o_sub = o_title + 22
     o_sub0 = o_sub + 21
     st_h = 17
-    o_bars = o_sub0 + len(subtexts) * st_h + 12
-    bars_h = len(rows) * (BAR_H + ROW_GAP) - ROW_GAP
-    o_concl = o_bars + bars_h + 18
-    # Conclusion text wraps inside the result box; the box grows with the line count
-    # so long conclusions (cards 04 and 05) stay within the border instead of bleeding past it.
+    o_body = o_sub0 + len(subtexts) * st_h + 12
+    o_concl = o_body + body_h + 18
     concl_text_x = CPAD + 78
     concl_avail = cw - 2 * CPAD - 78 - 16
     concl_lines = wrap(conclusion, concl_avail, size=13.5)
@@ -94,102 +110,169 @@ def card(y, num, title, subtitle, subtexts, rows, dmax, conclusion, *, fuse=EMBE
 
     rrect(cx, y, cw, card_h, 16, CARD, stroke=BORDER)
 
-    text(cx + CPAD, y + o_title, num, size=12, fill=EMBER, weight="700")
+    text(cx + CPAD, y + o_title, num, size=12, fill=accent, weight="700")
     text(cx + CPAD + 30, y + o_title, title, size=18, fill=TEXT, weight="700")
-    if illustrative:
-        pill(cx + CPAD + 30 + len(title) * 10.4 + 16, y + o_title - 2, "ILLUSTRATIVE", "#8a5a12", "#fbecd6")
+    if pill_label:
+        pill(cx + CPAD + 30 + len(title) * 10.4 + 16, y + o_title - 2, pill_label, "#8a5a12", "#fbecd6")
     text(cx + CPAD, y + o_sub, subtitle, size=13, fill=MUTED, font=SANS, weight="500")
     for i, st in enumerate(subtexts):
         text(cx + CPAD, y + o_sub0 + i * st_h, st, size=12.5, fill=FAINT, font=SANS)
 
-    track_x = cx + CPAD + LABEL_W
-    track_w = cw - 2 * CPAD - LABEL_W
-    for i, (label, value, vlabel, kind) in enumerate(rows):
-        by = y + o_bars + i * (BAR_H + ROW_GAP)
-        cy = by + BAR_H / 2
-        is_base = kind == "base"
-        tag = "without Fuse" if is_base else "with Fuse"
-        text(track_x - 16, cy - 2, label, size=13, fill="#2b3140", anchor="end", weight="500")
-        text(track_x - 16, cy + 12, tag, size=10, fill=(FAINT if is_base else EMBER), anchor="end", spacing="0.03em")
-        rrect(track_x, by, track_w, BAR_H, 6, TRACK)
-        bw = track_w * (value / dmax)
-        fill = BASE if is_base else (grad(fuse, fuse2))
-        rrect(track_x, by, bw, BAR_H, 6, fill)
-        if bw >= 84:
-            text(track_x + bw - 12, cy + 4.5, vlabel, size=13, fill=(INK_ON_BASE if is_base else INK_ON_BAR), anchor="end", weight="700")
-        else:
-            text(track_x + bw + 11, cy + 4.5, vlabel, size=13, fill=TEXT, weight="700")
+    body_draw(cx, y + o_body, cw, accent, accent2)
 
     cyc = y + o_concl
-    rrect(cx + CPAD, cyc, cw - 2 * CPAD, concl_h, 9, "#fff4ec" if not illustrative else "#f3f5f8", stroke="#f3d8c4" if not illustrative else BORDER)
-    rrect(cx + CPAD, cyc, 4, concl_h, 2, fuse)
-    # Vertically center the wrapped block within the result box.
+    on_ember = accent == EMBER
+    box_bg = "#fff4ec" if on_ember else "#eafcf8"
+    box_stroke = "#f3d8c4" if on_ember else "#bfeee4"
+    rrect(cx + CPAD, cyc, cw - 2 * CPAD, concl_h, 9, box_bg, stroke=box_stroke)
+    rrect(cx + CPAD, cyc, 4, concl_h, 2, accent)
     block_top = cyc + (concl_h - len(concl_lines) * concl_lh) / 2 + 14
-    text(cx + CPAD + 18, block_top - 1, "Result", size=10.5, fill=fuse, weight="700", spacing="0.08em")
+    text(cx + CPAD + 18, block_top - 1, "Result", size=10.5, fill=accent, weight="700", spacing="0.08em")
     for i, ln in enumerate(concl_lines):
         text(cx + concl_text_x, block_top - 1 + i * concl_lh, ln, size=13.5, fill=TEXT, font=SANS, weight="600")
     return y + card_h + CARD_GAP
 
+def make_bars(rows, dmax, *, base_tag="without Fuse", fuse_tag="with Fuse"):
+    # Horizontal bars in a track. Each row is (label, value, vlabel, kind); kind "base" is gray.
+    body_h = len(rows) * (BAR_H + ROW_GAP) - ROW_GAP
+    def draw(cx, by0, cw, accent, accent2):
+        track_x = cx + CPAD + LABEL_W
+        track_w = cw - 2 * CPAD - LABEL_W
+        for i, (label, value, vlabel, kind) in enumerate(rows):
+            by = by0 + i * (BAR_H + ROW_GAP)
+            cy = by + BAR_H / 2
+            is_base = kind == "base"
+            tag = base_tag if is_base else fuse_tag
+            text(track_x - 16, cy - 2, label, size=13, fill="#2b3140", anchor="end", weight="500")
+            text(track_x - 16, cy + 12, tag, size=10, fill=(FAINT if is_base else accent), anchor="end", spacing="0.03em")
+            rrect(track_x, by, track_w, BAR_H, 6, TRACK)
+            bw = track_w * (value / dmax)
+            fill = BASE if is_base else grad(accent, accent2)
+            rrect(track_x, by, bw, BAR_H, 6, fill)
+            if bw >= 84:
+                text(track_x + bw - 12, cy + 4.5, vlabel, size=13, fill=(INK_ON_BASE if is_base else INK_ON_BAR), anchor="end", weight="700")
+            else:
+                text(track_x + bw + 11, cy + 4.5, vlabel, size=13, fill=TEXT, weight="700")
+    return body_h, draw
+
+def make_dotwhisker(rows):
+    # Point estimate with a 95% CI interval, the honest encoding for a reduced-scope
+    # proportion. Each row is (label, value, vlabel, ci=(lo,hi), false_done).
+    body_h = len(rows) * (BAR_H + ROW_GAP) - ROW_GAP
+    def draw(cx, by0, cw, accent, accent2):
+        track_x = cx + CPAD + LABEL_W
+        track_w = cw - 2 * CPAD - LABEL_W
+        for i, (label, value, vlabel, ci, fdone) in enumerate(rows):
+            by = by0 + i * (BAR_H + ROW_GAP)
+            cy = by + BAR_H / 2
+            text(track_x - 16, cy - 2, label, size=13, fill="#2b3140", anchor="end", weight="500")
+            text(track_x - 16, cy + 12, f"false-done {fdone}", size=10, fill=FAINT, anchor="end", spacing="0.03em")
+            rrect(track_x, cy - 3, track_w, 6, 3, TRACK)          # 0-100 scale guide
+            lo = track_x + track_w * (ci[0] / 100)
+            hi = track_x + track_w * (ci[1] / 100)
+            px = track_x + track_w * (value / 100)
+            rrect(lo, cy - 2, hi - lo, 4, 2, accent2)             # CI interval band
+            line(lo, cy - 7, lo, cy + 7, accent, 2)               # CI caps
+            line(hi, cy - 7, hi, cy + 7, accent, 2)
+            circle(px, cy, 6, accent)                             # point estimate
+            text(px, cy - 12, vlabel, size=12.5, fill=TEXT, weight="700", anchor="middle")
+    return body_h, draw
+
+def make_tiles(tiles, footer_bar_label):
+    # Big count tiles so a zero is legible at a glance (never a bar drawn to zero), with a
+    # full-width proof bar underneath filled to 100% (the positive framing of the same fact).
+    tile_h = 92
+    gap = 16
+    body_h = tile_h + 14 + 26
+    def draw(cx, by0, cw, accent, accent2):
+        x0 = cx + CPAD
+        avail = cw - 2 * CPAD
+        n = len(tiles)
+        tw = (avail - gap * (n - 1)) / n
+        for i, (big, l1, l2) in enumerate(tiles):
+            tx = x0 + i * (tw + gap)
+            rrect(tx, by0, tw, tile_h, 12, BG, stroke=BORDER)
+            text(tx + tw / 2, by0 + 50, big, size=44, fill=accent, weight="800", anchor="middle")
+            text(tx + tw / 2, by0 + 71, l1, size=13, fill=TEXT, weight="700", anchor="middle", font=SANS)
+            text(tx + tw / 2, by0 + 87, l2, size=11, fill=FAINT, anchor="middle", font=SANS)
+        bar_y = by0 + tile_h + 14
+        rrect(x0, bar_y, avail, 26, 6, TRACK)
+        rrect(x0, bar_y, avail, 26, 6, grad(accent, accent2))
+        text(x0 + avail / 2, bar_y + 17.5, footer_bar_label, size=12.5, fill=INK_ON_BAR, weight="700", anchor="middle", font=SANS)
+    return body_h, draw
+
 def header():
     text(PAD, 52, "FUSE", size=23, fill=EMBER, weight="800", spacing="1.5")
-    text(PAD + 78, 52, "/  Roslyn-Backed .NET Semantic Context Engine for AI Agents", size=13, fill=MUTED, font=SANS, weight="600")
-    text(PAD, 92, "Resolve What Actually Runs.", size=30, fill=TEXT, weight="800", spacing="-0.5")
+    text(PAD + 78, 52, "/  MCP Server for AI Coding Agents on .NET", size=13, fill=MUTED, font=SANS, weight="600")
+    text(PAD, 92, "Measured on Real .NET Codebases.", size=30, fill=TEXT, weight="800", spacing="-0.5")
     lines = [
-        "Fuse keeps a warm, Roslyn-backed semantic index of a .NET workspace and serves precise, provenance-backed",
-        "context from it: which implementation is injected, which endpoint handles a route, which handler processes a",
-        "request, and what a git diff semantically impacts. Token reduction is how it renders, not what it is.",
+        "Fuse typechecks a proposed edit against the .NET compiler before an agent writes it, resolves how the code is",
+        "actually wired from a Roslyn graph, and scopes a change to its blast radius. Every answer carries a grade, and",
+        "Fuse abstains when it cannot answer at compiler grade.",
     ]
     for i, ln in enumerate(lines):
         text(PAD, 120 + i * 19, ln, size=13.5, fill=MUTED, font=SANS)
     ly = 120 + len(lines) * 19 + 8
     rrect(PAD, ly - 11, 13, 13, 3, BASE)
-    text(PAD + 20, ly, "Baseline (bare tools)", size=12, fill=MUTED, font=SANS)
-    rrect(PAD + 188, ly - 11, 13, 13, 3, EMBER)
-    text(PAD + 208, ly, "Fuse", size=12, fill=MUTED, font=SANS)
-    text(PAD + 250, ly, "Numbers from tests/benchmarks/results; fuse eval semantics|review|localize|agent.", size=11, fill=FAINT, font=SANS)
+    text(PAD + 20, ly, "Baseline (bare tools, grep)", size=12, fill=MUTED, font=SANS)
+    rrect(PAD + 232, ly - 11, 13, 13, 3, EMBER)
+    text(PAD + 252, ly, "Fuse", size=12, fill=MUTED, font=SANS)
+    text(PAD + 296, ly, "Numbers from tests/benchmarks/results; fuse eval checkgate | loop | semantics | review.", size=11, fill=FAINT, font=SANS)
     return ly + 22
 
 def compose():
     y = header()
-    y = card(
-        y, "01", "Resolving .NET Wiring",
-        "The extracted semantic graph versus hand-built edge ground truth on the wiring fixture.",
-        ["DI registration and constructor injection, MediatR request-to-handler, ASP.NET route-to-action, options binding.",
-         "Deterministic: the edges are read from Roslyn, not guessed. This is the moat."],
+
+    body_h, draw = make_tiles(
+        [("0", "false green", "broken edit called clean"),
+         ("0", "false red", "clean edit called broken"),
+         ("1,000", "labeled edits", "500 breaking, 500 neutral")],
+        "1,000 of 1,000 compiler verdicts correct, plus 8 curated cases")
+    y = draw_card(
+        y, "01", "Verifying an Edit Honestly",
+        "fuse_check over compiler-labeled single-file edits: does it ever call a broken edit clean?",
+        ["Roslyn rewriters generate breaking and neutral edits; the compiler labels each one, not a human.",
+         "A false green (a broken edit called clean) would let an agent commit a build break. The dangerous one."],
+        "Zero false green and zero false red over 1,000 compiler-verified mutation edits (500 breaking, 500 neutral) plus 8 curated cases. When it cannot answer at compiler grade, fuse_check abstains (checkgate.json).",
+        body_h, draw, accent=TEAL, accent2=TEAL2)
+
+    body_h, draw = make_dotwhisker(
+        [("Fuse", 89, "89%", (82, 95), 8),
+         ("Native tools", 82, "82%", (74, 90), 9)])
+    y = draw_card(
+        y, "02", "Finishing the Task",
+        "True pass@1 from a gold-test oracle: does the agent's finished edit actually pass the changed tests?",
+        ["One driver model (claude-sonnet-4-6), 234 scored rollouts, reported with confidence intervals.",
+         "95% CI: Fuse 82-95, native 74-90. Build round-trips were about equal (3.1 vs 3.2); that miss is shown, not hidden."],
+        "Scored by the tests, not the transcript: Fuse 89% true pass@1 to native's 82%, with fewer silent wrong answers (false-done 8 vs 9). Build round-trips did not drop, and that is reported too (loop.json).",
+        body_h, draw, accent=EMBER, accent2=EMBER2, pill_label="LIMITED SAMPLE")
+
+    body_h, draw = make_bars(
         [("Edge recall", 100, "100%", "fuse"),
          ("Edge precision", 100, "100%", "fuse")],
-        100,
-        "Every wiring edge in the fixture resolved correctly: 23 of 23, recall and precision 1.0 (Suite A).",
-        fuse=TEAL, fuse2=TEAL2)
-    y = card(
-        y, "02", "Scoping a Change",
-        "fuse review over 53 real merged pull requests, 25,000-token budget.",
-        ["Changed files are kept as must-keep and the semantic blast radius is added: callers, DI consumers, handlers, tests.",
-         "Recall is read with tokens: the whole review arrives in a median 958 tokens."],
+        100)
+    y = draw_card(
+        y, "03", "Resolving .NET Wiring",
+        "The extracted semantic graph versus hand-built edge ground truth on the wiring fixture.",
+        ["DI registration and constructor injection, MediatR request-to-handler, ASP.NET route-to-action, options binding.",
+         "Deterministic: the edges are read from Roslyn. No model is involved, and the same index gives the same answer."],
+        "Every wiring edge in the fixture resolved correctly: 24 of 24, recall and precision 1.0 across the wiring catalog (semantics.json).",
+        body_h, draw, accent=TEAL, accent2=TEAL2)
+
+    body_h, draw = make_bars(
         [("Changed-file recall", 100, "100%", "fuse"),
-         ("Blast-radius precision", 80, "80%", "fuse")],
-        100,
-        "100% of changed files kept at 79.8% precision, a median 958 returned tokens per review; a grep baseline reaches 53% recall at 14% precision (Suite B).")
-    y = card(
-        y, "03", "Localizing From a Task Title",
-        "fuse localize recall by title signal, no git base, 53 PRs on the rebuilt corpus, the offline lexical channel.",
-        ["The hardest mode: a sentence with no diff. Identifier-rich titles localize; vague ones do not.",
-         "On a no-signal title Fuse refuses and hands back a navigation map instead of guessing (correct-refusal 100%)."],
-        [("Identifier-rich titles", 19, "19%", "fuse"),
-         ("Natural-language titles", 17, "17%", "fuse"),
-         ("Overall", 15, "15%", "fuse")],
-        100,
-        "About 15% overall recall (19% on identifier-rich titles), offline with no model. The weakest mode, bounded by a mostly-syntax corpus, reported straight (Suite C).")
-    y = card(
-        y, "04", "Helping a Real Agent",
-        "Claude Code (sonnet-4-6) gathering a change's files: bare tools versus the Fuse MCP. 12 PRs.",
-        ["Model-dependent and a small sample (wide confidence interval); read recall together with tokens.",
-         "Tokens are now comparable across arms, so the difference is recall: the Fuse arm reaches more of the files."],
-        [("Fuse MCP recall", 30, "30%", "fuse"),
-         ("Bare tools recall", 26, "26%", "base")],
-        100,
-        "Fuse reached 30% of a change's files versus 26% for bare tools, at comparable token cost (median ~211K vs ~209K), on a small, model-dependent 12-PR sample (Suite D).",
-        fuse=TEAL, fuse2=TEAL2, illustrative=True)
+         ("Blast-radius precision", 93, "93%", "fuse"),
+         ("grep recall", 67, "67%", "base"),
+         ("grep precision", 8, "8%", "base")],
+        100, base_tag="grep baseline")
+    y = draw_card(
+        y, "04", "Scoping a Change",
+        "fuse review over 69 real merged pull requests from pinned open-source .NET repositories, 25,000-token budget.",
+        ["Changed files are must-keep; the semantic blast radius is added: callers, DI consumers, handlers, tests.",
+         "The whole review arrives in a median 1,026 tokens. Recall is 100% by construction, so precision is the signal."],
+        "100% of changed files kept at 93.4% precision, a median 1,026 returned tokens per review; a grep baseline reaches 67% recall at 8% precision (review.json).",
+        body_h, draw, accent=EMBER, accent2=EMBER2)
+
     return y
 
 total = compose()

@@ -157,7 +157,7 @@ public sealed class BuildCaptureRehydrator
             if (data.CompilerCall.IsCSharp != true)
                 continue;
 
-            var compilation = data.GetCompilationAfterGenerators(cancellationToken);
+            var compilation = NormalizeSigning(data.GetCompilationAfterGenerators(cancellationToken), data.CompilerCall.ProjectFilePath);
             var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
                 t.FilePath.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
             if (tree is null)
@@ -175,6 +175,54 @@ public sealed class BuildCaptureRehydrator
         }
 
         return CheckResult.Abstain($"the changed file '{relativeFilePath}' was not found in any captured C# project");
+    }
+
+    // Normalizes strong-name signing on a rehydrated compilation before its diagnostics are read. The compilation
+    // is analyzed (symbols, wiring graph, typecheck), never emitted, but a captured compiler call records the
+    // signing key by a RELATIVE path (for example "../signing.snk") that does not resolve in the rehydration
+    // sandbox, so Roslyn reports an emit-output signing error (CS7027) the real build never hit - and worse, an
+    // empty signing key breaks InternalsVisibleTo(PublicKey=...) matching, cascading into CS0281 (friend-access
+    // key mismatch) and a CS0122 for every internal member a strong-named test project touches. None of these are
+    // code errors; all are strong-name artifacts of rehydration. The fix keeps signing correct where possible:
+    // resolve the relative key file against the project directory (the repos commit the .snk), so the real public
+    // key is produced and friend access matches. Only when the key genuinely is not in the checkout do we clear
+    // the key settings, which at least removes the spurious CS7027. We rehydrate only a build that already
+    // succeeded (exit 0), so neither branch can mask a genuine build failure.
+    internal static Microsoft.CodeAnalysis.Compilation NormalizeSigning(
+        Microsoft.CodeAnalysis.Compilation compilation, string? projectFilePath)
+    {
+        if (compilation.Options is not Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions csOptions)
+            return compilation;
+
+        var resolvedKey = ResolveKeyFile(csOptions.CryptoKeyFile, projectFilePath);
+        if (resolvedKey is not null)
+            // Keep signing, with the key file resolved to an absolute path: the real public key is produced, so
+            // InternalsVisibleTo(PublicKey=...) between a strong-named library and its test project still matches.
+            return compilation.WithOptions(csOptions.WithCryptoKeyFile(resolvedKey));
+
+        var neutralized = csOptions
+            .WithCryptoKeyFile(null)
+            .WithCryptoKeyContainer(null)
+            .WithCryptoPublicKey(System.Collections.Immutable.ImmutableArray<byte>.Empty)
+            .WithDelaySign(null)
+            .WithPublicSign(false);
+        return compilation.WithOptions(neutralized);
+    }
+
+    // Resolves a recorded signing key file to an existing absolute path: an already-rooted path if it exists, else
+    // the relative path against the project directory (where the compiler resolved it at build time). Returns null
+    // when no key file is recorded or it cannot be found in the checkout.
+    private static string? ResolveKeyFile(string? cryptoKeyFile, string? projectFilePath)
+    {
+        if (string.IsNullOrEmpty(cryptoKeyFile))
+            return null;
+        if (Path.IsPathRooted(cryptoKeyFile))
+            return File.Exists(cryptoKeyFile) ? cryptoKeyFile : null;
+        var projectDir = projectFilePath is null ? null : Path.GetDirectoryName(projectFilePath);
+        if (projectDir is null)
+            return null;
+        var candidate = Path.GetFullPath(Path.Combine(projectDir, cryptoKeyFile));
+        return File.Exists(candidate) ? candidate : null;
     }
 
     private static CheckDiagnostic ToCheckDiagnostic(Microsoft.CodeAnalysis.Diagnostic d)
@@ -304,7 +352,7 @@ public sealed class BuildCaptureRehydrator
             if (call.IsCSharp != true)
                 continue;
 
-            var compilation = data.GetCompilationAfterGenerators(cancellationToken);
+            var compilation = NormalizeSigning(data.GetCompilationAfterGenerators(cancellationToken), call.ProjectFilePath);
             var errorCount = compilation.GetDiagnostics(cancellationToken)
                 .Count(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
             var typeCount = CountTypes(compilation.Assembly.GlobalNamespace);

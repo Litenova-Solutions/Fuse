@@ -8,15 +8,11 @@ spending its window on files the task does not touch.
 
 The principle is to work from the warm index: a cheap map first, then localize or resolve
 the task, then plan context for the result. Each step is one MCP tool call. The payoff is
-measured: in the [Layer 4 scenario](/docs/project/benchmarks), one scoped call acquired a
-task's context in about 37,000 tokens against roughly 425,000 for a generic packer dump at
-the same single call, while a blind agent must read each needed file at least once (a lower
-bound of about seven round-trips over the pull requests tested). Read that token number
-with its recall: one scoped localize call reaches 49 percent of the changed files, and the
-review (change-scoping) mode reaches 91 percent in the
-[Layer 4 one-call scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
-when a git base is available (89 percent in the
-[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests)).
+measured on the [benchmark corpus](/docs/project/benchmarks): open-ended localize from a
+title alone recalls 37.7 percent of changed files at a median 1,348 tokens, while change
+review with a git base keeps 100 percent of changed files at 93.4 percent precision in a
+median 1,026 tokens. A blind agent must read each needed file at least once (a structural
+lower bound of about seven files per change over the pull requests tested).
 
 ## The Sequence
 
@@ -81,6 +77,6 @@ base is available, `fuse_review` alone is often the fastest path to a change's c
 ## Related Concept
 
 The mental model behind this flow is
-[The iterative workflow](/docs/concepts/the-explore-phase). The tool parameters are in the
+[The iterative workflow](/docs/concepts/iterative-workflow). The tool parameters are in the
 [MCP tools reference](/docs/reference/mcp-tools), and the modes behind them in
 [Scoping](/docs/concepts/scoping).

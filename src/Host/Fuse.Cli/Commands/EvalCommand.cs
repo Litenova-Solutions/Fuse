@@ -131,6 +131,22 @@ public sealed class EvalCommand
     [CliOption(Required = false, Description = "Path to write JSON results to.")]
     public string? Output { get; set; }
 
+    /// <summary>A per-repository hard timeout in minutes for the corpus-health sweep (0 means no limit).</summary>
+    [CliOption(Name = "--repo-timeout", Required = false, Description = "Per-repository hard timeout in minutes for the corpus-health sweep (0 = no limit); a stalling repo is recorded as timed out and skipped.")]
+    public int RepoTimeout { get; set; }
+
+    /// <summary>When greater than zero, corpus-health also mines and verifies up to this many fail-to-pass oracle tasks per repository.</summary>
+    [CliOption(Name = "--verify-tasks", Required = false, Description = "Mine and mechanically verify up to N fail-to-pass oracle tasks per repository (corpus-health; C4).")]
+    public int VerifyTasks { get; set; }
+
+    /// <summary>How many first-parent commits the task miner scans back from each repository head.</summary>
+    [CliOption(Name = "--scan-commits", Required = false, Description = "Commits to scan back from head when mining oracle tasks (default 200).")]
+    public int ScanCommits { get; set; } = 200;
+
+    /// <summary>The PR ground-truth file name under the benchmark root to score against (default prs.json).</summary>
+    [CliOption(Name = "--dataset-file", Required = false, Description = "PR ground-truth file under the benchmark root (default prs.json); the corpus-v2 review/localize/ranking regen points this at prs-v2.json (D22c).")]
+    public string? DatasetFile { get; set; }
+
     /// <summary>
     ///     Runs the eval command.
     /// </summary>
@@ -154,6 +170,10 @@ public sealed class EvalCommand
             Mutations: Mutations,
             VerifyAgreement: VerifyAgreement,
             ManifestPath: Manifest is null ? null : Path.GetFullPath(Manifest),
+            RepoTimeoutMinutes: RepoTimeout,
+            VerifyTasksPerRepo: VerifyTasks,
+            ScanCommits: ScanCommits,
+            DatasetFile: DatasetFile,
             Log: _consoleUI.WriteStep);
 
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());
@@ -192,6 +212,7 @@ public sealed class EvalCommand
         "loop" => new LoopSuite(_indexer),
         "agent" => new AgentSuite(_indexer),
         "corpus-health" => new CorpusHealthSuite(_indexer),
+        "corpus-prs" => new CorpusPrSuite(),
         "performance" => new PerformanceSuite(_indexer, _changeSource),
         "reduce" => new ReductionSuite((dir, files, level, ct) =>
             ReduceRunner.ReduceFilesAsync(_orchestrator, _templateRegistry, dir, files, ParseLevel(level), null, ct)),

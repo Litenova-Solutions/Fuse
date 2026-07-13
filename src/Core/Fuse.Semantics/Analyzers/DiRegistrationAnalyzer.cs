@@ -37,6 +37,11 @@ public sealed class DiRegistrationAnalyzer : ISemanticAnalyzer
         ["TryAddKeyedScoped"] = "Scoped",
         ["TryAddKeyedSingleton"] = "Singleton",
         ["TryAddKeyedTransient"] = "Transient",
+        // Typed HttpClient (G2 iteration 2, Microsoft.Extensions.Http): AddHttpClient<TClient, TImplementation>()
+        // registers TImplementation as the typed client for TClient (a transient resolution), and the single-arg
+        // AddHttpClient<TClient>() self-registers the client. The generic-2 and generic-1 paths already extract
+        // these; the string/no-arg overloads (named clients) carry no type arguments and produce no edge.
+        ["AddHttpClient"] = "Transient",
     };
 
     /// <inheritdoc />

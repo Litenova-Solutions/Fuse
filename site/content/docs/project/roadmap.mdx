@@ -1,154 +1,38 @@
 ---
 title: Roadmap
-description: The planned direction for Fuse, framed as intent rather than commitment, with shipped work recorded in the changelog.
+description: Where Fuse is headed next. Shipped work lives in the changelog; this page states direction, not dates.
 ---
 
-The roadmap states where Fuse intends to go, ranked by impact on agent efficiency. Each planned item names its primary lever: accuracy, token cost, or round-trips. Nothing here is a commitment or a delivery date. Work that has shipped is recorded in the [Changelog](/docs/project/changelog), not on the roadmap.
+Fuse typechecks a .NET coding agent's proposed edits, computes blast radius, and resolves wiring from a warm Roslyn graph. This page describes where we intend to go next. Nothing here is a commitment or a delivery date. Work that has shipped is recorded in the [Changelog](/docs/project/changelog).
 
-> Direction update. The forward program is now the resident verified-edit runtime (the compiler oracle), tracked item by item in `roadmap/v4.1-plan.md`. Two retrieval bets on this page are closed rather than planned: the dense embedding channel was retired (its recorded lift did not pay for a model dependency), and the learned-ranking and graph-verbalization bets are evidence-killed, since the tier-1 build-capture re-run showed no open-ended-recall lift. A richer build-exact graph is a verification asset (speculative check, blast radius, covering tests), not a retrieval lever. The embedding and learned-rerank rows below are retained as historical direction, not active plans.
+## Resident verified-edit loop
 
-This page is for stakeholders gauging direction and engineers deciding where new work fits.
+Today, `fuse_check` can answer from a live resident workspace when one holds the compilation for your root. The next step is to make that path the default edit-time experience: warm once, then answer every proposed edit in tens of milliseconds instead of paying a full `dotnet build` round-trip.
 
-The roadmap states where Fuse intends to go, ranked by impact on agent efficiency. Each planned item names its primary lever: accuracy, token cost, or round-trips, plus rough **effort** and **value** so stakeholders can compare options. Nothing here is a commitment or a delivery date. Work that has shipped is recorded in the [Changelog](/docs/project/changelog), not on the roadmap.
+That loop pairs speculative typecheck with blast-radius reads, covering-test selection, and verify-gated refactors so an agent can iterate on a change without writing broken code to disk. The resident workspace ships opt-in today (`FUSE_RESIDENT=1`); promotion to on-by-default follows measured warm latency and memory on real repos.
 
-This page is for stakeholders gauging direction and engineers deciding where new work fits.
+## Multi-language syntax tier
 
-## Effort and value (how to read)
+C# structural analysis already runs through Roslyn. The syntax-tier indexer is provider-driven: each language registers an `ILanguageSyntaxProvider` that claims file extensions and extracts symbols and chunks without a compiler. Python and JavaScript providers ship today; community syntax providers are welcome through the same seam.
 
-Effort is a t-shirt size for one engineer who already knows Fuse, including tests and docs, not a calendar commitment.
+The typed semantic graph (DI wiring, request handlers, route maps) remains C#/Roslyn-only for now. Multi-language work expands what Fuse can index and retrieve lexically; it does not yet promise compiler-grade verification outside C#.
 
-| Size | Typical span | Meaning |
-|------|--------------|---------|
-| S | 2 to 5 days | Localized change, low integration risk |
-| M | 1 to 2 weeks | One subsystem, harness regression expected |
-| L | 2 to 4 weeks | Cross-cutting or tuning-heavy |
-| XL | 1 to 3+ months | New subsystem, ML, or agent eval loop |
+## Honest retrieval limits
 
-Value rates expected impact on agent efficiency for the pinned benchmark corpus and typical .NET agent workflows. It is not a measured forecast.
+Open-ended task localization runs on deterministic lexical retrieval (BM25 over the persistent index plus dependency-centrality priors). On the pinned benchmark corpus it reaches about 38 percent changed-file recall at 21 percent precision with a git base absent; change review with a git base reaches much higher recall because the diff is the seed.
 
-| Value | Meaning |
-|-------|---------|
-| High | Likely large move on recall, precision, tokens, or round-trips for many tasks |
-| Medium | Clear win in a subset of repos or modes; smaller headline benchmark shift |
-| Low | Product polish, guardrails, or measurement without direct retrieval lift |
+A richer build-exact graph improves verification (`fuse_check`, `fuse_impact`, covering tests) but does not materially lift open-ended recall on the same repos. Fuse will not ship retrieval features that benchmark suites do not support, and will not claim recall numbers the harness has not recorded.
 
-Re-bundling a large ONNX model, full MSBuild compilation graphs, and end-to-end agent eval each add weeks beyond the table estimate.
+Dense embedding reranking and learned per-repo ranking were evaluated and set aside: they added model dependency or tuning cost without measured recall lift on the corpus. The product bet is precise anchors (symbols, routes, services, git diffs) resolved through the graph, with ranked prose localization as fallback, not the headline.
 
-## Planned Themes
+## Recently shipped
 
-| Item | Effort | Value | Primary lever |
-|------|--------|-------|---------------|
-| Auto-scope tool (task + budget, picks skeleton / focus / search internally) | L to XL | High | Round-trips; accuracy when agents pick the wrong mode |
-| Session-delta emission (only new material across turns) | L | High | Token cost on multi-turn sessions |
-| Hybrid retrieval with learned embeddings (opt-in rerank on BM25 top-K; sideload or small bundle, not mandatory ~90 MB default) | L opt-in; +M to L if bundled again | High on query mode for large repos with weak lexical overlap | Query recall (illustrative: Newtonsoft.Json query recall ~32% today) |
-| Eval harness (task-success: tokens-to-correct-answer with and without Fuse) | XL | High for prioritization; Low direct user impact until used | Confidence; steers all other items |
+These moved to the [Changelog](/docs/project/changelog) when they landed:
 
-## Scoping Recall and Precision
-
-BM25-only query scoping today reaches about 49% mean recall and 2% mean precision at a 50,000 token budget on the pinned PR corpus; change scoping with a git base reaches 87% recall at 50% precision. The tables below target that gap without returning to a full-repo dump.
-
-### Retrieval and seeds (recall on query mode)
-
-| Item | Effort | Value | Expected effect |
-|------|--------|-------|-----------------|
-| Query expansion from the symbol index (stems, `*Validator`-style patterns, path tokens) | M | Medium to High | Best ROI without ML; helps NL queries that omit type names; modest mean recall lift, larger on FluentValidation-style repos |
-| Dual recall (BM25 plus embeddings, sparse retrieval, or symbol-alias merge) | L to XL | High | Broad query recall lift when second signal is semantic; cost scales with chosen backend |
-| Cross-encoder or lightweight rerank on top-K | L to XL | High on hard repos | Targets AutoMapper and Newtonsoft.Json gaps where grep vocabulary beats BM25 today |
-| Optional query rewrite (task description to keywords and type hints) | M | Medium | Helps prose-heavy agent prompts; LLM-backed rewrite adds policy and cost |
-
-Primary lever: accuracy on query mode. Secondary: round-trips when one call replaces blind grep loops.
-
-### Dependency graph (recall without false expansion)
-
-The syntax-level Roslyn graph is the ceiling for focus, changes, and query expansion. Large repos with conditional compilation and partial classes trail smaller ones in recall.
-
-| Item | Effort | Value | Expected effect |
-|------|--------|-------|-----------------|
-| Tighter false-edge control (less noise from stripped comments and literals) | M | Medium | Fewer wrong expansions; helps Newtonsoft.Json-style graphs |
-| Edge confidence and typing (strong vs weak edges, weighted expansion) | M to L | Medium to High | Better precision at same budget; steadier recall on large corpora |
-| Compiled reference resolution (MSBuild or Roslyn when a solution exists) | XL | High | Structural ceiling lift for cross-assembly and resolved types; maintenance heavy |
-
-Primary lever: accuracy on changes and focus, especially on large corpora.
-
-### Expansion and ranking (recall vs precision trade)
-
-Expansion protects recall by pulling neighbors; neighbors outside the ground-truth changed set hurt benchmark precision even when they help an agent.
-
-| Item | Effort | Value | Expected effect |
-|------|--------|-------|-----------------|
-| Tighter admission thresholds | S to M | Medium | Higher benchmark precision; risk of recall drop if over-tightened |
-| Adaptive depth (deepen only high-scoring branches) | M | Medium | Better recall per token than fixed depth everywhere |
-| Selective reverse hops for query (callers/tests when seed is strong, capped) | M | Medium | Recall lift for tests and callers without focus-wide broadening |
-| Two-phase expansion (must-have deps first, optional neighbors if budget remains) | M to L | Medium to High | Precision at fixed budget with less recall sacrifice than blunt depth cuts |
-| Learned or feature-based reranking after expansion | L to XL | Medium to High | Feature plumbing M to L; learned rank XL; rescores tail before budget cut |
-
-Primary lever: precision at a fixed budget without sacrificing headline recall on small repos.
-
-### Emission tiers (precision inside selected files)
-
-File selection can stay recall-oriented while emission trims noise inside each file.
-
-| Item | Effort | Value | Expected effect |
-|------|--------|-------|-----------------|
-| Stronger member-level packing for query | S to M | Medium | Same file recall, fewer tokens and less sibling noise in matched files |
-| Path and test policy (tests only when query, seed, or change signals them) | S to M | Medium | Precision and token savings; may drop useful test context if heuristics are crude |
-| Score-tiered emission (full / outline / skeleton by rank within the included set) | M to L | High | Large token reduction at same file set; improves effective precision per token |
-
-Primary lever: token cost and effective precision (less noise per token) at unchanged file recall.
-
-### Workflow and product surfaces (agent round-trips)
-
-| Item | Effort | Value | Expected effect |
-|------|--------|-------|-----------------|
-| Task-shaped defaults (PR and branch work steers to change scoping when a git base exists) | S | High | No algorithm change; moves many PR tasks from ~49% query recall to ~87% changes recall on the harness |
-| Guided multi-call flows (TOC or skeleton, then focus or changes on large repos) | S to M | Medium to High | Extra round-trip but better accuracy when single query at 50k is insufficient |
-
-Primary lever: round-trips and accuracy in live agent sessions without requiring 100% single-call recall.
-
-### Measurement
-
-| Item | Effort | Value | Expected effect |
-|------|--------|-------|-----------------|
-| Per-repo recall dashboards in harness output | S | Low direct; High for dev | Surfaces Newtonsoft.Json and AutoMapper regressions hidden by the mean |
-| Layer 2B regression guard when retrieval ships | S; M if wired to CI compare gate | Low direct; High for dev | Catches lexical localization regressions (grep baseline is 58% on 12 questions today) |
-| End-to-end task success (see Planned Themes eval harness) | XL | High for prioritization | Validates that harness recall moves translate to agent task success |
-
-Primary lever: confidence that accuracy work improves real tasks, not only harness aggregates.
-
-### Phased bundles (effort vs value)
-
-Illustrative sequencing for one engineer. Calendar time overlaps if items run in parallel.
-
-| Phase | Scope | Effort (cumulative) | Value | Notes |
-|-------|--------|---------------------|-------|-------|
-| A Quick wins | Query expansion, admission tuning, tiered emission v1, task-shaped MCP defaults, per-repo harness reports | ~3 to 5 weeks | High value per week | No ML; best first release |
-| B Expansion and graph hygiene | Adaptive depth, two-phase expand, edge weights, false-edge fixes | ~4 to 8 weeks after A | Medium to High | Large-repo focus and changes/focus more than raw query |
-| C Semantic retrieval v2 | Opt-in hybrid rerank on BM25 top-K (no mandatory bundle) | ~6 to 10 weeks | High on query on hard repos | Reuses prior hybrid design lessons; packaging optional |
-| D Compilation graph | MSBuild or Roslyn references where available | ~3 to 6 months | High structural ceiling | Independent track; edge cases and maintenance |
-| E Learned ranking and task eval | LTR or cross-encoder plus agent eval harness | ~3 to 6+ months | High when eval proves lift | Depends on eval design |
-
-**Fastest benchmark moves:** task-shaped defaults (S effort, High value, already shipped capability); query expansion plus top-K rerank (M plus L, High value on query); tiered emission (M to L, High token value). **Slowest but deepest:** compiled graph (XL) and full task eval (XL).
-
-### Sequencing intent (not dates)
-
-Near-term emphasis: phase A items. Medium-term: phase B and opt-in hybrid rerank (phase C). Long-term: compilation graph (phase D), dual recall, learned ranking, and task eval (phase E).
-
-## Recently Shipped (no longer on the roadmap)
-
-These items moved to the [Changelog](/docs/project/changelog) when they shipped:
-
-- Roslyn structural analysis for C# (skeleton, dependency graph, type location, outlines, route maps, semantic markers) is the default path; regex remains for content reduction, the project graph, and pattern detectors.
+- Roslyn structural analysis for C# (skeleton, dependency graph, type location, outlines, route maps, semantic markers) as the default path; regex remains for content reduction, the project graph, and pattern detectors.
 - Symbol-level scoping (`Type.Member` focus seeds and member-granularity query retrieval).
 - A persistent SQLite store at `.fuse/fuse.db` for reduction output, analysis, and relevance tokens.
 
-## How This Relates to Shipped Work
-
-The roadmap describes intent. Once an item ships, it is removed from the roadmap and documented in the [Changelog](/docs/project/changelog) with the version that introduced it. To learn what Fuse does today rather than what is planned, read the changelog and the reference pages.
-
-## What This Does Not Cover
-
-This page does not specify designs or release dates beyond the phased bundles under scoping recall and precision. Effort sizes are illustrative, not estimates tied to staffing or calendar. Shipped behavior is documented in the [Changelog](/docs/project/changelog).
-
 ## Next
 
-Read the [Changelog](/docs/project/changelog) for the history of shipped work, or [Contributing](/docs/project/contributing) to propose or build a planned item.
+Read the [Changelog](/docs/project/changelog) for shipped history, [Benchmarks](/docs/project/benchmarks) for measured results, or [Contributing](/docs/project/contributing) to propose or build planned work.

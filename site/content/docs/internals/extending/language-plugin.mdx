@@ -7,7 +7,7 @@ Fuse keeps language-specific behavior outside the core pipeline. Support for a l
 
 This page is written for an engineer who wants to teach Fuse about a language it does not yet handle.
 
-> Language-provider policy (frozen). Fuse's deep value is the .NET compiler oracle, so first-party investment in a second language is deliberately deferred: the multi-language story that does not dilute is binding each language's real compiler service (for example tsserver for TypeScript), not shipping another regex or tree-sitter syntax tier. That work is gated behind a written entry bar (the F6 item in `roadmap/v4.1-plan.md`), which requires the .NET loop benchmark (B1) to be recorded first. Community language providers at the syntax tier are welcome, and this seam is how you add one; the existing Python and JavaScript syntax providers are frozen (maintained, not extended) under the same policy.
+> Language-provider policy (frozen). Fuse's deep value is its compiler-backed .NET analysis, so first-party investment in a second language is deliberately deferred: the multi-language story that does not dilute is binding each language's real compiler service (for example tsserver for TypeScript), not shipping another regex or tree-sitter syntax tier. That work waits on a recorded agent loop comparison on the benchmark corpus. Community language providers at the syntax tier are welcome, and this seam is how you add one; the existing Python and JavaScript syntax providers are frozen (maintained, not extended) under the same policy.
 
 ## Implementation Context
 

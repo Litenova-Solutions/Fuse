@@ -1,18 +1,17 @@
 ---
 title: Fuse documentation
-description: Fuse is the compiler oracle for .NET coding agents. It typechecks a proposed edit before it lands, computes a change's blast radius, stages verified refactors, and resolves what code actually runs, from a warm Roslyn graph. Start here to install it, connect it to your agent, and learn how it works.
+description: Fuse typechecks a .NET coding agent's proposed edit before it lands, computes a change's blast radius, stages verified refactors, and resolves what code actually runs, from a warm Roslyn graph. Start here to install it, connect it to your agent, and learn how it works.
 ---
 
-Fuse is the compiler oracle for .NET coding agents. Its thesis is that the compilation is
-the source of truth, so it answers an agent's edit-time questions from the compiler rather
-than from a guess: it typechecks a proposed edit before the agent writes it, computes the
-blast radius of a change, stages compiler-executed refactors as diffs that compile or are
-not handed over, and resolves what the code actually runs (which implementation is injected
-for an interface, which handler processes a request, which endpoint serves a route, what a
-git diff impacts). Every answer carries a grade, and Fuse abstains rather than guess when it
-cannot answer at compiler grade. Scoped, reduced context and ranked retrieval are the
-supporting machinery that feed those answers. It ships as a Model Context Protocol server
-(`fuse mcp serve`) for an agent, and as a .NET global tool (`fuse`) for the terminal and CI.
+Fuse answers a .NET coding agent's edit-time questions from the compiler: it typechecks a
+proposed edit before the agent writes it, computes the blast radius of a change, stages
+compiler-executed refactors as diffs that compile or are not handed over, and resolves
+what the code actually runs (which implementation is injected for an interface, which
+handler processes a request, which endpoint serves a route, what a git diff impacts).
+Every answer carries a grade, and Fuse abstains when it cannot answer at compiler grade.
+Scoped, reduced context and ranked retrieval are the supporting machinery that feed those
+answers. It ships as a Model Context Protocol server (`fuse mcp serve`) for an agent, and
+as a .NET global tool (`fuse`) for the terminal and CI.
 
 These docs are organized so you can read top to bottom to learn, or jump to a
 reference page for exact detail.
@@ -29,7 +28,7 @@ reference page for exact detail.
 ## The Map
 
 - **[Start](/docs/start/what-is-fuse)**: what Fuse is, why it exists, install, the first run, and MCP setup.
-- **[Scenarios](/docs/scenarios/cut-tokens-dotnet)**: task-shaped how-tos. Each is a job with one command and real output.
+- **[Scenarios](/docs/scenarios/context-for-an-agent)**: task-shaped how-tos. Each is a job with one command and real output.
 - **[Concepts](/docs/concepts/how-fuse-works)**: how the warm index works, scoping, render tiers, Roslyn vs regex analysis, and a glossary.
 - **[Reference](/docs/reference/commands)**: every command, flag, MCP tool, reducer, template, tokenizer, and output field.
 - **[Internals and Extending](/docs/internals/pipeline)**: the pipeline, capability model, scoping and caching internals, and the extension guides.

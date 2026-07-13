@@ -9,7 +9,7 @@ This page describes what the resident workspace holds, how it stays current, and
 
 ## State
 
-A resident workspace holds, per repository root, the rehydrated Roslyn compilations for the repository's C# projects. The compilations are rehydrated once from a tier-1 build capture (a binary log produced by the repository's own build) and then kept in memory. Only the rehydration closure is loaded in the process that holds a resident workspace; the MSBuild-based loader used by `fuse index` and `fuse doctor` is a separate path.
+A resident workspace holds, per repository root, the rehydrated Roslyn compilations for the repository's C# projects. The compilations are rehydrated once from a build capture (a binary log produced by the repository's own build) and then kept in memory. Only the rehydration closure is loaded in the process that holds a resident workspace; the MSBuild-based loader used by `fuse index` and `fuse doctor` is a separate path.
 
 Each held compilation supports three in-memory operations, none of which writes the tree:
 
@@ -28,7 +28,7 @@ A bulk change above the storm threshold (300 files in one batch) is not applied 
 Fuse answers at the best available substrate and names which one answered in the availability header:
 
 - **resident**: a live resident workspace serves the root. The header reads `workspace resident (N project(s), current as of ...)`, and `fuse_check` answers oracle-grade from the held compilation with no build.
-- **store-backed**: no resident workspace serves the root. The header reads `workspace store-backed`. Reads answer from the persistent semantic index, kept fresh by the freshness reconcile that re-indexes edited files on open. `fuse_check` still never shrugs: it uses the build-capture worker when tier-1 is configured, or the build-grade fallback (a scoped `dotnet build`) otherwise. See [verification grades](/docs/concepts/verification-grades).
+- **store-backed**: no resident workspace serves the root. The header reads `workspace store-backed`. Reads answer from the persistent semantic index, kept fresh by the freshness reconcile that re-indexes edited files on open. `fuse_check` still never shrugs: it uses the build-capture worker when build capture is configured, or the build-grade fallback (a scoped `dotnet build`) otherwise. See [verification grades](/docs/concepts/verification-grades).
 
 The store remains the substrate for degraded modes (repositories that do not build), cold boot, and the portable artifact. Resident truth is preferred when live; the store answers otherwise.
 

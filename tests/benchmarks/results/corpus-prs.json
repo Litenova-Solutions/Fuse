@@ -1,0 +1,22 @@
+{
+  "suite": "corpus-prs",
+  "description": "Reconstruct a review/localize/ranking PR set from the corpus-v2 merge history (D22c).",
+  "generated": null,
+  "scorecard": {
+    "taskCount": 220,
+    "recall": 0,
+    "recallCiLow": 0,
+    "recallCiHigh": 0,
+    "precision": 0,
+    "f1": 0,
+    "medianTokens": 0,
+    "meanTokens": 0,
+    "lowSignalF1": 0
+  },
+  "tasks": [],
+  "notes": [
+    "wrote 220 PR record(s) across 24 repo(s) to C:\\Projects\\Fuse\\tests\\benchmarks\\prs-v2.json",
+    "per-repo: Ardalis.GuardClauses 10, Ardalis.Specification 10, AutoFixture 10, AutoMapper 0, Bogus 10, CommandLineParser 10, CsvHelper 10, Dapper 10, FluentValidation 10, Flurl 10, Humanizer 10, MediatR 5, NSubstitute 10, Nancy 10, Newtonsoft.Json 10, NodaTime 10, Polly 5, RestSharp 10, Scrutor 10, Shouldly 10, StackExchange.Redis 10, YamlDotNet 10, quartznet 10, serilog 10",
+    "scan commits 200, per-repo cap 10, file-count band 2-25"
+  ]
+}

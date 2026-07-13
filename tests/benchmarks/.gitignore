@@ -25,4 +25,10 @@ results/.spike*/
 results/.pgf/
 results/*.raw.cs.txt
 
+# Per-model loop resume checkpoint (scratch; every rollout it holds is already in loop.json)
+results/loop-rollouts-*.json
+
 # Keep the committed summaries: results/*.json, results/*.csv, results/*.md
+
+# Retained loop rollout transcripts (auditability; too large to commit, derived metrics live in loop.json)
+results/loop-transcripts/

@@ -52,6 +52,13 @@ public sealed record CorpusHealthReport(
     /// <summary>The gate minimum for verified oracle tasks (C4).</summary>
     public const int GateMinTasksVerified = 60;
 
+    /// <summary>
+    ///     The pre-registered reduced-scope floor (C4/D20): with at least this many verified oracle tasks but below
+    ///     the full minimums, a model-driven suite may still run as a no-headline pilot with confidence intervals.
+    ///     Below this floor there is no usable arena and the suite refuses.
+    /// </summary>
+    public const int ReducedScopeTaskFloor = 40;
+
     /// <summary>The file name the report is written to under the results directory.</summary>
     public const string FileName = "corpus-health.json";
 

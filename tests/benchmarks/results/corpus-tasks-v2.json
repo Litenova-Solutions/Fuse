@@ -1,0 +1,850 @@
+{
+  "generated": "2026-07-11T11:42:50.6632998Z",
+  "tasks": [
+    {
+      "repo": "Scrutor",
+      "baseCommit": "26049af5faa99917738555880d49109c5c86c5fc",
+      "mergeCommit": "c2aa7345005116dc330fbf1a70228905202577ae",
+      "testFilter": "FullyQualifiedName~AllowedCompilerGeneratedBase|FullyQualifiedName~AllowedCompilerGeneratedSubclass|FullyQualifiedName~ClassInChildNamespace|FullyQualifiedName~CombinedService|FullyQualifiedName~CombinedService2|FullyQualifiedName~CompilerGenerated|FullyQualifiedName~DefaultAttributes|FullyQualifiedName~DuplicateInheritance|FullyQualifiedName~GenericAttribute|FullyQualifiedName~MixedAttribute|FullyQualifiedName~OpenGeneric|FullyQualifiedName~PartiallyClosedGeneric|FullyQualifiedName~QueryHandler|FullyQualifiedName~ScanningTests|FullyQualifiedName~ScopedService1|FullyQualifiedName~ScopedService2|FullyQualifiedName~TransientService|FullyQualifiedName~TransientService1|FullyQualifiedName~TransientService2|FullyQualifiedName~WrongInheritance",
+      "title": "Eliminate new API methods for opting in to compiler-generated types - We can simplify this to re-using existing methods in the API.",
+      "testFiles": [
+        "test/Scrutor.Tests/ScanningTests.cs"
+      ]
+    },
+    {
+      "repo": "Scrutor",
+      "baseCommit": "0f0ad016a075ccc6f9824c238b957df611f30c6c",
+      "mergeCommit": "46ad176e22148a7d4d11b23a61952d25c7868c64",
+      "testFilter": "FullyQualifiedName~AllowedCompilerGeneratedBase|FullyQualifiedName~AllowedCompilerGeneratedSubclass|FullyQualifiedName~ClassInChildNamespace|FullyQualifiedName~CombinedService|FullyQualifiedName~CombinedService2|FullyQualifiedName~CompilerGenerated|FullyQualifiedName~DefaultAttributes|FullyQualifiedName~DuplicateInheritance|FullyQualifiedName~GenericAttribute|FullyQualifiedName~MixedAttribute|FullyQualifiedName~OpenGeneric|FullyQualifiedName~PartiallyClosedGeneric|FullyQualifiedName~QueryHandler|FullyQualifiedName~ScanningTests|FullyQualifiedName~ScopedService1|FullyQualifiedName~ScopedService2|FullyQualifiedName~TransientService|FullyQualifiedName~TransientService1|FullyQualifiedName~TransientService2|FullyQualifiedName~WrongInheritance",
+      "title": "Match all compiler generated types that derive from a list of bases",
+      "testFiles": [
+        "test/Scrutor.Tests/ScanningTests.cs"
+      ]
+    },
+    {
+      "repo": "Scrutor",
+      "baseCommit": "e6a329e5aa74a3e9412586fc24bb5c69cc03f207",
+      "mergeCommit": "698a4bb3941ca072b5e2fa496517f40d8f2fd5fb",
+      "testFilter": "FullyQualifiedName~Decorated|FullyQualifiedName~DecoratedService|FullyQualifiedName~DecorationTests|FullyQualifiedName~Decorator|FullyQualifiedName~Decorator2|FullyQualifiedName~Decorator3|FullyQualifiedName~DisposableService|FullyQualifiedName~DisposableServiceDecorator|FullyQualifiedName~MyEvent|FullyQualifiedName~MyEvent1Handler|FullyQualifiedName~MyEvent2Handler|FullyQualifiedName~MyEvent3Handler|FullyQualifiedName~MyEventHandlerDecorator|FullyQualifiedName~OtherDecorated|FullyQualifiedName~SomeRandomService",
+      "title": "ActivatorUtilities.CreateFactory created breaking change from version 4.2.2 to 5.0.1 #235",
+      "testFiles": [
+        "test/Scrutor.Tests/DecorationTests.cs"
+      ]
+    },
+    {
+      "repo": "Scrutor",
+      "baseCommit": "5221bff4f80f6ad2ee9873085b4cd8afbde448ab",
+      "mergeCommit": "481f71bb3efd7735aa52eb7b6d7b96427bfdec82",
+      "testFilter": "FullyQualifiedName~ClassInChildNamespace|FullyQualifiedName~CombinedService|FullyQualifiedName~CombinedService2|FullyQualifiedName~CompilerGenerated|FullyQualifiedName~DefaultAttributes|FullyQualifiedName~DuplicateInheritance|FullyQualifiedName~GenericAttribute|FullyQualifiedName~MixedAttribute|FullyQualifiedName~OpenGeneric|FullyQualifiedName~PartiallyClosedGeneric|FullyQualifiedName~QueryHandler|FullyQualifiedName~ScanningTests|FullyQualifiedName~ScopedService1|FullyQualifiedName~ScopedService2|FullyQualifiedName~TransientService|FullyQualifiedName~TransientService1|FullyQualifiedName~TransientService2|FullyQualifiedName~WrongInheritance",
+      "title": "Allow registering fully closed generic types, even if arity doesn\u0027t match #104",
+      "testFiles": [
+        "test/Scrutor.Tests/ScanningTests.cs"
+      ]
+    },
+    {
+      "repo": "Scrutor",
+      "baseCommit": "aabb77d146e253893ff95f8c6789956769f9f610",
+      "mergeCommit": "b442c759bdf862f4a2069693138703605af1ff14",
+      "testFilter": "FullyQualifiedName~ClassInChildNamespace|FullyQualifiedName~CombinedService|FullyQualifiedName~CombinedService2|FullyQualifiedName~CompilerGenerated|FullyQualifiedName~DefaultAttributes|FullyQualifiedName~DuplicateInheritance|FullyQualifiedName~GenericAttribute|FullyQualifiedName~MixedAttribute|FullyQualifiedName~OpenGeneric|FullyQualifiedName~PartiallyClosedGeneric|FullyQualifiedName~QueryHandler|FullyQualifiedName~ScanningTests|FullyQualifiedName~ScopedService1|FullyQualifiedName~ScopedService2|FullyQualifiedName~TransientService|FullyQualifiedName~TransientService1|FullyQualifiedName~TransientService2|FullyQualifiedName~WrongInheritance",
+      "title": "Filter out IEnumerables when registering as implemented interfaces. #65",
+      "testFiles": [
+        "test/Scrutor.Tests/ScanningTests.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.Specification",
+      "baseCommit": "fc9b0a42a694922465cb5a6dca4619e806caa2f4",
+      "mergeCommit": "f37fb7e06950eeee224efdc7e0e299202c1d4782",
+      "testFilter": "FullyQualifiedName~Accessors|FullyQualifiedName~CustomSpecification|FullyQualifiedName~SearchEvaluatorCustomSpecTests|FullyQualifiedName~SearchMemoryEvaluatorCustomSpecTests|FullyQualifiedName~SearchValidatorCustomSpecTests|FullyQualifiedName~SpecificationTests",
+      "title": "Refactor WithProjectionOf and internals. (#517)",
+      "testFiles": [
+        "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/SearchEvaluatorCustomSpecTests.cs",
+        "tests/Ardalis.Specification.Tests/Evaluators/SearchMemoryEvaluatorCustomSpecTests.cs",
+        "tests/Ardalis.Specification.Tests/SpecificationTests.cs",
+        "tests/Ardalis.Specification.Tests/Validators/SearchValidatorCustomSpecTests.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.Specification",
+      "baseCommit": "0309d7ca1b8a28713eac1d1778b1c8792b6f87f2",
+      "mergeCommit": "fc9b0a42a694922465cb5a6dca4619e806caa2f4",
+      "testFilter": "FullyQualifiedName~CustomSpecification|FullyQualifiedName~SearchEvaluatorCustomSpecTests|FullyQualifiedName~SearchExtensionTests|FullyQualifiedName~SearchMemoryEvaluatorCustomSpecTests|FullyQualifiedName~SearchMemoryEvaluatorTests|FullyQualifiedName~SearchValidatorCustomSpecTests",
+      "title": "Add a fallback to LINQ for search evaluators/validator in case of custom user specifications. (#514)",
+      "testFiles": [
+        "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/SearchEvaluatorCustomSpecTests.cs",
+        "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/SearchExtensionTests.cs",
+        "tests/Ardalis.Specification.Tests/Evaluators/SearchMemoryEvaluatorCustomSpecTests.cs",
+        "tests/Ardalis.Specification.Tests/Evaluators/SearchMemoryEvaluatorTests.cs",
+        "tests/Ardalis.Specification.Tests/Validators/SearchValidatorCustomSpecTests.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.Specification",
+      "baseCommit": "2176ce2fed1bb26e30fb1483ab3fcedf5b04317b",
+      "mergeCommit": "0309d7ca1b8a28713eac1d1778b1c8792b6f87f2",
+      "testFilter": "FullyQualifiedName~Accessors|FullyQualifiedName~OneOrManyTests",
+      "title": "Consolidate OneOrMany implementation and its usage. (#513)",
+      "testFiles": [
+        "tests/Ardalis.Specification.Tests/Internals/OneOrManyTests.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.Specification",
+      "baseCommit": "8513acfd76c4fe83949ed3cc61e6ff6c9efe0fab",
+      "mergeCommit": "a01c57ee52cc8388bc6846fea57c80c0255c1893",
+      "testFilter": "FullyQualifiedName~OrderEvaluatorTests",
+      "title": "Refactor the state of order expressions as OneOrMany. (#509)",
+      "testFiles": [
+        "tests/Ardalis.Specification.Tests/Evaluators/OrderEvaluatorTests.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.Specification",
+      "baseCommit": "acbd67888e5adf4fd6ce7b976b5e363dc876f55b",
+      "mergeCommit": "fde098d7f6f9ecc0dde21090a29a06cab60f5ae9",
+      "testFilter": "FullyQualifiedName~Accessors|FullyQualifiedName~OneOrManyTests",
+      "title": "OneOrMany implementation (#507)",
+      "testFiles": [
+        "tests/Ardalis.Specification.Tests/Internals/OneOrManyTests.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.GuardClauses",
+      "baseCommit": "6186c68df5af66c7f92841ddbb1e457bb25266c5",
+      "mergeCommit": "08d3340051d63b76f6de0e4d4c7f3fb69645e009",
+      "testFilter": "FullyQualifiedName~CorrectAsyncClassData|FullyQualifiedName~CorrectClassData|FullyQualifiedName~GuardAgainstExpression|FullyQualifiedName~GuardAgainstInvalidFormatTests|FullyQualifiedName~GuardAgainstNegative|FullyQualifiedName~GuardAgainstNegativeOrZero|FullyQualifiedName~GuardAgainstNotFound|FullyQualifiedName~GuardAgainstNullOrEmpty|FullyQualifiedName~GuardAgainstNullOrOutOfRangeForClassIComparable|FullyQualifiedName~GuardAgainstNullOrOutOfRangeForInt|FullyQualifiedName~GuardAgainstNullOrOutOfRangeForNullableInt|FullyQualifiedName~GuardAgainstNullOrOutOfSQLDateRange|FullyQualifiedName~GuardAgainstNullOrWhiteSpace|FullyQualifiedName~GuardAgainstOutOfRangeForDateTime|FullyQualifiedName~GuardAgainstOutOfRangeForDecimal|FullyQualifiedName~GuardAgainstOutOfRangeForDouble|FullyQualifiedName~GuardAgainstOutOfRangeForFloat|FullyQualifiedName~GuardAgainstOutOfRangeForInt|FullyQualifiedName~GuardAgainstOutOfRangeForInvalidInput|FullyQualifiedName~GuardAgainstOutOfRangeForShort|FullyQualifiedName~GuardAgainstOutOfRangeForStructIComparable|FullyQualifiedName~GuardAgainstOutOfRangeForTimeSpan|FullyQualifiedName~GuardAgainstOutOfRangeForUint|FullyQualifiedName~GuardAgainstOutOfSQLDateRange|FullyQualifiedName~GuardAgainstStringTooLong|FullyQualifiedName~GuardAgainstStringTooShort|FullyQualifiedName~GuardAgainstZero|FullyQualifiedName~IncorrectAsyncClassData|FullyQualifiedName~IncorrectClassData|FullyQualifiedName~TestObj",
+      "title": "Use Func to pass custom exception to Guard methods (#350)",
+      "testFiles": [
+        "test/GuardClauses.UnitTests/GuardAgainstExpression.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstInvalidFormatTests.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNegative.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNegativeOrZero.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNotFound.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrEmpty.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrOutOfRangeForClassIComparable.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrOutOfRangeForInt.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrOutOfRangeForNullableInt.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrOutOfSQLDateRange.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrWhiteSpace.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForDateTime.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForDecimal.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForDouble.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForFloat.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForInt.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForInvalidInput.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForShort.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForStructIComparable.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForTimeSpan.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForUint.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfSQLDateRange.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstStringTooLong.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstStringTooShort.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstZero.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.GuardClauses",
+      "baseCommit": "9ee058e0f54478d48b326397805c0fb49131a03c",
+      "mergeCommit": "6186c68df5af66c7f92841ddbb1e457bb25266c5",
+      "testFilter": "FullyQualifiedName~ArgumentExceptionClassData|FullyQualifiedName~ArgumentNullExceptionClassData|FullyQualifiedName~CorrectClassData|FullyQualifiedName~GuardAgainstDefault|FullyQualifiedName~GuardAgainstNull|FullyQualifiedName~GuardAgainstNullOrEmpty|FullyQualifiedName~GuardAgainstNullOrInvalidInput|FullyQualifiedName~GuardAgainstNullOrWhiteSpace|FullyQualifiedName~GuardAgainstOutOfRangeForEnum|FullyQualifiedName~GuardAgainstOutOfRangeForEnumerableDecimal|FullyQualifiedName~GuardAgainstOutOfRangeForEnumerableDouble|FullyQualifiedName~GuardAgainstOutOfRangeForEnumerableFloat|FullyQualifiedName~GuardAgainstOutOfRangeForEnumerableInt|FullyQualifiedName~GuardAgainstOutOfRangeForEnumerableLong|FullyQualifiedName~GuardAgainstOutOfRangeForEnumerableShort|FullyQualifiedName~GuardAgainstOutOfRangeForEnumerableTimeSpan|FullyQualifiedName~GuardAgainstStringLengthOutOfRange|FullyQualifiedName~IncorrectClassData|FullyQualifiedName~IncorrectRangeClassData|FullyQualifiedName~ValidClassData",
+      "title": "WIP: Converting Exception params to exceptionCreator funcs.",
+      "testFiles": [
+        "test/GuardClauses.UnitTests/GuardAgainstDefault.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNull.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrEmpty.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrInvalidInput.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrWhiteSpace.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnum.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableDecimal.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableDouble.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableFloat.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableInt.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableLong.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableShort.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableTimeSpan.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstStringLengthOutOfRange.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.GuardClauses",
+      "baseCommit": "f26fb995029faea6d407f2da876d8fcfffd4ccf5",
+      "mergeCommit": "e6388c95607a0a79ce4f794fc4de0e495aea2061",
+      "testFilter": "FullyQualifiedName~GuardAgainstNull",
+      "title": "Make type parameter T of the Null() method nullable and add overload for value types. (#261)",
+      "testFiles": [
+        "test/GuardClauses.UnitTests/GuardAgainstNull.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.GuardClauses",
+      "baseCommit": "d54c66ae6b8fd4f81716db3a74069b53e078409a",
+      "mergeCommit": "7271bdcd1f2c8a176feeb4f47c570c073b227806",
+      "testFilter": "FullyQualifiedName~ArgumentExceptionClassData|FullyQualifiedName~ArgumentNullExceptionClassData|FullyQualifiedName~CorrectAsyncClassData|FullyQualifiedName~CorrectClassData|FullyQualifiedName~GuardAgainstNullOrInvalidInput|FullyQualifiedName~GuardAgainstOutOfRangeForInvalidInput|FullyQualifiedName~IncorrectAsyncClassData|FullyQualifiedName~IncorrectClassData|FullyQualifiedName~ValidClassData",
+      "title": "Fixing changes related to merge conflicts",
+      "testFiles": [
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrInvalidInput.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForInvalidInput.cs"
+      ]
+    },
+    {
+      "repo": "Ardalis.GuardClauses",
+      "baseCommit": "63cd557fa2509330b9cc14f44cc985a1b5b1cc1a",
+      "mergeCommit": "6d411016822f3696b63457792d3c82aa3292e075",
+      "testFilter": "FullyQualifiedName~GuardAgainstNullOrEmpty|FullyQualifiedName~GuardAgainstNullOrWhiteSpace",
+      "title": "Add NullOrEmpty and NullOrWhiteSpace overloads for ReadOnlySpan\u003Cchar\u003E (#237)",
+      "testFiles": [
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrEmpty.cs",
+        "test/GuardClauses.UnitTests/GuardAgainstNullOrWhiteSpace.cs"
+      ]
+    },
+    {
+      "repo": "Shouldly",
+      "baseCommit": "94437619939b4e84de1d84357f8cdca2f31ed981",
+      "mergeCommit": "e1c7bf300b39b5a8631148d3ef1998e98f5a0b6e",
+      "testFilter": "FullyQualifiedName~ReadOnlySpanScenario|FullyQualifiedName~SpanScenario|FullyQualifiedName~SpanShouldBeBehaviourTests|FullyQualifiedName~SpanShouldNotBeScenario",
+      "title": "Add ShouldBe/ShouldNotBe overloads for Span\u003CT\u003E and ReadOnlySpan\u003CT\u003E (#1221)",
+      "testFiles": [
+        "src/Shouldly.Tests/ConventionTests/ApprovePublicApi.ShouldlyApi.approved.cs",
+        "src/Shouldly.Tests/ShouldBe/Span/ReadOnlySpanScenario.cs",
+        "src/Shouldly.Tests/ShouldBe/Span/SpanScenario.cs",
+        "src/Shouldly.Tests/ShouldBe/Span/SpanShouldBeBehaviourTests.cs",
+        "src/Shouldly.Tests/ShouldBe/Span/SpanShouldNotBeScenario.cs"
+      ]
+    },
+    {
+      "repo": "Shouldly",
+      "baseCommit": "36b571fcf44752cc33c39d7913b87c5c6ed85b18",
+      "mergeCommit": "8bf3a6d36e651da113d64440c19011453e360140",
+      "testFilter": "FullyQualifiedName~GenericMultipleConditionsScenario|FullyQualifiedName~GenericMultipleConditionsScenario_MultiLine|FullyQualifiedName~GenericMultipleConditionsScenario_MultiLine2|FullyQualifiedName~MultipleConditionsScenario|FullyQualifiedName~MultipleConditionsScenario_MultiLine|FullyQualifiedName~MultipleConditionsScenario_MultiLine2|FullyQualifiedName~NonRetraversableEnumerable|FullyQualifiedName~ObsoleteShouldSatisfyAllConditionsScenario|FullyQualifiedName~TestEnumerable",
+      "title": "Add ShouldSatisfy and make ShouldSatisfyAllConditions an obsolete alias (#1219)",
+      "testFiles": [
+        "src/Shouldly.Tests/ConventionTests/ApprovePublicApi.ShouldlyApi.approved.cs",
+        "src/Shouldly.Tests/ShouldBe/EnumerableType/NonRetraversableEnumerable.cs",
+        "src/Shouldly.Tests/ShouldSatisfyAllConditions/GenericMultipleConditionsScenario.cs",
+        "src/Shouldly.Tests/ShouldSatisfyAllConditions/GenericMultipleConditionsScenario_MultiLine.cs",
+        "src/Shouldly.Tests/ShouldSatisfyAllConditions/GenericMultipleConditionsScenario_MultiLine2.cs",
+        "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario.cs",
+        "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario_MultiLine.cs",
+        "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario_MultiLine2.cs",
+        "src/Shouldly.Tests/ShouldSatisfyAllConditions/ObsoleteShouldSatisfyAllConditionsScenario.cs"
+      ]
+    },
+    {
+      "repo": "Shouldly",
+      "baseCommit": "3465013539862543e3ccbc55e66254c3a08d031b",
+      "mergeCommit": "36b571fcf44752cc33c39d7913b87c5c6ed85b18",
+      "testFilter": "FullyQualifiedName~Holder|FullyQualifiedName~UriScenario",
+      "title": "Use Uri.Equals for ShouldBeEquivalentTo Uri comparisons (#1205) (#1215)",
+      "testFiles": [
+        "src/Shouldly.Tests/ShouldBeEquivalentTo/UriScenario.cs"
+      ]
+    },
+    {
+      "repo": "NSubstitute",
+      "baseCommit": "fcce009ea29e1df7e6713338d19f85a3e83df484",
+      "mergeCommit": "d9e759fe4af2eea0f68427a2333c8a150913c197",
+      "testFilter": "FullyQualifiedName~ForValueTask|FullyQualifiedName~ThrowingAsyncExceptions|FullyQualifiedName~WithReturnValue|FullyQualifiedName~WithVoidReturn",
+      "title": "Make public api and tests the same for all TFMs (#885)",
+      "testFiles": [
+        "tests/NSubstitute.Acceptance.Specs/ThrowingAsyncExceptions.cs"
+      ]
+    },
+    {
+      "repo": "NSubstitute",
+      "baseCommit": "b9569d947bb42a3886f51f098e7f26ec1775f9a7",
+      "mergeCommit": "af8df59f2df7435d613e840f600750814370567d",
+      "testFilter": "FullyQualifiedName~ForValueTask|FullyQualifiedName~ThrowingAsyncExceptions|FullyQualifiedName~WithReturnValue|FullyQualifiedName~WithVoidReturn",
+      "title": "Merge pull request #873 from dtchepak/marcselman-main-merge",
+      "testFiles": [
+        "tests/NSubstitute.Acceptance.Specs/Infrastructure/ISomething.cs",
+        "tests/NSubstitute.Acceptance.Specs/ThrowingAsyncExceptions.cs"
+      ]
+    },
+    {
+      "repo": "NSubstitute",
+      "baseCommit": "6c37da9f0c7da3b5328233fc18692b52116094fa",
+      "mergeCommit": "d24adb5bddaad34b802294f4f7be13a61185c5fe",
+      "testFilter": "FullyQualifiedName~AsyncEventHandlersWithNSubstituteTests|FullyQualifiedName~WhenCalledDo",
+      "title": "Merge pull request #808 from jmartschinke/bugfix/async-event-handlers-return-instantly",
+      "testFiles": [
+        "tests/NSubstitute.Acceptance.Specs/AsyncEventHandlers/AsyncEventHandlersWithNSubstituteTests.cs",
+        "tests/NSubstitute.Acceptance.Specs/AsyncEventHandlers/ITestInterface.cs",
+        "tests/NSubstitute.Acceptance.Specs/AsyncEventHandlers/TestImplementation.cs",
+        "tests/NSubstitute.Acceptance.Specs/WhenCalledDo.cs"
+      ]
+    },
+    {
+      "repo": "NSubstitute",
+      "baseCommit": "41221874dcd3d680dada365c82c4d1ae45e8e80a",
+      "mergeCommit": "ee11ef006ad368dc5c49f844c960f58e11ab4243",
+      "testFilter": "FullyQualifiedName~ProtectedExtensionsTests|FullyQualifiedName~Worker",
+      "title": "Merge pull request #845 from Jason31569/main",
+      "testFiles": [
+        "tests/NSubstitute.Acceptance.Specs/Infrastructure/AnotherClass.cs",
+        "tests/NSubstitute.Acceptance.Specs/ProtectedExtensionsTests.cs"
+      ]
+    },
+    {
+      "repo": "NSubstitute",
+      "baseCommit": "ba0da798c9729f324ffcae15a83434ba81c8610e",
+      "mergeCommit": "41221874dcd3d680dada365c82c4d1ae45e8e80a",
+      "testFilter": "FullyQualifiedName~ArgumentMatching|FullyQualifiedName~CustomDescribeSpecMatcher|FullyQualifiedName~CustomMatcher|FullyQualifiedName~HasMethodWithOutParameter|FullyQualifiedName~IsFortyTwo|FullyQualifiedName~MyHasMethodWithOutParameter|FullyQualifiedName~MyOtherSampleClassArgument|FullyQualifiedName~MyOtherStringArgument|FullyQualifiedName~MySampleClassArgument|FullyQualifiedName~MySampleDerivedClassArgument|FullyQualifiedName~MyStringArgument|FullyQualifiedName~MyStringIntArgument|FullyQualifiedName~SampleClass",
+      "title": "Merge pull request #858 from rholek/main",
+      "testFiles": [
+        "tests/NSubstitute.Acceptance.Specs/ArgumentMatching.cs"
+      ]
+    },
+    {
+      "repo": "CsvHelper",
+      "baseCommit": "34edcc60a0ab5843bebdfd7eba23317f51a21194",
+      "mergeCommit": "4bb46f4de23016824796c231bf914c457ea52876",
+      "testFilter": "FullyQualifiedName~NullableConverterTests",
+      "title": "Merge branch \u0027twinee-patch-1\u0027",
+      "testFiles": [
+        "tests/CsvHelper.Tests/Mocks/ReaderRowMock.cs",
+        "tests/CsvHelper.Tests/TypeConversion/NullableConverterTests.cs"
+      ]
+    },
+    {
+      "repo": "CsvHelper",
+      "baseCommit": "7dbb3fe710466ec2f573f81e19c7130ec1c7a365",
+      "mergeCommit": "f9e5fa47d7f53c9efa5b5509f438219b8495f7bb",
+      "testFilter": "FullyQualifiedName~FastDynamicObjectTests",
+      "title": "Added nullable to FastDynamicObject.",
+      "testFiles": [
+        "tests/CsvHelper.Tests/Dynamic/FastDynamicTests.cs"
+      ]
+    },
+    {
+      "repo": "CsvHelper",
+      "baseCommit": "004c2851090bb48c551d3d434fe2b61e8883e292",
+      "mergeCommit": "7dbb3fe710466ec2f573f81e19c7130ec1c7a365",
+      "testFilter": "FullyQualifiedName~A|FullyQualifiedName~AAutoMap|FullyQualifiedName~ACircular|FullyQualifiedName~AClass|FullyQualifiedName~ACustom|FullyQualifiedName~ADefaultInherit|FullyQualifiedName~AInherit|FullyQualifiedName~AMap|FullyQualifiedName~ANoInherit|FullyQualifiedName~APrivate|FullyQualifiedName~APrivateMap|FullyQualifiedName~APublic|FullyQualifiedName~APublicMap|FullyQualifiedName~AStruct|FullyQualifiedName~Address|FullyQualifiedName~AllowCommentsFalseTestClass|FullyQualifiedName~AllowCommentsTests|FullyQualifiedName~AllowCommentsTrueTestClass|FullyQualifiedName~Alpha|FullyQualifiedName~AlphaMap|FullyQualifiedName~AnonymousTypesTests|FullyQualifiedName~ArrayConverterTests|FullyQualifiedName~AutoMappingTests|FullyQualifiedName~B|FullyQualifiedName~BCircular|FullyQualifiedName~BClass|FullyQualifiedName~BCustom|FullyQualifiedName~BDefaultInherit|FullyQualifiedName~BInherit|FullyQualifiedName~BMap|FullyQualifiedName~BNoInherit|FullyQualifiedName~BPrivate|FullyQualifiedName~BPublic|FullyQualifiedName~BPublicMap|FullyQualifiedName~BStruct|FullyQualifiedName~BadDataTests|FullyQualifiedName~Bar|FullyQualifiedName~BarMap|FullyQualifiedName~BaseClassTests|FullyQualifiedName~Basic|FullyQualifiedName~BigIntegerConverterTests|FullyQualifiedName~BooleanConverterTests|FullyQualifiedName~BuilderRowFake|FullyQualifiedName~ByteArrayConverterTests|FullyQualifiedName~ByteConverterTests|FullyQualifiedName~C|FullyQualifiedName~CMap|FullyQualifiedName~CharConverterTests|FullyQualifiedName~Child|FullyQualifiedName~ChildFields|FullyQualifiedName~ChildMap|FullyQualifiedName~ChildProperties|FullyQualifiedName~CircularReferenceTests|FullyQualifiedName~ClassMapBuilderTests|FullyQualifiedName~ClassMapOrderingTests|FullyQualifiedName~CollectionGenericConverterTests|FullyQualifiedName~ConstantAttributeTests|FullyQualifiedName~ConstantTestClass|FullyQualifiedName~ConstantTests|FullyQualifiedName~ConstantTypeMismatchMap|FullyQualifiedName~ConstantValueTypeNullMap|FullyQualifiedName~ConstructorMappingClass|FullyQualifiedName~ConstructorParametersTests|FullyQualifiedName~ContainerClass|FullyQualifiedName~ContainerClassMap|FullyQualifiedName~ContainsReference|FullyQualifiedName~ContextTests|FullyQualifiedName~ContravarianceClass|FullyQualifiedName~ConvertUsingBlockMap|FullyQualifiedName~ConvertUsingClassMap|FullyQualifiedName~ConvertUsingConstantMap|FullyQualifiedName~ConvertUsingInstanceMethodMap|FullyQualifiedName~ConvertUsingMap|FullyQualifiedName~ConvertUsingNullMap|FullyQualifiedName~ConvertUsingStaticFunctionMap|FullyQualifiedName~CovarianceClass|FullyQualifiedName~CovarianceClassMap|FullyQualifiedName~CsvClassMapCollectionTests|FullyQualifiedName~CsvClassMappingAutoMapTests|FullyQualifiedName~CsvClassMappingTests|FullyQualifiedName~CsvConfigurationTests|FullyQualifiedName~CsvParserTests|FullyQualifiedName~CsvPrice|FullyQualifiedName~CsvReaderDefaultValueTests|FullyQualifiedName~CsvReaderDynamicMappingsTests|FullyQualifiedName~CsvReaderErrorMessageTests|FullyQualifiedName~CsvReaderMappingTests|FullyQualifiedName~CsvReaderReferenceMappingPrefixTests|FullyQualifiedName~CsvReaderReferenceMappingTests|FullyQualifiedName~CsvReaderSubClassingTests|FullyQualifiedName~CsvReaderTests|FullyQualifiedName~CsvWriterBoxedTypesTests|FullyQualifiedName~CsvWriterFormatTests|FullyQualifiedName~CsvWriterMappingTests|FullyQualifiedName~CsvWriterReferenceMappingPrefixTests|FullyQualifiedName~CsvWriterReferenceMappingTests|FullyQualifiedName~CsvWriterSubClassingTests|FullyQualifiedName~CsvWriterTests|FullyQualifiedName~CultureInfoAttributeTests|FullyQualifiedName~CustomConverter|FullyQualifiedName~CustomException|FullyQualifiedName~CustomExceptionMap|FullyQualifiedName~D|FullyQualifiedName~DMap|FullyQualifiedName~DateOnlyConverterTests|FullyQualifiedName~DateTimeConverterTests|FullyQualifiedName~DateTimeOffsetConverterTests|FullyQualifiedName~DateTimeStylesTestClass|FullyQualifiedName~DateTimeStylesTests|FullyQualifiedName~DefaultAttributeTests|FullyQualifiedName~DefaultConverterTests|FullyQualifiedName~DefaultTestClass|FullyQualifiedName~DefaultTests|FullyQualifiedName~DefaultTypeMismatchMap|FullyQualifiedName~DefaultValueTests|FullyQualifiedName~DefaultValueTypeNullMap|FullyQualifiedName~DelimiterTestClass|FullyQualifiedName~DelimiterTests|FullyQualifiedName~DetectColumnCountChangesTests|FullyQualifiedName~DoubleConverterTests|FullyQualifiedName~DynamicMappingsType|FullyQualifiedName~DynamicMappingsTypeClassMap|FullyQualifiedName~DynamicProxyTests|FullyQualifiedName~DynamicTests|FullyQualifiedName~EncodingCodepageTestClass|FullyQualifiedName~EncodingNameTestClass|FullyQualifiedName~EncodingTests|FullyQualifiedName~EnumConverterTests|FullyQualifiedName~Enumerable|FullyQualifiedName~EnumerablePropertyClass|FullyQualifiedName~EnumerablePropertyClassMap|FullyQualifiedName~EnumerableTests|FullyQualifiedName~EnumerateRecordsTests|FullyQualifiedName~EquipmentDataPoint|FullyQualifiedName~EscapeTestClass|FullyQualifiedName~EscapeTests|FullyQualifiedName~ExceptionMessageTests|FullyQualifiedName~FakeClass|FullyQualifiedName~FakeInnerClass|FullyQualifiedName~FieldMappingTests|FullyQualifiedName~FieldTypeTests|FullyQualifiedName~FirstClass|FullyQualifiedName~FirstClassMap|FullyQualifiedName~Foo|FullyQualifiedName~Foo2|FullyQualifiedName~Foo2DerivedNoAttribute|FullyQualifiedName~Foo2DerivedWithAttribute|FullyQualifiedName~FooAttribute|FullyQualifiedName~FooMap|FullyQualifiedName~FooOptionalIntDefaultMap|FullyQualifiedName~FooOptionalIntMap|FullyQualifiedName~FooOptionalStringDefaultMap|FullyQualifiedName~FooOptionalStringIntDefaultMap|FullyQualifiedName~FooOptionalStringMap|FullyQualifiedName~FooParameter|FullyQualifiedName~FooParameterAttribute|FullyQualifiedName~FooParameterMap|FullyQualifiedName~FormatAttributeTests|FullyQualifiedName~FormatMapTests|FullyQualifiedName~FormatTestClass|FullyQualifiedName~FormatTests|FullyQualifiedName~GenericBoolConverter|FullyQualifiedName~GenericValidateMap|FullyQualifiedName~GetOnly|FullyQualifiedName~GetPropertiesTests|FullyQualifiedName~GrandChild|FullyQualifiedName~GuidConverterTests|FullyQualifiedName~HasConstructor|FullyQualifiedName~HasHeaderRecordFalseTestClass|FullyQualifiedName~HasHeaderRecordTests|FullyQualifiedName~HasHeaderRecordTrueTestClass|FullyQualifiedName~HasIgnoredPropertyMap|FullyQualifiedName~HasIndexAndNameMap|FullyQualifiedName~HasIndexNoNameMap|FullyQualifiedName~HasPrivateSetter|FullyQualifiedName~HasReference|FullyQualifiedName~HasReferences|FullyQualifiedName~HeaderPrefixAttributeTests|FullyQualifiedName~HeaderPrefixTests|FullyQualifiedName~HeaderValidationTests|FullyQualifiedName~HiddenBaseMembersTests|FullyQualifiedName~HomeAddressMap|FullyQualifiedName~IAsyncEnumerableTests|FullyQualifiedName~IDictionaryConverterTests|FullyQualifiedName~IDictionaryGenericConverterTests|FullyQualifiedName~IEnumerableConverterTests|FullyQualifiedName~IEnumerableGenericConverterTests|FullyQualifiedName~IgnoreAttributeTests|FullyQualifiedName~IgnoreBaseTests|FullyQualifiedName~IgnoreBlankLinesFalseTestClass|FullyQualifiedName~IgnoreBlankLinesTests|FullyQualifiedName~IgnoreBlankLinesTrueTestClass|FullyQualifiedName~IgnoreHeaderWhiteSpaceTests|FullyQualifiedName~IgnoreReferencesTests|FullyQualifiedName~IgnoreTests|FullyQualifiedName~IncludePrivateMembersFalseTestClass|FullyQualifiedName~IncludePrivateMembersTests|FullyQualifiedName~IncludePrivateMembersTrueTestClass|FullyQualifiedName~IndexTestClass|FullyQualifiedName~IndexTests|FullyQualifiedName~InvalidAttribute|FullyQualifiedName~Issue1954|FullyQualifiedName~Issue2118|FullyQualifiedName~Issue920|FullyQualifiedName~LogInsteadMap|FullyQualifiedName~MapConstructorTests|FullyQualifiedName~MapPropertyMultipleTimesTests|FullyQualifiedName~MappingTypeOfTypeTest|FullyQualifiedName~MappingWithNoHeaderTests|FullyQualifiedName~MultipleConstructors|FullyQualifiedName~MultipleConstructorsWithDefault|FullyQualifiedName~MultipleGetRecordsTests|FullyQualifiedName~MultipleHeadersTest|FullyQualifiedName~MultipleHeadersTests|FullyQualifiedName~MultipleNamesClass|FullyQualifiedName~MultipleNamesClassMap|FullyQualifiedName~MyCsvReader|FullyQualifiedName~MyCsvWriter|FullyQualifiedName~MyOptionTypeFactory|FullyQualifiedName~NameIndexClass|FullyQualifiedName~NameIndexTests|FullyQualifiedName~NameTestClass|FullyQualifiedName~NameTests|FullyQualifiedName~Nested|FullyQualifiedName~NewLineTests|FullyQualifiedName~NoAttribute|FullyQualifiedName~NoDefaultConstructor|FullyQualifiedName~NoPropertyMappingTests|FullyQualifiedName~NonGenericValidateMap|FullyQualifiedName~NullValuesAttributeIndexTest|FullyQualifiedName~NullValuesAttributeTests|FullyQualifiedName~NullValuesMapTests|FullyQualifiedName~NullValuesTestClass|FullyQualifiedName~NullValuesTests|FullyQualifiedName~NullableValuesInEmptyColumnsInputTests|FullyQualifiedName~NumberStylesTestClass|FullyQualifiedName~NumberStylesTests|FullyQualifiedName~Numbers|FullyQualifiedName~ObjectProperty|FullyQualifiedName~Omega|FullyQualifiedName~OmegaMap|FullyQualifiedName~OnlyFields|FullyQualifiedName~OnlyFieldsMap|FullyQualifiedName~OnlyReferencesMap|FullyQualifiedName~OptionConverter|FullyQualifiedName~OptionalAttributeTests|FullyQualifiedName~OptionalMapTests|FullyQualifiedName~OptionalTestClass|FullyQualifiedName~OptionalTests|FullyQualifiedName~Parent|FullyQualifiedName~ParentFields|FullyQualifiedName~ParentMap|FullyQualifiedName~ParentProperties|FullyQualifiedName~Person|FullyQualifiedName~PersonMap|FullyQualifiedName~PrivateSettersInParentTests|FullyQualifiedName~QuoteTestClass|FullyQualifiedName~QuoteTests|FullyQualifiedName~ReadHeaderTests|FullyQualifiedName~ReadingTests|FullyQualifiedName~Reference|FullyQualifiedName~ReferenceConstructorArgsTests|FullyQualifiedName~ReferenceMappingClassMapTests|FullyQualifiedName~ReferenceMappingIndexTests|FullyQualifiedName~ReferenceTestClassA|FullyQualifiedName~ReferenceTestClassB|FullyQualifiedName~ReferenceTests|FullyQualifiedName~ResolverSingleTypeTests|FullyQualifiedName~Row|FullyQualifiedName~RuntimeMapping|FullyQualifiedName~SameNameMultipleTimesClass|FullyQualifiedName~SameNameMultipleTimesClassMap|FullyQualifiedName~Sample|FullyQualifiedName~SecondClass|FullyQualifiedName~SecondClassMap|FullyQualifiedName~SelfCircularA|FullyQualifiedName~SelfCircularB|FullyQualifiedName~SelfCircularC|FullyQualifiedName~ShouldQuoteTests|FullyQualifiedName~ShouldSkipRecordTests|FullyQualifiedName~Simple|FullyQualifiedName~SimpleHasNoDefaultConstructorReferenceHasNoDefaultConstructor|FullyQualifiedName~SimpleMap|FullyQualifiedName~SimpleReferenceHasNoDefaultConstructor|FullyQualifiedName~SingleConverterTests|FullyQualifiedName~StringTypeConverter|FullyQualifiedName~StructTests|FullyQualifiedName~SubPropertyMappingTests|FullyQualifiedName~Test|FullyQualifiedName~Test1|FullyQualifiedName~Test1Map|FullyQualifiedName~Test2|FullyQualifiedName~Test2Map|FullyQualifiedName~Test3|FullyQualifiedName~Test3Map|FullyQualifiedName~TestBoolean|FullyQualifiedName~TestClass|FullyQualifiedName~TestClassMap|FullyQualifiedName~TestClassMappings|FullyQualifiedName~TestDefaultMap|FullyQualifiedName~TestDefaultValues|FullyQualifiedName~TestDefaultValuesMap|FullyQualifiedName~TestIndexMap|FullyQualifiedName~TestIntMap|FullyQualifiedName~TestMap|FullyQualifiedName~TestMapOutOfOrderWithEmptyFieldsMap|FullyQualifiedName~TestMappingDefaultClass|FullyQualifiedName~TestMappingIgnoreClass|FullyQualifiedName~TestMappingIndexClass|FullyQualifiedName~TestMappingMultipleNamesClass|FullyQualifiedName~TestMappingNameClass|FullyQualifiedName~TestMappingTypeConverterClass|FullyQualifiedName~TestNamedMap|FullyQualifiedName~TestNullMap|FullyQualifiedName~TestNullable|FullyQualifiedName~TestPrivateGet|FullyQualifiedName~TestRecord|FullyQualifiedName~TestRecordDuplicateHeaderNames|FullyQualifiedName~TestRecordDuplicateHeaderNamesMap|FullyQualifiedName~TestRecordMap|FullyQualifiedName~TestRecordNoIndexes|FullyQualifiedName~TestRecordNoIndexesMap|FullyQualifiedName~TestSinglePropertyRecord|FullyQualifiedName~TestStringMap|FullyQualifiedName~TestStructMap|FullyQualifiedName~TestStructParent|FullyQualifiedName~TestStructParentMap|FullyQualifiedName~TestTypeConverter|FullyQualifiedName~TestWithNameMap|FullyQualifiedName~TestWithNoNameMap|FullyQualifiedName~TestWithStatic|FullyQualifiedName~TestWithStaticMap|FullyQualifiedName~ThirdClass|FullyQualifiedName~ThirdClassMap|FullyQualifiedName~TimeOnlyConverterTests|FullyQualifiedName~TimeSpanConverterTests|FullyQualifiedName~TrimOptionsTestClass|FullyQualifiedName~TrimOptionsTests|FullyQualifiedName~TryGetTests|FullyQualifiedName~TypeConverter1Tests|FullyQualifiedName~TypeConverterAttributeTests|FullyQualifiedName~TypeConverterClass|FullyQualifiedName~TypeConverterFactoryTests|FullyQualifiedName~TypeConverterMapTests|FullyQualifiedName~TypeConverterOptionsTests|FullyQualifiedName~TypeConverterTests|FullyQualifiedName~TypeConverterWithConstructorArgs|FullyQualifiedName~UnUsedProperty|FullyQualifiedName~UriConverterTests|FullyQualifiedName~ValidateTests|FullyQualifiedName~ValidationMessageMap|FullyQualifiedName~ValueTypesParamsDontMatchProps|FullyQualifiedName~ValueTypesParamsMatchProps|FullyQualifiedName~WorkAddressMap|FullyQualifiedName~WriteNullTests|FullyQualifiedName~WritingDefaultsTests|FullyQualifiedName~WritingTests|FullyQualifiedName~YieldTests",
+      "title": "Added more nullability.",
+      "testFiles": [
+        "tests/CsvHelper.Tests/Async/ReadingTests.cs",
+        "tests/CsvHelper.Tests/Async/WritingTests.cs",
+        "tests/CsvHelper.Tests/AutoMapping/AutoMappingTests.cs",
+        "tests/CsvHelper.Tests/AutoMapping/BaseClassTests.cs",
+        "tests/CsvHelper.Tests/AutoMapping/CircularReferenceTests.cs",
+        "tests/CsvHelper.Tests/AutoMapping/ContextTests.cs",
+        "tests/CsvHelper.Tests/AutoMapping/IgnoreReferencesTests.cs",
+        "tests/CsvHelper.Tests/AutoMapping/MappingTypeOfTypeTest.cs",
+        "tests/CsvHelper.Tests/AutoMapping/StructTests.cs",
+        "tests/CsvHelper.Tests/ClassMapOrderingTests.cs",
+        "tests/CsvHelper.Tests/Configuration/ClassMapBuilderTests.cs",
+        "tests/CsvHelper.Tests/Configuration/CsvClassMapCollectionTests.cs",
+        "tests/CsvHelper.Tests/CsvClassMappingAutoMapTests.cs",
+        "tests/CsvHelper.Tests/CsvConfigurationTests.cs",
+        "tests/CsvHelper.Tests/CsvParserTests.cs",
+        "tests/CsvHelper.Tests/CsvReaderDefaultValueTests.cs",
+        "tests/CsvHelper.Tests/CsvReaderDynamicMappingsTests.cs",
+        "tests/CsvHelper.Tests/CsvReaderErrorMessageTests.cs",
+        "tests/CsvHelper.Tests/CsvReaderMappingTests.cs",
+        "tests/CsvHelper.Tests/CsvReaderReferenceMappingPrefixTests.cs",
+        "tests/CsvHelper.Tests/CsvReaderReferenceMappingTests.cs",
+        "tests/CsvHelper.Tests/CsvReaderSubClassingTests.cs",
+        "tests/CsvHelper.Tests/CsvReaderTests.cs",
+        "tests/CsvHelper.Tests/CsvWriterBoxedTypesTests.cs",
+        "tests/CsvHelper.Tests/CsvWriterFormatTests.cs",
+        "tests/CsvHelper.Tests/CsvWriterMappingTests.cs",
+        "tests/CsvHelper.Tests/CsvWriterReferenceMappingPrefixTests.cs",
+        "tests/CsvHelper.Tests/CsvWriterReferenceMappingTests.cs",
+        "tests/CsvHelper.Tests/CsvWriterSubClassingTests.cs",
+        "tests/CsvHelper.Tests/CsvWriterTests.cs",
+        "tests/CsvHelper.Tests/Defaults/WritingDefaultsTests.cs",
+        "tests/CsvHelper.Tests/DynamicProxyTests.cs",
+        "tests/CsvHelper.Tests/EnumerateRecordsTests.cs",
+        "tests/CsvHelper.Tests/Exceptions/ExceptionMessageTests.cs",
+        "tests/CsvHelper.Tests/HeaderValidationTests.cs",
+        "tests/CsvHelper.Tests/Issues/Issue1954.cs",
+        "tests/CsvHelper.Tests/Issues/Issue2118.cs",
+        "tests/CsvHelper.Tests/Issues/Issue920.cs",
+        "tests/CsvHelper.Tests/MapPropertyMultipleTimesTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/AllowCommentsTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/ConstantTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/DateTimeStylesTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/DefaultTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/DelimiterTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/EncodingTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/EscapeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/FormatTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/HasHeaderRecordTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/HeaderPrefixTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/IgnoreBaseTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/IgnoreBlankLinesTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/IgnoreTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/IncludePrivateMembersTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/IndexTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/NameIndexTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/NameTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/NullValuesTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/NumberStylesTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/OptionalTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/QuoteTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/ReferenceTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/TrimOptionsTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Attribute/TypeConverterTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/ConstantAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/CultureInfoAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/DefaultAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/FormatAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/FormatMapTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/HeaderPrefixAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/IgnoreAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/NullValuesAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/NullValuesMapTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/OptionalAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/OptionalMapTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/TypeConverterAttributeTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ConstructorParameter/TypeConverterMapTests.cs",
+        "tests/CsvHelper.Tests/Mappings/CsvClassMappingTests.cs",
+        "tests/CsvHelper.Tests/Mappings/FieldMappingTests.cs",
+        "tests/CsvHelper.Tests/Mappings/HiddenBaseMembersTests.cs",
+        "tests/CsvHelper.Tests/Mappings/IgnoreHeaderWhiteSpaceTests.cs",
+        "tests/CsvHelper.Tests/Mappings/MapConstructorTests.cs",
+        "tests/CsvHelper.Tests/Mappings/MappingWithNoHeaderTests.cs",
+        "tests/CsvHelper.Tests/Mappings/OptionalTests.cs",
+        "tests/CsvHelper.Tests/Mappings/Property/ConstantTests.cs",
+        "tests/CsvHelper.Tests/Mappings/ReferenceConstructorArgsTests.cs",
+        "tests/CsvHelper.Tests/Mappings/RuntimeMapping.cs",
+        "tests/CsvHelper.Tests/Mappings/SubPropertyMappingTests.cs",
+        "tests/CsvHelper.Tests/Mocks/DynamicObjectMock.cs",
+        "tests/CsvHelper.Tests/Mocks/ParserMock.cs",
+        "tests/CsvHelper.Tests/ObjectResolverTests/ResolveSingleTypeTests.cs",
+        "tests/CsvHelper.Tests/Parsing/BadDataTests.cs",
+        "tests/CsvHelper.Tests/Reading/AnonymousTypesTests.cs",
+        "tests/CsvHelper.Tests/Reading/BadDataTests.cs",
+        "tests/CsvHelper.Tests/Reading/ConstantTests.cs",
+        "tests/CsvHelper.Tests/Reading/ConstructorParametersTests.cs",
+        "tests/CsvHelper.Tests/Reading/DetectColumnCountChangesTests.cs",
+        "tests/CsvHelper.Tests/Reading/DynamicTests.cs",
+        "tests/CsvHelper.Tests/Reading/MultipleGetRecordsTests.cs",
+        "tests/CsvHelper.Tests/Reading/MultipleHeadersTests.cs",
+        "tests/CsvHelper.Tests/Reading/NullableValuesInEmptyColumnsInputTests.cs",
+        "tests/CsvHelper.Tests/Reading/PrivateSettersInParentTests.cs",
+        "tests/CsvHelper.Tests/Reading/ReadHeaderTests.cs",
+        "tests/CsvHelper.Tests/Reading/ShouldSkipRecordTests.cs",
+        "tests/CsvHelper.Tests/Reading/TryGetTests.cs",
+        "tests/CsvHelper.Tests/Reading/ValidateTests.cs",
+        "tests/CsvHelper.Tests/Reading/YieldTests.cs",
+        "tests/CsvHelper.Tests/ReferenceMappingClassMapTests.cs",
+        "tests/CsvHelper.Tests/ReferenceMappingIndexTests.cs",
+        "tests/CsvHelper.Tests/Reflection/GetMemberExpressionStackTests.cs",
+        "tests/CsvHelper.Tests/TestStringWriter.cs",
+        "tests/CsvHelper.Tests/TypeConversion/ArrayConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/BigIntegerConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/BooleanConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/ByteArrayConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/ByteConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/CharConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/CollectionGenericConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/DateOnlyConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/DateTimeConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/DateTimeOffsetConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/DefaultConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/DefaultValueTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/DoubleConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/EnumConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/GuidConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/IDictionaryConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/IDictionaryGenericConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/IEnumerableConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/IEnumerableGenericConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/SingleConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/TimeOnlyConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/TimeSpanConverterTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/TypeConverterFactoryTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/TypeConverterOptionsTests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/TypeConverter\u00601Tests.cs",
+        "tests/CsvHelper.Tests/TypeConversion/UriConverterTests.cs",
+        "tests/CsvHelper.Tests/Writing/ConstantTests.cs",
+        "tests/CsvHelper.Tests/Writing/EnumerableTests.cs",
+        "tests/CsvHelper.Tests/Writing/FieldTypeTests.cs",
+        "tests/CsvHelper.Tests/Writing/IAsyncEnumerableTests.cs",
+        "tests/CsvHelper.Tests/Writing/MultipleHeadersTest.cs",
+        "tests/CsvHelper.Tests/Writing/NewLineTests.cs",
+        "tests/CsvHelper.Tests/Writing/NoPropertyMappingTests.cs",
+        "tests/CsvHelper.Tests/Writing/ShouldQuoteTests.cs",
+        "tests/CsvHelper.Tests/Writing/WriteNullTests.cs"
+      ]
+    },
+    {
+      "repo": "CsvHelper",
+      "baseCommit": "0b6fa0a1dd816ca2de581a26f9523305740f28bc",
+      "mergeCommit": "ce6c8e6b2692433653e3e00f103dd4567f042d20",
+      "testFilter": "FullyQualifiedName~EnumerableTests|FullyQualifiedName~Foo|FullyQualifiedName~FooMap",
+      "title": "Fixed issue with writing where an IEnumerable was getting projected twice.",
+      "testFiles": [
+        "tests/CsvHelper.Tests/Writing/EnumerableTests.cs"
+      ]
+    },
+    {
+      "repo": "CsvHelper",
+      "baseCommit": "83d3951b71a7d0b4200b5ca8464beb6af16400a3",
+      "mergeCommit": "78a0ac9afdd822498f2090bd07e9a8061f8ec489",
+      "testFilter": "FullyQualifiedName~FastDynamicObjectTests",
+      "title": "Fixed issue with FastDynamicObject.CopyTo.",
+      "testFiles": [
+        "tests/CsvHelper.Tests/Dynamic/CsvRowDynamicObjectTests.cs",
+        "tests/CsvHelper.Tests/Dynamic/FastDynamicTests.cs"
+      ]
+    },
+    {
+      "repo": "YamlDotNet",
+      "baseCommit": "941fe12bcb654cd57932cbe3631111d11653387e",
+      "mergeCommit": "ba6dd7d1ff135ef4fc1db1ba1053564b33d0b100",
+      "testFilter": "FullyQualifiedName~MergingParserTests|FullyQualifiedName~StringInterningTests",
+      "title": "Merge pull request #1102 from EdwardCooke/ec-security",
+      "testFiles": [
+        "YamlDotNet.Test/Core/StringInterningTests.cs",
+        "YamlDotNet.Test/Serialization/MergingParserTests.cs"
+      ]
+    },
+    {
+      "repo": "YamlDotNet",
+      "baseCommit": "2867ff540af63f1e2d3d60f86d7acc79f1576b52",
+      "mergeCommit": "f0ccfd89fe4927025cbcdba4b09c6c6374e2af4e",
+      "testFilter": "FullyQualifiedName~CollectionClass|FullyQualifiedName~ComplexType|FullyQualifiedName~ComplexTypeConverter|FullyQualifiedName~DateOnlyHolder|FullyQualifiedName~DateTimeOffsetHolder|FullyQualifiedName~EnumMemberedEnumHarness|FullyQualifiedName~EnumerableClass|FullyQualifiedName~IParsableDeserializationTests|FullyQualifiedName~InheritedClass|FullyQualifiedName~InnerType|FullyQualifiedName~ListClass|FullyQualifiedName~NestedClass|FullyQualifiedName~NullableDateOnlyHolder|FullyQualifiedName~NullableDateTimeHolder|FullyQualifiedName~NullableDateTimeOffsetHolder|FullyQualifiedName~NullableGuidHolder|FullyQualifiedName~NullableTimeOnlyHolder|FullyQualifiedName~NullableTimeSpanHolder|FullyQualifiedName~NullableTypeConverterTests|FullyQualifiedName~NullableUriHolder|FullyQualifiedName~ObjectTests|FullyQualifiedName~OrderedDictionaryTests|FullyQualifiedName~ReadOnlyCollectionClass|FullyQualifiedName~ReadOnlyDictionaryClass|FullyQualifiedName~ReadOnlyListClass|FullyQualifiedName~RegularObjectInner|FullyQualifiedName~RegularObjectOuter|FullyQualifiedName~RequiredMemberClass|FullyQualifiedName~SerializedInheritedClass|FullyQualifiedName~TestState|FullyQualifiedName~TimeOnlyHolder|FullyQualifiedName~TimeSpanContainer|FullyQualifiedName~TimeSpanConverterTests|FullyQualifiedName~TimeSpanHolder|FullyQualifiedName~UnregisteredType|FullyQualifiedName~UriContainer|FullyQualifiedName~UriConverterTests",
+      "title": "Merge pull request #1092 from fdcastel/issue-1085",
+      "testFiles": [
+        "YamlDotNet.Test/Analyzers/StaticGenerator/ObjectTests.cs",
+        "YamlDotNet.Test/Helpers/OrderedDictionaryTests.cs",
+        "YamlDotNet.Test/Serialization/IParsableDeserializationTests.cs",
+        "YamlDotNet.Test/Serialization/NullableTypeConverterTests.cs",
+        "YamlDotNet.Test/Serialization/TimeSpanConverterTests.cs",
+        "YamlDotNet.Test/Serialization/UriConverterTests.cs"
+      ]
+    },
+    {
+      "repo": "YamlDotNet",
+      "baseCommit": "b75970731bd59b516629aaf75fc6fc7f7aa74c30",
+      "mergeCommit": "a868b9558dea7e36fd3faa4a7fef0ab3fe903ee7",
+      "testFilter": "FullyQualifiedName~YamlExceptionTests",
+      "title": "Merge pull request #1084 from skdishansachin/exception-stacktrace",
+      "testFiles": [
+        "YamlDotNet.Test/Core/YamlExceptionTests.cs"
+      ]
+    },
+    {
+      "repo": "YamlDotNet",
+      "baseCommit": "95e6f0863cf2a0805237ae07d18633170ef744cb",
+      "mergeCommit": "abc49b7ca9611f91cfa8b780d157d810a36bd2fa",
+      "testFilter": "FullyQualifiedName~AnchorPrecedence|FullyQualifiedName~AnchorPrecedenceNested|FullyQualifiedName~AnchorsOverwritingTestCase|FullyQualifiedName~CommentWrapper|FullyQualifiedName~CycleTestEntity|FullyQualifiedName~DoublyConverted|FullyQualifiedName~DoublyConvertedTypeConverter|FullyQualifiedName~FloatTestCase|FullyQualifiedName~Foo|FullyQualifiedName~HasNestedDictionary|FullyQualifiedName~MethodInfoConverter|FullyQualifiedName~NamingConventionDisabled|FullyQualifiedName~NonSerializable|FullyQualifiedName~NonSerializableContainer|FullyQualifiedName~NonSerializableTypeConverter|FullyQualifiedName~ReservedWordsTestClass|FullyQualifiedName~SerializationTests|FullyQualifiedName~StringContainer|FullyQualifiedName~TestEnumTestCase|FullyQualifiedName~TestState",
+      "title": "Merge pull request #1091 from fdcastel/fix/null-type-serialization",
+      "testFiles": [
+        "YamlDotNet.Test/Serialization/SerializationTestHelper.cs",
+        "YamlDotNet.Test/Serialization/SerializationTests.cs"
+      ]
+    },
+    {
+      "repo": "YamlDotNet",
+      "baseCommit": "8d1a5cb7f1422da7f915c8ca6fcd3a9511e5af9a",
+      "mergeCommit": "95e6f0863cf2a0805237ae07d18633170ef744cb",
+      "testFilter": "FullyQualifiedName~MaximumRecursionTests",
+      "title": "Merge pull request #1072 from aaubry/deserializer-max-recursion",
+      "testFiles": [
+        "YamlDotNet.Test/Serialization/MaximumRecursionTests.cs"
+      ]
+    },
+    {
+      "repo": "CommandLineParser",
+      "baseCommit": "dffb7517a7b7e0a46a5b6cc17259a0220fc4fe28",
+      "mergeCommit": "bfc2ca81e570eadaea385f156f92ea58b689eb33",
+      "testFilter": "FullyQualifiedName~GetoptParserTests|FullyQualifiedName~GetoptTokenizerTests|FullyQualifiedName~InstanceBuilderTests|FullyQualifiedName~InstanceChooserTests|FullyQualifiedName~Issue776Tests|FullyQualifiedName~NullDefaultCommandLineArguments|FullyQualifiedName~OptionMapperTests|FullyQualifiedName~Option_FlagCounter|FullyQualifiedName~Option_Int|FullyQualifiedName~Option_Int_Nullable|FullyQualifiedName~Option_Nullable_Bool|FullyQualifiedName~Option_Nullable_Enum|FullyQualifiedName~Options|FullyQualifiedName~Options_Date|FullyQualifiedName~Options_DateTimeOffset|FullyQualifiedName~Options_Date_Nullable|FullyQualifiedName~Options_TimeSpan|FullyQualifiedName~ParserTests|FullyQualifiedName~ScalarTests|FullyQualifiedName~SequenceParsingTests|FullyQualifiedName~SequenceTests|FullyQualifiedName~SimpleArgsData|FullyQualifiedName~SimpleArgsDataWithPosixlyCorrect|FullyQualifiedName~SpecificationPropertyRulesTests|FullyQualifiedName~SwitchTests|FullyQualifiedName~TokenizerTests|FullyQualifiedName~TypeConverterTests|FullyQualifiedName~UnParserExtensionsTests|FullyQualifiedName~ValueWithNoSetterOptions",
+      "title": "Merge branch \u0027develop\u0027",
+      "testFiles": [
+        "tests/CommandLine.Tests/Fakes/CustomAttribute.cs",
+        "tests/CommandLine.Tests/Fakes/Help_Fakes.cs",
+        "tests/CommandLine.Tests/Fakes/Options_With_FlagCounter_Switches.cs",
+        "tests/CommandLine.Tests/Fakes/Options_With_Sequence_Having_Separator_And_Values.cs",
+        "tests/CommandLine.Tests/Fakes/Options_With_Similar_Names.cs",
+        "tests/CommandLine.Tests/Fakes/Options_With_Value_Sequence_And_Normal_Option.cs",
+        "tests/CommandLine.Tests/Fakes/Simple_Options_With_ExtraArgs.cs",
+        "tests/CommandLine.Tests/Unit/Core/GetoptTokenizerTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/InstanceChooserTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/OptionMapperTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/ScalarTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/SequenceTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/SpecificationPropertyRulesTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/SwitchTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/TokenizerTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/TypeConverterTests.cs",
+        "tests/CommandLine.Tests/Unit/GetoptParserTests.cs",
+        "tests/CommandLine.Tests/Unit/Issue776Tests.cs",
+        "tests/CommandLine.Tests/Unit/ParserTests.cs",
+        "tests/CommandLine.Tests/Unit/SequenceParsingTests.cs",
+        "tests/CommandLine.Tests/Unit/UnParserExtensionsTests.cs"
+      ]
+    },
+    {
+      "repo": "CommandLineParser",
+      "baseCommit": "f5e8b167fdb78d5cd1373b0bb9d6720a7bcdabc3",
+      "mergeCommit": "18306085159a6385cc3de74ef65d63c194ffa6d2",
+      "testFilter": "FullyQualifiedName~BaseAttributeTests|FullyQualifiedName~TestBaseAttribute",
+      "title": "Merge pull request #758 from gorsheninmv/resourcetype-with-implicit-cast",
+      "testFiles": [
+        "tests/CommandLine.Tests/Fakes/ResourceFakes.cs",
+        "tests/CommandLine.Tests/Unit/BaseAttributeTests.cs"
+      ]
+    },
+    {
+      "repo": "CommandLineParser",
+      "baseCommit": "24e2be23ce695d36316d921d2a52f9eb94cb0558",
+      "mergeCommit": "872541230450a188f28386ac446474fff880335c",
+      "testFilter": "FullyQualifiedName~AliasedVerbOption1|FullyQualifiedName~AliasedVerbOption2|FullyQualifiedName~Issue543Tests|FullyQualifiedName~Issue591Tests|FullyQualifiedName~Issue6Tests|FullyQualifiedName~NullDefaultCommandLineArguments|FullyQualifiedName~Option_Int|FullyQualifiedName~Option_Int_Nullable|FullyQualifiedName~Option_Nullable_Bool|FullyQualifiedName~Option_Nullable_Enum|FullyQualifiedName~Options|FullyQualifiedName~Options_Date|FullyQualifiedName~Options_DateTimeOffset|FullyQualifiedName~Options_Date_Nullable|FullyQualifiedName~Options_TimeSpan|FullyQualifiedName~ParserTests|FullyQualifiedName~TokenizerTests|FullyQualifiedName~TypeConverterTests|FullyQualifiedName~UnParserExtensionsTests|FullyQualifiedName~Verb1Options|FullyQualifiedName~Verb2Options|FullyQualifiedName~VerbNoAlias|FullyQualifiedName~is",
+      "title": "Merge branch \u0027develop\u0027",
+      "testFiles": [
+        "tests/CommandLine.Tests/Fakes/Options_With_FileDirectoryInfo.cs",
+        "tests/CommandLine.Tests/Fakes/Options_With_Option_Sequence_And_Value_Sequence.cs",
+        "tests/CommandLine.Tests/Unit/Core/TokenizerTests.cs",
+        "tests/CommandLine.Tests/Unit/Core/TypeConverterTests.cs",
+        "tests/CommandLine.Tests/Unit/Issue543Tests.cs",
+        "tests/CommandLine.Tests/Unit/Issue591Tests.cs",
+        "tests/CommandLine.Tests/Unit/Issue6Tests.cs",
+        "tests/CommandLine.Tests/Unit/ParserTests.cs",
+        "tests/CommandLine.Tests/Unit/UnParserExtensionsTests.cs"
+      ]
+    },
+    {
+      "repo": "CommandLineParser",
+      "baseCommit": "182e72fa363485f10b2cdbf22b8c1ca23d03eae5",
+      "mergeCommit": "2dff646ffc3955888ba00a56990429cd896f41c1",
+      "testFilter": "FullyQualifiedName~InstanceBuilderTests|FullyQualifiedName~Option_Int|FullyQualifiedName~Option_Int_Nullable|FullyQualifiedName~Option_Nullable_Bool|FullyQualifiedName~Option_Nullable_Enum|FullyQualifiedName~Options_Date|FullyQualifiedName~Options_DateTimeOffset|FullyQualifiedName~Options_Date_Nullable|FullyQualifiedName~Options_TimeSpan|FullyQualifiedName~UnParserExtensionsTests|FullyQualifiedName~ValueWithNoSetterOptions",
+      "title": "Fix/issue #579 (#580)",
+      "testFiles": [
+        "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs",
+        "tests/CommandLine.Tests/Unit/UnParserExtensionsTests.cs"
+      ]
+    },
+    {
+      "repo": "CommandLineParser",
+      "baseCommit": "19e2c95c68636efaa0d7196c5da1872aa1783592",
+      "mergeCommit": "00ae0f2254197746bf5efcfaf0502bc827aefa1c",
+      "testFilter": "FullyQualifiedName~InstanceBuilderTests|FullyQualifiedName~Issue591ests|FullyQualifiedName~Issue70Tests|FullyQualifiedName~ValueWithNoSetterOptions|FullyQualifiedName~is",
+      "title": "Remove constraint on T for ParseArguments with factory (#590)",
+      "testFiles": [
+        "tests/CommandLine.Tests/Fakes/Mutable_Without_Empty_Constructor.cs",
+        "tests/CommandLine.Tests/Fakes/Options_With_Only_Explicit_Interface.cs",
+        "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs",
+        "tests/CommandLine.Tests/Unit/Issue591ests.cs",
+        "tests/CommandLine.Tests/Unit/Issue70Tests.cs"
+      ]
+    },
+    {
+      "repo": "AutoMapper",
+      "baseCommit": "fed6e64393a68837896c90128a6a2b9a76eededc",
+      "mergeCommit": "dfa6dd587c5854b4beee5934beb39ba6e9569b84",
+      "testFilter": "FullyQualifiedName~CapturingLogger|FullyQualifiedName~LicenseValidationBackgroundTests|FullyQualifiedName~ThreadCapturingLoggerProvider",
+      "title": "Merge pull request #4645 from LuckyPennySoftware/fix/4640-license-validation-deadlock",
+      "testFiles": [
+        "src/UnitTests/Licensing/LicenseValidationBackgroundTests.cs"
+      ]
+    },
+    {
+      "repo": "AutoMapper",
+      "baseCommit": "b57c206dc7291821e42bdf816a5637a5c1d8cb54",
+      "mergeCommit": "b206d0a78a76b17e3250807b1f2d939da121a9b7",
+      "testFilter": "FullyQualifiedName~LicenseKeyEnvironmentVariableTests",
+      "title": "Merge pull request #4634 from Nit8/main",
+      "testFiles": [
+        "src/UnitTests/Licensing/LicenseKeyEnvironmentVariableTests.cs"
+      ]
+    },
+    {
+      "repo": "AutoMapper",
+      "baseCommit": "c343d02c8a7d96752c0ce108a2a834be8da86baa",
+      "mergeCommit": "34eb913f2a512d54c49608dc493845ae85e9b9a2",
+      "testFilter": "FullyQualifiedName~Circular|FullyQualifiedName~DeepNestingStackOverflow",
+      "title": "Merge commit from fork",
+      "testFiles": [
+        "src/UnitTests/Bug/DeepNestingStackOverflow.cs"
+      ]
+    },
+    {
+      "repo": "AutoMapper",
+      "baseCommit": "0c96327bd333adb864a4a0a40113aa04f0480ccb",
+      "mergeCommit": "ef2bba6f4508203fdb4bc5d85e5ad45d85cdc620",
+      "testFilter": "FullyQualifiedName~DestinationBase|FullyQualifiedName~DestinationDerived|FullyQualifiedName~FooBar|FullyQualifiedName~OpenGenericInheritanceOrder|FullyQualifiedName~SourceBase|FullyQualifiedName~SourceDerived",
+      "title": "Merge pull request #4607 from LuckyPennySoftware/4567-automapper-1400-breaks-the-order-of-created-maps",
+      "testFiles": [
+        "src/UnitTests/Bug/OpenGenericInheritanceOrder.cs"
+      ]
+    },
+    {
+      "repo": "AutoMapper",
+      "baseCommit": "fd06570bc94de5eb4492a430d13e2834c4a286a1",
+      "mergeCommit": "d9c1fbb26af062520f06d5072b692e0497db6e06",
+      "testFilter": "FullyQualifiedName~DestObject|FullyQualifiedName~MapAtRuntimeWithExtensionMethodAndNullable|FullyQualifiedName~NullableExtensionMethodHelpers|FullyQualifiedName~SourceObject",
+      "title": "Merge pull request #4604 from LuckyPennySoftware/4597-mapatruntime-with-with-non-nullable-to-nullable-mapping-fails-when-extension-methods-are-used",
+      "testFiles": [
+        "src/UnitTests/Bug/MapAtRuntime/MapAtRuntimeWithExtensionMethodAndNullable.cs"
+      ]
+    },
+    {
+      "repo": "FluentValidation",
+      "baseCommit": "058865db479cc5389e00273f1afdbe22ed450bfb",
+      "mergeCommit": "943979089b55664ceb8390547ea1eb84ee99252a",
+      "testFilter": "FullyQualifiedName~Child|FullyQualifiedName~Grandchild|FullyQualifiedName~Parent|FullyQualifiedName~PropertyChainTests",
+      "title": "feat(PropertyChain): add GetParentChain() to resolve parent property path",
+      "testFiles": [
+        "src/FluentValidation.Tests/PropertyChainTests.cs"
+      ]
+    },
+    {
+      "repo": "MediatR",
+      "baseCommit": "f5cae96343436d665f682157fdc89d01ddafe986",
+      "mergeCommit": "916ef1b3d68ccdc96db8f914eaf1b32fc7db52c5",
+      "testFilter": "FullyQualifiedName~LicenseKeyEnvironmentVariableCollection|FullyQualifiedName~LicenseKeyEnvironmentVariableTests",
+      "title": "Merge pull request #1175 from LuckyPennySoftware/feature/license-key-env-var",
+      "testFiles": [
+        "test/MediatR.Tests/Licensing/LicenseKeyEnvironmentVariableTests.cs"
+      ]
+    },
+    {
+      "repo": "MediatR",
+      "baseCommit": "1fd25f5beb40aafd6859d9225a37d0c4f5062cfa",
+      "mergeCommit": "f5cae96343436d665f682157fdc89d01ddafe986",
+      "testFilter": "FullyQualifiedName~CapturingLogger|FullyQualifiedName~LicenseValidationBackgroundTests|FullyQualifiedName~ThreadCapturingLoggerProvider",
+      "title": "Merge pull request #1174 from LuckyPennySoftware/fix/license-validation-deadlock",
+      "testFiles": [
+        "test/MediatR.Tests/Licensing/LicenseValidationBackgroundTests.cs"
+      ]
+    },
+    {
+      "repo": "MediatR",
+      "baseCommit": "c3e24190017c6c8402efa9c9f285d956b7eef66d",
+      "mergeCommit": "09683644f78336798bd78cc60a071887d6e17712",
+      "testFilter": "FullyQualifiedName~LicenseAccessorTests",
+      "title": "Merge pull request #1171 from LuckyPennySoftware/fix/1170-blank-license-key-fatal",
+      "testFiles": [
+        "test/MediatR.Tests/Licensing/LicenseAccessorTests.cs"
+      ]
+    },
+    {
+      "repo": "MediatR",
+      "baseCommit": "1325768a486babb2aa33cf55020b529dd0411f1e",
+      "mergeCommit": "82852933fc6f62c513c43bde41fe70400584881f",
+      "testFilter": "FullyQualifiedName~LicenseValidatorTests",
+      "title": "Merge pull request #1162 from LuckyPennySoftware/perpetual",
+      "testFiles": [
+        "test/MediatR.Tests/Licensing/LicenseValidatorTests.cs"
+      ]
+    },
+    {
+      "repo": "MediatR",
+      "baseCommit": "6baaeef7a16ca75cb905829f870f79c6334ef40e",
+      "mergeCommit": "88c4d73ce514a64a9083aeb8df2e2c3692049b7d",
+      "testFilter": "FullyQualifiedName~Blogger|FullyQualifiedName~ClosedBehavior|FullyQualifiedName~ConstrainedBehavior|FullyQualifiedName~FirstConcretePostProcessor|FullyQualifiedName~FirstConcretePreProcessor|FullyQualifiedName~FirstPostProcessor|FullyQualifiedName~FirstPreProcessor|FullyQualifiedName~FooRequestHandler|FullyQualifiedName~InnerBehavior|FullyQualifiedName~InnerStreamBehavior|FullyQualifiedName~MultiOpenBehavior|FullyQualifiedName~NextConcretePostProcessor|FullyQualifiedName~NextConcretePreProcessor|FullyQualifiedName~NextPostProcessor|FullyQualifiedName~NextPreProcessor|FullyQualifiedName~NotAnOpenBehavior|FullyQualifiedName~NotAnOpenStreamBehavior|FullyQualifiedName~Open2Behavior|FullyQualifiedName~OpenBehavior|FullyQualifiedName~OpenStreamBehavior|FullyQualifiedName~OuterBehavior|FullyQualifiedName~OuterStreamBehavior|FullyQualifiedName~PingPongApplicationExceptionAction|FullyQualifiedName~PingPongExceptionActionForType1|FullyQualifiedName~PingPongExceptionActionForType2|FullyQualifiedName~PingPongExceptionHandlerForType|FullyQualifiedName~PingPongGenericExceptionAction|FullyQualifiedName~PingPongGenericExceptionHandler|FullyQualifiedName~PipelineTests|FullyQualifiedName~ThrowingBehavior",
+      "title": "Merge pull request #989 from hisuwh/bug/not-all-pre-post-processors-registered",
+      "testFiles": [
+        "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs"
+      ]
+    },
+    {
+      "repo": "Polly",
+      "baseCommit": "779aa834d9a317a7e26493385f2fdf48ce20f3ef",
+      "mergeCommit": "016dd909db880b9d8d07954ff5f4ea3cc1e11c67",
+      "testFilter": "FullyQualifiedName~ScheduledTaskExecutorTests",
+      "title": "Fix \u0060ScheduledTaskExecutor\u0060 deadlock when \u0060TrySetResult\u0060 runs continuations inline (#2953)",
+      "testFiles": [
+        "test/Polly.Core.Tests/CircuitBreaker/Controller/ScheduledTaskExecutorTests.cs"
+      ]
+    },
+    {
+      "repo": "RestSharp",
+      "baseCommit": "5487cfd9e7e04cc3b76f56b4097a125c2a8acabe",
+      "mergeCommit": "0c5bb20b34c182d30abfaa0ae62b3911fedc1997",
+      "testFilter": "FullyQualifiedName~RequestFailureTests",
+      "title": "Allow treating unsuccessful status code as non-error, avoid setting exception (#2311)",
+      "testFiles": [
+        "test/RestSharp.Tests.Integrated/RequestFailureTests.cs"
+      ]
+    },
+    {
+      "repo": "RestSharp",
+      "baseCommit": "2ae0b6a57990f32a8144b9b08e93fbb91401d7bd",
+      "mergeCommit": "b034cdab86e9c162749b8da0ddba954d3063dae8",
+      "testFilter": "FullyQualifiedName~CookieExtensions|FullyQualifiedName~CookieTests|FullyQualifiedName~DownloadDataTests|FullyQualifiedName~DownloadFileTests|FullyQualifiedName~UploadFileTests",
+      "title": "Added invalid cookie tests (#2297)",
+      "testFiles": [
+        "test/RestSharp.Tests.Integrated/CookieTests.cs",
+        "test/RestSharp.Tests.Integrated/DownloadDataTests.cs",
+        "test/RestSharp.Tests.Integrated/DownloadFileTests.cs",
+        "test/RestSharp.Tests.Integrated/UploadFileTests.cs"
+      ]
+    },
+    {
+      "repo": "RestSharp",
+      "baseCommit": "488091c9e74851b06682db91847810e7746e4fe7",
+      "mergeCommit": "603cb85911b4db8ce952d3a332d654caf1bf9f59",
+      "testFilter": "FullyQualifiedName~UrlBuilderTests",
+      "title": "Fixes #2288",
+      "testFiles": [
+        "test/RestSharp.Tests/UrlBuilderTests.Get.cs"
+      ]
+    },
+    {
+      "repo": "quartznet",
+      "baseCommit": "f9e2a486265bea109c173c81cafc50f6a7b2711e",
+      "mergeCommit": "327e08c95598ef1a1d167637ba98c1800cd472de",
+      "testFilter": "FullyQualifiedName~InProcessQuartzApiClientTest|FullyQualifiedName~NoOpJob",
+      "title": "Fix dashboard JobDataMap and SimpleSchedule trigger display (#3131)",
+      "testFiles": [
+        "src/Quartz.Tests.AspNetCore/Dashboard/InProcessQuartzApiClientTest.cs"
+      ]
+    },
+    {
+      "repo": "quartznet",
+      "baseCommit": "5e0672d45c1c9e888ab24d7b1e72e10682a27040",
+      "mergeCommit": "926c03e626236e5c70ef13d1d3e9affe798ecc27",
+      "testFilter": "FullyQualifiedName~CronExpressionDifferentialTest",
+      "title": "Speed up cron engine with a bitmask CronField (#3127)",
+      "testFiles": [
+        "src/Quartz.Tests.Unit/CronExpressionDifferentialTest.cs"
+      ]
+    },
+    {
+      "repo": "quartznet",
+      "baseCommit": "cef82e83c5bd80b712cf4c71d63ae79c3084cced",
+      "mergeCommit": "5e0672d45c1c9e888ab24d7b1e72e10682a27040",
+      "testFilter": "FullyQualifiedName~SchedulerPluginConfigurationExtensionsTests|FullyQualifiedName~TestListenerWithDependency|FullyQualifiedName~TestPluginDependency|FullyQualifiedName~TestPluginWithDependency",
+      "title": "Add public plugin configuration extensibility helpers (main) (#3105)",
+      "testFiles": [
+        "src/Quartz.Tests.Unit/SchedulerPluginConfigurationExtensionsTests.cs"
+      ]
+    },
+    {
+      "repo": "quartznet",
+      "baseCommit": "5a87fe6e3d7712a59abfff221b81c66151133860",
+      "mergeCommit": "188eb8d7b8a2deb51c228645fa4a767dc42cd49b",
+      "testFilter": "FullyQualifiedName~DashboardEndpointsTest",
+      "title": "Allow the dashboard Blazor circuit anonymous access under a fail-closed FallbackPolicy \u002B docs (#3117) (#3121)",
+      "testFiles": [
+        "src/Quartz.Tests.AspNetCore/Dashboard/DashboardEndpointsTest.cs"
+      ]
+    },
+    {
+      "repo": "quartznet",
+      "baseCommit": "92afb23132c5e613c15a2980516e52bdada9089d",
+      "mergeCommit": "5efdda1f7ea7aa3f2e97a68f5467a07a4498fbbf",
+      "testFilter": "FullyQualifiedName~QuartzHealthCheckRegistrationTests",
+      "title": "Allow configuring the Quartz health check (name, tags, failure status) (#3115)",
+      "testFiles": [
+        "src/Quartz.Tests.AspNetCore/HealthChecks/QuartzHealthCheckRegistrationTests.cs"
+      ]
+    },
+    {
+      "repo": "serilog",
+      "baseCommit": "63f1da33b80672e69d067acf32405b62eaedb110",
+      "mergeCommit": "c53eb147ceafe5b88cc57f95f78e8116b86cf620",
+      "testFilter": "FullyQualifiedName~FailureListenerTests",
+      "title": "Forward ISetLoggingFailureListener through RestrictedSink (#2231)",
+      "testFiles": [
+        "test/Serilog.Tests/Core/FailureListenerTests.cs",
+        "test/Serilog.Tests/Support/ListenerTrackingSink.cs"
+      ]
+    }
+  ]
+}

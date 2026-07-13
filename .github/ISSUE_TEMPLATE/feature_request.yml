@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest an improvement to Fuse
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What task is hard today with Fuse or without it?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should Fuse do?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Verification (fuse_check)
+        - Retrieval / scoping
+        - .NET wiring graph
+        - MCP tools
+        - CLI
+        - Documentation
+        - Other
+    validations:
+      required: true

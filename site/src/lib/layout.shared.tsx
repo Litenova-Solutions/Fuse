@@ -30,6 +30,11 @@ export function baseOptions(): BaseLayoutProps {
         text: 'Benchmarks',
         url: '/docs/project/benchmarks',
       },
+      {
+        text: 'Blog',
+        url: '/blog',
+        active: 'nested-url',
+      },
     ],
     githubUrl,
   };

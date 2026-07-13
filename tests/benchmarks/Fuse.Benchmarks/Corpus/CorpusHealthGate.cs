@@ -4,11 +4,16 @@ using System.Text.Json;
 namespace Fuse.Benchmarks;
 
 /// <summary>
-///     The decision of the corpus-health gate: whether a model-driven suite may run.
+///     The decision of the corpus-health gate: whether a model-driven suite may run, and at what scope.
 /// </summary>
 /// <param name="Allowed">Whether the corpus is proven healthy enough to spend model time on.</param>
 /// <param name="Reason">The actionable reason, named whether allowed or refused.</param>
-public sealed record GateDecision(bool Allowed, string Reason);
+/// <param name="ReducedScope">
+///     When true the run is allowed only at reduced scope (the pre-registered C4/D20 fallback): the corpus is
+///     below the full minimums but has at least <see cref="CorpusHealthReport.ReducedScopeTaskFloor" /> verified
+///     tasks, so the run is a no-headline, CI-reported pilot and its result must be labeled as such.
+/// </param>
+public sealed record GateDecision(bool Allowed, string Reason, bool ReducedScope = false);
 
 /// <summary>
 ///     Guards the model-driven suites (loop, agent) behind a fresh, passing corpus-health report (C4). A
@@ -34,9 +39,17 @@ public static class CorpusHealthGate
             return new GateDecision(false, "no corpus-health.json; run `fuse eval corpus-health` first (a model-driven suite requires proof the corpus builds and has runnable tests).");
         if (reportGeneratedUtc is null || reportGeneratedUtc.Value < manifestModifiedUtc)
             return new GateDecision(false, "corpus-health.json is older than the corpus manifest; re-run `fuse eval corpus-health` so the health report reflects the current corpus.");
-        if (!report.MeetsMinimums)
-            return new GateDecision(false, $"corpus-health does not meet the minimums: {report.ReposTier1}/{report.MinReposTier1} tier-1 repos, {report.TasksVerified}/{report.MinTasksVerified} verified oracle tasks. Curate corpus v2 (C4) before a model-driven run.");
-        return new GateDecision(true, $"corpus healthy: {report.ReposTier1} tier-1 repos, {report.TasksVerified} verified oracle tasks.");
+        if (report.MeetsMinimums)
+            return new GateDecision(true, $"corpus healthy: {report.ReposTier1} tier-1 repos, {report.TasksVerified} verified oracle tasks.");
+        // Below the full minimums: the pre-registered reduced-scope fallback (C4/D20) allows a no-headline pilot
+        // when at least the reduced-scope task floor is verified, so the referendum can still run with CIs and a
+        // labeled caveat rather than not at all. Below the floor there is no arena and the suite refuses.
+        if (report.TasksVerified >= CorpusHealthReport.ReducedScopeTaskFloor)
+            return new GateDecision(
+                true,
+                $"corpus below full minimums ({report.ReposTier1}/{report.MinReposTier1} tier-1 repos, {report.TasksVerified}/{report.MinTasksVerified} verified oracle tasks); running REDUCED-SCOPE (no headline, report with confidence intervals) per the pre-registered C4 fallback. The shortfall is an environment-buildability finding.",
+                ReducedScope: true);
+        return new GateDecision(false, $"corpus-health does not meet the minimums and is below the reduced-scope floor: {report.ReposTier1}/{report.MinReposTier1} tier-1 repos, {report.TasksVerified} verified oracle tasks (need at least {CorpusHealthReport.ReducedScopeTaskFloor} to run a reduced-scope pilot). Curate corpus v2 (C4) before a model-driven run.");
     }
 
     /// <summary>

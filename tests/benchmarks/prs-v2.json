@@ -1,0 +1,3556 @@
+[
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 184,
+    "merge": "6186c68df5af66c7f92841ddbb1e457bb25266c5",
+    "base": "9ee058e0f54478d48b326397805c0fb49131a03c",
+    "head": "6186c68df5af66c7f92841ddbb1e457bb25266c5",
+    "title": "WIP: Converting Exception params to exceptionCreator funcs.",
+    "changed_cs": [
+      "src/GuardClauses/GuardAgainstNullExtensions.cs",
+      "src/GuardClauses/GuardAgainstOutOfRangeExtensions.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstDefault.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstNull.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstNullOrEmpty.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstNullOrInvalidInput.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstNullOrWhiteSpace.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnum.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableDecimal.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableDouble.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableFloat.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableInt.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableLong.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableShort.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstOutOfRangeForEnumerableTimeSpan.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstStringLengthOutOfRange.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 178,
+    "merge": "901616c608760843c52ed1d6fa0ee9d0dc336859",
+    "base": "1051a5b47750701bbd347c0981d7606c66f3abf8",
+    "head": "901616c608760843c52ed1d6fa0ee9d0dc336859",
+    "title": "Removed different method signatures for NETFRAMEWORK and NETSTANDARD2_0 (#338)",
+    "changed_cs": [
+      "src/GuardClauses/CompilerFixes/CallerArgumentExpressionAttribute.cs",
+      "src/GuardClauses/GuardAgainstExpressionExtensions.cs",
+      "src/GuardClauses/GuardAgainstNegativeExtensions.cs",
+      "src/GuardClauses/GuardAgainstNotFoundExtensions.cs",
+      "src/GuardClauses/GuardAgainstNullExtensions.cs",
+      "src/GuardClauses/GuardAgainstOutOfRangeExtensions.cs",
+      "src/GuardClauses/GuardAgainstStringLengthExtensions.cs",
+      "src/GuardClauses/GuardAgainstZeroExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 174,
+    "merge": "f1411c4ef8354527cd5103e5643029e204b84c25",
+    "base": "36051ca70d97183e2ad2091a14b65a384f298c47",
+    "head": "f1411c4ef8354527cd5103e5643029e204b84c25",
+    "title": "feat: add string length out of range. (#333)",
+    "changed_cs": [
+      "src/GuardClauses/GuardAgainstOutOfRangeExtensions.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstStringLengthOutOfRange.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 173,
+    "merge": "36051ca70d97183e2ad2091a14b65a384f298c47",
+    "base": "4753832e88ec62cca36aca2db43e914aa919d6bc",
+    "head": "36051ca70d97183e2ad2091a14b65a384f298c47",
+    "title": "StringTooLong and tests (#332)",
+    "changed_cs": [
+      "src/GuardClauses/GuardAgainstStringLengthExtensions.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstStringTooLong.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 172,
+    "merge": "4753832e88ec62cca36aca2db43e914aa919d6bc",
+    "base": "85dd2323ba5c75e0842e1f148a29c30d29296f49",
+    "head": "4753832e88ec62cca36aca2db43e914aa919d6bc",
+    "title": "StringTooShort with tests (#330)",
+    "changed_cs": [
+      "src/GuardClauses/GuardAgainstStringLengthExtensions.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstStringTooShort.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 171,
+    "merge": "85dd2323ba5c75e0842e1f148a29c30d29296f49",
+    "base": "4ebe2c5b2abdb60edaf5fbae72053d5556f33006",
+    "head": "85dd2323ba5c75e0842e1f148a29c30d29296f49",
+    "title": "Fix issues netstandard2 errors",
+    "changed_cs": [
+      "src/GuardClauses/GuardAgainstExpressionExtensions.cs",
+      "src/GuardClauses/GuardAgainstOutOfRangeExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 163,
+    "merge": "4fa5c69a7c418619ca70391aec2abae4473628e6",
+    "base": "f8f81ed5ec87aba369532a291f46013699fb6663",
+    "head": "4fa5c69a7c418619ca70391aec2abae4473628e6",
+    "title": "Refactor AgainstExpression to Expression for Clarity and Consistency (#317)",
+    "changed_cs": [
+      "src/GuardClauses/GuardAgainstExpressionExtensions.cs",
+      "src/GuardClauses/GuardAgainstExpressionExtensionsDeprecated.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstExpression.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstExpressionDeprecated.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 150,
+    "merge": "9ad94dee35a807a6e2f91f961dcb22f3729dc431",
+    "base": "133829b02305358e169c939bd227d648cb4f514c",
+    "head": "9ad94dee35a807a6e2f91f961dcb22f3729dc431",
+    "title": "291 Added backwards compatibility (#303)",
+    "changed_cs": [
+      "src/GuardClauses/CompilerFixes/CallerArgumentExpressionAttribute.cs",
+      "src/GuardClauses/GuardAgainstNegativeExtensions.cs",
+      "src/GuardClauses/GuardAgainstNotFoundExtensions.cs",
+      "src/GuardClauses/GuardAgainstNullExtensions.cs",
+      "src/GuardClauses/GuardAgainstOutOfRangeExtensions.cs",
+      "src/GuardClauses/GuardAgainstZeroExtensions.cs",
+      "test/GuardClauses.UnitTests/NamespaceSeparate/ExtendingGuard.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 143,
+    "merge": "f70b07b8380b48c55eededb6f4426bd5d3bf5a0e",
+    "base": "3f44649ed522eed74a1d81ba81dd9a7a532ba013",
+    "head": "f70b07b8380b48c55eededb6f4426bd5d3bf5a0e",
+    "title": "Fixes #253",
+    "changed_cs": [
+      "src/GuardClauses/GuardAgainstExpressionExtensions.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstExpression.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.GuardClauses",
+    "pr": 142,
+    "merge": "3f44649ed522eed74a1d81ba81dd9a7a532ba013",
+    "base": "4d8231a556154aa9bc761eb3f44e1990131789f8",
+    "head": "3f44649ed522eed74a1d81ba81dd9a7a532ba013",
+    "title": "Adding nullable to NotFound input Removing comments",
+    "changed_cs": [
+      "src/GuardClauses/GuardAgainstNotFoundExtensions.cs",
+      "test/GuardClauses.UnitTests/GuardAgainstNotFound.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 196,
+    "merge": "a2f3d1a79d00122852bffd0972c3a16a04f30949",
+    "base": "cb19e9cfd00610d4780c1fe51e22a58e96e50bd4",
+    "head": "a2f3d1a79d00122852bffd0972c3a16a04f30949",
+    "title": "Use NSubstitute for testing custom specs. (#530)",
+    "changed_cs": [
+      "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/IncludeStringEvaluatorCustomSpecTests.cs",
+      "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/QueryTagEvaluatorCustomTests.cs",
+      "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Evaluators/SearchEvaluatorCustomSpecTests.cs",
+      "tests/Ardalis.Specification.EntityFrameworkCore.Tests/GlobalUsings.cs",
+      "tests/Ardalis.Specification.Tests/Evaluators/SearchMemoryEvaluatorCustomSpecTests.cs",
+      "tests/Ardalis.Specification.Tests/Evaluators/WhereEvaluatorCustomSpecTests.cs",
+      "tests/Ardalis.Specification.Tests/GlobalUsings.cs",
+      "tests/Ardalis.Specification.Tests/Validators/SearchValidatorCustomSpecTests.cs",
+      "tests/Ardalis.Specification.Tests/Validators/WhereValidatorCustomSpecTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 195,
+    "merge": "cb19e9cfd00610d4780c1fe51e22a58e96e50bd4",
+    "base": "1a3867513ff993a3d389ec3566a2944b271bd1a2",
+    "head": "cb19e9cfd00610d4780c1fe51e22a58e96e50bd4",
+    "title": "Add unit tests.",
+    "changed_cs": [
+      "tests/Ardalis.Specification.Tests/Evaluators/OrderEvaluatorTests.cs",
+      "tests/Ardalis.Specification.Tests/Evaluators/PaginationEvaluatorTests.cs",
+      "tests/Ardalis.Specification.Tests/Evaluators/WhereEvaluatorTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 192,
+    "merge": "11108d6a58e70a1dc1abfde63987d865a053fb73",
+    "base": "6774939f3b7e8d72cde10113a31c65d4d7f04908",
+    "head": "11108d6a58e70a1dc1abfde63987d865a053fb73",
+    "title": "Add tests for custom specs.",
+    "changed_cs": [
+      "tests/Ardalis.Specification.Tests/Evaluators/WhereEvaluatorCustomSpecTests.cs",
+      "tests/Ardalis.Specification.Tests/Validators/WhereValidatorCustomSpecTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 191,
+    "merge": "6774939f3b7e8d72cde10113a31c65d4d7f04908",
+    "base": "d5aa7ecdb1f4e001efe4abb6230ec91e5fa76691",
+    "head": "6774939f3b7e8d72cde10113a31c65d4d7f04908",
+    "title": "Fix allocations in fallback code (#529)",
+    "changed_cs": [
+      "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/IncludeStringEvaluator.cs",
+      "src/Ardalis.Specification.EntityFrameworkCore/Evaluators/QueryTagEvaluator.cs",
+      "src/Ardalis.Specification/Evaluators/SearchMemoryEvaluator.cs",
+      "src/Ardalis.Specification/Evaluators/WhereEvaluator.cs",
+      "src/Ardalis.Specification/Validators/SearchValidator.cs",
+      "src/Ardalis.Specification/Validators/WhereValidator.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 190,
+    "merge": "d5aa7ecdb1f4e001efe4abb6230ec91e5fa76691",
+    "base": "5d2e8fcb35a75ddf035f97fb23a5b0eeb9cf85d8",
+    "head": "d5aa7ecdb1f4e001efe4abb6230ec91e5fa76691",
+    "title": "Fix benchmark Ids.",
+    "changed_cs": [
+      "tests/Ardalis.Specification.Benchmarks/Benchmark4_Include.cs",
+      "tests/Ardalis.Specification.Benchmarks/Benchmark5_IncludeEvaluator.cs",
+      "tests/Ardalis.Specification.Benchmarks/Benchmark6_SearchMemoryEvaluator.cs",
+      "tests/Ardalis.Specification.Benchmarks/Benchmark7_SearchMemoryValidator.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 189,
+    "merge": "5d2e8fcb35a75ddf035f97fb23a5b0eeb9cf85d8",
+    "base": "bcd3bc6b3e3816906251cee3c05277ad6ebfdebb",
+    "head": "5d2e8fcb35a75ddf035f97fb23a5b0eeb9cf85d8",
+    "title": "Add Benchmark results - SearchMemoryValidator",
+    "changed_cs": [
+      "tests/Ardalis.Specification.Benchmarks/Benchmark7_SearchMemoryEvaluator.cs",
+      "tests/Ardalis.Specification.Benchmarks/Benchmark8_SearchMemoryValidator.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 180,
+    "merge": "dcf9bda0c434f3149efb82638b9be0e055a07553",
+    "base": "43be4522030926fbe28dc1cfb4716ecf54c6652d",
+    "head": "dcf9bda0c434f3149efb82638b9be0e055a07553",
+    "title": "Fix DB container issues for EF6.",
+    "changed_cs": [
+      "tests/Ardalis.Specification.EntityFramework6.Tests/Fixture/TestFactory.cs",
+      "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Fixture/TestFactory.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 178,
+    "merge": "4a3ce62d916f4113f4d9871ea3da039b1f16a944",
+    "base": "57108fc95e6eb2c354eabeb575a0b05529f246d2",
+    "head": "4a3ce62d916f4113f4d9871ea3da039b1f16a944",
+    "title": "Add tests - EF6 Repository write actions.",
+    "changed_cs": [
+      "tests/Ardalis.Specification.EntityFramework6.Tests/FixtureNew/IntegrationTest.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/Repositories/Repository_WriteTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 174,
+    "merge": "107503463fcbbb6a2a8f8d66f51aed6c9a9bfde3",
+    "base": "48882d73523bb05e93ac4735a2dfaf97678998e6",
+    "head": "107503463fcbbb6a2a8f8d66f51aed6c9a9bfde3",
+    "title": "Add tests - EF6 Repository_Any",
+    "changed_cs": [
+      "tests/Ardalis.Specification.EntityFramework6.Tests/Evaluators/IncludeEvaluatorTests.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/FixtureNew/TestFactory.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/Repositories/Repository_AnyTests.cs",
+      "tests/Ardalis.Specification.EntityFrameworkCore.Tests/Fixture/TestFactory.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Ardalis.Specification",
+    "pr": 173,
+    "merge": "48882d73523bb05e93ac4735a2dfaf97678998e6",
+    "base": "79d332dae56c933dad9a40184ab62ce279a2bba3",
+    "head": "48882d73523bb05e93ac4735a2dfaf97678998e6",
+    "title": "Add tests for EF6 evaluators. (#520)",
+    "changed_cs": [
+      "tests/Ardalis.Specification.EntityFramework6.Tests/Evaluators/AsNoTrackingEvaluatorTests.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/Evaluators/IncludeEvaluatorTests.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/Evaluators/OrderEvaluatorTests.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/Evaluators/SearchEvaluatorTests.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/FixtureNew/Data/Address.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/FixtureNew/Data/Company.cs",
+      "tests/Ardalis.Specification.EntityFramework6.Tests/FixtureNew/IntegrationTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 199,
+    "merge": "331685e33c5a3ab45692da027b4b5246dcbdac9b",
+    "base": "9e2631d248f34b1e59c2290746dcb6447d3a623d",
+    "head": "331685e33c5a3ab45692da027b4b5246dcbdac9b",
+    "title": "Split FixtureTest into multiple files (#1558)",
+    "changed_cs": [
+      "tests/AutoFixtureUnitTest/FixtureTest.Build.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.DataAnnotations.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.DoAndGet.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.Initialization.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.InjectFreezeRecursion.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.IssueRegressions.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.ManyAndCustomize.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.SystemTypes.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.TypeCreation.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 198,
+    "merge": "9e2631d248f34b1e59c2290746dcb6447d3a623d",
+    "base": "5aecf45baf27d4107bc376ccd5dbff4f06fd3edb",
+    "head": "9e2631d248f34b1e59c2290746dcb6447d3a623d",
+    "title": "Update unit tests to xUnit 3 (#1557)",
+    "changed_cs": [
+      "tests/AutoFixtureUnitTest/DataAnnotations/NumericRangedRequestRelayTest.cs",
+      "tests/AutoFixtureUnitTest/Kernel/AsyncEnumerableRelayTest.cs",
+      "tests/AutoFixtureUnitTest/UseCultureAttribute.cs",
+      "tests/AutoMoqUnitTest/MockTypeTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 194,
+    "merge": "d472fbbc5345a98e19d4c2dcfbc9baea909906a7",
+    "base": "368b99fd2bf3c0ea747e99f89e79a2020a9f70d6",
+    "head": "d472fbbc5345a98e19d4c2dcfbc9baea909906a7",
+    "title": "Align target framework and dependencies (#1552)",
+    "changed_cs": [
+      "build/Build.cs",
+      "tests/AutoNSubstitute.NSubstitute5UnitTest/NSubstituteRegisterCallHandlerCommandTest.Compat.SinceV4.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 188,
+    "merge": "bafc95e9ce2ad09354e0d968c7afb23a1dad470f",
+    "base": "b25c8b93a9dca65fb64b0e360e4a559b6dc4fa4f",
+    "head": "bafc95e9ce2ad09354e0d968c7afb23a1dad470f",
+    "title": "Add .NET 8 and .NET 10 as target framework (#1543)",
+    "changed_cs": [
+      "src/Idioms/ConstructorInitializedMemberException.cs",
+      "src/Idioms/CopyAndUpdateException.cs",
+      "src/Idioms/EqualityComparerImplementationException.cs",
+      "src/Idioms/EqualsOverrideException.cs",
+      "src/Idioms/GetHashCodeOverrideException.cs",
+      "src/Idioms/GuardClauseException.cs",
+      "src/Idioms/WritablePropertyException.cs",
+      "tests/AutoFixtureUnitTest/FixtureTest.cs",
+      "tests/AutoFixtureUnitTest/Kernel/MethodInvokerTest.cs",
+      "tests/AutoFixtureUnitTest/Kernel/NodeComparer.cs",
+      "tests/AutoFixtureUnitTest/MultipleCustomizationTest.cs",
+      "tests/IdiomsUnitTest/WritablePropertyExceptionTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 179,
+    "merge": "97b25fc2ec6a967eaf7ece5474e3766ca261f70c",
+    "base": "5f90289e9e72c06a13a3d3d55a75251179656fdf",
+    "head": "97b25fc2ec6a967eaf7ece5474e3766ca261f70c",
+    "title": "Remove AutoFixture.AutoRhinoMock as no longer maintained (#1532)",
+    "changed_cs": [
+      "src/AutoRhinoMock/AutoRhinoMockCustomization.cs",
+      "src/AutoRhinoMock/Properties/AssemblyInfo.cs",
+      "src/AutoRhinoMock/RhinoMockAroundAdvice.cs",
+      "src/AutoRhinoMock/RhinoMockConstructorMethod.cs",
+      "src/AutoRhinoMock/RhinoMockConstructorQuery.cs",
+      "src/AutoRhinoMock/RhinoMockType.cs",
+      "tests/AutoRhinoMockUnitTest/AutoRhinoMockCustomizationTest.cs",
+      "tests/AutoRhinoMockUnitTest/DependencyConstraints.cs",
+      "tests/AutoRhinoMockUnitTest/FixtureIntegrationTest.cs",
+      "tests/AutoRhinoMockUnitTest/Properties/AssemblyInfo.cs",
+      "tests/AutoRhinoMockUnitTest/RhinoMockAroundAdviceTest.cs",
+      "tests/AutoRhinoMockUnitTest/RhinoMockConstructorMethodTest.cs",
+      "tests/AutoRhinoMockUnitTest/RhinoMockConstructorQueryTest.cs",
+      "tests/AutoRhinoMockUnitTest/RhinoMockTestTypes.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 171,
+    "merge": "30f94d09f705fd43b6f28725baa6e4b0e7299c15",
+    "base": "d1f4199ae045d02007912a4e4509140f994b6014",
+    "head": "30f94d09f705fd43b6f28725baa6e4b0e7299c15",
+    "title": "Bugfix/1097 fix time zone info randomness (#1510)",
+    "changed_cs": [
+      "Src/AutoFixture/DefaultPrimitiveBuilders.cs",
+      "Src/AutoFixture/TimeZoneInfoGenerator.cs",
+      "Src/AutoFixtureUnitTest/DefaultPrimitiveBuildersTest.cs",
+      "Src/AutoFixtureUnitTest/FixtureTest.cs",
+      "Src/AutoFixtureUnitTest/TimeZoneInfoGeneratorTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 168,
+    "merge": "b58fd8d6670e0f323e8506ab1978f272d03aa715",
+    "base": "ef356ec39a99d368a6a174c86aa308e0c6945e63",
+    "head": "b58fd8d6670e0f323e8506ab1978f272d03aa715",
+    "title": "Removed obsolete NoSpecimen(object) constructor overload (#1505)",
+    "changed_cs": [
+      "Src/AutoFixture/Kernel/NoSpecimen.cs",
+      "Src/AutoFixtureUnitTest/Kernel/NoSpecimenTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 166,
+    "merge": "0337e06fb3dd0caa3a5628127a4f701719b8013b",
+    "base": "9251a0f4d7fb593d9beb192ee271ce8c85d7bd7e",
+    "head": "0337e06fb3dd0caa3a5628127a4f701719b8013b",
+    "title": "Implemented async enumerator relay (#1500)",
+    "changed_cs": [
+      "Src/AutoFixture/Fixture.cs",
+      "Src/AutoFixture/Kernel/AsyncEnumeratorRelay.cs",
+      "Src/AutoFixtureUnitTest/Kernel/AsyncEnumeratorRelayTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 157,
+    "merge": "2230705d6fe3f649331e18e509bdbc9552382a81",
+    "base": "bbd1d9616f5ed5fad7fbe498c545e901d9b59a5b",
+    "head": "2230705d6fe3f649331e18e509bdbc9552382a81",
+    "title": "Fixed \u0060MemberAutoDataAttribute\u0060 to support inherited members (#1477)",
+    "changed_cs": [
+      "Src/AutoFixture.xUnit2.UnitTest/MemberAutoDataAttributeTest.cs",
+      "Src/AutoFixture.xUnit2.UnitTest/TestTypes/ChildTestTypeMethodData.cs",
+      "Src/AutoFixture.xUnit2/Internal/MemberTestCaseSource.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "AutoFixture",
+    "pr": 154,
+    "merge": "8ef10b060defd0ce66a125357ce6760c22ebd94a",
+    "base": "2fe9fc60ea7dd71827bdc2f4f66d725f9a188e1f",
+    "head": "8ef10b060defd0ce66a125357ce6760c22ebd94a",
+    "title": "Added .NET 6 time structs (#1453)",
+    "changed_cs": [
+      "Src/AutoFixture/DefaultPrimitiveBuilders.cs",
+      "Src/AutoFixture/RandomDateOnlySequenceGenerator.cs",
+      "Src/AutoFixture/RandomTimeOnlySequenceGenerator.cs",
+      "Src/AutoFixtureUnitTest/DefaultPrimitiveBuildersTest.cs",
+      "Src/AutoFixtureUnitTest/RandomDateOnlySequenceGeneratorTest.cs",
+      "Src/AutoFixtureUnitTest/RandomTimeOnlySequenceGeneratorTest.cs",
+      "Src/AutoFixtureUnitTest/SpecimenWithEverything.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 196,
+    "merge": "5a4087e7ce82dfd801e4b5d75613628e129fca49",
+    "base": "901aa78fa1f53de260f9cf45dc183ec1c9fdaa4e",
+    "head": "5a4087e7ce82dfd801e4b5d75613628e129fca49",
+    "title": "Adds music and vehicle faker classes to parse method and unit tests to ensure they work as the other parse methods do. (#622)",
+    "changed_cs": [
+      "Source/Bogus.Tests/HandlebarsTests/ArgumentsTest.cs",
+      "Source/Bogus/Faker.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 194,
+    "merge": "a421a0ad6658c812e81dd983a5a7dcf2a614188e",
+    "base": "c37a43ec4543c37df922b1f425f92324b213433e",
+    "head": "a421a0ad6658c812e81dd983a5a7dcf2a614188e",
+    "title": "fix incorrect as usages (#615)",
+    "changed_cs": [
+      "Source/Bogus/Bson/Bson.cs",
+      "Source/Bogus/DataSets/Finance.cs",
+      "Source/Bogus/DataSets/System.cs",
+      "Source/Bogus/Extensions/Brazil/ExtensionsForBrazil.cs",
+      "Source/Bogus/Extensions/Canada/ExtensionsForCanada.cs",
+      "Source/Bogus/Extensions/Denmark/ExtensionsForDenmark.cs",
+      "Source/Bogus/Extensions/Finland/ExtensionsForFinland.cs",
+      "Source/Bogus/Extensions/Iran/ExtensionsForIran.cs",
+      "Source/Bogus/Extensions/Norway/ExtensionsForNorway.cs",
+      "Source/Bogus/Extensions/Poland/ExtensionsForPoland.cs",
+      "Source/Bogus/Extensions/Portugal/ExtensionsForPortugal.cs",
+      "Source/Bogus/Extensions/Romania/ExtensionsForRomania.cs",
+      "Source/Bogus/Extensions/Sweden/ExtensionsForSweden.cs",
+      "Source/Bogus/Extensions/UnitedKingdom/ExtensionsForUnitedKingdom.cs",
+      "Source/Bogus/Extensions/UnitedStates/ExtensionsForUnitedStates.cs",
+      "Source/Bogus/Faker[T].Extensions.cs",
+      "Source/Bogus/Premium/ContextHelper.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 193,
+    "merge": "c37a43ec4543c37df922b1f425f92324b213433e",
+    "base": "bb44d5ec6337aa935b561dc940dc68db924d9e14",
+    "head": "c37a43ec4543c37df922b1f425f92324b213433e",
+    "title": "remove some redundant bodies (#616)",
+    "changed_cs": [
+      "Source/Bogus.Tests/RuleSetTests.cs",
+      "Source/Bogus/Rule.cs",
+      "Source/Bogus/Tokenizer.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 191,
+    "merge": "8812a2d3504070bfc66b187f1e35b0d1d4411a87",
+    "base": "0d09c4cee6fbc9ea41230af50365963335031f27",
+    "head": "8812a2d3504070bfc66b187f1e35b0d1d4411a87",
+    "title": "remove some redundant semi-colons (#617)",
+    "changed_cs": [
+      "Source/Bogus.Tests/ExtensionTests/DanishExtentionTest.cs",
+      "Source/Bogus.Tests/GitHubIssues/Issue70.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 190,
+    "merge": "0d09c4cee6fbc9ea41230af50365963335031f27",
+    "base": "87841aa501c2a74b7947c47ca7ac7ce995d16c88",
+    "head": "0d09c4cee6fbc9ea41230af50365963335031f27",
+    "title": "fix: replace broken placeholder.com service in Images.PlaceholderUrl (#619) (#620)",
+    "changed_cs": [
+      "Source/Bogus.Tests/DataSetTests/ImageTest.cs",
+      "Source/Bogus/DataSets/Images.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 186,
+    "merge": "aea88bbfc72e2ce0858538d290623bda15b7e0cc",
+    "base": "2e84969c556058437bd4ac9dce2edc7209339e7f",
+    "head": "aea88bbfc72e2ce0858538d290623bda15b7e0cc",
+    "title": "Add extension method for generating Iranian national number (#614)",
+    "changed_cs": [
+      "Source/Bogus.Tests/ExtensionTests/IranianExtensionTests.cs",
+      "Source/Bogus/Extensions/Iran/ExtensionsForIran.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 182,
+    "merge": "a9bfa81d7ce85281bf2bf639b52896e85ca5247b",
+    "base": "8b774aeba155194cff224c76de7955dee6a2463a",
+    "head": "a9bfa81d7ce85281bf2bf639b52896e85ca5247b",
+    "title": "Moves Avatar URL generation from deprecated cloudflare IPFS to public IPFS.IO (#603)",
+    "changed_cs": [
+      "Source/Bogus.Tests/DataSetTests/InternetTests.cs",
+      "Source/Bogus.Tests/GitHubIssues/Issue601.cs",
+      "Source/Bogus/DataSets/Internet.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 181,
+    "merge": "8b774aeba155194cff224c76de7955dee6a2463a",
+    "base": "e579f67daaf4613a65ccd24c3dc25e20d7af80d8",
+    "head": "8b774aeba155194cff224c76de7955dee6a2463a",
+    "title": "use Concat instead of string Join with empty string (#598)",
+    "changed_cs": [
+      "Source/Bogus/DataSets/Commerce.cs",
+      "Source/Bogus/Extensions/Poland/ExtensionsForPoland.cs",
+      "Source/Bogus/Hashids.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 179,
+    "merge": "a82ea298c20e0a6be08c6b5861546fb6701f424e",
+    "base": "f97881bd1d7867b92b6dab51c3cd518403ab67a0",
+    "head": "a82ea298c20e0a6be08c6b5861546fb6701f424e",
+    "title": "make License and Tokenizer static (#588)",
+    "changed_cs": [
+      "Source/Bogus/Premium/License.cs",
+      "Source/Bogus/Tokenizer.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Bogus",
+    "pr": 177,
+    "merge": "991d20aad9762d8e7b46909b6a6cc16a02fdad8d",
+    "base": "90c4fb4f0148b6a418353e65a8ac91ad40b09ed1",
+    "head": "991d20aad9762d8e7b46909b6a6cc16a02fdad8d",
+    "title": "better perf by avoiding duplicate dictionary lookups (#597)",
+    "changed_cs": [
+      "Source/Bogus.Tests/README_Generator.cs",
+      "Source/Bogus/Extensions/Brazil/ExtensionsForBrazil.cs",
+      "Source/Bogus/Extensions/Canada/ExtensionsForCanada.cs",
+      "Source/Bogus/Extensions/Denmark/ExtensionsForDenmark.cs",
+      "Source/Bogus/Extensions/Finland/ExtensionsForFinland.cs",
+      "Source/Bogus/Extensions/Norway/ExtensionsForNorway.cs",
+      "Source/Bogus/Extensions/Poland/ExtensionsForPoland.cs",
+      "Source/Bogus/Extensions/Portugal/ExtensionsForPortugal.cs",
+      "Source/Bogus/Extensions/Romania/ExtensionsForRomania.cs",
+      "Source/Bogus/Extensions/Sweden/ExtensionsForSweden.cs",
+      "Source/Bogus/Extensions/UnitedStates/ExtensionsForUnitedStates.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 183,
+    "merge": "2dff646ffc3955888ba00a56990429cd896f41c1",
+    "base": "182e72fa363485f10b2cdbf22b8c1ca23d03eae5",
+    "head": "2dff646ffc3955888ba00a56990429cd896f41c1",
+    "title": "Fix/issue #579 (#580)",
+    "changed_cs": [
+      "src/CommandLine/UnParserExtensions.cs",
+      "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs",
+      "tests/CommandLine.Tests/Unit/UnParserExtensionsTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 182,
+    "merge": "182e72fa363485f10b2cdbf22b8c1ca23d03eae5",
+    "base": "b420f040b447df8e92958de9fb929e8125c8175f",
+    "head": "182e72fa363485f10b2cdbf22b8c1ca23d03eae5",
+    "title": "Add Linux as CI in appveyor (#598)",
+    "changed_cs": [
+      "tests/CommandLine.Tests/Fakes/HelpTextWithLineBreaks_Options.cs",
+      "tests/CommandLine.Tests/Unit/UnParserExtensionsTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 177,
+    "merge": "00ae0f2254197746bf5efcfaf0502bc827aefa1c",
+    "base": "19e2c95c68636efaa0d7196c5da1872aa1783592",
+    "head": "00ae0f2254197746bf5efcfaf0502bc827aefa1c",
+    "title": "Remove constraint on T for ParseArguments with factory (#590)",
+    "changed_cs": [
+      "src/CommandLine/Core/InstanceBuilder.cs",
+      "src/CommandLine/Core/ReflectionExtensions.cs",
+      "src/CommandLine/Infrastructure/CSharpx/Maybe.cs",
+      "src/CommandLine/Parser.cs",
+      "tests/CommandLine.Tests/Fakes/Mutable_Without_Empty_Constructor.cs",
+      "tests/CommandLine.Tests/Fakes/Options_With_Only_Explicit_Interface.cs",
+      "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs",
+      "tests/CommandLine.Tests/Unit/Issue591ests.cs",
+      "tests/CommandLine.Tests/Unit/Issue70Tests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 176,
+    "merge": "19e2c95c68636efaa0d7196c5da1872aa1783592",
+    "base": "3c4e726c5c7289c46b1199106c409e75bd64645c",
+    "head": "19e2c95c68636efaa0d7196c5da1872aa1783592",
+    "title": "Fix issue #409 to avoid IOException break  in Debug mode in WPF app. (#589)",
+    "changed_cs": [
+      "src/CommandLine/ParserSettings.cs",
+      "tests/CommandLine.Tests/Unit/ParserTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 175,
+    "merge": "3c4e726c5c7289c46b1199106c409e75bd64645c",
+    "base": "dcfbd8db7f46ad18fdea72cb2c6ff0102aa58343",
+    "head": "3c4e726c5c7289c46b1199106c409e75bd64645c",
+    "title": "Fix issue# 339 of custom struct (#588)",
+    "changed_cs": [
+      "src/CommandLine/Core/ReflectionExtensions.cs",
+      "src/CommandLine/Core/TypeConverter.cs",
+      "tests/CommandLine.Tests/Fakes/Custom_Struct.cs",
+      "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 164,
+    "merge": "f1f4649855670e62450585e3855e4ed268907db2",
+    "base": "e826508c52814f6f65e0453d75ca4b4072f76b84",
+    "head": "f1f4649855670e62450585e3855e4ed268907db2",
+    "title": "Update helptext to show Default Verb",
+    "changed_cs": [
+      "src/CommandLine/Text/HelpText.cs",
+      "tests/CommandLine.Tests/Fakes/Verb_Fakes.cs",
+      "tests/CommandLine.Tests/Unit/ParserTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 163,
+    "merge": "e826508c52814f6f65e0453d75ca4b4072f76b84",
+    "base": "fdf2d3f9a28c8e92f446ff84bc1d5edd730e2ce5",
+    "head": "e826508c52814f6f65e0453d75ca4b4072f76b84",
+    "title": "Add default verb support",
+    "changed_cs": [
+      "demo/ReadText.Demo/Options.cs",
+      "src/CommandLine/Core/InstanceChooser.cs",
+      "src/CommandLine/Core/Verb.cs",
+      "src/CommandLine/Error.cs",
+      "src/CommandLine/Text/SentenceBuilder.cs",
+      "src/CommandLine/VerbAttribute.cs",
+      "tests/CommandLine.Tests/Fakes/Verb_Fakes.cs",
+      "tests/CommandLine.Tests/Unit/ParserTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 162,
+    "merge": "fdf2d3f9a28c8e92f446ff84bc1d5edd730e2ce5",
+    "base": "99a619ba19d5e7b68842edaafa926a6212bd243a",
+    "head": "fdf2d3f9a28c8e92f446ff84bc1d5edd730e2ce5",
+    "title": "Fix exception of groupOptionAmbiguityError",
+    "changed_cs": [
+      "src/CommandLine/Error.cs",
+      "src/CommandLine/Text/SentenceBuilder.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 160,
+    "merge": "81dc3f28b94c22a107c98f6a33c876716f8214c2",
+    "base": "9d95de60313697d55522cfa69eec45611207e301",
+    "head": "81dc3f28b94c22a107c98f6a33c876716f8214c2",
+    "title": "Fix option groups (#575)",
+    "changed_cs": [
+      "src/CommandLine/Core/SpecificationPropertyRules.cs",
+      "src/CommandLine/Error.cs",
+      "tests/CommandLine.Tests/Fakes/Options_With_Multiple_Groups.cs",
+      "tests/CommandLine.Tests/Fakes/Simple_Options_With_OptionGroup_MutuallyExclusiveSet.cs",
+      "tests/CommandLine.Tests/Fakes/Simple_Options_With_OptionGroup_WithOptionDefaultValue.cs",
+      "tests/CommandLine.Tests/Unit/Core/InstanceBuilderTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CommandLineParser",
+    "pr": 159,
+    "merge": "9d95de60313697d55522cfa69eec45611207e301",
+    "base": "55cf7eda53fea5183e0a1fb6a662c17a70658bc2",
+    "head": "9d95de60313697d55522cfa69eec45611207e301",
+    "title": "Upgraded RailwaySharp from Version 1.1.0 (#562)",
+    "changed_cs": [
+      "src/CommandLine/Core/InstanceBuilder.cs",
+      "src/CommandLine/Core/Tokenizer.cs",
+      "src/CommandLine/Infrastructure/ErrorHandling.cs",
+      "src/CommandLine/Infrastructure/ResultExtensions.cs",
+      "tests/CommandLine.Tests/Unit/Core/TokenizerTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 174,
+    "merge": "f9e5fa47d7f53c9efa5b5509f438219b8495f7bb",
+    "base": "7dbb3fe710466ec2f573f81e19c7130ec1c7a365",
+    "head": "f9e5fa47d7f53c9efa5b5509f438219b8495f7bb",
+    "title": "Added nullable to FastDynamicObject.",
+    "changed_cs": [
+      "src/CsvHelper/FastDynamicObject.cs",
+      "tests/CsvHelper.Tests/Dynamic/FastDynamicTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 168,
+    "merge": "ce6c8e6b2692433653e3e00f103dd4567f042d20",
+    "base": "0b6fa0a1dd816ca2de581a26f9523305740f28bc",
+    "head": "ce6c8e6b2692433653e3e00f103dd4567f042d20",
+    "title": "Fixed issue with writing where an IEnumerable was getting projected twice.",
+    "changed_cs": [
+      "src/CsvHelper/CsvWriter.cs",
+      "tests/CsvHelper.Tests/Writing/EnumerableTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 166,
+    "merge": "78a0ac9afdd822498f2090bd07e9a8061f8ec489",
+    "base": "83d3951b71a7d0b4200b5ca8464beb6af16400a3",
+    "head": "78a0ac9afdd822498f2090bd07e9a8061f8ec489",
+    "title": "Fixed issue with FastDynamicObject.CopyTo.",
+    "changed_cs": [
+      "src/CsvHelper/FastDynamicObject.cs",
+      "tests/CsvHelper.Tests/Dynamic/CsvRowDynamicObjectTests.cs",
+      "tests/CsvHelper.Tests/Dynamic/FastDynamicTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 163,
+    "merge": "d3852d37ad33df04b069882c6a276d27a706f8ed",
+    "base": "4c5fe74a64840ad704fa1dd0b43c00d0ec890c87",
+    "head": "d3852d37ad33df04b069882c6a276d27a706f8ed",
+    "title": "Created a fast dynamic object to use when reading. Changed ExpandoObjectRecordWriter to be used with any IDictionary\u003Cstring, object\u003E.",
+    "changed_cs": [
+      "src/CsvHelper/Expressions/DynamicRecordCreator.cs",
+      "src/CsvHelper/Expressions/ExpandoObjectRecordWriter.cs",
+      "src/CsvHelper/Expressions/RecordWriter.cs",
+      "src/CsvHelper/Expressions/RecordWriterFactory.cs",
+      "src/CsvHelper/FastDynamicObject.cs",
+      "tests/CsvHelper.Tests/Dynamic/CsvRowDynamicObjectTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 156,
+    "merge": "9a7f0934633687f8ec58b58b5d81cb69633c541c",
+    "base": "8599e80f2a40fe073eeb5a281348169db7641be9",
+    "head": "9a7f0934633687f8ec58b58b5d81cb69633c541c",
+    "title": "Fixed issue with \u0060TypeConverter\u003CT\u003E\u0060 where \u0060T\u0060 is \u0060Nullable\u0060 did not work.",
+    "changed_cs": [
+      "src/CsvHelper/TypeConversion/TypeConverter.cs",
+      "tests/CsvHelper.Tests/TypeConversion/TypeConverter\u00601Tests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 154,
+    "merge": "2efe3a4f200c91a43a2c5d6fe53064898994e5a8",
+    "base": "5055256c3d6efde47565170d0a4b31537f962512",
+    "head": "2efe3a4f200c91a43a2c5d6fe53064898994e5a8",
+    "title": "Removed dependency on System.Linq.Async. Updated package reference versions.",
+    "changed_cs": [
+      "src/CsvHelper/CsvWriter.cs",
+      "tests/CsvHelper.Tests/Compatibility/IsExternalInit.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 140,
+    "merge": "0c59831e69e8bd03a1d6d19246c5fc370aa5d944",
+    "base": "53a709bd35581f93a93af0d0bb01ac80ac19bfda",
+    "head": "0c59831e69e8bd03a1d6d19246c5fc370aa5d944",
+    "title": "Fixed compatibility issues.",
+    "changed_cs": [
+      "src/CsvHelper/Compatibility/AsyncExtensions.cs",
+      "src/CsvHelper/CsvReader.cs",
+      "src/CsvHelper/CsvWriter.cs",
+      "src/CsvHelper/EnumerableExtensions.cs",
+      "src/CsvHelper/IReader.cs",
+      "src/CsvHelper/IWriter.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 111,
+    "merge": "50b8cb523d5aa40362e4b57ebf7d2f777a7e7d02",
+    "base": "7076885afa9a26e3835105e59a5538302c4a335c",
+    "head": "50b8cb523d5aa40362e4b57ebf7d2f777a7e7d02",
+    "title": "Updated output assemblies and fixed preprocessor directives.",
+    "changed_cs": [
+      "src/CsvHelper/CsvReader.cs",
+      "src/CsvHelper/CsvWriter.cs",
+      "src/CsvHelper/EnumerableExtensions.cs",
+      "src/CsvHelper/IReader.cs",
+      "src/CsvHelper/IWriter.cs",
+      "src/CsvHelper/ObjectCreator.cs",
+      "src/CsvHelper/Properties/AssemblyInfo.cs",
+      "src/CsvHelper/TypeConversion/EnumConverter.cs",
+      "tests/CsvHelper.Tests/Reading/YieldTests.cs",
+      "tests/CsvHelper.Tests/Writing/IAsyncEnumerableTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 103,
+    "merge": "feaf76d503dd9b3af83daa68511d02a9b31d2b85",
+    "base": "7b3ed4d45af8385e732a42eb161b0d129736edb3",
+    "head": "feaf76d503dd9b3af83daa68511d02a9b31d2b85",
+    "title": "Removing net462 and net47 in favor of using netstandard2.0. Removed build project.",
+    "changed_cs": [
+      "build/Build.cs",
+      "build/Configuration.cs",
+      "performance/CsvHelper.Performance/Program.cs",
+      "src/CsvHelper/CsvReader.cs",
+      "src/CsvHelper/CsvWriter.cs",
+      "src/CsvHelper/EnumerableExtensions.cs",
+      "src/CsvHelper/IReader.cs",
+      "src/CsvHelper/IWriter.cs",
+      "src/CsvHelper/ObjectCreator.cs",
+      "src/CsvHelper/TypeConversion/EnumConverter.cs",
+      "tests/CsvHelper.Tests/Parsing/NewLineTests.cs",
+      "tests/CsvHelper.Tests/Reading/BadDataTests.cs",
+      "tests/CsvHelper.Tests/Reading/YieldTests.cs",
+      "tests/CsvHelper.Tests/Writing/IAsyncEnumerableTests.cs",
+      "tests/CsvHelper.Tests/Writing/WriteCustomEscapeTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "CsvHelper",
+    "pr": 99,
+    "merge": "a676f56b00cb290365f9b63c24dffcefe5175fed",
+    "base": "d25c426886e8fb1fe317e6e49858ce02cad77db1",
+    "head": "a676f56b00cb290365f9b63c24dffcefe5175fed",
+    "title": "Fixed issue with TypeConverter being assigned to a member that has a Convert expression assigned to it.",
+    "changed_cs": [
+      "src/CsvHelper/Configuration/ClassMapCollection.cs",
+      "tests/CsvHelper.Tests/Configuration/CsvClassMapCollectionTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 197,
+    "merge": "2a8faab235c21892fb4c9a4529510d030516d691",
+    "base": "512f024667b79b4a17a38f33da59b072a43579f1",
+    "head": "2a8faab235c21892fb4c9a4529510d030516d691",
+    "title": "Fix/prefer typehandlers for enums (#2200)",
+    "changed_cs": [
+      "Dapper/SqlMapper.Settings.cs",
+      "Dapper/SqlMapper.cs",
+      "tests/Dapper.Tests/PreferTypeHandlersForEnumsTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 196,
+    "merge": "512f024667b79b4a17a38f33da59b072a43579f1",
+    "base": "464cb337ba9a2989a190a58b608d0d5afb3b6494",
+    "head": "512f024667b79b4a17a38f33da59b072a43579f1",
+    "title": "Make private \u0026 internal classes sealed and less enumeration of lists \u0026 LINQ (#2197)",
+    "changed_cs": [
+      "Dapper.SqlBuilder/SqlBuilder.cs",
+      "Dapper/DefaultTypeMap.cs",
+      "Dapper/DynamicParameters.cs",
+      "Dapper/FeatureSupport.cs",
+      "Dapper/SqlMapper.CacheInfo.cs",
+      "Dapper/SqlMapper.DontMap.cs",
+      "Dapper/SqlMapper.Link.cs",
+      "Dapper/SqlMapper.TypeDeserializerCache.cs",
+      "Dapper/SqlMapper.cs",
+      "benchmarks/Dapper.Tests.Performance/Massive/Massive.cs",
+      "benchmarks/Dapper.Tests.Performance/PetaPoco/PetaPoco.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 194,
+    "merge": "b9bdd7c40be9adec3f9f556ffe00acfda77a0604",
+    "base": "155a83319a0b36b66f3e9317241f686b4e6bd1e6",
+    "head": "b9bdd7c40be9adec3f9f556ffe00acfda77a0604",
+    "title": "Fix segfault when ICustomQueryParameter is a value type (#2189) (#2198)",
+    "changed_cs": [
+      "Dapper/SqlMapper.cs",
+      "tests/Dapper.Tests/ParameterTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 188,
+    "merge": "d994b6d93265f1318a064f5f3ebbcb1f3aaf53cf",
+    "base": "e97a91935243299d45bece0c401103abadf12a1b",
+    "head": "d994b6d93265f1318a064f5f3ebbcb1f3aaf53cf",
+    "title": "OutputExpression wasn\u0027t working for methods that use QueryRowAsync (#2156)",
+    "changed_cs": [
+      "Dapper/SqlMapper.Async.cs",
+      "tests/Dapper.Tests/AsyncTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 186,
+    "merge": "bd4f75b512de3e00f2c2631d5309961a1ecfea23",
+    "base": "4e576022718cf22a6c42191702d15e83c1cd18e9",
+    "head": "bd4f75b512de3e00f2c2631d5309961a1ecfea23",
+    "title": "normalize async API surface over all TFMs (#2144)",
+    "changed_cs": [
+      "Dapper/SqlMapper.Async.cs",
+      "Dapper/SqlMapper.GridReader.Async.cs",
+      "benchmarks/Dapper.Tests.Performance/Benchmarks.HandCoded.cs",
+      "benchmarks/Dapper.Tests.Performance/Benchmarks.RepoDB.cs",
+      "benchmarks/Dapper.Tests.Performance/Benchmarks.cs",
+      "benchmarks/Dapper.Tests.Performance/LegacyTests.cs",
+      "benchmarks/Dapper.Tests.Performance/Program.cs",
+      "benchmarks/Dapper.Tests.Performance/SqlDataReaderHelper.cs",
+      "tests/Dapper.Tests/AsyncTests.cs",
+      "tests/Dapper.Tests/DateTimeOnlyTests.cs",
+      "tests/Dapper.Tests/Helpers/IsExternalInit.cs",
+      "tests/Dapper.Tests/ParameterTests.cs",
+      "tests/Dapper.Tests/ProviderTests.cs",
+      "tests/Dapper.Tests/Providers/SnowflakeTests.cs",
+      "tests/Dapper.Tests/SingleRowTests.cs",
+      "tests/Dapper.Tests/TestBase.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 180,
+    "merge": "a3804ceb1d6851eccd4521246ae0d40d80f586f9",
+    "base": "b4f80b6b6b599e8298a9a3fd6d85d00d105df0a1",
+    "head": "a3804ceb1d6851eccd4521246ae0d40d80f586f9",
+    "title": "fix: properly handle value types when setting properties on dynamic objects returned by Dapper queries (#2122)",
+    "changed_cs": [
+      "Dapper/SqlMapper.DapperRowMetaObject.cs",
+      "tests/Dapper.Tests/MiscTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 179,
+    "merge": "b4f80b6b6b599e8298a9a3fd6d85d00d105df0a1",
+    "base": "e0479ba16d72498f83a44b9f749ee20ed9121fe1",
+    "head": "b4f80b6b6b599e8298a9a3fd6d85d00d105df0a1",
+    "title": "Improve performance of \u0022queryunbuffered\u0022, and correctness of \u0022first\u0022 APIs (#2121)",
+    "changed_cs": [
+      "Dapper/SqlMapper.Async.cs",
+      "Dapper/SqlMapper.Settings.cs",
+      "Dapper/SqlMapper.cs",
+      "tests/Dapper.Tests/SingleRowTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 177,
+    "merge": "dddd102eefd94770492d5bc19e2679745f11889f",
+    "base": "38df7bb89eca60df3d07890e364eacdbdc443086",
+    "head": "dddd102eefd94770492d5bc19e2679745f11889f",
+    "title": "update package refs and fixup (#2120)",
+    "changed_cs": [
+      "benchmarks/Dapper.Tests.Performance/Linq2DB/Linq2DBContext.cs",
+      "tests/Dapper.Tests/WrappedReaderTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 176,
+    "merge": "38df7bb89eca60df3d07890e364eacdbdc443086",
+    "base": "70e57f820dc5d845ecacb92b5628a4f5f8fc63ae",
+    "head": "38df7bb89eca60df3d07890e364eacdbdc443086",
+    "title": "Fix #2113 (#2118)",
+    "changed_cs": [
+      "Dapper/CommandDefinition.cs",
+      "Dapper/SqlMapper.Async.cs",
+      "Dapper/SqlMapper.cs",
+      "tests/Dapper.Tests/AsyncTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Dapper",
+    "pr": 174,
+    "merge": "9ed3525598494dddc1fbeb4e95e018239fffed13",
+    "base": "52160dc44699ec7eb5ad57d0dddc6ded4662fcb9",
+    "head": "9ed3525598494dddc1fbeb4e95e018239fffed13",
+    "title": "Do not close the inner reader when disposing wrapped data readers (#2100)",
+    "changed_cs": [
+      "Dapper/WrappedReader.cs",
+      "tests/Dapper.Tests/WrappedReaderTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 199,
+    "merge": "bae8916523805170e5dee6ee3e23c2937d2e2ec3",
+    "base": "943979089b55664ceb8390547ea1eb84ee99252a",
+    "head": "bae8916523805170e5dee6ee3e23c2937d2e2ec3",
+    "title": "Fix ArgumentNullException in TestValidationResult when a failure has a null PropertyName",
+    "changed_cs": [
+      "src/FluentValidation.Tests/ValidatorTesterTester.cs",
+      "src/FluentValidation/TestHelper/TestValidationResult.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 198,
+    "merge": "943979089b55664ceb8390547ea1eb84ee99252a",
+    "base": "058865db479cc5389e00273f1afdbe22ed450bfb",
+    "head": "943979089b55664ceb8390547ea1eb84ee99252a",
+    "title": "feat(PropertyChain): add GetParentChain() to resolve parent property path",
+    "changed_cs": [
+      "src/FluentValidation.Tests/PropertyChainTests.cs",
+      "src/FluentValidation/Internal/PropertyChain.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 197,
+    "merge": "058865db479cc5389e00273f1afdbe22ed450bfb",
+    "base": "4984ff538e26b03c296f1fbc41085e9d6d687206",
+    "head": "058865db479cc5389e00273f1afdbe22ed450bfb",
+    "title": "Add Belarusian language",
+    "changed_cs": [
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/BelarusianLanguage.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 196,
+    "merge": "4984ff538e26b03c296f1fbc41085e9d6d687206",
+    "base": "1e6eee2711b53e4f4b8411207fc6ba63b77ea8f2",
+    "head": "4984ff538e26b03c296f1fbc41085e9d6d687206",
+    "title": "Use ArgumentNullException.ThrowIfNull",
+    "changed_cs": [
+      "src/FluentValidation/DefaultValidatorExtensions.cs",
+      "src/FluentValidation/DefaultValidatorOptions.cs",
+      "src/FluentValidation/IValidationContext.cs",
+      "src/FluentValidation/Internal/RuleBase.cs",
+      "src/FluentValidation/Internal/RuleBuilder.cs",
+      "src/FluentValidation/Internal/ValidationStrategy.cs",
+      "src/FluentValidation/Results/ValidationResult.cs",
+      "src/FluentValidation/ValidationException.cs",
+      "src/FluentValidation/Validators/PolymorphicValidator.cs",
+      "src/FluentValidation/Validators/StringEnumValidator.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 195,
+    "merge": "1e6eee2711b53e4f4b8411207fc6ba63b77ea8f2",
+    "base": "d06e3f0d733468b25e031f3d7a99d66ec275e973",
+    "head": "1e6eee2711b53e4f4b8411207fc6ba63b77ea8f2",
+    "title": "Add Lithuanian language.",
+    "changed_cs": [
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/LithuanianLanguage.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 178,
+    "merge": "1726f06f6bd24343b90c5c6d402fe1aee51cbe52",
+    "base": "5c36e71f6b43d02758e4d04c0709cc392594d385",
+    "head": "1726f06f6bd24343b90c5c6d402fe1aee51cbe52",
+    "title": "add tamil language",
+    "changed_cs": [
+      "src/FluentValidation.Tests/LanguageManagerTests.cs",
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/TamilLanguage.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 177,
+    "merge": "5c36e71f6b43d02758e4d04c0709cc392594d385",
+    "base": "79687a5f9d450ca634c63c3f0a980e8ec9bbac8e",
+    "head": "5c36e71f6b43d02758e4d04c0709cc392594d385",
+    "title": "Init: Add Telugu Language",
+    "changed_cs": [
+      "src/FluentValidation.Tests/LanguageManagerTests.cs",
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/TeluguLanguage.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 160,
+    "merge": "f0d51d2109b04aa35f0119a715ef6ab413765263",
+    "base": "52e214762a7213bcbaed0f61f6df91d2621f89cc",
+    "head": "f0d51d2109b04aa35f0119a715ef6ab413765263",
+    "title": "Use decimal scale to simplify PrecisionScaleValidator (#2295)",
+    "changed_cs": [
+      "src/FluentValidation.Tests/ScalePrecisionValidatorTests.cs",
+      "src/FluentValidation/Validators/PrecisionScaleValidator.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 155,
+    "merge": "6eac0afe0f7c406a5ac3e9830fa4d9d7b03c25dc",
+    "base": "ef50516decf652fd9f97090a4a4a9e114d458ce8",
+    "head": "6eac0afe0f7c406a5ac3e9830fa4d9d7b03c25dc",
+    "title": "Improve performance by removing sync-over-async by generating sync methods using Zomp.SyncMethodGenerator (#2136)",
+    "changed_cs": [
+      "src/FluentValidation/AbstractValidator.cs",
+      "src/FluentValidation/IValidationRuleInternal.cs",
+      "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+      "src/FluentValidation/Internal/IncludeRule.cs",
+      "src/FluentValidation/Internal/PropertyRule.cs",
+      "src/FluentValidation/Internal/RuleComponent.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "FluentValidation",
+    "pr": 154,
+    "merge": "ef50516decf652fd9f97090a4a4a9e114d458ce8",
+    "base": "792ce73236dda4de85dec81676248255a7e7fde7",
+    "head": "ef50516decf652fd9f97090a4a4a9e114d458ce8",
+    "title": "Add Serbian Cyrillic language",
+    "changed_cs": [
+      "src/FluentValidation.Tests/LanguageManagerTests.cs",
+      "src/FluentValidation/Resources/LanguageManager.cs",
+      "src/FluentValidation/Resources/Languages/SerbianCyrillicLanguage.cs",
+      "src/FluentValidation/Resources/Languages/SerbianLatinLanguage.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 183,
+    "merge": "e0f915ac97d6c19241773b2a06ae146b58a3a49b",
+    "base": "6429dae1bd0ab4b98971778b9c2f733f74923241",
+    "head": "e0f915ac97d6c19241773b2a06ae146b58a3a49b",
+    "title": "#803 prepend global base URL with clientless",
+    "changed_cs": [
+      "src/Flurl.Http/FlurlHttp.cs",
+      "src/Flurl.Http/FlurlRequest.cs",
+      "test/Flurl.Test/Http/GlobalConfigTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 181,
+    "merge": "5fffebfb687353b0ff2799cb3e4b5e45a915e52b",
+    "base": "b335da710e8b7a29788be57fca70496ed4460a73",
+    "head": "5fffebfb687353b0ff2799cb3e4b5e45a915e52b",
+    "title": "#783 Newtonsoft not used serialize w/ clientless",
+    "changed_cs": [
+      "src/Flurl.CodeGen/Program.cs",
+      "src/Flurl.Http/FlurlRequest.cs",
+      "src/Flurl.Http/GeneratedExtensions.cs",
+      "test/Flurl.Test/Http/HttpTestFixtureBase.cs",
+      "test/Flurl.Test/Http/NewtonsoftTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 174,
+    "merge": "7314cf3956ba5452315502cf84f5fca8f5fdf78b",
+    "base": "ad461510b164b5361def40461e9ed99a0504febc",
+    "head": "7314cf3956ba5452315502cf84f5fca8f5fdf78b",
+    "title": "#770 remove potentially confusing IFlurlClientCache.Add overload",
+    "changed_cs": [
+      "src/Flurl.Http/Configuration/FlurlClientCache.cs",
+      "src/Flurl.Http/FlurlHttp.cs",
+      "test/Flurl.Test/Http/FlurlClientCacheTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 171,
+    "merge": "d0a43cf042ab4044148db6fc5cd154a9b378dad3",
+    "base": "4361a2d9fd7c082bc6a8585e7508bfdea2f93057",
+    "head": "d0a43cf042ab4044148db6fc5cd154a9b378dad3",
+    "title": "get error response as dynamic with Newtonsoft",
+    "changed_cs": [
+      "src/Flurl.Http.Newtonsoft/ExtensionMethods.cs",
+      "test/Flurl.Test/Http/NewtonsoftTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 169,
+    "merge": "439afe952275d4d13ecf1483d415d83c19477937",
+    "base": "d9924c4012de89e07fa8fb15edebf591acb1ca44",
+    "head": "439afe952275d4d13ecf1483d415d83c19477937",
+    "title": "#778 DefautRequestHeaders sync bug",
+    "changed_cs": [
+      "src/Flurl.Http/FlurlClient.cs",
+      "test/Flurl.Test/Http/HeadersTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 168,
+    "merge": "d9924c4012de89e07fa8fb15edebf591acb1ca44",
+    "base": "4def7d7ba01b174e78a1f25555873a6fd52881b0",
+    "head": "d9924c4012de89e07fa8fb15edebf591acb1ca44",
+    "title": "#785 AllowHttpStatus should take int[]",
+    "changed_cs": [
+      "src/Flurl.CodeGen/Metadata.cs",
+      "src/Flurl.Http/GeneratedExtensions.cs",
+      "src/Flurl.Http/ISettingsContainer.cs",
+      "test/Flurl.Test/Http/SettingsTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 167,
+    "merge": "4def7d7ba01b174e78a1f25555873a6fd52881b0",
+    "base": "759d81b79d201414c241e77653bd3300f98c61f9",
+    "head": "4def7d7ba01b174e78a1f25555873a6fd52881b0",
+    "title": "#784 event handlers overhaul",
+    "changed_cs": [
+      "src/Flurl.CodeGen/Metadata.cs",
+      "src/Flurl.Http/Configuration/FlurlClientBuilder.cs",
+      "src/Flurl.Http/Configuration/FlurlHttpSettings.cs",
+      "src/Flurl.Http/FlurlCall.cs",
+      "src/Flurl.Http/FlurlClient.cs",
+      "src/Flurl.Http/FlurlEventHandler.cs",
+      "src/Flurl.Http/FlurlRequest.cs",
+      "src/Flurl.Http/GeneratedExtensions.cs",
+      "src/Flurl.Http/IEventHandlerContainer.cs",
+      "src/Flurl.Http/ISettingsContainer.cs",
+      "test/Flurl.Test/Http/EventHandlerTests.cs",
+      "test/Flurl.Test/Http/GetTests.cs",
+      "test/Flurl.Test/Http/RealHttpTests.cs",
+      "test/Flurl.Test/Http/SettingsTests.cs",
+      "test/Flurl.Test/Http/TestingTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 160,
+    "merge": "cef9dfefd69487867f00a1cac174c924366f4788",
+    "base": "c4dec2a475f69171318043c1c9ac98be3e66bd84",
+    "head": "cef9dfefd69487867f00a1cac174c924366f4788",
+    "title": "Newtonsoft config methods",
+    "changed_cs": [
+      "src/Flurl.Http.Newtonsoft/ExtensionMethods.cs",
+      "test/Flurl.Test/Http/NewtonsoftTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 159,
+    "merge": "c4dec2a475f69171318043c1c9ac98be3e66bd84",
+    "base": "3ef55a3406db3ab55db5b24630b0f416716b4049",
+    "head": "c4dec2a475f69171318043c1c9ac98be3e66bd84",
+    "title": "Newtonsoft tests",
+    "changed_cs": [
+      "test/Flurl.Test/Http/HttpTestFixtureBase.cs",
+      "test/Flurl.Test/Http/NewtonsoftJsonSerializer.cs",
+      "test/Flurl.Test/Http/NewtonsoftTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Flurl",
+    "pr": 158,
+    "merge": "3ef55a3406db3ab55db5b24630b0f416716b4049",
+    "base": "2599242f8a74cf3dac975db579e0247eb196a774",
+    "head": "3ef55a3406db3ab55db5b24630b0f416716b4049",
+    "title": "bring back support for dynamics via Flurl.Http.Newtonsoft",
+    "changed_cs": [
+      "src/Flurl.CodeGen/HttpExtensionMethod.cs",
+      "src/Flurl.CodeGen/Metadata.cs",
+      "src/Flurl.CodeGen/Program.cs",
+      "src/Flurl.Http.Newtonsoft/ExtensionMethods.cs",
+      "src/Flurl.Http.Newtonsoft/GeneratedExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 198,
+    "merge": "3fefb370913bb40efee7582ec4c34f3f61e4d801",
+    "base": "7c8d7030b8ad2f55e74b42c681265601af97ca89",
+    "head": "3fefb370913bb40efee7582ec4c34f3f61e4d801",
+    "title": "feat(locale): add Turkmen parity (#1781)",
+    "changed_cs": [
+      "src/Humanizer.SourceGenerators/Generators/ProfileCatalogs/OrdinalizerProfileCatalogInput.cs",
+      "src/Humanizer/Localisation/Ordinalizers/ModuloSuffixOrdinalizer.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/tk/TurkmenLocaleParityTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 197,
+    "merge": "7c8d7030b8ad2f55e74b42c681265601af97ca89",
+    "base": "bc9a32818e6c84218f05f783f0a7618f14523279",
+    "head": "7c8d7030b8ad2f55e74b42c681265601af97ca89",
+    "title": "feat: add Konkani locale parity (#1780)",
+    "changed_cs": [
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/kok/KonkaniLocaleTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 196,
+    "merge": "bc9a32818e6c84218f05f783f0a7618f14523279",
+    "base": "26bef74fe4d06ab72b8651d9cc124638a92bce02",
+    "head": "bc9a32818e6c84218f05f783f0a7618f14523279",
+    "title": "Add Basque locale parity (#1778)",
+    "changed_cs": [
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/eu/BasqueLocaleParityTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 195,
+    "merge": "26bef74fe4d06ab72b8651d9cc124638a92bce02",
+    "base": "3865008ea0c9fb4ebfd6cbce3a92666c1ab72a93",
+    "head": "26bef74fe4d06ab72b8651d9cc124638a92bce02",
+    "title": "Add Odia locale parity (#1779)",
+    "changed_cs": [
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/or/OdiaLocaleTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 194,
+    "merge": "3865008ea0c9fb4ebfd6cbce3a92666c1ab72a93",
+    "base": "73e48c84f5dd53bc50f0772d8644168ddda73eff",
+    "head": "3865008ea0c9fb4ebfd6cbce3a92666c1ab72a93",
+    "title": "Add Assamese locale parity (#1783)",
+    "changed_cs": [
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/as/AssameseLocaleParityTests.cs",
+      "tests/Humanizer.Tests/Localisation/as/AssameseNumberToWordsTests.cs",
+      "tests/Humanizer.Tests/Localisation/as/AssameseOrdinalTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 193,
+    "merge": "73e48c84f5dd53bc50f0772d8644168ddda73eff",
+    "base": "84416b50b12f1eecfe457591b25fad3f129dcd78",
+    "head": "73e48c84f5dd53bc50f0772d8644168ddda73eff",
+    "title": "feat(locale): add Somali locale parity (#1782)",
+    "changed_cs": [
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/so/SomaliClockNotationTests.cs",
+      "tests/Humanizer.Tests/Localisation/so/SomaliCompassTests.cs",
+      "tests/Humanizer.Tests/Localisation/so/SomaliDateToOrdinalWordsTests.cs",
+      "tests/Humanizer.Tests/Localisation/so/SomaliListAndUnitTests.cs",
+      "tests/Humanizer.Tests/Localisation/so/SomaliNumberToWordsTests.cs",
+      "tests/Humanizer.Tests/Localisation/so/SomaliOrdinalTests.cs",
+      "tests/Humanizer.Tests/Localisation/so/SomaliPhraseTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 191,
+    "merge": "ff1ff284334c529f1a1305fe0e2432ef9f740b50",
+    "base": "a20820ce3240d0ccd389e0f51ebcffbdaa69dbde",
+    "head": "ff1ff284334c529f1a1305fe0e2432ef9f740b50",
+    "title": "Add Welsh locale parity",
+    "changed_cs": [
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/cy/WelshLocaleParityTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 190,
+    "merge": "a20820ce3240d0ccd389e0f51ebcffbdaa69dbde",
+    "base": "84755deeb8df44974945781f264a24e88b118aef",
+    "head": "a20820ce3240d0ccd389e0f51ebcffbdaa69dbde",
+    "title": "feat(locale): add Estonian parity",
+    "changed_cs": [
+      "src/Humanizer.SourceGenerators/Common/EngineContractCatalog.cs",
+      "src/Humanizer/Localisation/NumberToWords/JoinedScaleNumberToWordsConverter.cs",
+      "tests/Humanizer.Tests/Localisation/JoinedScaleNumberToWordsConverterTests.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/et/EstonianLocaleParityTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 189,
+    "merge": "84755deeb8df44974945781f264a24e88b118aef",
+    "base": "47730c96dc2071e7a0b9d73c2f16a4b8070763e3",
+    "head": "84755deeb8df44974945781f264a24e88b118aef",
+    "title": "Add linked-vigesimal alternate terminal joiner",
+    "changed_cs": [
+      "src/Humanizer.SourceGenerators/Common/EngineContractCatalog.cs",
+      "src/Humanizer.SourceGenerators/Generators/ProfileCatalogs/WordsToNumberEngineContractFactory.cs",
+      "src/Humanizer/Localisation/NumberToWords/LinkedVigesimalNumberToWordsConverter.cs",
+      "src/Humanizer/Localisation/WordsToNumber/LinkedVigesimalWordsToNumberConverter.cs",
+      "tests/Humanizer.SourceGenerators.Tests/SourceGenerators/HumanizerSourceGeneratorTests.cs",
+      "tests/Humanizer.Tests/Localisation/LinkedVigesimalNumberToWordsConverterTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Humanizer",
+    "pr": 188,
+    "merge": "47730c96dc2071e7a0b9d73c2f16a4b8070763e3",
+    "base": "9b379ee0e40f8a24bc85e16d7f44962bdee4a5d0",
+    "head": "47730c96dc2071e7a0b9d73c2f16a4b8070763e3",
+    "title": "Add Irish locale parity",
+    "changed_cs": [
+      "src/Humanizer.SourceGenerators/Common/EngineContractCatalog.cs",
+      "src/Humanizer/Localisation/NumberToWords/ConjunctionalScaleNumberToWordsConverter.cs",
+      "tests/Humanizer.SourceGenerators.Tests/SourceGenerators/HumanizerSourceGeneratorTests.cs",
+      "tests/Humanizer.Tests/CoverageGapTests.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleCoverageData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleFormatterExactTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberMagnitudeTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberOverloadTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleNumberTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/LocaleOrdinalizerMatrixData.cs",
+      "tests/Humanizer.Tests/Localisation/LocalePhraseTheoryData.cs",
+      "tests/Humanizer.Tests/Localisation/ga/IrishLocaleParityTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "MediatR",
+    "pr": 117,
+    "merge": "390da5df8fceaacb0687ec81b8e6306895ce80dc",
+    "base": "89c7b6dfe9b11f0cc95110a79aa5c897cda4542e",
+    "head": "390da5df8fceaacb0687ec81b8e6306895ce80dc",
+    "title": "Fixing build errors",
+    "changed_cs": [
+      "samples/MediatR.Examples/GenericPipelineBehavior.cs",
+      "samples/MediatR.Examples/Streams/GenericStreamPipelineBehavior.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "MediatR",
+    "pr": 55,
+    "merge": "11e6058d73bce2ce6130e8ec0e8f974674083da3",
+    "base": "9977853fee011c92daa2328ae249ad420557edb2",
+    "head": "11e6058d73bce2ce6130e8ec0e8f974674083da3",
+    "title": "Adding benchmarks",
+    "changed_cs": [
+      "test/MediatR.Benchmarks/Benchmarks.cs",
+      "test/MediatR.Benchmarks/DotTraceDiagnoser.cs",
+      "test/MediatR.Benchmarks/Program.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "MediatR",
+    "pr": 10,
+    "merge": "a30a114da1d4e7a68d8af8291af3863e6a7cad8e",
+    "base": "ac7e5915420c8b8a2c32908144cb981bff7c230c",
+    "head": "a30a114da1d4e7a68d8af8291af3863e6a7cad8e",
+    "title": "Adding more examples",
+    "changed_cs": [
+      "samples/MediatR.Examples.AspNetCore/Program.cs",
+      "samples/MediatR.Examples.Autofac/Program.cs",
+      "samples/MediatR.Examples.LightInject/Program.cs",
+      "samples/MediatR.Examples.Ninject/Program.cs",
+      "samples/MediatR.Examples.SimpleInjector/Program.cs",
+      "samples/MediatR.Examples.StructureMap/Program.cs",
+      "samples/MediatR.Examples.Unity/Program.cs",
+      "samples/MediatR.Examples.Windsor/Program.cs",
+      "samples/MediatR.Examples/ConstrainedRequestPostProcessor.cs",
+      "samples/MediatR.Examples/Pinged.cs",
+      "samples/MediatR.Examples/PingedHandler.cs",
+      "samples/MediatR.Examples/Ponged.cs",
+      "samples/MediatR.Examples/Runner.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "MediatR",
+    "pr": 6,
+    "merge": "c70e47991d5b372d9af54b68719d3f054d052033",
+    "base": "6344961a94eed942fca1198fc65e56c3bfe23806",
+    "head": "c70e47991d5b372d9af54b68719d3f054d052033",
+    "title": "Adding wrapper classes for notifications",
+    "changed_cs": [
+      "src/MediatR/INotificationHandler.cs",
+      "src/MediatR/Internal/NotificationHandlerWrapper.cs",
+      "src/MediatR/Mediator.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "MediatR",
+    "pr": 4,
+    "merge": "a1a76f14bb43749c33540cdccebbf646471b2cfe",
+    "base": "e958262ae70f0ab2a53799d7b6ac2557d424380e",
+    "head": "a1a76f14bb43749c33540cdccebbf646471b2cfe",
+    "title": "Adding helper wrapper classes",
+    "changed_cs": [
+      "samples/MediatR.Examples/PingHandler.cs",
+      "src/MediatR/IRequestHandler.cs",
+      "src/MediatR/Internal/RequestHandlerWrapper.cs",
+      "src/MediatR/Mediator.cs",
+      "test/MediatR.Tests/ExceptionTests.cs",
+      "test/MediatR.Tests/GenericTypeConstraintsTests.cs",
+      "test/MediatR.Tests/Pipeline/RequestPostProcessorTests.cs",
+      "test/MediatR.Tests/Pipeline/RequestPreProcessorTests.cs",
+      "test/MediatR.Tests/PipelineTests.cs",
+      "test/MediatR.Tests/SendTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 187,
+    "merge": "6f75ebc395cbcb58f92c01c9c504ce2c384e46bb",
+    "base": "c2381f4db359d1df54c9aeec2b7ea7b2264e3842",
+    "head": "6f75ebc395cbcb58f92c01c9c504ce2c384e46bb",
+    "title": "Fixed bug that would cause a struct to not match and throw a runtime error. (#895)",
+    "changed_cs": [
+      "src/NSubstitute/Core/DefaultForType.cs",
+      "src/NSubstitute/Routing/AutoValues/AutoObservableProvider.cs",
+      "src/NSubstitute/Routing/AutoValues/AutoTaskProvider.cs",
+      "tests/NSubstitute.Acceptance.Specs/ArgumentMatching.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 165,
+    "merge": "f4b2727db310b5c9bdde96782fa47a6d6d2a42a9",
+    "base": "d9e759fe4af2eea0f68427a2333c8a150913c197",
+    "head": "f4b2727db310b5c9bdde96782fa47a6d6d2a42a9",
+    "title": "Migrate documentation samples to NUnit4 (#889)",
+    "changed_cs": [
+      "src/NSubstitute/Extensions/ProtectedExtensions.cs",
+      "tests/NSubstitute.Acceptance.Specs/ArgumentMatching.cs",
+      "tests/NSubstitute.Acceptance.Specs/AutoValuesForSubs.cs",
+      "tests/NSubstitute.Acceptance.Specs/CallbackCalling.cs",
+      "tests/NSubstitute.Acceptance.Specs/ClearSubstitute.cs",
+      "tests/NSubstitute.Acceptance.Specs/CompatArgsTests.cs",
+      "tests/NSubstitute.Acceptance.Specs/EventChecking.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/EqualsBehaviourOnClassSubs.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue225_ConfiguredValueIsUsedInSubsequentSetups.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue271_DelegateOutArgument.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue282_MultipleReturnValuesParallelism.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue291_CannotReconfigureThrowingConfiguration.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue372_InterfaceSameNameOfMethods.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue59_ArgDoWithReturns.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/Issue61_ArgAnyStringRegression.cs",
+      "tests/NSubstitute.Acceptance.Specs/OutAndRefParameters.cs",
+      "tests/NSubstitute.Acceptance.Specs/PartialSubs.cs",
+      "tests/NSubstitute.Acceptance.Specs/ReceivedCalls.cs",
+      "tests/NSubstitute.Acceptance.Specs/ReturnsAndDoes.cs",
+      "tests/NSubstitute.Acceptance.Specs/SubbingForConcreteTypesAndMultipleInterfaces.cs",
+      "tests/NSubstitute.Acceptance.Specs/SubstitutingForDelegates.cs",
+      "tests/NSubstitute.Acceptance.Specs/ThrowingAsyncExceptions.cs",
+      "tests/NSubstitute.Acceptance.Specs/ThrowingExceptions.cs",
+      "tests/NSubstitute.Acceptance.Specs/WhenCalledDo.cs",
+      "tests/NSubstitute.Documentation.Tests.Generator/DocumentationTestsGenerator.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 164,
+    "merge": "d9e759fe4af2eea0f68427a2333c8a150913c197",
+    "base": "fcce009ea29e1df7e6713338d19f85a3e83df484",
+    "head": "d9e759fe4af2eea0f68427a2333c8a150913c197",
+    "title": "Make public api and tests the same for all TFMs (#885)",
+    "changed_cs": [
+      "src/NSubstitute/Extensions/ExceptionExtensions.cs",
+      "tests/NSubstitute.Acceptance.Specs/ThrowingAsyncExceptions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 147,
+    "merge": "d5decbfd74f681e5c2bbd9934d0c34b1b6bed2b3",
+    "base": "8538ea01688ad4b07ec41cc3177f044e3b8db77b",
+    "head": "d5decbfd74f681e5c2bbd9934d0c34b1b6bed2b3",
+    "title": "Added .NET 9 to test matrix (#848)",
+    "changed_cs": [
+      "src/NSubstitute/Core/ThreadLocalContext.cs",
+      "tests/NSubstitute.Acceptance.Specs/FormattingCallsWhenThrowingReceivedCallsExceptions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 142,
+    "merge": "72d146d6a22fade5086690eb5e8074b03fb359c4",
+    "base": "45e00e386fc76e038ff6a5778a301f7e62bfc81c",
+    "head": "72d146d6a22fade5086690eb5e8074b03fb359c4",
+    "title": "Update target frameworks and other infrastructure changes (#831)",
+    "changed_cs": [
+      "src/NSubstitute/Compatibility/CompatArg.cs",
+      "src/NSubstitute/Compatibility/DiagnosticsNullabilityAttributes.cs",
+      "src/NSubstitute/Core/Argument.cs",
+      "src/NSubstitute/Core/ArgumentSpecificationDequeue.cs",
+      "src/NSubstitute/Core/Call.cs",
+      "src/NSubstitute/Core/CallRouter.cs",
+      "src/NSubstitute/Core/CallSpecificationFactoryFactoryYesThatsRight.cs",
+      "src/NSubstitute/Core/IArgumentSpecificationDequeue.cs",
+      "src/NSubstitute/Core/ICallRouter.cs",
+      "src/NSubstitute/Core/ISubstitutionContext.cs",
+      "src/NSubstitute/Core/SubstitutionContext.cs",
+      "src/NSubstitute/Proxies/DelegateProxy/DelegateProxyFactory.cs",
+      "src/NSubstitute/Proxies/DelegateProxy/ProxiedDelegateTypeAttribute.cs",
+      "src/NSubstitute/Proxies/ProxyFactory.cs",
+      "tests/NSubstitute.Acceptance.Specs/CompatArgsTests.cs",
+      "tests/NSubstitute.Acceptance.Specs/EventRaising.cs",
+      "tests/NSubstitute.Acceptance.Specs/FieldReports/MigratingToCompatArgs.cs",
+      "tests/NSubstitute.Acceptance.Specs/LegacyApiTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 139,
+    "merge": "4d258a28aba054ea18785d36b4bdd83da023aefb",
+    "base": "b8b018441ab3d66ac88be99b929d739d0d5c4fa0",
+    "head": "4d258a28aba054ea18785d36b4bdd83da023aefb",
+    "title": "Feature:  Enable call forwarding and substitution  for non virtual methods or sealed classes implementing an interface. (#700)",
+    "changed_cs": [
+      "src/NSubstitute/Core/IProxyFactory.cs",
+      "src/NSubstitute/Core/SubstituteFactory.cs",
+      "src/NSubstitute/Exceptions/TypeForwardingException.cs",
+      "src/NSubstitute/Proxies/CastleDynamicProxy/CastleDynamicProxyFactory.cs",
+      "src/NSubstitute/Proxies/CastleDynamicProxy/CastleInvocationMapper.cs",
+      "src/NSubstitute/Proxies/DelegateProxy/DelegateProxyFactory.cs",
+      "src/NSubstitute/Proxies/ProxyFactory.cs",
+      "src/NSubstitute/Substitute.cs",
+      "tests/NSubstitute.Acceptance.Specs/SubbingForConcreteTypesAndMultipleInterfaces.cs",
+      "tests/NSubstitute.Acceptance.Specs/TypeForwarding.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 137,
+    "merge": "73818a6743e915ce76802ce5a0bb1961f44f437f",
+    "base": "da82bc5110ace7e1d1c637df9b339187ff1a8b2c",
+    "head": "73818a6743e915ce76802ce5a0bb1961f44f437f",
+    "title": "Unable to match arguments whose type is generic, when their concrete type is not known (#786) (#814)",
+    "changed_cs": [
+      "src/NSubstitute/Core/Extensions.cs",
+      "tests/NSubstitute.Acceptance.Specs/ArgumentMatching.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 134,
+    "merge": "0c0d798acb01ab5d6d4da28e4f0db0b749637279",
+    "base": "b7ff02cbbccd2ebfc4e95089fbbb160b40235311",
+    "head": "0c0d798acb01ab5d6d4da28e4f0db0b749637279",
+    "title": "When(...).Throws gives a CouldNotSetReturnDueToNoLastCallException (#803)",
+    "changed_cs": [
+      "src/NSubstitute/Core/WhenCalled.cs",
+      "tests/NSubstitute.Acceptance.Specs/WhenCalledDo.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 132,
+    "merge": "da6c1744707bd10ae02a34a4446727606d5223d3",
+    "base": "2cf5aad2f5cedfff91d83f11b93807e9720c51dc",
+    "head": "da6c1744707bd10ae02a34a4446727606d5223d3",
+    "title": "Arg.Any\u003CArg.AnyType\u003E() does not match arguments passed by reference (#787) (#811)",
+    "changed_cs": [
+      "src/NSubstitute/Core/CallSpecification.cs",
+      "tests/NSubstitute.Acceptance.Specs/ReceivedCalls.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NSubstitute",
+    "pr": 130,
+    "merge": "4a5e6b66348dde7c730a26cd54af694b9fa0ad00",
+    "base": "4139d6af7323bc34045faf0c813f9668637fec0e",
+    "head": "4a5e6b66348dde7c730a26cd54af694b9fa0ad00",
+    "title": "Remove Visual Studio for Mac from readme (#807)",
+    "changed_cs": [
+      "src/NSubstitute/Arg.cs",
+      "src/NSubstitute/Compatibility/CompatArg.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 198,
+    "merge": "11ac0fe03a15fa83ecbd0aac775690a17043d77c",
+    "base": "680823dcbc19068d063373b75456ac98564013f1",
+    "head": "11ac0fe03a15fa83ecbd0aac775690a17043d77c",
+    "title": "Added Module extension RequiresRoles(string[] roles) and ... (#2982)",
+    "changed_cs": [
+      "src/Nancy/Security/ClaimsPrincipalExtensions.cs",
+      "src/Nancy/Security/ModuleSecurity.cs",
+      "src/Nancy/Security/SecurityHooks.cs",
+      "test/Nancy.Tests/Unit/Security/ClaimsPrincipalExtensionsFixture.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 196,
+    "merge": "465ec84dfe9d3e465a47d6a8afb9ed00f443a1c4",
+    "base": "4b686a5c94a9992d754c18ccbbae3425b0e4d403",
+    "head": "465ec84dfe9d3e465a47d6a8afb9ed00f443a1c4",
+    "title": "Add System.Security.Principal.Windows nuget package instead of conditional .NET Standard code",
+    "changed_cs": [
+      "src/Nancy.Hosting.Self/NancyHost.cs",
+      "src/Nancy.Hosting.Self/UrlReservations.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 195,
+    "merge": "4b686a5c94a9992d754c18ccbbae3425b0e4d403",
+    "base": "dbdbe9428caea06c17d34a507c9216fe35abadc4",
+    "head": "4b686a5c94a9992d754c18ccbbae3425b0e4d403",
+    "title": "Add target to netstandard2.0 for the Self host project and remove WindowsIdentity for netstandard builds because it\u0027s not part of netstandard2.0",
+    "changed_cs": [
+      "src/Nancy.Hosting.Self/NancyHost.cs",
+      "src/Nancy.Hosting.Self/UrlReservations.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 193,
+    "merge": "de458a9b42db6478e0c2bb8adef0f9fa342a2674",
+    "base": "68e0b9fdaea8b9cf446902c8b8ebc37760fe0811",
+    "head": "de458a9b42db6478e0c2bb8adef0f9fa342a2674",
+    "title": "Fix Link header non-ASCII characters issue (#2903)",
+    "changed_cs": [
+      "src/Nancy/Responses/Negotiation/DefaultResponseNegotiator.cs",
+      "test/Nancy.Tests/Unit/Responses/Negotiation/DefaultResponseNegotiatorFixture.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 180,
+    "merge": "bd72ac9c1ce50b2652150bf613db6e28ddf4a059",
+    "base": "f07b12d56b983d27d74b1e0005abf0fdfb8c4355",
+    "head": "bd72ac9c1ce50b2652150bf613db6e28ddf4a059",
+    "title": "Made assembly catalog methods virtual",
+    "changed_cs": [
+      "src/Nancy/AppDomainAssemblyCatalog.cs",
+      "src/Nancy/DependencyContextAssemblyCatalog.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 154,
+    "merge": "c7135730b3fe046792996f55be348cb774601061",
+    "base": "892603245f118f78c252e8e46a5a816672d1ecc6",
+    "head": "c7135730b3fe046792996f55be348cb774601061",
+    "title": "Add support for deserializing nullable number types",
+    "changed_cs": [
+      "src/Nancy/Json/Simple/SimpleJson.cs",
+      "test/Nancy.Testing.Tests/BrowserFixture.cs",
+      "test/Nancy.Tests/Unit/Json/SimpleJsonFixture.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 148,
+    "merge": "1db24d98dd435986690fe953d3d5d0d5c05edca5",
+    "base": "05b61dbd0eb33dcdc79dc3c5e7902089801b3024",
+    "head": "1db24d98dd435986690fe953d3d5d0d5c05edca5",
+    "title": "Fixed analyzer warnings",
+    "changed_cs": [
+      "test/Nancy.Hosting.Self.Tests/NancySelfHostFixture.cs",
+      "test/Nancy.Testing.Tests/BrowserFixture.cs",
+      "test/Nancy.Tests.Functional/Tests/RouteConstraintTests.cs",
+      "test/Nancy.Tests.Functional/Tests/SerializeTests.cs",
+      "test/Nancy.Tests/Unit/ErrorHandling/DefaultStatusCodeHandlerFixture.cs",
+      "test/Nancy.Tests/Unit/JsonFormatterExtensionsFixtures.cs",
+      "test/Nancy.ViewEngines.DotLiquid.Tests/DynamicDropFixture.cs",
+      "test/Nancy.ViewEngines.DotLiquid.Tests/Functional/PartialRenderingFixture.cs",
+      "test/Nancy.ViewEngines.Razor.Tests/TextResourceFinderFixture.cs",
+      "test/Nancy.ViewEngines.Spark.Tests/SparkViewEngineFixture.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 127,
+    "merge": "2004c3f1aa6b088bec8f6f0f1bc677d0e31cc3cd",
+    "base": "a497ce4b390930674a5a3541a0d481d946833cc4",
+    "head": "2004c3f1aa6b088bec8f6f0f1bc677d0e31cc3cd",
+    "title": "- Implemented a listener strategy around a semaphore to allow consumers to specify the number of connections they want to handle at once. - Also resolves a bug where await this.Process would only allow one request at a time to be preocesed.",
+    "changed_cs": [
+      "src/Nancy.Hosting.Self/HostConfiguration.cs",
+      "src/Nancy.Hosting.Self/NancyHost.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 126,
+    "merge": "a497ce4b390930674a5a3541a0d481d946833cc4",
+    "base": "ceea69506b9270c94cba231e0bf459897077058b",
+    "head": "a497ce4b390930674a5a3541a0d481d946833cc4",
+    "title": "Allows SimpleJson to deserialise POCOs with constructors (#2682)",
+    "changed_cs": [
+      "src/Nancy/Json/Simple/SimpleJson.cs",
+      "test/Nancy.Tests.Functional/Tests/SerializeTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Nancy",
+    "pr": 113,
+    "merge": "5e3efbc5d3bd216218e52c69146a172615ebac37",
+    "base": "88f985fb70756b51ff305727121a32fdc04f4a32",
+    "head": "5e3efbc5d3bd216218e52c69146a172615ebac37",
+    "title": "Providing a simple way to register an appConfig into the container",
+    "changed_cs": [
+      "samples/Nancy.Demo.Hosting.Kestrel/AppConfiguration.cs",
+      "samples/Nancy.Demo.Hosting.Kestrel/DemoBootstrapper.cs",
+      "samples/Nancy.Demo.Hosting.Kestrel/HomeModule.cs",
+      "samples/Nancy.Demo.Hosting.Kestrel/IAppConfiguration.cs",
+      "samples/Nancy.Demo.Hosting.Kestrel/Startup.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 199,
+    "merge": "4f73e74372445108d2c1bda37b36e6f5e43402e0",
+    "base": "e5f67150a0a2cd6fafcee483add00c1bb0fae306",
+    "head": "4f73e74372445108d2c1bda37b36e6f5e43402e0",
+    "title": "Fix MissingMethodException from JToken.WriteTo (#3104)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/JsonValidatingReader.cs",
+      "Src/Newtonsoft.Json/Linq/JToken.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 196,
+    "merge": "a162f27661ce5bab4167b477f338cf5115343c09",
+    "base": "4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a",
+    "head": "a162f27661ce5bab4167b477f338cf5115343c09",
+    "title": "Fix inconsistent setting of null value types (#3091)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Issues/Issue2775.cs",
+      "Src/Newtonsoft.Json.Tests/Issues/Issue3055.cs",
+      "Src/Newtonsoft.Json.Tests/Issues/Issue3056.cs",
+      "Src/Newtonsoft.Json.Tests/Issues/Issue3080.cs",
+      "Src/Newtonsoft.Json/Serialization/DynamicValueProvider.cs",
+      "Src/Newtonsoft.Json/Serialization/ExpressionValueProvider.cs",
+      "Src/Newtonsoft.Json/Utilities/ILGeneratorExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 193,
+    "merge": "5d211b5809030b325e5b6c201fe3782b93cd99a4",
+    "base": "8f579cf5970c57025237db4c7eae33ae4af289e3",
+    "head": "5d211b5809030b325e5b6c201fe3782b93cd99a4",
+    "title": "Add .NET 8 tests (#3072)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/ExceptionTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextWriterAsyncTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextWriterTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 185,
+    "merge": "ba92aa9afe744a4122a4d69fcbec9ee2e4112b5f",
+    "base": "56177005d7add6e1e62ff35ca54f0f76aa98015a",
+    "head": "ba92aa9afe744a4122a4d69fcbec9ee2e4112b5f",
+    "title": "Fix TimeOnly format error deserializing \u0060HH:mm\u0060 (#2811)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Serialization/TimeOnlyTests.cs",
+      "Src/Newtonsoft.Json/Utilities/ConvertUtils.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 184,
+    "merge": "56177005d7add6e1e62ff35ca54f0f76aa98015a",
+    "base": "350386871a7ec926ba660a1aa9d117376c14ec31",
+    "head": "56177005d7add6e1e62ff35ca54f0f76aa98015a",
+    "title": "Add support for list patterns (#2993)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Linq/JArrayTests.cs",
+      "Src/Newtonsoft.Json/Linq/JArray.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 182,
+    "merge": "625289221b3188caeca3cbf1511c84e96f79d935",
+    "base": "ef0bfa545a0df2e91ade19630f691ea145500ae9",
+    "head": "625289221b3188caeca3cbf1511c84e96f79d935",
+    "title": "fix for #3055 (#3060)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Issues/Issue3055.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 181,
+    "merge": "ef0bfa545a0df2e91ade19630f691ea145500ae9",
+    "base": "36b605f683c48a976b00ee6a351b97dd2265c7c9",
+    "head": "ef0bfa545a0df2e91ade19630f691ea145500ae9",
+    "title": "alternate fix for #3056 (#3062)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/Issues/Issue3056.cs",
+      "Src/Newtonsoft.Json/Converters/XmlNodeConverter.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 179,
+    "merge": "bd0773b8f3b948f47840886c2b3f28b9c8bd5333",
+    "base": "c603502b95b019f99765d01412e4e74d502b61e0",
+    "head": "bd0773b8f3b948f47840886c2b3f28b9c8bd5333",
+    "title": "Fix warnings (#3031)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json/JsonException.cs",
+      "Src/Newtonsoft.Json/Linq/JContainer.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonFormatterConverter.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonObjectContract.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalReader.cs",
+      "Src/Newtonsoft.Json/Serialization/JsonSerializerInternalWriter.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 172,
+    "merge": "2eaa475f8853f2b01ac5591421dcabd7a44f79ce",
+    "base": "55a7204f9b9546aa07145591d42046d509176ad4",
+    "head": "2eaa475f8853f2b01ac5591421dcabd7a44f79ce",
+    "title": "Author fuzz tests and fix a comment-related issue (#2935)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.FuzzTests/FuzzTests.cs",
+      "Src/Newtonsoft.Json.Tests/FuzzRegressionTests.cs",
+      "Src/Newtonsoft.Json.Tests/JsonTextWriterTest.cs",
+      "Src/Newtonsoft.Json/JsonTextWriter.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Newtonsoft.Json",
+    "pr": 171,
+    "merge": "55a7204f9b9546aa07145591d42046d509176ad4",
+    "base": "01e1759cac40d8154e47ed0e11c12a9d42d2d0ff",
+    "head": "55a7204f9b9546aa07145591d42046d509176ad4",
+    "title": "Fix handling of empty constructor names (#2922)",
+    "changed_cs": [
+      "Src/Newtonsoft.Json.Tests/JsonConvertTest.cs",
+      "Src/Newtonsoft.Json/JsonTextReader.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 197,
+    "merge": "a23a74ab82e93d5b1267c3106000f1037bb5ec1a",
+    "base": "c69933acf0268c67df33ab2b870995cef269b394",
+    "head": "a23a74ab82e93d5b1267c3106000f1037bb5ec1a",
+    "title": "Accept unambiguous, case-insensitive prefixes in TZDB month/day parsing",
+    "changed_cs": [
+      "src/NodaTime.TzdbCompiler.Test/Tzdb/TzdbZoneInfoParserTest.cs",
+      "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoParser.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 193,
+    "merge": "985c7bc7debaaf2b8abfcd2a823179b398e6901f",
+    "base": "769ee7b1a2895b693245263f7824b1048edb768d",
+    "head": "985c7bc7debaaf2b8abfcd2a823179b398e6901f",
+    "title": "Use the CLDR version for the WindowsZones Version property",
+    "changed_cs": [
+      "src/NodaTime.TzdbCompiler.Test/Tzdb/CldrWindowsZonesParserTest.cs",
+      "src/NodaTime.TzdbCompiler/Tzdb/CldrWindowsZonesParser.cs",
+      "src/NodaTime/TimeZones/Cldr/WindowsZones.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 192,
+    "merge": "769ee7b1a2895b693245263f7824b1048edb768d",
+    "base": "333f7d098d8ca91e693a86955edce563838ba475",
+    "head": "769ee7b1a2895b693245263f7824b1048edb768d",
+    "title": "Remove SharpCompress in NodaTime tools",
+    "changed_cs": [
+      "src/NodaTime.NzdPrinter/Program.cs",
+      "src/NodaTime.Tools.Common/FileUtility.cs",
+      "src/NodaTime.TzValidate.NodaDump/Program.cs",
+      "src/NodaTime.TzValidate.NzdCompatibility/Program.cs",
+      "src/NodaTime.TzdbCompiler/Tzdb/FileSource.cs",
+      "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 185,
+    "merge": "9322d2d23fdf5d99cd792ffb2bc90ede053876cb",
+    "base": "c8b0f81dd7d22cd7e48544cabfd2f3ed3ec4d5f3",
+    "head": "9322d2d23fdf5d99cd792ffb2bc90ede053876cb",
+    "title": "Add tests for the range of Duration64 and Instant64 values",
+    "changed_cs": [
+      "src/NodaTime.Test/HighPerformance/Duration64Test.cs",
+      "src/NodaTime.Test/HighPerformance/Instant64Test.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 180,
+    "merge": "a2f4c1cb2be3ca9cf8a9d9977cf8ebdbb5b585d5",
+    "base": "34fc82c925565b1c98019165d533c3405bb8b81b",
+    "head": "a2f4c1cb2be3ca9cf8a9d9977cf8ebdbb5b585d5",
+    "title": "Address review comments.",
+    "changed_cs": [
+      "src/NodaTime.Benchmarks/NodaTimeTests/InstantBenchmarks.cs",
+      "src/NodaTime.Test/HighPerformance/Duration64Test.cs",
+      "src/NodaTime.Test/HighPerformance/Instant64Test.cs",
+      "src/NodaTime/HighPerformance/Duration64.cs",
+      "src/NodaTime/HighPerformance/Instant64.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 179,
+    "merge": "34fc82c925565b1c98019165d533c3405bb8b81b",
+    "base": "86d8637d74883c823cf03d754ddce08c14a73eb5",
+    "head": "34fc82c925565b1c98019165d533c3405bb8b81b",
+    "title": "Add conversions between Duration64/Instant64 and BCL types",
+    "changed_cs": [
+      "src/NodaTime.Test/HighPerformance/Duration64Test.cs",
+      "src/NodaTime.Test/HighPerformance/Instant64Test.cs",
+      "src/NodaTime/HighPerformance/Duration64.cs",
+      "src/NodaTime/HighPerformance/Instant64.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 178,
+    "merge": "86d8637d74883c823cf03d754ddce08c14a73eb5",
+    "base": "aa89b043cbbfb5ee0a7939a7099ddcd40f7e1c91",
+    "head": "86d8637d74883c823cf03d754ddce08c14a73eb5",
+    "title": "First pass at the HighPerformance types, Duration64 and Instant64",
+    "changed_cs": [
+      "src/NodaTime.Benchmarks/NodaTimeTests/HighPerformance/Duration64Benchmarks.cs",
+      "src/NodaTime.Benchmarks/NodaTimeTests/HighPerformance/Instant64Benchmarks.cs",
+      "src/NodaTime.Test/HighPerformance/Duration64Test.Construction.cs",
+      "src/NodaTime.Test/HighPerformance/Duration64Test.Operators.cs",
+      "src/NodaTime.Test/HighPerformance/Duration64Test.cs",
+      "src/NodaTime.Test/HighPerformance/Instant64Test.Operators.cs",
+      "src/NodaTime.Test/HighPerformance/Instant64Test.cs",
+      "src/NodaTime/HighPerformance/Duration64.cs",
+      "src/NodaTime/HighPerformance/Instant64.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 175,
+    "merge": "20f1f56b00d5a2e3c1300223dbda628f032e50eb",
+    "base": "d2f61694f9683d462a91b97dad8992e92ec17392",
+    "head": "20f1f56b00d5a2e3c1300223dbda628f032e50eb",
+    "title": "TFM and dependency updates, migration to slnx",
+    "changed_cs": [
+      "src/NodaTime.Demo/XmlSchemaDemo.XmlSchemaClassGeneratorAssemblyCreator.cs",
+      "src/NodaTime.Demo/XmlSchemaDemo.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 167,
+    "merge": "e73e3483f2f90af2b723b65c307e02612046bc64",
+    "base": "9a35f4f448888fd964742253247e23502b8c88ef",
+    "head": "e73e3483f2f90af2b723b65c307e02612046bc64",
+    "title": "Update all packages",
+    "changed_cs": [
+      "src/NodaTime.Demo/GlobalUsings.cs",
+      "src/NodaTime.TzdbCompiler/Tzdb/FileSource.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "NodaTime",
+    "pr": 163,
+    "merge": "d32e15b5e523326aa16770ac78ee6dab25f913a8",
+    "base": "db8b0587a59bbedac6291f0188d046d9348da39a",
+    "head": "d32e15b5e523326aa16770ac78ee6dab25f913a8",
+    "title": "Add NanosecondsBetween method to Period (#1836)",
+    "changed_cs": [
+      "src/NodaTime.Test/PeriodTest.cs",
+      "src/NodaTime/Period.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Polly",
+    "pr": 195,
+    "merge": "7a1d10f47e2ec667ceada49deb6bdd9a765753bd",
+    "base": "2a0cdd05486b418945250a5fbe21cc019f8a0a3b",
+    "head": "7a1d10f47e2ec667ceada49deb6bdd9a765753bd",
+    "title": "Avoid test flakiness (#3134)",
+    "changed_cs": [
+      "src/Polly.Core/Utils/ObjectPool.cs",
+      "test/Polly.Extensions.Tests/Issues/IssuesTests.StrategiesPerEndpoint_1365.cs",
+      "test/Polly.Extensions.Tests/Telemetry/TelemetryListenerImplTests.cs",
+      "test/Polly.TestUtils/TestUtilities.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Polly",
+    "pr": 161,
+    "merge": "e984839b8324a163270f0bc686929a1066de69e0",
+    "base": "27eb2bbb4d45a9570bc35c5ee70419fff4376b25",
+    "head": "e984839b8324a163270f0bc686929a1066de69e0",
+    "title": "Add caller CancellationToken propagation for hedging and timeout (#3094)",
+    "changed_cs": [
+      "src/Polly.Core/Hedging/HedgingResilienceStrategy.cs",
+      "src/Polly.Core/Timeout/TimeoutResilienceStrategy.cs",
+      "src/Polly.Core/Utils/OutcomeUtilities.cs",
+      "test/Polly.Core.Tests/Hedging/HedgingResilienceStrategyTests.cs",
+      "test/Polly.Core.Tests/Issues/IssuesTests.CancellationTokenPropagation_3086.cs",
+      "test/Polly.Core.Tests/Timeout/TimeoutResilienceStrategyTests.cs",
+      "test/Polly.Core.Tests/Utils/OutcomeUtilitiesTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Polly",
+    "pr": 69,
+    "merge": "b87f20347af528b6f7c6ff1f9e6c1bc02f97856c",
+    "base": "af7e8b16a0c032149021693d326860c00e48fd0e",
+    "head": "b87f20347af528b6f7c6ff1f9e6c1bc02f97856c",
+    "title": "Telemetry refactoring (#2985)",
+    "changed_cs": [
+      "src/Polly.Core/Registry/RegistryPipelineComponentBuilder.cs",
+      "src/Polly.Core/ResiliencePipelineBuilderBase.cs",
+      "src/Polly.Extensions/Telemetry/TelemetryListenerImpl.cs",
+      "src/Polly.Extensions/Telemetry/TelemetrySource.cs",
+      "test/Polly.Core.Tests/ResiliencePipelineBuilderTests.cs",
+      "test/Polly.Core.Tests/StrategyBuilderContextTests.cs",
+      "test/Polly.Core.Tests/Telemetry/ResilienceStrategyTelemetryTests.cs",
+      "test/Polly.Extensions.Tests/Telemetry/TelemetryListenerImplTests.cs",
+      "test/Polly.Extensions.Tests/Telemetry/TelemetrySourceTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Polly",
+    "pr": 39,
+    "merge": "016dd909db880b9d8d07954ff5f4ea3cc1e11c67",
+    "base": "779aa834d9a317a7e26493385f2fdf48ce20f3ef",
+    "head": "016dd909db880b9d8d07954ff5f4ea3cc1e11c67",
+    "title": "Fix \u0060ScheduledTaskExecutor\u0060 deadlock when \u0060TrySetResult\u0060 runs continuations inline (#2953)",
+    "changed_cs": [
+      "src/Polly.Core/CircuitBreaker/Controller/ScheduledTaskExecutor.cs",
+      "test/Polly.Core.Tests/CircuitBreaker/Controller/ScheduledTaskExecutorTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Polly",
+    "pr": 24,
+    "merge": "de3067c9166cfe4843de5336733a9580c826fb9f",
+    "base": "49967c3eb33229a453b13873c4f12d0c61999672",
+    "head": "de3067c9166cfe4843de5336733a9580c826fb9f",
+    "title": ".NET 11 preparation (#2932)",
+    "changed_cs": [
+      "bench/Polly.Benchmarks/Cache.cs",
+      "src/Polly/Context.Dictionary.cs",
+      "test/Polly.Specs/Helpers/Caching/StubSerialized.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 191,
+    "merge": "c362621b172699270783dedc97d87dfd7d66d961",
+    "base": "a7635760eee027f20991a9485fb30f08a63a65bd",
+    "head": "c362621b172699270783dedc97d87dfd7d66d961",
+    "title": "Add missing ConfigureAwait(false) to prevent deadlocks (#2367)",
+    "changed_cs": [
+      "src/RestSharp/Extensions/HttpResponseExtensions.cs",
+      "src/RestSharp/Response/RestResponse.cs",
+      "src/RestSharp/RestClient.Extensions.cs",
+      "test/RestSharp.Tests.Integrated/SyncRequestTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 188,
+    "merge": "47ca3149dadf866e402b50cf82572b12bec35ebd",
+    "base": "8cafdd1dbc83b42c942c6bfb75dd1288f5263599",
+    "head": "47ca3149dadf866e402b50cf82572b12bec35ebd",
+    "title": "Add OAuth2 token lifecycle authenticators (#2361) (#2362)",
+    "changed_cs": [
+      "src/RestSharp/Authenticators/AuthenticatorBase.cs",
+      "src/RestSharp/Authenticators/IAuthenticator.cs",
+      "src/RestSharp/Authenticators/OAuth/OAuth1Authenticator.cs",
+      "src/RestSharp/Authenticators/OAuth2/OAuth2ClientCredentialsAuthenticator.cs",
+      "src/RestSharp/Authenticators/OAuth2/OAuth2EndpointAuthenticatorBase.cs",
+      "src/RestSharp/Authenticators/OAuth2/OAuth2RefreshTokenAuthenticator.cs",
+      "src/RestSharp/Authenticators/OAuth2/OAuth2Token.cs",
+      "src/RestSharp/Authenticators/OAuth2/OAuth2TokenAuthenticator.cs",
+      "src/RestSharp/Authenticators/OAuth2/OAuth2TokenRequest.cs",
+      "src/RestSharp/Authenticators/OAuth2/OAuth2TokenResponse.cs",
+      "src/RestSharp/RestClient.Async.cs",
+      "test/RestSharp.Tests/Auth/AuthenticatorTests.cs",
+      "test/RestSharp.Tests/Auth/OAuth2ClientCredentialsAuthenticatorTests.cs",
+      "test/RestSharp.Tests/Auth/OAuth2RefreshTokenAuthenticatorTests.cs",
+      "test/RestSharp.Tests/Auth/OAuth2TokenAuthenticatorTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 187,
+    "merge": "8cafdd1dbc83b42c942c6bfb75dd1288f5263599",
+    "base": "ae6b354e7817caf77483ede03468bee68f03b948",
+    "head": "8cafdd1dbc83b42c942c6bfb75dd1288f5263599",
+    "title": "Stop modifying HttpClient.DefaultRequestHeaders (#2363)",
+    "changed_cs": [
+      "src/RestSharp.Extensions.DependencyInjection/ServiceCollectionExtensions.cs",
+      "src/RestSharp/RestClient.Async.cs",
+      "src/RestSharp/RestClient.cs",
+      "test/RestSharp.Tests/RestClientTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 186,
+    "merge": "ae6b354e7817caf77483ede03468bee68f03b948",
+    "base": "91dfd97b97d37d4d9098048b392d0c1453380deb",
+    "head": "ae6b354e7817caf77483ede03468bee68f03b948",
+    "title": "Implement custom redirect handling to fix lost Set-Cookie on redirects (#2360)",
+    "changed_cs": [
+      "src/RestSharp/Options/RedirectOptions.cs",
+      "src/RestSharp/Options/RestClientOptions.cs",
+      "src/RestSharp/Request/RequestHeaders.cs",
+      "src/RestSharp/RestClient.Async.cs",
+      "src/RestSharp/RestClient.cs",
+      "test/RestSharp.Tests.Integrated/CookieRedirectTests.cs",
+      "test/RestSharp.Tests.Shared/Server/WireMockTestServer.cs",
+      "test/RestSharp.Tests/OptionsTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 184,
+    "merge": "046795231e33ca08c72cb906e9085b4e94bcbdae",
+    "base": "3582f733dba15107c4cc5d319eec3dba5b9ab068",
+    "head": "046795231e33ca08c72cb906e9085b4e94bcbdae",
+    "title": "Quote multipart form parameter names by default (RFC 7578) (#2357)",
+    "changed_cs": [
+      "src/RestSharp/Request/RequestContent.cs",
+      "src/RestSharp/Request/RestRequest.cs",
+      "test/RestSharp.Tests.Integrated/MultipartFormDataTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 182,
+    "merge": "acdf9af5027aaa77a88a9233f4768d60907f0a24",
+    "base": "53b797b41c8c58655d71cf7b2ab5b902577e85ff",
+    "head": "acdf9af5027aaa77a88a9233f4768d60907f0a24",
+    "title": "Use CultureInfo.InvariantCulture by default when converting parameter values to strings (#2354)",
+    "changed_cs": [
+      "src/RestSharp/Extensions/StringExtensions.cs",
+      "src/RestSharp/Parameters/ObjectParser.cs",
+      "src/RestSharp/Parameters/Parameter.cs",
+      "src/RestSharp/Request/RestRequestExtensions.Headers.cs",
+      "src/RestSharp/Request/RestRequestExtensions.Query.cs",
+      "src/RestSharp/Request/RestRequestExtensions.Url.cs",
+      "src/RestSharp/Request/RestRequestExtensions.cs",
+      "test/RestSharp.Tests/InvariantCultureTests.cs",
+      "test/RestSharp.Tests/ObjectParserTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 181,
+    "merge": "53b797b41c8c58655d71cf7b2ab5b902577e85ff",
+    "base": "2802d8a69d03a9a236a6b5dc2d5e1e673cef72fc",
+    "head": "53b797b41c8c58655d71cf7b2ab5b902577e85ff",
+    "title": "Fix credential/UseDefaultCredentials property order on HttpClientHandler (#2353)",
+    "changed_cs": [
+      "src/RestSharp/RestClient.cs",
+      "test/RestSharp.Tests/CredentialConfigurationTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 180,
+    "merge": "2802d8a69d03a9a236a6b5dc2d5e1e673cef72fc",
+    "base": "4511fab1e29c2d8c060bb7297563c3a898da15fb",
+    "head": "2802d8a69d03a9a236a6b5dc2d5e1e673cef72fc",
+    "title": "Surface root cause in ErrorMessage for wrapped exceptions (#2352)",
+    "changed_cs": [
+      "src/RestSharp/Response/RestResponseBase.cs",
+      "src/RestSharp/RestClient.Async.cs",
+      "test/RestSharp.Tests/ErrorMessageTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 179,
+    "merge": "4511fab1e29c2d8c060bb7297563c3a898da15fb",
+    "base": "3831d5237fd614cf0e57e64e113a180714448200",
+    "head": "4511fab1e29c2d8c060bb7297563c3a898da15fb",
+    "title": "Restore 2-param AddCookie(name, value) overload (#2351)",
+    "changed_cs": [
+      "src/RestSharp/Request/RestRequest.cs",
+      "src/RestSharp/Request/RestRequestExtensions.cs",
+      "src/RestSharp/RestClient.Async.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "RestSharp",
+    "pr": 178,
+    "merge": "3831d5237fd614cf0e57e64e113a180714448200",
+    "base": "eb9e3d1fe9b9097e249f83ed0e218f8198309700",
+    "head": "3831d5237fd614cf0e57e64e113a180714448200",
+    "title": "Document Timeout property behavior for RestClientOptions and RestRequest (#2331)",
+    "changed_cs": [
+      "src/RestSharp/Options/RestClientOptions.cs",
+      "src/RestSharp/Request/RestRequest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 196,
+    "merge": "d6222843d03d3d62cdda8ee215117000e5f07586",
+    "base": "4e6e048a3470832fb2f821767ab94d6d946b41cc",
+    "head": "d6222843d03d3d62cdda8ee215117000e5f07586",
+    "title": "add tests and fix service key detection issue",
+    "changed_cs": [
+      "src/Scrutor/AttributeSelector.cs",
+      "test/Scrutor.Tests/KeyedServiceTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 195,
+    "merge": "4e6e048a3470832fb2f821767ab94d6d946b41cc",
+    "base": "57b8ace8577bda789134042149a9b13bb8cc1da3",
+    "head": "4e6e048a3470832fb2f821767ab94d6d946b41cc",
+    "title": "Add keyed service registration support",
+    "changed_cs": [
+      "src/Scrutor/AttributeSelector.cs",
+      "src/Scrutor/ServiceDescriptorAttribute.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 194,
+    "merge": "57b8ace8577bda789134042149a9b13bb8cc1da3",
+    "base": "2cdfc8df33291a8942f5d05929439fa4195a20a0",
+    "head": "57b8ace8577bda789134042149a9b13bb8cc1da3",
+    "title": "Add support for exposing decorated services",
+    "changed_cs": [
+      "src/Scrutor/DecoratedService.cs",
+      "src/Scrutor/MaybeNullWhenAttribute.cs",
+      "src/Scrutor/ServiceCollectionExtensions.Decoration.cs",
+      "src/Scrutor/ServiceProviderExtensions.cs",
+      "test/Scrutor.Tests/DecorationTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 193,
+    "merge": "2cdfc8df33291a8942f5d05929439fa4195a20a0",
+    "base": "a68a193a94f8060128d6c9dc71b2baa3b902ae91",
+    "head": "2cdfc8df33291a8942f5d05929439fa4195a20a0",
+    "title": "Add support for service key registration",
+    "changed_cs": [
+      "src/Scrutor/ILifetimeSelector.cs",
+      "src/Scrutor/LifetimeSelector.cs",
+      "src/Scrutor/ServiceTypeSelector.cs",
+      "test/Scrutor.Tests/ScanningTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 171,
+    "merge": "c2aa7345005116dc330fbf1a70228905202577ae",
+    "base": "26049af5faa99917738555880d49109c5c86c5fc",
+    "head": "c2aa7345005116dc330fbf1a70228905202577ae",
+    "title": "Eliminate new API methods for opting in to compiler-generated types - We can simplify this to re-using existing methods in the API.",
+    "changed_cs": [
+      "src/Scrutor/IImplementationTypeFilter.cs",
+      "src/Scrutor/ImplementationTypeFilter.cs",
+      "src/Scrutor/ImplementationTypeSelector.cs",
+      "test/Scrutor.Tests/ScanningTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 169,
+    "merge": "46ad176e22148a7d4d11b23a61952d25c7868c64",
+    "base": "0f0ad016a075ccc6f9824c238b957df611f30c6c",
+    "head": "46ad176e22148a7d4d11b23a61952d25c7868c64",
+    "title": "Match all compiler generated types that derive from a list of bases",
+    "changed_cs": [
+      "src/Scrutor/IImplementationTypeFilter.cs",
+      "src/Scrutor/ImplementationTypeFilter.cs",
+      "src/Scrutor/ImplementationTypeSelector.cs",
+      "src/Scrutor/ReflectionExtensions.cs",
+      "test/Scrutor.Tests/ScanningTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 164,
+    "merge": "6a7ada3bd1f2b7220ebda241678d042ee412771a",
+    "base": "1157727b694b228a754e9c06cd720228f8065907",
+    "head": "6a7ada3bd1f2b7220ebda241678d042ee412771a",
+    "title": "Remove obsolete methods",
+    "changed_cs": [
+      "src/Scrutor/IAssemblySelector.cs",
+      "src/Scrutor/ImplementationTypeSelector.cs",
+      "src/Scrutor/LifetimeSelector.cs",
+      "src/Scrutor/ServiceTypeSelector.cs",
+      "src/Scrutor/TypeSourceSelector.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 157,
+    "merge": "df99e1702db14b07203a691e242ecc4d024a418c",
+    "base": "2dba71f4c699716aa8899c6955146f4f79797f36",
+    "head": "df99e1702db14b07203a691e242ecc4d024a418c",
+    "title": "Use collection expressions",
+    "changed_cs": [
+      "src/Scrutor/ServiceTypeSelector.cs",
+      "src/Scrutor/TypeSourceSelector.cs",
+      "test/Scrutor.Tests/ScanningTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 155,
+    "merge": "b351dde9977c7ab1ca63c82c1ce14524170f02dd",
+    "base": "22f4408a243f0e20302f4216dc41b05d1fc4892b",
+    "head": "b351dde9977c7ab1ca63c82c1ce14524170f02dd",
+    "title": "Exclude chaining methods from code coverage",
+    "changed_cs": [
+      "src/Scrutor/ImplementationTypeSelector.cs",
+      "src/Scrutor/LifetimeSelector.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Scrutor",
+    "pr": 152,
+    "merge": "4284819bfb6c74e7455dd8668c9854319ae5b0d1",
+    "base": "0b1d21639f73ac84659a8d2b47f10b8ba95a02db",
+    "head": "4284819bfb6c74e7455dd8668c9854319ae5b0d1",
+    "title": "Minor tweaks to lifetime selector feature",
+    "changed_cs": [
+      "src/Scrutor/ILifetimeSelector.cs",
+      "src/Scrutor/LifetimeSelector.cs",
+      "src/Scrutor/ServiceCollectionExtensions.Decoration.cs",
+      "src/Scrutor/ServiceTypeSelector.cs",
+      "src/Scrutor/TypeFactoryMap.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 197,
+    "merge": "dc0d22bd5a3c72297c70c9ac66dc0f15136bf42a",
+    "base": "764b14f05e43ff70f8a94e9943488667055ea1e0",
+    "head": "dc0d22bd5a3c72297c70c9ac66dc0f15136bf42a",
+    "title": "Replace character width heuristics with vendored wcwidth tables (#1253)",
+    "changed_cs": [
+      "src/Shouldly.Tests/Strings/DetailedDifference/CaseSensitive/UnicodeScenarios.cs",
+      "src/Shouldly/DifferenceHighlighting/GraphemeClusterHelper.cs",
+      "src/Shouldly/DifferenceHighlighting/UnicodeWidth.cs",
+      "src/Shouldly/DifferenceHighlighting/UnicodeWidthTables.Generated.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 189,
+    "merge": "872c081320ccdcf5ba82f1417d94c16ecfc9e127",
+    "base": "a59271815ced2e7543c2b2f82e0388b904471cb0",
+    "head": "872c081320ccdcf5ba82f1417d94c16ecfc9e127",
+    "title": "Fix ShouldContain throwing NullReferenceException on a null string (#1243)",
+    "changed_cs": [
+      "src/Shouldly.Tests/ShouldContain/NullStringScenario.cs",
+      "src/Shouldly/ShouldlyExtensionMethods/ShouldBe/StringContainsTestExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 181,
+    "merge": "1647612dac96caf92d871b705593c83739f4cd7d",
+    "base": "c04e4f687605a00248a7a50c7f4bd9aac757090e",
+    "head": "1647612dac96caf92d871b705593c83739f4cd7d",
+    "title": "Split ShouldSatisfy into subject-based extension and subject-less static method (#1234)",
+    "changed_cs": [
+      "src/DocumentationExamples/CodeExamples/ShouldSatisfyAllConditionsExamples.Satisfy.codeSample.approved.cs",
+      "src/DocumentationExamples/CodeExamples/ShouldSatisfyAllConditionsExamples.ShouldSatisfy.codeSample.approved.cs",
+      "src/DocumentationExamples/ShouldSatisfyAllConditionsExamples.cs",
+      "src/Shouldly.Tests/ConventionTests/ApprovePublicApi.ShouldlyApi.approved.cs",
+      "src/Shouldly.Tests/ShouldBe/EnumerableType/NonRetraversableEnumerable.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario_MultiLine.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario_MultiLine2.cs",
+      "src/Shouldly/MessageGenerators/ShouldSatisfyMessageGenerator.cs",
+      "src/Shouldly/ShouldStaticClasses/ShouldSatisfy.cs",
+      "src/Shouldly/ShouldlyExtensionMethods/ShouldSatisfyAllConditionsTestExtensions.cs",
+      "src/Shouldly/ShouldlyMessage.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 170,
+    "merge": "e1c7bf300b39b5a8631148d3ef1998e98f5a0b6e",
+    "base": "94437619939b4e84de1d84357f8cdca2f31ed981",
+    "head": "e1c7bf300b39b5a8631148d3ef1998e98f5a0b6e",
+    "title": "Add ShouldBe/ShouldNotBe overloads for Span\u003CT\u003E and ReadOnlySpan\u003CT\u003E (#1221)",
+    "changed_cs": [
+      "src/Shouldly.Tests/ConventionTests/ApprovePublicApi.ShouldlyApi.approved.cs",
+      "src/Shouldly.Tests/ShouldBe/Span/ReadOnlySpanScenario.cs",
+      "src/Shouldly.Tests/ShouldBe/Span/SpanScenario.cs",
+      "src/Shouldly.Tests/ShouldBe/Span/SpanShouldBeBehaviourTests.cs",
+      "src/Shouldly.Tests/ShouldBe/Span/SpanShouldNotBeScenario.cs",
+      "src/Shouldly/ShouldlyExtensionMethods/ShouldBe/SpanShouldBeTestExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 165,
+    "merge": "8bf3a6d36e651da113d64440c19011453e360140",
+    "base": "36b571fcf44752cc33c39d7913b87c5c6ed85b18",
+    "head": "8bf3a6d36e651da113d64440c19011453e360140",
+    "title": "Add ShouldSatisfy and make ShouldSatisfyAllConditions an obsolete alias (#1219)",
+    "changed_cs": [
+      "src/DocumentationExamples/CodeExamples/ShouldSatisfyAllConditionsExamples.ShouldSatisfyAllConditions.codeSample.approved.cs",
+      "src/DocumentationExamples/CodeExamples/ShouldSatisfyAllConditionsExamples.ShouldSatisfyAllConditionsGeneric.codeSample.approved.cs",
+      "src/DocumentationExamples/ShouldSatisfyAllConditionsExamples.cs",
+      "src/Shouldly.Tests/ConventionTests/ApprovePublicApi.ShouldlyApi.approved.cs",
+      "src/Shouldly.Tests/ShouldBe/EnumerableType/NonRetraversableEnumerable.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/GenericMultipleConditionsScenario.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/GenericMultipleConditionsScenario_MultiLine.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/GenericMultipleConditionsScenario_MultiLine2.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario_MultiLine.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/MultipleConditionsScenario_MultiLine2.cs",
+      "src/Shouldly.Tests/ShouldSatisfyAllConditions/ObsoleteShouldSatisfyAllConditionsScenario.cs",
+      "src/Shouldly/Internals/AssertionErrorFormatter.cs",
+      "src/Shouldly/MessageGenerators/ShouldSatisfyAllConditionsMessageGenerator.cs",
+      "src/Shouldly/ShouldlyExtensionMethods/ShouldSatisfyAllConditionsTestExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 164,
+    "merge": "36b571fcf44752cc33c39d7913b87c5c6ed85b18",
+    "base": "3465013539862543e3ccbc55e66254c3a08d031b",
+    "head": "36b571fcf44752cc33c39d7913b87c5c6ed85b18",
+    "title": "Use Uri.Equals for ShouldBeEquivalentTo Uri comparisons (#1205) (#1215)",
+    "changed_cs": [
+      "src/Shouldly.Tests/ShouldBeEquivalentTo/UriScenario.cs",
+      "src/Shouldly/ShouldlyExtensionMethods/ShouldBe/ObjectGraphTestExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 159,
+    "merge": "983702ed281d48bd145257b080febf1755d035a0",
+    "base": "47adc24de2d370589e1792584aef1e56de0fc47f",
+    "head": "983702ed281d48bd145257b080febf1755d035a0",
+    "title": "Suppress async user-unhandled break for Should.Throw / NotThrow (#1211)",
+    "changed_cs": [
+      "src/Shouldly.Tests/ShouldNotThrowAsync/FuncOfTaskScenarioAsync.cs",
+      "src/Shouldly/Internals/DebuggerDisableUserUnhandledExceptionsAttributePolyfill.cs",
+      "src/Shouldly/ShouldStaticClasses/ShouldThrow.cs",
+      "src/Shouldly/ShouldStaticClasses/ShouldThrowTask.cs",
+      "src/Shouldly/ShouldStaticClasses/ShouldThrowTaskAsync.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 158,
+    "merge": "47adc24de2d370589e1792584aef1e56de0fc47f",
+    "base": "5e331c713b2048a2132ca83e5158c77f5a5ac3be",
+    "head": "47adc24de2d370589e1792584aef1e56de0fc47f",
+    "title": "Simplify Verify approval payloads to single-output (#1210)",
+    "changed_cs": [
+      "src/Shouldly.Tests/CallerArgumentExpression/CallerArgumentExpressionTests.cs",
+      "src/Shouldly.Tests/CallerArgumentExpression/StackWalkingTripWireTests.cs",
+      "src/Shouldly.Tests/ModuleInitializer.cs",
+      "src/Shouldly.Tests/ShouldMatchApproved/ShouldMatchApprovedScenarios.cs",
+      "src/Shouldly.Tests/Strings/Verify.cs",
+      "src/Shouldly/Internals/Assertions/StringShouldBeAssertion.cs",
+      "src/Shouldly/Internals/ShouldlyAssertionContext.cs",
+      "src/Shouldly/Internals/SourceCodeTextGetter.cs",
+      "src/Shouldly/MessageGenerators/DynamicShouldMessageGenerator.cs",
+      "src/Shouldly/MessageGenerators/ShouldBeEquivalentToMessageGenerator.cs",
+      "src/Shouldly/ShouldlyConfiguration.TripWire.cs",
+      "src/Shouldly/ShouldlyConfiguration.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 154,
+    "merge": "be67ed234dcc4794afa4a336fd5ebaf18ee1afb5",
+    "base": "66a31daf3434505f655819aaf957b69edbcd2755",
+    "head": "be67ed234dcc4794afa4a336fd5ebaf18ee1afb5",
+    "title": "Redesign string diff display with adaptive \u0393\u00FB\u255D/\u0393\u00FB\u2593 markers (#1169)",
+    "changed_cs": [
+      "src/Shouldly.Tests/ConventionTests/ApprovePublicApi.ShouldlyApi.approved.cs",
+      "src/Shouldly.Tests/ShouldMatchApproved/ShouldMatchApprovedScenarios.cs",
+      "src/Shouldly.Tests/Strings/DetailedDifference/CaseSensitive/UnicodeScenarios.cs",
+      "src/Shouldly.Tests/TestHelpers/EscapeStyleScope.cs",
+      "src/Shouldly/DifferenceHighlighting/DiffStyle.cs",
+      "src/Shouldly/DifferenceHighlighting/DifferenceIndexConsolidator.cs",
+      "src/Shouldly/DifferenceHighlighting/EditDistanceAligner.cs",
+      "src/Shouldly/DifferenceHighlighting/EscapeStyle.cs",
+      "src/Shouldly/DifferenceHighlighting/FormattedDetailedDifferenceString.cs",
+      "src/Shouldly/DifferenceHighlighting/GraphemeClusterHelper.cs",
+      "src/Shouldly/DifferenceHighlighting/LineDiffFormatter.cs",
+      "src/Shouldly/DifferenceHighlighting/StringDifferenceHighlighter.cs",
+      "src/Shouldly/Internals/StringHelpers.cs",
+      "src/Shouldly/ShouldlyConfiguration.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "Shouldly",
+    "pr": 131,
+    "merge": "85f3fac7bd09f936dd91c4f5371f262fc868719f",
+    "base": "b861da68ca20430bd1547bc3816edf383b93a417",
+    "head": "85f3fac7bd09f936dd91c4f5371f262fc868719f",
+    "title": "Harden deterministic path resolution for coverage tool compatibility (#1174)",
+    "changed_cs": [
+      "src/Shouldly/Internals/DeterministicBuildHelpers.cs",
+      "src/Shouldly/ShouldMatchApprovedTestExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 197,
+    "merge": "eab8a350785a198b1dc96e35a16df8f73f5b6096",
+    "base": "596d3a5ad223cb4812dc857da26136ad78a67a6e",
+    "head": "eab8a350785a198b1dc96e35a16df8f73f5b6096",
+    "title": "Optimize RedisValue / reader logic by using canonical parser and new ShortBlob storage kind (#3114)",
+    "changed_cs": [
+      "src/StackExchange.Redis/MessageWriter.cs",
+      "src/StackExchange.Redis/ReadOnlySequenceExtensions.cs",
+      "src/StackExchange.Redis/RedisValue.cs",
+      "src/StackExchange.Redis/RespReaderExtensions.cs",
+      "tests/StackExchange.Redis.Tests/Issues/Issue1103Tests.cs",
+      "tests/StackExchange.Redis.Tests/RedisValueShortBlobTests.cs",
+      "tests/StackExchange.Redis.Tests/RedisValueStorageKindUnitTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 195,
+    "merge": "16bde3595edd1e150dd570dc38bc763477e23f07",
+    "base": "145540d84d64af683d1cfc0bdf5e9b5a684696a6",
+    "head": "16bde3595edd1e150dd570dc38bc763477e23f07",
+    "title": "support RedisValue backed by ReadOnlySequence (#3112)",
+    "changed_cs": [
+      "src/RESPite/Buffers/CycleBuffer.cs",
+      "src/RESPite/Messages/RespFrameScanner.cs",
+      "src/RESPite/Messages/RespReader.cs",
+      "src/RESPite/Shared/FrameworkShims.Encoding.cs",
+      "src/RESPite/Shared/FrameworkShims.Sequence.cs",
+      "src/StackExchange.Redis/EncodingExtensions.cs",
+      "src/StackExchange.Redis/Format.cs",
+      "src/StackExchange.Redis/MessageWriter.cs",
+      "src/StackExchange.Redis/PhysicalConnection.Read.cs",
+      "src/StackExchange.Redis/ReadOnlySequenceExtensions.cs",
+      "src/StackExchange.Redis/ReadOnlySequenceSegmentIterator.cs",
+      "src/StackExchange.Redis/RedisValue.cs",
+      "src/StackExchange.Redis/ValueCondition.cs",
+      "tests/RESPite.Tests/CycleBufferTests.cs",
+      "tests/StackExchange.Redis.Tests/FragmentedSegment.cs",
+      "tests/StackExchange.Redis.Tests/ParseTests.cs",
+      "tests/StackExchange.Redis.Tests/RedisValueEquivalencyTests.cs",
+      "tests/StackExchange.Redis.Tests/RedisValueSequenceServerTests.cs",
+      "tests/StackExchange.Redis.Tests/RedisValueSequenceTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 193,
+    "merge": "466c4b79e0f5faee8b0f5be9ee6e86c041835647",
+    "base": "8f47bf6366bf6e1d97841e124d74d1c15ec748e4",
+    "head": "466c4b79e0f5faee8b0f5be9ee6e86c041835647",
+    "title": "Stabilize CI, especially on Windows (#3109)",
+    "changed_cs": [
+      "tests/StackExchange.Redis.Tests/ClusterTests.cs",
+      "tests/StackExchange.Redis.Tests/KeyIdleAsyncTests.cs",
+      "tests/StackExchange.Redis.Tests/KeyIdleTests.cs",
+      "tests/StackExchange.Redis.Tests/RoleTests.cs",
+      "tests/StackExchange.Redis.Tests/SentinelTests.cs",
+      "tests/StackExchange.Redis.Tests/TestBase.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 190,
+    "merge": "ed40e30ab329a12077c8b47960d51e298cf49fdd",
+    "base": "534ca92522792d6a4b601c3f2a4616e387b81dfb",
+    "head": "ed40e30ab329a12077c8b47960d51e298cf49fdd",
+    "title": "avoid unobserved task exceptions during connection teardown; see #3106 (#3108)",
+    "changed_cs": [
+      "src/StackExchange.Redis/BufferedStreamWriter.Switchable.cs",
+      "src/StackExchange.Redis/PhysicalConnection.Write.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 189,
+    "merge": "534ca92522792d6a4b601c3f2a4616e387b81dfb",
+    "base": "a6c8feacf4f86dabab7561a3ff28e4535a2dd243",
+    "head": "534ca92522792d6a4b601c3f2a4616e387b81dfb",
+    "title": "use MemoryPool\u003Cbyte\u003E sources for request/response buffering (#3107)",
+    "changed_cs": [
+      "src/RESPite.Benchmark/BenchmarkBase.cs",
+      "src/RESPite/AssemblyInfo.cs",
+      "src/RESPite/Buffers/CycleBuffer.cs",
+      "src/RESPite/Buffers/CycleBufferPool.cs",
+      "src/RESPite/Messages/RespReader.cs",
+      "src/RESPite/Shared/AsciiHash.Instance.cs",
+      "src/RESPite/Shared/SkipLocalsInit.cs",
+      "src/StackExchange.Redis/AssemblyInfoHack.cs",
+      "src/StackExchange.Redis/BufferedStreamWriter.Switchable.cs",
+      "src/StackExchange.Redis/BufferedStreamWriter.cs",
+      "src/StackExchange.Redis/ConfigurationOptions.cs",
+      "src/StackExchange.Redis/Lease.cs",
+      "src/StackExchange.Redis/PhysicalConnection.Read.cs",
+      "src/StackExchange.Redis/PhysicalConnection.Write.cs",
+      "src/StackExchange.Redis/RespReaderExtensions.cs",
+      "src/StackExchange.Redis/ResultProcessor.Lease.cs",
+      "tests/StackExchange.Redis.Tests/BufferedStreamWriterTests.cs",
+      "tests/StackExchange.Redis.Tests/ConfigTests.cs",
+      "tests/StackExchange.Redis.Tests/ConnectionFailureErrorsTests.cs",
+      "tests/StackExchange.Redis.Tests/ConnectionShutdownTests.cs",
+      "tests/StackExchange.Redis.Tests/GlobalSuppressions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 183,
+    "merge": "6e0df970c7fefda5203b2455dd65a8da86c54540",
+    "base": "73cac3348b084f65ef808575c6f8a7c87b7ed364",
+    "head": "6e0df970c7fefda5203b2455dd65a8da86c54540",
+    "title": "Fix platform-specific TCP keep-alive issues (#3090)",
+    "changed_cs": [
+      "src/StackExchange.Redis/Configuration/DefaultOptionsProvider.cs",
+      "src/StackExchange.Redis/ConfigurationOptions.cs",
+      "src/StackExchange.Redis/PhysicalConnection.cs",
+      "src/StackExchange.Redis/SocketManager.cs",
+      "tests/StackExchange.Redis.Tests/ArrayTests.cs",
+      "tests/StackExchange.Redis.Tests/ClusterTests.cs",
+      "tests/StackExchange.Redis.Tests/ConfigTests.cs",
+      "tests/StackExchange.Redis.Tests/DatabaseTests.cs",
+      "tests/StackExchange.Redis.Tests/HotKeysTests.cs",
+      "tests/StackExchange.Redis.Tests/InProcessDatabaseUnitTests.cs",
+      "tests/StackExchange.Redis.Tests/Issues/MassiveDeleteTests.cs",
+      "tests/StackExchange.Redis.Tests/KeyTests.cs",
+      "tests/StackExchange.Redis.Tests/MultiPrimaryTests.cs",
+      "tests/StackExchange.Redis.Tests/ScanTests.cs",
+      "tests/StackExchange.Redis.Tests/ScriptingTests.cs",
+      "tests/StackExchange.Redis.Tests/TcpKeepAliveTests.cs",
+      "tests/StackExchange.Redis.Tests/TestBase.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 182,
+    "merge": "73cac3348b084f65ef808575c6f8a7c87b7ed364",
+    "base": "ce864344435684c1bf79d01a4012ddcdbe773aab",
+    "head": "73cac3348b084f65ef808575c6f8a7c87b7ed364",
+    "title": "Tear down connection on write failure to prevent queue desync (#3092)",
+    "changed_cs": [
+      "src/StackExchange.Redis/Message.cs",
+      "src/StackExchange.Redis/PhysicalBridge.cs",
+      "tests/StackExchange.Redis.Tests/WriteFailureTeardownTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 181,
+    "merge": "ce864344435684c1bf79d01a4012ddcdbe773aab",
+    "base": "48301dd6f399ff6cf2ebe2959bbe030805d760dc",
+    "head": "ce864344435684c1bf79d01a4012ddcdbe773aab",
+    "title": "8.8 add support for INCREX (#3065)",
+    "changed_cs": [
+      "src/StackExchange.Redis/Enums/ExpirationFlags.cs",
+      "src/StackExchange.Redis/Enums/IncrementOptions.cs",
+      "src/StackExchange.Redis/Enums/RedisCommand.cs",
+      "src/StackExchange.Redis/Expiration.cs",
+      "src/StackExchange.Redis/Increx.IncrexMessage.cs",
+      "src/StackExchange.Redis/Increx.ResultProcessor.cs",
+      "src/StackExchange.Redis/Increx.StringIncrementResult.cs",
+      "src/StackExchange.Redis/Interfaces/IDatabase.cs",
+      "src/StackExchange.Redis/Interfaces/IDatabaseAsync.cs",
+      "src/StackExchange.Redis/KeyspaceIsolation/KeyPrefixed.cs",
+      "src/StackExchange.Redis/KeyspaceIsolation/KeyPrefixedDatabase.cs",
+      "src/StackExchange.Redis/Message.ValueCondition.cs",
+      "src/StackExchange.Redis/Message.cs",
+      "src/StackExchange.Redis/RedisDatabase.Strings.cs",
+      "src/StackExchange.Redis/RedisDatabase.cs",
+      "src/StackExchange.Redis/RedisLiterals.cs",
+      "tests/StackExchange.Redis.Tests/ExpirationUnitTests.cs",
+      "tests/StackExchange.Redis.Tests/IncrexIntegrationTests.cs",
+      "tests/StackExchange.Redis.Tests/IncrexTestServer.cs",
+      "tests/StackExchange.Redis.Tests/IncrexUnitTests.cs",
+      "tests/StackExchange.Redis.Tests/KeyPrefixedDatabaseTests.cs",
+      "tests/StackExchange.Redis.Tests/KeyPrefixedTests.cs",
+      "toys/StackExchange.Redis.Server/RedisClient.Output.cs",
+      "toys/StackExchange.Redis.Server/TypedRedisValue.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 179,
+    "merge": "2800b3a9d5ac81e0449e9fbc914bb42ab28a5942",
+    "base": "45b819d93e238c17325c76c5ed5d894466888e16",
+    "head": "2800b3a9d5ac81e0449e9fbc914bb42ab28a5942",
+    "title": "Fix ARGREP NOCASE logic inversion and support ARINFO FULL (#3087)",
+    "changed_cs": [
+      "eng/StackExchange.Redis.Build/AsciiHashGenerator.cs",
+      "src/StackExchange.Redis/ArrayGrepRequest.cs",
+      "src/StackExchange.Redis/ArrayInfo.cs",
+      "src/StackExchange.Redis/ArrayInfoField.cs",
+      "src/StackExchange.Redis/Interfaces/IDatabase.Arrays.cs",
+      "src/StackExchange.Redis/Interfaces/IDatabaseAsync.Arrays.cs",
+      "src/StackExchange.Redis/KeyNotificationTypeMetadata.cs",
+      "src/StackExchange.Redis/KeyspaceIsolation/KeyPrefixed.Arrays.cs",
+      "src/StackExchange.Redis/KeyspaceIsolation/KeyPrefixedDatabase.Arrays.cs",
+      "src/StackExchange.Redis/RedisDatabase.Arrays.cs",
+      "src/StackExchange.Redis/RedisLiterals.cs",
+      "src/StackExchange.Redis/ResultProcessor.Arrays.cs",
+      "tests/StackExchange.Redis.Tests/ArrayTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "StackExchange.Redis",
+    "pr": 176,
+    "merge": "3d1b0dad17ddbca3a4ddf37c3ad9b5ec29dd0232",
+    "base": "ce62271d995741afea241ad4a4414bb919e3299f",
+    "head": "3d1b0dad17ddbca3a4ddf37c3ad9b5ec29dd0232",
+    "title": "Fix incorrect routing of some sorted-set and stream commands (#3080)",
+    "changed_cs": [
+      "src/StackExchange.Redis/Enums/SetOperation.cs",
+      "src/StackExchange.Redis/ExtensionMethods.Internal.cs",
+      "src/StackExchange.Redis/Message.cs",
+      "src/StackExchange.Redis/RedisDatabase.cs",
+      "src/StackExchange.Redis/ServerSelectionStrategy.cs",
+      "src/StackExchange.Redis/SetOperationCardinalityMessage.cs",
+      "src/StackExchange.Redis/SetOperationMessage.cs",
+      "src/StackExchange.Redis/StreamNackMessage.cs",
+      "tests/StackExchange.Redis.Tests/ClusterTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 125,
+    "merge": "7ae209baead7eb3d6f997b66732807103fc80518",
+    "base": "33ed33b9785c18b91c3f6f866e04f666e056e245",
+    "head": "7ae209baead7eb3d6f997b66732807103fc80518",
+    "title": "Quoted test changes to not log to stdout",
+    "changed_cs": [
+      "YamlDotNet.Benchmark/Program.cs",
+      "YamlDotNet.Test/Serialization/SerializationTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 88,
+    "merge": "f18356c28bd11465f9ba1f8451dfbd6ec3ffe919",
+    "base": "cf7b93c3ba6ed4dd579489428e3ee80c51b272fc",
+    "head": "f18356c28bd11465f9ba1f8451dfbd6ec3ffe919",
+    "title": "Made pushing the serializer optional",
+    "changed_cs": [
+      "tools/build/BuildDefinition.cs",
+      "tools/build/Program.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 32,
+    "merge": "fedcbeaa5fbe695725b278f5fc59945fe44f5763",
+    "base": "381ffec9283caca75d302b03bd948ac5511ee4e1",
+    "head": "fedcbeaa5fbe695725b278f5fc59945fe44f5763",
+    "title": "#600 Fix nullable enum roundtrip",
+    "changed_cs": [
+      "YamlDotNet.Test/Serialization/SerializationTests.cs",
+      "YamlDotNet/Serialization/NodeDeserializers/ScalarNodeDeserializer.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 31,
+    "merge": "381ffec9283caca75d302b03bd948ac5511ee4e1",
+    "base": "7ffbb84ae07a84d04e4ba294ee1ba5369e9b76fb",
+    "head": "381ffec9283caca75d302b03bd948ac5511ee4e1",
+    "title": "Fix repository name detection on AppVeyor",
+    "changed_cs": [
+      "tools/build/BuildDefinition.cs",
+      "tools/build/Program.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 28,
+    "merge": "b722b0795139150d7f7223886f939866f4daa77a",
+    "base": "35db04bcfd11e208805f2587ee345b06fa9173b8",
+    "head": "b722b0795139150d7f7223886f939866f4daa77a",
+    "title": "#604 Support for deserialization of interface types",
+    "changed_cs": [
+      "YamlDotNet.Test/Serialization/DeserializerTest.cs",
+      "YamlDotNet/Helpers/Portability/net20\u002Bnet35\u002Bunitysubset3.5/Lazy.cs",
+      "YamlDotNet/Serialization/DeserializerBuilder.cs",
+      "YamlDotNet/Serialization/NodeTypeResolvers/MappingNodeTypeResolver.cs",
+      "YamlDotNet/Serialization/ObjectFactories/DefaultObjectFactory.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 25,
+    "merge": "69112406c6dd7a88245d71f12986fbf11e76c000",
+    "base": "ccc272e04d694ab7b229554928ea19b49b4aaa34",
+    "head": "69112406c6dd7a88245d71f12986fbf11e76c000",
+    "title": "Build: add comments to related issues and pull requests when releasing",
+    "changed_cs": [
+      "tools/build/BuildDefinition.cs",
+      "tools/build/GitHubApiModels.cs",
+      "tools/build/Program.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 24,
+    "merge": "ccc272e04d694ab7b229554928ea19b49b4aaa34",
+    "base": "528999e6ff650b6738e9e8eaa45a585bf8ac2d7f",
+    "head": "ccc272e04d694ab7b229554928ea19b49b4aaa34",
+    "title": "#596 Merge sequence of anchors in reverse order",
+    "changed_cs": [
+      "YamlDotNet.Test/Serialization/SerializationTests.cs",
+      "YamlDotNet/Core/MergingParser.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 18,
+    "merge": "cb0768c5f560538a66f030658b3a64b2850f3017",
+    "base": "188d9dced6ea423bde3d229fcedc3f575f7b6ea5",
+    "head": "cb0768c5f560538a66f030658b3a64b2850f3017",
+    "title": "Send a tweet when a new package is releases",
+    "changed_cs": [
+      "tools/build/BuildDefinition.cs",
+      "tools/build/Program.cs",
+      "tools/build/TwitterProvider.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 16,
+    "merge": "c7eab1a676dd5b9895ad31aa697f9536ab83eba0",
+    "base": "a2d6811c5b786b1d589b2b2088768b178ff09917",
+    "head": "c7eab1a676dd5b9895ad31aa697f9536ab83eba0",
+    "title": "Build: set a proper release name when drafting a new release",
+    "changed_cs": [
+      "tools/build/BuildDefinition.cs",
+      "tools/build/Program.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "YamlDotNet",
+    "pr": 15,
+    "merge": "a2d6811c5b786b1d589b2b2088768b178ff09917",
+    "base": "5f7cc9e7c454b06c0878ce07bc0d1c7e4c5b8719",
+    "head": "a2d6811c5b786b1d589b2b2088768b178ff09917",
+    "title": "Add job to create a new release",
+    "changed_cs": [
+      "tools/build/BuildDefinition.cs",
+      "tools/build/GitHubApiModels.cs",
+      "tools/build/Program.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 199,
+    "merge": "327e08c95598ef1a1d167637ba98c1800cd472de",
+    "base": "f9e2a486265bea109c173c81cafc50f6a7b2711e",
+    "head": "327e08c95598ef1a1d167637ba98c1800cd472de",
+    "title": "Fix dashboard JobDataMap and SimpleSchedule trigger display (#3131)",
+    "changed_cs": [
+      "src/Quartz.Dashboard/Components/Shared/DisplayValueHelper.cs",
+      "src/Quartz.Dashboard/Services/IQuartzApiClient.cs",
+      "src/Quartz.Dashboard/Services/InProcessQuartzApiClient.cs",
+      "src/Quartz.Dashboard/Services/QuartzApiClient.cs",
+      "src/Quartz.Tests.AspNetCore/Dashboard/InProcessQuartzApiClientTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 198,
+    "merge": "f9e2a486265bea109c173c81cafc50f6a7b2711e",
+    "base": "926c03e626236e5c70ef13d1d3e9affe798ecc27",
+    "head": "f9e2a486265bea109c173c81cafc50f6a7b2711e",
+    "title": "Reduce DateTimeOffset churn and make L/W expressions allocation-free in the cron loop (#3128)",
+    "changed_cs": [
+      "src/Quartz/CronExpression.cs",
+      "src/Quartz/Util/BitUtil.cs",
+      "src/Quartz/Util/SortedSetExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 197,
+    "merge": "926c03e626236e5c70ef13d1d3e9affe798ecc27",
+    "base": "5e0672d45c1c9e888ab24d7b1e72e10682a27040",
+    "head": "926c03e626236e5c70ef13d1d3e9affe798ecc27",
+    "title": "Speed up cron engine with a bitmask CronField (#3127)",
+    "changed_cs": [
+      "src/Quartz.Benchmark/CronExpressionBenchmark.cs",
+      "src/Quartz.Tests.Unit/CronExpressionDifferentialTest.cs",
+      "src/Quartz/CronExpression.cs",
+      "src/Quartz/Util/BitUtil.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 196,
+    "merge": "5e0672d45c1c9e888ab24d7b1e72e10682a27040",
+    "base": "cef82e83c5bd80b712cf4c71d63ae79c3084cced",
+    "head": "5e0672d45c1c9e888ab24d7b1e72e10682a27040",
+    "title": "Add public plugin configuration extensibility helpers (main) (#3105)",
+    "changed_cs": [
+      "src/Quartz.Plugins/PluginConfigurationExtensions.cs",
+      "src/Quartz.Tests.Unit/SchedulerPluginConfigurationExtensionsTests.cs",
+      "src/Quartz/Configuration/DeferredServiceCollection.cs",
+      "src/Quartz/Configuration/DeferredSingletonRegistry.cs",
+      "src/Quartz/Configuration/NamedSchedulerFactory.cs",
+      "src/Quartz/Configuration/QuartzOptions.cs",
+      "src/Quartz/Configuration/ServiceCollectionSchedulerFactory.cs",
+      "src/Quartz/SchedulerPluginConfigurationExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 191,
+    "merge": "188eb8d7b8a2deb51c228645fa4a767dc42cd49b",
+    "base": "5a87fe6e3d7712a59abfff221b81c66151133860",
+    "head": "188eb8d7b8a2deb51c228645fa4a767dc42cd49b",
+    "title": "Allow the dashboard Blazor circuit anonymous access under a fail-closed FallbackPolicy \u002B docs (#3117) (#3121)",
+    "changed_cs": [
+      "src/Quartz.Dashboard/QuartzDashboardEndpointRouteBuilderExtensions.cs",
+      "src/Quartz.Tests.AspNetCore/Dashboard/DashboardEndpointsTest.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 189,
+    "merge": "5efdda1f7ea7aa3f2e97a68f5467a07a4498fbbf",
+    "base": "92afb23132c5e613c15a2980516e52bdada9089d",
+    "head": "5efdda1f7ea7aa3f2e97a68f5467a07a4498fbbf",
+    "title": "Allow configuring the Quartz health check (name, tags, failure status) (#3115)",
+    "changed_cs": [
+      "src/Quartz.AspNetCore/AspNetCore/HealthChecks/QuartzHealthCheckOptions.cs",
+      "src/Quartz.AspNetCore/AspNetCore/QuartzServiceCollectionExtensions.cs",
+      "src/Quartz.Tests.AspNetCore/HealthChecks/QuartzHealthCheckRegistrationTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 188,
+    "merge": "92afb23132c5e613c15a2980516e52bdada9089d",
+    "base": "5b3ce8182fc3326e42e50982bc9b297394b303e7",
+    "head": "92afb23132c5e613c15a2980516e52bdada9089d",
+    "title": "Fix JSON schedule config not loaded for named schedulers using root Quartz section (#3106) (#3114)",
+    "changed_cs": [
+      "src/Quartz.Tests.Unit/Configuration/JsonSchedulingTests.cs",
+      "src/Quartz/Configuration/ServiceCollectionExtensions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 185,
+    "merge": "d79b09c4705ef8b7042ccf3280929b478cdb27b4",
+    "base": "7e676b8c4ff30dc90977bfd1ce81d56d5d558994",
+    "head": "d79b09c4705ef8b7042ccf3280929b478cdb27b4",
+    "title": "Port: Fix reschedule-next misfire policies firing immediately after misfire (#3096) (#3101)",
+    "changed_cs": [
+      "src/Quartz.Tests.Unit/CalendarIntervalTriggerTest.cs",
+      "src/Quartz.Tests.Unit/CronTriggerTest.cs",
+      "src/Quartz.Tests.Unit/Impl/Triggers/DailyTimeIntervalTriggerImplTest.cs",
+      "src/Quartz.Tests.Unit/Simpl/RAMJobStoreTest.cs",
+      "src/Quartz.Tests.Unit/SimpleTriggerTest.cs",
+      "src/Quartz/Impl/AdoJobStore/JobStoreSupport.cs",
+      "src/Quartz/Impl/Triggers/AbstractTrigger.cs",
+      "src/Quartz/Impl/Triggers/CalendarIntervalTriggerImpl.cs",
+      "src/Quartz/Impl/Triggers/CronTriggerImpl.cs",
+      "src/Quartz/Impl/Triggers/DailyTimeIntervalTriggerImpl.cs",
+      "src/Quartz/Impl/Triggers/RecurrenceTriggerImpl.cs",
+      "src/Quartz/Impl/Triggers/SimpleTriggerImpl.cs",
+      "src/Quartz/SPI/IOperableTrigger.cs",
+      "src/Quartz/Simpl/RAMJobStore.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 184,
+    "merge": "7e676b8c4ff30dc90977bfd1ce81d56d5d558994",
+    "base": "92b440fb4740b48e691f0808dd086e17da594393",
+    "head": "7e676b8c4ff30dc90977bfd1ce81d56d5d558994",
+    "title": "Fix dashboard FallbackPolicy asset blocking, honor custom DashboardPath, document Blazor integration (#3099)",
+    "changed_cs": [
+      "src/Quartz.Dashboard/AssemblyInfoExtras.cs",
+      "src/Quartz.Dashboard/Components/DashboardLink.cs",
+      "src/Quartz.Dashboard/Components/DashboardRouteTable.cs",
+      "src/Quartz.Dashboard/QuartzDashboardEndpointRouteBuilderExtensions.cs",
+      "src/Quartz.Dashboard/QuartzDashboardOptions.cs",
+      "src/Quartz.Tests.AspNetCore/Dashboard/DashboardEndpointsTest.cs",
+      "src/Quartz.Tests.AspNetCore/Dashboard/DashboardRouteTableTest.cs",
+      "src/Quartz.Tests.AspNetCore/Dashboard/Support/TestAuthenticationHandler.cs",
+      "src/Quartz.Tests.AspNetCore/Dashboard/Support/TestFileProvider.cs",
+      "src/Quartz.Tests.AspNetCore/Dashboard/Support/TestHostComponents.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "quartznet",
+    "pr": 183,
+    "merge": "92b440fb4740b48e691f0808dd086e17da594393",
+    "base": "eec277eb5bf74a7e6a68b92ac09f5d7726fcd032",
+    "head": "92b440fb4740b48e691f0808dd086e17da594393",
+    "title": "Port MySQL FORCE INDEX hints with schema-qualified prefix support (#3087)",
+    "changed_cs": [
+      "src/Quartz.Tests.Unit/Impl/AdoJobStore/MySQLDelegateTest.cs",
+      "src/Quartz/Impl/AdoJobStore/AdoJobStoreUtil.cs",
+      "src/Quartz/Impl/AdoJobStore/MySQLDelegate.cs",
+      "src/Quartz/Impl/AdoJobStore/StdAdoDelegate.Triggers.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 197,
+    "merge": "bd7c3b3c8f2275276c09a9bfa929d2c0691f450f",
+    "base": "2ef63645cf0d0edd4b187510b238754249c4348f",
+    "head": "bd7c3b3c8f2275276c09a9bfa929d2c0691f450f",
+    "title": "Capture the most important internal logger health metrics using System.Diagnostics.Metrics",
+    "changed_cs": [
+      "src/Serilog/Core/Logger.cs",
+      "src/Serilog/Debugging/SelfLog.cs",
+      "src/Serilog/Debugging/SelfMetrics.cs",
+      "src/Serilog/LoggerConfiguration.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 196,
+    "merge": "2ef63645cf0d0edd4b187510b238754249c4348f",
+    "base": "c53eb147ceafe5b88cc57f95f78e8116b86cf620",
+    "head": "2ef63645cf0d0edd4b187510b238754249c4348f",
+    "title": "Forward optional interfaces through RestrictedSink via OptionalInterfaceForwardingSink",
+    "changed_cs": [
+      "src/Serilog/Configuration/LoggerSinkConfiguration.cs",
+      "src/Serilog/Core/Sinks/RestrictedSink.cs",
+      "test/Serilog.Tests/Core/FailureListenerTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 195,
+    "merge": "c53eb147ceafe5b88cc57f95f78e8116b86cf620",
+    "base": "63f1da33b80672e69d067acf32405b62eaedb110",
+    "head": "c53eb147ceafe5b88cc57f95f78e8116b86cf620",
+    "title": "Forward ISetLoggingFailureListener through RestrictedSink (#2231)",
+    "changed_cs": [
+      "src/Serilog/Core/Sinks/RestrictedSink.cs",
+      "test/Serilog.Tests/Core/FailureListenerTests.cs",
+      "test/Serilog.Tests/Support/ListenerTrackingSink.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 191,
+    "merge": "60935b4d7abad71cf6157b45a10f5c3c65ead527",
+    "base": "0597ddfbd4ec594d9c42edd745fe728a2198bad9",
+    "head": "60935b4d7abad71cf6157b45a10f5c3c65ead527",
+    "title": "Emit SelfLog warning when extra arguments are provided",
+    "changed_cs": [
+      "src/Serilog/Capturing/PropertyBinder.cs",
+      "test/Serilog.Tests/Core/LogEventPropertyCapturingTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 189,
+    "merge": "dc529798b07de14d74393f33e388a51be9c610b2",
+    "base": "ab020cc48186e36c8f8d989be1bb88f841ba43a8",
+    "head": "dc529798b07de14d74393f33e388a51be9c610b2",
+    "title": "Inline TraceId and SpanId JSON string formatting (#2215)",
+    "changed_cs": [
+      "src/Serilog/Formatting/Json/JsonFormatter.cs",
+      "test/Serilog.Tests/Formatting/Json/JsonFormatterTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 185,
+    "merge": "1f36d2ebf99a4272e8660c9a8087e7e78b55a42d",
+    "base": "2fd949edc849f2b1e82e26eba78e2d650d5a592b",
+    "head": "1f36d2ebf99a4272e8660c9a8087e7e78b55a42d",
+    "title": "Remove backpressure from XMLDoc (#2203)",
+    "changed_cs": [
+      "src/Serilog/Configuration/BatchingOptions.cs",
+      "src/Serilog/Configuration/LoggerSinkConfiguration.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 177,
+    "merge": "e8de3480ce935f2efd4ccf9907a7f03465586168",
+    "base": "cd6420aeafcdedd3790da1a03a419e389f0faa64",
+    "head": "e8de3480ce935f2efd4ccf9907a7f03465586168",
+    "title": "Fix AOT compatibility (#2175)",
+    "changed_cs": [
+      "src/Serilog/Capturing/PropertyValueConverter.cs",
+      "src/Serilog/Capturing/TrimConfiguration.cs",
+      "src/Serilog/Settings/KeyValuePairs/SettingValueConversions.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 176,
+    "merge": "cd6420aeafcdedd3790da1a03a419e389f0faa64",
+    "base": "84cb7a65d823655e09374babfa0704eacfad3171",
+    "head": "cd6420aeafcdedd3790da1a03a419e389f0faa64",
+    "title": "Allow pushing \u0060IEnumerable\u0060 or \u0060ReadOnlySpan\u0060 of \u0060ILogEventEnricher\u0060s (#2163)",
+    "changed_cs": [
+      "src/Serilog/Context/LogContext.cs",
+      "test/Serilog.Tests/Context/LogContextTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 174,
+    "merge": "e4e0b025db0b55f22b25a773b99fb7021956596d",
+    "base": "ed87d30aead032163720b700c212e891212cf3e7",
+    "head": "e4e0b025db0b55f22b25a773b99fb7021956596d",
+    "title": "Property factory as AddPropertyIfAbsent parameter (#2149)",
+    "changed_cs": [
+      "src/Serilog/Events/LogEvent.cs",
+      "test/Serilog.Tests/Configuration/LoggerConfigurationTests.cs"
+    ],
+    "reading_set": null
+  },
+  {
+    "repo": "serilog",
+    "pr": 172,
+    "merge": "0e316b7cb072ee660b97976098b1bbdb20ac6da0",
+    "base": "6b5412f4ddd572435a768f50ec4e9d7c114a6487",
+    "head": "0e316b7cb072ee660b97976098b1bbdb20ac6da0",
+    "title": "Stabilize and fully-implement dotted property names in message templates (#2141)",
+    "changed_cs": [
+      "src/Serilog/Parsing/MessageTemplateParser.cs",
+      "test/Serilog.Tests/Core/LoggerTests.cs",
+      "test/Serilog.Tests/Parsing/MessageTemplateParserTests.cs"
+    ],
+    "reading_set": null
+  }
+]

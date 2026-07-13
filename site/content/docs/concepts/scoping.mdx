@@ -4,7 +4,7 @@ description: Narrow a context request to the code a task needs by localizing, re
 ---
 
 **Scoping** selects the part of the workspace a task needs instead of returning
-everything. In Fuse V3 it works against the warm semantic index in two steps: pick a
+everything. It works against the warm semantic index in two steps: pick a
 **seed** set (by localizing a task, resolving named wiring, or diffing a git change), then
 expand from those seeds through the typed graph to a configurable depth, so you get the
 relevant neighborhood whole rather than a single file in isolation.
@@ -34,11 +34,10 @@ without any model. Ranked prose localization is the fallback mode; the precise p
 anchor (a symbol, route, service, request, config section, or git base) resolved through the
 graph. Feed the candidate file paths to `fuse_context` to fetch their bodies. It
 needs no prior knowledge of a change, which makes it the honest default for one-call
-context: in the
-[Layer 4 scenario](/docs/project/benchmarks#layer-4-context-acquisition-fuse-vs-no-fuse-vs-repomix)
-a scoped localize call reached 49 percent of the files the real pull requests touched at a
-50,000-token budget, in about 37,000 tokens against roughly 425,000 for a whole-repository
-packer dump. When a git base is available, the review mode below reaches higher recall.
+context: on the [benchmark corpus](/docs/project/benchmarks) open-ended localize from a
+title alone recalls 37.7 percent of changed files at a median 1,348 tokens. When a git
+base is available, change review below reaches 100 percent changed-file recall at 93.4
+percent precision in a median 1,026 tokens.
 
 ## The Signal-Sufficiency Contract: Refuse and Route
 
@@ -53,7 +52,7 @@ from the candidate score distribution, with no model:
 |-------|---------|--------------|
 | Confident | A candidate or a tight cluster stands clear of the rest | The tight set; this is where precision is won |
 | Partial | Some signal, no clear winner | A small best-effort set, flagged low-confidence, plus a navigation map of refinement options |
-| Insufficient | No usable anchor (a no-signal title, or a near-empty, near-uniform distribution) | A navigation map and an explicit ask, instead of a guess |
+| Insufficient | No usable anchor (a no-signal title, or a near-empty, near-uniform distribution) | A navigation map and an explicit ask, not a low-precision candidate list |
 
 The grade is computed from fixed thresholds, so the same scores always grade the same way.
 A refusal is never a closed door: the **navigation map** carries the top candidate areas
@@ -94,8 +93,9 @@ The seed is the set of files changed since a git ref, which can be a branch, a c
 a relative reference like `HEAD~5`. Fuse then computes the **blast radius**: the callers,
 DI consumers, route and request handlers, options consumers, and (with `--include-tests`,
 on by default) the related tests. This mode needs `git` on your PATH. It is the strongest
-mode by measurement: 89 percent change recall on real merged pull requests in the
-[Layer 2A recall task](/docs/project/benchmarks#layer-2a-scoping-recall-against-real-pull-requests).
+mode by measurement: over 69 real merged pull requests, change review keeps 100 percent
+of changed files at 93.4 percent precision in a median 1,026 returned tokens
+([benchmarks](/docs/project/benchmarks)).
 
 ## Expanding through the Typed Graph
 
@@ -130,6 +130,6 @@ ranking and traversal are detailed in [Scoping internals](/docs/internals/scopin
 ## Next
 
 Scoping is the step that makes the round-trip collapse possible; see
-[The iterative workflow](/docs/concepts/the-explore-phase) for how an agent uses it across
+[The iterative workflow](/docs/concepts/iterative-workflow) for how an agent uses it across
 a task. Or put a mode to work: [Scope a pull request](/docs/scenarios/scope-a-pr) or
 [Ask one question](/docs/scenarios/ask-one-question).

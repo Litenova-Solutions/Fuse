@@ -1,0 +1,68 @@
+---
+title: Reproduce the Benchmark
+description: The Fuse benchmark is public and reproducible from this repository. Clone the pinned corpus, install the fuse tool, and regenerate any recorded row on a clean machine.
+---
+
+The Fuse benchmark is public and reproducible from this repository. The harness, the pinned corpus manifest, the extraction and verification method, the license posture, and the recorded result files all sit under `tests/benchmarks/`, so the benchmark and the code it measures never drift. Reproduction needs only the published `fuse` tool and the in-repo manifest. Nothing here redistributes any corpus repository's source; the benchmark publishes references (a name, a URL, a pinned commit) and scripts, and a reproducer clones each repository itself under that repository's own license.
+
+## What the benchmark measures
+
+- **corpus-health** records, for each repository, whether the checkout reaches a full semantic index (build capture) and how many fail-to-pass oracle tasks it yields. An oracle task means the changed tests fail at the base commit and pass at the merge commit, verified by running the tests at both commits.
+- **loop** drives an agent to resolve each task in two arms (native filesystem tools; Fuse MCP tools). **pass@1** means the agent's edit passes the project's own tests on the first attempt, verified by a gold-test check after the agent finishes. The suite also records false-done (the agent declared success but the tests failed) and build round-trips counted apart from speculative `fuse_check` turns. Model-dependent; reported with the model id and CLI version.
+- **review, localize, ranking** score change-impact precision, open-ended localization recall, and retrieval ranking against changed-file ground truth.
+
+## The corpus
+
+`tests/benchmarks/corpus-v2.json` pins 24 open-source .NET libraries, each by name, clone URL, and commit. Their per-repository licenses and the redistribution posture are in `tests/benchmarks/corpus-licenses.md` (12 MIT, 6 Apache 2.0, 3 BSD 3-Clause, 1 MS-PL, and 2 source-available repositories, AutoMapper and MediatR, which a reproducer accepts under those terms or excludes).
+
+## Reproduce a corpus-health row on a clean machine
+
+Prerequisites: the .NET SDK the corpus needs, `git`, and disk for a NuGet cache and worktrees.
+
+1. Install the `fuse` global tool (or build it from this repository with `dotnet build Fuse.slnx -c Release`):
+
+   ```bash
+   dotnet tool install -g fuse
+   ```
+
+2. Provision the corpus repositories at their pinned commits under a working directory, one clone per manifest entry checked out at its `commit`:
+
+   ```bash
+   # for each {name, url, commit} in corpus-v2.json:
+   git clone <url> <corpus>/<name>
+   git -C <corpus>/<name> checkout <commit>
+   ```
+
+3. Run the health suite against the provisioned corpus, using a warm NuGet cache to keep restores offline where possible:
+
+   ```bash
+   NUGET_PACKAGES=<cache> fuse eval corpus-health \
+     --manifest corpus-v2.json --corpus <corpus> --restore \
+     --verify-tasks 5 --repo-timeout 20
+   ```
+
+4. Compare `results/corpus-health.json` (the index tier classification and verified-task counts) and `results/corpus-tasks-v2.json` (the persisted fail-to-pass tasks) against the published row. A single-repository run (`--repo <name>`) reproduces just that row; for example, a fresh clone of Scrutor at its pinned commit reproduces its row exactly (semantic index, its verified oracle tasks).
+
+## Leaderboard (recorded runs only)
+
+A run appears here only after its result files are committed under `tests/benchmarks/results`. Unverified or self-reported submissions are not listed. Runs below the full arena size target are reported with confidence intervals, not as a headline number.
+
+### corpus-health
+
+| Date | Corpus | Repos with build capture | Tasks verified by project's tests | Meets full arena size | Result file |
+|------|--------|--------------------------|-----------------------------------|----------------------|-------------|
+| 2026-07-11 | 24-library corpus | 15 / 24 | 59 (15 repos) | No (59/60 tasks, 15/20 repos) | `corpus-health.json` |
+
+### loop
+
+The loop suite compares two agent toolboxes on the same coding tasks. Success is measured by **pass@1**: the agent's edit passes the project's own tests, verified after the agent finishes (not from the transcript alone).
+
+| Date | Arena | Model / CLI | Attempts per task | Fuse pass@1 | Native pass@1 | False-done (fuse / native) | Headline result | Result file |
+|------|-------|-------------|-------------------|-------------|---------------|----------------------------|-----------------|-------------|
+| 2026-07-12 | 24-library corpus (234 rollouts) | claude-sonnet-4-6 / claude 2.1.181 | 2 | 89% (CI 82-95) | 82% (CI 74-90) | 8 / 9 | No (below full arena target) | `loop.json` |
+
+On this run Fuse's test-verified success rate is 7 points higher (89 versus 82 percent). False-done is lower (8 versus 9). Agent-visible `dotnet build` and `dotnet test` round-trips are essentially equal (fuse 3.1 versus native 3.2). The headline column is No because the arena is one task and five repositories short of the full size target (20 repositories with build capture, 60 verified tasks).
+
+## What is published, and what is not
+
+Published: the manifest (references, not code), the extraction and verification method (`tests/benchmarks/adjudication-protocol.md`), the reproduction commands above, the license posture, and this leaderboard of recorded runs. Never published: any corpus repository's source. A reproducer clones each repository itself under that repository's own license.

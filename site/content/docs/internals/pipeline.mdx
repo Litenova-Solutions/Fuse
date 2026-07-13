@@ -1,9 +1,9 @@
 ---
 title: The Fuse Pipeline
-description: How Fuse V3 indexes a workspace into a persistent semantic graph and then serves context by localizing, resolving, expanding, and rendering.
+description: How Fuse indexes a workspace into a persistent semantic graph and then serves context by localizing, resolving, expanding, and rendering.
 ---
 
-Fuse V3 has two phases over one persistent store, not a single pass over files. The indexing phase reads a workspace through Roslyn and writes a semantic graph to SQLite. The retrieval phase reads that graph to answer a query: it localizes candidates, resolves named wiring, expands through typed edges, plans a context set under a budget, and renders it. The store is warm: the index survives between calls, so retrieval is a read against precomputed structure rather than a fresh collect-and-rank.
+Fuse has two phases over one persistent store, not a single pass over files. The indexing phase reads a workspace through Roslyn and writes a semantic graph to SQLite. The retrieval phase reads that graph to answer a query: it localizes candidates, resolves named wiring, expands through typed edges, plans a context set under a budget, and renders it. The store is warm: the index survives between calls, so retrieval is a read against precomputed structure rather than a fresh collect-and-rank.
 
 This page is for engineers building a mental model of the runtime and for maintainers who need to know where a given concern lives.
 

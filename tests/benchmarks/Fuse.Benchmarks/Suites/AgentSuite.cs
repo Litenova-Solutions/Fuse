@@ -53,6 +53,9 @@ public sealed partial class AgentSuite : IEvalSuite
             return Skipped(notes);
         }
 
+        if (gate.ReducedScope)
+            notes.Add($"REDUCED-SCOPE run (no headline; confidence intervals only): {gate.Reason}");
+
         if (!ToolOnPath("claude"))
         {
             notes.Add("claude CLI not found on PATH; agent suite requires it. Skipped (omit, never stub).");

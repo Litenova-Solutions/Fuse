@@ -1,4 +1,4 @@
-import { docs } from 'collections/server';
+import { docs, blog } from 'collections/server';
 import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
@@ -8,6 +8,12 @@ export const source = loader({
   baseUrl: docsRoute,
   source: docs.toFumadocsSource(),
   plugins: [lucideIconsPlugin()],
+});
+
+// The blog collection (marketing plan M5), served at /blog.
+export const blogSource = loader({
+  baseUrl: '/blog',
+  source: blog.toFumadocsSource(),
 });
 
 export function getPageImage(page: (typeof source)['$inferPage']) {

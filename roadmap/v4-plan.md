@@ -320,10 +320,17 @@ millisecond latency claims stated as fact before `performance.json` records them
   percent recall for a 23 MB fetched model, an ONNX dependency, and index cost. The seam
   (`ICandidateGenerator`) remains for a future plugin. The false-rejection regression is
   recovered by bounded gate tuning or recorded honestly (K1).
-- **D6. The co-change prior is held pending re-adjudication on a semantic-mode corpus.** The
-  recorded delta (default MRR 0.197 versus 0.208 without) is within CI on a mostly-syntax
-  corpus. Flipping a default on noise is the exact move the ranking gate exists to block, in
-  either direction. Re-adjudicate after C3 (B4 covers it).
+- **D6. The co-change prior is held pending re-adjudication on a semantic-mode corpus.**
+  DISCHARGED 2026-07-12: the re-adjudication ran on the corpus-v2 semantic-mode ranking PR set
+  (`ranking.json`, 14 of 23 repos semantic) and recorded the prior net-negative (default-with-prior
+  MRR 0.434 versus 0.489 without, recall@10 -1.9 percent), larger than and consistent in direction
+  with the earlier within-CI -0.011. Per D6's own conditional this decides it: the git co-change
+  prior is DROPPED from the shipping default (`LocalizationRequest.EnableCoChangePrior` now defaults
+  false), and the ranking gate keeps a `default-plus-cochange` config so the effect stays measured
+  and a re-introduction stays guarded. Original rationale: the earlier delta (default MRR 0.197
+  versus 0.208 without) was within CI on a mostly-syntax corpus, and flipping a default on noise is
+  the exact move the ranking gate exists to block, in either direction; the semantic-mode corpus
+  removed the noise and the direction held.
 - **D7. MSBuildWorkspace is a diagnostic fallback, not the spine.** Build capture (binlog
   rehydration) is the semantic path (recorded: tier-1 on 100 percent of buildable repos versus
   12 percent overall for MSBuildWorkspace). MSBuildWorkspace remains inside `fuse doctor`
@@ -391,6 +398,59 @@ millisecond latency claims stated as fact before `performance.json` records them
   7's referendum barrier now applies to F2, the one frontier item remaining here. The
   release decision rides with this batch: everything ships as the v4 release (see the
   versioning note).
+- **D20 (2026-07-10). The v4-finish runway: three maintainer calls that unblock C3, C4, and
+  the corpus-health sweep.** Approved by the maintainer to close the remaining `[!]` items
+  against corpus-v2 rather than the retired 4-repo corpus. (a) C3's corpus gates are
+  re-derived onto corpus-v2: the old-corpus review 5/53 semantic stands as a build-ceiling
+  artifact (historical PR worktrees cannot reach tier-1 on this SDK, a corpus property not an
+  engine defect), so C3's gate becomes its corpus-v2 re-run rather than the retired-corpus
+  review number. (b) Expanding `tests/benchmarks/corpus-v2.json` to at least 20 buildable
+  repos is authorized (the C4 Ships target of 20 to 30). (c) The corpus-health sweep gains a
+  per-repo hard timeout with skip-and-record, so a single stalling repo cannot wedge a
+  multi-hour sweep; a timed-out repo is recorded with its elapsed budget and excluded, never
+  silently dropped. These are execution unblocks, not reopened decisions; the C3/C4 designs
+  and gates are otherwise unchanged.
+- **D21 (2026-07-10). B1 runs reduced-scope, model pinned to claude-sonnet-4-6.** Approved by
+  the maintainer to record the loop referendum against the reduced-scope corpus-v2 arena
+  rather than waiting for a full-scope green corpus-health. Justification: `corpus-health.json`
+  reports 15/24 tier-1 and 44 verified oracle tasks with `meetsMinimums` false, which the
+  pre-registered reduced-scope gate (D20/C4, `CorpusHealthGate`) explicitly allows because the
+  task count is at or above the 40-task no-headline floor. Terms: (a) the run is a pilot,
+  reported with confidence intervals and no headline number, carrying the reduced-scope and
+  environment-buildability caveat; (b) the model driver is the `claude` CLI pinned to
+  `claude-sonnet-4-6`, a maintainer override of the plan's `claude-sonnet-5` default, chosen
+  for availability and cost on this runner; (c) the claude CLI version and the model id are
+  recorded alongside the numbers in `loop.json`. This does not reopen the B1 design or its
+  three pre-registered gates; it authorizes the reduced-scope execution the C4 Fallback set up.
+- **D22 (2026-07-11). The v4-finish closeout: three maintainer calls approved by the goal
+  prompt that unblock the B1 harness, the B1 headline re-run, and the R3 residual regen.**
+  Approved by the maintainer to complete the autonomous runway toward the v4 cut. (a) The B1
+  harness fixes are authorized: separate the agent-visible `dotnet build`/`dotnet test` counts
+  from `fuse_check` calls in `LoopMetrics`, add an oracle post-check so true pass@1 and
+  false-done are computed (not read from the transcript), and retain transcripts. (b) A B1
+  headline re-run is authorized after (a): 2 rollouts per arm per task on the recorded
+  corpus-v2 task set (`corpus-tasks-v2.json`), pinned to `claude-sonnet-4-6`, which becomes the
+  program's standing model pin (the D21 override is promoted to the default); the reduced-scope
+  pilot stays recorded, and the re-run supersedes it for headlines only when it meets its
+  minimum-N. (c) The R3 residual is authorized: reconstruct a PR ground-truth set from the
+  corpus-v2 repos via the merge-commit method (the `prs.json` methodology: 2 to 25 changed C#
+  files, maintenance titles dropped), then regenerate review/localize/ranking on that buildable
+  corpus and sweep the docs and the figure. These are execution unblocks, not reopened
+  decisions; the B1/R3 designs and their pre-registered gates are otherwise unchanged.
+- **D23 (2026-07-12). The public benchmark stays in the monorepo; B3 is not a separate repo.**
+  Maintainer decision. B3's original "standalone public repo" was a positioning choice (a
+  neutral yardstick, a lighter clone for outsiders, an independent contribution cadence), never a
+  technical requirement: the harness, manifests, results, license posture (`corpus-licenses.md`),
+  and adjudication protocol already live in `tests/benchmarks/`, and reproduction needs only the
+  published `fuse` tool plus the in-repo manifest. Keeping it in the monorepo wins lockstep (the
+  benchmark and the code it measures never drift, one PR changes both), removes a sync/duplication
+  burden, and keeps one source of truth; the neutrality optic and small-clone benefit are recovered
+  by publishing a self-contained reproduction page on fuse.codes that anyone can run with just the
+  installed tool. So B3's deliverable becomes: a public reproduction + leaderboard page on the docs
+  site, backed by the in-repo `bench-release/` benchmark home, with no separate repo to create; the
+  remaining maintainer action is the docs going live with the site (the normal deploy), not
+  standing up and syncing a second repository. The B3 gate (a clean-checkout run reproduces a
+  corpus-health row) is unchanged and already validated.
 
 ---
 
@@ -572,8 +632,8 @@ Wave 1: resident substrate and honesty floor
 Wave 2: coverage and environments
 - [x] C1 `fuse up`: the environment remediation engine (depends: X1) (2026-07-09 GATE MET: real-world SDK-band flip on Polly (SDK_NOT_FOUND -> install .NET 10.0.301 -> tier-1) + engineered end-to-end flips for NU1507 (overlay) and SDK-band (install) + 19-workspace up-report.json classifying 9 genuine failures across the reconstructed bake-off set; see the 2026-07-09 progress-log verdict. History below.) (2026-07-08: preconditions recorded; sub-steps landed - RemediationKnowledgeBase (JSON-data KB + matcher), EnvironmentRemediationPlanner (classify-and-report core), NuGetOverlayConfig (NU1507 overlay generator), RemediationReport (renderer), and the report-only `fuse up` CLI command (runs doctor + planner + report, applies nothing, never touches the repo), all gate-green. 2026-07-09: the install-free apply sub-step landed (commit 9ee296c) - EnvironmentRemediationApplier + `fuse up --apply` applies the NU1507 overlay via `dotnet restore --configfile` and re-attempts the load, install remedies gated behind --allow-install; the "broken feed repaired via overlay" integration test PASSED on real restore. BLOCKED [!] on TWO things the autonomous environment cannot supply: (1) the consent-gated install remedies (SDK band per global.json via NETSDK1045; workload via MSB4018) require actually installing software, which MACHINE PREP forbids ("install NOTHING"), so their execution path is deferred to an environment where installs are permitted; (2) the Gate ("all 11 previously-buildable reach tier-1; >=2 of 6 previously-unbuildable gain tier-1; write up-report.json over 17 repos") cannot be exercised because the current pinned 4-repo corpus builds clean (verified: Scrutor loads 2/2 oracle-grade, no NU1507 reproduced at its pinned commit) - it needs the original problematic-commit bake-off set provisioned OR a maintainer decision to re-derive the Gate against a corpus that actually fails. Unblock: a maintainer decides the Gate corpus and permits installs (or provisions a failing corpus under D:\fuse-work), then the install-execution path + the up-report.json Gate run. 2026-07-09 UNBLOCKED (D17): consent-gated installs are permitted behind --allow-install (SDK bands per global.json, workloads), and the Gate is re-derived - reconstruct the bake-off OSS set at pinned commits under a cold NuGet cache and gate on what genuinely fails, plus synthetic failing fixtures (broken feed, SDK pin, missing workload) for remedy classes that do not reproduce, recorded honestly. Remaining: exercise the install remedies, provision the gate corpus, record up-report.json against the re-derived gate. 2026-07-09 sub-steps 1-3 landed: `fuse up --json` (facf71c/5b4cb15); the tier-1 build probe (TierOneBuildProbe) that surfaces real restore/build failures the design-time load misses, plus two overlay bug fixes (UTF-8 XML declaration, relative-source-path resolution) (5cb5ba1); and the up-report harness (up-report.ps1) with the first up-report.json over 5 workspaces - NU1507 detected real-world on Scrutor and flipped end-to-end on the engineered fixture (3/5 tier-1 reachable, 2/5 NU1507). Remaining: sub-step 4 install-execution (NETSDK1045/MSB4018) + fixtures; sub-step 5 OSS provisioning + Scrutor flip completion + final gate.)
 - [x] C2 Portable capture artifact and the CI action; secret posture (depends: C1) (2026-07-09 GATE MET: no-build oracle check from a bundle complog - Polly.Core rehydrate 6.8 s + oracle fuse_check 4.0 s = ~11 s on an isolated empty NUGET_PACKAGES, CS0246 correctly reported at grade oracle, under the 60 s gate; zero secret findings across 4 corpus bundles (Polly/MediatR/Newtonsoft.Json/Serilog); round-trip equality green. Shipped: complog export (1a) + fail-closed secret scan (1b) + manifest/bundle writer + `fuse capture` (2a) + `fuse index --from-capture` with version-refusal (2b) + round-trip/refusal/secret tests (2c) + `CheckFromLog`/`--check-complog`/`CheckFromComplogAsync` no-build oracle + complog-path meta + FuseCheckAsync bundle-oracle preference + capture.yml CI action + capture-bundles docs + AGENTS.md bundle-version invariant (2d). See the 2026-07-09 C2 progress-log verdict.)
-- [!] C3 Tier-1 default-on; worker bundled (depends: C1, C2) (2026-07-09 ENGINE COMPLETE and committed: install-relative worker discovery + worker bundled in the tool package (3b96b1b), tier-1 + syntax-first serve default-on with opt-outs (721aeff), the --from-capture required-option regression fix (e8531c3), and the critical --no-incremental fix so tier-1 capture works on an already-built repo (5e76a3a). GATE: localize main checkouts 3/4 semantic MET; ranking within CI MET (recall@10 12.6% in CI 7-18%, MRR flat, modes flipped to semantic 3/partial 1); review semantic 5/53 NOT MET - bound by the current corpus's historical PR worktrees not building clean at tier-1 on this SDK (the documented corpus-build ceiling, not an engine defect; mechanism proven - NodaTime reaches semantic via tier-1 where MSBuildWorkspace gives syntax). BLOCKED on C4's buildable corpus for the review-semantic gate; C4 depends only on C1/C2 so the runway is unblocked. Re-run review after C4 to close. See the 2026-07-09 C3 sub-step 3 progress-log verdict.)
-- [!] C4 Corpus v2: buildable test-oracle task set and the health gate (depends: C1, C2) (2026-07-09 ENGINE COMPLETE and committed: `fuse eval corpus-health` + machine-readable `CorpusHealthReport` (4a, d3a76f2), the `TaskOracle` fail-to-pass verifier + parser (4b), the `CorpusHealthGate` model-suite refusal wired into loop/agent (4c, fffde33), and the benchmarks corpus-v2/health methodology docs (4d). 27 new unit tests. GATE (>= 20 tier-1 repos AND >= 60 verified oracle tasks) NOT MET and not reachable here: compute-bound - C1 up-report measured 10/19 OSS repos at tier-1 with remediation, and 60 fail-to-pass oracle tasks require running 60+ OSS test suites twice each (the plan's own "not measured at scale" gap). BLOCKED on a provisioned runner with build/test compute; the machinery is ready to curate corpus v2 the moment that exists. Pre-registered reduced-scope fallback recorded (B1 shrinks; shortfall is a fuse-up/provisioning finding, not a remediation-engine defect). B1 depends on C4 so B1 is correspondingly blocked. See the 2026-07-09 C4 sub-step 4d progress-log verdict.)
+- [x] C3 Tier-1 default-on; worker bundled (depends: C1, C2) (2026-07-10 GATE MET under D20a: C3's gate re-derived onto corpus-v2 - the corpus-v2 tier re-run demonstrates tier-1 default-on works with zero configuration on buildable repos: 14 of 24 corpus-v2 repos reach semantic on the MAIN checkout (results/corpus-health.json, sweep 2), up from the retired 4-repo corpus where main checkouts loaded syntax/partial. Two build-capture correctness fixes landed to make the default honest: the CS7027 signing-output artifact (1b9df6b) and the relative-keyfile-resolve that fixes the strong-named-test InternalsVisibleTo cascade (399c42f). The old-corpus review 5/53 semantic stands as the documented build-ceiling artifact (historical PR worktrees cannot build at tier-1 on this SDK), explicitly accepted by D20a; localize main-checkout 3/4 and ranking-within-CI from the 2026-07-09 run stand. Tier ceiling above 14/24 is bounded by whole-solution build failures and auxiliary-project rehydration fidelity, not the engine default - see the 2026-07-10 checkpoint-2 progress entry. History below.) (2026-07-09 ENGINE COMPLETE and committed: install-relative worker discovery + worker bundled in the tool package (3b96b1b), tier-1 + syntax-first serve default-on with opt-outs (721aeff), the --from-capture required-option regression fix (e8531c3), and the critical --no-incremental fix so tier-1 capture works on an already-built repo (5e76a3a). GATE: localize main checkouts 3/4 semantic MET; ranking within CI MET (recall@10 12.6% in CI 7-18%, MRR flat, modes flipped to semantic 3/partial 1); review semantic 5/53 NOT MET - bound by the current corpus's historical PR worktrees not building clean at tier-1 on this SDK (the documented corpus-build ceiling, not an engine defect; mechanism proven - NodaTime reaches semantic via tier-1 where MSBuildWorkspace gives syntax). BLOCKED on C4's buildable corpus for the review-semantic gate; C4 depends only on C1/C2 so the runway is unblocked. Re-run review after C4 to close. See the 2026-07-09 C3 sub-step 3 progress-log verdict.)
+- [x] C4 Corpus v2: buildable test-oracle task set and the health gate (depends: C1, C2) (2026-07-10 GATE via reduced-scope Fallback: corpus-v2 expanded to 24 buildable candidates; the full corpus-health sweep on the runner records tier-1 15/24 and 44 mechanically-verified fail-to-pass oracle tasks across 9 repos (results/corpus-health.json, e91abb4), meetsMinimums FALSE. Raw minimums (>= 20 tier-1 AND >= 60 tasks) NOT met; the pre-registered reduced-scope Fallback is applied - 44 tasks is in the 40-60 reduced-scope band (above the 40 no-headline floor) and the shortfall is recorded as an environment-buildability plus build-capture rehydration-fidelity finding, not a remediation-engine defect. The full C4 machinery ships and is proven end to end: the manifest, `fuse eval corpus-health` with tier classification AND `--verify-tasks` oracle verification (mine -> derive filter -> fail-to-pass over isolated worktrees), the per-repo hard timeout with skip-and-record (D20c), and the CorpusHealthGate model-suite refusal. Two build-capture correctness fixes landed under this item (CS7027 signing artifact 1b9df6b; relative-keyfile-resolve for the IVT cascade 399c42f) since a false tier reading is a C4 measurement defect. See the 2026-07-10 checkpoint-3 progress entry for the full numbers and findings. B1 now runs reduced-scope (its gate needs the reduced-scope allowance, next). History below.) (2026-07-09 ENGINE COMPLETE and committed: `fuse eval corpus-health` + machine-readable `CorpusHealthReport` (4a, d3a76f2), the `TaskOracle` fail-to-pass verifier + parser (4b), the `CorpusHealthGate` model-suite refusal wired into loop/agent (4c, fffde33), and the benchmarks corpus-v2/health methodology docs (4d). 27 new unit tests. GATE (>= 20 tier-1 repos AND >= 60 verified oracle tasks) NOT MET and not reachable here: compute-bound - C1 up-report measured 10/19 OSS repos at tier-1 with remediation, and 60 fail-to-pass oracle tasks require running 60+ OSS test suites twice each (the plan's own "not measured at scale" gap). BLOCKED on a provisioned runner with build/test compute; the machinery is ready to curate corpus v2 the moment that exists. Pre-registered reduced-scope fallback recorded (B1 shrinks; shortfall is a fuse-up/provisioning finding, not a remediation-engine defect). B1 depends on C4 so B1 is correspondingly blocked. See the 2026-07-09 C4 sub-step 4d progress-log verdict.)
       (2026-07-09 D18: curation may start now, in parallel, with plain builds; the C1/C2
       dependency is a provisioning preference, not a barrier)
 
@@ -594,13 +654,13 @@ Wave 4: surface and trust
 - [x] U3 Playbook prompts, resources, server instructions, CLI parity (depends: U1)
 
 Wave 5: proof [HARD GATE: C4 health artifact required before B1]
-- [ ] B1 Loop benchmark v2 with pre-registered gates (depends: C4, S3, T1, U1)
+- [x] B1 Loop benchmark v2 with pre-registered gates (depends: C4, S3, T1, U1) (2026-07-11 RECORDED reduced-scope per D21: the referendum ran on corpus-v2 and loop.json is recorded, which IS the B1 gate ("the referendum being recorded is the gate, not the referendum being won"). Authorized by the maintainer (D21) to run reduced-scope pinned to the claude CLI 2.1.181 + claude-sonnet-4-6. Shipped: task persistence to corpus-tasks-v2.json (commit 55f6638), LoopSuite loads it with dotnet-prs-v1 fallback + per-model resume checkpoint (9d3b85f), 59 verified oracle tasks populated (45c8058), the run (b7ac00d). Numbers (loop.json, 116 rollouts, 2 wedged/omitted one per arm, 58 scored per arm): fuse reached green 95% (55/58, CI 88-100), median 1.0 iters, mean 1.60 verification turns; native 86% (50/58, CI 78-95), median 1.0, mean 1.52. Gates: pass@1-within-5-points HOLDS on the transcript-derived proxy (fuse 9 pts higher); build-invocations-at-most-half MISS as measured (1.60 vs 1.52) AND not cleanly measurable because LoopMetrics folds fuse_check into the build column; false-done NOT EVALUABLE (no oracle post-check). Re-plan input (targets the harness, not the substrate): separate agent-visible dotnet build from fuse_check, add an oracle post-check for true pass@1/false-done, retain transcripts. Docs swept (benchmarks.mdx, AGENTS.md, briefing.md); the retired 4-PR environment-null is superseded. F2 and B3 now unblocked on B1's recording.)
 - [x] B2 Latency SLOs through product entry points, published (depends: S1, S2, T1) (2026-07-08: extended the performance suite with fuse_find + fuse_impact warm timers; published site/content/docs/reference/latency.mdx (in nav) with verify verbs (delta on 871.8ms P50 / off 31.2ms P50 / S2 delta-mode 699.3ms P95, resident-latency.json), read verbs at TWO scales (NodaTime performance.json + eShopOnWeb performance-eshop.json: find 2.0/0.1ms, localize 23.1/2.6ms, review 95.6/38.3ms P50), test execution median 1792ms (testexec.json), and cold start. Every number sourced to a canonical result file; machine class + environment caveat named. GATE PASS (page live, numbers sourced). Only gap: a dedicated test-selection timer, noted in the page as folded into fuse_impact's covering-tests query, follow-up)
-- [ ] B3 Public benchmark release and launch [maintainer publish] (depends: B1, B2)
-- [ ] B4 WiringBench: corpus-scale edge adjudication; co-change re-adjudication (depends: C3)
+- [ ] B3 Public benchmark release and launch [maintainer publish] (depends: B1, B2) (2026-07-12 REFRAMED to monorepo per D23: the public benchmark stays in the monorepo, not a separate repo. Autonomous prep DONE: the in-repo benchmark home `bench-release/` (reproduction README + leaderboard with the recorded B1 loop, corpus-health, and peer rows + bundle-contents manifest), the corpus license re-check (`tests/benchmarks/corpus-licenses.md`), and the B3 reproduction GATE VALIDATED (a fresh Scrutor clone at its pinned commit reproduced its corpus-health row exactly - tier semantic, 2 verified oracle tasks - see the 2026-07-12 B3-validation progress entry). Remaining is a [maintainer] action but no longer a second-repo standup: publish the reproduction + leaderboard as a page on the docs site (the normal site deploy) and cut the launch. Original history: 2026-07-10 blocked on B1; B1 is now [x] (both the pilot and the D22b headline re-run recorded).)
+- [x] B4 WiringBench: corpus-scale edge adjudication; co-change re-adjudication (depends: C3) (2026-07-10 GATE via first-run deliverable: the reproducible corpus-scale sample is produced - `fuse eval semantics --corpus-sample 40 --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench --restore` samples 456 stratified edges across 18 edge types from 31,947 predicted edges over corpus v2 (modes semantic 15, partial 4, syntax 5), committed results/semantics-corpus-sample.json + the per-type/per-mode distribution in results/semantics-corpus.json v2 + the committed adjudication protocol (tests/benchmarks/adjudication-protocol.md). This is exactly the B4 premise realized: under C3 tier-1 defaults corpus v2 yields 18 edge types (di_resolves_to, mediatr_handles, sends_request, pipeline_behavior, route_handles, options_consumes, ef_entity, di_decorates, hosted_service, signalr_endpoint, ...) up from 3 on the retired mostly-syntax corpus, so corpus-scale wiring adjudication is finally meaningful. Adjudication: a bounded strong-model spot-check of 21 wiring edges against source (di_resolves_to 4/4, mediatr_handles 4/4, sends_request 3/3, di_decorates 4/4, route_handles 3/3, options_consumes 3/3) - all correct, consistent with Suite A's 23/23 on the fixture; the full 456-edge per-type precision table is the pre-registered bounded human/strong-model afternoon pass (the gate sets no pass bar on the first run - the reproducible sample and its distribution are the deliverable). Enabled the manifest-driven corpus-sample path (commit fb25771). Co-change: D6 HELD (recorded) - ranking.json A/B (default MRR 0.197 vs 0.208 without co-change, within CI) is the evidence; a semantic-mode re-adjudication needs a corpus-v2 ranking PR set (the recurring corpus-PR gap that also bounds review/localize/ranking on corpus v2), so the prior is held on the recorded within-CI delta rather than flipped on noise, exactly as D6 requires. GATE PASS (first-run number is the deliverable; co-change decision recorded). Full per-type adjudication + a corpus-v2 ranking set are the named follow-ups.)
 
 Wave 6: distribution and ecosystem
-- [!] G2 Analyzer pack: third-party framework coverage and the community on-ramp (depends: S1) (2026-07-10 reconciled [>] -> [!]: iteration 2 is blocked on C4 corpus-v2 frequency data (which framework analyzer to add next is decided by measured frequency, per the item's design); C4 is [!] so no frequency data exists yet. Iteration 1 is complete and gate-green. History below.) (2026-07-08: iteration 1 KEYED DI landed - AddKeyed{Scoped,Singleton,Transient}+TryAddKeyed* added to DiRegistrationAnalyzer's method map (the generic-2 + typeof keyed forms extract correctly as-is; generic-1 keyed produces a registration but no false edge, safe); OrderingApp fixture gained a keyed registration (INotifier->EmailNotifier) + a mock AddKeyedScoped extension; Suite A ground truth extended to 23 edges. GATE: `fuse eval semantics` recall/precision 1.0 at 23/23, 0 false positives - the moat holds. Docs swept (AGENTS/briefing/benchmarks/launch/messaging/what-is-fuse 22->23; the coverage table gained AddKeyed*). The benchmark FIGURE (fuse-benchmarks.svg/png) still shows 22 and needs regeneration via the assets chart script (a follow-up). SECOND first-party analyzer this iteration is gated on corpus-v2 frequency data (C4); community on-ramp carries the long tail. 2026-07-09: marked [!] - iteration 1 is complete and gate-green (the moat holds at 23/23), and the SVG figure fix landed (commit 343acf7); the NEXT iteration is blocked on C4 (corpus-v2 frequency data decides which framework analyzer to add next, per the item's design), which is corpus-gated and downstream of C1 [!]. Unblock: C4 corpus-health data exists, then pick the next analyzer by measured frequency and re-enter the iteration.)
+- [x] G2 Analyzer pack: third-party framework coverage and the community on-ramp (depends: S1) (2026-07-10 iteration 2 LANDED, gate-green: typed HttpClient DI coverage shipped - `AddHttpClient<TClient, TImplementation>()` added to DiRegistrationAnalyzer's method map (generic-2/generic-1 paths already extract it; string/named overloads carry no type args, no false edge), a mock AddHttpClient extension + IPricingClient/PricingClient added to the OrderingApp fixture, Suite A ground truth extended to 24 edges, and the docs/coverage-table/SVG/chart-script swept 23->24 (commit 15dd09c). GATE PASS: `fuse eval semantics` recall/precision 1.0 at 24 of 24, 0 false positives - the moat holds; full test suite + format green. Frequency input came from C4/B4's corpus-v2 edge distribution (results/semantics-corpus.json). Scope note: iteration 2 landed ONE exact first-party analyzer rather than two - a second clean generic-shaped framework was not available without risking a false edge (Refit self-registers an interface with no source impl; MassTransit/Quartz need new edge kinds), and the moat's precision-beats-coverage contract makes one exact addition the right call over two rushed ones. The v4 analyzer-pack story is complete: two first-party iterations (keyed DI, typed HttpClient) shipped with the moat exact, and the community on-ramp carries the long tail per the item's design ("first-party takes the top of the frequency table only"). Further framework coverage is a repeatable community-carried follow-up, not a v4 blocker. History below.) (2026-07-10 iteration-2 UNBLOCKED, deferred as a focused unit: C4/B4 now provide the corpus-v2 frequency data (results/semantics-corpus.json: 18 edge types over corpus v2, 31,947 predicted edges). The observed distribution shows the major application-DI framework patterns are ALREADY first-party-covered and appear as edges (MediatR request/handler/pipeline_behavior/sends_request, ASP.NET route_handles, options_consumes/binds, EF ef_entity/ef_configures, hosted_service, signalr_endpoint, Scrutor di_decorates, keyed DI from iteration 1); the honest frequency read is that the top of the table is covered and the long tail is community-carried per the item's own design. A caveat on the signal: corpus v2 is a set of LIBRARIES (each repo is a framework), so its DI-registration frequency is a confounded proxy for real application usage - a cleaner frequency source is an application corpus (expansion-plan territory). Iteration 2 (two more analyzers + fixture wiring + Suite A ground-truth extension, gated on Suite A staying exactly recall/precision 1.0) is a careful fresh-context unit and is NOT rushed at this depth: breaking the 23/23 moat exactness to add coverage would invert the item's own contract (precision beats coverage). Iteration 1 remains complete and gate-green (moat holds 23/23). Unblock: a focused session picks the next analyzer (ideally against an application-corpus frequency source) and lands it exactness-gated. History below.) (2026-07-08: iteration 1 KEYED DI landed - AddKeyed{Scoped,Singleton,Transient}+TryAddKeyed* added to DiRegistrationAnalyzer's method map (the generic-2 + typeof keyed forms extract correctly as-is; generic-1 keyed produces a registration but no false edge, safe); OrderingApp fixture gained a keyed registration (INotifier->EmailNotifier) + a mock AddKeyedScoped extension; Suite A ground truth extended to 23 edges. GATE: `fuse eval semantics` recall/precision 1.0 at 23/23, 0 false positives - the moat holds. Docs swept (AGENTS/briefing/benchmarks/launch/messaging/what-is-fuse 22->23; the coverage table gained AddKeyed*). The benchmark FIGURE (fuse-benchmarks.svg/png) still shows 22 and needs regeneration via the assets chart script (a follow-up). SECOND first-party analyzer this iteration is gated on corpus-v2 frequency data (C4); community on-ramp carries the long tail. 2026-07-09: marked [!] - iteration 1 is complete and gate-green (the moat holds at 23/23), and the SVG figure fix landed (commit 343acf7); the NEXT iteration is blocked on C4 (corpus-v2 frequency data decides which framework analyzer to add next, per the item's design), which is corpus-gated and downstream of C1 [!]. Unblock: C4 corpus-health data exists, then pick the next analyzer by measured frequency and re-enter the iteration.)
 - [x] G3 VS Code extension as the agent observability panel (depends: S2, U2) (2026-07-09: deps S2[x]+U2[x] met. Preconditions recorded: (1) extension contract suite RUNS - `npm run test:contract` in ext/vscode = 9 pass (node v24, node_modules present, no install needed); (2) host protocol at FuseHostService.ProtocolVersion=4 mirrored by ext/vscode/src/host/protocol.ts PROTOCOL_VERSION; the change-safety invariant requires bumping BOTH + updating the client in the same change; (3) the S2 session data exists in the store (check_sessions baselines, claim_ledger from U2) but there is NO list-all-sessions query yet, and the host has fuse/check (delta) but no session-view/session-list method. Sub-step plan: (1) host RPC read-only session observability - a store ListCheckSessionsAsync(root) enumerator + fuse/sessions (list) and fuse/session-view (per-session introduced/resolved diagnostics + rendered claim ledger) methods, protocol bump 4->5 with protocol.ts + client + contract tests in lockstep; (2) the extension session panel UI consuming them; (3) the git-dependent staged-diff + handoff-preview views; (4) docs (extension page). Strictly read-only scope (no write actions - those need F1). Careful shipped-contract change, split into safe sub-steps. 2026-07-09: superseded by R2 (D15) - the panel ships out with the extension; the supervision surface continues as E1 in expansion-plan.md.)
 - [x] G3b Agent panel: git-dependent staged-diff and handoff-preview views (depends: G3) (split from G3 2026-07-09 under the G3 Fallback "ship diagnostics-only panel if diff rendering slips (named tail item)": the session panel ships sessions + per-session introduced/resolved diagnostics + the graded claim ledger, meeting the G3 Gate "panel renders live session data on the fixture". The remaining two Ships views - the staged diff of a session's edits and the read-only handoff-preview - are git-dependent, and spawning git inside the long-lived host process is environmentally fragile (the recurring GitStats/handoff test-host crash class, documented in the U2 sub-step 5 log). This tail item is: solve the host git-spawn fragility (or route the diff/handoff through a git-free path), then add the two views to SessionsProvider + a fuse/session-diff RPC. No protocol change until then. INVESTIGATION 2026-07-09: the "fragility" is TEST-ONLY - the production fuse host already injects IChangeSource and spawns git for the `changes` scope mode (FuseHostService uses _changeSource via SemanticRetrievalEngine), so git works in the real host; the crash class is the dotnet-test-host + stdio-subprocess combo only, which just means the git-dependent views cannot be E2E-tested here (the RPC DTO shape + panel node-shaping ARE headless-testable git-free). The real open question is DESIGN not fragility: a "session" has no natural git base, so a per-session staged-diff/handoff-preview needs a decided base (HEAD? the session's first-seen commit?) - a small design call to make before implementing. So G3b is unblocked but is a genuine design+impl unit (a fresh protocol bump 5->6), not a quick win; deferred deliberately, not stuck. PARTIAL 2026-07-09 (commit 76e4fd7): a git-FREE "files touched (N): ..." summary node landed in the panel, computed from the session-view's existing introduced+resolved diagnostic paths (distinct, sorted, path-less skipped) - a lightweight stand-in for the staged-diff view, no protocol change, no git spawn, headless-tested. DESIGN CALL RESOLVED 2026-07-09: base = HEAD. Rationale: an agent session's edits are the uncommitted working-tree changes, so `git diff HEAD` is exactly "what this session changed" (no need to track a per-session commit; the working tree IS the session's mutation over the last commit). So the staged-diff view is the `git diff HEAD` text and the handoff-preview reuses BuildHandoffAsync with changedSince=HEAD. REMAINING G3b (now purely mechanical for a fresh session): add a fuse/session-diff RPC (protocol bump 5->6, with protocol.ts + client + contract-shape test in lockstep) returning the git diff HEAD text (host git is production-safe; only the E2E git path is untestable in the test host, so cover the DTO shape + panel node-shaping headless), a handoff-preview via BuildHandoffAsync(changedSince=HEAD), and the two SessionsProvider nodes. REFINEMENT 2026-07-09 (confirmed host has _indexer + _changeSource; ChangedFile carries Hunks): one placement sub-question surfaced - `git diff HEAD` is workspace-global (the working tree), NOT per-session, so the staged-diff/handoff nodes belong at the panel ROOT (a "Working tree (vs HEAD)" node sibling to the session rows), not nested under each session (which would repeat identical content). Small structural call for the implementer: extend getChildren(undefined) to prepend the working-tree node. Not rushed at this session's tail per the "never rush a shipped-path change" guardrail; the unit is otherwise mechanical and fully specified here. 2026-07-09: superseded by R2 (D15) with G3 - removed with the extension; E1 in expansion-plan.md carries the feature set.)
 - [x] G4 FuseCapture MSBuild target package (alternative capture channel) (depends: C2) (2026-07-10 GATE MET via Fallback: merge-equality green (fragment-merge engine `MergeFragments`/`MergeFragmentsToBundle` + bundle format v2 with per-project complogs under fragments/ + `fuse capture --merge`, edge-set-equality proven and validated end-to-end on an empty NuGet cache); the `Fuse.Capture` build-target NuGet package ships EXPERIMENTAL because the per-project fragment is emitted by a recursion-guarded nested non-incremental build (~90% overhead, above the <5% bar), which is exactly the item's named Fallback ("ship experimental with the overhead published"). Sub-steps: 4-G1a merge engine (3065b41), 4-G1b format v2 (bcb8ba8), 4-G2 target package + 4-G3 docs. Bundle format is backward-compatible (v2 reads v1; newer refused). See the 2026-07-09/-10 G4 progress-log verdicts.)
@@ -608,7 +668,7 @@ Wave 6: distribution and ecosystem
 - [x] G8 CI parity rehearsal (depends: T0) (2026-07-08: shipped `fuse verify --ci-parity` - CiWorkflowParser (best-effort, dependency-free line scan of run:/run:| for dotnet commands) + CiParityRehearser (scan .github/workflows -> report; --run executes clean leading-dotnet commands via TimedProcess, T0's executor) + the VerifyCommand. 7 tests (parser shapes + rehearser report). Validated on two corpus repos: eShopOnWeb (3 rehearsable steps, 0 non-rehearsable) and Scrutor (3 rehearsable, 2 secret-bearing nuget-push steps NAMED non-rehearsable). GATE PASS: the report names every non-rehearsable step (no silent skips); the good extraction hit rate meant the low-hit-rate --commands Fallback was not needed. Docs: scenarios/rehearse-ci.mdx + CHANGELOG)
 
 Wave 7: frontier [HARD GATE: B1 recorded before F2]
-- [ ] F2 Candidate racing: k changesets verified in parallel (depends: T1, S1, B1)
+- [x] F2 Candidate racing: k changesets verified in parallel (depends: T1, S1, B1) (2026-07-11 GATE via named Fallback: `fuse_test candidates:[...]` races k proposed single-file edits through the speculative overlay typecheck over one held resident compilation, returning per-candidate diagnostics + a winner by strict dominance (a lone clean candidate beats any with errors; ties reported; none-clean named). Engine `CandidateRacer` (Fuse.Workspace) + RaceCandidate/RaceVerdict/RaceReport + fuse_test `candidates`/`maxCandidates`/`analyzers` params (source-gen parsed) + 13 tests (8 engine incl. binlog-backed verdict-equality/winner + 5 MCP incl. abstain/bound/parse). The wall-clock gate (race < 2x a single verify at k=3) is NOT met by parallelism and the named Fallback is applied: measured on a 20-core host, racing 3 candidates concurrently was within 3% of sequential (race/seq3 1.03x) because concurrent Roslyn binding over shared-base forks serializes on the base's internal caches - so parallelism buys no wall-clock while multiplying live-fork memory by k (the item's kill risk). Per the Fallback the racer ships SEQUENTIAL (same API + verdicts), holding one fork at a time (peak memory bound), and the fork-cost finding is recorded. Fork sharing itself holds (k warm checks cost ~k single warm verifies, not k cold rehydrations). Verdict-equality PASS; per-candidate test EXECUTION over an unwritten edit is descoped in writing, riding T1's existing emit descope. Three gates green (build 0 err, full suite 46 Workspace + 156 Cli incl. race tests, format clean). Docs: mcp-tools racing section + CHANGELOG + AGENTS.md swept. See the 2026-07-11 F2 progress-log verdict.)
 - [x] F3 NuGet upgrade oracle: package-bump break prediction (depends: T2) (2026-07-08: shipped - MetadataSurfaceExtractor (Fuse.Semantics; loads a DLL as a MetadataReference, walks the IAssemblySymbol public/protected surface into SymbolRecords) + PackageUpgradeOracle (Fuse.Retrieval; diffs two versions via the REUSED T2 PublicApiDelta, resolves version DLLs from the NuGet cache, abstains offline, names blind spots on every report) + `fuse_impact package:{id,fromVersion,toVersion}` wiring. Call-site intersection uses the item's named Fallback (R5 references edges are FK-safe to source types only, so external-package call sites are not tracked - shipped the API-delta half + said so in BlindSpots). GATE (zero false-safe on known-breaking upgrades) validated on REAL cached pairs: System.Text.Json 4.7.2->8.0.0 flagged breaking (public JsonClassInfo removed) - NOT reported safe; System.Collections.Immutable 1.5.0->8.0.0 and Microsoft.Extensions.DependencyInjection.Abstractions 6.0.0->9.0.0 (additive-only majors) report 0 breaking. 10 tests (extractor 4, oracle 3, cache-resolution 2->3, Gate 3). GATE PASS. Docs (mcp-tools package-upgrade section) + CHANGELOG)
 (2026-07-09, D19: G1, G6, G7, F1, F4, F5, F6, F7 moved to expansion-plan.md, each with its
 opening trigger; F5's governance contract is signed there with the three answers recorded)
@@ -617,7 +677,7 @@ Wave 8: release (added 2026-07-09; decisions D14-D19)
 - [x] R1 Clean-slate purge: shims, legacy names, compatibility machinery (depends: -; D14) (2026-07-09: FuseDeprecatedTools + its test deleted; the dead changeset workflow purged (FuseChangesetAsync, ChangesetSessionStore + its tests, RenderDiagnoses, DiscoverBuildTargetAsync); WithTools<FuseDeprecatedTools>() unregistered; integration test asserts exactly 9 tools and 0 shims; every retired MCP tool name swept from code (tool Descriptions, breadcrumb/error strings, XML docs), the McpInstallService RuleBody rewritten to the 9-tool surface, and all docs (mcp-tools.mdx, scenarios, start, concepts, internals, performance, latency, changelog.mdx), README, LAUNCH, briefing; CHANGELOG consolidated to a single [4.0.0] entry; AGENTS.md upgrade invariant rewritten to apply from the first public tag. GATE PASS: repo-wide grep for shim types + retired names returns nothing outside roadmap/; three gates green (build 0 errors, full test suite passes, format clean); site builds. The TOC golden updated for the new breadcrumb string.)
 - [x] R2 Remove the VS Code extension and its mirror surface (depends: -; D15) (2026-07-09: ext/vscode deleted (git rm + on-disk remainder); ext-release.yml and ext-vscode.yml deleted; extension version+license sync removed from set-version.ps1 and verify-version.ps1; ci.yml stale six-RID comment corrected. Host RPC split recorded: hooks use fuse/handshake+fuse/check only (FuseHostClient.TryCheckDeltaAsync), so the three G3/G3b panel methods (fuse/sessions, fuse/session-view, fuse/session-diff) + their DTOs (SessionListDto/SessionSummaryDto/SessionViewDto/SessionDiffDto/SessionDiffFileDto) + JsonContext entries + the 3 FuseHostContractTests cases were deleted; the store session data (ListSessionsAsync/SessionSummary, test-covered) is retained per the Do-not. Ownership decided: fuse host stays as the minimal hook pipe endpoint (handshake/check/shutdown + general reads), the seed of G5, recorded in AGENTS.md. AGENTS.md host-RPC lockstep invariant rewritten (no TS mirror), version-sync + release-flow extension refs removed. Docs: vscode-extension.mdx deleted + nav swept; host-rpc.mdx reframed to the hook-pipe client; index.mdx + install.mdx extension refs removed. GATE PASS: build 0 errors, full suite passes (hook e2e via AmbientVerification/FuseHostServiceRpc/FuseHostClient/ClaudeHooksConfig tests green), format clean, site builds with no broken link; grep for ext/vscode in build/workflows/docs returns nothing.)
 - [!] R3 Release hygiene and the v4 cut: canonical regen, assets, briefing refresh, release
-      prep [tag is maintainer] (depends: R1, R2) (2026-07-10 non-numbers prep DONE: version scripts verified green (verify-version.ps1 "Version OK: 4.0.0"); site builds clean (npm run build exit 0 with the new capture-bundles/daemon/config-key docs); briefing.md refreshed (verified date, stale VS Code extension fact fixed per D15, mechanism-named v4-surface paragraph for C1-C4/G4/G5). BLOCKED on C4 for the canonical benchmark-numbers regen: the C3 tier-1 flip shifts review/localize/ranking on the current corpus but the shift is a build-ceiling artifact (the corpus does not build at tier-1), so the product-representative shipping-default numbers + the docs figure-sweep come from C4's buildable corpus-v2; the briefing points to C4 rather than quoting a stale figure. PNG on the recorded Fallback (no SVG rasterizer in this env; SVG current). Merge/tag/publish are [maintainer]. See the 2026-07-10 R3 progress-log entry.)
+      prep [tag is maintainer] (depends: R1, R2) (2026-07-10 non-numbers prep DONE: version scripts verified green (verify-version.ps1 "Version OK: 4.0.0"); site builds clean (npm run build exit 0 with the new capture-bundles/daemon/config-key docs); briefing.md refreshed (verified date, stale VS Code extension fact fixed per D15, mechanism-named v4-surface paragraph for C1-C4/G4/G5). BLOCKED on C4 for the canonical benchmark-numbers regen: the C3 tier-1 flip shifts review/localize/ranking on the current corpus but the shift is a build-ceiling artifact (the corpus does not build at tier-1), so the product-representative shipping-default numbers + the docs figure-sweep come from C4's buildable corpus-v2; the briefing points to C4 rather than quoting a stale figure. PNG on the recorded Fallback (no SVG rasterizer in this env; SVG current). Merge/tag/publish are [maintainer]. See the 2026-07-10 R3 progress-log entry. 2026-07-10 UPDATE (C4 now [x]): the corpus-v2 canonical numbers are regenerated and swept into the benchmarks doc (commit 95cd1bb) - the corpus-health section now records the recorded corpus v2 run (15/24 tier-1, 44 verified oracle tasks, the reduced-scope gate) and the WiringBench distribution (31,947 predicted edges, 456 sampled across 18 types), with the shortfall named as an environment-buildability plus rehydration-fidelity finding. The review/localize/ranking canonical regen on a BUILDABLE-PR corpus stays bounded by the corpus-PR gap (corpus v2 has no ranking/PR ground-truth set; those suites still score over the retired dotnet-prs-v1 corpus, whose numbers stand with the documented build-ceiling), so a product-representative review/localize/ranking regen is the provisioned follow-up alongside the [maintainer] tag/publish. Autonomous release-hygiene is complete; R3 stays [!] on the [maintainer] cut + the provisioned full-corpus regen. 2026-07-12 UPDATE (D22c done): the product-representative review/localize/ranking regen is now DONE on the reconstructed corpus-v2 PR set (prs-v2.json, 69 PRs) - review precision 93.4% (semantic 33/69), localize recall 37.7%, ranking default MRR 0.434, all swept into benchmarks.mdx + AGENTS.md + briefing.md + the figure (SVG regenerated, PNG on the recorded Fallback), site builds clean; the retired-corpus numbers are preserved as *-retired.json. The D6 co-change prior is re-adjudicated net-negative on the semantic-mode corpus (drop-and-re-gate is a named follow-up). The remaining R3 residual is now ONLY the [maintainer] cut (merge, tag v4.0.0, publish) plus an optional application-corpus regen for external validity (out of this env's provisioned library-corpus scope). R3 stays [!] on the [maintainer] cut alone.)
 
 ---
 
@@ -2597,7 +2657,731 @@ invariants, all tightened rather than replaced.
 
 ## Progress Log
 
-(One entry per item, per the execution protocol: preconditions verified with file and line
+### 2026-07-12 PNG regenerated (rasterizer authorized); public reproduction docs page shipped
+Two maintainer-authorized items closed, removing the last two non-cut residuals.
+
+PNG figure regenerated (the R3 Fallback discharged): the maintainer authorized installing a rasterizer; `sharp`
+was already present in `site/node_modules`, so no new install was needed. Rasterized `assets/fuse-benchmarks.svg`
+to `assets/fuse-benchmarks.png` at 2x (2240x3006) via sharp (density 144); the PNG now carries the current
+corpus-v2 numbers (review 69 PRs / 93.4 percent / 1,026 tokens; localize 52/24/38 percent). Verified the render
+visually (fonts clean, bars and captions correct). The chart script header documents the one-line rasterize
+command for future regens.
+
+Public reproduction page shipped (B3 monorepo form, D23): added `site/content/docs/project/reproduce.mdx` (in the
+Project nav after Benchmarks) - the public, self-contained reproduction guide (what the benchmark measures, the
+pinned corpus + license posture, the clean-machine corpus-health reproduction steps, and the recorded-runs
+leaderboard for corpus-health and the loop referendum). Site builds clean (npm run build exit 0). This is the
+public face D23 called for; B3's remaining maintainer step is now just the normal site deploy, no separate repo.
+
+Residual status after this checkpoint: every autonomous item and every maintainer-authorized follow-up is done.
+The only remaining action is the v4 cut itself (merge feature/v4-finish, run build/set-version if needed, tag
+v4.0.0, push - which triggers NuGet + GitHub release + MCP registry - and the site deploy), which is [maintainer]
+by rule (agents prepare, humans pull the trigger). Nothing else is autonomously actionable.
+
+### 2026-07-12 B3 reproduction VALIDATED; eShopOnWeb reaches semantic; application review run in flight
+Two recorded follow-ups worked after the co-change drop.
+
+B3 reproduction gate MET: cloned Scrutor fresh to a clean dir at its manifest-pinned commit
+(7f315dab...) and ran the README's reproduction command (`fuse eval corpus-health --repo Scrutor --manifest
+corpus-v2.json --corpus <freshdir> --restore --verify-tasks 2`). It reproduced Scrutor's corpus-health row exactly:
+tier semantic (tier-1 1/1), 2 verified fail-to-pass oracle tasks - the same tasks (c2aa73450051, 46ad176e2214) the
+full-corpus run recorded. The B3 Validation ("a clean-machine run reproduces a corpus-health row") passes. The
+single-repo run clobbered the canonical corpus-health.json/corpus-tasks-v2.json; both restored from HEAD (verified
+59 tasks / 24 repos) and the temp clone removed.
+
+Application external-validity probe (the app-corpus follow-up): eShopOnWeb (the retired corpus's ASP.NET Core
+application, pinned 4da82121...) now reaches TIER SEMANTIC on a fresh clone (11 projects restored, 4 test projects,
+45 test files) - a change from the retired run where it loaded partial/syntax, driven by the C3/C4 tier-1 build
+capture improvements. So the application-corpus regen is viable, not just attemptable. Set up a SEPARATE
+supplementary manifest (corpus-app.json, eShopOnWeb only) so the recorded 24-library corpus-v2 results stay
+undisturbed, reconstructed 8 eShopOnWeb PRs (prs-app.json), and launched review over them (background bm0tdzbkk,
+`--output review-app.json`) to record an application-at-semantic-tier review number - the external-validity axis
+the library corpus does not cover.
+
+Application review RECORDED (bm0tdzbkk exit 0, review-app.json): 8 eShopOnWeb PRs, changed-file recall 100 percent,
+precision 84.2 percent, F1 0.914, median 366 returned tokens; per-PR index modes partial 6 / semantic 2; grep
+baseline 73 percent recall at 10 percent precision; 6 of 8 PRs touch the public surface. Precision reads a little
+below the library corpus's 93.4 percent for the right reason - an application's blast radius legitimately pulls in
+DI/wiring/support a reviewer wants. This is the external-validity axis the library corpus lacks, now recorded at a
+higher tier than the retired run. Committed corpus-app.json + prs-app.json + review-app.json; docs updated
+(benchmarks.mdx Suite B application note + synthesis, AGENTS.md review bullet, briefing.md review finding); site
+builds clean. The app clone is retained under D:/fuse-work/app-probe (out of the repo).
+
+Recorded-follow-ups status: co-change drop DONE (D6 discharged); B3 reproduction VALIDATED; application external
+validity DONE (supplementary eShopOnWeb review at semantic-capable tier). Remaining are all [maintainer] or blocked:
+the PNG figure regen (no rasterizer permitted to install), and the v4 cut (merge, tag v4.0.0, publish).
+
+### 2026-07-12 D6 DISCHARGED: git co-change ranking prior dropped from the shipping default
+Acting on D22c's semantic-mode re-adjudication (the evidence D6 held for), the git co-change prior is dropped from
+the shipping default. This is a recorded follow-up the maintainer asked me to work; it follows D6's own conditional
+(re-adjudicate on a semantic-mode corpus, then decide), so it executes the plan rather than reopening it.
+
+Shipped: `LocalizationRequest.EnableCoChangePrior` now defaults false (SemanticRetrievalEngine already gates on the
+flag; no product path forced it on, so the default flip is the whole product change). RankingSuite configs
+relabeled: `default` is now the shipping default (centrality on, co-change off) and a new `default-plus-cochange`
+diagnostic re-adds the dropped prior so the gate keeps it measured and a re-introduction stays guarded;
+AddCoChangeDelta updated to compare against the new default.
+
+Validation (re-ran the ranking gate on corpus v2, `--dataset-file prs-v2.json --restore --limit 3`, results in
+ranking.json): config default MRR 0.489, recall@10 38.2%, nDCG@10 0.361 (the shipping default now, up from the old
+0.434); default-plus-cochange MRR 0.434, recall@10 36.3%; A6 delta (re-adding co-change) MRR -0.055, recall@10
+-1.9%. The headline scorecard is now the improved default. Three gates green: build 0 err, full test suite passes
+(no regression - Retrieval 132, Cli 156, all suites green), format clean; site builds clean.
+
+Swept: Decision D6 record marked DISCHARGED; CHANGELOG retrieval bullet (co-change off by default, named); AGENTS.md
+retrieval invariant + ranking bullet; briefing.md ranking table + finding; benchmarks.mdx ranking gate section.
+The retired-corpus ranking numbers stay as `ranking-retired.json` provenance.
+
+Gate: the ranking suite is the guarded gate; the change improves the default (MRR 0.434 -> 0.489) and is confirmed
+by re-running it. B4/D6 "co-change held pending a semantic-mode corpus-v2 ranking PR set" is fully resolved.
+
+### 2026-07-12 SESSION TERMINAL: autonomous v4-finish runway complete; only maintainer-gated items remain
+The D22 closeout runway is fully worked. Master checklist state: every item [x] except B3 [ ] ([maintainer
+publish]) and R3 [!] (residual reduced to the [maintainer] cut). No eligible autonomous step remains.
+
+Completed this run (all committed green and pushed to feature/v4-finish):
+- F2 candidate racing (the last engineering item) - gate met via its named Fallback (sequential ship + recorded
+  fork-cost finding: concurrent Roslyn binding over shared-base forks serializes, so parallelism buys no
+  wall-clock; race/seq 1.03x on 20 cores).
+- D22a B1 harness fixes - metric split (fuse_check apart from agent-visible build), gold-test oracle post-check
+  (true pass@1 + false-done), per-arm worktree isolation, transcript retention. Deterministic core unit-tested.
+- D22b headline loop re-run (loop.json, 234 rollouts) - true pass@1 fuse 89% vs native 82%, false-done 8 vs 9,
+  build+test 3.1 vs 3.2 with fuse_check separated. 2 of 3 pre-registered gates now hold on the true metric; the
+  build-collapse gate misses but is no longer confounded. Reduced-scope (15/20 tier-1, 59/60 tasks); supersedes
+  the pilot. Docs swept, site builds.
+- D22c review/localize/ranking regen on the reconstructed corpus-v2 PR set (prs-v2.json, 69 PRs) - review
+  precision 93.4% (33/69 semantic), localize recall 37.7%, ranking default MRR 0.434; the D6 co-change prior
+  re-adjudicated NET-NEGATIVE on the semantic-mode corpus (drop-and-re-gate recorded as a named follow-up). Docs
+  + figure (SVG) swept; site builds; retired numbers preserved as *-retired.json.
+- B3 prep - corpus license re-check, standalone-repo README (reproduction), leaderboard skeleton with filled rows.
+
+Remaining, all [maintainer] or descoped-in-writing (NOT autonomous):
+- R3: merge, tag v4.0.0, publish (the one tag triggers NuGet + GitHub release + MCP registry). [maintainer]
+- B3: name and publish the standalone benchmark repo from bench-release/; point the launch docs at its URL. [maintainer]
+- Optional follow-ups recorded, not worked (out of the authorized runway): drop the co-change ranking prior and
+  re-run the ranking gate (D6 evidence supports it); an application-corpus review/localize/ranking regen for
+  external validity (this env's provisioned corpus is library-only); regenerate the PNG figure from the current
+  SVG (no rasterizer in this env, the recorded R3 Fallback).
+
+Per the goal's terminal states, every item is done, descoped, or [!]-blocked on the maintainer. Nothing further
+is autonomously actionable; the v4 cut is the maintainer's.
+
+### 2026-07-12 D22c RECORDED: corpus-v2 review/localize/ranking regenerated; buildable-corpus lift; docs+figure swept
+The three suites ran to completion (background buwl7p8sv, exit 0) over the reconstructed corpus-v2 PR set (69 PRs,
+3 per repo across 23 repos), and the numbers are recorded and swept. This closes D22c's autonomous scope.
+
+Numbers (results/{review,localize,ranking}.json; retired mixed corpus preserved as *-retired.json):
+- review: changed-file recall 100%, precision 93.4% (up from retired 79.8%), F1 0.966, median 1,026 tokens; index
+  modes semantic 33 / partial 18 / syntax 18 (a majority semantic, up from 1/53 on the retired corpus); grep
+  baseline 67% / 8%; 54 of 69 PRs touch the public surface (T2).
+- localize: recall 37.7% (95% CI 30-46, up from retired 15.0%), precision 21.1%; identifier-rich 52%, nl-domain
+  24%, test-only 46%; precision when confident 46.7%; modes semantic 14 / partial 4 / syntax 5.
+- ranking: default MRR 0.434, recall@10 36.3%, nDCG@10 0.320; lexical MRR 0.489, recall@10 38.2% (up from retired
+  MRR 0.197 / recall@10 15.0%).
+
+D6 re-adjudication DISCHARGED on a semantic-mode corpus (the evidence D6 held for): the git co-change prior is
+NET-NEGATIVE on corpus v2 - default-with-prior MRR 0.434 versus default-without-co-change 0.489 (which equals the
+lexical channel exactly), so the prior costs MRR -0.055 and recall@10 -1.9%. This agrees in direction with the
+retired within-CI -0.011 but is now larger and on a semantic corpus. Recommendation recorded: drop the co-change
+prior and re-run the ranking gate to confirm (a named follow-up; not flipped in this doc-sweep pass since a default
+change needs its own engine edit + gate re-run + CHANGELOG). The B4/D6 "held pending a semantic-mode corpus-v2
+ranking PR set" note is now resolved.
+
+Shipped (D22c mechanism, committed earlier this session): CorpusPrReconstructor (pure selection + git first-parent
+walk + dataset writer, 22 tests), CorpusPrSuite (`fuse eval corpus-prs`), CorpusManager.LoadDataset prsFileName +
+manifestPath params, review/localize/ranking threading options.DatasetFile + options.ManifestPath, `--dataset-file`
+CLI option. prs-v2.json = 220 reconstructed records across 23 repos (AutoMapper 0 - recent history is maintenance/
+license commits). Runs used `--limit 3` to bound per-PR restore compute (~70 tasks, comparable to the retired 53).
+
+Docs swept (this session): benchmarks.mdx (corpus description + Suites B/C + ranking gate + WiringBench co-change
+note + synthesis), AGENTS.md (the three suite bullets + the tier-1/D5 note), briefing.md (the three tables +
+findings + synthesis), bench-release/LEADERBOARD.md (corpus-health row). The benchmark FIGURE regenerated: chart
+script cards 02/03 updated to the corpus-v2 numbers and fuse-benchmarks.svg re-emitted (1,026 tokens, 93.4%,
+About 38%); the PNG stays on the recorded R3 Fallback (no SVG rasterizer / cairosvg in this env; SVG is current).
+Site builds clean (npm run build exit 0). The retired numbers remain only in labeled comparison/provenance columns.
+
+Caveats recorded honestly: corpus v2 is a LIBRARY corpus (no application), so the retired mixed corpus (with the
+eShopOnWeb application + adjudicated reading sets) stays the external-validity reference; the corpus-v2 ground truth
+is the reconstructed changed-file set (no adjudicated reading sets), so review precision is a changed-file measure.
+
+Gate: no numeric gate on D22c (it is a provisioned regen + doc sweep); all three suites recorded, docs+figure
+swept, site builds. Autonomous D22c scope COMPLETE.
+
+NEXT ACTION: R3 residual is now largely discharged (the review/localize/ranking regen R3 was blocked on is done and
+swept). Remaining R3 is the [maintainer] cut (merge, tag v4.0.0, publish) and, optionally, an application-corpus
+regen for external validity (out of this env's provisioned scope). B3 leaderboard headline rows are filled; B3
+publish is [maintainer]. Consider recording the D6 co-change drop as a small engine follow-up (drop prior + re-run
+ranking gate) if in scope. Re-read the Master checklist for any remaining autonomous item.
+
+### 2026-07-12 D22c RUNNING: corpus-v2 PR set reconstructed; review/localize/ranking regen launched
+D22b is fully closed: loop.json recorded, gate evaluation done (2 of 3 gates hold on true pass@1), docs swept
+(benchmarks.mdx + AGENTS.md + briefing.md + bench-release/LEADERBOARD.md), and the site builds clean (npm run
+build exit 0). Now D22c, unblocked because the loop released the corpus.
+
+Shipped (D22c wiring, committed): `CorpusPrSuite` (`fuse eval corpus-prs`) reconstructs a review/localize/ranking
+PR set from the corpus-v2 merge history via CorpusPrReconstructor (non-maintenance title filter + 2..25 changed-C#
+-file band); `CorpusManager.LoadDataset` gains prsFileName + manifestPath params; review/localize/ranking pass
+`options.DatasetFile` + `options.ManifestPath`; `--dataset-file` CLI option added. Build/format/tests (133) green.
+
+Reconstructed (committed): `fuse eval corpus-prs --manifest corpus-v2.json --corpus D:/fuse-work/bench
+--dataset-file prs-v2.json` wrote tests/benchmarks/prs-v2.json = 220 PR records across 23 repos (10 per repo cap;
+AutoMapper 0 - its recent history is maintenance/license commits; MediatR and Polly 5 each). The retired review/
+localize/ranking.json were backed up to *-retired.json for provenance before the regen overwrites them.
+
+Launched (background buwl7p8sv): review, then localize, then ranking, each `--manifest corpus-v2.json --corpus
+D:/fuse-work/bench --dataset-file prs-v2.json --restore --limit 3` (~3 PRs/repo, ~70 tasks, comparable to the
+retired 53). Per-PR worktree restore+index, so multi-hour. Log: scratchpad/d22c-suites.log.
+
+NEXT ACTION when buwl7p8sv exits: read results/review.json, localize.json, ranking.json (corpus-v2 numbers now);
+sweep them into benchmarks.mdx (Suites B/C + ranking sections) + AGENTS.md + briefing.md, noting the corpus-v2
+buildable-corpus context and that the retired-corpus numbers are preserved as *-retired.json; regenerate the
+benchmark figure if its numbers moved (assets chart script); rebuild the site. Then R3 release-notes + B3
+leaderboard fill; merge/tag/publish stay [maintainer].
+
+### 2026-07-12 D22b RECORDED: B1 re-run on the D22a harness; 2 of 3 gates now hold on true pass@1
+The full 2-rollout loop re-run completed (background bf705chae, exit 0) and results/loop.json is recorded (234
+rollouts committed). This is the headline re-run D22b authorized, on the D22a-fixed harness that finally measures
+the metrics the pilot could not: TRUE pass@1 from the gold-test oracle post-check, false-done, and agent-visible
+build+test round-trips counted apart from fuse_check turns.
+
+Run: driver claude CLI 2.1.181 pinned to claude-sonnet-4-6; 59 verified oracle tasks (corpus-tasks-v2.json,
+regenerated with gold testFiles), both arms, 2 rollouts per arm; 236 planned, 2 wedged/omitted, 234 recorded (118
+fuse, 116 native). Reduced-scope by pre-registration (D21/C4): corpus at 15/20 tier-1 repos and 59/60 tasks, just
+below the full minimums, so meetsMinimums is False and this is reported with confidence intervals; it supersedes
+the pilot (loop-pilot.json) as the current recorded loop run because it measures the true metrics the pilot could
+not, but it is one task and five tier-1 repos short of a full-minimums headline.
+
+Numbers (results/loop.json):
+- fuse: reached-green proxy 89% (95% CI 83-94); TRUE pass@1 89% (75/84 oracle-scored, 95% CI 82-95); false-done 8;
+  median iters-to-green 1.0; mean agent-visible build+test 3.1; mean fuse_check turns 0.7.
+- native: reached-green proxy 85% (95% CI 78-91); TRUE pass@1 82% (66/80 oracle-scored, 95% CI 74-90); false-done
+  9; median iters-to-green 1.0; mean agent-visible build+test 3.2; mean fuse_check turns 0.0.
+
+Pre-registered B1 gates, now measurable (the whole point of D22a):
+- pass@1 within 5 points, fuse not lower than native: HOLDS on the TRUE oracle pass@1 (fuse 89% vs native 82%, 7
+  points higher) - and now it is a real oracle re-run over the agent's edit, not the transcript proxy.
+- build-plus-test invocations, fuse at most half of native: MISS, and now CLEANLY measured (fuse_check separated
+  out): fuse 3.1 agent-visible build+test vs native 3.2, essentially equal, not half. The honest reading: fuse's
+  edge is a higher true success rate and lower false-done, NOT collapsing build round-trips by half on this arena.
+- false-done, fuse at most native: HOLDS (fuse 8 vs native 9), and now evaluable via the oracle post-check.
+
+Verdict: 2 of 3 gates hold on true metrics (up from "1 proxy gate holds, 2 not evaluable" in the pilot); the
+build-collapse gate misses but is no longer confounded. The two recorded B1 harness gaps are closed. Transcripts
+(83 MB, 234 files) retained on disk under results/loop-transcripts (gitignored; too large to commit, preserved for
+re-scoring); loop.json + the checkpoint carry the derived metrics. B1 stays [x] (the referendum recording was
+always the gate); this re-run strengthens it from a directional pilot to a true-pass@1 result that favors fuse on
+success and honesty, tying on build round-trips.
+
+NEXT ACTION: sweep the loop numbers into benchmarks.mdx + AGENTS.md + briefing.md + bench-release/LEADERBOARD.md
+(this session), then D22c: reconstruct the corpus-v2 PR set (CorpusPrReconstructor over the corpus repos, now that
+the loop released them), wire review/localize/ranking to it, run, and sweep those numbers + the figure. Then R3
+release-notes and B3 leaderboard fill; merge/tag/publish stay [maintainer].
+
+### 2026-07-11 D22b RUNNING: corpus-health regen done; oracle post-check validated; full loop launched
+The corpus-health regen finished (exit 0) and rewrote results/corpus-tasks-v2.json WITH gold testFiles: 59
+verified fail-to-pass tasks across 15 repos, every task carrying non-empty testFiles (sample Scrutor
+test/Scrutor.Tests/ScanningTests.cs); tier-1 15/24, meetsMinimums False (same reduced-scope band as the pilot,
+D21 applies). corpus-health.json + corpus-tasks-v2.json committed. Full solution build + format + benchmarks
+tests (133) green after the regen (the deferred full build, now that the eval process released the CLI DLLs;
+compiles the D22c reconstructor added mid-run).
+
+Smoke test (foreground, one Scrutor task, one rollout) VALIDATED the D22a machinery end to end:
+`loop: Scrutor@26049af5/native#1: proxy-green True, iters 1, builds 1, checks 0, tests 1, oracle pass`. This
+confirms all three D22a fixes work on a real rollout: the metric split (builds 1 and tests 1 counted apart from
+checks 0), the per-arm fresh worktree (restored 2 projects on its own worktree), and the ORACLE POST-CHECK (the
+gold tests were checked out onto the agent's edit and passed = true pass@1, not a transcript proxy). The rollout
+persisted to the per-model checkpoint (recall 1, oraclePassed True). The smoke timed out only mid-fuse-arm (the
+10-minute foreground limit), not a failure; worktrees pruned and stale temp worktree dirs cleaned before the run.
+
+Launched (background bf705chae, env NUGET_PACKAGES=D:/fuse-work/nuget FUSE_LOOP_RUN=1, fresh bin/Release fuse.exe):
+`fuse eval loop --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench --restore --model
+claude-sonnet-4-6 --rollouts 2`. Scope: 59 tasks x 2 arms x 2 rollouts = 236 rollouts (1 already done from the
+smoke), each a real claude rollout + restore + gold-test oracle run, so multi-hour (tens of hours). Resumable via
+results/loop-rollouts-claude-sonnet-4-6.json (each rollout checkpointed); an interruption continues, never
+restarts. Log: scratchpad/loop-full.log.
+
+NEXT ACTION when bf705chae exits: if the checkpoint shows all 236 rollouts done, the run wrote results/loop.json;
+otherwise relaunch the same command to resume from the checkpoint until complete. Then record the loop.json
+headline (per-arm TRUE pass@1 with CIs, false-done, iterations-to-green, agent-visible build+test vs fuse_check
+turns), evaluate the three pre-registered B1 gates on the NOW-MEASURABLE metrics, and if minimum-N is met promote
+it over the pilot; sweep benchmarks.mdx + AGENTS.md + briefing.md + bench-release/LEADERBOARD.md. Do NOT start D22c
+(review/localize/ranking regen over the same corpus) until the loop finishes - both are heavy build/test compute on
+the same repos and would contend.
+
+### 2026-07-11 D22b IN-FLIGHT: corpus-health regen launched (background) to repopulate gold TestFiles
+The B1 headline re-run needs corpus-tasks-v2.json rewritten WITH the gold TestFiles the D22a oracle post-check
+consumes (the pilot file, committed 45c8058, predates D22a and has none). Environment confirmed ready: claude CLI
+2.1.181 on PATH; 24 corpus repos provisioned under D:/fuse-work/bench; C: 57 GB free (> 15 GB floor), D: 337 GB.
+Preserved the pilot loop.json as results/loop-pilot.json (D22b: "the pilot stays recorded"); removed the stale
+per-model loop checkpoint (its old row-ids lack the new #rollout suffix and its rows lack the oracle columns, so
+resuming onto it would corrupt aggregation). Rebuilt fuse.exe (--no-incremental) so the eval host carries D22a/b.
+
+Launched (background, env NUGET_PACKAGES=D:/fuse-work/nuget, via the fresh bin/Release fuse.exe):
+`fuse eval corpus-health --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench --restore
+--verify-tasks 5 --repo-timeout 20` -> rewrites results/corpus-health.json + corpus-tasks-v2.json (now with
+TestFiles). Multi-hour; per-repo skip-and-record timeout (D20c) prevents a wedge.
+
+NEXT ACTION when it completes: (1) REBUILD fuse.exe (`dotnet build src/Host/Fuse.Cli -c Release --no-incremental`;
+the running eval locks the CLI output DLLs, so a full-solution build was deferred - do it once corpus-health
+exits, and it also compiles the D22c CorpusPrReconstructor added mid-run); (2) sanity-check corpus-tasks-v2.json
+carries non-empty testFiles + meetsMinimums; (3) smoke `fuse eval loop --repo Scrutor --limit 1 --rollouts 1`
+(FUSE_LOOP_RUN=1, model claude-sonnet-4-6) to confirm the oracle post-check runs green/na end to end; (4) launch
+the full loop `fuse eval loop --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench --restore
+--model claude-sonnet-4-6 --rollouts 2` with FUSE_LOOP_RUN=1 (background, resumable via per-model checkpoint);
+(5) record loop.json headline (true pass@1, false-done, separated build/check columns) and sweep
+benchmarks.mdx/AGENTS.md/briefing.md + bench-release/LEADERBOARD.md. If minimum-N is met the headline supersedes
+the pilot; else it stays a labeled pilot per D21.
+
+PARALLEL PROGRESS while corpus-health ran (compute-free, committed green, no contention with the background job):
+- B3 prep advanced: corpus-license re-check recorded (tests/benchmarks/corpus-licenses.md - 12 MIT, 6 Apache, 3
+  BSD, 1 MS-PL, 2 source-available AutoMapper/MediatR; manifests publish references not code, so licenses do not
+  gate publication; the two non-OSI repos are a reproducer caveat); B3 standalone-repo staging bundle written
+  (bench-release/README.md reproduction guide + bench-release/LEADERBOARD.md recorded-runs-only skeleton). B3
+  remaining autonomous work: fill the leaderboard headline rows after D22b/D22c; the publish is [maintainer].
+- D22c core landed: CorpusPrReconstructor (pure selection - non-maintenance title filter + 2..25 changed-C#-file
+  band + PrRecord builder) with 22 unit tests. REMAINING D22c (execution phase, after the loop to avoid compute
+  contention): wire the git first-parent walk to feed the selection, write a corpus-v2 PR set (prs-v2.json),
+  point review/localize/ranking at it over the corpus-v2 checkouts, run them, record the numbers, and sweep the
+  docs + figure. Do NOT run D22c concurrently with the loop (both are heavy git/build/test compute on the same
+  corpus).
+
+### 2026-07-11 D22a: B1 harness fixes landed (metric split, oracle post-check, per-arm isolation, transcripts)
+The two recorded B1 harness gaps plus a third fidelity bug found while reading are fixed, so D22b can produce a
+headline. This is harness work (tests/benchmarks), not shipped product; the deterministic core is unit-tested and
+the model-driven wiring is exercised by D22b's provisioned run.
+
+Preconditions (recorded before editing): (1) LoopMetrics folded fuse_check into TurnKind.Build
+(LoopTranscriptClassifier.cs:96-97 mapped fuse_check -> Build), the first B1 gap. (2) No oracle post-check existed
+- ReachedGreen was the transcript proxy only (LoopMetrics.cs Compute). (3) THIRD bug found: both arms shared one
+worktree (LoopSuite.cs old loop: one AddWorktreeAsync, `foreach arm` reused it), so arm 2 started from arm 1's
+edits - which makes any per-arm oracle post-check meaningless. (4) CorpusTaskRecord persisted TestFilter but not
+the changed-test file paths the oracle needs to apply gold tests onto the agent's edit (CandidateTask HAS
+TestFiles; the record dropped them).
+
+Shipped:
+- Metric split (D22a gap 1): TurnKind.Check added; classifier maps fuse_check -> Check (not Build); dotnet build
+  -> Build, dotnet test -> Test. LoopMetricsResult gains CheckInvocations + TestInvocations; BuildInvocations is
+  now agent-visible dotnet build only; AgentVisibleVerifications = build + test (the honest loop-collapse
+  denominator). ReachedGreen/IterationsToGreen count over Build|Check|Test (the proxy, unchanged meaning).
+- Oracle post-check (D22a gap 2): OraclePostCheck.Decide(proxyGreen, goldRun) -> (OraclePassed bool?, FalseDone,
+  reason): true pass@1 from the gold tests, false-done = proxy-green-but-oracle-red, null when unscored. Wired in
+  LoopSuite: RunOracleAsync checks the task's gold test files out of the merge commit onto the agent's edited
+  worktree (`git checkout <merge> -- <testFiles>`) then runs TaskOracle.RunDotnetTestAsync with the task filter.
+- Per-arm isolation (gap 3): each arm now runs on its OWN fresh worktree at the base ref (add/restore/rollout/
+  remove per arm), so the oracle post-check scores each arm's own edit from an identical clean start.
+- Gold-test paths persisted (enables the oracle): CorpusTaskRecord gains TestFiles; CorpusHealthSuite writes
+  candidate.TestFiles; LoopTask carries MergeCommit/TestFilter/TestFiles + a HasOracle guard; the legacy dataset
+  path sets them empty (no oracle, skipped not guessed).
+- Transcript retention (D22a): each rollout's raw stream-json is saved under results/loop-transcripts/, so a
+  disputed rollout is re-scorable.
+- Reporting: arm notes now carry TRUE pass@1 (CI) + oracle-scored count + false-done + mean fuse_check turns +
+  mean agent-visible build+test invocations, separately from the proxy reached-green.
+- Tests (deterministic, all run): +1 LoopMetrics (check-own-column), +2 classifier (check-not-build, three
+  columns separated), +5 OraclePostCheckTests (true pass / false-done / unscored / no-gold), +1 LoopTaskSource
+  (HasOracle carry-through + no-gold). Fuse.Benchmarks.Tests 103 -> 111.
+
+Commands (env NUGET_PACKAGES=D:/fuse-work/nuget):
+- `dotnet build Fuse.slnx -c Release` -> 0 Error(s).
+- `dotnet format Fuse.slnx --verify-no-changes` -> exit 0.
+- `dotnet test Fuse.slnx -c Release --no-build` -> all projects Passed on a clean run (156/156 Cli twice;
+  Benchmarks 111). NOTE: `IndexCommandParseTests` (3 command-parse tests, untouched by this work) flake under full
+  parallel load (1 of 3 full Cli runs showed 3 failures; they pass 3/3 in isolation and 156/156 on clean full
+  runs) - a pre-existing parallel-execution flake, not a D22a regression (my changes are in tests/benchmarks and
+  Fuse.Workspace/Mcp; these are argument-parsing tests). Recorded honestly, not masked.
+
+Gate: no numeric gate on D22a (it is the harness fix that unblocks D22b's gated re-run). Build/format green; the
+deterministic core is fully unit-tested and green; the model-driven wiring runs under D22b.
+
+NEXT ACTION: D22b - regenerate corpus-health with --verify-tasks so corpus-tasks-v2.json is rewritten WITH
+TestFiles (the pre-D22a file has none, so the oracle would be na), then run `fuse eval loop` with FUSE_LOOP_RUN=1,
+2 rollouts per arm per task, pinned to claude-sonnet-4-6, retaining transcripts; record loop.json with true
+pass@1, false-done, and the separated build/check columns; sweep the B1 docs.
+
+### 2026-07-11 F2 (GATE via named Fallback): candidate racing ships sequential; fork-cost finding recorded
+F2 is the last engineering item. Candidate racing shipped on `fuse_test`; the parallel wall-clock gate was missed
+for a measured reason and the item's own named Fallback was applied. Preconditions were recorded in the entry
+below (commit after cb5d21e); this entry records the build, numbers, deviation, and gate verdict.
+
+Shipped:
+- `CandidateRacer` (src/Core/Fuse.Workspace/CandidateRacer.cs): RaceCandidate/RaceVerdict/RaceReport +
+  `RaceAsync(check, candidates, ct)`. Evaluates candidates one fork at a time over the shared held compilation;
+  winner by STRICT DOMINANCE only (a unique all-clean candidate beats any with errors; >=2 clean = tie; 0 clean
+  = no winner). Not-applicable (no held compilation covers the file) is neither clean nor red.
+- `fuse_test` gains `candidates` (JSON array of {id?, file, content}, source-gen parsed via
+  RaceCandidateInput[] in FuseCliJsonContext), `maxCandidates` (bound on k, default 4), `analyzers`. Races over
+  `ResidentWorkspaces.TryCheckOverlayAsync`; abstains (naming FUSE_RESIDENT=1) when no resident serves the root;
+  renders per-candidate diagnostics + winner/tie/none + a compiler-grade claim (U2). Never applies a candidate.
+- Tests (13): CandidateRacerTests (7, always-run: winner/tie/none/not-applicable/verdict-equality/order/
+  one-fork-at-a-time/empty-rejected) + CandidateRaceResidentTests (1, binlog-backed: real fork-sharing timing +
+  verdict equality + winner on a 40-helper/150-method fixture) + FuseTestRaceTests (5 MCP: winner, tie, abstain,
+  bound-exceeded, single-candidate+malformed-json).
+- Docs: mcp-tools.mdx candidate-racing section (with the honest sequential cost note), CHANGELOG.md fuse_test
+  bullet, AGENTS.md fuse_test bullet.
+
+Commands (env NUGET_PACKAGES=D:/fuse-work/nuget):
+- `dotnet build Fuse.slnx -c Release` -> 0 Error(s).
+- `dotnet format Fuse.slnx --verify-no-changes` -> exit 0 (clean).
+- `dotnet test Fuse.slnx -c Release --no-build` -> all projects Passed!, 0 failed (Fuse.Workspace.Tests 46,
+  Fuse.Cli.Tests 156 - both include the new race tests; count went up, tests run).
+
+Numbers (the F2 fork-cost spike, recorded from CandidateRaceResidentTests console output; machine 20 logical
+cores; fixture = 40 helper classes + a 150-method Widget.cs the candidates edit):
+- Parallel probe (pre-Fallback, to decide the design): single warm verify ~36-37 ms; 3 checks SEQUENTIAL ~77 ms;
+  3 checks CONCURRENT (Task.WhenAll, maxParallelism 4) ~79-80 ms. race/single ~2.14-2.18x; race/seq3 ~1.03-1.05x.
+  Reading: with 20 cores idle, concurrency gained ~3% over sequential - concurrent Roslyn semantic binding over
+  forks that share a base compilation serializes on the base's internal binding caches. Parallelism buys no
+  wall-clock and only multiplies live-fork memory by k.
+- Shipped sequential racer: single ~27-37 ms, race(seq, k=3) ~77-105 ms, race/single ~2.9-4.0x (i.e. ~k warm
+  verifies), verdict-equality exact, winner correct.
+
+Deviation (named, per the guardrails): the Gate's wall-clock criterion "race < 2x a single verify for k=3
+(sharing works)" is NOT met by a parallel race (2.14x measured) and is not achievable by parallelism because the
+concurrent path does not parallelize (race/seq3 1.03x on 20 cores). The item's named Fallback - "ship sequential
+multi-candidate compare (same API, no parallelism) and record the fork-cost finding" - is applied verbatim: the
+racer is sequential (holding one fork at a time, which also directly mitigates the stated kill risk "memory under
+k forks"), the API and verdicts are unchanged, and the fork-cost finding is recorded here. The gate is NOT
+reinterpreted to pass; it is met via its own Fallback. Second deviation: per-candidate TEST EXECUTION over an
+unwritten candidate is not shipped (it needs the T1 emit path, already descoped in writing under T1), so a race
+reports typecheck diagnostics, not test verdicts - descoped in writing here rather than added as a dead blocked
+item (no silent tail; it is the same already-tracked emit dependency).
+
+Gate: verdict-equality green PASS; wall-clock criterion met via the named Fallback (sequential ship + fork-cost
+finding recorded) PASS. F2 -> [x].
+
+NEXT ACTION: re-read the Master checklist top-to-bottom. F2 [x] now; remaining eligible: D22a B1 harness fixes
+(separate agent-visible dotnet build/test from fuse_check in LoopMetrics; add an oracle post-check; retain
+transcripts) with tests, then D22b re-run, then D22c PR reconstruction + review/localize/ranking regen, then R3
+completion, then B3 prep. Start D22a: read tests/benchmarks/Fuse.Benchmarks/Suites/LoopSuite.cs + LoopMetrics.
+
+### 2026-07-11 F2 preconditions: candidate racing scoped to the fork-cheap typecheck
+D22 recorded (commit cb5d21e). F2 is the last engineering item; the Wave 7 hard gate (B1 recorded) is met.
+Preconditions run and recorded before the first edit, per the per-item procedure:
+
+- P1 "T1 emit path shipped (not the selection-only fallback)": NOT met, and this is decisive for scope. T1's
+  own progress note (this file, master-checklist T1 line) records the emit fast path DESCOPED to a follow-up
+  (compile-time refs cannot run; needs the runtime closure), shipping selection+build-grade as the default.
+  `FuseTestAsync` (src/Host/Fuse.Cli/Mcp/FuseTools.Retrieval.cs:300-375) runs `BuildGradeTestRunner.RunAsync`
+  against the on-disk solution/project, so it cannot execute tests over an UNWRITTEN speculative candidate edit
+  without emit. Consequence: per-candidate *test execution* at racing speed is unavailable on this substrate.
+  F2 therefore races the speculative *typecheck* (the fork-cheap primitive that IS the F2 thesis and the
+  wall-clock gate's subject); per-candidate test-verdict racing is descoped in writing, riding T1's existing
+  emit descope (not a new blocked checklist item, per no-silent-tails: the remainder is the same already-
+  descoped emit dependency). Recorded in the F2 completion entry.
+- P2 "S1 overlay isolation tests green": met. `ResidentWorkspace.TryFork`
+  (src/Core/Fuse.Workspace/ResidentWorkspace.cs:159-190) forks the held compilation per overlay via
+  `Compilation.ReplaceSyntaxTree`, reusing the SAME immutable base `project.Compilation` object across forks
+  (unchanged trees shared) - exactly the sharing F2 races over. ResidentWorkspaceTests prove successive overlay
+  checks answer from one held state (clean then broken against the same resident).
+- P3 "measure fork cost on a fixture (spike, recorded)": the F2 verdict-equality + wall-clock test records it
+  (a single overlay verify vs a k=3 race over the shared base), recorded in the completion entry.
+
+Design (within F2 Ships/Do-not): a `CandidateRacer` in Fuse.Workspace races k candidate single-file edits (the
+shipped fuse_check contract: file + content) in parallel over the shared resident compilation, bounded by cores,
+returning per-candidate diagnostics and a winner by STRICT DOMINANCE only (a unique all-clean candidate beats any
+with errors; multiple clean = tie; none clean = no winner). Wired into `fuse_test` via a `candidates` JSON param
+(source-gen serialized, honoring the JsonSerializerContext invariant). Gate target: race wall-clock < 2x a single
+verify at k=3 (sharing works) + verdict-equality. Next action: implement engine + tests + docs, run the 3 gates +
+validation, record the completion entry.
+
+### 2026-07-11 B1 checkpoint 7 (GATE: referendum RECORDED reduced-scope): loop.json landed; B1 [x]
+The B1 loop referendum ran end to end on the corpus-v2 arena and is recorded. Per B1's own gate philosophy
+(the referendum being recorded is the gate, not the referendum being won), B1 -> [x]; the gate miss triggers
+the pre-registered Fallback (publish honestly, analyze, re-plan), done below.
+
+Shipped this checkpoint (commits):
+- corpus-v2 health re-run populating the replayable task file (45c8058): 59 verified fail-to-pass oracle
+  tasks in results/corpus-tasks-v2.json, tier-1 15/24 (corpus-health.json regenerated). meetsMinimums false
+  (59 < 60 tasks, 15 < 20 tier-1), above the 40-task reduced-scope floor, so the gate allows it.
+- The loop run (b7ac00d): results/loop.json, 116 rollouts. gitignored the per-model resume checkpoint.
+- Docs swept (this commit): benchmarks.mdx recorded-run subsection, AGENTS.md loop bullet, briefing.md 9.7
+  and the 9.12 synthesis, all rewritten to the B1 numbers; the retired 4-PR environment-null marked superseded.
+
+Commands (env NUGET_PACKAGES=D:/fuse-work/nuget, FUSE_LOOP_RUN=1, via the freshly rebuilt bin/Release fuse.exe):
+- `fuse eval corpus-health --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench --restore
+  --verify-tasks 5 --repo-timeout 20` -> 59 verified tasks, tier-1 15/24 (corpus-health.json + corpus-tasks-v2.json).
+- Smoke test `fuse eval loop ... --repo Scrutor --limit 1` (both arms) validated the wiring end to end
+  (worktree + restore + claude rollout + transcript classify + checkpoint) before the full run.
+- `fuse eval loop --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench --restore --model
+  claude-sonnet-4-6` -> full run, resumed past the smoke-test task from the checkpoint.
+
+Numbers (results/loop.json; driver claude CLI 2.1.181 + claude-sonnet-4-6; reduced-scope, no headline, CIs):
+59 verified tasks, both arms, one rollout each; 2 rollouts wedged and omitted (one per arm), 58 scored per arm.
+- fuse: reached green 95% (55/58, 95% CI 88-100), median iters-to-green 1.0, mean verification turns 1.60.
+- native: reached green 86% (50/58, 95% CI 78-95), median iters-to-green 1.0, mean verification turns 1.52.
+
+Pre-registered gates (evaluated, published either way):
+- pass@1 within 5 points (fuse not lower than native): HOLDS on the transcript-derived reached-green proxy
+  (fuse 9 points higher). Caveat: proxy, not oracle-scored pass@1 (the harness runs no oracle post-check).
+- build-plus-test invocations, fuse at most half of native: MISS as measured (1.60 vs 1.52) AND not cleanly
+  measurable: LoopMetrics.BuildInvocations folds a speculative fuse_check into the same column as a
+  dotnet build (by design), so this harness cannot isolate agent-visible dotnet-build round-trips.
+- false-done rate, fuse at most native: NOT EVALUABLE here (no oracle post-check).
+
+Miss interpretation (per the B1 guide): this is neither a clean win nor a clean null. The fuse arm resolves
+MORE tasks (95 vs 86 percent) on a real arena, a directional signal in the thesis's favor; but the specific
+build-round-trip-collapse gate is not measurable with the current harness. The re-plan input therefore targets
+the HARNESS, not the substrate: (1) the classifier must count agent-visible `dotnet build` separately from
+`fuse_check`; (2) an oracle post-check must run after each rollout for true pass@1 and false-done; (3) raw
+transcripts must be retained. These are the concrete follow-ups a decisive (full-scope, green corpus-health)
+referendum needs; the oracle-collapse thesis is not damaged (fuse resolves more), it is under-instrumented.
+
+Gate: B1 referendum RECORDED -> PASS (recording is the gate). The three pre-registered outcome gates: 1 holds
+(proxy), 1 misses/under-instrumented, 1 not evaluable -> Fallback applied (published + analyzed + re-planned
+above). B1 -> [x]. Three build/test/format gates were green on each code commit; data/docs commits carry no
+code change.
+
+EXACT NEXT ACTION: B1 is recorded, so F2 (Wave 7) and B3 [maintainer publish] are unblocked on the B1 gate.
+Remaining autonomous candidate: F2 (the one frontier item in this plan); B3/R3 tail are [maintainer]. If F2
+is out of scope for this run, hand off with B1 [x] recorded and the harness re-plan captured above.
+
+### 2026-07-10 B1 checkpoint 6: D21 authorized; task persistence + loop wiring landed; corpus-health re-run launched
+The maintainer authorized the reduced-scope B1 referendum pinned to claude-sonnet-4-6 (D21). This checkpoint
+lands the harness prerequisites and launches the task-population run.
+
+STEP 0 (prereq, PASS): `claude --version` -> 2.1.181 (Claude Code); headless smoke test
+`echo "Say only: OK" | claude --model claude-sonnet-4-6 -p` returned "OK" (exit 0). The pinned model is
+available on this runner.
+
+D21 recorded (commit 61eb390) before any code: B1 runs reduced-scope (corpus-health 15/24 tier-1, 44 tasks,
+meetsMinimums false; the pre-registered reduced-scope gate allows it); driver is the claude CLI pinned to
+claude-sonnet-4-6 (maintainer override of the claude-sonnet-5 default); pilot, CIs, no headline; CLI + model
+versions recorded in loop.json.
+
+Shipped (commits, each three-gates-green: build 0 errors, format exit 0, full suite 103 Benchmarks.Tests
+passing incl. 8 new):
+- Task persistence (55f6638): `CorpusTaskRecord`/`CorpusTaskSet` model + JSON context; corpus-health's
+  oracle-task pass now emits `results/corpus-tasks-v2.json` (repo, base, merge, testFilter, title) so the
+  loop referendum can replay the exact verified set. `LoopCheckpoint` model added.
+- Loop wiring + resume (9d3b85f): `LoopTaskSource` loads corpus-tasks-v2.json (falls back to dotnet-prs-v1
+  when absent); `LoopSuite` iterates the loaded tasks; per-model resume checkpoint
+  (`loop-rollouts-<model>.json`) written after each rollout so a long run resumes, never restarts; wedged
+  rollouts omitted-and-counted (never stubbed); CLI version + bootstrap CIs recorded. 8 unit tests for the
+  task-file load (`LoopTaskSourceTests`).
+
+Environment verified: C: 57 GB free (> 15 GB gate), D: 337 GB free; all 24 corpus-v2 repos present at
+D:/fuse-work/bench; NUGET_PACKAGES=D:/fuse-work/nuget.
+
+Commands: `fuse eval corpus-health --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench
+--restore --verify-tasks 5 --repo-timeout 20` launched (harness bg task beu1hrubb) to populate
+corpus-tasks-v2.json. Long compute expected.
+
+Gate: STEP 0 PASS; STEP 1 code landed and gate-green. B1 not yet recorded (the model run is STEP 2).
+
+EXACT NEXT ACTION: on corpus-health completion, commit corpus-tasks-v2.json + corpus-health.json, then run
+`FUSE_LOOP_RUN=1 fuse eval loop --restore --model claude-sonnet-4-6` (both arms, corpus-v2 tasks), resuming
+from the checkpoint; record results/loop.json with model+CLI versions, N, per-arm reached-green/iters/builds
++ CIs; then mark B1 [x] (or [!] with the exact blocker).
+
+### 2026-07-10 checkpoint 5 (session end): autonomous runway complete; remainder is user/maintainer-gated
+This v4-finish run (branch feature/v4-finish, off main) drove the corpus-v2 program end to end and closed
+every checklist item that was autonomously completable. Closed this run: C3 [x] (tier-1 default-on proven,
+D20a), C4 [x] (corpus-v2 health via reduced-scope Fallback: 15/24 tier-1, 44 verified oracle tasks), B4 [x]
+(corpus-scale WiringBench sample, D6 held), G2 [x] (iteration 2 typed HttpClient, Suite A 24/24). Engine
+fixes that raised tier-1 accuracy: two build-capture signing artifacts (CS7027 and the relative-keyfile
+InternalsVisibleTo cascade), the per-repo hard timeout with skip-and-record, the oracle-task extractor +
+merge-commit mining + partial-count preservation, and the reduced-scope corpus-health gate. Every unit is
+committed and pushed; the tree is green (build 0 errors, full test suite passes, format clean).
+
+Remaining Master-checklist items are all gated on the user or the maintainer (the goal's terminal state):
+- B1 [!] - the referendum is model-driven (claude-sonnet-5 loop). It is reduced-scope-ready (the gate allows
+  it) but blocked on: (a) authorization to run a model-driven suite while corpus-health is reduced-scope
+  rather than green (the standing guardrail forbids it without a decision), (b) persisting the 44 verified
+  tasks to a replayable file + wiring LoopSuite to consume them (LoopSuite still loads dotnet-prs-v1), and
+  (c) the API budget/time for the nested run. UNBLOCK (user): authorize a reduced-scope model run (or
+  provision a runner that reaches 20 tier-1 + 60 tasks), then the persistence/wiring + the pinned run.
+- F2 [ ] - blocked by the Wave 7 hard gate (B1 recorded before F2). UNBLOCK: B1 first.
+- B3 [ ] [maintainer publish] - blocked on B1/B2 + the human publish. UNBLOCK (maintainer): after B1.
+- R3 [!] - autonomous release-hygiene is complete (corpus-v2 + WiringBench numbers regenerated and swept
+  into the benchmarks doc). Remaining is [maintainer]: the v4 tag/publish, and a provisioned
+  review/localize/ranking regen on a buildable-PR corpus (bounded here by the corpus-PR gap - corpus v2 has
+  no ranking/PR ground-truth set, so those suites still score the retired corpus with its documented
+  build-ceiling). UNBLOCK (maintainer): cut the tag; optionally provision the buildable-PR regen.
+
+No eligible autonomous item remains. Handing off: the four items above need a user authorization
+(reduced-scope B1) or a maintainer action (tag/publish), per the plan's [maintainer] markers and the
+model-suite guardrail.
+
+### 2026-07-10 checkpoint 4: B4 sample + reduced-scope gate + R3 doc sweep; item states reconciled
+After closing C3 [x] and C4 [x] (via reduced-scope), this stretch landed the downstream deterministic work
+and reconciled the model/maintainer-blocked items.
+
+Shipped (commits): the reduced-scope corpus-health gate allowance (d2ecac5) - CorpusHealthGate returns a
+REDUCED-SCOPE decision (no headline, CIs) when below the full minimums but at or above the 40-task floor,
+loop/agent label the run, 4 gate tests updated; the manifest-driven corpus-sample path (fb25771) so
+WiringBench samples over corpus v2; the corpus-v2 WiringBench sample (b3bda20: 456 edges/18 types) and its
+v2 record + bounded adjudication + co-change decision (9a64ef8); the benchmarks-doc sweep recording the
+corpus-v2 numbers (95cd1bb). B4 -> [x] (first-run deliverable; D6 held). C3/C4 closed earlier this day.
+
+Item states after this checkpoint (Master checklist is the source of truth):
+- B4 [x] via first-run deliverable (sample + distribution + bounded adjudication + D6 held).
+- B1 [!] reduced-scope-ready, BLOCKED on the model run: gate now allows reduced-scope, but (1) the goal's
+  guardrail runs model suites only after corpus-health is green (it is reduced-scope, not green) so a
+  reduced-scope model run needs explicit authorization; (2) the 44 verified tasks need persisting + LoopSuite
+  wiring to be replayable (LoopSuite still loads dotnet-prs-v1); (3) the run is a nested claude-sonnet-5 loop
+  (real API budget). Not autonomously completable without authorization/provisioning.
+- F2 [ ] blocked on B1 (Wave 7 hard gate: B1 recorded before F2).
+- B3 [ ] [maintainer] blocked on B1/B2 + the human publish.
+- G2 [!] iteration-2 unblocked (frequency data exists) but deferred as a focused, Suite-A-exactness-gated
+  unit; the major patterns are already covered and corpus v2 is a confounded (library) frequency source.
+- R3 [!] autonomous release-hygiene complete (corpus-v2 numbers regenerated + swept); the review/localize/
+  ranking canonical regen on a buildable-PR corpus is bounded by the corpus-PR gap, and merge/tag/publish
+  are [maintainer].
+
+Recurring build papercut recorded: `dotnet build Fuse.slnx` incremental does not reliably re-copy an updated
+Fuse.Benchmarks.dll (or the bundled build-capture worker) into Fuse.Cli/bin; after changing Fuse.Benchmarks
+or the worker, `dotnet build src/Host/Fuse.Cli/Fuse.Cli.csproj -c Release -t:Rebuild` before running eval. A
+stale copy silently ran the OLD corpus-sample path once (caught and corrected before recording).
+
+EXACT NEXT ACTION: the remaining eligible non-blocked item is G2 iteration 2 (add analyzers, exactness-gated).
+B1/F2/B3 are blocked on a provisioned/authorized model run or the maintainer; R3's remainder is [maintainer].
+
+### 2026-07-10 C4 (checkpoint 3, GATE via reduced-scope Fallback): 15 tier-1, 44 verified oracle tasks
+Context: continues checkpoint 2. The oracle-task half of C4 was wired and run end to end on corpus-v2.
+
+Shipped this checkpoint (commits): the oracle-task extractor `CorpusTaskExtractor` (mine first-parent PR
+commits that change both tests and source, derive a dotnet-test filter from the changed test classes,
+verify fail-to-pass via `TaskOracle` over isolated base/merge worktrees) + wiring into corpus-health
+behind `--verify-tasks N`/`--scan-commits` + 6 unit tests (af74d04); the WiringBench adjudication protocol
+(b747902); the merge-commit mining fix (walk first-parent INCLUDING merges, diff each commit against its
+first parent so a merge commit yields its PR content) + per-repo partial-count preservation on timeout
+(8a98390). Also unshallowed the 13 originally shallow-cloned corpus repos (a prior session had depth-1
+clones, so their history could not be mined) - a corpus-provisioning step, not a code change.
+
+Numbers (results/corpus-health.json, committed e91abb4): tier-1 15/24; verified oracle tasks 44 of 287
+attempted; meetsMinimums FALSE. Repos yielding verified fail-to-pass tasks: Scrutor 5, Ardalis.Specification
+5, Ardalis.GuardClauses 5, NSubstitute 5, CsvHelper 5, YamlDotNet 5, CommandLineParser 5, RestSharp 4,
+quartznet 5. The end-to-end pipeline is proven: each verified task ran the changed tests at the base (with
+the tests applied) - failing - and at the merge - green, re-run agreeing - real test execution, not overlap.
+
+Findings (the shortfall, per D20/C4 Fallback and the metrics-dictionary oracle-coverage caveat):
+- Tier-1 15/24 (< 20): bounded by build-capture rehydration fidelity on AUXILIARY projects (a repo's
+  library rehydrates clean but its NUnit test project shows CS0117 Assert.AreEqual, its own Roslyn
+  source-generator project shows an API mismatch against Basic.CompilerLog's Roslyn, or a Span<T> generic
+  inference gap), plus whole-solution build failures on this SDK for ~6 repos - NOT the libraries being
+  unbuildable. The cheap systematic lever (strong-name signing) is fully exploited (10 -> 15). Closing the
+  residual to 20 needs per-repo rehydration-fidelity work in Basic.CompilerLog territory, not a config flip.
+- Verified tasks 44 (>= 40, < 60): the fail-to-pass yield is bounded to repos whose recent-history worktrees
+  build and test on .NET 10 without an external service; repos needing SQL/Redis (Dapper, StackExchange.Redis)
+  or whose scanned candidates span non-.NET-10-buildable history (AutoFixture, Newtonsoft, Nancy, MediatR,
+  AutoMapper, Humanizer, NodaTime, Bogus, Flurl) yield 0. 44 is in the pre-registered reduced-scope band.
+
+Gate: NOT MET on the raw minimums (>= 20 tier-1 AND >= 60 tasks). FALLBACK APPLIED (pre-registered, D20/C4):
+below the minimums, the model-driven arena shrinks to reduced-scope (40-60 tasks with CIs; 44 qualifies -
+above the 40 no-headline floor), and the shortfall is recorded as this environment-buildability plus
+rehydration-fidelity finding, not a remediation-engine defect. The C4 machinery (manifest, corpus-health
+command with tier + oracle-task verification, the CorpusHealthGate model-suite refusal, docs) all ships and
+is proven; the corpus is a real arena of 44 mechanically-verified fail-to-pass tasks. C4 -> [x] via Fallback.
+
+EXACT NEXT ACTION: B1 is the referendum and is model-driven (claude-sonnet-5). corpus-health.json reports
+meetsMinimums FALSE (tier 15 < 20), so the shipped CorpusHealthGate REFUSES B1 by construction. Two honest
+paths, in priority order: (1) implement the pre-registered reduced-scope allowance in CorpusHealthGate (a
+`reduced-scope` verdict when 40 <= tasks < 60, gating a no-headline pilot B1 run with CIs and the shortfall
+caveat) - this is the D20/C4 protocol made executable; then run B1 reduced-scope pinned to claude-sonnet-5.
+(2) If a reduced-scope model run is out of budget this session, record B1 as reduced-scope-ready and blocked
+on the model run, and proceed to R3 numbers regen (which now has the corpus-v2 tier + task artifact) and G2
+iteration 2 (frequency data). Do NOT relax the tier minimum to force meetsMinimums true - that would be
+reinterpreting the gate; the reduced-scope path is the sanctioned response.
+
+### 2026-07-10 C4/C3 (checkpoint 2): corpus-v2 tier-1 reaches 14/24; the tier ceiling is diagnosed
+Context: continues checkpoint 1 on feature/v4-finish. Two build-capture signing fixes landed and were
+measured by two full corpus-health sweeps over the 24-repo corpus-v2 (D:/fuse-work/bench, --restore,
+--repo-timeout 20).
+
+Numbers (results/corpus-health.json, committed dc0899a):
+- Sweep 1 (after CS7027 fix only): tier-1 10/24.
+- Sweep 2 (after the keyfile-resolve fix, commit 399c42f): tier-1 14/24. Flipped by the keyfile-resolve
+  fix: CsvHelper, AutoMapper, MediatR, serilog (their strong-named test projects' InternalsVisibleTo
+  cascade cleared). Tier-1 (14): Scrutor, Ardalis.GuardClauses, NSubstitute, Bogus, CsvHelper, Flurl,
+  YamlDotNet, CommandLineParser, NodaTime, AutoFixture, AutoMapper, FluentValidation, MediatR, serilog.
+
+Tier-ceiling diagnosis (why the other 10 are not tier-1; the "semantic" tier requires EVERY project in
+the solution - tests, samples, source-generator projects - to rehydrate with zero errors):
+- Partial (4): Shouldly - CS0411 Span<T> generic inference in a multi-target library TFM (rehydration
+  fidelity, not signing); RestSharp - CS0106/CS1061 in the repo's OWN Roslyn source-generator project
+  (rehydrated against Basic.CompilerLog's Roslyn 4.14, an API mismatch with the pinned analyzer Roslyn);
+  quartznet - the library projects are clean post-fix, but Quartz.Tests.Unit has 236x CS0117 "'Assert'
+  does not contain 'AreEqual'" (an NUnit reference-closure rehydration gap; the real dotnet build
+  resolves it); Ardalis.Specification - real dotnet build exits 1 here (EF Core project cannot see the
+  core project's ISpecificationEvaluator/IEvaluator at its pinned commit).
+- Syntax (6): Dapper, Humanizer, Nancy, Newtonsoft.Json, Polly, StackExchange.Redis - build capture
+  returned null (the whole-solution build did not succeed on this SDK, so the tier fell to the
+  MSBuildWorkspace/syntax fallback). One unbuildable project in a large solution tanks the whole repo.
+
+Finding (D20/C4 Fallback + the metrics-dictionary "oracle coverage" caveat): 14/24 tier-1 is bounded by
+(a) genuine whole-solution build failures on this SDK for ~6 repos and (b) build-capture rehydration
+fidelity on auxiliary (test/sample/generator) projects for the partials - NOT by the libraries being
+unbuildable (the library projects of the partials rehydrate clean). The cheap systematic lever (strong-
+name signing) is fully exploited; the residual is heterogeneous and per-repo. The tier-1 count therefore
+understates repo buildability; it measures whole-solution rehydration cleanliness. This is the honest
+"buildable .NET repos" versus "the wild" distinction the C4 kill-risk names.
+
+C3 (D20a): the corpus-v2 tier distribution IS C3's re-derived gate evidence - tier-1 default-on demonstrably
+works where a repo's whole solution rehydrates clean (14 of 24 corpus-v2 repos reach semantic on the main
+checkout with zero configuration, up from the retired corpus where main checkouts loaded syntax/partial).
+The old-corpus review 5/53 stands as the documented build-ceiling artifact (historical PR worktrees cannot
+build at tier-1). C3 mechanism is proven; gate met under D20a's re-derivation.
+
+EXACT NEXT ACTION: launch the oracle-task pass (fuse eval corpus-health --verify-tasks N --restore) - real
+dotnet test execution is NOT bound by the rehydration-fidelity gaps, so tasks can verify on buildable
+repos. Record the verified-task count. Then settle C4's gate: tier 14/24 (< 20) and tasks (likely < 60)
+=> reduced-scope fallback per D20/C4, recorded as this environment-buildability finding. Then mark C3 [x]
+under D20a and R3 numbers can proceed.
+
+### 2026-07-10 C4 (checkpoint 1): corpus-v2 expansion, timeout, and the signing-artifact tier-1 fix
+Context: v4-finish autonomous run on branch feature/v4-finish (off main, which carries the whole
+merged v4 tree). D20 recorded first (the three maintainer runway calls). This checkpoint lands the
+runway plumbing and one substantive engine fix that unblocks the tier-1 count.
+
+Shipped this checkpoint (each its own commit, pushed):
+- D20 decision record (commit a992c15; this commit also swept the prior sessions' uncommitted v4
+  tree into the branch - build verified green exit 0 before/after).
+- Per-repo hard timeout for the corpus-health sweep (commit 1796015): `--repo-timeout <min>` on
+  `fuse eval`, `EvalOptions.RepoTimeoutMinutes`, `CorpusHealthSuite.RunWithRepoTimeoutAsync` (linked
+  CTS + CancelAfter; a budget timeout throws `RepoTimeoutException` -> tier "timeout" recorded and
+  skipped, an outer cancel still propagates). DotnetCli/ProcessRunner now kill the process tree on
+  cancellation so the timeout is hard (a stalling `dotnet restore` cannot orphan). 4 timeout unit
+  tests (CorpusHealthTimeoutTests) + benchmarks doc note. Full benchmarks test project green (82).
+- corpus-v2 manifest expanded 13 -> 24 buildable candidates (commit d10cce5): added Scrutor,
+  Ardalis.Specification, Ardalis.GuardClauses, Shouldly, NSubstitute, Bogus, CsvHelper, Flurl,
+  YamlDotNet, CommandLineParser, NodaTime at pinned HEAD SHAs. FluentAssertions excluded (v8+ is a
+  commercial license). All 24 cloned under D:/fuse-work/bench at their pinned commits.
+- Tier-1 signing-artifact fix (commit 1b9df6b): DIAGNOSED via a scratch Basic.CompilerLog probe -
+  Scrutor built clean (`dotnet build` 0 errors) yet the rehydrated compilation reported ErrorCount 1
+  on every TFM: `CS7027 Error signing output with public key from file '../signing.snk' -- File not
+  found`. The captured compiler call records a RELATIVE CryptoKeyFile that does not resolve in the
+  rehydration sandbox; that emit-output artifact was counting as a code error, dropping every cleanly
+  building strong-named repo below tier-1 (and could false-red fuse_check). Fix: BuildCaptureRehydrator
+  .WithoutSigning neutralizes CryptoKeyFile/KeyContainer/PublicKey/DelaySign/PublicSign before
+  diagnostics are read at both GetCompilationAfterGenerators sites (tier count + CheckFromLog, which
+  also covers CheckAsync). We only ever rehydrate a build that already succeeded (exit 0), so this
+  cannot mask a genuine build failure. 3 unit tests (BuildCaptureSigningTests: premise CS7027 present,
+  gone after with no new error, options cleared). CHANGELOG clause added.
+  VALIDATION: with the fix + refreshed bundled worker, `fuse eval corpus-health --repo Scrutor`
+  flipped Scrutor from `partial` to `semantic` (tier-1 1/1). This is the single most important lever
+  on the corpus-v2 tier-1 count; nearly all mature .NET OSS libraries strong-name their assemblies.
+
+Commands: three gates green at each commit (build 0 errors; benchmarks + worker test projects pass;
+format --verify-no-changes exit 0). Worker bundling caveat recorded: Fuse.Cli's incremental build does
+not refresh bin/Release/net10.0/build-capture/ when only the worker changed; a `-t:Rebuild` of Fuse.Cli
+(or deleting the build-capture dir) is required so the bundled worker carries a worker-only fix.
+
+Numbers: none final yet (sweep in flight). corpus-health.json will carry the tier distribution.
+
+Gate: NOT YET MET (in progress). The full 24-repo `fuse eval corpus-health --manifest
+tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench --restore --repo-timeout 20` sweep is
+running detached (log D:/fuse-work/tmp/corpus-health-sweep.log). C4 gate is >= 20 tier-1 repos AND
+>= 60 verified oracle tasks.
+
+EXACT NEXT ACTION: (1) let the sweep finish; read corpus-health.json for the tier-1 count and commit
+it. (2) The oracle-task half (>= 60 verified fail-to-pass tasks) has NO extraction wired - the sweep
+writes TasksVerified 0; TaskOracle exists and is unit-tested but nothing mines corpus-v2 PRs into
+base/merge worktrees + test filters and feeds it. That extraction (a corpus-v2 prs mine + wiring
+TaskOracle into the health report) is the next build unit; if it cannot reach 60 within compute,
+invoke the pre-registered reduced-scope fallback and record the shortfall as a fuse-up/provisioning
+finding (D20/C4 Fallback). (3) Then C3's corpus-v2 review re-run (D20a), R3 numbers regen, G2 iter 2.
+
+### 2026-07-08 X1: Execution contract and identity rewrite
+Preconditions: Read AGENTS.md working conventions (AGENTS.md:68-73). Listed the pages
 references, what shipped, commands run with pasted output, numbers recorded and where,
 deviations, gate verdict.)
 
@@ -7690,27 +8474,26 @@ Governance (first; complete before Phase 1)
 Phase 1: the trustworthy floor
 - [ ] N4 Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as
       product work; the spike is a two-mechanism bake-off, run as item zero)
-- [x] N1 Fix the lexical weight inversion; land the ranking regression suite (amended: the
+- [ ] N1 Fix the lexical weight inversion; land the ranking regression suite (amended: the
       suite gates the priors too and re-adjudicates the A6 co-change regression)
 - [ ] N2 One lexical ranker; purge stale results (amended: `agent.json` and the superseded a1
       doc citations join the sweep)
-- [x] N5 Retire the legacy harness and obsolete code paths; migrate to one established form
-- [x] N6 The freshness contract: no read tool serves silently stale data (added, finding 6)
+- [ ] N5 Retire the legacy harness and obsolete code paths; migrate to one established form
+- [ ] N6 The freshness contract: no read tool serves silently stale data (added, finding 6)
 - [ ] N3 The resident oracle by default (promotes v3.2 W1; amended: the reindex trigger is
       named, resident memory is measured)
 
 Phase 2: the oracle
-- [x] R5 The persisted reference index: calls, references, and tests edges (added, finding 7)
-- [x] R2 `fuse_impact`: blast radius before the edit (served from R5, not live SymbolFinder)
-- [x] R1 `fuse_check`: speculative diagnostics as repair packets, and Suite F (false-green and
+- [ ] R5 The persisted reference index: calls, references, and tests edges (added, finding 7)
+- [ ] R2 `fuse_impact`: blast radius before the edit (served from R5, not live SymbolFinder)
+- [ ] R1 `fuse_check`: speculative diagnostics as repair packets, and Suite F (false-green and
       false-red both gated)
-- [x] R6 Repair packets and the API-shape oracle: `fuse_signatures` (added)
-- [~] R7 `fuse_refactor`: rename done (part 1); change-signature DEFERRED TO 4.1 (no clean public
-      Roslyn ChangeSignature API; a hand-rolled rewriter is high-risk and low-frequency, see scope decision)
-- [x] R4 Rebuild the agent benchmark to measure the loop, not the payload (harness done; the recorded
-      model-driven numbers are the 4.0 finish-line run, see scope decision)
-- [~] R3 Collapse the tool surface around the oracle: availability header done; the typed-union router
-      collapse DEFERRED TO 4.1 (low or negative value against fourteen coherent tools, see scope decision)
+- [ ] R6 Repair packets and the API-shape oracle: `fuse_signatures` (added)
+- [ ] R7 `fuse_refactor`: compiler-executed rename and change-signature, staged as a diff (added)
+- [ ] R4 Rebuild the agent benchmark to measure the loop, not the payload (amended: task set
+      and native plus LSP-armed baselines land in Phase 1; wall-clock recorded)
+- [ ] R3 Collapse the tool surface around the oracle (shim-compatible; amended: typed union,
+      ambient availability header, seven live tools)
 
 Phase 3: the moonshot
 - [x] M1 The speculative staging area: changeset lifecycle, diagnose, covering-test selection
@@ -7731,11 +8514,155 @@ Go-to-market (manual, after Phase 2)
 
 ---
 
-### Re-plan: actual state and forward sequence (2026-07-03)
+## Governance
 
-This section records the state after the first execution session and re-sequences the remaining
-work around two blockers discovered during it. It supersedes the flat Sequencing section for
-planning purposes; the per-item Why/How/Tests/Docs/Kill-risk below are unchanged.
+L1 and L2 are the first v4 execution items, before the N4 bake-off and before any Phase 1
+code. The 3.2.0 tag releases the current tree under MIT; governance lands immediately after on
+the v4 line so every subsequent commit and PR is under Apache 2.0 with DCO sign-off. They pair
+with G2: a contribution program needs a license and a provenance contract contributors can
+follow without legal friction.
+
+### L1. Migrate the project license from MIT to Apache 2.0
+
+**Why.** Fuse is moving from a permissive MIT license to Apache 2.0 because the oracle release
+adds patent-sensitive surface (compiler execution, staged diffs, speculative verification) and
+the project is opening a community on-ramp (G2). Apache 2.0 carries an explicit patent grant
+and a termination clause on offensive patent litigation, which is the standard pairing for
+compiler-adjacent tooling that third parties embed in products. MIT stays permissive but offers
+no patent language; staying on MIT while inviting framework-specific analyzer contributions
+creates asymmetric risk for corporate adopters and contributors.
+
+**How.** Replace [LICENSE](../LICENSE) with the Apache 2.0 text, retaining the Litenova Solutions
+copyright line and adding the standard Apache 2.0 appendix. Update every license expression and
+badge: `Directory.Build.props` and each `.csproj` `PackageLicenseExpression`, `README.md` and
+the docs site license references, NuGet package metadata, the VS Code extension
+(`ext/vscode/package.json`), and `mcp-registry/server.json`. Audit third-party dependencies and
+the benchmark corpus for license compatibility (Apache 2.0 is compatible with MIT dependencies;
+confirm no copyleft conflict in bundled native assets). Add a `NOTICE` file if any bundled
+dependency requires attribution beyond the SPDX expression. Record the change in `CHANGELOG.md`
+under 4.0.0 with a plain migration note for downstream packagers (license header change only,
+no API break).
+
+**Acceptance.** `LICENSE` is Apache 2.0; `build/verify-version.ps1` and a repo-wide grep find no
+remaining MIT license claims on Fuse-owned artifacts; CI green; the contributing page names the
+new license.
+
+### L2. Adopt the Developer Certificate of Origin (DCO)
+
+**Why.** Apache 2.0 projects need a lightweight provenance contract so every commit can be
+traced to a contributor who attested they have the right to submit it. A full Contributor
+License Agreement (CLA) re-assigns copyright or grants a broad patent license through a signed
+legal document; it adds onboarding friction and is appropriate mainly when a single company
+needs to relicense the whole tree. The Developer Certificate of Origin (DCO), used by the Linux
+kernel, Kubernetes, and the Apache Software Foundation, is the better fit here: contributors add
+a `Signed-off-by` trailer to each commit attesting the DCO 1.1 statement, GitHub's DCO bot
+blocks merges without it, and no separate signature step is required. DCO plus Apache 2.0 is the
+industry-default pairing for open contributions without CLA overhead.
+
+**How.** Add [DCO.txt](../DCO.txt) (the canonical Developer Certificate of Origin 1.1 text) at
+the repo root. Document the sign-off requirement in `CONTRIBUTING.md` and on the docs
+contributing page (`site/content/docs/project/contributing.mdx`): use `git commit -s` or add
+`Signed-off-by: Name <email>` manually; the sign-off certifies agreement with the DCO text.
+Enable the DCO GitHub App (or equivalent CI check) on the repository so PRs without sign-off on
+every commit fail with an actionable message. Update the PR template (if one exists) to remind
+contributors. Existing commits before the cutover are grandfathered; the check applies from the
+DCO adoption merge forward. Do not adopt a CLA in parallel; one provenance mechanism only.
+
+**Acceptance.** `DCO.txt` is present; contributing docs describe sign-off; the DCO check is
+enabled and verified on a test PR; G2's contribution recipe references the DCO requirement in
+its first step.
+
+---
+
+## Phase 1: the trustworthy floor
+
+### N4. Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as product work)
+
+**Why.** Finding 1, the largest defect. If the product is the compilation, then making it load
+on an arbitrary cloned repo with the reliability of `git status` is core engineering, not
+benchmark plumbing. This item also finally tests finding 3's hypothesis: is localize recall
+bounded by index mode.
+
+**Why the mechanism changed (2026-07-03).** As first scoped (harden MSBuildWorkspace with
+restore, salvage, and per-project degradation), this item was an open-ended fight with
+design-time build entropy, and the project has three recorded losses in that fight already:
+v3's R0 could not restore AutoMapper, FluentValidation, MediatR, or Serilog on SDK 10.0.109
+(NU1008, central-package-management and TFM skew); the corpus was rebuilt around that failure
+rather than through it; and Scrutor fails restore today (`localize.json` notes "restore
+Scrutor: restored 0, failed 2", NU1507). The deeper problem: one loader was serving two
+different bars. The retrieval graph tolerates an approximate compilation (missing references
+still resolve most DI and route edges); the oracle cannot, because a compilation that differs
+from the real build in generators, analyzers, Razor output, or defines produces diagnostics
+the build would not produce, in both directions (false greens and false reds). Only the real
+build knows what the real build does, so the oracle tier is captured from the real build.
+
+**How.** A three-tier ladder, reported per project by `fuse doctor` and by the ambient
+availability header (R3):
+
+- **Tier 1, oracle-grade (build capture).** Run the repo's own build once with a binary log
+  (`dotnet build -bl`), extract every Csc invocation, and rehydrate exact compilations from
+  the recorded command lines (references, analyzers, source generators, generated files,
+  defines) via `CSharpCommandLineParser`; this is the approach proven by the Basic.CompilerLog
+  tooling. Everything MSBuildWorkspace fights (Central Package Management, workloads, Razor,
+  custom targets) is handled by construction, because the real build already handled it.
+  Incremental: a source edit swaps one syntax tree into the rehydrated compilation
+  (references are fixed); a project-file or package edit invalidates and re-captures that
+  project with a bounded rebuild. The capture build is the same first build the agent would
+  run anyway, and its one-time cost is comparable to the current full pass (69.7 s recorded
+  for the direct semantic pass on NodaTime, `performance.json`).
+- **Tier 2, graph-grade (salvage).** The original scoping survives here, serving retrieval
+  only, never the oracle: automatic `dotnet restore` with a bounded timeout on missing assets;
+  per-project partial load, so a failed project degrades that project rather than the whole
+  solution (today a solution-open throw at
+  [RoslynWorkspaceLoader.cs:61](../src/Core/Fuse.Semantics/RoslynWorkspaceLoader.cs#L61) drops
+  everything); metadata-reference salvage from the NuGet cache and framework ref packs.
+- **Tier 3, syntax.** Unchanged.
+
+`fuse_check`, `fuse_impact`, and `fuse_refactor` answer only at tier 1 and abstain otherwise
+(the availability contract); localize, resolve, and review use the best tier available. The
+`fuse doctor` command names the concrete reason per project (SDK mismatch, unrestored,
+workload missing, custom targets, build failed). In the harness, pin SDKs and pre-restore in
+`CorpusManager` setup; record the achieved tier distribution.
+
+**Tests.** A repo that builds reaches tier 1, and its rehydrated compilation's diagnostics
+agree with `dotnet build` on the unmodified tree (the structural zero-baseline for Suite F). A
+repo with one failing project degrades that project to tier 2 while the rest stay tier 1. A
+repo missing assets triggers the bounded restore. `fuse doctor` reports the concrete downgrade
+reason per project. A project-file edit invalidates and re-captures only that project. The
+external-process invocations (restore, build) bound their argument lists per the change-safety
+invariant.
+
+**Docs.** `project/benchmarks.mdx` (the tier distribution), `reference/cli.mdx` (`fuse
+doctor`), `AGENTS.md` corpus description, `internals/` (the ladder).
+
+**Benchmark.** The de-risking spike becomes a bake-off, run as item zero of the release: on
+the 4 corpus main checkouts plus about 20 popular OSS .NET repos, measure the tier
+distribution under (a) hardened MSBuildWorkspace alone and (b) the capture ladder, and record
+both, so the mechanism choice is a recorded result rather than an argument. The cutoff is
+quantitative: tier 1 on at least 80 percent of the repos whose plain `dotnet build` succeeds
+in the environment, and tier 2 or better on the majority of the rest. Then re-run
+`localize.json` and `review.json` with the best tier on; this is the first real test of the
+"recall is bounded by index mode" hypothesis.
+
+**Expected result.** For the oracle (theory, made structural by the mechanism): Suite F
+agreement on tier-1 projects should be near 1.0 by construction, because tier 1 shares the
+build's own inputs; residual disagreement isolates incrementality bugs rather than load
+approximation. The gate this imposes is also the honest truth: a repo that cannot build cannot
+be typechecked by any tool, so those repos get tier 2 and an abstention, not a guess, and the
+measured fraction of repos that do not build is published as the oracle's coverage ceiling.
+For retrieval: the graph-dependent numbers (localize recall, co-change and centrality priors)
+move where they were flat, or they do not and the hypothesis is falsified, which re-scopes
+Phase 4 with that knowledge. Either outcome is worth the item.
+
+**Kill risk, and it is still the release's biggest.** For tier 1: repos that do not build at
+all in the eval environment (the recorded corpus history above says this is common; that
+fraction is the measured ceiling of oracle coverage, published, not hidden), and staleness of
+project-level structure between captures (bounded re-capture on project-file change; N6 stamps
+anything older). For tier 2: unchanged from the original scoping, it remains an entropy fight
+with a "good enough" cutoff rather than a done state, which is exactly why it now gates only
+retrieval coverage and never the oracle's correctness.
+
+### N1. Fix the lexical weight inversion; land the ranking regression suite
 
 #### State snapshot
 
@@ -7859,292 +8786,7 @@ three gates green at every commit.
 6. **G1 (launch).** Write the latency-demo and launch docs from the recorded `performance.json` and
    the oracle results. Do not tag, publish, or cut the release; that is a maintainer action.
 
-#### Scope decision (2026-07-03, session 2): the 4.0 finish line
-
-After weighing value against cost, the 4.0 finish line is drawn deliberately narrow, and the rest
-moves to a 4.1 backlog. The reasoning: the entire v4 thesis is that the oracle collapses the agent's
-edit-verify loop (fewer build-gated turns), a claim Suite D showed token-reduction alone does not
-deliver. That claim is still theory. R4's recorded numbers are the experiment that confirms or
-refutes it, so they are the one remaining item with release-defining value. Everything else is either
-low-frequency, low or negative value, plan-deferred, or evidence-killed.
-
-**4.0 finish line (do these):**
-1. **R4 recorded numbers.** Run `FUSE_LOOP_RUN=1 fuse eval loop` for real, record `results/loop.json`.
-   This is the go/no-go signal on the release story, not a box to tick. Read the result before G1.
-2. **G1 launch docs.** Written after R4, from `results/performance.json` and the oracle results and
-   whatever R4 actually shows (honest either way). No tag, no publish.
-
-**Deferred to 4.1 (do NOT spend 4.0 time on these):**
-- **R7 part 2, change-signature.** Rename (the workhorse) shipped; change-signature is the tail case
-  and hits a hard API wall (no clean public `ChangeSignature`). Poor risk/reward now.
-- **R3 typed-union router.** Surface aesthetics; fourteen coherent, documented tools may beat a
-  router that hides them. Possibly negative value. Reconsider only with a concrete UX complaint.
-- **M2 out-of-proc test execution.** The plan already pre-agreed this stretch item slips; safe
-  sandboxing is hard and its false-green gate may be unmeetable.
-- **V1/V2 retrieval bets.** Evidence-killed: the tier-1 re-run showed no recall lift (15.0 vs 14.9).
-  Reconsider only if a fresh re-run over a richer graph shows a real lift.
-- **G1 publish** (tag, NuGet, GitHub release, MCP registry, Marketplace): a maintainer action.
-
-If R4 shows the loop does not collapse, that is a release-shaping finding: reposition the 4.0 claims
-before any launch, do not paper over it.
-
-#### Standing constraints for the finish (unchanged)
-
-Plain ASCII prose. Never fabricate or weaken a benchmark number (quote only
-`tests/benchmarks/results/*.json`). Every commit DCO-signed (`git commit -s`). One item per commit
-with engine plus tests plus docs plus the box ticked or a logged blocker. Three gates green after
-each. Bound external-process args. MCP tool changes keep shims; index-contract changes bump
-`WorkspaceIndexSchema.TargetVersion`; `Fuse.Cli.Rpc` changes bump `ProtocolVersion` and
-`ext/vscode/src/host/protocol.ts` together. Never auto-fire an expensive model run without the
-opt-in env. Never merge, self-approve, tag, or publish. Single open PR off `main`.
-
----
-
-### Governance
-
-L1 and L2 are the first v4 execution items, before the N4 bake-off and before any Phase 1
-code. The 3.2.0 tag releases the current tree under MIT; governance lands immediately after on
-the v4 line so every subsequent commit and PR is under Apache 2.0 with DCO sign-off. They pair
-with G2: a contribution program needs a license and a provenance contract contributors can
-follow without legal friction.
-
-#### L1. Migrate the project license from MIT to Apache 2.0
-
-**Why.** Fuse is moving from a permissive MIT license to Apache 2.0 because the oracle release
-adds patent-sensitive surface (compiler execution, staged diffs, speculative verification) and
-the project is opening a community on-ramp (G2). Apache 2.0 carries an explicit patent grant
-and a termination clause on offensive patent litigation, which is the standard pairing for
-compiler-adjacent tooling that third parties embed in products. MIT stays permissive but offers
-no patent language; staying on MIT while inviting framework-specific analyzer contributions
-creates asymmetric risk for corporate adopters and contributors.
-
-**How.** Replace [LICENSE](../LICENSE) with the Apache 2.0 text, retaining the Litenova Solutions
-copyright line and adding the standard Apache 2.0 appendix. Update every license expression and
-badge: `Directory.Build.props` and each `.csproj` `PackageLicenseExpression`, `README.md` and
-the docs site license references, NuGet package metadata, the VS Code extension
-(`ext/vscode/package.json`), and `mcp-registry/server.json`. Audit third-party dependencies and
-the benchmark corpus for license compatibility (Apache 2.0 is compatible with MIT dependencies;
-confirm no copyleft conflict in bundled native assets). Add a `NOTICE` file if any bundled
-dependency requires attribution beyond the SPDX expression. Record the change in `CHANGELOG.md`
-under 4.0.0 with a plain migration note for downstream packagers (license header change only,
-no API break).
-
-**Acceptance.** `LICENSE` is Apache 2.0; `build/verify-version.ps1` and a repo-wide grep find no
-remaining MIT license claims on Fuse-owned artifacts; CI green; the contributing page names the
-new license.
-
-#### L2. Adopt the Developer Certificate of Origin (DCO)
-
-**Why.** Apache 2.0 projects need a lightweight provenance contract so every commit can be
-traced to a contributor who attested they have the right to submit it. A full Contributor
-License Agreement (CLA) re-assigns copyright or grants a broad patent license through a signed
-legal document; it adds onboarding friction and is appropriate mainly when a single company
-needs to relicense the whole tree. The Developer Certificate of Origin (DCO), used by the Linux
-kernel, Kubernetes, and the Apache Software Foundation, is the better fit here: contributors add
-a `Signed-off-by` trailer to each commit attesting the DCO 1.1 statement, GitHub's DCO bot
-blocks merges without it, and no separate signature step is required. DCO plus Apache 2.0 is the
-industry-default pairing for open contributions without CLA overhead.
-
-**How.** Add [DCO.txt](../DCO.txt) (the canonical Developer Certificate of Origin 1.1 text) at
-the repo root. Document the sign-off requirement in `CONTRIBUTING.md` and on the docs
-contributing page (`site/content/docs/project/contributing.mdx`): use `git commit -s` or add
-`Signed-off-by: Name <email>` manually; the sign-off certifies agreement with the DCO text.
-Enable the DCO GitHub App (or equivalent CI check) on the repository so PRs without sign-off on
-every commit fail with an actionable message. Update the PR template (if one exists) to remind
-contributors. Existing commits before the cutover are grandfathered; the check applies from the
-DCO adoption merge forward. Do not adopt a CLA in parallel; one provenance mechanism only.
-
-**Acceptance.** `DCO.txt` is present; contributing docs describe sign-off; the DCO check is
-enabled and verified on a test PR; G2's contribution recipe references the DCO requirement in
-its first step.
-
----
-
-### Phase 1: the trustworthy floor
-
-#### N4. Semantic mode on real checkouts via the build-capture ladder (reframes v3.2 W4 as product work)
-
-**Why.** Finding 1, the largest defect. If the product is the compilation, then making it load
-on an arbitrary cloned repo with the reliability of `git status` is core engineering, not
-benchmark plumbing. This item also finally tests finding 3's hypothesis: is localize recall
-bounded by index mode.
-
-**Why the mechanism changed (2026-07-03).** As first scoped (harden MSBuildWorkspace with
-restore, salvage, and per-project degradation), this item was an open-ended fight with
-design-time build entropy, and the project has three recorded losses in that fight already:
-v3's R0 could not restore AutoMapper, FluentValidation, MediatR, or Serilog on SDK 10.0.109
-(NU1008, central-package-management and TFM skew); the corpus was rebuilt around that failure
-rather than through it; and Scrutor fails restore today (`localize.json` notes "restore
-Scrutor: restored 0, failed 2", NU1507). The deeper problem: one loader was serving two
-different bars. The retrieval graph tolerates an approximate compilation (missing references
-still resolve most DI and route edges); the oracle cannot, because a compilation that differs
-from the real build in generators, analyzers, Razor output, or defines produces diagnostics
-the build would not produce, in both directions (false greens and false reds). Only the real
-build knows what the real build does, so the oracle tier is captured from the real build.
-
-**How.** A three-tier ladder, reported per project by `fuse doctor` and by the ambient
-availability header (R3):
-
-- **Tier 1, oracle-grade (build capture).** Run the repo's own build once with a binary log
-  (`dotnet build -bl`), extract every Csc invocation, and rehydrate exact compilations from
-  the recorded command lines (references, analyzers, source generators, generated files,
-  defines) via `CSharpCommandLineParser`; this is the approach proven by the Basic.CompilerLog
-  tooling. Everything MSBuildWorkspace fights (Central Package Management, workloads, Razor,
-  custom targets) is handled by construction, because the real build already handled it.
-  Incremental: a source edit swaps one syntax tree into the rehydrated compilation
-  (references are fixed); a project-file or package edit invalidates and re-captures that
-  project with a bounded rebuild. The capture build is the same first build the agent would
-  run anyway, and its one-time cost is comparable to the current full pass (69.7 s recorded
-  for the direct semantic pass on NodaTime, `performance.json`).
-- **Tier 2, graph-grade (salvage).** The original scoping survives here, serving retrieval
-  only, never the oracle: automatic `dotnet restore` with a bounded timeout on missing assets;
-  per-project partial load, so a failed project degrades that project rather than the whole
-  solution (today a solution-open throw at
-  [RoslynWorkspaceLoader.cs:61](../src/Core/Fuse.Semantics/RoslynWorkspaceLoader.cs#L61) drops
-  everything); metadata-reference salvage from the NuGet cache and framework ref packs.
-- **Tier 3, syntax.** Unchanged.
-
-`fuse_check`, `fuse_impact`, and `fuse_refactor` answer only at tier 1 and abstain otherwise
-(the availability contract); localize, resolve, and review use the best tier available. The
-`fuse doctor` command names the concrete reason per project (SDK mismatch, unrestored,
-workload missing, custom targets, build failed). In the harness, pin SDKs and pre-restore in
-`CorpusManager` setup; record the achieved tier distribution.
-
-**Tests.** A repo that builds reaches tier 1, and its rehydrated compilation's diagnostics
-agree with `dotnet build` on the unmodified tree (the structural zero-baseline for Suite F). A
-repo with one failing project degrades that project to tier 2 while the rest stay tier 1. A
-repo missing assets triggers the bounded restore. `fuse doctor` reports the concrete downgrade
-reason per project. A project-file edit invalidates and re-captures only that project. The
-external-process invocations (restore, build) bound their argument lists per the change-safety
-invariant.
-
-**Docs.** `project/benchmarks.mdx` (the tier distribution), `reference/cli.mdx` (`fuse
-doctor`), `AGENTS.md` corpus description, `internals/` (the ladder).
-
-**Benchmark.** The de-risking spike becomes a bake-off, run as item zero of the release: on
-the 4 corpus main checkouts plus about 20 popular OSS .NET repos, measure the tier
-distribution under (a) hardened MSBuildWorkspace alone and (b) the capture ladder, and record
-both, so the mechanism choice is a recorded result rather than an argument. The cutoff is
-quantitative: tier 1 on at least 80 percent of the repos whose plain `dotnet build` succeeds
-in the environment, and tier 2 or better on the majority of the rest. Then re-run
-`localize.json` and `review.json` with the best tier on; this is the first real test of the
-"recall is bounded by index mode" hypothesis.
-
-**Expected result.** For the oracle (theory, made structural by the mechanism): Suite F
-agreement on tier-1 projects should be near 1.0 by construction, because tier 1 shares the
-build's own inputs; residual disagreement isolates incrementality bugs rather than load
-approximation. The gate this imposes is also the honest truth: a repo that cannot build cannot
-be typechecked by any tool, so those repos get tier 2 and an abstention, not a guess, and the
-measured fraction of repos that do not build is published as the oracle's coverage ceiling.
-For retrieval: the graph-dependent numbers (localize recall, co-change and centrality priors)
-move where they were flat, or they do not and the hypothesis is falsified, which re-scopes
-Phase 4 with that knowledge. Either outcome is worth the item.
-
-**Kill risk, and it is still the release's biggest.** For tier 1: repos that do not build at
-all in the eval environment (the recorded corpus history above says this is common; that
-fraction is the measured ceiling of oracle coverage, published, not hidden), and staleness of
-project-level structure between captures (bounded re-capture on project-file change; N6 stamps
-anything older). For tier 2: unchanged from the original scoping, it remains an entropy fight
-with a "good enough" cutoff rather than a done state, which is exactly why it now gates only
-retrieval coverage and never the oracle's correctness.
-
-#### N1. Fix the lexical weight inversion; land the ranking regression suite
-
-**Why.** Finding 4. A field-weight inversion executes on the localize hot path and nothing
-measures ranking, so the class of bug is invisible. The fix is a few characters; the suite is
-the real deliverable, and it is overdue hygiene the brand ("measurement") should already have.
-
-**How.** Correct the `bm25()` weight vector at
-[WorkspaceIndexStore.cs:758](../src/Core/Fuse.Indexing/WorkspaceIndexStore.cs#L758) so the
-column order (chunk_id, path, name, symbols, signature, comments, body, subtokens, stems)
-matches the documented intent: name, signature, and symbols above path, path above comments
-and body. Reconcile with the sibling ordering in
-[Bm25RelevanceIndex.cs:36](../src/Core/Fuse.Fusion/Scoping/Bm25RelevanceIndex.cs#L36) (which
-N2 then deletes) so one intended ordering exists. Add MRR, recall@k, and nDCG helpers to
-[Metrics.cs](../tests/benchmarks/Fuse.Benchmarks/Metrics.cs) (they exist today only in the
-legacy `harness/layer-ranking.ps1`, the reference to port). Add a `RankingSuite` under
-`tests/benchmarks/Fuse.Benchmarks/Suites/` implementing `IEvalSuite` with `Name = "ranking"`,
-scoring the lexical channel in isolation (call `SemanticRetrievalEngine.LocalizeAsync` with
-`Embedder = null`, the `--lexical` path) against changed-file truth from the existing
-`dotnet-prs-v1` dataset. Register it in the `EvalCommand.BuildSuite` switch
-([EvalCommand.cs](../src/Host/Fuse.Cli/Commands/EvalCommand.cs)) and update the three
-help/error strings there. Report per-k metrics in `SuiteResult.Notes` if they do not fit
-`Scorecard`, or extend `Scorecard`/`TaskResult` in
-[EvalModel.cs](../tests/benchmarks/Fuse.Benchmarks/Model/EvalModel.cs) and
-`Reporting.FormatScorecard`.
-
-**Tests.** A unit test pins the intended field ordering (a query whose term hits a symbol name
-outranks the same term in a path). The ranking suite runs and writes `results/ranking.json`
-(the count of discovered suites and the `--help` list both rise). A deterministic scoring test
-confirms MRR/recall@k on a hand-built ranking.
-
-**Docs.** `internals/scoping-internals.mdx` (the field weights and the ranking suite),
-`project/benchmarks.mdx` (the new ranking axis).
-
-**Benchmark.** `results/ranking.json` recorded; `localize.json` re-run before and after on the
-same corpus to show the precision delta.
-
-**Expected result.** A precision lift on localize (folder-name matches stop outranking
-symbol-name matches). The honest expectation is that the lift may be modest; with only 2 of 4
-localize main checkouts even partial, ranking fixes move low single digits at best, and the
-suite is the deliverable even if the lift is zero. The ranking suite becomes a required gate on
-any change to weights, tokenization, query expansion, or priors.
-
-**Kill risk.** Small but real, and worth naming after all: the bm25 weights interact with the
-OR-expanded match expression (the subtokens and stems columns match expanded terms), so
-reweighting path down can surface subword noise the old vector masked. The suite exists to
-catch exactly this class.
-
-**Amendment (finding 9).** The suite runs in two configurations, not one: the lexical channel
-in isolation (`Embedder = null`, as originally scoped) and the shipping default (dense on,
-priors on), so the gate covers what users actually run, and it gates the priors as well as the
-field weights. It also re-adjudicates the A6 co-change prior, whose recorded cost as a
-default-on feature is recall 15.06 to 14.90 percent, precision-when-answered 8.9 to 8.3
-percent, and precision-when-confident 9.3 to 5.6 percent (`localize.a1.json` vs
-`localize.json`). If the suite confirms the regression, the prior's default flips to off in
-this release and the changelog names it as a behavior change, per the no-silent-changes
-invariant.
-
-#### N2. One lexical ranker; purge stale results
-
-**Why.** Section 1.3.3 and 1.3.4. Two parallel lexical rankers with different constants are
-two sources of truth; and result files quoting the retired 5-library corpus are, under the
-project's own convention, fabrications with provenance. The `reduce` suite writing
-`reduce.json` while a legacy `reduction.json` still sits in results is exactly this drift.
-
-**How.** Delete `Bm25RelevanceIndex` and route the classic `query` scoping mode through the
-persistent FTS5 index (one ranker, one weight table, guarded by N1's suite). Regenerate
-`reduce.json` and `performance.json` on the current corpus. Move every result file still
-quoting the retired 5-library corpus (the legacy `layer*.json`, `reduction.json`, and any
-5-lib latency/ranking artifacts) to `tests/benchmarks/results/archive/`. Sweep the docs and
-`AGENTS.md` so only current-corpus files are cited.
-
-**Tests.** N1's ranking suite guards the unification. A test or check confirms the classic
-`query` path now reads FTS5. A docs-citation sweep confirms no orphaned references to archived
-files.
-
-**Docs.** `project/benchmarks.mdx`, `AGENTS.md` measured-results block, `internals/scoping-internals.mdx`.
-
-**Benchmark.** Regenerated `reduce.json` and `performance.json`; archived legacy files.
-
-**Expected result.** One ranking implementation, one weight table, a results directory where
-every file is current. The classic CLI `query` ranking behavior shifts slightly; acceptable,
-it was never the measured path (call it out in the changelog, do not fold it silently).
-
-**Kill risk.** Low. The behavior change to the classic query path is the only user-visible
-edge; the changelog names it.
-
-**Amendment (finding 8).** Two more artifacts join the sweep. First, `agent.json`: 10 of its
-12 PRs are retired-corpus (AutoMapper, FluentValidation, MediatR, NewtonsoftJson, Serilog),
-which under this item's own convention makes it a fabrication with provenance; it is either
-archived or kept as the explicit directional pre-R4 record, with the caveat written into the
-file's notes and into every doc that cites it. Second, the doc citations that quote the
-superseded a1 run: precision-when-confident is 5.6 percent in the current `localize.json`, not
-9.3, and the dense-lift pairing on current files is 13.3 to 14.9 (`localize.a1-lexical.json`
-vs `localize.json`), not 13.3 to 15.1. AGENTS.md, `briefing.md`, and the benchmarks page are
-swept for both.
-
-#### N5. Retire the legacy harness and obsolete code paths; migrate to one established form
+### N5. Retire the legacy harness and obsolete code paths; migrate to one established form
 
 **Why (the story and the analysis).** This is the same defect as findings 3.3 and 3.4 in the
 critique, generalized: where two forms of the same thing coexist, a reader cannot tell which is
@@ -8242,7 +8884,7 @@ bugs).
 the hash fallback bound it); reconcile storms during bulk operations (the dirty-count
 threshold above). Neither blocks shipping the stamp path, which is the contract's floor.
 
-#### N3. The resident oracle by default (promotes v3.2 W1)
+### N3. The resident oracle by default (promotes v3.2 W1)
 
 **Why.** Finding 5, and the thesis: an oracle that pays 70 seconds of cold start per question
 is not an oracle. V3.2 deferred this because a detached background task in the serve host was
@@ -8313,7 +8955,7 @@ default no longer pays a total-time penalty over the synchronous pass.
 
 ### Phase 2: the oracle
 
-#### R5. The persisted reference index: calls, references, and tests edges (added, finding 7)
+### R5. The persisted reference index: calls, references, and tests edges (added, finding 7)
 
 **Why.** Finding 7. Three items in this plan assumed graph edges that do not exist: R2's
 tens-of-ms impact, M1's covering-test selection ("the graph already carries test edges"), and
@@ -8365,7 +9007,7 @@ the declaration that owns the reference if row counts explode). Staleness inheri
 row volume proves unaffordable, fall back to persisting `references` at file granularity (still
 enough for `fuse_impact`'s file-level answer) and computing member-level binding on demand.
 
-#### R2. `fuse_impact`: blast radius before the edit
+### R2. `fuse_impact`: blast radius before the edit
 
 **Why.** Turns "edit, build, discover you missed four call sites, edit, build again" into one
 up-front answer. The most conventional item in the phase; the reference substrate (R5) does
@@ -8400,7 +9042,7 @@ seconds warm, which does not meet the crown-table target; the "tens of ms" claim
 the abstention contract. Second: R5 must exist first, or the target silently reverts to
 `SymbolFinder` latency; R2 ships after R5.
 
-#### R1. `fuse_check`: speculative diagnostics
+### R1. `fuse_check`: speculative diagnostics
 
 **Why.** The killer feature and the direct answer to finding 2. Replacing a `dotnet build`
 round-trip (tens of seconds) with a sub-second speculative typecheck is what changes what the
@@ -8457,7 +9099,7 @@ do not imply it will. Where feasible, Suite F also records an LSP overlay-diagno
 comparison arm, because that, not `dotnet build`, is the strongest competing verify path (see
 honest ceilings).
 
-#### R6. Repair packets and the API-shape oracle (added)
+### R6. Repair packets and the API-shape oracle (added)
 
 **Why.** The agent's dominant failure mode on .NET is guessing an API shape wrong (a member
 that does not exist, a wrong argument type, a missing overload), and its dominant time sink
@@ -8543,7 +9185,7 @@ reference) is silently incomplete; the mitigation is that R7 stages a diff for t
 review and R1 re-checks it, so an incompleteness surfaces as a diagnostic rather than a
 committed bug, and the docs state the boundary plainly.
 
-#### R4. Rebuild the agent benchmark to measure the loop, not the payload
+### R4. Rebuild the agent benchmark to measure the loop, not the payload
 
 **Why.** Finding 2. Suite D at N=12, one rollout, cannot detect the effect it exists to
 measure, and cumulative session tokens is the wrong metric for the oracle thesis. This is a
@@ -8585,7 +9227,7 @@ iterations and build-invocations: the Expected-impact section says the gains are
 toward wall-clock, so iteration counts alone will not show the 1.5-to-4x it projects, and the
 demo (G1) needs the wall-clock number to be honest.
 
-#### R3. Collapse the tool surface around the oracle, seven live tools (shim-compatible)
+### R3. Collapse the tool surface around the oracle, seven live tools (shim-compatible)
 
 **Why (the story and the analysis).** Nine tools describe a workflow, and models follow
 workflows badly. The critique's argument is that the surface should encode the oracle thesis
@@ -8756,7 +9398,7 @@ via tsserver next), not a parser approximation. Not in 4.0.
 
 ---
 
-### Phase 4: retrieval bets (gated; only after N4's localize re-run is recorded)
+## Phase 4: retrieval bets (gated; only after N4's localize re-run is recorded)
 
 These two items attack the open-ended recall ceiling directly rather than nudging it. They are
 gated for a reason the project already recorded: v3.1 deferred the thesaurus (S4) and
@@ -8845,9 +9487,9 @@ subtle killer; the strict temporal split is the guard, and the eval is invalid w
 
 ---
 
-### Go-to-market
+## Go-to-market
 
-#### G1. The latency demo and launch publish
+### G1. The latency demo and launch publish
 
 **Why.** The demo that lands is a latency demo, not a token demo. Token savings are invisible
 on screen; a compiler answering in milliseconds while the other pane waits on MSBuild is
@@ -8876,7 +9518,7 @@ abstention," not "only a compiler can do this."
 R4's recorded numbers or labeled illustrative with its arithmetic shown; nothing overclaims a
 head-to-head win, and the LSP counterfactual is named rather than ignored.
 
-#### G2. The analyzer contribution program and coverage table
+### G2. The analyzer contribution program and coverage table
 
 **Why.** Section 1.2's coverage critique (Autofac, Lamar, Wolverine, FastEndpoints, Carter,
 source-generated DI are unhandled by the 10 first-party-pattern analyzers in
@@ -8893,7 +9535,7 @@ analyzer added via the documented recipe passes Suite A on a new fixture.
 
 ---
 
-### The versioning decision: everything ships as 4.0.0
+## The versioning decision: everything ships as 4.0.0
 
 This release intentionally lands the floor, the oracle, the moonshot's shippable half, the
 gated retrieval bets, and the governance track under a single major bump, 4.0.0 (current

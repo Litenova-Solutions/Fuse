@@ -48,7 +48,7 @@ public sealed class LoopTranscriptClassifierTests
     }
 
     [Fact]
-    public void A_fuse_check_turn_counts_as_a_build_verification()
+    public void A_fuse_check_turn_is_a_check_not_a_build_but_still_reaches_green()
     {
         const string t = """
             {"type":"assistant","message":{"content":[{"type":"tool_use","id":"c1","name":"mcp__fuse__fuse_check","input":{"file":"Order.cs"}}]}}
@@ -59,10 +59,13 @@ public sealed class LoopTranscriptClassifierTests
         var loop = LoopMetrics.Compute(turns);
 
         Assert.Single(turns);
-        Assert.Equal(TurnKind.Build, turns[0].Kind);
+        // D22a: fuse_check is its own kind, counted apart from agent-visible dotnet build.
+        Assert.Equal(TurnKind.Check, turns[0].Kind);
         Assert.True(turns[0].Passed); // "clean" is a passing speculative typecheck.
-        Assert.Equal(1, loop.BuildInvocations);
-        Assert.True(loop.ReachedGreen);
+        Assert.Equal(0, loop.BuildInvocations); // NOT folded into the build column
+        Assert.Equal(1, loop.CheckInvocations);
+        Assert.Equal(0, loop.AgentVisibleVerifications); // a speculative check is not an agent-visible round-trip
+        Assert.True(loop.ReachedGreen); // it still counts toward the reached-green proxy
     }
 
     [Fact]
@@ -74,7 +77,32 @@ public sealed class LoopTranscriptClassifierTests
             """;
 
         var turns = LoopTranscriptClassifier.Classify(t);
+        Assert.Equal(TurnKind.Check, turns[0].Kind);
         Assert.False(turns[0].Passed);
         Assert.False(LoopMetrics.Compute(turns).ReachedGreen);
+    }
+
+    [Fact]
+    public void Build_and_check_and_test_are_counted_in_separate_columns()
+    {
+        // A mixed session: a failing dotnet build, a passing fuse_check, then a passing dotnet test. The three
+        // land in their own columns so the loop-collapse metric is not confounded (D22a).
+        const string t = """
+            {"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"dotnet build"}}]}}
+            {"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"error CS1002"}]}}
+            {"type":"assistant","message":{"content":[{"type":"tool_use","id":"c1","name":"mcp__fuse__fuse_check","input":{"file":"Order.cs"}}]}}
+            {"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"c1","content":"clean: no errors"}]}}
+            {"type":"assistant","message":{"content":[{"type":"tool_use","id":"x1","name":"Bash","input":{"command":"dotnet test --filter T"}}]}}
+            {"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x1","content":"Passed!  - Failed:     0, Passed:     3"}]}}
+            """;
+
+        var loop = LoopMetrics.Compute(LoopTranscriptClassifier.Classify(t));
+
+        Assert.Equal(1, loop.BuildInvocations);
+        Assert.Equal(1, loop.CheckInvocations);
+        Assert.Equal(1, loop.TestInvocations);
+        Assert.Equal(2, loop.AgentVisibleVerifications); // build + test, not the check
+        Assert.True(loop.ReachedGreen); // the fuse_check (2nd verification turn) is the first pass
+        Assert.Equal(2, loop.IterationsToGreen);
     }
 }

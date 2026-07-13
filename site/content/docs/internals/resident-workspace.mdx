@@ -3,7 +3,7 @@ title: Resident workspace
 description: How Fuse holds a live compilation in memory so an edited file is reflected in answers within a second, without a re-index or a build, and how it degrades to the store when no live compilation is available.
 ---
 
-The resident workspace is Fuse's in-memory model of a repository's compilations, held live between calls so an answer reflects the tree as of now rather than as of the last index. It is the substrate the compiler-grade answers stand on: with a resident workspace live, `fuse_check` typechecks a proposed edit against the held compilation in memory, with no build and no disk write, and the answer is stamped `oracle` grade.
+The resident workspace holds a repository's Roslyn compilations between calls. With it enabled, `fuse_check` typechecks an overlay against the held compilation with no disk write or new build and stamps the answer `oracle` grade. Without it, build capture can still provide an oracle-grade compilation, and the build-grade fallback can run the local toolchain.
 
 This page describes what the resident workspace holds, how it stays current, and how Fuse degrades when it is not available. It is opt-in for now (see [Opting in](#opting-in)); the default remains the persistent store path until the latency gate promotes it.
 
@@ -34,4 +34,4 @@ The store remains the substrate for degraded modes (repositories that do not bui
 
 ## Opting in
 
-The resident workspace is enabled with the `FUSE_RESIDENT` environment variable (set to `1`, `true`, `yes`, or `on`) on a resident host (`fuse mcp serve` or `fuse host`). When enabled, the host warms the served root in the background so startup is never blocked by the build, then keeps the held compilations current from the watcher. With it off (the default), the host behaves exactly as before: every answer is store-backed. Promotion to on-by-default follows the recorded warm-latency and memory measurements.
+The resident workspace is opt-in. Set `FUSE_RESIDENT` to `1`, `true`, `yes`, or `on` for `fuse mcp serve` or `fuse host`. The host then warms the served root in the background and keeps held compilations current through the file watcher. With the variable unset or false, reads remain store-backed.

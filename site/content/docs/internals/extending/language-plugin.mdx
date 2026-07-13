@@ -3,30 +3,52 @@ title: Adding a Language Plugin
 description: How to build an assembly that registers reduction and analysis capabilities for a set of file extensions.
 ---
 
-Fuse keeps language-specific behavior outside the core pipeline. Support for a language lives in a plugin: a separate assembly that registers one or more capabilities keyed to the file extensions that language uses. When Fuse reduces a file or expands a dependency graph, the core pipeline resolves the right capability by extension and calls it. Adding a language is therefore a matter of implementing the capabilities you need and registering them, without touching the pipeline itself.
+Language support has two independent extension seams. `ILanguageSyntaxProvider` adds files to the persistent search index. Reduction capabilities control how selected files are compacted and presented. Neither seam adds compiler-backed semantics; that tier remains C#-only.
 
 This page is written for an engineer who wants to teach Fuse about a language it does not yet handle.
 
-> Language-provider policy (frozen). Fuse's deep value is its compiler-backed .NET analysis, so first-party investment in a second language is deliberately deferred: the multi-language story that does not dilute is binding each language's real compiler service (for example tsserver for TypeScript), not shipping another regex or tree-sitter syntax tier. That work waits on a recorded agent loop comparison on the benchmark corpus. Community language providers at the syntax tier are welcome, and this seam is how you add one; the existing Python and JavaScript syntax providers are frozen (maintained, not extended) under the same policy.
+> Language-provider policy (frozen). First-party semantic support for another language requires its real compiler service, for example the TypeScript language service. Community syntax providers are welcome. The existing Python and JavaScript syntax providers are maintained but not extended.
 
-## Implementation Context
+## Persistent Syntax Index
+
+Implement `ILanguageSyntaxProvider` when files must participate in `fuse_find`, task localization, and context seeding. A provider declares a language id and extensions, then returns symbols and searchable chunks without invoking a compiler.
+
+```csharp
+public sealed class MyLangSyntaxProvider : ILanguageSyntaxProvider
+{
+    public string Language => "mylang";
+    public IReadOnlyCollection<string> Extensions { get; } = [".mylang"];
+
+    public SyntaxExtractionResult Extract(string normalizedPath, string content)
+    {
+        // Return bounded syntax-tier symbols and chunks.
+        return SyntaxExtractionResult.Empty;
+    }
+}
+```
+
+Every indexed file receives the provider's language tag. Symbols and chunks inherit language through their file record. Keep extraction bounded and deterministic. A syntax provider does not create typed call, DI, request-handler, route, options, or test edges.
+
+The current built-in syntax providers are C# (`.cs`), Python (`.py`), and JavaScript (`.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.mts`, `.cts`). C# uses Roslyn syntax. Python and JavaScript use bounded lexical extraction.
+
+## Reduction Capability Context
 
 Every capability a language plugin provides extends the same base contract, `ILanguageCapability`, which declares a single member, `SupportedExtensions`. That property returns the extensions the capability handles, each with its leading dot, for example `.cs`. The core pipeline holds a registry per capability type and builds an extension-to-implementation map from everything registered. At resolution time it looks up the extension and calls the matching implementation. Matching is case-insensitive, and one class may declare several extensions when a language uses more than one.
 
-A language can supply as many or as few capabilities as it needs. The only one required for a language to take part in reduction is the content reducer. The others add analysis and presentation features and are optional.
+A language can supply any subset of the reduction capabilities below. `IContentReducer` is required only for extension-specific reduction. It is not required for syntax indexing.
 
 | Interface | What it provides | Required |
 |-----------|------------------|----------|
 | `IContentReducer` | Extension-specific content reduction | Yes |
 | `ISkeletonExtractor` | Signatures-only structural skeleton | No |
 | `ISemanticMarkerGenerator` | Type-level annotation comments | No |
-| `IDependencyExtractor` | Referenced type or module names for the dependency graph | No |
+| `IDependencyExtractor` | Best-effort references for the legacy fusion graph | No |
 | `ITypeNameLocator` | Resolution of a type name to its defining file | No |
 | `IRouteMapGenerator` | Endpoint table prepended to output | No |
 | `IProjectGraphGenerator` | Project reference graph prepended to output | No |
 | `IPatternDetector` | Cross-codebase convention detection | No |
 
-The capability model is described in full on the [Capability and Plugin Model](/docs/internals/capability-model) page. The C# plugin, in the `Fuse.Plugins.Languages.CSharp` project, implements every capability in the table and is the complete reference example to read alongside this guide.
+The capability model is described in [Capability and Plugin Model](/docs/internals/capability-model). C# behavior is split between the text reducer and Roslyn structural implementations; no single plugin type defines every index tier.
 
 ## Implement the Content Reducer
 
@@ -86,7 +108,7 @@ public sealed class MyLangDependencyExtractor : IDependencyExtractor
 }
 ```
 
-Dependency extraction is text-based and best-effort, so return what you can identify with confidence and accept that the graph will be approximate.
+Dependency extraction here is text-based and best-effort. It does not populate the compiler-backed typed graph.
 
 ## Registration
 
@@ -118,7 +140,7 @@ public static class MyLangLanguageServiceCollectionExtensions
 }
 ```
 
-Call the extension method where the host composes its services, alongside `AddCSharpLanguage` and `AddFormatReducers`. The registry resolves each extension with last-registration-wins semantics: when two capabilities of the same type declare the same extension, the one registered later takes effect. A plugin can therefore override a default reducer by registering its own after the default.
+Call the extension method where the host composes reduction services, alongside `AddCSharpLanguage` and `AddFormatReducers`. The registry uses last-registration-wins semantics for a contested extension. Register the syntax provider separately with the persistent index composition.
 
 ## What This Does Not Cover
 

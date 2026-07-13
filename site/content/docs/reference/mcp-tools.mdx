@@ -51,13 +51,10 @@ score distribution with no model, and leads its output with the state (`localize
 - **partial**: there is signal but no clear winner; a small best-effort set is returned, flagged low-confidence, with a navigation map of refinement options.
 - **insufficient**: no usable anchor; the engine refuses and routes, returning a navigation map (top candidate areas, entry-point files and routes, nearest symbols) and an explicit ask for a sharper input, rather than a low-precision candidate list.
 
-The navigation map turns a refusal into a navigation step: an exploring agent reads the
-areas and nearest symbols to pick its next, better-anchored query. By default (best-effort)
-a partial or insufficient request still returns a candidate set so a one-shot client is
-never stranded; with `strict: true` an insufficient request returns only the map. A
-no-signal title (a merge, dependency-bump, or CI title with no code reference) abstains in
-both modes, since it can only return noise. Provide one of the structured parameters above,
-or a name from the navigation map, to get a confident answer.
+The navigation map turns a refusal into a navigation step: an agent can use an area or
+nearby symbol as a better-anchored query. The MCP union uses best-effort mode. A partial or
+insufficient request can return candidates, but a no-signal title such as a merge or
+dependency bump abstains because ranking would return noise.
 
 ## Wiring resolution (fuse_find kind=service|request|route|config)
 
@@ -137,12 +134,14 @@ The signature and type operations are verified, not just generated: after the re
 | `path` | string | `.` | Workspace directory |
 | `symbol` | string | required | The symbol to rename, or the method name for a signature operation |
 | `newName` | string | required (rename) | The new name |
-| `operation` | string | `rename` | `rename`, `add-parameter`, or `add-cancellation-token` |
+| `operation` | string | `rename` | `rename`, `add-parameter`, `add-cancellation-token`, `remove-parameter`, `reorder-parameters`, `extract-interface`, `move-type`, or `apply-codefix` |
 | `containingType` | string | null | The declaring type's simple name, to disambiguate a method shared across types |
 | `parameterType` | string | required (add-parameter) | The new parameter's type, as written in source |
 | `parameterName` | string | required (add-parameter) | The new parameter's name (defaults to `cancellationToken` for add-cancellation-token) |
 | `argument` | string | `default` | The argument expression added at every call site (add-parameter) |
 | `newOrder` | string | required (reorder-parameters) | The parameter names in the desired order, comma-separated |
+| `diagnosticId` | string | required (apply-codefix) | Diagnostic id to fix |
+| `file` | string | required (apply-codefix) | Repo-relative file containing the diagnostic |
 
 Two more operations extend the family: **`remove-parameter`** drops a parameter (named by `parameterName`) and its argument at every call site, and **`reorder-parameters`** reorders parameters into `newOrder`. Both are safety-gated beyond the compile check (see the abstention table).
 
@@ -200,6 +199,7 @@ Blast radius for a symbol before you edit it: the callers, implementers, consume
 | `package` | string | null | Package-upgrade mode: the NuGet package id whose bump to analyze |
 | `fromVersion` | string | null | Package-upgrade mode: the currently referenced version |
 | `toVersion` | string | null | Package-upgrade mode: the target (upgrade) version |
+| `session` | string | `""` | Append graded claims to this session ledger |
 
 ### Package-upgrade mode
 
@@ -245,7 +245,7 @@ The loop is direct: there is no stateful staging session. Diagnose a proposed si
 
 ## fuse_reduce
 
-Compact a specific set of files (or raw content) by running Fuse's reduction, without collecting a whole directory. Pass `files` or `content` with `extension`.
+Compact specific files or raw content without collecting a directory. Pass `files`, or pass `content` with `extension`. Secret redaction remains enabled. Structural levels are context transforms: output is not promised to compile or preserve private implementation detail.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -255,3 +255,11 @@ Compact a specific set of files (or raw content) by running Fuse's reduction, wi
 | `extension` | string | `.cs` | Extension that selects the reducer for `content` |
 | `level` | string | `standard` | `none`, `standard`, `aggressive`, `skeleton`, or `publicApi` |
 | `maxTokens` | int | 0 | Maximum tokens the reduced output may use (0 means no limit) |
+
+A positive `maxTokens` can truncate the reduced result. It does not guarantee retention of every declaration.
+
+## Language Tiers
+
+The syntax-tier index is provider-driven and language-agnostic. C# uses Roslyn syntax; the maintained Python provider handles `.py`, and the maintained JavaScript provider handles JavaScript and TypeScript extensions. These providers populate file language, symbols, and searchable chunks.
+
+Typed semantic edges, compiler signatures, build capture, verification, and compiler-executed refactors are C#-only. Python and JavaScript providers do not provide a typed graph or compiler-grade answers. First-party expansion beyond their current syntax behavior is frozen pending a real compiler-service integration.

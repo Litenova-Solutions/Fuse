@@ -3,13 +3,13 @@ title: Options
 description: The command-line flags each Fuse command accepts, with types and defaults.
 ---
 
-Fuse commands take a workspace path argument and a small set of per-command flags. This page lists the flags for each command. The commands themselves, and when to reach for each, are in [Commands](/docs/reference/commands); the MCP tool parameters are in [Tools](/docs/reference/mcp-tools).
+Fuse commands take a workspace path and a small per-command option set. This page lists the current public CLI options. The MCP parameters are separate and are documented in [Tools](/docs/reference/mcp-tools).
 
 This page is for engineers and maintainers who need exact flag behavior and defaults. Types use these conventions: `bool` is a switch, `int` is a whole number, `string` is a single value, and `string[]` is a repeatable or space-separated list.
 
 ## Purpose and scope
 
-The read commands build the persistent index on first use, so most commands take only the workspace path plus the flags that shape their query or output. Token budgets are honored by the plan, and secret redaction runs before any source reaches the payload (it is always on; there is no flag to disable it).
+Run `fuse index` before one-shot CLI read commands. MCP read tools build the index on first use. Current context, review, and reduce commands always redact detected secrets before returning source; they expose no redaction-disable flag.
 
 ## fuse index
 
@@ -17,13 +17,14 @@ The read commands build the persistent index on first use, so most commands take
 |------|------|---------|-------------|
 | `path` | string | `.` | Workspace directory to index. |
 | `--force` | bool | `false` | Force a full re-index instead of an incremental update. |
+| `--from-capture` | string | None | Rehydrate from a compatible `fuse capture` bundle instead of building. |
 
 ## fuse map
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `path` | string | `.` | Workspace directory to map. |
-| `--detail` | string | `all` | What to include: `symbols`, `routes`, or `all`. |
+| `--detail` | string | `symbols` | What to include: `symbols`, `routes`, or `all`. |
 | `--max-rows` | int | `200` | Maximum rows per section. |
 
 ## fuse localize
@@ -41,6 +42,8 @@ Supply `--task` for an open-ended query, or one of the named flags to seed candi
 | `--config` | string | None | A config section to resolve to its options type. |
 | `--changed-since` | string | None | A git base ref whose changed files seed the candidates. |
 | `--max-candidates` | int | `50` | Maximum candidates to return. |
+| `--strict` | bool | `false` | Return only a navigation map when signal is insufficient. |
+| `--expand` | bool | `false` | Add typed-graph neighbors to selected candidates. |
 
 ## fuse resolve
 
@@ -63,9 +66,32 @@ Supply exactly one of the five.
 | `--seed` | string[] | None | A named seed (symbol, service, request, or config section). Repeatable. |
 | `--route` | string[] | None | A route seed, for example `POST /api/orders/{id}`. Repeatable. |
 | `--depth` | int | `2` | Graph expansion depth. |
-| `--max-tokens` | int | None | Token budget; must-keep seeds are always included. |
+| `--max-tokens` | int | None | Planning budget. Named seeds are must-keep and can make the result exceed this value. |
 | `--format` | string | `xml` | Output format: `xml`, `markdown`, or `json`. |
 | `--plan-only` | bool | `false` | Print the plan without rendering source bodies. |
+| `--handoff` | bool | `false` | Emit a PR handoff packet instead of review context. |
+| `--check-session` | string | `""` | Gate a handoff on this check-session id. |
+
+## fuse impact
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `symbol` | string | required in symbol mode | Symbol whose blast radius to compute. |
+| `--path` | string | `.` | Workspace directory. |
+| `--limit` | int | `50` | Maximum impacted items. |
+| `--package` | string | None | NuGet package id for package-upgrade mode. |
+| `--from-version` | string | None | Current package version. |
+| `--to-version` | string | None | Target package version. |
+
+The three package options are required together and replace symbol mode.
+
+## fuse test
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `symbol` | string | required | Symbol whose covering tests to run. |
+| `--path` | string | `.` | Workspace directory. |
+| `--limit` | int | `20` | Maximum covering test types. |
 
 ## fuse review
 
@@ -103,25 +129,31 @@ Compact a known set of files or piped content without walking a directory. Pass 
 | `--ext` | string | `.cs` | Extension that selects the reducer for `--stdin` content (for example `.cs`, `.ts`, `.py`). |
 | `--level` | string | `standard` | Reduction level: `none`, `standard`, `aggressive`, `skeleton`, or `publicApi`. |
 | `--directory` | string | `.` | Base directory for resolving relative `--files` paths. |
-| `--max-tokens` | int | `0` | Maximum tokens the reduced output may use (`0` means no limit). |
+| `--max-tokens` | int | `0` | Output ceiling (`0` means no limit). Reduction can truncate at this ceiling; it does not preserve every declaration. |
 
 The reduction levels and what each does to C# are in [Reduction levels](/docs/concepts/reduction-levels).
 
 ## Reduction levels
 
-A single `--level` value drives C# structural reduction wherever it applies (`fuse reduce`, and the render tier `fuse context` picks per file).
+`fuse reduce --level` selects C# structural reduction. `fuse context` chooses a render tier per file and maps that tier to a reduction level internally.
 
 | Level | What it does to C# |
 |-------|--------------------|
-| `none` | No structural reduction; whitespace trim only. |
+| `none` | No language-specific structural reduction; shared normalization and secret redaction still apply. |
 | `standard` | Removes comments, `using` directives, namespace wrappers, and `#region` directives. |
 | `aggressive` | The `standard` removals plus whitespace and syntax compression. |
 | `skeleton` | Emits type and member signatures, bodies removed. |
 | `publicApi` | Like `skeleton`, but keeps only public and protected members. |
 
+These levels reduce text for context. They do not promise compilable output, semantic equivalence, or retention of private implementation detail. `skeleton` and `publicApi` intentionally remove bodies.
+
+## Legacy Fusion Pipeline Options
+
+The codebase retains a legacy directory-fusion pipeline used by internal benchmark and compatibility commands. Flags such as `--tokenizer`, `--output`, `--name`, `--no-manifest`, `--provenance`, `--git-stats`, `--split-tokens`, `--include-metadata`, `--no-redact`, `--redact-report`, and `--report` belong to that pipeline. They are not options on the current `fuse context`, `fuse review`, or `fuse reduce` commands.
+
 ## Other commands
 
-`fuse init`, `fuse mcp install`, `fuse mcp serve`, and `fuse host` take no query flags from this set. See [Commands](/docs/reference/commands) for their behavior.
+`fuse mcp serve` takes no command options. `fuse mcp install` accepts `--client`, `--scope`, `--command`, `--rules`, and `--with-hooks`. See [Commands](/docs/reference/commands) for behavior.
 
 ## Next
 

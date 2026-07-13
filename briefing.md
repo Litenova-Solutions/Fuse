@@ -55,9 +55,13 @@ Roslyn-backed index of a workspace and resolves what the code actually runs (whi
 implementation is injected for an interface, which handler processes a request, which endpoint
 serves a route, what a git diff impacts), then hands the agent the exact context a task needs,
 reduced to fit the context window. It ships two ways: a .NET global tool (`fuse`) for the
-terminal and CI, and a Model Context Protocol (MCP) server (`fuse mcp serve`) with fourteen
-tools an agent calls in a loop. There is also a VS Code extension that talks to a resident
-host process over JSON-RPC.
+terminal and CI, and a Model Context Protocol (MCP) server (`fuse mcp serve`) with nine tools
+an agent calls in a loop. A long-lived `fuse host` process on a named pipe serves the
+ambient-verification hooks and can share one resident workspace across MCP sessions (the VS Code
+extension was removed in v4, Decision D15). On the buildable corpus-v2 benchmark, open-ended
+task localization reaches 37.7 percent changed-file recall (95 percent CI 30 to 46) at 21.1
+percent precision; precise wiring lookup and graph-backed review remain the deterministic
+strengths.
 
 The problem it exists to solve: an AI agent working on an unfamiliar .NET codebase burns
 enormous token budget and many tool round-trips just exploring. It greps, opens files, greps
@@ -452,9 +456,9 @@ host, a cold read serves syntax-first then schedules a background upgrade superv
 `SemanticUpgradeSupervisor` (N3 part 1): deduped per root, failures logged to stderr, cancelled
 and drained on host shutdown so no task is orphaned. It remains off by default because the CLI
 `fuse index` is always a synchronous full pass and short-lived callers must not leave background
-work running. Documented cold timings (NodaTime, `performance.json`): syntax tier about 18 s;
-full semantic pass about 58 s; syntax-first plus background upgrade to semantic-ready about 83 s
-additional. N3 remainder (resident workspace plus dependency-scoped semantic re-index) is not yet
+work running. Documented cold timings (NodaTime, `performance.json`): syntax tier about 17.8 s;
+full semantic pass about 24.6 s; syntax-first plus background upgrade to semantic-ready about
+48 s additional. N3 remainder (resident workspace plus dependency-scoped semantic re-index) is not yet
 shipped; incremental reconcile still updates syntax rows only (issue 5).
 
 ### 6.2 Tier-1 build capture (oracle-grade, opt-in)
@@ -933,14 +937,20 @@ published.
 
 | Operation | P50 | P95 |
 |-----------|----:|----:|
-| Warm localize | 41.6 ms | 54.6 ms |
-| Warm resolve | 0.0 ms | 0.0 ms |
-| Warm review plan | 116.6 ms | 135.6 ms |
-| Incremental re-index (one file) | 24.2 ms | 28.2 ms |
+| Warm localize | 23.4 ms | 25.2 ms |
+| Warm find symbol | 2.2 ms | 3.6 ms |
+| Warm resolve | 0.0 ms | 0.1 ms |
+| Warm review plan | 97.8 ms | 101.3 ms |
+| Incremental re-index (one file) | 20.9 ms | 25.4 ms |
 
-Cold: syntax tier served in 18,343 ms; semantic-ready after further 83,279 ms (background
-upgrade path); full semantic pass 58,245 ms. Incremental re-index updates syntax rows only, not
+Cold: syntax tier served in 17,840 ms; semantic-ready after further 48,329 ms (background
+upgrade path); full semantic pass 24,554 ms. Incremental re-index updates syntax rows only, not
 cross-file semantic edges.
+
+**Resident verify path (`resident-latency.json`, NodaTime, opt-in with `FUSE_RESIDENT=1`):**
+resident warm (build plus rehydrate) 14,092 ms; RSS 162 MB; overlay check (speculative
+typecheck, analyzers off) P50 31.2 ms / P95 42.4 ms (S1 gate PASS); delta mode (whole-state
+diff) P50 203.9 ms / P95 699.3 ms (S2 gate PASS).
 
 ---
 

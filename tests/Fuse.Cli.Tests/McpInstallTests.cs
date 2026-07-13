@@ -92,25 +92,218 @@ public sealed class McpInstallTests
     [Fact]
     public void GetConfigPath_UserScope_UsesUserProfileDirectory()
     {
+        using var home = new TempHomeScope();
         var projectRoot = CreateTempDirectory();
-        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
         Assert.Equal(
-            Path.Combine(profile, ".cursor", "mcp.json"),
+            Path.Combine(home.Root, ".cursor", "mcp.json"),
             McpInstallService.GetConfigPath(McpInstallClient.Cursor, McpInstallScope.User, projectRoot));
 
         // VS Code reads user-level MCP config from its profile directory (Code/User), not ~/.vscode.
         var copilotUser = McpInstallService.GetConfigPath(McpInstallClient.Copilot, McpInstallScope.User, projectRoot);
         Assert.EndsWith(Path.Combine("Code", "User", "mcp.json"), copilotUser);
         Assert.DoesNotContain(Path.Combine(".vscode", "mcp.json"), copilotUser);
+        Assert.StartsWith(home.Root, copilotUser, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void GetConfigPath_ClaudeUserScope_IsNotSupported()
     {
         // Claude user scope goes through the Claude CLI, so there is no file path to return.
-        Assert.Throws<NotSupportedException>(() =>
+        var exception = Assert.Throws<NotSupportedException>(() =>
             McpInstallService.GetConfigPath(McpInstallClient.Claude, McpInstallScope.User, CreateTempDirectory()));
+        Assert.Contains("Claude CLI", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task InstallAsync_UserScope_WritesCursorAndCopilotConfigs()
+    {
+        using var home = new TempHomeScope();
+        var projectRoot = CreateTempDirectory();
+        var service = new McpInstallService();
+
+        var configured = await service.InstallAsync(
+            [McpInstallClient.Cursor, McpInstallClient.Copilot],
+            McpInstallScope.User,
+            projectRoot,
+            "/usr/local/bin/fuse",
+            writeRules: false,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        Assert.Equal(2, configured);
+
+        var cursorPath = McpInstallService.GetConfigPath(McpInstallClient.Cursor, McpInstallScope.User, projectRoot);
+        Assert.True(File.Exists(cursorPath));
+        var cursor = JsonSerializer.Deserialize(
+            await File.ReadAllTextAsync(cursorPath),
+            FuseCliJsonContext.Default.CursorMcpConfig);
+        Assert.NotNull(cursor);
+        Assert.Equal("/usr/local/bin/fuse", cursor!.McpServers["fuse"].Command);
+        Assert.Equal(["mcp", "serve"], cursor.McpServers["fuse"].Args);
+
+        var copilotPath = McpInstallService.GetConfigPath(McpInstallClient.Copilot, McpInstallScope.User, projectRoot);
+        Assert.True(File.Exists(copilotPath));
+        var copilot = JsonSerializer.Deserialize(
+            await File.ReadAllTextAsync(copilotPath),
+            FuseCliJsonContext.Default.CopilotMcpConfig);
+        Assert.NotNull(copilot);
+        Assert.Equal("/usr/local/bin/fuse", copilot!.Servers["fuse"].Command);
+        Assert.Equal("stdio", copilot.Servers["fuse"].Type);
+        Assert.Equal(["mcp", "serve"], copilot.Servers["fuse"].Args);
+
+        // User-scope writes stay under the redirected home, not the project directory.
+        Assert.False(File.Exists(Path.Combine(projectRoot, ".cursor", "mcp.json")));
+        Assert.False(File.Exists(Path.Combine(projectRoot, ".vscode", "mcp.json")));
+    }
+
+    [Theory]
+    [InlineData(McpInstallClient.Cursor)]
+    [InlineData(McpInstallClient.Copilot)]
+    public async Task InstallAsync_UserScope_MergesExistingServers(McpInstallClient client)
+    {
+        using var home = new TempHomeScope();
+        var projectRoot = CreateTempDirectory();
+        var configPath = McpInstallService.GetConfigPath(client, McpInstallScope.User, projectRoot);
+        Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+
+        if (client == McpInstallClient.Cursor)
+        {
+            await File.WriteAllTextAsync(
+                configPath,
+                """
+                {
+                  "mcpServers": {
+                    "other": {
+                      "command": "other-tool",
+                      "args": ["run"]
+                    }
+                  }
+                }
+                """);
+        }
+        else
+        {
+            await File.WriteAllTextAsync(
+                configPath,
+                """
+                {
+                  "servers": {
+                    "other": {
+                      "type": "stdio",
+                      "command": "other-tool",
+                      "args": ["run"]
+                    }
+                  }
+                }
+                """);
+        }
+
+        var service = new McpInstallService();
+        var configured = await service.InstallAsync(
+            [client],
+            McpInstallScope.User,
+            projectRoot,
+            "fuse",
+            writeRules: false,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        Assert.Equal(1, configured);
+
+        if (client == McpInstallClient.Cursor)
+        {
+            var cursor = JsonSerializer.Deserialize(
+                await File.ReadAllTextAsync(configPath),
+                FuseCliJsonContext.Default.CursorMcpConfig);
+            Assert.NotNull(cursor);
+            Assert.Equal(2, cursor!.McpServers.Count);
+            Assert.Equal("other-tool", cursor.McpServers["other"].Command);
+            Assert.Equal("fuse", cursor.McpServers["fuse"].Command);
+        }
+        else
+        {
+            var copilot = JsonSerializer.Deserialize(
+                await File.ReadAllTextAsync(configPath),
+                FuseCliJsonContext.Default.CopilotMcpConfig);
+            Assert.NotNull(copilot);
+            Assert.Equal(2, copilot!.Servers.Count);
+            Assert.Equal("other-tool", copilot.Servers["other"].Command);
+            Assert.Equal("fuse", copilot.Servers["fuse"].Command);
+        }
+    }
+
+    [Fact]
+    public async Task InstallAsync_UserScope_Claude_RejectsWithoutCli()
+    {
+        using var home = new TempHomeScope();
+        using var path = new EmptyPathScope();
+        var projectRoot = CreateTempDirectory();
+        var console = new RecordingConsoleUI();
+        var service = new McpInstallService();
+
+        var configured = await service.InstallAsync(
+            [McpInstallClient.Claude],
+            McpInstallScope.User,
+            projectRoot,
+            "fuse",
+            writeRules: false,
+            console,
+            CancellationToken.None);
+
+        Assert.Equal(0, configured);
+        Assert.Contains("Claude Code CLI not found on PATH", Assert.Single(console.Errors));
+        Assert.False(File.Exists(Path.Combine(projectRoot, ".mcp.json")));
+        Assert.False(File.Exists(Path.Combine(home.Root, ".claude.json")));
+    }
+
+    [Theory]
+    [InlineData("fuse;rm")]
+    [InlineData("fuse|cat")]
+    [InlineData("fuse&whoami")]
+    [InlineData("fuse`id`")]
+    [InlineData("fuse\nserve")]
+    [InlineData("fuse\0serve")]
+    public void TryValidateFuseCommand_RejectsUnsafeCommands(string command)
+    {
+        var valid = McpInstallService.TryValidateFuseCommand(command, out _, out var errorMessage);
+
+        Assert.False(valid);
+        Assert.False(string.IsNullOrWhiteSpace(errorMessage));
+    }
+
+    [Theory]
+    [InlineData("/usr/local/bin/fuse")]
+    [InlineData("fuse")]
+    [InlineData(null)]
+    public void TryValidateFuseCommand_AcceptsSafeCommands(string? command)
+    {
+        var valid = McpInstallService.TryValidateFuseCommand(command, out var resolved, out var errorMessage);
+
+        Assert.True(valid);
+        Assert.Null(errorMessage);
+        Assert.False(string.IsNullOrWhiteSpace(resolved));
+    }
+
+    [Fact]
+    public async Task InstallAsync_InvalidCommand_ReturnsZero()
+    {
+        var root = CreateTempDirectory();
+        var console = new RecordingConsoleUI();
+        var service = new McpInstallService();
+
+        var configured = await service.InstallAsync(
+            [McpInstallClient.Cursor],
+            McpInstallScope.Project,
+            root,
+            "fuse;rm",
+            writeRules: false,
+            console,
+            CancellationToken.None);
+
+        Assert.Equal(0, configured);
+        Assert.Contains("shell metacharacters", Assert.Single(console.Errors), StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(Path.Combine(root, ".cursor", "mcp.json")));
     }
 
     [Fact]
@@ -322,13 +515,13 @@ public sealed class McpInstallTests
 
     private sealed class RecordingConsoleUI : IConsoleUI
     {
+        public List<string> Errors { get; } = [];
+
         public void WriteSuccess(string message)
         {
         }
 
-        public void WriteError(string message)
-        {
-        }
+        public void WriteError(string message) => Errors.Add(message);
 
         public void WriteStep(string message)
         {
@@ -337,5 +530,48 @@ public sealed class McpInstallTests
         public void WriteResult(string message)
         {
         }
+    }
+
+    private sealed class TempHomeScope : IDisposable
+    {
+        private readonly string? _originalHome;
+
+        public TempHomeScope()
+        {
+            Root = Path.Combine(Path.GetTempPath(), "fuse-install-home", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Root);
+            _originalHome = Environment.GetEnvironmentVariable(McpInstallService.UserProfileOverrideEnvironmentVariable);
+            Environment.SetEnvironmentVariable(McpInstallService.UserProfileOverrideEnvironmentVariable, Root);
+        }
+
+        public string Root { get; }
+
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable(McpInstallService.UserProfileOverrideEnvironmentVariable, _originalHome);
+            try
+            {
+                Directory.Delete(Root, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    private sealed class EmptyPathScope : IDisposable
+    {
+        private readonly string? _originalPath;
+
+        public EmptyPathScope()
+        {
+            _originalPath = Environment.GetEnvironmentVariable("PATH");
+            Environment.SetEnvironmentVariable("PATH", string.Empty);
+        }
+
+        public void Dispose() => Environment.SetEnvironmentVariable("PATH", _originalPath);
     }
 }

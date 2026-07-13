@@ -11,6 +11,12 @@ namespace Fuse.Cli.Services;
 /// </summary>
 public sealed class McpInstallService
 {
+    /// <summary>
+    ///     Environment variable overriding the user profile root for MCP install paths. Used by tests to
+    ///     redirect user-scope writes away from the real home directory.
+    /// </summary>
+    internal const string UserProfileOverrideEnvironmentVariable = "FUSE_MCP_INSTALL_HOME";
+
     private const string ServerName = "fuse";
 
     // The client launches `fuse mcp serve`; both tokens are passed as the stdio command arguments.
@@ -310,7 +316,7 @@ public sealed class McpInstallService
     {
         if (scope == McpInstallScope.User)
         {
-            var userRoot = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var userRoot = GetUserProfileDirectory();
             return client switch
             {
                 // Claude Code stores user-scope servers in ~/.claude.json, which is owned by the Claude CLI; user
@@ -374,7 +380,7 @@ public sealed class McpInstallService
         {
             case McpInstallClient.Claude:
                 var claudePath = scope == McpInstallScope.User
-                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "CLAUDE.md")
+                    ? Path.Combine(GetUserProfileDirectory(), ".claude", "CLAUDE.md")
                     : Path.Combine(projectRoot, "CLAUDE.md");
                 UpsertMarkedBlock(claudePath, RuleBody);
                 consoleUI.WriteSuccess($"Wrote Fuse rule for Claude Code: {claudePath}");
@@ -466,25 +472,38 @@ public sealed class McpInstallService
     }
 
     /// <summary>
+    ///     Resolves the user profile root for MCP install paths, honouring
+    ///     <see cref="UserProfileOverrideEnvironmentVariable" /> when set.
+    /// </summary>
+    internal static string GetUserProfileDirectory()
+    {
+        var overridePath = Environment.GetEnvironmentVariable(UserProfileOverrideEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(overridePath))
+            return Path.GetFullPath(overridePath);
+
+        return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    }
+
+    /// <summary>
     ///     Resolves the VS Code user profile directory that holds the user-level <c>mcp.json</c>.
     /// </summary>
     /// <returns>The platform-specific <c>Code/User</c> directory.</returns>
     /// <remarks>
     ///     Windows uses <c>%APPDATA%\Code\User</c>, macOS uses <c>~/Library/Application Support/Code/User</c>, and
     ///     other platforms honour <c>XDG_CONFIG_HOME</c> (defaulting to <c>~/.config</c>) under <c>Code/User</c>.
+    ///     When <see cref="UserProfileOverrideEnvironmentVariable" /> is set, paths are derived from that root instead.
     /// </remarks>
     private static string GetVsCodeUserConfigDirectory()
     {
+        var profileRoot = GetUserProfileDirectory();
         if (OperatingSystem.IsWindows())
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Code", "User");
+            return Path.Combine(profileRoot, "AppData", "Roaming", "Code", "User");
 
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (OperatingSystem.IsMacOS())
-            return Path.Combine(home, "Library", "Application Support", "Code", "User");
+            return Path.Combine(profileRoot, "Library", "Application Support", "Code", "User");
 
         var xdgConfig = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-        var configHome = string.IsNullOrWhiteSpace(xdgConfig) ? Path.Combine(home, ".config") : xdgConfig;
+        var configHome = string.IsNullOrWhiteSpace(xdgConfig) ? Path.Combine(profileRoot, ".config") : xdgConfig;
         return Path.Combine(configHome, "Code", "User");
     }
 

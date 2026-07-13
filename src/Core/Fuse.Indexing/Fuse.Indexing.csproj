@@ -14,8 +14,4 @@
         <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3"/>
         <PackageReference Include="System.IO.Hashing"/>
     </ItemGroup>
-    <ItemGroup>
-        <ProjectReference Include="..\Fuse.Collection\Fuse.Collection.csproj"/>
-        <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
-    </ItemGroup>
 </Project>

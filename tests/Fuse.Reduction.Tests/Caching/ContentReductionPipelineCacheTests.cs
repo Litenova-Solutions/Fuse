@@ -32,7 +32,8 @@ public sealed class ContentReductionPipelineCacheTests
 
             Assert.Equal(1, cache.Statistics.Hits);
             Assert.Equal(1, cache.Statistics.Misses);
-            Assert.True(File.Exists(Path.Combine(root, ".fuse", "fuse.db")));
+            Assert.True(File.Exists(Path.Combine(root, ".fuse", "fuse-cache.db")));
+            Assert.False(File.Exists(Path.Combine(root, ".fuse", "fuse.db")));
         }
         finally
         {

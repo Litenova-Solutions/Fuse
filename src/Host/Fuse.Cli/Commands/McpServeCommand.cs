@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using DotMake.CommandLine;
 using Fuse.Cli.Extensions;
@@ -62,7 +63,7 @@ public sealed class McpServeCommand
         builder.Services.AddSingleton<IConsoleUI, StderrConsoleUI>();
         builder.Services.AddFuse();
 
-        builder.Services
+        var mcpServer = builder.Services
             .AddMcpServer(options =>
             {
                 options.ServerInfo = new()
@@ -96,7 +97,28 @@ public sealed class McpServeCommand
                     "- fuse_context: Emit scoped, reduced source with provenance for selected seeds.\n" +
                     "- fuse_workspace: Report status or manage the persistent index; apply is the only tree-write action and is dry-run unless write=true.\n" +
                     "- fuse_reduce: Compact known files or raw content.";
-            })
+            });
+
+        // F-017: opt-in System.Diagnostics.Metrics for tool duration, index mode, and reconcile-stamped events.
+        if (FuseMetrics.Enabled)
+        {
+            mcpServer.AddCallToolFilter(next => async (context, cancellationToken) =>
+            {
+                var sw = Stopwatch.StartNew();
+                var toolName = context.Params?.Name ?? "unknown";
+                try
+                {
+                    return await next(context, cancellationToken);
+                }
+                finally
+                {
+                    sw.Stop();
+                    FuseMetrics.RecordToolDuration(toolName, sw.Elapsed);
+                }
+            });
+        }
+
+        mcpServer
             .WithStdioServerTransport()
             .WithTools<FuseTools>()
             .WithResources<FuseResources>()

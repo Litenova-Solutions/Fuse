@@ -17,5 +17,5 @@ public sealed class FuseStoreFactory : IFuseStoreFactory
 
     /// <inheritdoc />
     public IKeyValueStore Open(string sourceDirectory) =>
-        new SqliteKeyValueStore(FuseStorePaths.ResolveDatabasePath(sourceDirectory), _logger);
+        new SqliteKeyValueStore(FuseStorePaths.ResolveCacheDatabasePath(sourceDirectory), _logger);
 }

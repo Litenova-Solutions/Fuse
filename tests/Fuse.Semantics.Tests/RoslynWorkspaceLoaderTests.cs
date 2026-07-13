@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 namespace Fuse.Semantics.Tests;
 
 // P3.2: MSBuild/Roslyn workspace loading with a guarded locator and a clean syntax fallback.
+[Trait("Category", "RequiresSdk")]
 public sealed class RoslynWorkspaceLoaderTests
 {
     private readonly ITestOutputHelper _output;

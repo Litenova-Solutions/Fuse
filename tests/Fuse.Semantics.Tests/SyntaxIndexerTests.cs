@@ -9,6 +9,7 @@ using Xunit;
 namespace Fuse.Semantics.Tests;
 
 // P2.2: syntax-level symbol + chunk extraction into the store, and FTS over the stored chunks.
+// Routed through SemanticIndexer.IndexSyntaxFirstAsync (provider-driven syntax tier).
 public sealed class SyntaxIndexerTests : IAsyncLifetime
 {
     private readonly string _root =
@@ -49,9 +50,10 @@ public sealed class SyntaxIndexerTests : IAsyncLifetime
     {
         var indexer = CreateIndexer();
 
-        var result = await indexer.IndexAsync(_root, CancellationToken.None);
+        var result = await indexer.IndexSyntaxFirstAsync(_root, _store, CancellationToken.None);
 
         Assert.Equal(1, result.FileCount);
+        Assert.Equal("syntax", result.Mode);
         // 2 types (IOrderService, OrderService) + members (Place x2, ctor, field, _max field).
         Assert.True(result.SymbolCount >= 5, $"expected >= 5 symbols, got {result.SymbolCount}");
         Assert.True(await ExistsAsync("SELECT 1 FROM symbols WHERE name = 'OrderService' AND kind = 'class';"));
@@ -63,7 +65,7 @@ public sealed class SyntaxIndexerTests : IAsyncLifetime
     public async Task IndexedChunksAreSearchableByFts()
     {
         var indexer = CreateIndexer();
-        await indexer.IndexAsync(_root, CancellationToken.None);
+        await indexer.IndexSyntaxFirstAsync(_root, _store, CancellationToken.None);
 
         var hits = await _store.SearchAsync(new SearchQuery("OrderService"), CancellationToken.None);
 
@@ -74,14 +76,14 @@ public sealed class SyntaxIndexerTests : IAsyncLifetime
     public async Task ReindexAfterEditReplacesSymbols()
     {
         var indexer = CreateIndexer();
-        await indexer.IndexAsync(_root, CancellationToken.None);
+        await indexer.IndexSyntaxFirstAsync(_root, _store, CancellationToken.None);
         var before = await CountAsync("SELECT count(*) FROM symbols;");
 
         // Edit the file to remove a member, then clear its data and reindex.
         File.WriteAllText(Path.Combine(_root, "src", "OrderService.cs"),
             "namespace App.Services; public class OrderService { }");
         await _store.DeleteFileDataAsync("src/OrderService.cs", CancellationToken.None);
-        await indexer.IndexAsync(_root, CancellationToken.None);
+        await indexer.IndexSyntaxFirstAsync(_root, _store, CancellationToken.None);
 
         var after = await CountAsync("SELECT count(*) FROM symbols;");
         Assert.True(after < before, $"expected fewer symbols after trimming the file ({after} < {before})");
@@ -104,14 +106,14 @@ public sealed class SyntaxIndexerTests : IAsyncLifetime
             """);
         var indexer = CreateIndexer();
 
-        var result = await indexer.IndexAsync(_root, CancellationToken.None);
+        var result = await indexer.IndexSyntaxFirstAsync(_root, _store, CancellationToken.None);
 
         Assert.True(result.RouteCount >= 1);
         // A verb attribute with no route argument falls back to the handler name as the path segment.
         Assert.True(await ExistsAsync("SELECT 1 FROM routes WHERE route_pattern = '/api/orders/List' AND http_method = 'GET';"));
     }
 
-    private SyntaxIndexer CreateIndexer()
+    private static SemanticIndexer CreateIndexer()
     {
         var fileSystem = new PhysicalFileSystem();
         var pipeline = new FileCollectionPipeline(
@@ -124,8 +126,15 @@ public sealed class SyntaxIndexerTests : IAsyncLifetime
                 new EmptyFileFilter(),
                 new BinaryFileFilter(fileSystem),
             ]);
-        var scanner = new WorkspaceFileScanner(pipeline, new FileHashService());
-        return new SyntaxIndexer(scanner, _store, new SyntaxSymbolExtractor(), new SyntaxRouteExtractor());
+        return new SemanticIndexer(
+            new DotNetWorkspaceDiscoverer(),
+            new RoslynWorkspaceLoader(),
+            new WorkspaceFileScanner(pipeline, new FileHashService()),
+            new SemanticSymbolExtractor(),
+            new SyntaxSymbolExtractor(),
+            new SyntaxRouteExtractor(),
+            new FileHashService(),
+            Fuse.Semantics.Analyzers.SemanticAnalysisRunner.CreateDefault());
     }
 
     private async Task<bool> ExistsAsync(string sql)

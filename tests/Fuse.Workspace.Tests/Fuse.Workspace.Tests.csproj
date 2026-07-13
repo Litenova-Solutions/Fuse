@@ -7,6 +7,7 @@
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>
         <PackageReference Include="xunit"/>
         <PackageReference Include="xunit.runner.visualstudio">
@@ -15,6 +16,7 @@
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\..\src\Host\Fuse.Cli\Fuse.Cli.csproj"/>
         <ProjectReference Include="..\..\src\Core\Fuse.Workspace\Fuse.Workspace.csproj"/>
     </ItemGroup>
 </Project>

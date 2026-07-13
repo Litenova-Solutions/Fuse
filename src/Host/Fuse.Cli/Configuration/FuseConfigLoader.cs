@@ -18,8 +18,8 @@ public static class FuseConfigLoader
     ///     the file cannot be parsed.
     /// </returns>
     /// <remarks>
-    ///     In each directory <c>fuse.json</c> takes precedence over <c>.fuserc</c>. Parse and read errors are
-    ///     swallowed and surfaced as a <see langword="null" /> result rather than thrown.
+    ///     In each directory <c>fuse.json</c> takes precedence over <c>.fuserc</c>. Parse and read errors write a
+    ///     warning to stderr naming the file path and return <see langword="null" /> rather than throwing.
     /// </remarks>
     public static FuseConfig? Load(string startDirectory)
     {
@@ -47,8 +47,9 @@ public static class FuseConfigLoader
             var json = File.ReadAllText(path);
             return JsonSerializer.Deserialize(json, FuseCliJsonContext.Default.FuseConfig);
         }
-        catch
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"Warning: Could not parse Fuse config '{path}': {ex.Message}");
             return null;
         }
     }

@@ -11,6 +11,7 @@ using Fuse.Retrieval;
 using Fuse.Semantics;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
+using StreamJsonRpc.Protocol;
 
 namespace Fuse.Cli.Rpc;
 
@@ -24,9 +25,11 @@ namespace Fuse.Cli.Rpc;
 /// </summary>
 /// <remarks>
 ///     Method names use the <c>fuse/</c> namespace. A random session token is generated at host start, returned
-///     from <c>fuse/handshake</c>, and required on every other RPC method. The service never throws across the
-///     wire for an expected condition; it returns a typed DTO so the client can render a clear state rather than
-///     parse an error.
+///     from <c>fuse/handshake</c>, and required on every other RPC method. When the process is the
+///     <c>fuse host</c> entry point, the served repository root is taken from <c>--directory</c> (defaulting to
+///     the current directory) and every RPC method that carries a <paramref name="root" /> rejects a path that
+///     does not match it. The service never throws across the wire for an expected condition; it returns a typed
+///     DTO so the client can render a clear state rather than parse an error.
 /// </remarks>
 public sealed class FuseHostService : IDisposable
 {
@@ -47,6 +50,7 @@ public sealed class FuseHostService : IDisposable
     private readonly ISecretRedactor _redactor;
     private readonly IGeneratedCodeDetector _generatedCodeDetector;
     private readonly string _sessionToken;
+    private readonly string? _servedRoot;
     private readonly long _startTimestamp;
     private readonly TaskCompletionSource _shutdownRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly object _payloadLock = new();
@@ -61,13 +65,19 @@ public sealed class FuseHostService : IDisposable
     /// <param name="redactor">The secret redactor, used read-only to locate secret spans for diagnostics.</param>
     /// <param name="generatedCodeDetector">Detects machine-generated C# (for example EF Core migrations) for diagnostics.</param>
     /// <param name="logger">The logger for host-side diagnostics, routed away from the transport stream.</param>
+    /// <param name="servedRoot">
+    ///     The repository root this daemon serves. When omitted and the process is <c>fuse host</c>, the root is
+    ///     resolved from <c>--directory</c> on the command line (defaulting to the current directory). When unset,
+    ///     root arguments are not validated (in-process tests and non-host callers).
+    /// </param>
     public FuseHostService(
         SemanticIndexer indexer,
         IChangeSource changeSource,
         ContentReductionPipeline reductionPipeline,
         ISecretRedactor redactor,
         IGeneratedCodeDetector generatedCodeDetector,
-        ILogger<FuseHostService> logger)
+        ILogger<FuseHostService> logger,
+        string? servedRoot = null)
     {
         _indexer = indexer;
         _changeSource = changeSource;
@@ -76,6 +86,9 @@ public sealed class FuseHostService : IDisposable
         _generatedCodeDetector = generatedCodeDetector;
         _logger = logger;
         _sessionToken = FuseHostSessionToken.Generate();
+        _servedRoot = servedRoot is not null
+            ? NormalizeRoot(servedRoot)
+            : TryResolveServedRootFromCommandLine();
         _startTimestamp = Stopwatch.GetTimestamp();
     }
 
@@ -126,11 +139,12 @@ public sealed class FuseHostService : IDisposable
     /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root to index.</param>
     /// <returns>The index summary the extension's index panel renders.</returns>
-    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid, or the root does not match the served root.</exception>
     [JsonRpcMethod("fuse/index")]
     public async Task<IndexResultDto> IndexAsync(string sessionToken, string root)
     {
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
         {
@@ -185,13 +199,14 @@ public sealed class FuseHostService : IDisposable
     /// <param name="since">The git base ref when <paramref name="scopeMode" /> is <c>changes</c>.</param>
     /// <param name="directory">Optional subdirectory to restrict a file-level projection to.</param>
     /// <returns>The graph nodes and edges at the requested level of detail.</returns>
-    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid, or the root does not match the served root.</exception>
     [JsonRpcMethod("fuse/graph")]
     public async Task<GraphDto> GraphAsync(
         string sessionToken, string root, string detail, string? scopeMode = null, string? seed = null, string? query = null,
         string? since = null, string? directory = null)
     {
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
         var resolved = Path.GetFullPath(root);
         var expandDirectory = !string.IsNullOrWhiteSpace(directory);
         var directories = !expandDirectory && string.Equals(detail, "Directories", StringComparison.OrdinalIgnoreCase);
@@ -306,12 +321,13 @@ public sealed class FuseHostService : IDisposable
     /// <param name="since">The git base when <paramref name="mode" /> is <c>changes</c>.</param>
     /// <param name="maxTokens">The token budget for the emitted payload, or <c>0</c> for unbounded.</param>
     /// <returns>The included files with token costs, the total tokens, and the payload file path.</returns>
-    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid, or the root does not match the served root.</exception>
     [JsonRpcMethod("fuse/scope")]
     public async Task<ScopeResultDto> ScopeAsync(
         string sessionToken, string root, string mode, string? seed, string? query, string? since, int maxTokens)
     {
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
             return new ScopeResultDto((mode ?? "search").Trim().ToLowerInvariant(), [], 0, null);
@@ -358,12 +374,13 @@ public sealed class FuseHostService : IDisposable
     /// <param name="query">The search query when <paramref name="mode" /> is <c>search</c>.</param>
     /// <param name="since">The git base when <paramref name="mode" /> is <c>changes</c>.</param>
     /// <returns>The scoping mode and the planned files with their roles, tiers, and scores.</returns>
-    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid, or the root does not match the served root.</exception>
     [JsonRpcMethod("fuse/explain")]
     public async Task<ExplainResultDto> ExplainAsync(
         string sessionToken, string root, string mode, string? seed, string? query, string? since)
     {
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
             return new ExplainResultDto((mode ?? "search").Trim().ToLowerInvariant(), []);
@@ -388,11 +405,12 @@ public sealed class FuseHostService : IDisposable
     /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root.</param>
     /// <returns>The detected secrets, hotspots, graph gaps, and generated files.</returns>
-    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid, or the root does not match the served root.</exception>
     [JsonRpcMethod("fuse/diagnostics")]
     public async Task<DiagnosticsDto> DiagnosticsAsync(string sessionToken, string root)
     {
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
         var resolved = Path.GetFullPath(root);
         if (!Directory.Exists(resolved))
             return new DiagnosticsDto([], [], [], []);
@@ -488,11 +506,12 @@ public sealed class FuseHostService : IDisposable
     ///     than blocking editing (delta mode never runs a build). The first call for a session establishes its
     ///     baseline and returns an empty delta.
     /// </returns>
-    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid, or the root does not match the served root.</exception>
     [JsonRpcMethod("fuse/check")]
     public async Task<CheckDeltaDto> CheckDeltaAsync(string sessionToken, string root, string session)
     {
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
         var resolved = Path.GetFullPath(root);
 
         // The current whole-state diagnostics come from a live resident workspace (the same process-wide provider
@@ -531,12 +550,13 @@ public sealed class FuseHostService : IDisposable
     ///     The diagnostics for the changed document; when no resident workspace serves the root,
     ///     <see cref="CheckOverlayResultDto.HasResident" /> is false and the caller falls back to its own path.
     /// </returns>
-    /// <exception cref="LocalRpcException">The session token is missing or invalid.</exception>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid, or the root does not match the served root.</exception>
     [JsonRpcMethod("fuse/checkOverlay")]
     public async Task<CheckOverlayResultDto> CheckOverlayAsync(
         string sessionToken, string root, string relativeFilePath, string newContent, bool includeAnalyzers)
     {
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
         var resolved = Path.GetFullPath(root);
         var diagnostics = await Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.TryCheckOverlayAsync(
             resolved, relativeFilePath, newContent, includeAnalyzers, CancellationToken.None);
@@ -547,6 +567,45 @@ public sealed class FuseHostService : IDisposable
 
     private static CheckDiagnosticDto ToCheckDiagnosticDto(CheckDiagnostic diagnostic) =>
         new(diagnostic.Id, diagnostic.Severity, diagnostic.Message, diagnostic.FilePath, diagnostic.Line);
+
+    // Confirms the caller's root matches the repository root this daemon was started to serve.
+    private void ValidateServedRoot(string root)
+    {
+        if (_servedRoot is null)
+            return;
+
+        var requested = NormalizeRoot(root);
+        if (string.Equals(_servedRoot, requested, StringComparison.Ordinal))
+            return;
+
+        _logger.LogWarning("Rejected RPC for root {Requested}; daemon serves {Served}.", requested, _servedRoot);
+        throw new LocalRpcException("Root does not match the daemon served root.")
+        {
+            ErrorCode = (int)JsonRpcErrorCode.InvalidParams,
+        };
+    }
+
+    // The same normalization HostEndpoint uses when hashing a root, so equivalent paths compare equal.
+    private static string NormalizeRoot(string root) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)).ToLowerInvariant();
+
+    // Resolves the served root when this process is the fuse host entry point (--directory, else cwd).
+    private static string? TryResolveServedRootFromCommandLine()
+    {
+        var args = Environment.GetCommandLineArgs();
+        var hostIndex = Array.FindIndex(args, static a => string.Equals(a, "host", StringComparison.OrdinalIgnoreCase));
+        if (hostIndex < 0)
+            return null;
+
+        for (var i = hostIndex + 1; i < args.Length - 1; i++)
+        {
+            if (string.Equals(args[i], "--directory", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(args[i], "-d", StringComparison.OrdinalIgnoreCase))
+                return NormalizeRoot(args[i + 1]);
+        }
+
+        return NormalizeRoot(Directory.GetCurrentDirectory());
+    }
 
     /// <summary>
     ///     Deletes any scope payload files written during this host session. Called from <c>fuse/shutdown</c> and

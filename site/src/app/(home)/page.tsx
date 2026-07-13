@@ -14,27 +14,27 @@ const siteUrl = 'https://fuse.codes';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Fuse - typecheck your AI agent\'s .NET edits before they land',
+    absolute: 'Fuse - local compiler and typed .NET wiring for coding agents',
   },
   description:
-    'Fuse is an MCP server for .NET that typechecks a proposed edit against the compiler before your agent writes it, resolves DI and route wiring from Roslyn, and scopes a pull request to the files that matter.',
+    'Fuse gives existing coding agents local, graded compiler checks and typed .NET wiring through MCP, with no hosted model or embedding download.',
   alternates: {
     canonical: siteUrl,
   },
   openGraph: {
     type: 'website',
     url: siteUrl,
-    title: 'Fuse - typecheck your AI agent\'s .NET edits before they land',
+    title: 'Fuse - local compiler and typed .NET wiring for coding agents',
     description:
-      'Fuse is an MCP server for .NET that typechecks a proposed edit against the compiler before your agent writes it.',
+      'Local, graded compiler checks and typed .NET wiring for existing coding agents.',
     siteName: 'Fuse',
     images: [{ url: '/fuse-social-card.png', width: 1280, height: 640, alt: 'Fuse benchmarks' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Fuse - typecheck your AI agent\'s .NET edits before they land',
+    title: 'Fuse - local compiler and typed .NET wiring for coding agents',
     description:
-      'Fuse is an MCP server for .NET that typechecks a proposed edit against the compiler before your agent writes it.',
+      'Local, graded compiler checks and typed .NET wiring for existing coding agents.',
     images: ['/fuse-social-card.png'],
   },
 };
@@ -54,7 +54,7 @@ const softwareApplicationJsonLd = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Windows, Linux, macOS',
   description:
-    'MCP server for .NET that typechecks proposed edits against the compiler, resolves wiring from Roslyn, and scopes changes to the files that matter.',
+    'Local compiler and typed .NET wiring service for coding agents, exposed through MCP.',
   url: siteUrl,
   downloadUrl: 'https://www.nuget.org/packages/Fuse',
   license: 'https://www.apache.org/licenses/LICENSE-2.0',
@@ -79,16 +79,15 @@ export default function HomePage() {
         <div className="relative mx-auto grid w-full max-w-6xl gap-12 px-6 py-20 md:py-28 lg:grid-cols-2 lg:items-center">
           <div className="flex flex-col items-start text-left">
             <span className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-fd-card px-3 py-1 text-xs font-medium text-fd-muted-foreground">
-              MCP server for AI coding agents on .NET
+              Local compiler service for existing coding agents
             </span>
             <h1 className="mt-5 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-              Typecheck your AI agent&apos;s .NET edits before they land
+              Give your coding agent a local .NET compiler and wiring graph
             </h1>
             <p className="mt-6 max-w-xl text-lg text-fd-muted-foreground">
-              Fuse reads your workspace with Roslyn and answers from the compiler: whether a
-              proposed edit compiles, what a signature change breaks, and which implementation
-              the container injects. Your agent repairs from a fact instead of a full{' '}
-              <code className="font-mono text-sm">dotnet build</code> round-trip.
+              Fuse connects Claude Code, Cursor, Copilot, and other MCP clients to graded
+              compiler checks and typed .NET wiring. It runs on your machine, requires no hosted
+              model or embedding download, and leaves the working tree unchanged during checks.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
@@ -122,7 +121,7 @@ agent reads the error, edits, builds again
             </div>
             <div>
               <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--brand)]">
-                With Fuse
+                With Fuse and build capture
               </div>
               <CodeBlock>{`fuse_check file="OrderService.cs"
            content="<proposed edit>"
@@ -140,16 +139,16 @@ agent reads the error, edits, builds again
       <section className="border-b border-fd-border bg-fd-card/40">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-6 py-12 md:grid-cols-3">
           <Metric
-            value="0 wrong verdicts"
-            label="Across 1,000 compiler-checked edits, fuse_check never called a broken edit clean or a clean edit broken."
+            value="0 wrong tested verdicts"
+            label="Across 1,000 compiler-labeled OrderingApp mutations, fuse_check returned no false-green or false-red verdicts."
           />
           <Metric
             value="89% vs 82%"
-            label="In a 234-run comparison driving Claude with and without Fuse, more tasks finished correctly when verified by the project's own tests."
+            label="True pass@1 in a reduced-scope loop run. The 95% confidence intervals overlapped, and build plus test calls were 3.1 vs 3.2."
           />
           <Metric
             value="~1,026 tokens"
-            label="A pull request's scoped context in a median 1,026 tokens at 93.4% precision, keeping 100% of the changed files over 69 real PRs."
+            label="Median git-seeded branch context over 69 PRs, including every changed file by construction plus graph-selected support files."
           />
         </div>
         <p className="pb-8 text-center text-xs text-fd-muted-foreground">
@@ -169,17 +168,17 @@ agent reads the error, edits, builds again
             How it works
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-fd-muted-foreground">
-            <code className="font-mono">fuse_check</code> typechecks a proposed edit before
-            the agent writes it. When clean, <code className="font-mono">fuse_test</code> runs
-            only the tests that reach the changed code. The round-trip this replaces is{' '}
-            <code className="font-mono">dotnet build</code>, read the errors, edit, repeat.
+            <code className="font-mono">fuse_check</code> typechecks a proposed single-file edit
+            without writing it. Each answer reports its evidence grade: resident build-captured
+            compilation when opt-in resident mode is available, a scoped build fallback, or an
+            abstention. <code className="font-mono">fuse_test</code> can then run covering tests.
           </p>
         </div>
         <div className="mt-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/fuse-loop-diagram.svg"
-            alt="The Fuse verify loop: an agent proposes an edit; fuse_check typechecks it before it lands, returning diagnostics and a repair packet without a build; the agent applies the repair and re-checks; when clean, fuse_test runs only the covering tests; done. The path this replaces is the full dotnet build and dotnet test round-trip."
+            alt="The Fuse verify loop: an agent proposes an edit; fuse_check returns graded compiler diagnostics and a repair packet before the file is written; the agent applies the repair and re-checks; when clean, fuse_test runs the selected covering tests."
             className="mx-auto w-full max-w-3xl"
           />
         </div>
@@ -195,12 +194,12 @@ agent reads the error, edits, builds again
             <Feature
               icon={<ShieldCheck className="size-5" />}
               title="Verify an edit"
-              body="fuse_check typechecks a proposed single-file edit against the C# compiler and returns the diagnostics plus a repair packet, before the file is written. When the compiler cannot answer, Fuse says so."
+              body="fuse_check typechecks an in-memory single-file proposal and returns diagnostics plus a repair packet. It reports the evidence grade and abstains when neither compiler path can answer."
             />
             <Feature
               icon={<Zap className="size-5" />}
               title="Blast radius"
-              body="fuse_impact lists callers, implementers, and referencing types from the typed graph, so the agent sees what a signature change breaks before touching it."
+              body="fuse_impact lists callers, implementers, and referencing types supported by the typed graph, so the agent can inspect a signature change before editing."
             />
             <Feature
               icon={<Crosshair className="size-5" />}
@@ -210,13 +209,13 @@ agent reads the error, edits, builds again
             <Feature
               icon={<GitPullRequest className="size-5" />}
               title="Scoped PR context"
-              body="fuse_review returns the changed files plus their semantic blast radius in about a thousand tokens, with provenance for why each file is there."
+              body="fuse_review starts from the git diff and adds graph-selected support files under a token budget, with provenance for each inclusion. It is compact branch context, not proof that every relevant file was found."
             />
           </div>
           <div className="mt-8 text-center">
             <Button asChild variant="secondary">
               <Link href="/docs/start/why-fuse">
-                How Fuse compares to packers and embedding search{' '}
+                Why add Fuse to an agent{' '}
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -232,9 +231,9 @@ agent reads the error, edits, builds again
               Connect it to your agent
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
-              Run <code className="font-mono">fuse mcp serve</code> and your agent gets map,
-              resolve, review, check, and context verbs. Works with Claude Code, Cursor, and
-              GitHub Copilot.
+              Install the .NET tool, then register <code className="font-mono">fuse mcp serve</code>.
+              Your current agent gains check, impact, wiring, review, and context verbs without
+              replacing its model, editor, or file tools.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">

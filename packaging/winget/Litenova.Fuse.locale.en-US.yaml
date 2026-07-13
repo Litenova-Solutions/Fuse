@@ -1,5 +1,5 @@
 PackageIdentifier: Litenova.Fuse
-PackageVersion: 2.0.1
+PackageVersion: 4.0.0
 PackageLocale: en-US
 Publisher: Litenova Solutions
 PublisherUrl: https://github.com/Litenova-Solutions
@@ -9,13 +9,15 @@ PackageUrl: https://fuse.codes
 Moniker: fuse
 License: Apache-2.0
 LicenseUrl: https://github.com/Litenova-Solutions/Fuse/blob/main/LICENSE
-ShortDescription: A .NET-native codebase context optimizer for AI-assisted development.
+ShortDescription: A local .NET compiler service for AI coding agents.
 Description: >-
-  Fuse collects the source files of a .NET codebase, reduces them for token
-  efficiency, and emits one structured payload an AI agent or a developer can
-  read in a single call. It ships as a .NET global tool and as an MCP server.
+  Fuse gives AI coding agents compiler-backed answers about a local .NET
+  workspace. Its MCP server verifies proposed edits, computes change impact,
+  resolves framework wiring, runs covering tests, and returns scoped source
+  context with a grade and provenance.
 Tags:
   - ai
+  - compiler
   - llm
   - mcp
   - dotnet

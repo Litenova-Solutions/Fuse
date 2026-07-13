@@ -3,16 +3,23 @@ title: Connect to your AI
 description: Register Fuse with Claude Code, Cursor, or GitHub Copilot so your agent fetches scoped context directly.
 ---
 
-Fuse runs as a Model Context Protocol (MCP) server. Once registered, your agent gets a set
-of verbs for checking a proposed edit against the compiler, computing a change's blast
-radius, resolving .NET wiring, and planning scoped context, all returning graded,
-provenance-backed answers in a single call.
+Fuse runs as a local Model Context Protocol (MCP) server. Once registered, your agent gets
+compiler-service operations for checking a proposed edit, computing a change's blast
+radius, resolving .NET wiring, and planning scoped context. Results carry a grade and
+provenance.
 
 You do not run `fuse mcp serve` manually for normal use. Fuse uses stdio MCP: your AI client
 launches `fuse mcp serve` as a child process when MCP is enabled, talks JSON-RPC over
 stdin/stdout, and tears the process down when the session ends. Your job is a one-time
 registration; after that the agent calls `fuse_check`, `fuse_review`, and the rest
 whenever it needs an answer.
+
+Source files and the `.fuse/fuse.db` index remain on your machine. The server does not
+listen on a TCP port or send source to Fuse. Your AI client still applies its own data
+policy to prompts and tool results. Fuse can contact NuGet for its daily update check;
+set `FUSE_UPDATE_CHECK=0` in the server environment to disable it. Compiler fallback can
+run the repository's normal `dotnet build`, including any package-feed access that build
+requires.
 
 ## Register in One Command
 
@@ -22,10 +29,10 @@ From your project root, register Fuse and write the rule that points your agent 
 fuse mcp install --rules
 ```
 
-This does two things. It writes MCP config for Claude Code, Cursor, and GitHub Copilot in
-the current directory, and `--rules` writes a short rule into each client's instruction file
-so the agent reaches for the `fuse_*` tools instead of grepping and opening files blindly.
-The `--rules` step is what makes agents actually use Fuse, so it is the recommended install.
+This writes MCP config for Claude Code, Cursor, and GitHub Copilot in the current
+directory. The `--rules` option also writes a short rule into each client's instruction
+file so the agent reaches for the `fuse_*` tools for broad context and verification. The
+rule keeps exact string lookup with the client's built-in search.
 
 To register for every project you open on this machine:
 
@@ -73,14 +80,68 @@ intentional: grep is still the right tool for an exact string or symbol.
 
 ## What Gets Written
 
-| Client | Project scope | User scope |
-|--------|---------------|------------|
-| Claude Code | `.mcp.json` | `claude mcp add fuse --scope user -- fuse mcp serve` |
-| Cursor | `.cursor/mcp.json` | `~/.cursor/mcp.json` |
-| GitHub Copilot | `.vscode/mcp.json` | VS Code user `mcp.json` (`%APPDATA%\Code\User` on Windows, `~/Library/Application Support/Code/User` on macOS, `~/.config/Code/User` on Linux) |
+| Client | MCP config, project scope | Rule written by `--rules` |
+|--------|---------------------------|----------------------------|
+| Claude Code | `.mcp.json` | Fuse-managed block in `CLAUDE.md` |
+| Cursor | `.cursor/mcp.json` | `.cursor/rules/fuse.mdc` |
+| GitHub Copilot | `.vscode/mcp.json` | Fuse-managed block in `.github/copilot-instructions.md` |
+
+At user scope, Claude registration is managed by `claude mcp add`; its rule goes in
+`~/.claude/CLAUDE.md`. Cursor writes `~/.cursor/mcp.json`. Copilot writes the VS Code user
+`mcp.json` under `%APPDATA%\Code\User` on Windows,
+`~/Library/Application Support/Code/User` on macOS, or `~/.config/Code/User` on Linux.
+Cursor and Copilot have no user-global rule file, so `--rules --scope user` skips those
+two rules. Existing JSON and instruction files are merged rather than replaced.
+
+The optional `--with-hooks` flag also merges two Claude Code hooks into
+`.claude/settings.json`: a post-edit `fuse check --delta --fast` hook and a stop-time
+`fuse gate` hook.
 
 Each entry points the client at `fuse mcp serve`. The client invokes that command; you never
 keep a terminal open.
+
+## Check Activation
+
+Run the registration command, restart or reload the AI client so it rereads MCP
+configuration, then send the second command to the agent:
+
+```bash
+fuse mcp install --rules
+```
+
+```text
+Call fuse_workspace with action=status for this repository. Return its index mode,
+freshness, and verification grade exactly as Fuse reports them.
+```
+
+The second command must produce one real Fuse result with a reported grade. A tool list
+or a statement that Fuse is connected is not the check.
+
+The first tool call builds the local index if none exists. On a large repository, expect
+that cold call to take from a few seconds to tens of seconds. It serves syntax-level
+results first while the MCP server upgrades the workspace in the background. If MSBuild
+cannot load every project, Fuse reports `partial` or `syntax` instead of claiming full
+semantics. Verification still uses the best compiler path available: a resident or
+build-captured compilation when present, otherwise a scoped real `dotnet build` reported
+as build grade.
+
+## Rollback
+
+There is no `fuse mcp uninstall` command. Remove only the `fuse` server entry from each MCP
+JSON file listed above, preserving other servers. For Claude user scope, run:
+
+```bash
+claude mcp remove fuse --scope user
+```
+
+Delete `.cursor/rules/fuse.mdc`. In `CLAUDE.md`,
+`.github/copilot-instructions.md`, or `~/.claude/CLAUDE.md`, delete the block from
+`<!-- fuse:begin ... -->` through `<!-- fuse:end -->`. If you installed hooks, delete the
+two Fuse entries from `.claude/settings.json` under `hooks`.
+
+Stop or reload the AI client, then delete `.fuse/` at the repository root to remove the
+derived index. Deleting `.fuse/` does not change source files; a later Fuse read rebuilds
+it.
 
 ## Manual Registration
 
@@ -139,8 +200,9 @@ Use `--scope user` instead of `--scope project` to make Fuse available in every 
 
 When your client needs Fuse, it spawns `fuse mcp serve` and keeps it alive for the session.
 Stdout carries the protocol byte stream, so all logging is routed to stderr. Each read call
-returns its result in the tool response; only `fuse_workspace` with `action=index` writes (the index). The server
-keeps the on-disk index at `.fuse/fuse.db` warm across calls, so a multi-call task pays the
+returns its result in the tool response. Read calls can create or refresh the derived index
+at `.fuse/fuse.db`; only the explicit `fuse_workspace` `apply` action writes a proposed
+source edit. The server keeps the index warm across calls, so a multi-call task pays the
 analysis cost once.
 
 ## The Nine Tools

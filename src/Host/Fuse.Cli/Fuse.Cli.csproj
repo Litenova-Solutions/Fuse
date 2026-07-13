@@ -7,14 +7,14 @@
         <AssemblyName>fuse</AssemblyName>
         <!-- Version is centralized in Directory.Build.props (the single source of truth); do not set it here. -->
         <Product>Fuse</Product>
-        <Description>An MCP server for AI coding agents on .NET. Fuse typechecks a proposed edit against the compiler before the agent writes it, computes the blast radius of a change, stages compiler-executed refactors as verified diffs, and resolves DI, route, and handler wiring from a Roslyn graph. Also a CLI for scoped, reduced codebase context.</Description>
+        <Description>Local compiler-backed verification and typed .NET wiring for AI coding agents. Typecheck proposed edits, compute change impact, run covering tests, and stage verified refactors. Persistent scoped context supports these outcomes.</Description>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>fuse</ToolCommandName>
         <PackageId>Fuse</PackageId>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/Litenova-Solutions/Fuse</PackageProjectUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>mcp;dotnet-tool;llm;ai-agent;roslyn;typecheck;codebase;context;csharp</PackageTags>
+        <PackageTags>mcp;dotnet-tool;ai-agent;roslyn;typecheck;verification;wiring;context;csharp</PackageTags>
         <PackageOutputPath>./nupkg</PackageOutputPath>
         <RollForward>LatestMajor</RollForward>
         <!-- C3: pack the build-capture worker into the tool so tier-1 is discovered with no env var. The worker's

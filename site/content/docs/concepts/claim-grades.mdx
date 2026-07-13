@@ -5,7 +5,7 @@ description: Every statement Fuse emits in an answer is graded by the evidence b
 
 A verification grade names the class of truth behind a single verify verdict. Claim grades
 extend the same idea to the statements Fuse makes inside any answer: an impact blast radius, a
-resolved wiring edge, a review summary, a covering-test run. Each such statement carries a
+resolved wiring edge, a Git-seeded review summary, a covering-test run. Each such statement carries a
 **claim grade** computed from the evidence available, so a reader always knows which parts of
 an answer are compiler-grade truth and which are graph-grade inferences that may not hold.
 
@@ -36,8 +36,9 @@ envelope):
 - `fuse_impact` - the caller/implementer count and the covering-test count, both graph-grade.
 - `fuse_find` (wiring kinds: service, request, route, config) - the resolved edge, graph-grade.
 - `fuse_test` - the covering tests run and their verdicts, compiler/test-grade (`verified`).
-- `fuse_review` - the changed-file set (git-truth, `verified`) and whether the change alters
-  the public API surface (graph-grade).
+- `fuse_review` - the changed-file set supplied by the Git diff (git-truth, `verified`) and
+  whether the change alters the public API surface (graph-grade). This grade confirms the
+  diff seeds; it does not claim that review discovered every file needed for the task.
 
 A claims block reads as one header plus one line per claim:
 

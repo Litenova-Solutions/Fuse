@@ -1,11 +1,11 @@
 ---
 title: Cut tokens for a .NET project
-description: Render a .NET solution, or a known set of files, into a token-efficient payload while keeping the public API intact, and cap output to a budget when needed.
+description: Render a .NET solution, or a known set of files, into a token-efficient payload and cap output to a budget when needed.
 ---
 
-**Goal:** take a .NET solution, or a set of files you already have, and produce a payload
-that costs far fewer tokens than the raw source, without losing the public API. When the
-result must fit a model window, cap it with a hard token limit.
+**Goal:** take a .NET solution, or a set of files you already have, and produce a smaller
+payload with a measured fidelity profile. When the result must fit a model window, cap it
+with a hard token limit.
 
 ## Reduce a Known Set of Files
 
@@ -17,8 +17,8 @@ fuse reduce --files src/OrderService.cs --files src/Order.cs --level aggressive
 ```
 
 `--level aggressive` applies the full C# structural reduction: it removes comments, usings,
-namespaces, and regions, then compresses aggressively, while keeping the public API. The
-levels run from `none` (lossless cleanup) to `skeleton` and `publicApi` (signatures only).
+namespaces, and regions, then compresses aggressively. The levels run from `none`
+(lossless cleanup) to `skeleton` and `publicApi` (signature-focused views).
 See [Reduction levels](/docs/concepts/reduction-levels) for the full ladder.
 
 ## Reduce an Area to a Budget
@@ -62,16 +62,17 @@ see exactly what fit.
 
 ## The Measured Cut
 
-On the benchmark corpus, the default and `aggressive` reductions remove 6 to 46 percent of
-tokens while keeping 99 to 100 percent of public types and methods, verified by an
-independent Roslyn oracle. The skeleton tier removes 39 to 56 percent for an architecture
-view. The cut is not deletion: the public surface a model reads the code for is still
-there.
+Across the four repositories in `reduce.json`, standard reduction removes 11 to 41 percent
+of tokens and aggressive removes 16 to 46 percent. Skeleton removes 38 to 44 percent, while
+public API removes 47 to 60 percent. An independent Roslyn parse checks declaration-name
+fidelity at skeleton level: all public and protected type names survive, and 96.3 to 99.4
+percent of public and protected method names survive. These measurements do not claim
+complete API preservation.
 
 ## When to Use It
 
-Reach for `fuse reduce --level aggressive` when you have a known set of files and want the
-most reliable cut with the API intact. Reach for `fuse context --max-tokens` when you want
+Reach for `fuse reduce --level aggressive` when you have a known set of files and want a
+larger measured cut than standard reduction. Reach for `fuse context --max-tokens` when you want
 an area scoped and reduced to fit a window. Set a budget whenever the plan is destined for
 a model with a fixed window or when you are capping the cost of a run. If you only need
 the shape of the codebase, a [skeleton survey](/docs/scenarios/survey-cheaply) cuts far

@@ -4,11 +4,10 @@ using Fuse.Cli.Services;
 namespace Fuse.Cli;
 
 /// <summary>
-///     Root Fuse CLI command. Fuse V3 is a .NET semantic context engine; the root prints guidance and parents
-///     the V3 subcommands (index, map, localize, resolve, context, review, diagnostics, find, reduce, init,
-///     models, mcp). It no longer runs generic template fusion.
+///     Root Fuse CLI command. Fuse connects AI coding agents to local compiler-backed verification and typed
+///     .NET wiring; the root prints connection guidance and the primary verified-edit outcomes.
 /// </summary>
-[CliCommand(Description = "Fuse: a .NET semantic context engine for AI agents.")]
+[CliCommand(Description = "Fuse: local compiler-backed verification and typed .NET wiring for AI agents.")]
 public class FuseCliCommand
 {
     private readonly IConsoleUI _consoleUI;
@@ -28,25 +27,40 @@ public class FuseCliCommand
     public FuseCliCommand(IConsoleUI consoleUI) => _consoleUI = consoleUI;
 
     /// <summary>
-    ///     Prints guidance pointing to the V3 workflow when no subcommand is given.
+    ///     Prints first-run connection guidance and the verified-edit workflow when no subcommand is given.
     /// </summary>
     /// <param name="context">The CLI invocation context.</param>
     public void Run(CliContext context)
     {
         _consoleUI.WriteResult(
             """
-            Fuse is a .NET semantic context engine. Start by indexing a workspace, then query it:
+            Fuse connects AI coding agents to the local .NET compiler and typed wiring graph.
 
-              fuse index [path]                 Build the persistent semantic index.
-              fuse map [path]                   Print the workspace map (symbols, routes).
-              fuse review --changed-since ref   Review the semantic impact of a change.
-              fuse resolve --service IFoo       Resolve wiring (service/request/route/config/symbol).
-              fuse localize --task "..."        Localize a task to candidate files.
-              fuse context --seed Foo           Plan and emit context for seeds.
-              fuse find <query>                 Exact symbol/path/text lookup.
-              fuse diagnostics [path]           Report index state.
+            Install and connect:
+              dotnet tool install -g Fuse                 Install the global tool.
+              fuse mcp install --client cursor --rules    Connect Cursor for this project.
+              fuse mcp install --client all --rules       Connect all supported agents.
 
-            Run 'fuse <command> --help' for options. 'fuse mcp serve' starts the MCP server.
+            Agent outcomes:
+              fuse_check       Typecheck a proposed edit: oracle, local build, or abstain.
+              fuse_impact      Compute callers and typed .NET wiring affected by a change.
+              fuse_test        Run only the covering tests for a symbol.
+              fuse_review      Pack changed code and semantic impact for review.
+              fuse_refactor    Stage a compiler-executed refactor only when it verifies.
+
+            CLI shortcuts:
+              fuse check --delta [path]          Read edit diagnostics from a resident host.
+              fuse impact <symbol>               Compute a symbol's blast radius.
+              fuse test <symbol>                 Run a symbol's covering tests.
+              fuse review --changed-since <ref>  Review a change since a git ref.
+
+            Context infrastructure:
+              fuse index [path]                  Build the persistent semantic index.
+              fuse find <query>                  Find symbols, wiring, paths, or text.
+              fuse context --seed <symbol>       Emit scoped, reduced source context.
+              fuse map [path]                    Print symbols, routes, and counts.
+
+            Run 'fuse <command> --help' for options. Connected agents launch 'fuse mcp serve'.
             """);
     }
 }

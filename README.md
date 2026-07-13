@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <b>Typecheck your AI agent's .NET edits against the compiler before they land.</b>
+  <b>A local compiler and typed .NET wiring service for your existing coding agent.</b>
 </p>
 
 <p align="center">
@@ -26,14 +26,16 @@
 
 ---
 
-Fuse is a Model Context Protocol server that connects your AI coding agent (Claude Code, Cursor, GitHub Copilot) to the .NET compiler. It typechecks a proposed edit before the agent writes it (`fuse_check`), computes the blast radius of a change (`fuse_impact`), stages compiler-executed refactors as diffs that compile or are not handed over (`fuse_refactor`), and resolves how the code is actually wired (which service implements an interface, which handler runs a request, which action a route hits) from a Roslyn graph rather than file names and grep. Every answer carries a grade so the agent knows what it is trusting, and Fuse abstains when it cannot answer at compiler grade. Scoped, reduced context and ranked retrieval are the supporting machinery that feed those answers. The same engine is also a `fuse` CLI.
+Fuse is a local compiler and typed .NET wiring service for AI coding agents. Through Model Context Protocol (MCP), Claude Code, Cursor, GitHub Copilot, and other MCP clients can ask the installed `fuse` process to typecheck a proposed edit (`fuse_check`), inspect a change's typed blast radius (`fuse_impact`), stage compiler-executed refactors (`fuse_refactor`), or resolve which implementation, handler, action, or options type is wired at runtime. Fuse runs against the workspace on your machine. It does not require a hosted model or download an embedding model.
+
+Compiler answers carry an evidence grade. Fuse uses the build-captured compilation when available, falls back to a scoped `dotnet build`, and abstains when neither path can answer. Checks evaluate an in-memory single-file proposal and do not write the working tree. Scoped context, lexical retrieval, and structural reduction support these compiler and graph operations; they are not the product identity. The same engine is also available through the `fuse` CLI.
 
 <p align="center">
   <img src="assets/demo/fuse-check-demo.gif" alt="Terminal demo: an AI agent proposes an edit to OrderService.cs that references OrderOptions.MaxItemCount (a member that does not exist); fuse_check returns the real CS1061 diagnostic and a repair packet naming the fix (replace MaxItemCount with MaxItems) at oracle grade, before the edit lands; the corrected edit checks clean, with no dotnet build round-trip." width="820">
 </p>
 
 <p align="center">
-  <img src="assets/fuse-loop-diagram.svg" alt="The Fuse verify loop: an agent proposes an edit; fuse_check typechecks it before it lands, returning diagnostics and a repair packet without a build; the agent applies the repair and re-checks; when clean, fuse_test runs only the covering tests; done. The path this replaces is the full dotnet build and dotnet test round-trip." width="820">
+  <img src="assets/fuse-loop-diagram.svg" alt="The Fuse verify loop: an agent proposes an edit; fuse_check returns graded compiler diagnostics and a repair packet before the file is written; the agent applies the repair and re-checks; when clean, fuse_test runs the selected covering tests." width="820">
 </p>
 
 Full documentation: **[fuse.codes](https://fuse.codes/docs)**. Contributors and roadmap planners: see [briefing.md](briefing.md) for architecture, benchmark evidence, and plan history.
@@ -85,7 +87,7 @@ Put it in `.mcp.json` (Claude Code), `.cursor/mcp.json` (Cursor), or `.vscode/mc
 Fuse exposes verbs an agent uses while it works. The ones that carry the identity verify and scope a change:
 
 ```text
-# Check an edit against the compiler before writing it (oracle-grade, or it abstains)
+# Check an edit against the compiler before writing it
 fuse_check  file="OrderService.cs"  content="<proposed edit>"
   -> CS1061 at OrderService.cs:41: 'Order' has no member 'TotalAmount'
      repair packet: 'Total' exists on Order; 'TotalAmount' does not
@@ -100,10 +102,10 @@ fuse_find  kind="service" query="IBasketService"
   -> BasketService  (src/ApplicationCore/Services/BasketService.cs)
      edge: di_resolves_to  (registered services.AddScoped<IBasketService, BasketService>())
 
-# Scope a change: the blast radius of a branch, packed under a token budget
+# Review a branch: git-seeded context plus typed support files
 fuse_review  changedSince="main"
-  -> changed files + support files (the interface a changed type implements, its consumers)
-     100% of changed files kept, ~1,026 tokens median, with provenance for each file
+  -> changed files + graph-selected support files, with provenance
+     median 1,026 tokens across the recorded 69-PR corpus
 ```
 
 The rest of the surface, by what an agent does with it:
@@ -114,7 +116,7 @@ The rest of the surface, by what an agent does with it:
 | `fuse_find` | The find union: exact symbol/path/text lookup; resolve wiring (service, request, route, config); a symbol's exact signature; its callers and implementers; or rank candidate files for a task (refuses and hands back a map when the task names no code). |
 | `fuse_check` | Typecheck a proposed single-file edit against the build-captured compilation; repair packets on API-shape errors. Oracle-grade, build-grade, or abstains. |
 | `fuse_impact` | Blast radius for a symbol: callers, implementers, referencing types from the typed graph; also a NuGet upgrade break set. |
-| `fuse_test` | Run the covering tests for a symbol, scoped by filter so the whole suite never runs. |
+| `fuse_test` | Run the tests connected to a symbol by persisted test edges, scoped by filter; reports selection-only when no covering edge is known. |
 | `fuse_refactor` | Compiler-executed, verify-gated refactors staged as a diff: rename, change-signature, extract-interface, move-type, apply-codefix. |
 | `fuse_review` | Diff-first semantic impact and packed context for a change, with the public API delta and a PR handoff packet. |
 | `fuse_context` | Emit scoped, reduced source (with provenance) for selected seeds. |
@@ -124,16 +126,15 @@ Tool parameters and the full catalog: [MCP Tools](https://fuse.codes/docs/refere
 
 ## Benchmarks (honest, sourced, reproducible)
 
-Fuse is judged as a compiler-grade semantic engine: can it verify an edit honestly, resolve .NET wiring, scope a change precisely, help an agent, and stay honest on a vague query. Every figure below is recorded under `tests/benchmarks/results` and reproduced with `fuse eval <suite>`; the full methodology and the modes where Fuse is weak are on the [benchmarks page](https://fuse.codes/docs/project/benchmarks). Numbers come from a fixed set of 24 real open-source .NET libraries pinned by commit, with the eShopOnWeb application as a supplementary run.
+Fuse is judged as a local compiler and typed wiring service: can it verify an edit honestly, resolve .NET wiring, assemble useful branch context, and abstain when its evidence is insufficient? Every figure below is recorded under `tests/benchmarks/results` and reproduced with `fuse eval <suite>`; the full methodology and limits are on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
 
-- **Verifies an edit without lying.** Over 1,000 compiler-checked edits (500 breaking, 500 neutral, generated by Roslyn and labeled by the compiler) plus 8 curated cases, `fuse_check` had zero false green and zero false red. Reproduce with `fuse eval checkgate --mutations 500`. (`checkgate.json`)
-- **Finishes more tasks with fewer silent failures.** In a 234-run comparison driving Claude with and without Fuse, the Fuse arm finished 89% of tasks correctly (verified by the project's own tests) against the native arm's 82%, with fewer silent wrong answers (8 versus 9). Build round-trips were essentially equal (3.1 versus 3.2). Reproduce with `FUSE_LOOP_RUN=1 fuse eval loop`. (`loop.json`)
-- **Fast compiler verdicts when resident.** With the resident workspace enabled (opt-in `FUSE_RESIDENT=1`, environment-dependent), speculative checks answered at P50 31.2 ms and P95 42.4 ms at NodaTime scale. Reproduce with `fuse resident-latency <path>`. (`resident-latency.json`)
-- **Resolves .NET wiring deterministically.** On the wiring fixture, the extracted graph matches hand-built ground truth exactly (24 of 24 edges). (`semantics.json`)
-- **Scopes a change with precision.** Over 69 real merged pull requests, `fuse review` keeps 100% of changed files at 93.4% precision in a median 1,026 returned tokens. A grep baseline reaches 67% recall at 8% precision. (`review.json`)
+- **Correct on the tested edit set.** On the OrderingApp fixture, 1,000 compiler-labeled mutations (500 breaking and 500 neutral) produced zero false-green and zero false-red verdicts. Eight curated cases also classified correctly. This result describes that tested fixture, not every .NET edit. Reproduce with `fuse eval checkgate --mutations 500`. (`checkgate.json`)
+- **Promising agent-loop result, with no build-call collapse.** The reduced-scope loop run observed 89% true pass@1 for Fuse (95% CI 82%-95%) and 82% for native tools (95% CI 74%-90%). The confidence intervals overlap. Agent-visible build and test calls were 3.1 versus 3.2, so this run does not support a claim that Fuse halves build round-trips. (`loop.json`)
+- **Millisecond checks are opt-in.** With `FUSE_RESIDENT=1`, the dedicated NodaTime measurement recorded speculative checks at P50 31.2 ms and P95 42.4 ms. The resident workspace is not the default and timings depend on the machine. (`resident-latency.json`)
+- **Resolves curated .NET wiring exactly.** The extracted graph matched all 24 hand-built edges in the OrderingApp wiring fixture, with no false positives. This is a curated fixture result. (`semantics.json`)
+- **Builds compact, git-seeded branch context.** Across 69 merged pull requests, `fuse_review` retained every git-changed file at 93.4% precision in a median 1,026 returned tokens. Changed files are seeds by construction; the result does not prove that every file needed to reason about each change was present. (`review.json`)
 - **Honest on open-ended localization.** From a task title alone, `fuse localize` recalls 37.7% of changed files: the weakest mode, reported straight. On no-signal titles, Fuse refuses and hands back a navigation map instead of guessing. (`localize.json`)
-- **Helps a real agent.** Driving Claude over 12 pull requests, the Fuse MCP arm edged out bare filesystem tools on file recall (30% versus 26%) at comparable token cost, on a small sample. (`agent.json`)
-- **Token-efficient context.** The Roslyn skeleton keeps essentially all public API while removing 38 to 44% of tokens at skeleton level, 47 to 60% at public-API level. (`reduce.json`)
+- **Reduces context after scope is known.** The Roslyn skeleton removed 38% to 44% of tokens while retaining all public types and 97% to 100% of public methods across the four recorded repositories. The public-API tier removed 47% to 60%. (`reduce.json`)
 
 No head-to-head ranking against other tools is claimed here; the measured peer comparison (with the exact reproduction command and every caveat) lives on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
 
@@ -151,8 +152,8 @@ Output and option lists: [Commands](https://fuse.codes/docs/reference/commands) 
 
 ## Status
 
-- **Solid: compiler-backed verification and the wiring graph.** The Roslyn-backed wiring graph (24 of 24 edges), speculative typecheck with repair packets, blast-radius impact, compiler-executed rename staged as a diff, change-impact review, and warm millisecond retrieval are the mature core.
-- **Growing: the resident verified-edit loop.** The current program (see the [Roadmap](https://fuse.codes/docs/project/roadmap)) makes the compilation resident so truth arrives within a second after an edit without a build, adds out-of-process covering-test execution, and grades every verify answer so it never shrugs.
+- **Core: local compiler evidence and typed .NET wiring.** Fuse checks proposed edits, reports evidence grades, resolves DI and framework wiring, computes typed impact, and stages compiler-verified refactors. The read and check paths do not write the working tree; `fuse_workspace action=apply` is the explicit write path.
+- **Opt-in: the resident verified-edit loop.** `FUSE_RESIDENT=1` keeps a build-captured compilation resident for millisecond speculative checks. Without it, Fuse uses the graded build fallback or abstains.
 - **Supporting machinery: retrieval and reduction.** Ranked localization is the fallback when a task names no anchor; skeleton reduction fits scoped context to a token budget. Both feed the verification and resolution answers above.
 - **Early: multi-language.** Non-C# languages are supported at the syntax tier (token-efficient context and search); the deep typed graph is .NET-only for now.
 

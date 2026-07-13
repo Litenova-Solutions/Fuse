@@ -38,19 +38,41 @@ public sealed class CorpusHealthGateTests
     }
 
     [Fact]
-    public void A_fresh_report_below_minimums_is_refused()
+    public void A_fresh_report_below_the_reduced_scope_floor_is_refused()
     {
         var fresh = Manifest.AddDays(1);
         var d = CorpusHealthGate.Evaluate(Report(5, 0, fresh.ToString("O")), fresh, Manifest);
         Assert.False(d.Allowed);
-        Assert.Contains("does not meet the minimums", d.Reason);
+        Assert.False(d.ReducedScope);
+        Assert.Contains("below the reduced-scope floor", d.Reason);
     }
 
     [Fact]
-    public void A_fresh_report_meeting_minimums_is_allowed()
+    public void A_fresh_report_meeting_minimums_is_allowed_at_full_scope()
     {
         var fresh = Manifest.AddDays(1);
         var d = CorpusHealthGate.Evaluate(Report(20, 60, fresh.ToString("O")), fresh, Manifest);
         Assert.True(d.Allowed, d.Reason);
+        Assert.False(d.ReducedScope);
+    }
+
+    [Fact]
+    public void Below_minimums_but_at_the_reduced_scope_floor_is_allowed_reduced_scope()
+    {
+        // The C4/D20 fallback: tier below 20 and tasks below 60, but at least the reduced-scope task floor (40),
+        // so a no-headline pilot runs rather than refusing outright (matches the recorded 15 tier-1, 44 tasks).
+        var fresh = Manifest.AddDays(1);
+        var d = CorpusHealthGate.Evaluate(Report(15, 44, fresh.ToString("O")), fresh, Manifest);
+        Assert.True(d.Allowed, d.Reason);
+        Assert.True(d.ReducedScope);
+        Assert.Contains("REDUCED-SCOPE", d.Reason);
+    }
+
+    [Fact]
+    public void Just_below_the_reduced_scope_floor_is_refused()
+    {
+        var fresh = Manifest.AddDays(1);
+        var d = CorpusHealthGate.Evaluate(Report(15, CorpusHealthReport.ReducedScopeTaskFloor - 1, fresh.ToString("O")), fresh, Manifest);
+        Assert.False(d.Allowed);
     }
 }

@@ -42,7 +42,33 @@ public static class DotnetCli
         process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-        await process.WaitForExitAsync(cancellationToken);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // A per-repo hard timeout (or an outer cancel) must actually stop the work: kill the whole
+            // dotnet process tree so a stalling restore does not leak an orphaned child that keeps holding
+            // files and CPU through the rest of a multi-hour sweep (D20).
+            TryKillTree(process);
+            throw;
+        }
+
         return new GitCli.GitResult(process.ExitCode, stdout.ToString(), stderr.ToString());
+    }
+
+    // Best-effort termination of the process and its descendants; a race where it already exited is benign.
+    private static void TryKillTree(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            // Already exited or not killable; nothing to reclaim.
+        }
     }
 }

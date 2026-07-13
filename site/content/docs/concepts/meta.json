@@ -2,14 +2,14 @@
   "title": "Concepts",
   "icon": "Lightbulb",
   "pages": [
-    "the-explore-phase",
+    "iterative-workflow",
     "how-fuse-works",
     "reduction-levels",
     "scoping",
     "sessions-and-deltas",
     "verification-grades",
     "claim-grades",
-    "precision-tier",
+    "roslyn-vs-regex",
     "glossary"
   ]
 }

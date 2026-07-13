@@ -46,6 +46,29 @@ public sealed class LoopMetricsTests
         // First passing gated turn is the second build (gated turns seen: build, build -> 2).
         Assert.Equal(2, m.IterationsToGreen);
         Assert.Equal(2, m.BuildInvocations); // two Build turns; the Test turn is not a build invocation
+        Assert.Equal(1, m.TestInvocations);
+        Assert.Equal(3, m.AgentVisibleVerifications); // 2 builds + 1 test
+    }
+
+    [Fact]
+    public void A_fuse_check_is_counted_in_its_own_column_not_the_build_column()
+    {
+        // D22a: a session that verifies only with fuse_check reaches green (the proxy) but records zero
+        // agent-visible build round-trips - the whole point of separating the columns.
+        var turns = new[]
+        {
+            new TranscriptTurn(TurnKind.Check, false, 30),
+            new TranscriptTurn(TurnKind.Edit, false, 50),
+            new TranscriptTurn(TurnKind.Check, true, 30),
+        };
+
+        var m = LoopMetrics.Compute(turns);
+
+        Assert.True(m.ReachedGreen);
+        Assert.Equal(2, m.IterationsToGreen); // two check turns, green on the second
+        Assert.Equal(0, m.BuildInvocations);
+        Assert.Equal(2, m.CheckInvocations);
+        Assert.Equal(0, m.AgentVisibleVerifications);
     }
 
     [Fact]

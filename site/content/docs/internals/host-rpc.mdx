@@ -3,13 +3,13 @@ title: Host RPC Threat Model
 description: Trust boundaries, transport security, and exposure for the fuse host JSON-RPC endpoint the ambient-verification hooks connect to.
 ---
 
-The `fuse host` command runs a long-lived process that serves the warm semantic engine to local clients over JSON-RPC. Its primary client today is the ambient-verification hooks (`fuse check --delta`, `fuse gate`), which connect to it over the pipe to answer the diagnostics-delta of a session's edits without running a build; it is the seed of the shared resident daemon (G5). The transport is a named pipe on Windows and a Unix domain socket elsewhere. This page states what the endpoint exposes, who can reach it on a typical developer machine, and the security assumptions the design makes today.
+The `fuse host` command runs a long-lived process that serves the warm semantic engine to local clients over JSON-RPC. Its primary client today is the ambient-verification hooks (`fuse check --delta`, `fuse gate`), which connect to it over the pipe to answer the diagnostics-delta of a session's edits without running a build; it is the seed of the shared resident daemon. The transport is a named pipe on Windows and a Unix domain socket elsewhere. This page states what the endpoint exposes, who can reach it on a typical developer machine, and the security assumptions the design makes today.
 
 This page is for engineers operating or extending the host, security reviewers assessing local exposure, and contributors implementing hardening work. For wiring an agent to Fuse over MCP, see [Connect to your AI](/docs/start/connect-your-ai).
 
 ## Role In The Product
 
-The host is the local-IPC twin of `fuse mcp serve`. The MCP server exposes the warm engine to an agent over stdio; the host exposes it to a local client over an IPC transport, sharing the same semantic index, SQLite store, and engine path, so a read the host answers is the same read an agent would get for the same options. The ambient-verification hooks use it for the `fuse/check` delta; the remaining read methods are the general host surface a future editor client or the G5 daemon can consume.
+The host is the local-IPC twin of `fuse mcp serve`. The MCP server exposes the warm engine to an agent over stdio; the host exposes it to a local client over an IPC transport, sharing the same semantic index, SQLite store, and engine path, so a read the host answers is the same read an agent would get for the same options. The ambient-verification hooks use it for the `fuse/check` delta; the remaining read methods are the general host surface a future editor client or the shared daemon can consume.
 
 The endpoint address is derived from the repository root, not passed out of band. Given an absolute root path, the host and its client compute the same address: on Windows a pipe named `fuse-host-{hash}`, elsewhere a socket file `{temp}/fuse-host-{hash}.sock`, where `{hash}` is the first eight bytes of SHA-256 over the normalized root path. A second client for the same repository connects to the already-running host; two different repositories stay on distinct endpoints.
 
@@ -26,7 +26,7 @@ Connections use Content-Length framed JSON-RPC (the same framing VS Code languag
 | `fuse/scope` | Runs a scoped fusion and writes the emitted payload to a temp file |
 | `fuse/explain` | Returns the context plan without writing a payload |
 | `fuse/diagnostics` | Returns secret spans, token hotspots, graph gaps, and generated-file hints |
-| `fuse/check` | Returns the diagnostics a session's edits introduced or resolved since its baseline (the hook path, S3) |
+| `fuse/check` | Returns the diagnostics a session's edits introduced or resolved since its baseline (the hook path) |
 | `fuse/shutdown` | Stops the host |
 | `fuse/invalidated` | Server push when watched files change (notification, not a request) |
 

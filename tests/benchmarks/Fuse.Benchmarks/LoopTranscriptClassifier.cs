@@ -13,10 +13,13 @@ namespace Fuse.Benchmarks;
 /// <remarks>
 ///     A verification turn is a <c>tool_use</c> that invokes the compiler or the test runner: a <c>Bash</c>
 ///     command containing <c>dotnet build</c> or <c>dotnet test</c>, or the <c>fuse_check</c> speculative
-///     typecheck (the whole point of R4 is that <c>fuse_check</c> replaces a <c>dotnet build</c> turn). Pass or
-///     fail is read from the paired <c>tool_result</c>: an error-indicating result (a nonzero exit, a compiler
-///     error id, or a "cannot verify" abstention) is a failed turn. A read tool is a <c>Read</c> turn, an
-///     <c>Edit</c> or <c>Write</c> is an edit turn; everything else is <c>Other</c>.
+///     typecheck. The three are classified into distinct kinds (<c>Build</c>, <c>Test</c>, <c>Check</c>) so the
+///     loop-collapse metric can count agent-visible build round-trips separately from speculative checks (D22a);
+///     R4's thesis is that <c>fuse_check</c> stands in for a <c>dotnet build</c> round-trip, and measuring that
+///     substitution requires the two never share a column. Pass or fail is read from the paired
+///     <c>tool_result</c>: an error-indicating result (a nonzero exit, a compiler error id, or a "cannot verify"
+///     abstention) is a failed turn. A read tool is a <c>Read</c> turn, an <c>Edit</c> or <c>Write</c> is an edit
+///     turn; everything else is <c>Other</c>.
 /// </remarks>
 public static class LoopTranscriptClassifier
 {
@@ -80,7 +83,7 @@ public static class LoopTranscriptClassifier
         var result = new List<TranscriptTurn>(turns.Count);
         foreach (var t in turns)
         {
-            var passed = t.Kind is TurnKind.Build or TurnKind.Test
+            var passed = t.Kind is TurnKind.Build or TurnKind.Check or TurnKind.Test
                          && resultsById.TryGetValue(t.Id, out var text)
                          && !IndicatesFailure(text);
             result.Add(new TranscriptTurn(t.Kind, passed, 0));
@@ -91,10 +94,11 @@ public static class LoopTranscriptClassifier
 
     private static TurnKind KindOf(string toolName, string command)
     {
-        // The fuse_check speculative typecheck is a build-verification turn: R4's thesis is that it stands in for
-        // a dotnet build round-trip, so it must count in the same column.
+        // The fuse_check speculative typecheck is a verification turn but NOT an agent-visible build round-trip:
+        // it gets its own Check column so the loop-collapse metric can count real dotnet-build turns separately
+        // (D22a; the first B1 harness gap was folding fuse_check into the build column).
         if (toolName.Contains("fuse_check", StringComparison.Ordinal))
-            return TurnKind.Build;
+            return TurnKind.Check;
         if (toolName.Equals("Read", StringComparison.Ordinal) || toolName.Equals("Grep", StringComparison.Ordinal)
             || toolName.Equals("Glob", StringComparison.Ordinal) || toolName.StartsWith("mcp__fuse", StringComparison.Ordinal))
             return TurnKind.Read;

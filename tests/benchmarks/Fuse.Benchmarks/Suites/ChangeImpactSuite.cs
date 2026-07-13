@@ -47,7 +47,7 @@ public sealed class ChangeImpactSuite : IEvalSuite
     {
         var budgets = options.Budgets is { Count: > 0 } ? options.Budgets : [DefaultBudget];
         var manager = new CorpusManager(options.BenchRoot, options.ResolvedCorpusRoot, options.Log);
-        var dataset = manager.LoadDataset("dotnet-prs-v1");
+        var dataset = manager.LoadDataset("dotnet-prs-v1", options.DatasetFile, options.ManifestPath);
         var notes = new List<string> { $"token budgets {string.Join(", ", budgets.Select(b => b.ToString("N0")))}" };
 
         var present = dataset.Repos

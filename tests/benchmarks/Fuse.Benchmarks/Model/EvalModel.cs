@@ -193,6 +193,19 @@ public sealed record Scorecard(
 /// <param name="Tokens">Returned tokens for this task.</param>
 /// <param name="LatencyMs">Wall-clock latency for this task in milliseconds.</param>
 /// <param name="Hit">Hit (relevant files returned), missed (ground-truth not returned), and extra (irrelevant) paths.</param>
+/// <param name="Checks">
+///     Loop suite only (D22a): the number of speculative <c>fuse_check</c> turns in the rollout, counted apart
+///     from the build column (<see cref="Precision" /> carries agent-visible build+test round-trips). Zero for
+///     every other suite.
+/// </param>
+/// <param name="OraclePassed">
+///     Loop suite only (D22a): the true pass@1 from the gold-test oracle post-check (null when the oracle could
+///     not run). Null for every other suite.
+/// </param>
+/// <param name="FalseDone">
+///     Loop suite only (D22a): the transcript proxy said green but the oracle says the tests are red. False for
+///     every other suite.
+/// </param>
 public sealed record TaskResult(
     string Id,
     string Repo,
@@ -201,7 +214,10 @@ public sealed record TaskResult(
     double Precision,
     int Tokens,
     long LatencyMs,
-    TaskFiles Hit);
+    TaskFiles Hit,
+    int Checks = 0,
+    bool? OraclePassed = null,
+    bool FalseDone = false);
 
 /// <summary>
 ///     The file-level breakdown for a task result.
@@ -213,3 +229,14 @@ public sealed record TaskFiles(
     IReadOnlyList<string> Hits,
     IReadOnlyList<string> Misses,
     IReadOnlyList<string> Extras);
+
+/// <summary>
+///     An incremental checkpoint of completed loop rollouts (B1), written after every rollout so a long,
+///     interruptible run resumes where it stopped instead of restarting. The checkpoint is keyed to the model it
+///     was produced under; a run with a different model ignores a stale checkpoint rather than mixing rollouts.
+/// </summary>
+/// <param name="Model">The model id the recorded rollouts were driven with.</param>
+/// <param name="Rollouts">The completed per-arm rollout results (never wedged/omitted rollouts, never stubs).</param>
+public sealed record LoopCheckpoint(
+    string Model,
+    IReadOnlyList<TaskResult> Rollouts);

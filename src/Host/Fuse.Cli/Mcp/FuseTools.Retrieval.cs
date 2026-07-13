@@ -293,19 +293,34 @@ public sealed partial class FuseTools
     /// <param name="symbol">The symbol whose covering tests to run.</param>
     /// <param name="path">The workspace directory.</param>
     /// <param name="limit">The maximum covering test types to run.</param>
+    /// <param name="candidates">
+    ///     Candidate racing (F2): a JSON array of single-file edits to race, each <c>{id?, file, content}</c>. When
+    ///     non-empty, races the candidates' speculative typechecks in parallel instead of running covering tests.
+    /// </param>
+    /// <param name="maxCandidates">The bound on the number of candidates a race accepts (default four).</param>
+    /// <param name="analyzers">Whether a race also runs the repo's configured analyzers against each overlay.</param>
     /// <param name="cancellationToken">A token to cancel the run.</param>
     /// <returns>The per-test verdicts plus the grade, or the selection-only floor when nothing covers the symbol.</returns>
     [McpServerTool(Name = "fuse_test", ReadOnly = true)]
-    [Description("Run the covering tests for a symbol: the tests that reach it through the persisted tests edges, run at build grade (dotnet test scoped by filter to just those test types, the whole suite never run), with per-test verdicts. Selection-only when no tests edge reaches the symbol. Build-grade runs the real build; the emit fast path is future work.")]
+    [Description("Run the covering tests for a symbol: the tests that reach it through the persisted tests edges, run at build grade (dotnet test scoped by filter to just those test types, the whole suite never run), with per-test verdicts. Selection-only when no tests edge reaches the symbol. Build-grade runs the real build; the emit fast path is future work. Candidate racing (F2): pass candidates (a JSON array of {id?, file, content} single-file edits, bounded k) to speculatively typecheck all of them over the live resident compilation and get per-candidate diagnostics plus a winner by strict dominance (a lone clean candidate beats any with errors; ties reported); each candidate reuses the shared held compilation (only its own changed file rebinds), racing needs a resident workspace (FUSE_RESIDENT=1) and never applies a candidate.")]
     public static async Task<string> FuseTestAsync(
         SemanticIndexer indexer,
         [Description("The symbol whose covering tests to run.")] string symbol = "",
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         [Description("Maximum covering test types to run.")] int limit = 20,
+        [Description("Candidate racing (F2): a JSON array of single-file edits to race, each {id?, file, content}. When set, races them through the speculative typecheck instead of running the covering tests.")] string candidates = "",
+        [Description("Candidate racing: the maximum number of candidates accepted (the bound on k; default 4).")] int maxCandidates = 4,
+        [Description("Candidate racing: also run the repo's configured analyzers against each candidate overlay (CI parity). Default on.")] bool analyzers = true,
         CancellationToken cancellationToken = default)
     {
+        // Candidate racing (F2): when candidates are supplied, race their speculative typechecks in parallel over
+        // the shared resident compilation and return per-candidate diagnostics plus a strict-dominance winner. This
+        // is a distinct verb from the symbol-covering-test run below (no symbol needed).
+        if (!string.IsNullOrWhiteSpace(candidates))
+            return await FuseTestRaceAsync(Path.GetFullPath(path), candidates, maxCandidates, analyzers, cancellationToken);
+
         if (string.IsNullOrWhiteSpace(symbol))
-            return "Error: provide a symbol name whose covering tests to run.";
+            return "Error: provide a symbol name whose covering tests to run (or candidates to race).";
 
         var root = Path.GetFullPath(path);
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
@@ -372,6 +387,106 @@ public sealed partial class FuseTools
         {
             try { Directory.Delete(scratch, recursive: true); } catch (IOException) { }
         }
+    }
+
+    // Candidate racing (F2): parse the candidates argument, verify their speculative typechecks over the live
+    // resident compilation (each candidate forks the immutable base and rebinds only its own changed tree, so k
+    // candidates cost far less than k full verifies), and render per-candidate diagnostics plus a winner by strict
+    // dominance. Candidates are evaluated one fork at a time (F2's Fallback: measured, concurrent Roslyn binding
+    // over shared-base forks serializes, so parallelism buys no wall-clock and only multiplies fork memory).
+    // Racing is the fork-cheap typecheck primitive; per-candidate test execution needs the emit path (T1's
+    // descoped follow-up), so a race reports diagnostics, not test verdicts. Abstains when no resident workspace
+    // serves the root (a build per candidate would not be a race), naming the requirement.
+    private static async Task<string> FuseTestRaceAsync(
+        string root, string candidatesJson, int maxCandidates, bool analyzers, CancellationToken cancellationToken)
+    {
+        RaceCandidateInput[]? parsed;
+        try
+        {
+            parsed = System.Text.Json.JsonSerializer.Deserialize(
+                candidatesJson, Fuse.Cli.Serialization.FuseCliJsonContext.Default.RaceCandidateInputArray);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            return $"Error: candidates must be a JSON array of {{id?, file, content}} objects ({ex.Message}).";
+        }
+
+        if (parsed is null || parsed.Length == 0)
+            return "Error: candidates is empty. Provide a JSON array of at least two {id?, file, content} edits to race.";
+        if (parsed.Length < 2)
+            return "Error: racing needs at least two candidates (one candidate is a single fuse_check, not a race).";
+
+        var bound = Math.Max(2, maxCandidates);
+        if (parsed.Length > bound)
+            return $"Error: {parsed.Length} candidates exceed the bound k={bound} (racing is bounded to protect memory under k forks; raise maxCandidates deliberately).";
+
+        // Build the candidate list, filling a blank id with the 1-based position so every verdict is attributable.
+        var candidates = new List<Fuse.Workspace.RaceCandidate>(parsed.Length);
+        for (var i = 0; i < parsed.Length; i++)
+        {
+            var input = parsed[i];
+            if (string.IsNullOrWhiteSpace(input.File) || input.Content is null)
+                return $"Error: candidate {i + 1} needs a file and content.";
+            var id = string.IsNullOrWhiteSpace(input.Id) ? $"#{i + 1}" : input.Id!;
+            candidates.Add(new Fuse.Workspace.RaceCandidate(id, input.File, input.Content));
+        }
+
+        // The per-candidate check is the resident overlay typecheck: the fork-cheap primitive racing depends on. A
+        // null result means no held compilation covers the file, surfaced as not-applicable. When no resident
+        // workspace serves the root every candidate is not-applicable, so abstain rather than pretend a race ran.
+        var report = await Fuse.Workspace.CandidateRacer.RaceAsync(
+            (candidate, ct) => ResidentWorkspaces.TryCheckOverlayAsync(root, candidate.File, candidate.Content, analyzers, ct),
+            candidates,
+            cancellationToken);
+
+        if (report.Verdicts.All(v => !v.Applicable))
+        {
+            return "cannot race (abstain): no resident workspace serves this root, so the speculative overlay could not "
+                + "typecheck any candidate. Start the server with FUSE_RESIDENT=1 for candidate racing (a build per "
+                + "candidate would not be a race).";
+        }
+
+        var builder = new StringBuilder();
+        builder.AppendLine(
+            $"verification grade: oracle (speculative typecheck over the resident compilation; k={candidates.Count} candidates verified over the shared held compilation, no build, no disk write)");
+        builder.AppendLine($"race of {candidates.Count} candidate(s):");
+        foreach (var verdict in report.Verdicts)
+        {
+            if (!verdict.Applicable)
+            {
+                builder.AppendLine($"  [{verdict.Id}] not-applicable (no held compilation covers {verdict.File})");
+                continue;
+            }
+
+            var status = verdict.IsClean
+                ? $"clean (0 errors{(verdict.WarningCount > 0 ? $", {verdict.WarningCount} warning(s)" : string.Empty)})"
+                : $"{verdict.ErrorCount} error(s){(verdict.WarningCount > 0 ? $", {verdict.WarningCount} warning(s)" : string.Empty)}";
+            builder.AppendLine($"  [{verdict.Id}] {status}  {verdict.File}");
+            foreach (var d in verdict.Diagnostics.Where(d => d.Severity == "Error"))
+                builder.AppendLine($"      {d.Severity} {d.Id} at line {d.Line}: {d.Message}");
+        }
+
+        builder.AppendLine();
+        if (report.WinnerId is not null)
+            builder.AppendLine($"winner: {report.WinnerId} (the only clean candidate; it strictly dominates the {report.Verdicts.Count(v => !v.IsClean)} with errors or not applicable).");
+        else if (report.Tie)
+            builder.AppendLine($"winner: none - {report.Clean.Count} candidates are equally clean (a tie; strict dominance cannot choose a green over a green). Pick by another axis (tests, diff size, style).");
+        else
+            builder.AppendLine("winner: none - no candidate is clean (every candidate introduced an error). Fix the errors above; the repair packets from fuse_check name the specific fixes.");
+
+        // The graded claims block (U2): each candidate verdict rests on the resident compiler overlay, so the race
+        // outcome is compiler-grade truth (verified), the strongest grade - the same overlay fuse_check uses.
+        builder.AppendLine();
+        builder.AppendLine(ClaimLedger.Render(
+        [
+            Claim.FromCompiler(
+                report.WinnerId is not null
+                    ? $"candidate {report.WinnerId} typechecks clean and the other {report.Verdicts.Count(v => !v.IsClean)} do not"
+                    : $"{report.Clean.Count} of {report.Verdicts.Count} raced candidates typecheck clean",
+                "race: speculative overlay typecheck per candidate over the resident compilation"),
+        ]));
+
+        return builder.ToString().TrimEnd();
     }
 
     /// <summary>

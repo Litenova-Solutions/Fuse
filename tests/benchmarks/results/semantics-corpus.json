@@ -1,26 +1,54 @@
 {
-  "suite": "semantics",
-  "description": "Semantic resolution: extracted graph edges vs hand-built edge ground truth.",
+  "suite": "semantics-corpus",
+  "version": 2,
+  "description": "WiringBench (B4): corpus-scale edge adjudication over corpus v2 under C3 tier-1 defaults. The reproducible stratified sample is results/semantics-corpus-sample.json; the adjudication protocol is tests/benchmarks/adjudication-protocol.md.",
   "generated": null,
-  "scorecard": {
-    "taskCount": 24,
-    "recall": 0,
-    "recallCiLow": 0,
-    "recallCiHigh": 0,
-    "precision": 0,
-    "f1": 0,
-    "medianTokens": 0,
-    "meanTokens": 0,
-    "lowSignalF1": 0
+  "corpus": "corpus-v2 (24 repos)",
+  "indexModes": { "semantic": 15, "partial": 4, "syntax": 5 },
+  "predictedEdgesTotal": 31947,
+  "sampledEdges": 456,
+  "sampledPerType": {
+    "di_injects": 40,
+    "di_resolves_to": 40,
+    "ef_entity": 40,
+    "implements": 40,
+    "inherits": 40,
+    "mediatr_handles": 40,
+    "references": 40,
+    "sends_request": 40,
+    "tests": 40,
+    "pipeline_behavior": 31,
+    "di_depends_on_impl": 28,
+    "route_handles": 14,
+    "options_consumes": 13,
+    "di_decorates": 4,
+    "hosted_service": 3,
+    "ef_configures": 1,
+    "options_binds": 1,
+    "signalr_endpoint": 1
   },
-  "tasks": [],
+  "adjudication": {
+    "protocol": "tests/benchmarks/adjudication-protocol.md",
+    "method": "bounded strong-model spot-check of the wiring types (the moat); the full 456-edge per-type adjudication is the pre-registered bounded human/strong-model pass and remains a follow-up",
+    "spotCheck": {
+      "note": "21 wiring edges inspected against source per the protocol; all read as correct (no false positives), consistent with Suite A's 23/23 on the OrderingApp fixture. Coarse target rendering on route_handles (a truncated method name, for example 'Program.') does not make the route-to-handler edge wrong.",
+      "byType": {
+        "di_resolves_to": { "checked": 4, "correct": 4 },
+        "mediatr_handles": { "checked": 4, "correct": 4 },
+        "sends_request": { "checked": 3, "correct": 3 },
+        "di_decorates": { "checked": 4, "correct": 4 },
+        "route_handles": { "checked": 3, "correct": 3 },
+        "options_consumes": { "checked": 3, "correct": 3 }
+      }
+    }
+  },
+  "coChangeDecision": {
+    "decision": "HELD",
+    "record": "D6 stays held. The recorded co-change A/B (ranking.json) is default MRR 0.197 versus default-without-co-change 0.208, recall@10 flat - within CI on a mostly-syntax ranking corpus. B4 intended to re-adjudicate the prior on a SEMANTIC-mode corpus, but the ranking suite scores over the retired dotnet-prs-v1 dataset (changed-file ground truth); corpus v2 has no ranking PR set, so a semantic-mode co-change A/B is not runnable here (the same corpus-PR gap that bounds review/localize/ranking on corpus v2). The prior is held on the recorded within-CI evidence rather than flipped on noise, exactly as D6 requires. Flipping or a semantic-mode re-run awaits a corpus-v2 ranking PR set."
+  },
   "notes": [
-    "sample 8 edges per type",
-    "index modes: partial 2, syntax 4",
-    "predicted edges: 261",
-    "sampled di_injects: 8",
-    "sampled implements: 8",
-    "sampled inherits: 8",
-    "wrote 24 sampled edges to C:\\Projects\\Fuse\\tests\\benchmarks\\results\\semantics-corpus-sample.json for adjudication"
+    "Sample produced by `fuse eval semantics --corpus-sample 40 --manifest tests/benchmarks/corpus-v2.json --corpus D:/fuse-work/bench --restore` on the runner.",
+    "18 edge types appear across corpus v2 under C3 tier-1 defaults, up from 3 types on the retired mostly-syntax corpus - the semantic-mode corpus is what makes corpus-scale wiring adjudication meaningful (the B4 premise).",
+    "First-run deliverable is the reproducible stratified sample and its distribution; the full per-type precision table is the bounded adjudication follow-up (no pass bar on the first run, per the gate)."
   ]
 }

@@ -105,10 +105,28 @@ public sealed class SemanticResolutionSuite : IEvalSuite
     private async Task<SuiteResult> RunCorpusSampleAsync(EvalOptions options, CancellationToken cancellationToken)
     {
         var manager = new CorpusManager(options.BenchRoot, options.ResolvedCorpusRoot, options.Log);
-        var dataset = manager.LoadDataset("dotnet-prs-v1");
-        var present = dataset.Repos
-            .Where(r => r.Path is not null && (options.RepoFilter is null || r.Name.Equals(options.RepoFilter, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
+
+        // Sample over the manifest repos when --manifest is set (corpus v2, B4), so the adjudication sample is drawn
+        // from the buildable semantic-mode corpus, not the retired prs.json dataset. Otherwise fall back to the
+        // dataset for backward compatibility.
+        List<(string Name, string Path)> present;
+        if (options.ManifestPath is not null)
+        {
+            present = manager.LoadManifest(options.ManifestPath).Repos
+                .Where(r => options.RepoFilter is null || r.Name.Equals(options.RepoFilter, StringComparison.OrdinalIgnoreCase))
+                .Select(r => (r.Name, Path: manager.ResolveRepoPath(r)))
+                .Where(r => r.Path is not null && Directory.Exists(r.Path))
+                .Select(r => (r.Name, r.Path!))
+                .ToList();
+        }
+        else
+        {
+            present = manager.LoadDataset("dotnet-prs-v1").Repos
+                .Where(r => r.Path is not null && (options.RepoFilter is null || r.Name.Equals(options.RepoFilter, StringComparison.OrdinalIgnoreCase)))
+                .Select(r => (r.Name, r.Path!))
+                .ToList();
+        }
+
         var notes = new List<string> { $"sample {options.CorpusSample} edges per type" };
         if (present.Count == 0)
         {

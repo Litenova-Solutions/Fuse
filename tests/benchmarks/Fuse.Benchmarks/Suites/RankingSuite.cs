@@ -15,8 +15,8 @@ namespace Fuse.Benchmarks;
 ///     priors as default-on features:
 ///     <list type="bullet">
 ///         <item><description><c>lexical</c>: the base channels alone (no embedder, both structural priors off).</description></item>
-///         <item><description><c>default</c>: the shipping configuration (embedder if supplied, both priors on).</description></item>
-///         <item><description><c>default-no-cochange</c>: the shipping configuration with the git co-change prior off, isolating the A6 prior's ranking effect.</description></item>
+///         <item><description><c>default</c>: the shipping configuration (centrality on, git co-change prior off after D6 was discharged net-negative).</description></item>
+///         <item><description><c>default-plus-cochange</c>: the shipping default with the dropped co-change prior re-added, keeping its effect measured and guarded.</description></item>
 ///     </list>
 ///     Ranking metrics come from <see cref="Metrics" /> (MRR, recall@k, nDCG@k). This suite is the required gate
 ///     on any change to field weights, tokenization, query expansion, or priors.
@@ -49,7 +49,7 @@ public sealed class RankingSuite : IEvalSuite
     public async Task<SuiteResult> RunAsync(EvalOptions options, CancellationToken cancellationToken)
     {
         var manager = new CorpusManager(options.BenchRoot, options.ResolvedCorpusRoot, options.Log);
-        var dataset = manager.LoadDataset("dotnet-prs-v1");
+        var dataset = manager.LoadDataset("dotnet-prs-v1", options.DatasetFile, options.ManifestPath);
         var notes = new List<string> { $"candidates@{CandidateK}, title-only input, changed-file ground truth" };
 
         var present = dataset.Repos
@@ -63,12 +63,13 @@ public sealed class RankingSuite : IEvalSuite
 
         // The dense channel was retired (K1); every config now ranks on the lexical channel. The three configs
         // isolate the priors: "lexical" is the bare lexical channel, "default" is the shipping default (centrality
-        // plus co-change), and "default-no-cochange" isolates the co-change prior for re-adjudication.
+        // on, co-change OFF since D6 was discharged net-negative), and "default-plus-cochange" re-adds the dropped
+        // co-change prior so the gate keeps its effect measured and a future re-introduction stays guarded.
         var configs = new (string Label, bool Centrality, bool CoChange)[]
         {
             ("lexical", false, false),
-            ("default", true, true),
-            ("default-no-cochange", true, false),
+            ("default", true, false),
+            ("default-plus-cochange", true, true),
         };
 
         // config label -> per-task ranked metrics
@@ -169,8 +170,10 @@ public sealed class RankingSuite : IEvalSuite
 
     private static void AddCoChangeDelta(IReadOnlyDictionary<string, List<RankRow>> perConfig, List<string> notes)
     {
-        var withCoChange = perConfig["default"];
-        var withoutCoChange = perConfig["default-no-cochange"];
+        // The shipping default now has co-change OFF; "default-plus-cochange" re-adds it. The delta (on minus off)
+        // is the effect of re-introducing the dropped prior, and it should stay non-positive (D6 discharged).
+        var withCoChange = perConfig["default-plus-cochange"];
+        var withoutCoChange = perConfig["default"];
         if (withCoChange.Count == 0 || withCoChange.Count != withoutCoChange.Count)
             return;
         var mrrOn = Metrics.Mean(withCoChange.Select(r => r.ReciprocalRank).ToList());

@@ -62,22 +62,22 @@ def compose():
     # --- logo: mark with the "Fuse" wordmark stacked beneath, centered ---
     logo_stacked(cx, 36, 1.32)
 
-    # --- claim (time, tokens, .NET agent), centered ---
-    text(cx, 318, "Less time, fewer tokens", size=58, fill=TEXT, weight="800",
+    # --- headline, centered ---
+    text(cx, 318, "Typecheck your AI agent's .NET edits", size=54, fill=TEXT, weight="800",
          anchor="middle", spacing="-0.5")
-    text(cx, 386, "for your .NET coding agent.", size=58, fill=BRAND, weight="800",
+    text(cx, 382, "before they land.", size=54, fill=BRAND, weight="800",
          anchor="middle", spacing="-0.5")
 
     # --- what the tool does, centered ---
-    text(cx, 430, "An MCP server and CLI that hands your agent the code a task needs,",
+    text(cx, 430, "An MCP server that checks a proposed edit against the compiler,",
          size=25, fill=MUTED, anchor="middle")
-    text(cx, 466, "scoped and reduced, in one call.", size=25, fill=MUTED, anchor="middle")
+    text(cx, 466, "resolves .NET wiring from Roslyn, and scopes changes precisely.", size=25, fill=MUTED, anchor="middle")
 
-    # --- stats, centered row ---
+    # --- stats, centered row (all deterministic, no model-caveat needed) ---
     stats = [
-        (cx - 300, "1 call", "not an explore loop"),
-        (cx, "~13x", "fewer tokens than a packer"),
-        (cx + 300, "99-100%", "of the public API kept"),
+        (cx - 320, "0 false green", "over 1,000 compiler-labeled edits"),
+        (cx, "24 of 24", "wiring edges resolved exactly"),
+        (cx + 320, "~1,026 tokens", "a PR's context, 93% precision"),
     ]
     for sx, val, label in stats:
         text(sx, 548, val, size=34, fill=TEXT, weight="800", anchor="middle")

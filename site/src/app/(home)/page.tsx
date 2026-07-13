@@ -4,18 +4,39 @@ import {
   ArrowRight,
   Crosshair,
   GitPullRequest,
-  Layers,
-  Plug,
   ShieldCheck,
-  Coins,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { githubUrl } from '@/lib/shared';
 
+const siteUrl = 'https://fuse.codes';
+
 export const metadata: Metadata = {
-  title: 'Fuse - a faster, cheaper, more accurate AI assistant on .NET',
+  title: {
+    absolute: 'Fuse - typecheck your AI agent\'s .NET edits before they land',
+  },
   description:
-    'Fuse is a Model Context Protocol server that makes your AI coding assistant faster, cheaper, and more accurate on .NET code by understanding how the code is actually wired.',
+    'Fuse is an MCP server for .NET that typechecks a proposed edit against the compiler before your agent writes it, resolves DI and route wiring from Roslyn, and scopes a pull request to the files that matter.',
+  alternates: {
+    canonical: siteUrl,
+  },
+  openGraph: {
+    type: 'website',
+    url: siteUrl,
+    title: 'Fuse - typecheck your AI agent\'s .NET edits before they land',
+    description:
+      'Fuse is an MCP server for .NET that typechecks a proposed edit against the compiler before your agent writes it.',
+    siteName: 'Fuse',
+    images: [{ url: '/fuse-social-card.png', width: 1280, height: 640, alt: 'Fuse benchmarks' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Fuse - typecheck your AI agent\'s .NET edits before they land',
+    description:
+      'Fuse is an MCP server for .NET that typechecks a proposed edit against the compiler before your agent writes it.',
+    images: ['/fuse-social-card.png'],
+  },
 };
 
 function CodeBlock({ children }: { children: React.ReactNode }) {
@@ -26,9 +47,32 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
+const softwareApplicationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Fuse',
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Windows, Linux, macOS',
+  description:
+    'MCP server for .NET that typechecks proposed edits against the compiler, resolves wiring from Roslyn, and scopes changes to the files that matter.',
+  url: siteUrl,
+  downloadUrl: 'https://www.nuget.org/packages/Fuse',
+  license: 'https://www.apache.org/licenses/LICENSE-2.0',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+  },
+};
+
 export default function HomePage() {
   return (
     <main className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
+      />
+
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-fd-border">
         <div className="pointer-events-none absolute inset-0 bg-grid" />
@@ -38,14 +82,13 @@ export default function HomePage() {
               MCP server for AI coding agents on .NET
             </span>
             <h1 className="mt-5 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-              A faster, cheaper, more accurate{' '}
-              <span className="text-gradient">AI assistant on your code</span>.
+              Typecheck your AI agent&apos;s .NET edits before they land
             </h1>
             <p className="mt-6 max-w-xl text-lg text-fd-muted-foreground">
-              Fuse hands your AI coding assistant the .NET code a task needs, scoped and
-              reduced, in one call. It understands how your code is actually wired, so the
-              assistant answers from the real graph instead of guessing, spends fewer
-              tokens, and stops burning its context window on the hunt.
+              Fuse reads your workspace with Roslyn and answers from the compiler: whether a
+              proposed edit compiles, what a signature change breaks, and which implementation
+              the container injects. Your agent repairs from a fact instead of a full{' '}
+              <code className="font-mono text-sm">dotnet build</code> round-trip.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
@@ -65,136 +108,144 @@ export default function HomePage() {
               <code className="font-mono">dotnet tool install -g Fuse</code>
             </p>
           </div>
-          {/* See it: the same question, without and with Fuse */}
           <div className="space-y-4">
             <div>
               <div className="mb-2 text-xs font-medium uppercase tracking-wide text-fd-muted-foreground">
                 Without Fuse
               </div>
-              <CodeBlock>{`Q: what implements IBasketService, and what would
-   a change to it touch?
-
-agent: grep IBasketService ... 14 hits
-       open file ... open file ... open file
-       (many reads, guessing from names)`}</CodeBlock>
+              <CodeBlock>{`agent proposes an edit to OrderService.cs
+$ dotnet build          (a full round-trip)
+error CS1061: 'Order' has no member
+  'TotalAmount'
+agent reads the error, edits, builds again
+... repeat until green`}</CodeBlock>
             </div>
             <div>
               <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--brand)]">
                 With Fuse
               </div>
-              <CodeBlock>{`fuse_resolve service="IBasketService"
-  -> BasketService  (di_resolves_to)
-fuse_review changedSince="main"
-  -> changed + support files, ~958 tokens,
-     100% of changed files kept, one call`}</CodeBlock>
+              <CodeBlock>{`fuse_check file="OrderService.cs"
+           content="<proposed edit>"
+  -> CS1061 at line 41: 'Order' has no
+     member 'TotalAmount'
+     repair: 'Total' exists; 'TotalAmount'
+     does not
+     grade: oracle   (before the edit lands)`}</CodeBlock>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Three proof tiles */}
+      {/* Proof strip */}
       <section className="border-b border-fd-border bg-fd-card/40">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-6 py-12 md:grid-cols-3">
           <Metric
-            value="Wired, not guessed"
-            label="Accurate answers about how the code connects: the extracted wiring graph matches the ground truth exactly on the fixture (22 of 22 edges)."
+            value="0 wrong verdicts"
+            label="Across 1,000 compiler-checked edits, fuse_check never called a broken edit clean or a clean edit broken."
           />
           <Metric
-            value="~958 tokens"
-            label="A pull request's scoped context in about a thousand tokens, keeping 100% of the changed files."
+            value="89% vs 82%"
+            label="In a 234-run comparison driving Claude with and without Fuse, more tasks finished correctly when verified by the project's own tests."
           />
           <Metric
-            value="Milliseconds"
-            label="Warm answers in tens of milliseconds once the index is built, held resident across calls."
+            value="~1,026 tokens"
+            label="A pull request's scoped context in a median 1,026 tokens at 93.4% precision, keeping 100% of the changed files over 69 real PRs."
           />
         </div>
         <p className="pb-8 text-center text-xs text-fd-muted-foreground">
-          Measured over a commit-pinned .NET corpus, counted with{' '}
-          <code className="font-mono">o200k_base</code>, and reported in full including the
-          modes where Fuse is weak.{' '}
+          Measured over real open-source .NET repositories, with weaknesses reported alongside
+          strengths.{' '}
           <Link href="/docs/project/benchmarks" className="underline hover:text-fd-foreground">
-            See the honest benchmarks
+            See the benchmarks
           </Link>
           .
         </p>
       </section>
 
-      {/* Problem */}
-      <section className="mx-auto w-full max-w-4xl px-6 py-20 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          AI assistants get lost in .NET codebases
-        </h2>
-        <p className="mx-auto mt-5 max-w-2xl text-fd-muted-foreground">
-          Before it changes a line, an assistant explores: it lists directories, greps,
-          and opens file after file to learn which ones matter. On a solution with
-          hundreds of C# files that burns the context window on discovery, and a grep
-          cannot tell which class the container actually injects or which handler a
-          request runs. Fuse answers those structural questions directly and hands back
-          only the files that matter.
-        </p>
-        <Button asChild variant="ghost" className="mt-6">
-          <Link href="/docs/start/why-fuse">
-            Why Fuse, and how it compares <ArrowRight className="size-4" />
-          </Link>
-        </Button>
+      {/* How it works */}
+      <section className="mx-auto w-full max-w-5xl px-6 py-20">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            How it works
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-fd-muted-foreground">
+            <code className="font-mono">fuse_check</code> typechecks a proposed edit before
+            the agent writes it. When clean, <code className="font-mono">fuse_test</code> runs
+            only the tests that reach the changed code. The round-trip this replaces is{' '}
+            <code className="font-mono">dotnet build</code>, read the errors, edit, repeat.
+          </p>
+        </div>
+        <div className="mt-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/fuse-loop-diagram.svg"
+            alt="The Fuse verify loop: an agent proposes an edit; fuse_check typechecks it before it lands, returning diagnostics and a repair packet without a build; the agent applies the repair and re-checks; when clean, fuse_test runs only the covering tests; done. The path this replaces is the full dotnet build and dotnet test round-trip."
+            className="mx-auto w-full max-w-3xl"
+          />
+        </div>
       </section>
 
-      {/* Value props */}
+      {/* What it answers */}
       <section className="border-y border-fd-border bg-fd-card/40">
         <div className="mx-auto w-full max-w-6xl px-6 py-20">
-          <div className="grid gap-6 md:grid-cols-3">
+          <h2 className="text-center text-2xl font-semibold tracking-tight md:text-3xl">
+            What Fuse answers
+          </h2>
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
             <Feature
-              icon={<Crosshair className="size-5" />}
-              title="Understands .NET wiring"
-              body="Fuse reads your code with Roslyn and resolves what is connected to what: a service to its registered implementation, a request to its handler, a route to its action, options to their consumers. The assistant answers from the real graph."
+              icon={<ShieldCheck className="size-5" />}
+              title="Verify an edit"
+              body="fuse_check typechecks a proposed single-file edit against the C# compiler and returns the diagnostics plus a repair packet, before the file is written. When the compiler cannot answer, Fuse says so."
             />
             <Feature
-              icon={<Coins className="size-5" />}
-              title="Fewer tokens per turn"
-              body="A task's context arrives scoped and reduced instead of as a pile of files. A pull request's context fits in about a thousand tokens, and structural reduction keeps essentially all of the public API."
+              icon={<Zap className="size-5" />}
+              title="Blast radius"
+              body="fuse_impact lists callers, implementers, and referencing types from the typed graph, so the agent sees what a signature change breaks before touching it."
+            />
+            <Feature
+              icon={<Crosshair className="size-5" />}
+              title=".NET wiring"
+              body="Fuse resolves what is connected to what: a service to its registered implementation, a request to its handler, a route to its action, options to their consumers. Answers come from Roslyn, not grep."
             />
             <Feature
               icon={<GitPullRequest className="size-5" />}
-              title="Built for change review"
-              body="Scope to a branch and Fuse returns the changed files plus their semantic blast radius (callers, DI consumers, handlers), with provenance for why each file is there, at 100% changed-file recall."
+              title="Scoped PR context"
+              body="fuse_review returns the changed files plus their semantic blast radius in about a thousand tokens, with provenance for why each file is there."
             />
-            <Feature
-              icon={<Plug className="size-5" />}
-              title="One call, in your agent"
-              body="fuse mcp serve is a Model Context Protocol server for Claude Code, Cursor, and Copilot. Your agent fetches scoped context in one call instead of opening files one by one."
-            />
-            <Feature
-              icon={<ShieldCheck className="size-5" />}
-              title="Honest by design"
-              body="Every published number is sourced and reproducible, weaknesses are listed alongside strengths, and when a request lacks a usable anchor Fuse hands back a navigation map instead of guessing."
-            />
-            <Feature
-              icon={<Layers className="size-5" />}
-              title="Offline and local"
-              body="A small embedding model is fetched once and cached, then runs entirely offline; no code or query ever leaves your machine, and a deterministic lexical path is the fallback."
-            />
+          </div>
+          <div className="mt-8 text-center">
+            <Button asChild variant="secondary">
+              <Link href="/docs/start/why-fuse">
+                How Fuse compares to packers and embedding search{' '}
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* Connect your agent (primary) */}
-      <section className="mx-auto w-full max-w-6xl px-6 py-20">
+      {/* Connect + CTA */}
+      <section className="mx-auto w-full max-w-6xl px-6 py-24">
         <div className="grid w-full gap-10 lg:grid-cols-2 lg:items-center">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              Connect it to your agent in one line
+              Connect it to your agent
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
-              Run <code className="font-mono">fuse mcp serve</code> and your agent gets the
-              verbs it needs: map the workspace, resolve wiring, localize a task, review a
-              change, and read scoped context. It works with Claude Code, Cursor, and
+              Run <code className="font-mono">fuse mcp serve</code> and your agent gets map,
+              resolve, review, check, and context verbs. Works with Claude Code, Cursor, and
               GitHub Copilot.
             </p>
-            <Button asChild className="mt-6">
-              <Link href="/docs/start/connect-your-ai">
-                Connect your agent <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button asChild size="lg">
+                <Link href="/docs/start/connect-your-ai">
+                  Connect your agent <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary">
+                <Link href="/docs/project/benchmarks">See the benchmarks</Link>
+              </Button>
+            </div>
           </div>
           <div className="space-y-4">
             <CodeBlock>{`// .mcp.json (Claude Code; same shape for Cursor and Copilot)
@@ -206,91 +257,9 @@ fuse_review changedSince="main"
     }
   }
 }`}</CodeBlock>
-            <CodeBlock>{`# or register it with Claude Code in one line
-claude mcp add fuse --scope project -- fuse mcp serve`}</CodeBlock>
+            <CodeBlock>{`dotnet tool install -g Fuse
+fuse mcp install --rules`}</CodeBlock>
           </div>
-        </div>
-      </section>
-
-      {/* Comparison teaser */}
-      <section className="border-y border-fd-border bg-fd-card/40">
-        <div className="mx-auto w-full max-w-5xl px-6 py-20">
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              Not a packer. Not an embedding index.
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-fd-muted-foreground">
-              Generic packers concatenate files as text. Embedding search returns fuzzy
-              chunks. Neither can answer a structural question. Fuse understands .NET
-              structure and resolves it deterministically.
-            </p>
-          </div>
-          <div className="mt-10 overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-fd-border text-fd-muted-foreground">
-                  <th className="py-3 pr-4 font-medium">Capability</th>
-                  <th className="py-3 pr-4 font-medium">Generic packers</th>
-                  <th className="py-3 pr-4 font-medium">Embedding search</th>
-                  <th className="py-3 pr-4 font-medium text-fd-foreground">Fuse</th>
-                </tr>
-              </thead>
-              <tbody className="text-fd-muted-foreground">
-                <ComparisonRow
-                  cap="Answers how the code is wired"
-                  packer="No, plain text"
-                  rag="No, surface similarity"
-                  fuse="Yes, a typed Roslyn graph"
-                />
-                <ComparisonRow
-                  cap="Context for one task, one call"
-                  packer="One large dump"
-                  rag="Ranked chunks, partial"
-                  fuse="Scoped, about a thousand tokens for a PR"
-                />
-                <ComparisonRow
-                  cap="Keeps the public API surface"
-                  packer="Only if you include it all"
-                  rag="No, partial recall"
-                  fuse="Essentially all of it"
-                />
-                <ComparisonRow
-                  cap="Says when it cannot answer"
-                  packer="No"
-                  rag="No, always returns chunks"
-                  fuse="Yes, refuses and hands back a map"
-                />
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-8 text-center">
-            <Button asChild variant="secondary">
-              <Link href="/docs/start/why-fuse">
-                Read the full comparison <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="mx-auto w-full max-w-4xl px-6 py-24 text-center">
-        <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-          Give your assistant a map of your code.
-        </h2>
-        <p className="mx-auto mt-5 max-w-xl text-fd-muted-foreground">
-          Install Fuse, connect it to your agent, and it answers from how your .NET code is
-          actually wired, in fewer tokens.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Button asChild size="lg">
-            <Link href="/docs/start/connect-your-ai">
-              Connect your agent <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-          <Button asChild size="lg" variant="secondary">
-            <Link href="/docs/project/benchmarks">See the benchmarks</Link>
-          </Button>
         </div>
       </section>
     </main>
@@ -325,26 +294,5 @@ function Feature({
       <h3 className="mt-4 font-semibold">{title}</h3>
       <p className="mt-2 text-sm text-fd-muted-foreground">{body}</p>
     </div>
-  );
-}
-
-function ComparisonRow({
-  cap,
-  packer,
-  rag,
-  fuse,
-}: {
-  cap: string;
-  packer: string;
-  rag: string;
-  fuse: string;
-}) {
-  return (
-    <tr className="border-b border-fd-border/60">
-      <td className="py-3 pr-4 font-medium text-fd-foreground">{cap}</td>
-      <td className="py-3 pr-4">{packer}</td>
-      <td className="py-3 pr-4">{rag}</td>
-      <td className="py-3 pr-4 font-medium text-fd-foreground">{fuse}</td>
-    </tr>
   );
 }

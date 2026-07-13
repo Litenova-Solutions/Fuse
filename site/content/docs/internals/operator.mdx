@@ -37,7 +37,7 @@ Add `.fuse/` to your repository `.gitignore`. The directory holds derived index 
 
 ## Schema migration and corrupt recovery
 
-The store carries a schema version. When Fuse opens a database older than the current schema (for example a pre-V3 cache), it drops the Fuse-owned tables and rebuilds at the current version rather than attempting an in-place migration, so an older index is replaced cleanly on the first V3 run.
+The store carries a schema version. When Fuse opens a database older than the current schema (for example a cache from an earlier major version), it drops the Fuse-owned tables and rebuilds at the current version rather than attempting an in-place migration, so an older index is replaced cleanly on the next run.
 
 If SQLite reports a malformed database on open, Fuse recreates an empty database rather than failing, and the next run repopulates it. If corruption persists, check filesystem permissions on `.fuse/` and that no other process holds a stale lock on the WAL files (a leaked `fuse mcp serve` child, for example).
 

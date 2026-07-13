@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <b>The compiler oracle for AI coding agents on .NET: check an edit against the compiler before it lands.</b>
+  <b>Typecheck your AI agent's .NET edits against the compiler before they land.</b>
 </p>
 
 <p align="center">
@@ -26,7 +26,15 @@
 
 ---
 
-Fuse is a Model Context Protocol server that gives your AI coding agent (Claude Code, Cursor, GitHub Copilot) a compiler's answer instead of a guess on .NET code. The thesis: the compilation is the source of truth, and everything else is a projection of it. So Fuse typechecks a proposed edit before the agent writes it (`fuse_check`), computes the blast radius of a change (`fuse_impact`), stages compiler-executed refactors as diffs that compile or are not handed over (`fuse_refactor`), and resolves how the code is actually wired (which service implements an interface, which handler runs a request, which action a route hits) from a Roslyn graph rather than file names and grep. Every answer carries a grade so the agent knows what it is trusting, and Fuse abstains rather than guess when it cannot answer at compiler grade. Scoped, reduced context and ranked retrieval are the supporting machinery that feed those answers. The same engine is also a `fuse` CLI.
+Fuse is a Model Context Protocol server that connects your AI coding agent (Claude Code, Cursor, GitHub Copilot) to the .NET compiler. It typechecks a proposed edit before the agent writes it (`fuse_check`), computes the blast radius of a change (`fuse_impact`), stages compiler-executed refactors as diffs that compile or are not handed over (`fuse_refactor`), and resolves how the code is actually wired (which service implements an interface, which handler runs a request, which action a route hits) from a Roslyn graph rather than file names and grep. Every answer carries a grade so the agent knows what it is trusting, and Fuse abstains when it cannot answer at compiler grade. Scoped, reduced context and ranked retrieval are the supporting machinery that feed those answers. The same engine is also a `fuse` CLI.
+
+<p align="center">
+  <img src="assets/demo/fuse-check-demo.gif" alt="Terminal demo: an AI agent proposes an edit to OrderService.cs that references OrderOptions.MaxItemCount (a member that does not exist); fuse_check returns the real CS1061 diagnostic and a repair packet naming the fix (replace MaxItemCount with MaxItems) at oracle grade, before the edit lands; the corrected edit checks clean, with no dotnet build round-trip." width="820">
+</p>
+
+<p align="center">
+  <img src="assets/fuse-loop-diagram.svg" alt="The Fuse verify loop: an agent proposes an edit; fuse_check typechecks it before it lands, returning diagnostics and a repair packet without a build; the agent applies the repair and re-checks; when clean, fuse_test runs only the covering tests; done. The path this replaces is the full dotnet build and dotnet test round-trip." width="820">
+</p>
 
 Full documentation: **[fuse.codes](https://fuse.codes/docs)**. Contributors and roadmap planners: see [briefing.md](briefing.md) for architecture, benchmark evidence, and plan history.
 
@@ -95,7 +103,7 @@ fuse_find  kind="service" query="IBasketService"
 # Scope a change: the blast radius of a branch, packed under a token budget
 fuse_review  changedSince="main"
   -> changed files + support files (the interface a changed type implements, its consumers)
-     100% of changed files kept, ~958 tokens median, with provenance for each file
+     100% of changed files kept, ~1,026 tokens median, with provenance for each file
 ```
 
 The rest of the surface, by what an agent does with it:
@@ -116,14 +124,16 @@ Tool parameters and the full catalog: [MCP Tools](https://fuse.codes/docs/refere
 
 ## Benchmarks (honest, sourced, reproducible)
 
-Fuse is judged as a compiler-grade semantic engine, not a token compressor: can it verify an edit honestly, resolve .NET wiring, scope a change precisely, help an agent, and stay honest on a vague query. Every figure below is recorded under `tests/benchmarks/results` and reproduced with `fuse eval <suite>`; the full methodology, the corpus, and the modes where Fuse is weak are on the [benchmarks page](https://fuse.codes/docs/project/benchmarks). Numbers are counted with the `o200k_base` tokenizer over a commit-pinned corpus (Scrutor, Ardalis.Specification, NodaTime, and the eShopOnWeb application).
+Fuse is judged as a compiler-grade semantic engine: can it verify an edit honestly, resolve .NET wiring, scope a change precisely, help an agent, and stay honest on a vague query. Every figure below is recorded under `tests/benchmarks/results` and reproduced with `fuse eval <suite>`; the full methodology and the modes where Fuse is weak are on the [benchmarks page](https://fuse.codes/docs/project/benchmarks). Numbers come from a fixed set of 24 real open-source .NET libraries pinned by commit, with the eShopOnWeb application as a supplementary run.
 
-- **Verifies an edit without lying.** Over 1,000 compiler-verified mutation-derived edits (500 breaking, 500 neutral, generated by Roslyn rewriters and labeled by the compiler, not by hand) plus the 8 curated cases, `fuse_check` had zero false green and zero false red: a compile-breaking edit is called broken, a clean edit is called clean, and when the substrate cannot answer at compiler grade the tool abstains rather than guess. Reproduce with `fuse eval checkgate --mutations 500`.
-- **Resolves .NET wiring deterministically.** On the wiring fixture, the extracted semantic graph matches the hand-built edge ground truth exactly (22 of 22 edges, recall and precision 1.0): DI registration and injection, MediatR request-to-handler, ASP.NET route-to-action, EF Core, decorators, options binding, and more. This is the moat a lexical or tree-sitter index cannot follow.
-- **Scopes a change with precision.** Over 53 real merged pull requests, `fuse review` keeps 100 percent of the changed files at 79.8 percent precision in a median 958 returned tokens, adding the semantic blast radius (callers, DI consumers, handlers) on top. A grep baseline reaches 53 percent recall at 14 percent precision.
-- **Honest on open-ended localization.** From a task title alone, with no git base, `fuse localize` recalls about 15 percent of the changed files: the weakest mode, reported straight. Rather than return a low-precision guess on a no-signal title, Fuse refuses and hands back a navigation map (correct-refusal rate 100 percent on no-signal titles).
-- **Helps a real agent.** Driving Claude (sonnet-4-6) over 12 pull requests, the Fuse MCP arm edged out bare filesystem tools on file recall (30 versus 26 percent) at comparable token cost, on a small, model-dependent sample.
-- **Token-efficient context.** The Roslyn skeleton keeps essentially all public API while removing roughly 37 to 55 percent of tokens at skeleton level (a support number; the headline is "a PR in about a thousand tokens").
+- **Verifies an edit without lying.** Over 1,000 compiler-checked edits (500 breaking, 500 neutral, generated by Roslyn and labeled by the compiler) plus 8 curated cases, `fuse_check` had zero false green and zero false red. Reproduce with `fuse eval checkgate --mutations 500`. (`checkgate.json`)
+- **Finishes more tasks with fewer silent failures.** In a 234-run comparison driving Claude with and without Fuse, the Fuse arm finished 89% of tasks correctly (verified by the project's own tests) against the native arm's 82%, with fewer silent wrong answers (8 versus 9). Build round-trips were essentially equal (3.1 versus 3.2). Reproduce with `FUSE_LOOP_RUN=1 fuse eval loop`. (`loop.json`)
+- **Fast compiler verdicts when resident.** With the resident workspace enabled (opt-in `FUSE_RESIDENT=1`, environment-dependent), speculative checks answered at P50 31.2 ms and P95 42.4 ms at NodaTime scale. Reproduce with `fuse resident-latency <path>`. (`resident-latency.json`)
+- **Resolves .NET wiring deterministically.** On the wiring fixture, the extracted graph matches hand-built ground truth exactly (24 of 24 edges). (`semantics.json`)
+- **Scopes a change with precision.** Over 69 real merged pull requests, `fuse review` keeps 100% of changed files at 93.4% precision in a median 1,026 returned tokens. A grep baseline reaches 67% recall at 8% precision. (`review.json`)
+- **Honest on open-ended localization.** From a task title alone, `fuse localize` recalls 37.7% of changed files: the weakest mode, reported straight. On no-signal titles, Fuse refuses and hands back a navigation map instead of guessing. (`localize.json`)
+- **Helps a real agent.** Driving Claude over 12 pull requests, the Fuse MCP arm edged out bare filesystem tools on file recall (30% versus 26%) at comparable token cost, on a small sample. (`agent.json`)
+- **Token-efficient context.** The Roslyn skeleton keeps essentially all public API while removing 38 to 44% of tokens at skeleton level, 47 to 60% at public-API level. (`reduce.json`)
 
 No head-to-head ranking against other tools is claimed here; the measured peer comparison (with the exact reproduction command and every caveat) lives on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
 
@@ -134,16 +144,16 @@ The same engine runs as a CLI for one-shot context outside an agent:
 ```bash
 fuse index ./src                                   # build the semantic index
 fuse localize ./src --task "discount rounding at checkout"
-fuse dotnet --directory ./src --level skeleton     # architecture overview, signatures only
+fuse reduce --files src/Program.cs --level skeleton
 ```
 
 Output and option lists: [Commands](https://fuse.codes/docs/reference/commands) and [Quickstart](https://fuse.codes/docs/start/quickstart).
 
 ## Status
 
-- **Solid: the .NET compiler oracle and semantic moat.** The Roslyn-backed wiring graph (22 of 22 edges), speculative typecheck with repair packets, blast-radius impact, compiler-executed rename staged as a diff, change-impact review, and warm millisecond retrieval are the mature core.
+- **Solid: compiler-backed verification and the wiring graph.** The Roslyn-backed wiring graph (24 of 24 edges), speculative typecheck with repair packets, blast-radius impact, compiler-executed rename staged as a diff, change-impact review, and warm millisecond retrieval are the mature core.
 - **Growing: the resident verified-edit loop.** The current program (see the [Roadmap](https://fuse.codes/docs/project/roadmap)) makes the compilation resident so truth arrives within a second after an edit without a build, adds out-of-process covering-test execution, and grades every verify answer so it never shrugs.
-- **Supporting machinery: retrieval and reduction.** Ranked localization is the fallback when a task names no anchor; skeleton reduction fits scoped context to a token budget. Both feed the oracle answers; neither is the headline.
+- **Supporting machinery: retrieval and reduction.** Ranked localization is the fallback when a task names no anchor; skeleton reduction fits scoped context to a token budget. Both feed the verification and resolution answers above.
 - **Early: multi-language.** Non-C# languages are supported at the syntax tier (token-efficient context and search); the deep typed graph is .NET-only for now.
 
 The planned direction is the [Roadmap](https://fuse.codes/docs/project/roadmap); shipped work is the [Changelog](https://fuse.codes/docs/project/changelog).
@@ -153,7 +163,7 @@ The planned direction is the [Roadmap](https://fuse.codes/docs/project/roadmap);
 ```
 src/
   Core/        Pipeline and engine: Fuse.Collection, Fuse.Reduction, Fuse.Emission,
-               Fuse.Fusion, plus the V3 semantic stack (Fuse.Indexing, Fuse.Semantics,
+               Fuse.Fusion, plus the semantic stack (Fuse.Indexing, Fuse.Semantics,
                Fuse.Retrieval, Fuse.Context).
   Host/        Fuse.Cli: the CLI commands and the MCP server.
   Plugins/     Extension-keyed providers: Abstractions, Languages.CSharp,

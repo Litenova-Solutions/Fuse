@@ -15,7 +15,7 @@ This page documents the transforms each reducer performs and the options that tu
 
 ## Format Reducers
 
-The format reducers handle web and configuration file types. Each strips comments and collapses whitespace in a way appropriate to its syntax. They are controlled by two options: `--minify-xml-files` governs the XML-family reducers and `--minify-html-and-razor` governs the HTML and Razor reducers; both default to true. See the [Options reference](/docs/reference/options).
+The format reducers handle web and configuration file types. Each strips comments and collapses whitespace in a way appropriate to its syntax. Minification is on by default for these file types when they appear in scoped context output.
 
 | Reducer | Extensions | Transforms |
 |---------|------------|------------|

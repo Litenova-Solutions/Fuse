@@ -11,10 +11,10 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://fuse.codes'),
   title: {
     template: '%s | Fuse',
-    default: 'Fuse - .NET-native context optimizer for AI agents',
+    default: 'Fuse - typecheck your AI agent\'s .NET edits before they land',
   },
   description:
-    'Fuse turns a .NET codebase into one token-efficient payload an AI agent reads in a single call. Fewer tokens, the right files, and the public API kept intact.',
+    'Fuse is an MCP server for .NET that typechecks a proposed edit against the compiler before your agent writes it, resolves DI and route wiring from Roslyn, and scopes a pull request to the files that matter.',
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

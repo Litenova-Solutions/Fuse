@@ -3,7 +3,7 @@ title: Capture bundles
 description: A portable capture bundle carries a build's exact Roslyn compilation so a machine that cannot restore or build the repository still gets oracle-grade answers, produced in CI and consumed with fuse index --from-capture.
 ---
 
-The one environment where a serious repository builds by definition is its own CI. A capture bundle records the tier-1 compilation there, once, and every other machine gets the oracle without building: `fuse index --from-capture <bundle>` rehydrates the exact compilation and serves `fuse_check`, `fuse_impact`, and covering-test selection at oracle grade, with no restore and no build.
+The one environment where a serious repository builds by definition is its own CI. A capture bundle records the build-captured compilation there, once, and every other machine gets oracle-grade answers without building: `fuse index --from-capture <bundle>` rehydrates the exact compilation and serves `fuse_check`, `fuse_impact`, and covering-test selection at oracle grade, with no restore and no build.
 
 ## What a bundle is
 

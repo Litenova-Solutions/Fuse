@@ -26,7 +26,7 @@ Workspace status and lifecycle: the loop's first stop and the one explicit tree-
 - **`index`**: build or refresh the persistent semantic index. The index mode is `semantic` when the workspace loads through MSBuild/Roslyn, `partial` when some projects fall back, and `syntax` when no project loads.
 - **`map`**: the workspace map of indexed symbols, routes, and counts.
 - **`doctor`**: the per-project semantic-load diagnosis (why a project loaded at the tier it did).
-- **`apply`**: write a proposed single-file edit (`file` plus `content`) to the working tree. This is the server's one explicit tree-write path (Decision D2): it is a dry run that only reports the change unless `write=true`, and it refuses any `file` that resolves outside the workspace root.
+- **`apply`**: write a proposed single-file edit (`file` plus `content`) to the working tree. This is the server's one explicit tree-write path: it is a dry run that only reports the change unless `write=true`, and it refuses any `file` that resolves outside the workspace root.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -49,7 +49,7 @@ score distribution with no model, and leads its output with the state (`localize
 
 - **confident**: a candidate or a tight cluster stands clear; the tight set is returned and precision is high.
 - **partial**: there is signal but no clear winner; a small best-effort set is returned, flagged low-confidence, with a navigation map of refinement options.
-- **insufficient**: no usable anchor; the engine refuses and routes, returning a navigation map (top candidate areas, entry-point files and routes, nearest symbols) and an explicit ask for a sharper input, instead of a guess.
+- **insufficient**: no usable anchor; the engine refuses and routes, returning a navigation map (top candidate areas, entry-point files and routes, nearest symbols) and an explicit ask for a sharper input, rather than a low-precision candidate list.
 
 The navigation map turns a refusal into a navigation step: an exploring agent reads the
 areas and nearest symbols to pick its next, better-anchored query. By default (best-effort)
@@ -83,7 +83,7 @@ Plan and emit context (source bodies at mixed render tiers, a semantic manifest,
 
 ## fuse_review
 
-Review the semantic impact of a change since a git base ref: the changed files, the blast radius (callers, DI consumers, route and request handlers, options consumers, tests), and the packed context. The flagship tool for PR and change work.
+Review the semantic impact of a change since a git base ref: the changed files, the blast radius (callers, DI consumers, route and request handlers, options consumers, tests), and the packed context. The first tool to reach for in PR and change work.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -96,9 +96,9 @@ Review the semantic impact of a change since a git base ref: the changed files, 
 | `handoff` | bool | false | Produce a paste-ready PR handoff packet instead of the review context; refuses while the check session has unresolved introduced errors |
 | `checkSession` | string | `""` | For `handoff`: the `fuse_check` session id to gate on |
 
-The manifest opens with a public API delta section (T2): the public and protected members added, removed, or changed between the git base ref and the working tree, each flagged breaking (a removal, a signature change, or an accessibility reduction) or additive. A purely internal change shows no section. The surface is compared by extracting the public and protected symbols of each changed C# file on both sides (the base side read from the base ref, the current side from the working tree), so a contract break is the first thing a reviewer reads rather than something CI discovers. In the JSON format the section rides a dedicated `apiDelta` field so the payload stays valid JSON. Out of scope, and not flagged: binary-compatibility subtleties that are not a source-visible surface change, specifically default parameter value changes and `const` inlining.
+The manifest opens with a public API delta section: the public and protected members added, removed, or changed between the git base ref and the working tree, each flagged breaking (a removal, a signature change, or an accessibility reduction) or additive. A purely internal change shows no section. The surface is compared by extracting the public and protected symbols of each changed C# file on both sides (the base side read from the base ref, the current side from the working tree), so a contract break is the first thing a reviewer reads rather than something CI discovers. In the JSON format the section rides a dedicated `apiDelta` field so the payload stays valid JSON. Out of scope, and not flagged: binary-compatibility subtleties that are not a source-visible surface change, specifically default parameter value changes and `const` inlining.
 
-The review also carries a graded claims block (U2): the changed-file set (git-truth, so `verified`) and, when the surface moved, a `partially verified` claim that the change alters the public API. Each claim names its evidence. See [claim grades](/docs/concepts/claim-grades) for the grade table and the session ledger.
+The review also carries a graded claims block: the changed-file set (git-truth, so `verified`) and, when the surface moved, a `partially verified` claim that the change alters the public API. Each claim names its evidence. See [claim grades](/docs/concepts/claim-grades) for the grade table and the session ledger.
 
 With `handoff=true` the tool returns a paste-ready PR body instead of the review context: the changed files, the public API delta, the compiler-gate status, and the named residual risk. It is gated, not a controller - while the `checkSession` still has unresolved introduced errors it refuses and returns the red summary rather than a packet, so a change that does not yet pass the compiler cannot be handed off.
 
@@ -162,13 +162,13 @@ The signature operations refuse rather than risk a wrong change in these shapes:
 
 ## fuse_check
 
-Typecheck a proposed single-file edit and get the compiler errors and warnings the change would produce, without writing the file. Verification never shrugs (the grade ladder, Decision D11): every answer is stamped with a `verification grade`.
+Typecheck a proposed single-file edit and get the compiler errors and warnings the change would produce, without writing the file. Verification never shrugs: every answer is stamped with a `verification grade`.
 
-- **oracle** grade: a speculative in-memory typecheck against the tier-1 build-captured compilation (via the out-of-process build-capture worker, configured with `FUSE_BUILD_CAPTURE_WORKER`). The patch is applied to the rehydrated compilation in memory; no disk write, no second build.
+- **oracle** grade: a speculative in-memory typecheck against the build-captured compilation (via the out-of-process build-capture worker, configured with `FUSE_BUILD_CAPTURE_WORKER`). The patch is applied to the rehydrated compilation in memory; no disk write, no second build.
 - **build** grade: when no oracle substrate is available, Fuse runs the real `dotnet build` toolchain scoped to the owning project and parses its diagnostics into the same shape. This is ground truth (the compiler itself answered) at the cost of build latency (tens of seconds), reported with the elapsed time. The working tree is never written: the owning project is mirrored to a temporary directory, the proposed content replaces the one file in the copy, its `<ProjectReference>` includes are rewritten to absolute paths pointing at the untouched originals, and the build runs there.
 - **abstain**: returned only when even the toolchain cannot run (no buildable project, or a build that exceeds the timeout), always naming the missing prerequisite.
 
-The response opens with the grade line so a client knows the class of truth and the latency to expect before reading the verdict. When a diagnostic is an API-shape error an agent commonly hits (CS1061 a member that does not exist, CS0246 a type that could not be found), the response attaches a repair packet (R6): the receiver type's real members with the nearest names first, or the nearest type names in the index, drawn from the persisted symbol table so the fix does not cost another round-trip. A packet is added only where a concrete suggestion is possible, never as empty padding.
+The response opens with the grade line so a client knows the class of truth and the latency to expect before reading the verdict. When a diagnostic is an API-shape error an agent commonly hits (CS1061 a member that does not exist, CS0246 a type that could not be found), the response attaches a repair packet: the receiver type's real members with the nearest names first, or the nearest type names in the index, drawn from the persisted symbol table so the fix does not cost another round-trip. A packet is added only where a concrete suggestion is possible, never as empty padding.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -190,7 +190,7 @@ Pass a `session` id with no `content` and `fuse_check` answers the inverse quest
 
 ## fuse_impact
 
-Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, enumerated from the persisted semantic graph (the R5 reference edges plus the wiring edges). No source bodies. The exact signature-change break set (which call sites would no longer bind) is an oracle-grade answer that needs a tier-1 load; until one is available the tool reports it as unavailable rather than guessing, and returns the graph-grade blast radius. Reverse traversal is the store's incoming-edge query, so the result is deduped by source node. The response also lists the covering tests for the symbol (the M1 selection primitive): the tests that reach it through R5's DI-resolved `tests` edges, called out distinctly from the blast radius so you can run just that subset with your own `dotnet test --filter`. The covering set is a lower bound bounded by R5 edge completeness (a test reached only by reflection has no edge and is not listed), never presented as "all the tests". The response opens with an availability header (index mode, whether tier-1 build capture is configured, and the freshness stamp) so a client can see the grade of the answer before reading it.
+Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, enumerated from the persisted semantic graph (reference edges plus wiring edges). No source bodies. The exact signature-change break set (which call sites would no longer bind) is an oracle-grade answer that needs a build capture; until one is available the tool reports it as unavailable rather than guessing, and returns the graph-grade blast radius. Reverse traversal is the store's incoming-edge query, so the result is deduped by source node. The response also lists the covering tests for the symbol: the tests that reach it through DI-resolved `tests` edges, called out distinctly from the blast radius so you can run just that subset with your own `dotnet test --filter`. The covering set is a lower bound (a test reached only by reflection has no edge and is not listed), never presented as "all the tests". The response opens with an availability header (index mode, whether build capture is configured, and the freshness stamp) so a client can see the grade of the answer before reading it.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -201,11 +201,11 @@ Blast radius for a symbol before you edit it: the callers, implementers, consume
 | `fromVersion` | string | null | Package-upgrade mode: the currently referenced version |
 | `toVersion` | string | null | Package-upgrade mode: the target (upgrade) version |
 
-### Package-upgrade mode (F3)
+### Package-upgrade mode
 
 Pass `package`, `fromVersion`, and `toVersion` and `fuse_impact` becomes a NuGet upgrade oracle: it diffs the public API of the two package versions (resolved from the local NuGet cache) and lists the breaking public-API changes the bump would introduce (removed members, signature changes, accessibility reductions), so the anxiety of a package upgrade is answerable before the lockfile changes. It abstains with a reason when a version is not in the local cache (the offline case). It names its blind spots on every report: reflection and dynamic usage are invisible to a metadata diff, and repo call-site intersection is bounded by the reference graph, which does not track external-package call sites (so the answer is the version-to-version break set, not a repo-specific "your N call sites break" count). Recorded example: `System.Text.Json` 4.7.2 to 8.0.0 is flagged breaking (the public `JsonClassInfo` was removed), while additive-only major bumps of `System.Collections.Immutable` and `Microsoft.Extensions.DependencyInjection.Abstractions` report no break.
 
-The response also carries a public API surface line (T2): whether the target symbol is on the public or protected surface, so before editing you know whether the change is contract-relevant (removing it, reducing its accessibility, or reshaping its signature would break external callers). The flag is conservative to avoid training you to ignore it: a positive "public" is asserted only from the recorded public-API flag, which is reliable for types in any index mode and for members at the semantic tier; a member in syntax mode, where accessibility is not resolved, is reported undetermined rather than guessed either way.
+The response also carries a public API surface line: whether the target symbol is on the public or protected surface, so before editing you know whether the change is contract-relevant (removing it, reducing its accessibility, or reshaping its signature would break external callers). The flag is conservative to avoid training you to ignore it: a positive "public" is asserted only from the recorded public-API flag, which is reliable for types in any index mode and for members at the semantic tier; a member in syntax mode, where accessibility is not resolved, is reported undetermined rather than guessed either way.
 
 ## fuse_test
 
@@ -213,9 +213,27 @@ Run the covering tests for a symbol: the tests that reach it through the persist
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
-| `symbol` | string | required | The symbol whose covering tests to run |
+| `symbol` | string | required for a covering-test run | The symbol whose covering tests to run |
 | `path` | string | `.` | Workspace directory |
 | `limit` | int | 20 | Maximum covering test types to run |
+| `candidates` | string | empty | Candidate racing: a JSON array of single-file edits to race |
+| `maxCandidates` | int | 4 | The bound on the number of candidates a race accepts (the k in the race) |
+| `analyzers` | bool | true | Whether a race also runs the repo's configured analyzers against each candidate |
+
+### Candidate racing
+
+When an agent has more than one plausible fix for the same edit, it does not have to pick on vibes or verify them one by one across separate turns. Pass `candidates`, a JSON array of single-file edits, and `fuse_test` typechecks all of them against the live resident compilation and returns a per-candidate verdict plus a suggested winner:
+
+```json
+[
+  {"id": "tuple", "file": "src/Order.cs", "content": "<full new file content>"},
+  {"id": "linq",  "file": "src/Order.cs", "content": "<full new file content>"}
+]
+```
+
+Each candidate is the same shape a single `fuse_check` takes (a `file` and its proposed full `content`); the optional `id` labels the candidate in the output (a blank one is filled with its position). The winner is chosen by strict dominance only: a candidate that typechecks clean beats any candidate with an error, two or more clean candidates are reported as a tie (the tool will not choose one green over another green), and when no candidate is clean the tool says so rather than picking the least-bad. Nothing is written; the race returns verdicts for you to act on.
+
+Racing needs a resident workspace (`FUSE_RESIDENT=1`); without one the tool abstains, because the point is to reuse one held compilation across every candidate. Each candidate forks that compilation and rebinds only its own changed file, so racing k candidates costs about k times a single warm verify, not k cold loads. The cost note is honest and measured: the candidates are evaluated one at a time, not concurrently, because Roslyn's semantic binding over forks that share a base compilation serializes on the base's internal caches (on a 20-core host, racing three candidates concurrently was within three percent of running them sequentially), so concurrency would buy no wall-clock while multiplying the live-fork memory by k. A race reports typecheck diagnostics only; running each candidate's tests over an unwritten edit needs the emit path, which is future work, so run the winner's covering tests with a covering-test call after you apply it.
 
 ## Exact signatures (fuse_find kind=signatures)
 
@@ -223,7 +241,7 @@ Look up a symbol's exact signature (declared signature, kind, accessibility, con
 
 ## The propose-verify-apply flow
 
-The loop is direct: there is no stateful staging session. Diagnose a proposed single-file edit by passing its content to `fuse_check` (the speculative typecheck, oracle-grade when tier-1 is available). Make compiler-executed edits with `fuse_refactor` (each returns a verified staged diff or abstains). Select the covering tests for a changed symbol with `fuse_impact` (which lists them) or run them with `fuse_test`. When you choose to commit, write the result to the working tree with `fuse_workspace action=apply` (the one explicit write path, a dry run unless `write=true`). Nothing is written until that apply.
+The loop is direct: there is no stateful staging session. Diagnose a proposed single-file edit by passing its content to `fuse_check` (the speculative typecheck, oracle-grade when build capture is available). Make compiler-executed edits with `fuse_refactor` (each returns a verified staged diff or abstains). Select the covering tests for a changed symbol with `fuse_impact` (which lists them) or run them with `fuse_test`. When you choose to commit, write the result to the working tree with `fuse_workspace action=apply` (the one explicit write path, a dry run unless `write=true`). Nothing is written until that apply.
 
 ## fuse_reduce
 

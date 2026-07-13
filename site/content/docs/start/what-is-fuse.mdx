@@ -1,18 +1,16 @@
 ---
 title: What is Fuse
-description: Fuse is the compiler oracle for .NET coding agents. It typechecks a proposed edit before it lands, computes a change's blast radius, stages verified refactors, and resolves what code actually runs, from a warm Roslyn graph.
+description: Fuse typechecks a .NET coding agent's proposed edit before it lands, computes a change's blast radius, stages verified refactors, and resolves what code actually runs, from a warm Roslyn graph.
 ---
 
-Fuse is the compiler oracle for .NET coding agents. Its thesis is that the compilation is
-the source of truth and everything else is a projection of it, so it answers an agent's
-edit-time questions from the compiler rather than from a guess. It typechecks a proposed
-edit before the agent writes it, computes the blast radius of a change, stages
+Fuse answers a .NET coding agent's edit-time questions from the compiler. It typechecks a
+proposed edit before the agent writes it, computes the blast radius of a change, stages
 compiler-executed refactors as diffs that compile or are not handed over, and resolves
 what the code actually runs: which implementation is injected for an interface, which
 handler processes a request, which endpoint serves a route, which options type binds a
 config section, and what a git diff actually impacts. Every answer carries a grade so the
-agent knows what it is trusting, and Fuse abstains rather than guess when it cannot answer
-at compiler grade.
+agent knows what it is trusting, and Fuse abstains when it cannot answer at compiler
+grade.
 
 It works from a warm, persistent index built with Roslyn: an index that stays built
 between calls, in a single SQLite file at `.fuse/fuse.db`, so the first call pays the
@@ -63,10 +61,9 @@ fuse review ./src --changed-since origin/main --max-tokens 25000
 
 ## What It Does, in One Line
 
-Fuse gives a .NET coding agent a compiler's answer instead of a guess: it verifies an edit,
-scopes a change, and resolves what the code actually runs, from a warm Roslyn-backed graph,
-so the agent stops guessing from file names and grep and stops waiting on a full build to
-learn what it broke.
+Fuse verifies an edit, scopes a change, and resolves what the code actually runs, from a
+warm Roslyn-backed graph, so the agent does not reconstruct wiring from file names and
+grep or wait on a full build to learn what an edit broke.
 
 A verify call returns a graded verdict: oracle-grade when the build-captured compilation
 answered speculatively, and an honest abstention (with the missing prerequisite named) when
@@ -105,7 +102,7 @@ a commit-pinned corpus of real .NET libraries, the default and `aggressive` redu
 **skeleton** render tier, which keeps signatures and drops bodies, removes 39 to 56 percent
 for an architecture-level view.
 
-![Fuse benchmark results on the benchmark corpus (Scrutor, Ardalis.Specification, NodaTime, eShopOnWeb): resolving .NET wiring at 23 of 23 edges (recall and precision 1.0), scoping a change at 100 percent changed-file recall and 79.8 percent precision in a median 958 tokens, and localizing from a bare title at 15 percent recall (the weakest mode, reported straight). The fourth bar (agent file recall) is a small, directional, model-dependent sample, not a headline.](/fuse-benchmarks.svg)
+![Fuse benchmark results: fuse_check verifies an edit with zero false green and zero false red over 1,000 compiler-labeled edits; an agent loop comparison where the Fuse arm reaches 89 percent true pass@1 to native's 82 percent, with confidence intervals and false-done counts; the extracted wiring graph resolves 24 of 24 edges at recall and precision 1.0; and fuse review scopes a change at 100 percent changed-file recall and 93.4 percent precision in a median 1,026 tokens against a grep baseline of 67 percent recall at 8 percent precision.](/fuse-benchmarks.svg)
 
 Every number comes from a harness anyone can rerun against the same pinned commits.
 See [Benchmarks](/docs/project/benchmarks) for the method and the full results,

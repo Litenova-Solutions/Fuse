@@ -1,113 +1,127 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1503" viewBox="0 0 1120 1503" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
-<rect x="0" y="0" width="1120" height="1503" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1619" viewBox="0 0 1120 1619" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+<rect x="0" y="0" width="1120" height="1619" fill="#ffffff"/>
 <text x="40.0" y="52.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="23" fill="#ea580c" text-anchor="start" font-weight="800" letter-spacing="1.5">FUSE</text>
-<text x="118.0" y="52.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="600">/  Roslyn-Backed .NET Semantic Context Engine for AI Agents</text>
-<text x="40.0" y="92.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="30" fill="#171a21" text-anchor="start" font-weight="800" letter-spacing="-0.5">Resolve What Actually Runs.</text>
-<text x="40.0" y="120.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#566072" text-anchor="start" font-weight="400">Fuse keeps a warm, Roslyn-backed semantic index of a .NET workspace and serves precise, provenance-backed</text>
-<text x="40.0" y="139.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#566072" text-anchor="start" font-weight="400">context from it: which implementation is injected, which endpoint handles a route, which handler processes a</text>
-<text x="40.0" y="158.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#566072" text-anchor="start" font-weight="400">request, and what a git diff semantically impacts. Token reduction is how it renders, not what it is.</text>
+<text x="118.0" y="52.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="600">/  MCP Server for AI Coding Agents on .NET</text>
+<text x="40.0" y="92.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="30" fill="#171a21" text-anchor="start" font-weight="800" letter-spacing="-0.5">Measured on Real .NET Codebases.</text>
+<text x="40.0" y="120.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#566072" text-anchor="start" font-weight="400">Fuse typechecks a proposed edit against the .NET compiler before an agent writes it, resolves how the code is</text>
+<text x="40.0" y="139.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#566072" text-anchor="start" font-weight="400">actually wired from a Roslyn graph, and scopes a change to its blast radius. Every answer carries a grade, and</text>
+<text x="40.0" y="158.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#566072" text-anchor="start" font-weight="400">Fuse abstains when it cannot answer at compiler grade.</text>
 <rect x="40.0" y="174.0" width="13.0" height="13.0" rx="3" fill="#c0c7d4"/>
-<text x="60.0" y="185.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12" fill="#566072" text-anchor="start" font-weight="400">Baseline (bare tools)</text>
-<rect x="228.0" y="174.0" width="13.0" height="13.0" rx="3" fill="#ea580c"/>
-<text x="248.0" y="185.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12" fill="#566072" text-anchor="start" font-weight="400">Fuse</text>
-<text x="290.0" y="185.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="11" fill="#8a93a3" text-anchor="start" font-weight="400">Numbers from tests/benchmarks/results; fuse eval semantics|review|localize|agent.</text>
-<rect x="40.0" y="207.0" width="1040.0" height="277.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
-<text x="68.0" y="245.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">01</text>
-<text x="98.0" y="245.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Resolving .NET Wiring</text>
-<text x="68.0" y="267.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">The extracted semantic graph versus hand-built edge ground truth on the wiring fixture.</text>
-<text x="68.0" y="288.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">DI registration and constructor injection, MediatR request-to-handler, ASP.NET route-to-action, options binding.</text>
-<text x="68.0" y="305.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">Deterministic: the edges are read from Roslyn, not guessed. This is the moat.</text>
-<text x="266.0" y="346.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Edge recall</text>
-<text x="266.0" y="360.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
-<rect x="282.0" y="334.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
+<text x="60.0" y="185.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12" fill="#566072" text-anchor="start" font-weight="400">Baseline (bare tools, grep)</text>
+<rect x="272.0" y="174.0" width="13.0" height="13.0" rx="3" fill="#ea580c"/>
+<text x="292.0" y="185.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12" fill="#566072" text-anchor="start" font-weight="400">Fuse</text>
+<text x="336.0" y="185.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="11" fill="#8a93a3" text-anchor="start" font-weight="400">Numbers from tests/benchmarks/results; fuse eval checkgate | loop | semantics | review.</text>
+<rect x="40.0" y="207.0" width="1040.0" height="351.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
+<text x="68.0" y="245.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#0d9488" text-anchor="start" font-weight="700">01</text>
+<text x="98.0" y="245.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Verifying an Edit Honestly</text>
+<text x="68.0" y="267.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">fuse_check over compiler-labeled single-file edits: does it ever call a broken edit clean?</text>
+<text x="68.0" y="288.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">Roslyn rewriters generate breaking and neutral edits; the compiler labels each one, not a human.</text>
+<text x="68.0" y="305.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">A false green (a broken edit called clean) would let an agent commit a build break. The dangerous one.</text>
+<rect x="68.0" y="334.0" width="317.3" height="92.0" rx="12" stroke="#e5e8ef" stroke-width="1" fill="#ffffff"/>
+<text x="226.7" y="384.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="44" fill="#0d9488" text-anchor="middle" font-weight="800">0</text>
+<text x="226.7" y="405.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#171a21" text-anchor="middle" font-weight="700">false green</text>
+<text x="226.7" y="421.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="11" fill="#8a93a3" text-anchor="middle" font-weight="400">broken edit called clean</text>
+<rect x="401.3" y="334.0" width="317.3" height="92.0" rx="12" stroke="#e5e8ef" stroke-width="1" fill="#ffffff"/>
+<text x="560.0" y="384.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="44" fill="#0d9488" text-anchor="middle" font-weight="800">0</text>
+<text x="560.0" y="405.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#171a21" text-anchor="middle" font-weight="700">false red</text>
+<text x="560.0" y="421.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="11" fill="#8a93a3" text-anchor="middle" font-weight="400">clean edit called broken</text>
+<rect x="734.7" y="334.0" width="317.3" height="92.0" rx="12" stroke="#e5e8ef" stroke-width="1" fill="#ffffff"/>
+<text x="893.3" y="384.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="44" fill="#0d9488" text-anchor="middle" font-weight="800">1,000</text>
+<text x="893.3" y="405.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#171a21" text-anchor="middle" font-weight="700">labeled edits</text>
+<text x="893.3" y="421.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="11" fill="#8a93a3" text-anchor="middle" font-weight="400">500 breaking, 500 neutral</text>
+<rect x="68.0" y="440.0" width="984.0" height="26.0" rx="6" fill="#eceef3"/>
 <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0d9488"/><stop offset="1" stop-color="#22c3ac"/></linearGradient>
-<rect x="282.0" y="334.0" width="770.0" height="28.0" rx="6" fill="url(#g1)"/>
-<text x="1040.0" y="352.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">100%</text>
-<text x="266.0" y="388.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Edge precision</text>
-<text x="266.0" y="402.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
-<rect x="282.0" y="376.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
+<rect x="68.0" y="440.0" width="984.0" height="26.0" rx="6" fill="url(#g1)"/>
+<text x="560.0" y="457.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#ffffff" text-anchor="middle" font-weight="700">1,000 of 1,000 compiler verdicts correct, plus 8 curated cases</text>
+<rect x="68.0" y="484.0" width="984.0" height="50.0" rx="9" stroke="#bfeee4" stroke-width="1" fill="#eafcf8"/>
+<rect x="68.0" y="484.0" width="4.0" height="50.0" rx="2" fill="#0d9488"/>
+<text x="86.0" y="504.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#0d9488" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
+<text x="146.0" y="504.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">Zero false green and zero false red over 1,000 compiler-verified mutation edits (500 breaking, 500 neutral) plus 8 curated</text>
+<text x="146.0" y="522.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">cases. When it cannot answer at compiler grade, fuse_check abstains (checkgate.json).</text>
+<rect x="40.0" y="578.0" width="1040.0" height="289.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
+<text x="68.0" y="616.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">02</text>
+<text x="98.0" y="616.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Finishing the Task</text>
+<rect x="301.2" y="602.0" width="103.4" height="17.0" rx="8.5" fill="#fbecd6"/>
+<text x="352.9" y="614.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#8a5a12" text-anchor="middle" font-weight="600" letter-spacing="0.04em">LIMITED SAMPLE</text>
+<text x="68.0" y="638.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">True pass@1 from a gold-test oracle: does the agent&#x27;s finished edit actually pass the changed tests?</text>
+<text x="68.0" y="659.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">One driver model (claude-sonnet-4-6), 234 scored rollouts, reported with confidence intervals.</text>
+<text x="68.0" y="676.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">95% CI: Fuse 82-95, native 74-90. Build round-trips were about equal (3.1 vs 3.2); that miss is shown, not hidden.</text>
+<text x="266.0" y="717.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Fuse</text>
+<text x="266.0" y="731.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#8a93a3" text-anchor="end" font-weight="400" letter-spacing="0.03em">false-done 8</text>
+<rect x="282.0" y="716.0" width="770.0" height="6.0" rx="3" fill="#eceef3"/>
+<rect x="913.4" y="717.0" width="100.1" height="4.0" rx="2" fill="#fb923c"/>
+<line x1="913.4" y1="712.0" x2="913.4" y2="726.0" stroke="#ea580c" stroke-width="2" stroke-linecap="round"/>
+<line x1="1013.5" y1="712.0" x2="1013.5" y2="726.0" stroke="#ea580c" stroke-width="2" stroke-linecap="round"/>
+<circle cx="967.3" cy="719.0" r="6" fill="#ea580c"/>
+<text x="967.3" y="707.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12.5" fill="#171a21" text-anchor="middle" font-weight="700">89%</text>
+<text x="266.0" y="759.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Native tools</text>
+<text x="266.0" y="773.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#8a93a3" text-anchor="end" font-weight="400" letter-spacing="0.03em">false-done 9</text>
+<rect x="282.0" y="758.0" width="770.0" height="6.0" rx="3" fill="#eceef3"/>
+<rect x="851.8" y="759.0" width="123.2" height="4.0" rx="2" fill="#fb923c"/>
+<line x1="851.8" y1="754.0" x2="851.8" y2="768.0" stroke="#ea580c" stroke-width="2" stroke-linecap="round"/>
+<line x1="975.0" y1="754.0" x2="975.0" y2="768.0" stroke="#ea580c" stroke-width="2" stroke-linecap="round"/>
+<circle cx="913.4" cy="761.0" r="6" fill="#ea580c"/>
+<text x="913.4" y="749.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12.5" fill="#171a21" text-anchor="middle" font-weight="700">82%</text>
+<rect x="68.0" y="793.0" width="984.0" height="50.0" rx="9" stroke="#f3d8c4" stroke-width="1" fill="#fff4ec"/>
+<rect x="68.0" y="793.0" width="4.0" height="50.0" rx="2" fill="#ea580c"/>
+<text x="86.0" y="813.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#ea580c" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
+<text x="146.0" y="813.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">Scored by the tests, not the transcript: Fuse 89% true pass@1 to native&#x27;s 82%, with fewer silent wrong answers (false-done</text>
+<text x="146.0" y="831.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">8 vs 9). Build round-trips did not drop, and that is reported too (loop.json).</text>
+<rect x="40.0" y="887.0" width="1040.0" height="289.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
+<text x="68.0" y="925.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#0d9488" text-anchor="start" font-weight="700">03</text>
+<text x="98.0" y="925.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Resolving .NET Wiring</text>
+<text x="68.0" y="947.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">The extracted semantic graph versus hand-built edge ground truth on the wiring fixture.</text>
+<text x="68.0" y="968.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">DI registration and constructor injection, MediatR request-to-handler, ASP.NET route-to-action, options binding.</text>
+<text x="68.0" y="985.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">Deterministic: the edges are read from Roslyn. No model is involved, and the same index gives the same answer.</text>
+<text x="266.0" y="1026.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Edge recall</text>
+<text x="266.0" y="1040.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#0d9488" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
+<rect x="282.0" y="1014.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
 <linearGradient id="g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0d9488"/><stop offset="1" stop-color="#22c3ac"/></linearGradient>
-<rect x="282.0" y="376.0" width="770.0" height="28.0" rx="6" fill="url(#g2)"/>
-<text x="1040.0" y="394.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">100%</text>
-<rect x="68.0" y="422.0" width="984.0" height="38.0" rx="9" stroke="#f3d8c4" stroke-width="1" fill="#fff4ec"/>
-<rect x="68.0" y="422.0" width="4.0" height="38.0" rx="2" fill="#0d9488"/>
-<text x="86.0" y="445.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#0d9488" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
-<text x="146.0" y="445.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">Every wiring edge in the fixture resolved correctly: 23 of 23, recall and precision 1.0 (Suite A).</text>
-<rect x="40.0" y="504.0" width="1040.0" height="289.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
-<text x="68.0" y="542.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">02</text>
-<text x="98.0" y="542.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Scoping a Change</text>
-<text x="68.0" y="564.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">fuse review over 53 real merged pull requests, 25,000-token budget.</text>
-<text x="68.0" y="585.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">Changed files are kept as must-keep and the semantic blast radius is added: callers, DI consumers, handlers, tests.</text>
-<text x="68.0" y="602.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">Recall is read with tokens: the whole review arrives in a median 958 tokens.</text>
-<text x="266.0" y="643.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Changed-file recall</text>
-<text x="266.0" y="657.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
-<rect x="282.0" y="631.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
-<linearGradient id="g3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ea580c"/><stop offset="1" stop-color="#fb923c"/></linearGradient>
-<rect x="282.0" y="631.0" width="770.0" height="28.0" rx="6" fill="url(#g3)"/>
-<text x="1040.0" y="649.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">100%</text>
-<text x="266.0" y="685.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Blast-radius precision</text>
-<text x="266.0" y="699.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
-<rect x="282.0" y="673.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
+<rect x="282.0" y="1014.0" width="770.0" height="28.0" rx="6" fill="url(#g2)"/>
+<text x="1040.0" y="1032.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">100%</text>
+<text x="266.0" y="1068.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Edge precision</text>
+<text x="266.0" y="1082.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#0d9488" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
+<rect x="282.0" y="1056.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
+<linearGradient id="g3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0d9488"/><stop offset="1" stop-color="#22c3ac"/></linearGradient>
+<rect x="282.0" y="1056.0" width="770.0" height="28.0" rx="6" fill="url(#g3)"/>
+<text x="1040.0" y="1074.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">100%</text>
+<rect x="68.0" y="1102.0" width="984.0" height="50.0" rx="9" stroke="#bfeee4" stroke-width="1" fill="#eafcf8"/>
+<rect x="68.0" y="1102.0" width="4.0" height="50.0" rx="2" fill="#0d9488"/>
+<text x="86.0" y="1122.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#0d9488" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
+<text x="146.0" y="1122.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">Every wiring edge in the fixture resolved correctly: 24 of 24, recall and precision 1.0 across the wiring catalog</text>
+<text x="146.0" y="1140.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">(semantics.json).</text>
+<rect x="40.0" y="1196.0" width="1040.0" height="373.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
+<text x="68.0" y="1234.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">04</text>
+<text x="98.0" y="1234.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Scoping a Change</text>
+<text x="68.0" y="1256.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">fuse review over 69 real merged pull requests from pinned open-source .NET repositories, 25,000-token budget.</text>
+<text x="68.0" y="1277.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">Changed files are must-keep; the semantic blast radius is added: callers, DI consumers, handlers, tests.</text>
+<text x="68.0" y="1294.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">The whole review arrives in a median 1,026 tokens. Recall is 100% by construction, so precision is the signal.</text>
+<text x="266.0" y="1335.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Changed-file recall</text>
+<text x="266.0" y="1349.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
+<rect x="282.0" y="1323.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
 <linearGradient id="g4" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ea580c"/><stop offset="1" stop-color="#fb923c"/></linearGradient>
-<rect x="282.0" y="673.0" width="616.0" height="28.0" rx="6" fill="url(#g4)"/>
-<text x="886.0" y="691.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">80%</text>
-<rect x="68.0" y="719.0" width="984.0" height="50.0" rx="9" stroke="#f3d8c4" stroke-width="1" fill="#fff4ec"/>
-<rect x="68.0" y="719.0" width="4.0" height="50.0" rx="2" fill="#ea580c"/>
-<text x="86.0" y="739.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#ea580c" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
-<text x="146.0" y="739.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">100% of changed files kept at 79.8% precision, a median 958 returned tokens per review; a grep baseline reaches 53% recall</text>
-<text x="146.0" y="757.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">at 14% precision (Suite B).</text>
-<rect x="40.0" y="813.0" width="1040.0" height="331.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
-<text x="68.0" y="851.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">03</text>
-<text x="98.0" y="851.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Localizing From a Task Title</text>
-<text x="68.0" y="873.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">fuse localize recall by title signal, no git base, 53 PRs on the rebuilt corpus, the offline lexical channel.</text>
-<text x="68.0" y="894.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">The hardest mode: a sentence with no diff. Identifier-rich titles localize; vague ones do not.</text>
-<text x="68.0" y="911.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">On a no-signal title Fuse refuses and hands back a navigation map instead of guessing (correct-refusal 100%).</text>
-<text x="266.0" y="952.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Identifier-rich titles</text>
-<text x="266.0" y="966.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
-<rect x="282.0" y="940.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
+<rect x="282.0" y="1323.0" width="770.0" height="28.0" rx="6" fill="url(#g4)"/>
+<text x="1040.0" y="1341.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">100%</text>
+<text x="266.0" y="1377.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Blast-radius precision</text>
+<text x="266.0" y="1391.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
+<rect x="282.0" y="1365.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
 <linearGradient id="g5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ea580c"/><stop offset="1" stop-color="#fb923c"/></linearGradient>
-<rect x="282.0" y="940.0" width="146.3" height="28.0" rx="6" fill="url(#g5)"/>
-<text x="416.3" y="958.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">19%</text>
-<text x="266.0" y="994.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Natural-language titles</text>
-<text x="266.0" y="1008.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
-<rect x="282.0" y="982.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
-<linearGradient id="g6" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ea580c"/><stop offset="1" stop-color="#fb923c"/></linearGradient>
-<rect x="282.0" y="982.0" width="130.9" height="28.0" rx="6" fill="url(#g6)"/>
-<text x="400.9" y="1000.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">17%</text>
-<text x="266.0" y="1036.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Overall</text>
-<text x="266.0" y="1050.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
-<rect x="282.0" y="1024.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
-<linearGradient id="g7" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ea580c"/><stop offset="1" stop-color="#fb923c"/></linearGradient>
-<rect x="282.0" y="1024.0" width="115.5" height="28.0" rx="6" fill="url(#g7)"/>
-<text x="385.5" y="1042.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">15%</text>
-<rect x="68.0" y="1070.0" width="984.0" height="50.0" rx="9" stroke="#f3d8c4" stroke-width="1" fill="#fff4ec"/>
-<rect x="68.0" y="1070.0" width="4.0" height="50.0" rx="2" fill="#ea580c"/>
-<text x="86.0" y="1090.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#ea580c" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
-<text x="146.0" y="1090.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">About 15% overall recall (19% on identifier-rich titles), offline with no model. The weakest mode, bounded by a</text>
-<text x="146.0" y="1108.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">mostly-syntax corpus, reported straight (Suite C).</text>
-<rect x="40.0" y="1164.0" width="1040.0" height="289.0" rx="16" stroke="#e5e8ef" stroke-width="1" fill="#f7f8fb"/>
-<text x="68.0" y="1202.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="12" fill="#ea580c" text-anchor="start" font-weight="700">04</text>
-<text x="98.0" y="1202.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="18" fill="#171a21" text-anchor="start" font-weight="700">Helping a Real Agent</text>
-<rect x="322.0" y="1188.0" width="90.2" height="17.0" rx="8.5" fill="#fbecd6"/>
-<text x="367.1" y="1200.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#8a5a12" text-anchor="middle" font-weight="600" letter-spacing="0.04em">ILLUSTRATIVE</text>
-<text x="68.0" y="1224.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#566072" text-anchor="start" font-weight="500">Claude Code (sonnet-4-6) gathering a change&#x27;s files: bare tools versus the Fuse MCP. 12 PRs.</text>
-<text x="68.0" y="1245.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">Model-dependent and a small sample (wide confidence interval); read recall together with tokens.</text>
-<text x="68.0" y="1262.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="12.5" fill="#8a93a3" text-anchor="start" font-weight="400">Tokens are now comparable across arms, so the difference is recall: the Fuse arm reaches more of the files.</text>
-<text x="266.0" y="1303.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Fuse MCP recall</text>
-<text x="266.0" y="1317.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#ea580c" text-anchor="end" font-weight="400" letter-spacing="0.03em">with Fuse</text>
-<rect x="282.0" y="1291.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
-<linearGradient id="g8" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0d9488"/><stop offset="1" stop-color="#22c3ac"/></linearGradient>
-<rect x="282.0" y="1291.0" width="231.0" height="28.0" rx="6" fill="url(#g8)"/>
-<text x="501.0" y="1309.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">30%</text>
-<text x="266.0" y="1345.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">Bare tools recall</text>
-<text x="266.0" y="1359.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#8a93a3" text-anchor="end" font-weight="400" letter-spacing="0.03em">without Fuse</text>
-<rect x="282.0" y="1333.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
-<rect x="282.0" y="1333.0" width="200.2" height="28.0" rx="6" fill="#c0c7d4"/>
-<text x="470.2" y="1351.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="700">26%</text>
-<rect x="68.0" y="1379.0" width="984.0" height="50.0" rx="9" stroke="#e5e8ef" stroke-width="1" fill="#f3f5f8"/>
-<rect x="68.0" y="1379.0" width="4.0" height="50.0" rx="2" fill="#0d9488"/>
-<text x="86.0" y="1399.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#0d9488" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
-<text x="146.0" y="1399.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">Fuse reached 30% of a change&#x27;s files versus 26% for bare tools, at comparable token cost (median ~211K vs ~209K), on a</text>
-<text x="146.0" y="1417.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">small, model-dependent 12-PR sample (Suite D).</text>
-<text x="40" y="1483" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#8a93a3">github.com/Litenova-Solutions/Fuse  .  Apache 2.0  .  o200k_base tokens  .  four suites reproducible via fuse eval, tests/benchmarks/results</text>
+<rect x="282.0" y="1365.0" width="716.1" height="28.0" rx="6" fill="url(#g5)"/>
+<text x="986.1" y="1383.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#ffffff" text-anchor="end" font-weight="700">93%</text>
+<text x="266.0" y="1419.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">grep recall</text>
+<text x="266.0" y="1433.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#8a93a3" text-anchor="end" font-weight="400" letter-spacing="0.03em">grep baseline</text>
+<rect x="282.0" y="1407.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
+<rect x="282.0" y="1407.0" width="515.9" height="28.0" rx="6" fill="#c0c7d4"/>
+<text x="785.9" y="1425.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="700">67%</text>
+<text x="266.0" y="1461.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#2b3140" text-anchor="end" font-weight="500">grep precision</text>
+<text x="266.0" y="1475.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10" fill="#8a93a3" text-anchor="end" font-weight="400" letter-spacing="0.03em">grep baseline</text>
+<rect x="282.0" y="1449.0" width="770.0" height="28.0" rx="6" fill="#eceef3"/>
+<rect x="282.0" y="1449.0" width="61.6" height="28.0" rx="6" fill="#c0c7d4"/>
+<text x="354.6" y="1467.5" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="13" fill="#171a21" text-anchor="start" font-weight="700">8%</text>
+<rect x="68.0" y="1495.0" width="984.0" height="50.0" rx="9" stroke="#f3d8c4" stroke-width="1" fill="#fff4ec"/>
+<rect x="68.0" y="1495.0" width="4.0" height="50.0" rx="2" fill="#ea580c"/>
+<text x="86.0" y="1515.0" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="10.5" fill="#ea580c" text-anchor="start" font-weight="700" letter-spacing="0.08em">Result</text>
+<text x="146.0" y="1515.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">100% of changed files kept at 93.4% precision, a median 1,026 returned tokens per review; a grep baseline reaches 67%</text>
+<text x="146.0" y="1533.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" fill="#171a21" text-anchor="start" font-weight="600">recall at 8% precision (review.json).</text>
+<text x="40" y="1599" font-family="ui-monospace,'Cascadia Code','SF Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#8a93a3">github.com/Litenova-Solutions/Fuse  .  Apache 2.0  .  o200k_base tokens  .  four suites reproducible via fuse eval, tests/benchmarks/results</text>
 </svg>

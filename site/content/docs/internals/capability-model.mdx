@@ -3,13 +3,27 @@ title: Capability and Plugin Model
 description: How Fuse keeps language behavior in plugins and resolves it by file extension through capability registries.
 ---
 
-Fuse keeps language-specific behavior out of the core pipeline. Reducing C#, extracting a skeleton, detecting routes, and finding type references are not pipeline code; they are capabilities supplied by plugins and resolved by file extension at runtime. The pipeline asks a registry for the capability that handles a given extension and applies it, without knowing which language it is working with. This page describes the capability contracts, how registries resolve them, and how a plugin registers them.
+Fuse has two extension-driven seams. Reduction and presentation use capability interfaces from the plugin abstractions. Persistent syntax indexing uses `ILanguageSyntaxProvider` to extract language-tagged symbols and chunks. Typed semantic analysis is separate and remains C#-only.
 
 This page is for engineers who want to understand the plugin boundary and for contributors adding support for a new language or format.
 
 ## Architectural Rationale
 
-A pipeline that switches on file extension strings grows a branch for every new language and couples every stage to every language. Fuse inverts that. Each unit of language behavior implements a small interface, plugins register their implementations through dependency injection, and the pipeline resolves the right implementation by extension. Adding a language is then a registration, not an edit to the pipeline. The pipeline never names a language and never inspects an extension string directly.
+Extension registries keep reducer selection and syntax extraction out of per-file switch statements. A registered capability claims extensions, and later registrations win a conflict. This does not make every tier language-neutral: compiler-backed graph construction, verification, and refactoring use the C# Roslyn path.
+
+## Index Language Tiers
+
+The persistent index selects a syntax provider by extension:
+
+| Provider | Extensions | Output |
+|----------|------------|--------|
+| C# | `.cs` | Roslyn-syntax symbols and chunks tagged `csharp` |
+| Python | `.py` | Bounded lexical class/function symbols and chunks tagged `python` |
+| JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.mts`, `.cts` | Bounded lexical class/function symbols and chunks tagged `javascript` |
+
+These records support exact lookup, full-text search, and task localization through language-agnostic tables. Python and JavaScript do not produce typed edges, compiler signatures, route or dependency wiring, build-capture verification, or compiler-executed refactors.
+
+The maintained Python and JavaScript providers are frozen at their current syntax scope. A first-party semantic provider for another language requires that language's real compiler service, not another parser or regex layer.
 
 ## Registration through Dependency Injection
 
@@ -49,7 +63,7 @@ A capability registry builds an extension-to-capability map at startup. It itera
 
 Last registration wins. When two implementations declare the same extension, the one registered later replaces the earlier one in the map. A specialized plugin can therefore override a default by registering after it. Resolution returning nothing is a normal outcome: a file whose extension has no registered reducer passes through reduction unchanged, and a file with no registered dependency extractor contributes an empty reference list to the graph.
 
-C# structural capabilities follow this rule in the default host. The C# language plugin registers the content reducer, project-graph generator, and pattern detectors. The Roslyn plugin registers skeleton, dependency, type-name, outline, slice, chunk, route-map, and semantic-marker implementations and is always registered after the C# plugin, so Roslyn supplies every structural capability for `.cs`. Content reduction and the project graph remain in the C# plugin and use regex-based transforms over source and project file text.
+C# reduction capabilities follow this rule in the default host. The C# language plugin registers the content reducer, project-graph generator, and pattern detectors. The Roslyn plugin supplies structural C# extractors. The separate persistent syntax index selects `ILanguageSyntaxProvider` implementations and stores a language tag per file.
 
 ```mermaid
 flowchart LR
@@ -68,7 +82,7 @@ The core registration builds five registries, one per resolvable-by-extension ca
 - `IDependencyExtractor`
 - `ITypeNameLocator`
 
-The remaining capabilities (route map and project graph generators) are resolved as single optional services rather than through an extension-keyed registry, and pattern detectors run as a batch. The pipeline and orchestrator resolve every per-extension capability through these registries; neither switches on extension strings directly.
+The remaining reduction capabilities (route map and project graph generators) are resolved as single optional services, and pattern detectors run as a batch. These registries do not define the typed semantic tier.
 
 ## What This Does Not Cover
 

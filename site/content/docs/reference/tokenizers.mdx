@@ -3,19 +3,19 @@ title: Tokenizers
 description: How Fuse counts tokens, the encodings it supports, and how the tokenizer flag resolves a model or encoding name.
 ---
 
-Fuse reports the token count of every fusion so you can judge how much of a model's context window it will consume. For OpenAI-compatible encodings it produces that figure with the Microsoft.ML.Tokenizers library, counting the same tokens the target model counts rather than estimating from character length. For the Anthropic (Claude) and Google (Gemini) families, which do not publish a local tokenizer for their current models, Fuse uses a deterministic estimator instead; those counts are approximate.
+Fuse counts reduced content for planning and output ceilings. Current semantic context uses the configured default counter. Tokenizer selection by model name belongs to the legacy directory-fusion pipeline.
 
 This page is for engineers who want the reported count to match a specific model and maintainers who need the exact resolution rules.
 
 ## Purpose and Scope
 
-Fuse counts tokens during the Emission stage, after reduction. The encoding it uses determines the count, because different encodings tokenize the same text differently. The default encoding is `o200k_base`, the encoding used by the current generation of OpenAI models. You select a different encoding with the `--tokenizer` flag, which accepts either a model name or an encoding name. See the [Options reference](/docs/reference/options).
+Token counting runs after reduction and secret redaction. The default is `o200k_base`. The legacy `--tokenizer` flag accepts a model alias or encoding name; current `fuse context`, `fuse review`, and `fuse reduce` commands do not expose it.
 
 This page documents how a tokenizer value resolves to an encoding. It does not cover the manifest or the reported summary line, which the [Core Concepts](/docs/concepts/how-fuse-works) page describes.
 
 ## Resolution Rules
 
-The `--tokenizer` value resolves to an encoding by the following rules, applied in order. Matching is case-insensitive and surrounding whitespace is trimmed.
+The legacy tokenizer value resolves by the following rules. Known aliases are normalized case-insensitively. An unknown value containing an underscore is passed to the tokenizer implementation as supplied.
 
 | Input | Resolves to |
 |-------|-------------|
@@ -33,7 +33,7 @@ The `--tokenizer` value resolves to an encoding by the following rules, applied 
 | Any value containing an underscore | Used as-is, treated as an encoding name |
 | Anything else | `o200k_base` (the default) |
 
-The Anthropic and Gemini families are matched first, by name prefix, so `claude-opus-4` and `gemini-1.5-pro` resolve to their estimators. Two consequences follow from the remaining rules. A value containing an underscore is passed through unchanged on the assumption that it names an encoding, so a misspelled encoding name is used verbatim rather than corrected. Any value that matches no known alias and contains no underscore falls back to the default `o200k_base` rather than raising an error.
+The Anthropic and Gemini prefixes are matched first, so `claude-opus-4` and `gemini-1.5-pro` select their estimators. A misspelled underscore-containing encoding is not corrected. Any other unknown value falls back to `o200k_base`.
 
 ## Estimated Encodings
 
@@ -45,7 +45,7 @@ The two constants are the providers' published rules of thumb, not numbers fitte
 
 ## Choosing an Encoding
 
-Choose the encoding that matches the model you will paste the fusion into. If you target a current OpenAI model, the default `o200k_base` is correct and no flag is needed. If you target an older model in the GPT-4 or GPT-3.5 family, pass `cl100k_base` or one of its model aliases so the reported count matches that model. Counts produced under one encoding are an approximation for a model that uses a different one.
+For the legacy pipeline, choose the encoding used by the destination model. Current commands do not offer a tokenizer override. Their counts are planning estimates, not a promise that provider-side tokenization will match exactly.
 
 ## What This Does Not Cover
 
@@ -53,4 +53,4 @@ This page covers token counting and encoding resolution. It does not cover the t
 
 ## Next
 
-See the [Options reference](/docs/reference/options) for the `--tokenizer` flag and related budget options, or [Core Concepts](/docs/concepts/how-fuse-works) for where token counting sits in the pipeline.
+See [Options](/docs/reference/options) for current token ceilings and the legacy-option boundary, or [Core Concepts](/docs/concepts/how-fuse-works) for the pipeline.

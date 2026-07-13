@@ -3,7 +3,7 @@ title: Reducers
 description: The per-type content reducers that shrink each file by its format, resolved by file extension.
 ---
 
-A reducer is a capability that shrinks a file's content according to its type. During the Reduction stage, Fuse resolves a reducer for each file by its extension and applies that reducer's transforms to the file's text. A reducer changes how content is written, not what it means: the output represents the same source in fewer tokens. Reducers fall into two groups, the format reducers for web and configuration files and the C# reducer for `.cs` source.
+A reducer compacts text according to file type. The output is context, not rewritten source: Fuse does not guarantee that reduced text compiles, parses, preserves behavior, or retains every private implementation detail. Format reducers handle web and configuration files; the C# reducer handles `.cs`.
 
 This page is for engineers who want to know exactly which transforms run on a given file type and maintainers reasoning about token output.
 
@@ -32,7 +32,7 @@ The format reducers handle web and configuration file types. Each strips comment
 
 ## C# Reducer
 
-The C# reducer handles `.cs` files. Unlike the format reducers, its transforms are driven by a single reduction level (`--level`), so the same reducer produces output ranging from light cleanup to compressed source. Its steps fall into two tiers, each selected by a level.
+The C# reducer handles `.cs` files. `fuse reduce --level` selects its reduction level. `fuse context` and `fuse review` assign a render tier per file and map that tier to a level internally.
 
 The standard removals run together at `--level standard` (and at the levels above it):
 
@@ -51,9 +51,9 @@ Aggressive mode, selected with `--level aggressive`, runs the standard removals 
 - Rewrites auto-properties to compact form, for example `{ get; set; }` becomes `{get;set;}`.
 - Collapses whitespace around delimiters such as `{ } ; , : ( ) = [ ]`, while preserving the contents of string literals through placeholder substitution so literal text is never altered.
 
-Every string and character literal, including raw string literals (`"""..."""`, the four-quote form, and interpolated raw strings `$"""..."""`), is masked behind a placeholder before any removal or whitespace pass runs, then restored verbatim. Embedded JSON, SQL, and templates inside a literal survive reduction byte-identical at all levels, and a `//` or `/* */` sequence inside a raw string is never mistaken for a comment.
+String and character literals, including raw and interpolated raw strings, are masked before comment and whitespace transforms and then restored. This prevents comment markers inside literals from being parsed as comments. The later secret-redaction pass can still replace a detected credential inside a literal.
 
-Aggressive mode maximizes token savings but produces output that is no longer guaranteed to compile. `--level aggressive` enables the full standard removal set together with the aggressive tier in one value. The deeper `--level skeleton` and `--level publicApi` drop method bodies entirely, emitting signatures only.
+No reduction level promises compilable output. `aggressive` applies both standard and aggressive transforms. `skeleton` removes bodies and keeps structural signatures; `publicApi` further limits output to public and protected structure. A positive token ceiling can truncate the final reduced result, so it does not guarantee that every declaration remains.
 
 ## What This Does Not Cover
 

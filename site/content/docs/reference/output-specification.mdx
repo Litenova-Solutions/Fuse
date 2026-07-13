@@ -3,78 +3,83 @@ title: Output Specification
 description: The exact structure of the three Fuse output formats and the manifest, including how metadata, provenance, and git statistics appear.
 ---
 
-A fusion produces one of four output formats from `fuse context` and `fuse review`, each carrying the same content with a different structure: XML, Markdown, JSON, or compact. Every format begins with a manifest, followed by one entry per included file. This page documents the precise shape of each format and the manifest so that a tool, an agent, or a person can parse the output without inspecting the source.
+`fuse context`, `fuse review`, and their MCP equivalents emit semantic context as XML, Markdown, or JSON. Compact output and the general emission flags belong to the legacy directory-fusion pipeline and are documented separately below.
 
 This page is for engineers writing parsers against Fuse output, agents consuming a fusion, and anyone who needs to know exactly what a flag adds to the result.
 
 ## Purpose and Scope
 
-This page specifies the on-disk and in-memory structure of a fusion: the per-file entry for each format, the manifest block, and the additions that the metadata, provenance, git statistics, and pattern summary options introduce. It states the exact text and field names Fuse emits. It does not cover which flag to choose for a given task; [Options](/docs/reference/options) lists every flag and its values.
+This page specifies the current semantic-context envelope first. The current commands always include the semantic manifest and provenance; they expose no metadata, git-statistics, pattern-summary, compact, report, or manifest-disable options.
 
 ## File Entries
 
-The body of a fusion is a sequence of file entries. In an unscoped fusion, files are emitted largest first by token count, so the most expensive content appears at the top of the body. In a scoped fusion (focus, query, or changes), files are emitted most-relevant first using the score that scoping assigned, so the files closest to the seed appear first and survive a `--max-tokens` cut; ties fall back to token count.
+Semantic-context entries preserve the context plan's ranked order. The planner assigns each file a role, render tier, score, token estimate, and provenance chain before emission.
 
 ### XML (Default)
 
 Each file is wrapped in a `file` element whose `path` attribute holds the normalized path. The reduced content sits between the tags:
 
 ```xml
-<file path="src/Services/OrderService.cs">
+<file path="src/Services/OrderService.cs" role="exact-seed" tier="FullSource" tokens="7">
 public class OrderService { }
 </file>
 ```
 
-With `--include-metadata`, the opening tag gains two attributes: `size` in bytes and `modified` as an ISO 8601 UTC timestamp:
-
-```xml
-<file path="src/Services/OrderService.cs" size="1843" modified="2026-06-19T01:30:00.0000000Z">
-```
-
-With `--provenance`, a comment precedes the entry, listing the inclusion chain from seed to the file:
+The `role`, `tier`, and `tokens` attributes are always present for emitted bodies. A provenance comment appears inside the element when the plan recorded an inclusion chain:
 
 ```xml
 <!-- included via: OrderService -> IPaymentGateway -> StripeGateway -->
 ```
 
-The provenance comment is emitted only when the inclusion chain has more than one entry. A file that is itself a seed has no chain to show and receives no comment.
+With a `sessionId`, an unchanged file is represented as `<file path="..." role="..." unchanged="true" />`; its body is omitted.
 
 ### Markdown
 
-With `--format markdown`, each file is a level-three heading holding the path, followed by a fenced code block with the content:
+With `--format markdown`, each file uses a level-two heading containing its path, role, and render tier:
 
 ````markdown
-### src/Services/OrderService.cs
+## src/Services/OrderService.cs  [exact-seed/FullSource]
 ```
 public class OrderService { }
 ```
 ````
 
-With `--include-metadata`, an italic line follows the heading:
-
-```markdown
-*size: 1843, modified: 2026-06-19T01:30:00.0000000Z*
-```
-
-Provenance is the same HTML comment as in XML, emitted before the heading under the same more-than-one-entry rule.
+Non-seed entries include an `_included via ..._` line. Session-elided entries state that the body was omitted.
 
 ### JSON
 
-With `--format json`, each file is a JSON object on its own line with these fields:
+With `--format json`, the result is one JSON document. Top-level fields are `mode`, `root`, `changedSince`, `files`, `estimatedTokens`, `entries`, `notes`, `apiDelta`, and `claims`. Each `entries` item contains:
 
 | Field | Type | Present when |
 |-------|------|--------------|
-| type | string, always `"file"` | Always |
 | path | string | Always |
+| role | string | Always |
+| tier | string | Always |
+| score | number | Always |
 | content | string | Always |
 | tokens | number | Always |
-| size | number | `--include-metadata` |
-| modified | string, ISO 8601 UTC | `--include-metadata` |
-| provenance | array of strings | `--provenance` and chain length greater than one |
+| provenance | array of strings | Always |
+| unchanged | bool | Session elision only |
 
 ```json
-{"type":"file","path":"src/Services/OrderService.cs","content":"public class OrderService { }","tokens":7}
+{"mode":"context","files":1,"estimatedTokens":7,"entries":[{"path":"src/Services/OrderService.cs","role":"exact-seed","tier":"FullSource","score":1,"tokens":7,"provenance":[],"content":"public class OrderService { }"}],"notes":[]}
 ```
+
+## Semantic Manifest
+
+XML starts with an HTML comment containing `fuse:semantic-context`. Markdown places the same manifest body in the opening fenced block. It records:
+
+- `mode`, `root`, optional `changedSince`, file count, and estimated tokens
+- must-keep seed paths and roles
+- semantic-impact paths with role and provenance summary
+- review API delta and graded claims when present
+- planner notes
+
+JSON carries these values as top-level fields and entry properties instead of a text preamble.
+
+## Legacy Directory-Fusion Output
+
+The sections below describe the retained general emission pipeline. Current `fuse context`, `fuse review`, and `fuse reduce` commands do not accept the named flags.
 
 ### Compact
 
@@ -91,7 +96,7 @@ With `--include-metadata`, the header gains a trailing `| <size>b <modified>` se
 
 With `--dedup-headers`, an identical leading comment header (for example a license banner) shared by two or more files is emitted once in a preamble at the top of the output and replaced in each file by a marker line `// fuse:header[N]`. Only leading comment blocks are moved; preprocessor directives and code are never touched, so the API surface is unchanged. The preamble opens with `=== fuse:deduplicated-headers ===` and lists each shared header once with its marker and the number of files that referenced it. Files with no shared header are left as is.
 
-## The Manifest
+### Legacy Manifest
 
 The manifest is on by default and prepended before the file entries. It lists every included file with its token cost so that a reader can judge the shape and size of a fusion before reading any file body. Disable it with `--no-manifest`.
 
@@ -143,7 +148,7 @@ The compact format cannot use an HTML comment, so its manifest opens with the ma
 #  src/Program.cs (~420 tokens)
 ```
 
-## Run Report
+### Legacy Run Report
 
 The `--report` flag writes a separate machine-readable JSON object summarizing the run, independent of the fusion body. With `--report <path>` it is written to that file; with `--report -` it is written to stdout. The report has type `"report"` and always names the tokenizer used for its counts:
 

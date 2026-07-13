@@ -24,6 +24,15 @@ jobs:
         shell: pwsh
         run: ./build/verify-version.ps1
 
+      - name: Validate MCP registry manifest
+        shell: pwsh
+        run: |
+          $desc = (Get-Content mcp-registry/server.json -Raw | ConvertFrom-Json).description
+          if ($desc.Length -gt 100) {
+            throw "mcp-registry/server.json description is $($desc.Length) chars; the registry caps it at 100."
+          }
+          Write-Host "MCP manifest description length $($desc.Length)/100 - OK."
+
       - name: Restore
         run: dotnet restore Fuse.slnx
 

@@ -37,8 +37,12 @@ jobs:
       - name: Capture bundle
         shell: pwsh
         run: |
-          # The build-capture worker is discovered by FUSE_BUILD_CAPTURE_WORKER (the same seam the tests use).
-          $worker = "src/Host/Fuse.BuildCaptureWorker/bin/Release/net10.0/fuse-build-capture.dll"
+          # Prefer the install-relative layout (Fuse.Cli copies the worker beside fuse.dll on build).
+          $worker = "src/Host/Fuse.Cli/bin/Release/net10.0/build-capture/fuse-build-capture.dll"
+          if (-not (Test-Path $worker)) {
+            dotnet build src/Host/Fuse.BuildCaptureWorker/Fuse.BuildCaptureWorker.csproj --configuration Release
+            $worker = "src/Host/Fuse.BuildCaptureWorker/bin/Release/net10.0/fuse-build-capture.dll"
+          }
           if (-not (Test-Path $worker)) { throw "worker not built at $worker" }
           $env:FUSE_BUILD_CAPTURE_WORKER = (Resolve-Path $worker).Path
           $target = "${{ github.event.inputs.target }}"

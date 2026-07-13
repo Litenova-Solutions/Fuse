@@ -10,16 +10,16 @@ Fuse provides targeted calls against a warm persistent index. This page is the m
 model for how an agent strings those calls
 together. For what one call does internally, see [How Fuse works](/docs/concepts/how-fuse-works).
 
-## What Blind Exploration Costs
+## Where Fuse Fits
 
-Without a semantic index, the agent reads, decides, and reads again. Each hop is a model
-call with latency, and the loop has three costs that compound on a big codebase:
+Without a semantic index, the agent reads, decides, and reads again. Fuse supplies a
+compact map and typed evidence for the parts of that loop that the local index can answer:
 
 - **Tokens.** Every file opened to orient burns context window that could have gone to the
   change. Much of it is comments, using directives, and boilerplate the agent does not
   need to reason about structure.
-- **Round-trips.** Discovery is sequential. A **round-trip** is one read-decide cycle, and
-  the agent often re-reads files it already saw because nothing kept a compact map.
+- **Repeated context.** Discovery is sequential, and later calls can overlap files already
+  returned. A shared session elides unchanged repeats.
 - **Lost wiring.** Reading files in isolation, the agent reconstructs the DI registrations,
   the request and route handlers, and the public surface by hand. Grep finds the interface
   but not the type that runs.
@@ -37,17 +37,21 @@ The loop benchmark does not show fewer build and test calls. The Fuse arm record
 Its measured result is higher test-verified pass@1 (89 versus 82 percent) and one fewer
 false-done rollout (8 versus 9), not a build-round-trip reduction.
 
-## The Loop
+## The Verified-Edit Loop
 
 Across a task, an agent can use targeted calls against the warm index:
 
 ```mermaid
 flowchart LR
-    A[Survey<br/>fuse_workspace map] --> B[Localize<br/>fuse_find task]
-    B --> C[Resolve<br/>fuse_find wiring]
-    C --> D[Context<br/>fuse_context]
-    D --> E[Review<br/>fuse_review]
-    E -.next step.-> B
+    A[Choose scope<br/>Git diff, wiring, or task] --> B[Read context<br/>fuse_context]
+    B --> C[Propose one-file edit]
+    C --> D[fuse_check]
+    D -->|Diagnostics| C
+    D -->|Clean| E{Public signature changes?}
+    E -->|Yes| F[fuse_impact]
+    E -->|No| G[fuse_test]
+    F --> G
+    G --> H[fuse_review<br/>before handoff]
 ```
 
 Survey the workspace cheaply with `fuse_workspace` (`action=map`), localize a task to
@@ -70,8 +74,9 @@ revisit one file across several calls. The loop suite counts actual agent-visibl
 test calls and finds no material reduction. Review metrics describe compact Git-seeded
 branch context; localization metrics describe open-ended discovery.
 
-## Next
+## Run the Loop
 
-See the measured detail on the [Benchmarks](/docs/project/benchmarks) page,
-the narrowing strategies in [Scoping](/docs/concepts/scoping), and the multi-turn step in
-[Sessions and deltas](/docs/concepts/sessions-and-deltas).
+Start with the strongest anchor available. After the first edit, send the proposed file
+content to `fuse_check`. Before changing a public signature, call `fuse_impact`. Run
+`fuse_test` for the edited symbol, then call `fuse_review` against the branch base before
+handoff.

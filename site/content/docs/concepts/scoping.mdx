@@ -11,6 +11,17 @@ relevant neighborhood whole rather than a single file in isolation.
 
 There are three ways to seed a request.
 
+```mermaid
+flowchart TD
+    A[What anchor do you have?] -->|Git base| B[fuse_review<br/>seed changed files]
+    A -->|Service, request, route, config, or symbol| C[fuse_find wiring kind<br/>resolve the target]
+    A -->|Task description only| D[fuse_find kind=task<br/>rank candidates]
+    B --> E[Expand through typed edges]
+    C --> E
+    D --> E
+    E --> F[fuse_context or review payload<br/>fit to token budget]
+```
+
 | Way | Tool / flag | Seeds on | Use when |
 |-----|-------------|----------|----------|
 | Localize | `fuse_find` (kind=task) / `fuse localize` | The top-ranked files and symbols for a task | You have a topic but not a name |
@@ -129,8 +140,9 @@ those targets are not visible to static analysis. Localization ranking rests on 
 indexed names, so a task that shares no vocabulary with the target can rank it low. The
 ranking and traversal are detailed in [Scoping internals](/docs/internals/scoping-internals).
 
-## Next
+## Try a Route
 
-See [The iterative workflow](/docs/concepts/iterative-workflow) for how an agent uses
-scoping across a task. Or put a mode to work: [Scope a pull request](/docs/scenarios/scope-a-pr)
-or [Ask one question](/docs/scenarios/ask-one-question).
+For a branch, run `fuse review ./src --changed-since origin/main`. For a named service,
+run `fuse resolve ./src --service IOrderService`. For an open task, run
+`fuse localize ./src --task "discount calculation at checkout"` and use the returned
+candidate paths as context seeds.

@@ -15,6 +15,17 @@ A session is an opaque string you choose and reuse across calls in one task. Fus
 per session, which files it has emitted and a hash of the content it sent. On a later call
 with the same `sessionId`:
 
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant Fuse
+    Agent->>Fuse: context(OrderService, sessionId=task-42)
+    Fuse-->>Agent: OrderService.cs, PricingPolicy.cs
+    Agent->>Fuse: context(PricingPolicy, sessionId=task-42)
+    Fuse-->>Agent: New files plus omitted-file note
+    Note over Fuse: Resend a prior path only if its content hash changed
+```
+
 - A file sent earlier with the same content is **omitted**.
 - A file whose content changed since it was sent is **resent** (the new content matters).
 - A file not yet seen in the session is sent normally.
@@ -52,9 +63,8 @@ exits, and resetting a session makes the next call resend everything. Session-de
 property of the MCP server across a live agent conversation; a one-off CLI run does not
 carry session state between invocations.
 
-## Next
+## Try a Delta
 
-See the multi-turn workflow in
-[Refine across turns](/docs/scenarios/refine-across-turns), the wider loop in
-[The iterative workflow](/docs/concepts/iterative-workflow), and the `sessionId` parameter in the
-[MCP tools reference](/docs/reference/mcp-tools).
+Call `fuse_context` twice with `sessionId="task-42"` and overlapping seeds. Confirm that
+the second response lists unchanged repeated files as omitted. Edit one omitted file and
+repeat the call; Fuse should resend that path because its content hash changed.

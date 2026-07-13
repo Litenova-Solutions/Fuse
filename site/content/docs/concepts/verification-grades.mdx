@@ -1,6 +1,6 @@
 ---
 title: Verification grades
-description: Every verify answer from Fuse is stamped with the class of truth behind it - oracle, build, or abstain - so an agent always knows whether it read a speculative typecheck, a real build, or an honest refusal.
+description: Read whether a Fuse verification result came from a build-captured compilation, a scoped dotnet build, or an abstention.
 ---
 
 When Fuse answers a verify-class question ("would this edit compile?"), the useful thing is
@@ -9,14 +9,22 @@ not just the verdict but how that verdict was reached. A speculative typecheck a
 Fuse names which one you got: every verify answer is stamped with a
 **verification grade**.
 
-The rule behind the grades is one sentence: **verification never shrugs.** Fuse answers at the
-best grade the workspace can currently serve, and only refuses when even the real toolchain
-cannot run.
+Fuse attempts the fastest available compiler path, falls back to a scoped build, and
+abstains when neither path can produce a supported result.
 
 ## The ladder
 
 `fuse_check` walks a ladder from the fastest, highest-fidelity answer down to an honest
 refusal:
+
+```mermaid
+flowchart TD
+    A[Proposed single-file edit] --> B{Build-captured compilation available?}
+    B -- Yes --> C[Oracle grade<br/>in-memory compiler diagnostics]
+    B -- No --> D{Owning project can build?}
+    D -- Yes --> E[Build grade<br/>scoped dotnet build]
+    D -- No --> F[Abstain<br/>name the missing prerequisite]
+```
 
 - **oracle** - a speculative typecheck against the build-captured compilation. The
   proposed content is applied to the rehydrated compilation in memory, with no disk write and
@@ -28,7 +36,7 @@ refusal:
   `FUSE_RESIDENT=1`.
 - **build** - when no oracle substrate is available, Fuse runs the real `dotnet build`
   toolchain scoped to the owning project and parses its diagnostics into the exact same shape
-  the oracle path returns. This is ground truth: the compiler itself answered. It costs build
+  the oracle path returns. The compiler itself produced this verdict. It costs build
   latency (tens of seconds), and the response reports the elapsed time so the wait is never a
   surprise.
 - **abstain** - returned only when even the toolchain cannot run: no buildable project, or a
@@ -45,8 +53,8 @@ diagnostics for OrderService.cs: 1
 ```
 
 The workflow is identical at either grade - same call, same output shape - only the latency
-and the stamped grade differ. An agent that reads the grade knows whether it is holding a
-speculative result it may want to confirm, or ground truth it can trust directly.
+and the stamped grade differ. An agent can distinguish an in-memory compiler result from a
+real project build.
 
 ## The tree is never written
 

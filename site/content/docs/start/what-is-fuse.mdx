@@ -18,6 +18,11 @@ Fuse runs on the developer's machine. It requires no hosted model, sends no sour
 Fuse service, and downloads no embedding model. Its persistent index lives in
 `.fuse/fuse.db`.
 
+<img
+  src="/fuse-product-boundary.svg"
+  alt="Fuse sits between an existing coding agent and local repository evidence from Roslyn, the .NET toolchain, Git, and the persistent index."
+/>
+
 ## Ask the Compiler Before Writing
 
 An agent can check an in-memory proposal and inspect typed impact before changing the
@@ -98,10 +103,10 @@ fuse review ./src --changed-since origin/main --max-tokens 25000
 
 Reduction is supporting machinery: the rendering step that fits context to a budget, not the
 product. Across the four repositories in `reduce.json`, the **skeleton** tier removed 38%
-to 44% of tokens while retaining every public type and 97% to 100% of public methods. The
-public-API tier removed 47% to 60%. These ranges describe the recorded corpus.
-
-![Fuse benchmark results covering compiler-labeled OrderingApp mutations, a reduced-scope agent loop with confidence intervals, the curated 24-edge OrderingApp wiring fixture, and git-seeded branch context over 69 pull requests.](/fuse-benchmarks.svg)
+to 44% of tokens. An independent Roslyn parse found that it retained every public and
+protected type-name key and 96.3% to 99.4% of public and protected method-name keys. The
+public-API tier removed 47% to 60%. These ranges describe the recorded corpus and do not
+claim complete API preservation.
 
 Every number comes from a harness anyone can rerun against the same pinned commits.
 See [Benchmarks](/docs/project/benchmarks) for the method and the full results,
@@ -131,5 +136,11 @@ rather than treating every index mode as compiler truth.
 
 ## Next
 
-Install the tool on the [Install](/docs/start/install) page, then run your first
-index and review in the [Quickstart](/docs/start/quickstart).
+Install the tool, then produce one graded workspace result:
+
+```bash
+dotnet tool install -g Fuse
+fuse mcp install --rules
+```
+
+Reload your MCP client and ask it to call `fuse_workspace` with `action=status`.

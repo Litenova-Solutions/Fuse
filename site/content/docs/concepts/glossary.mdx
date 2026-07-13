@@ -42,8 +42,8 @@ rendering step, not the product core. See [Reduction levels](/docs/concepts/redu
 or signature-only **skeleton**. A context plan can mix tiers across files to fit a budget.
 
 **Skeleton.** A render tier that keeps class, interface, and method signatures and removes
-method bodies, producing an architecture view that is typically 39 to 56 percent smaller
-than full source.
+method bodies; across the recorded four-repository corpus it removes 38 to 44 percent of
+tokens and retains 96.3 to 99.4 percent of public and protected method-name keys.
 
 **Scoping.** Narrowing a context request to the code a task needs (by localizing,
 resolving wiring, or diffing a git change) and expanding through the typed graph. See
@@ -58,8 +58,9 @@ token cost, so a reader or agent can judge the shape and cost before reading any
 **Provenance.** The per-file annotation that records why a file is present: the seed and
 the edge chain that pulled it into the plan.
 
-**Round-trip.** One read-decide cycle an agent makes while exploring; Fuse cuts round-trips
-by answering a survey, a localize, a resolve, or a review in a single call. See
+**Round-trip.** One read-decide cycle an agent makes while examining a repository; the
+recorded loop benchmark counts build and test calls separately and does not establish a
+general reduction in round-trips. See
 [The iterative workflow](/docs/concepts/iterative-workflow).
 
 **Session-delta.** A way to skip resending files an agent already has: pass a `sessionId`
@@ -72,7 +73,7 @@ dependency edges, type location, route maps, and semantic markers. Regex still h
 content reduction, the project graph, and pattern detectors. See
 [Roslyn structural analysis vs regex](/docs/concepts/roslyn-vs-regex).
 
-## Next
+## Use the Terms
 
-Return to [How Fuse works](/docs/concepts/how-fuse-works), or look up exact detail in the
-[Reference](/docs/reference/commands).
+Run `fuse context ./src --seed OrderService --max-tokens 15000`. In its manifest, identify
+the seeds, render tiers, token costs, and provenance before reading the emitted bodies.

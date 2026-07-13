@@ -77,13 +77,8 @@ Both tools return locations, not source. When you want the code, feed the result
 fuse_context(path="C:/Projects/MyApp/src", requests=["CreateOrderCommand"], maxTokens=15000)
 ```
 
-## When to Use It
+## Ask the Current Question
 
-Use `fuse_find` with a wiring `kind` (`service`, `request`, `route`, `config`) when the
-question names wiring you can quote, and `fuse_find` with `kind=task` when it is a topic. The full progressive
-flow for a larger task is in [Context for an agent](/docs/scenarios/context-for-an-agent).
-
-## Related Concept
-
-The seed modes are covered in [Scoping](/docs/concepts/scoping); the full parameter list
-is in the [MCP tools reference](/docs/reference/mcp-tools).
+If you can quote a service, request, route, or config name, call `fuse_find` with that
+wiring kind. Otherwise call it with `kind=task`. When the response names a candidate or
+resolved target, pass that result to `fuse_context` with a 15,000-token budget.

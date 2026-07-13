@@ -46,14 +46,9 @@ A small, structural payload: from `fuse map`, the symbols and routes the index k
 from a budgeted `fuse context`, a signature-level view of an area. Either is enough to
 orient a reader or an agent before any deeper drill-in.
 
-## When to Use It
+## Survey the Current Repository
 
-Use a survey at the start of work on a codebase you do not know, or to produce a high-level
-map for review. Follow it with [localize or resolve](/docs/concepts/scoping) to bring
-detail to the area that matters.
-
-## Related Concept
-
-Render tiers, including the skeleton, are in
-[Reduction levels](/docs/concepts/reduction-levels); the detected conventions in a pattern
-summary are in [Pattern detectors](/docs/reference/pattern-detectors).
+Run `fuse diagnostics ./src`, then `fuse map ./src --detail all`. If the map names the
+route, service, request, or config section you need, resolve it directly. Otherwise run
+`fuse localize ./src --task "<your task>"` and use the strongest candidate as the next
+context seed.

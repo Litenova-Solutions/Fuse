@@ -75,9 +75,8 @@ already returned are not sent again. See
 Use this progressive flow on any codebase too large to hand an agent whole. When a git
 base is available, `fuse_review` provides Git-seeded branch context directly.
 
-## Related Concept
+## Run the First Three Calls
 
-The mental model behind this flow is
-[The iterative workflow](/docs/concepts/iterative-workflow). The tool parameters are in the
-[MCP tools reference](/docs/reference/mcp-tools), and the modes behind them in
-[Scoping](/docs/concepts/scoping).
+Copy the example call sequence into your agent, replace the path and task text, and keep
+the `fuse_context` budget at 25,000 tokens. Check the returned manifest before asking the
+agent to edit: each included file should name its seed or graph provenance.

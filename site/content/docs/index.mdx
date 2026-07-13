@@ -1,47 +1,27 @@
 ---
 title: Fuse documentation
-description: Fuse is a local compiler and typed .NET wiring service for existing coding agents. Install it, connect it through MCP, and give your agent graded evidence without a hosted model or embedding download.
+description: Install Fuse, connect your coding agent, and choose the workflow for checking edits, tracing .NET wiring, reviewing changes, or reducing context.
 ---
 
-Fuse gives an existing coding agent a local connection to the .NET compiler and a typed
-graph of application wiring. Through Model Context Protocol (MCP), Claude Code, Cursor,
-GitHub Copilot, and other MCP clients can check a proposed edit, inspect typed impact,
-resolve dependency injection and framework wiring, and stage compiler-verified refactors.
-
-Fuse runs on the developer's machine. It requires no hosted model and downloads no
-embedding model. Compiler answers report their evidence grade, and Fuse abstains when its
-available compiler path cannot support a verdict. Checks evaluate in-memory proposals
-without writing the working tree. Ranked retrieval and structural reduction supply compact
-context to these operations.
-
-Install the .NET tool, then register it with your agent:
+Give your existing coding agent local compiler evidence and a typed graph of .NET
+application wiring:
 
 ```bash
 dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
-These docs are organized so you can read top to bottom to learn, or jump to a
-reference page for exact detail.
+Restart your MCP client, then ask it to call `fuse_workspace` with `action=status`.
 
-## Get Going
+## Choose an outcome
 
 <Cards>
-  <Card title="What is Fuse" href="/docs/start/what-is-fuse" description="The local compiler service, typed wiring graph, and evidence grades." />
-  <Card title="Quickstart" href="/docs/start/quickstart" description="Index a workspace, then localize, resolve, and review." />
-  <Card title="Connect to your AI" href="/docs/start/connect-your-ai" description="Set up the MCP server for Claude Code, Cursor, or Copilot." />
-  <Card title="Why Fuse" href="/docs/start/why-fuse" description="Why compiler evidence and typed wiring complement an existing agent." />
+  <Card title="Check an edit" href="/docs/scenarios/ambient-verification" description="Put compiler diagnostics into the agent loop after each change." />
+  <Card title="Trace .NET wiring" href="/docs/scenarios/ask-one-question" description="Resolve a service, request, route, or config section to its implementation." />
+  <Card title="Review a change" href="/docs/scenarios/scope-a-pr" description="Start from a git diff and add typed support context." />
+  <Card title="Reduce known context" href="/docs/scenarios/cut-tokens-dotnet" description="Compact selected files while preserving structural declarations." />
 </Cards>
 
-## The Map
-
-- **[Start](/docs/start/what-is-fuse)**: what Fuse is, why it exists, install, the first run, and MCP setup.
-- **[Scenarios](/docs/scenarios/context-for-an-agent)**: task-shaped how-tos. Each is a job with one command and real output.
-- **[Concepts](/docs/concepts/how-fuse-works)**: how the warm index works, scoping, render tiers, Roslyn vs regex analysis, and a glossary.
-- **[Reference](/docs/reference/commands)**: every command, flag, MCP tool, reducer, template, tokenizer, and output field.
-- **[Internals and Extending](/docs/internals/pipeline)**: the pipeline, capability model, scoping and caching internals, and the extension guides.
-- **[Project](/docs/project/benchmarks)**: benchmarks, performance, roadmap, changelog, and contributing.
-
-## Next
-
-New to Fuse? Start with [What is Fuse](/docs/start/what-is-fuse).
+For setup, use the [quickstart](/docs/start/quickstart). For exact parameters, use the
+[MCP tool reference](/docs/reference/mcp-tools). For measured scope and limits, read
+[benchmarks](/docs/project/benchmarks).

@@ -10,8 +10,8 @@ The verbs an agent calls interactively (`fuse_review`, `fuse_test`, `fuse_impact
 Against a checked-out PR branch with its merge base available:
 
 ```bash
-# Build and index once, so the read verbs answer from a warm store.
-fuse workspace --action index
+# Build the persistent index once, so later commands read a warm store.
+fuse index
 
 # Review the change against the merge base: changed files, the public API delta
 # (breaking or additive), the semantic blast radius, and the graded claims block.
@@ -21,7 +21,7 @@ fuse review --changed-since origin/main --format markdown
 fuse test OrderService
 ```
 
-`fuse review` prints the diff-first impact; `fuse test <symbol>` runs only the tests that reach that symbol through the persisted `tests` edges, at build grade. Both read the persistent index, so run `fuse workspace --action index` (or any read verb, which builds the index on first use) before them.
+`fuse review` prints the diff-first impact; `fuse test <symbol>` runs only the tests that reach that symbol through the persisted `tests` edges, at build grade. Both read the persistent index. Run `fuse index` before the CLI commands. MCP read tools build the index on first use, but the one-shot CLI commands require an existing index.
 
 ## A GitHub Actions job
 
@@ -42,7 +42,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: dotnet tool install -g fuse
-      - run: fuse workspace --action index
+      - run: fuse index
       - run: fuse review --changed-since origin/${{ github.base_ref }} --format markdown
       - run: fuse test OrderService
 ```

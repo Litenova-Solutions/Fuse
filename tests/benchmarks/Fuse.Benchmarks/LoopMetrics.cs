@@ -79,11 +79,21 @@ public static class LoopMetrics
     /// <param name="turns">The ordered turns of the session.</param>
     /// <returns>The loop metrics.</returns>
     public static LoopMetricsResult Compute(IReadOnlyList<TranscriptTurn> turns)
+        => Compute(turns, turns.Sum(t => t.DurationMs));
+
+    /// <summary>
+    ///     Computes the loop metrics for a transcript using a separately measured end-to-end rollout duration.
+    /// </summary>
+    /// <param name="turns">The ordered turns of the session.</param>
+    /// <param name="wallClockMs">The measured end-to-end rollout duration in milliseconds.</param>
+    /// <returns>The loop metrics.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="wallClockMs" /> is negative.</exception>
+    public static LoopMetricsResult Compute(IReadOnlyList<TranscriptTurn> turns, long wallClockMs)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(wallClockMs);
         var builds = turns.Count(t => t.Kind == TurnKind.Build);
         var checks = turns.Count(t => t.Kind == TurnKind.Check);
         var tests = turns.Count(t => t.Kind == TurnKind.Test);
-        var wallClock = turns.Sum(t => t.DurationMs);
 
         // A verification turn is a build, a test, or a speculative check; the proxy "reached green" is the first
         // one that passed. (The oracle post-check, computed by the suite, is the true pass@1; this is the proxy.)
@@ -104,6 +114,191 @@ public static class LoopMetrics
         }
 
         return new LoopMetricsResult(
-            reachedGreen, reachedGreen ? iterationsToGreen : 0, builds, checks, tests, wallClock);
+            reachedGreen, reachedGreen ? iterationsToGreen : 0, builds, checks, tests, wallClockMs);
+    }
+}
+
+/// <summary>
+///     Deterministic elapsed-time metrics for one loop arm. Rollout statistics describe individual observations;
+///     task statistics first average repeated rollouts within each task so one task remains one cluster.
+/// </summary>
+/// <param name="Arm">The arm name.</param>
+/// <param name="RolloutCount">The number of rollouts with a positive measured duration.</param>
+/// <param name="TaskCount">The number of distinct tasks represented by those rollouts.</param>
+/// <param name="TotalMs">The sum of measured rollout durations in milliseconds.</param>
+/// <param name="MeanRolloutMs">The arithmetic mean duration per rollout in milliseconds.</param>
+/// <param name="MedianRolloutMs">The median duration per rollout in milliseconds.</param>
+/// <param name="MeanTaskMs">The arithmetic mean of per-task mean durations in milliseconds.</param>
+/// <param name="MedianTaskMs">The median of per-task mean durations in milliseconds.</param>
+public sealed record LoopArmTimingSummary(
+    string Arm,
+    int RolloutCount,
+    int TaskCount,
+    long TotalMs,
+    double MeanRolloutMs,
+    double MedianRolloutMs,
+    double MeanTaskMs,
+    double MedianTaskMs);
+
+/// <summary>
+///     A task-paired elapsed-time comparison between two loop arms. Each task contributes one mean duration per
+///     arm, regardless of rollout count. The result is descriptive and does not claim statistical significance.
+/// </summary>
+/// <param name="LeftArm">The left arm name.</param>
+/// <param name="RightArm">The right arm name.</param>
+/// <param name="PairedTaskCount">The number of tasks with positive measured durations in both arms.</param>
+/// <param name="MeanDeltaMs">The mean per-task duration difference, right minus left, in milliseconds.</param>
+/// <param name="MedianDeltaMs">The median per-task duration difference, right minus left, in milliseconds.</param>
+public sealed record LoopPairedTimingSummary(
+    string LeftArm,
+    string RightArm,
+    int PairedTaskCount,
+    double MeanDeltaMs,
+    double MedianDeltaMs);
+
+/// <summary>
+///     A task-paired elapsed-time comparison restricted to tasks where both arms passed the gold-test oracle.
+///     This prevents a fast failed rollout from being reported as a speed improvement.
+/// </summary>
+/// <param name="LeftArm">The baseline arm name.</param>
+/// <param name="RightArm">The comparison arm name.</param>
+/// <param name="VerifiedPairCount">The number of tasks with positive duration and an oracle pass in both arms.</param>
+/// <param name="MeanDeltaMs">The mean per-task duration difference, right minus left, in milliseconds.</param>
+/// <param name="MedianDeltaMs">The median per-task duration difference, right minus left, in milliseconds.</param>
+/// <param name="MedianRelativeSavings">
+///     The median per-task relative time saving, <c>(left - right) / left</c>. Positive values mean the right arm
+///     completed faster. This is descriptive and carries no significance claim.
+/// </param>
+public sealed record LoopPairedVerifiedTimingSummary(
+    string LeftArm,
+    string RightArm,
+    int VerifiedPairCount,
+    double MeanDeltaMs,
+    double MedianDeltaMs,
+    double MedianRelativeSavings);
+
+/// <summary>
+///     Summarizes measured loop rollout duration by arm and compares arms over tasks observed in both arms.
+/// </summary>
+public static class LoopTimingMetrics
+{
+    /// <summary>
+    ///     Computes deterministic arm summaries from canonical <see cref="TaskResult.LatencyMs" /> values.
+    ///     Results with zero duration are excluded because older checkpoints did not record usable latency.
+    /// </summary>
+    /// <param name="results">The per-rollout task results.</param>
+    /// <returns>One timing summary per arm, ordered by arm name.</returns>
+    public static IReadOnlyList<LoopArmTimingSummary> SummarizeArms(IReadOnlyList<TaskResult> results)
+    {
+        return results
+            .Where(result => result.LatencyMs > 0)
+            .GroupBy(result => result.Category, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var rollouts = group.Select(result => (double)result.LatencyMs).ToList();
+                var tasks = group
+                    .GroupBy(TaskId, StringComparer.Ordinal)
+                    .Select(task => Metrics.Mean(task.Select(result => (double)result.LatencyMs).ToList()))
+                    .ToList();
+                return new LoopArmTimingSummary(
+                    group.Key,
+                    rollouts.Count,
+                    tasks.Count,
+                    group.Sum(result => result.LatencyMs),
+                    Metrics.Mean(rollouts),
+                    Metrics.Median(rollouts),
+                    Metrics.Mean(tasks),
+                    Metrics.Median(tasks));
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    ///     Computes a descriptive task-paired comparison. Repeated rollouts are averaged within each task and arm
+    ///     before subtraction, and tasks missing either arm are excluded from the pair set.
+    /// </summary>
+    /// <param name="results">The per-rollout task results.</param>
+    /// <param name="leftArm">The baseline arm name.</param>
+    /// <param name="rightArm">The comparison arm name.</param>
+    /// <returns>The task-paired timing summary.</returns>
+    public static LoopPairedTimingSummary ComparePaired(
+        IReadOnlyList<TaskResult> results,
+        string leftArm,
+        string rightArm)
+    {
+        var byTask = results
+            .Where(result => result.LatencyMs > 0
+                && (result.Category.Equals(leftArm, StringComparison.Ordinal)
+                    || result.Category.Equals(rightArm, StringComparison.Ordinal)))
+            .GroupBy(TaskId, StringComparer.Ordinal);
+        var deltas = new List<double>();
+        foreach (var task in byTask)
+        {
+            var left = task.Where(result => result.Category.Equals(leftArm, StringComparison.Ordinal)).ToList();
+            var right = task.Where(result => result.Category.Equals(rightArm, StringComparison.Ordinal)).ToList();
+            if (left.Count == 0 || right.Count == 0)
+                continue;
+            deltas.Add(
+                Metrics.Mean(right.Select(result => (double)result.LatencyMs).ToList())
+                - Metrics.Mean(left.Select(result => (double)result.LatencyMs).ToList()));
+        }
+
+        return new LoopPairedTimingSummary(
+            leftArm,
+            rightArm,
+            deltas.Count,
+            Metrics.Mean(deltas),
+            Metrics.Median(deltas));
+    }
+
+    /// <summary>
+    ///     Computes a descriptive task-paired timing comparison over verified successes only. Repeated successful
+    ///     rollouts are averaged within each task and arm before subtraction.
+    /// </summary>
+    /// <param name="results">The per-rollout task results.</param>
+    /// <param name="leftArm">The baseline arm name.</param>
+    /// <param name="rightArm">The comparison arm name.</param>
+    /// <returns>The verified task-paired timing summary.</returns>
+    public static LoopPairedVerifiedTimingSummary ComparePairedVerified(
+        IReadOnlyList<TaskResult> results,
+        string leftArm,
+        string rightArm)
+    {
+        var byTask = results
+            .Where(result => result.LatencyMs > 0
+                && result.OraclePassed == true
+                && (result.Category.Equals(leftArm, StringComparison.Ordinal)
+                    || result.Category.Equals(rightArm, StringComparison.Ordinal)))
+            .GroupBy(TaskId, StringComparer.Ordinal);
+        var deltas = new List<double>();
+        var savings = new List<double>();
+        foreach (var task in byTask)
+        {
+            var left = task.Where(result => result.Category.Equals(leftArm, StringComparison.Ordinal)).ToList();
+            var right = task.Where(result => result.Category.Equals(rightArm, StringComparison.Ordinal)).ToList();
+            if (left.Count == 0 || right.Count == 0)
+                continue;
+
+            var leftMean = Metrics.Mean(left.Select(result => (double)result.LatencyMs).ToList());
+            var rightMean = Metrics.Mean(right.Select(result => (double)result.LatencyMs).ToList());
+            deltas.Add(rightMean - leftMean);
+            savings.Add((leftMean - rightMean) / leftMean);
+        }
+
+        return new LoopPairedVerifiedTimingSummary(
+            leftArm,
+            rightArm,
+            deltas.Count,
+            Metrics.Mean(deltas),
+            Metrics.Median(deltas),
+            Metrics.Median(savings));
+    }
+
+    private static string TaskId(TaskResult result)
+    {
+        var marker = $"/{result.Category}#";
+        var markerIndex = result.Id.LastIndexOf(marker, StringComparison.Ordinal);
+        return markerIndex > 0 ? result.Id[..markerIndex] : result.Id;
     }
 }

@@ -30,7 +30,7 @@ In scope:
 
 Out of scope:
 
-- Issues in third-party MCP clients (Claude Code, Cursor, Copilot)
+- Issues in third-party MCP clients (for example Cursor, Claude Code, Copilot, Windsurf, Cline)
 - Denial of service from indexing very large repositories on under-provisioned machines (document operational limits instead)
 
 ## Safe Defaults

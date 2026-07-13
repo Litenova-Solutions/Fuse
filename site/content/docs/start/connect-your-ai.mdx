@@ -1,9 +1,11 @@
 ---
 title: Connect your coding agent
-description: Register Fuse with Claude Code, Cursor, or GitHub Copilot and confirm a compiler-backed result from the current .NET project.
+description: Register Fuse with any MCP-compatible coding agent and confirm a compiler-backed result from the current .NET project.
 ---
 
-Connect Fuse to Claude Code, Cursor, or GitHub Copilot from the current .NET project:
+Connect Fuse from the current .NET project. `fuse mcp install` writes configuration for
+Cursor, Claude Code, and Copilot; any other MCP client uses the same stdio server with
+manual registration.
 
 ```bash
 fuse mcp install --rules
@@ -25,8 +27,8 @@ available tools does not.
 
 ## Choose the Registration Scope
 
-The opening command registers all three supported clients for the current project. To
-register Fuse for every project on this machine:
+The opening command registers Cursor, Claude Code, and Copilot for the current project
+when you use the default `--client all`. To register Fuse for every project on this machine:
 
 ```bash
 fuse mcp install --rules --scope user
@@ -101,9 +103,30 @@ contact NuGet for a daily update check; set `FUSE_UPDATE_CHECK=0` in the server 
 to disable it. A compiler fallback can run the repository's normal `dotnet build`,
 including any package-feed access required by that build.
 
-## Manual Registration
+## Other MCP clients
 
-Use these files if you prefer to edit the client configuration yourself.
+Any client that supports MCP over stdio can launch Fuse. Add a server entry that runs
+`fuse mcp serve`. The JSON shape varies by client; some use `mcpServers`, others `servers`,
+and some require `type: stdio`.
+
+```json
+{
+  "mcpServers": {
+    "fuse": {
+      "command": "fuse",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+Windsurf, Cline, Zed, and custom agents follow this pattern once you locate the client's
+MCP configuration file. Reload the client after editing.
+
+## Manual registration (Cursor, Claude Code, Copilot)
+
+Use these files if you prefer to edit the client configuration yourself instead of running
+`fuse mcp install`.
 
 Claude Code, `.mcp.json`:
 

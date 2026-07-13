@@ -10,7 +10,7 @@ dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
-Reload Claude Code, Cursor, or GitHub Copilot, then ask:
+Reload your MCP client, then ask:
 
 ```text
 Resolve IOrderService to its implementation, then check the proposed OrderService.cs edit

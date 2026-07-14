@@ -44,6 +44,16 @@ An explicit flag always overrides the configuration file, and the configuration 
 
 The mapped flags are legacy pipeline-only. They are not accepted by current commands unless the command declaration explicitly lists them.
 
+## Semantic index keys
+
+These `fuse.json` keys are read by the current indexing path (unlike the legacy keys above).
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `solution` | string | Pins the .NET solution (or a project) that the semantic (typed-graph) tier loads, relative to the repository root or absolute. Use it when a repo has more than one solution and discovery would otherwise pick the wrong one. When set and the target exists, it overrides discovery; `fuse_workspace action=doctor` reports it as `solution pinned by fuse.json`. |
+
+Without a `solution` key, discovery prefers a solution at or near the repository root over one nested under a test, fixture, or sample directory. When several distinct root-level solutions exist, it selects the first by name order and surfaces the choice in `doctor`; if the only solutions live under fixture directories but the repo has real projects, those projects are loaded instead of the fixture solution. `doctor` always names the selected solution, so a wrong or ambiguous selection is visible rather than silent.
+
 ## Environment Variables
 
 A few behaviors are controlled by environment variables rather than the config file or a flag:

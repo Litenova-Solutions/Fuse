@@ -46,6 +46,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 - `FtsCandidateGenerator` and the `FUSE_FLAT_FTS=1` diagnostic flag; `LexicalCandidateGenerator` is the sole lexical retrieval path.
 
+### Fixed (semantic discovery)
+
+- Semantic solution/project discovery targets the repository's own solution (R24): a solution at or near the repo root is preferred over one nested under a test, fixture, or sample directory, so a repo like Fuse (root `Fuse.slnx` plus a nested `tests/.../SampleShop.sln`) no longer binds the typed graph to the fixture solution. Multiple distinct root-level solutions are resolved by name order and the choice is surfaced in `doctor`; when the only solutions are under fixture directories but the repo has real projects, those projects are loaded instead. A new `fuse.json` `solution` key pins the target explicitly, and `fuse_workspace action=doctor` names the selected solution and warns on ambiguity or a fixture-directory selection.
+
 ### Fixed
 
 - `SqliteException` database locked during `OpenIndexedAsync` no longer escapes MCP tool boundaries as an opaque `An error occurred invoking ...` error; CLI `fuse find` no longer crashes with a stack trace on index lock.

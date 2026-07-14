@@ -95,9 +95,10 @@ public sealed partial class FuseTools
         [Description("For the apply action: the repo-relative file to write.")] string file = "",
         [Description("For the apply action: the full new content to write to that file.")] string content = "",
         [Description("For the apply action: actually write (otherwise a dry run reports the change without writing).")] bool write = false,
+        [Description("For the apply action: the SHA-256 (hex) of the file content this edit was derived from. When set, apply refuses if the file changed since (a concurrent edit), rather than clobbering it.")] string expectedHash = "",
         CancellationToken cancellationToken = default) =>
         ExecuteReadMcpAsync(() => FuseWorkspaceCoreAsync(
-            indexer, action, path, detail, maxRows, file, content, write, cancellationToken));
+            indexer, action, path, detail, maxRows, file, content, write, expectedHash, cancellationToken));
 
     private static async Task<string> FuseWorkspaceCoreAsync(
         SemanticIndexer indexer,
@@ -108,6 +109,7 @@ public sealed partial class FuseTools
         string file,
         string content,
         bool write,
+        string expectedHash,
         CancellationToken cancellationToken)
     {
         switch (action.Trim().ToLowerInvariant())
@@ -119,7 +121,7 @@ public sealed partial class FuseTools
             case "doctor":
                 return await WorkspaceDoctorAsync(indexer, path, cancellationToken);
             case "apply":
-                return await WorkspaceApplyAsync(path, file, content, write, cancellationToken);
+                return await WorkspaceApplyAsync(path, file, content, write, expectedHash, cancellationToken);
             case "status":
             case "":
                 return await WorkspaceStatusAsync(path, cancellationToken);
@@ -133,7 +135,11 @@ public sealed partial class FuseTools
     // The one explicit tree-write path (Decision D2): write a single file's proposed content, guarded so the
     // server never writes outside the workspace and never writes silently. A dry run (write=false, the default)
     // reports what would change; write=true performs the one write. The path is refused if it escapes the root.
-    private static async Task<string> WorkspaceApplyAsync(string path, string file, string content, bool write, CancellationToken cancellationToken)
+    // R36: the write is atomic (temp file + rename) and conflict-checked (refuses when the file changed since the
+    // edit was derived from, when expectedHash is supplied), so it never clobbers a concurrent edit or leaves a
+    // partially written file.
+    private static async Task<string> WorkspaceApplyAsync(
+        string path, string file, string content, bool write, string expectedHash, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(file))
             return FuseOperationalErrors.Format(
@@ -152,14 +158,63 @@ public sealed partial class FuseTools
             return $"Error: refusing to write '{file}': it resolves outside the workspace root. The apply path only writes inside {root}.";
 
         var exists = File.Exists(full);
+
+        // R36: conflict check. When the caller supplies the hash of the content the edit was derived from, refuse
+        // (rather than clobber) if the file on disk no longer matches - a concurrent edit landed since the read.
+        if (!string.IsNullOrWhiteSpace(expectedHash))
+        {
+            var currentHash = exists ? await ComputeFileHashAsync(full, cancellationToken) : null;
+            if (!string.Equals(currentHash, expectedHash, StringComparison.OrdinalIgnoreCase))
+            {
+                var found = currentHash is null ? "the file does not exist" : $"found {Short(currentHash)}";
+                return FuseOperationalErrors.Format(
+                    FuseOperationalErrors.ValidationErrorPrefix,
+                    $"conflict: {file} changed since the edit was derived (expected {Short(expectedHash)}, {found}). Re-read the file and re-derive the edit, then apply again.");
+            }
+        }
+
         if (!write)
             return $"dry run (no write): would {(exists ? "overwrite" : "create")} {file} ({content.Length} chars). Re-run with write=true to apply.";
 
         var dir = Path.GetDirectoryName(full);
         if (dir is not null)
             Directory.CreateDirectory(dir);
-        await File.WriteAllTextAsync(full, content, cancellationToken);
-        return $"applied: {(exists ? "overwrote" : "created")} {file} ({content.Length} chars) in the working tree.";
+
+        // R36: atomic write. Write to a temp file on the same volume, then rename into place, so a reader never
+        // sees a half-written file and an interrupted write leaves the original intact.
+        var tempPath = full + ".fuse-tmp-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, content, cancellationToken);
+            File.Move(tempPath, full, overwrite: true);
+        }
+        catch
+        {
+            TryDeleteTemp(tempPath);
+            throw;
+        }
+
+        return $"applied: {(exists ? "overwrote" : "created")} {file} ({content.Length} chars) in the working tree (atomic write).";
+    }
+
+    private static async Task<string> ComputeFileHashAsync(string fullPath, CancellationToken cancellationToken)
+    {
+        var bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
+        return Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static string Short(string hash) => hash.Length <= 12 ? hash : hash[..12];
+
+    private static void TryDeleteTemp(string tempPath)
+    {
+        try
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     // The status action (R16): read-only fast path over index_meta when fuse.db exists; never auto-indexes on a

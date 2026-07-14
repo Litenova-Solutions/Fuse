@@ -19,6 +19,27 @@ namespace Fuse.Semantics;
 /// </remarks>
 public sealed class GitCoChangeCollector
 {
+    /// <summary>The environment variable that enables git co-change collection at index time (R41).</summary>
+    public const string EnvVar = "FUSE_COCHANGE";
+
+    /// <summary>
+    ///     Whether git co-change collection runs on the index path (R41). Default off: the git co-change prior is
+    ///     off in the shipping ranking (Decision D6, discharged as net-negative on the corpus), so collecting and
+    ///     storing co-change on every index is wasted work - the <c>git log</c> walk was a large share of the
+    ///     index hot path in <c>profile-v42.json</c>. Gated behind the same signal as the prior; the ranking
+    ///     diagnostic that enables the prior sets <c>FUSE_COCHANGE=1</c> to collect the data it measures.
+    /// </summary>
+    /// <returns><see langword="true" /> only when explicitly enabled.</returns>
+    public static bool IsCollectionEnabled()
+    {
+        var value = Environment.GetEnvironmentVariable(EnvVar);
+        return value is not null
+               && (value.Equals("1", StringComparison.Ordinal)
+                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>The maximum number of recent commits mined, bounding the cold-index cost.</summary>
     public const int MaxCommits = 1000;
 

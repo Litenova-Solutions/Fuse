@@ -89,6 +89,24 @@ public sealed class HostCommand
             ? Services.ResidentWorkspaceHosting.Enable(root, watcher, app.Services.GetRequiredService<SemanticIndexer>(), message => logger.LogInformation("{Message}", message), stopCts.Token)
             : null;
 
+        // R39: keep the index live. On a debounced change (including .git/HEAD and .git/index, so branch switches
+        // and pulls are caught), reconcile the changed files into the store through the single-writer coordinator,
+        // so reads are fresh with no per-read reconcile cost. A periodic safety reconcile catches dropped events;
+        // on-read reconcile remains the backstop. Default-on; opt out with FUSE_WATCH=0.
+        var liveIndexer = app.Services.GetRequiredService<SemanticIndexer>();
+        using var liveIndex = Services.LiveIndexWatcher.Attach(
+            watcher,
+            ct => Mcp.IndexCoordinator.Default.ExecuteWriteAsync(
+                root,
+                async (store, c) =>
+                {
+                    await liveIndexer.ReconcileDirtyFilesAsync(root, store, c);
+                    return 0;
+                },
+                ct),
+            safetyInterval: TimeSpan.FromMinutes(5),
+            stopCts.Token);
+
         logger.LogInformation("Fuse host {Version} serving {Root}", FuseHostService.HostVersion, root);
 
         // Idle shutdown (G5): a daemon spawned on demand shuts itself down after FUSE_DAEMON_IDLE_MINUTES with no

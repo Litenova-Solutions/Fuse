@@ -376,34 +376,51 @@ public sealed partial class FuseTools
                 }
         }
 
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
-        var builder = new StringBuilder();
-
-        if (normalizedKind is "all" or "symbol")
+        // R30: the opt-in inline lexical fallback. When the index is not semantic-ready (a cold/building/rebuilding
+        // store makes OpenIndexedAsync signal a deferral) and FUSE_LEXICAL_FALLBACK is on, serve a scoped, ranked
+        // raw-text result graded lexical-fallback instead of the bare deferral signal - for fuse-only/CLI setups
+        // with no native search to defer to. Default (flag off): the deferral signal is returned as usual.
+        WorkspaceIndexStore store;
+        try
         {
-            var symbols = await store.FindSymbolsByNameAsync(query, 50, cancellationToken);
-            builder.AppendLine($"symbols ({symbols.Count}):");
-            foreach (var symbol in symbols)
-                builder.AppendLine($"  {symbol.Kind} {symbol.FullyQualifiedName}  ({symbol.FilePath}:{symbol.StartLine})");
+            store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        }
+        catch (IndexBlockedReadException) when (LexicalFallback.IsEnabled())
+        {
+            FuseMetrics.RecordDegraded(DegradedStateKind.LexicalFallback);
+            return await LexicalFallback.SearchAsync(Path.GetFullPath(path), query, 50, cancellationToken);
         }
 
-        if (normalizedKind is "all" or "path")
+        await using (store)
         {
-            var files = await store.FindFilesByPathAsync(query, 50, cancellationToken);
-            builder.AppendLine($"paths ({files.Count}):");
-            foreach (var file in files)
-                builder.AppendLine($"  {file.NormalizedPath}");
-        }
+            var builder = new StringBuilder();
 
-        if (normalizedKind is "all" or "text")
-        {
-            var hits = await store.SearchAsync(new SearchQuery(query, 50), cancellationToken);
-            builder.AppendLine($"text ({hits.Count}):");
-            foreach (var hit in hits)
-                builder.AppendLine($"  {hit.Name ?? hit.Kind}  ({hit.FilePath}:{hit.StartLine})");
-        }
+            if (normalizedKind is "all" or "symbol")
+            {
+                var symbols = await store.FindSymbolsByNameAsync(query, 50, cancellationToken);
+                builder.AppendLine($"symbols ({symbols.Count}):");
+                foreach (var symbol in symbols)
+                    builder.AppendLine($"  {symbol.Kind} {symbol.FullyQualifiedName}  ({symbol.FilePath}:{symbol.StartLine})");
+            }
 
-        return builder.ToString();
+            if (normalizedKind is "all" or "path")
+            {
+                var files = await store.FindFilesByPathAsync(query, 50, cancellationToken);
+                builder.AppendLine($"paths ({files.Count}):");
+                foreach (var file in files)
+                    builder.AppendLine($"  {file.NormalizedPath}");
+            }
+
+            if (normalizedKind is "all" or "text")
+            {
+                var hits = await store.SearchAsync(new SearchQuery(query, 50), cancellationToken);
+                builder.AppendLine($"text ({hits.Count}):");
+                foreach (var hit in hits)
+                    builder.AppendLine($"  {hit.Name ?? hit.Kind}  ({hit.FilePath}:{hit.StartLine})");
+            }
+
+            return builder.ToString();
+        }
     }
 
     /// <summary>
@@ -516,6 +533,9 @@ public sealed partial class FuseTools
         }
         catch (IndexBlockedReadException ex)
         {
+            // R30/R37: a not-ready read abstains and defers to native search (returns the fast structured signal,
+            // not a diluted result). Count the deferral so it is never silent.
+            FuseMetrics.RecordDegraded(DegradedStateKind.Deferred);
             return ex.AvailabilityHeader;
         }
         catch (Exception ex)
@@ -630,11 +650,15 @@ public sealed partial class FuseTools
         builder.AppendLine($"index_state: {indexState}");
         if (filesIndexed >= 0)
             builder.AppendLine($"files_indexed: {filesIndexed}");
-        // R37: on any not-ready state, carry an actionable wait hint so a cold or contended read is never a
-        // silent stall - the agent uses its native search meanwhile and retries fuse once index_state is ready.
+        // R30/R37: on any not-ready state, name the deferred grade and carry an actionable wait hint, so a cold or
+        // contended read abstains and defers to native search rather than a silent stall or a diluted result - the
+        // agent uses its native search meanwhile and retries fuse once index_state is ready.
         var hint = WaitHintFor(indexState);
         if (hint is not null)
+        {
+            builder.AppendLine("grade: deferred (not semantic-ready)");
             builder.AppendLine($"hint: {hint}");
+        }
         builder.Append(await BuildAvailabilityLineAsync(store, root, cancellationToken));
         return builder.ToString().TrimEnd();
     }

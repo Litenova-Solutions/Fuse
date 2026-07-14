@@ -44,6 +44,7 @@ public sealed class DegradedObservabilityTests
         {
             var header = await FuseTools.FormatBuildingSyntaxHeaderAsync(root, CancellationToken.None);
             Assert.Contains("index_state: building_syntax", header, StringComparison.Ordinal);
+            Assert.Contains("grade: deferred (not semantic-ready)", header, StringComparison.Ordinal); // R30
             Assert.Contains("hint:", header, StringComparison.Ordinal);
             Assert.Contains("native search", header, StringComparison.OrdinalIgnoreCase);
         }

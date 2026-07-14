@@ -1,0 +1,111 @@
+namespace Fuse.Cli.Services;
+
+/// <summary>
+///     Keeps the index live (R39): on a debounced file-system change (from <see cref="DebouncedFileWatcher" />,
+///     which also fires on <c>.git/HEAD</c> and <c>.git/index</c> so branch switches and pulls are caught), it
+///     reconciles the changed files into the index through the single-writer coordinator, so reads are fresh
+///     with no per-read reconcile cost. Default-on when the daemon is active; opt out with <c>FUSE_WATCH=0</c>.
+///     A periodic safety reconcile catches events a watcher dropped (network drives), and on-read reconcile
+///     remains the backstop, so freshness never depends on the watcher being perfect.
+/// </summary>
+public sealed class LiveIndexWatcher : IDisposable
+{
+    /// <summary>The environment variable that opts out of the live watcher.</summary>
+    public const string EnvVar = "FUSE_WATCH";
+
+    private readonly Func<CancellationToken, Task> _reconcile;
+    private readonly CancellationToken _cancellationToken;
+    private readonly Timer? _safetyTimer;
+    private int _running; // overlap guard: 0 idle, 1 reconciling.
+    private bool _disposed;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="LiveIndexWatcher" /> class.
+    /// </summary>
+    /// <param name="reconcile">The reconcile action (runs under the single-writer coordinator).</param>
+    /// <param name="safetyInterval">The periodic safety-reconcile interval, or null to disable it.</param>
+    /// <param name="cancellationToken">A token to stop the watcher.</param>
+    public LiveIndexWatcher(Func<CancellationToken, Task> reconcile, TimeSpan? safetyInterval, CancellationToken cancellationToken)
+    {
+        _reconcile = reconcile;
+        _cancellationToken = cancellationToken;
+        if (safetyInterval is { } interval && interval > TimeSpan.Zero)
+            _safetyTimer = new Timer(_ => _ = HandleChangeAsync(_cancellationToken), null, interval, interval);
+    }
+
+    /// <summary>Whether the live watcher is enabled (default on; <c>0</c>/<c>false</c>/<c>no</c>/<c>off</c> opts out).</summary>
+    /// <returns><see langword="true" /> unless explicitly opted out.</returns>
+    public static bool IsEnabled()
+    {
+        var value = Environment.GetEnvironmentVariable(EnvVar);
+        return value is null
+               || !(value.Equals("0", StringComparison.Ordinal)
+                    || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("off", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    ///     Reconciles the changed files now, best-effort and overlap-guarded (a reconcile already in flight makes
+    ///     this a no-op; the in-flight pass will pick up the latest state). Wired to a watcher's change event.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the reconcile.</param>
+    /// <returns>A task that completes when the reconcile finishes (or is skipped).</returns>
+    public async Task HandleChangeAsync(CancellationToken cancellationToken)
+    {
+        if (_disposed)
+            return;
+
+        // Overlap guard: only one reconcile at a time. A change during a reconcile is caught by the next event or
+        // the safety timer, so no update is lost and the writer is never contended by stacked reconciles.
+        if (Interlocked.CompareExchange(ref _running, 1, 0) != 0)
+            return;
+
+        try
+        {
+            await _reconcile(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Best-effort: a reconcile failure (contention, transient IO) must not tear down the daemon. On-read
+            // reconcile remains the backstop, so freshness is preserved even if a watcher-driven pass fails.
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _running, 0);
+        }
+    }
+
+    /// <summary>
+    ///     Attaches a live watcher to a debounced file watcher, so each settled change drives a reconcile. Returns
+    ///     null when the live watcher is disabled (<c>FUSE_WATCH=0</c>), leaving on-read reconcile as the only
+    ///     freshness path.
+    /// </summary>
+    /// <param name="watcher">The debounced file watcher over the served root.</param>
+    /// <param name="reconcile">The reconcile action.</param>
+    /// <param name="safetyInterval">The periodic safety-reconcile interval.</param>
+    /// <param name="cancellationToken">A token to stop the watcher.</param>
+    /// <returns>The attached watcher, or null when disabled.</returns>
+    public static LiveIndexWatcher? Attach(
+        DebouncedFileWatcher watcher,
+        Func<CancellationToken, Task> reconcile,
+        TimeSpan? safetyInterval,
+        CancellationToken cancellationToken)
+    {
+        if (!IsEnabled())
+            return null;
+
+        var live = new LiveIndexWatcher(reconcile, safetyInterval, cancellationToken);
+        watcher.Changed += live.HandleChangeAsync;
+        return live;
+    }
+
+    /// <summary>Stops the safety timer.</summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        _safetyTimer?.Dispose();
+    }
+}

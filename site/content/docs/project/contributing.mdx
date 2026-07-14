@@ -39,6 +39,10 @@ dotnet test Fuse.slnx -c Release --no-build --filter "Category=RequiresSdk"
 
 Tests marked `RequiresSdk` call `SkipException.ForSkip` when the SDK or worker is absent, so a plain `dotnet test` without the filter can look green while doing nothing. Use the filter that matches the leg you intend to exercise. `build/verify-ci-sdk.ps1` runs in the default CI job and fails if `RequiresSdk`-tagged tests exist but either workflow leg is missing or misconfigured.
 
+### Resilience harness
+
+`ResilienceHarnessTests` (in `Fuse.Cli.Tests`) is the standing fault-injection guard (R32): for each injected fault - SQLite busy/locked, a missing `chunk_fts`, a sharing violation, a corrupt database, an extraction-version-skewed store, an integrity violation, and an unexpected exception - it asserts the invariant that the tool degrades to a stable operational prefix or a graded answer, never an unhandled exception and never silent-empty. Run it with the default test leg (`dotnet test Fuse.slnx -c Release --filter "Category!=RequiresSdk"`); a regression that removes a degradation path fails the matching case. Process-level faults that need a live daemon or toolchain (a killed daemon mid-index, disk-full on write, N concurrent daemons) are covered by construction (single-instance lock, best-effort writes) and by the SDK CI leg rather than injected in-process.
+
 ### Releasing (version propagation)
 
 The product version lives in `Directory.Build.props` `<Version>`; bump every package in lockstep with `build/set-version.ps1 X.Y.Z`. A version bump is reflected in the built assembly without a manual clean: the `FuseStampVersionMarker` target invalidates the compile when `<Version>` changes, so a normal `dotnet build` no longer serves a stale-version `bin`. Before tagging, run the release safety net:

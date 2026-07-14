@@ -12,61 +12,31 @@ public sealed class ExperimentalOptionsTests
         var options = new ExperimentalOptions();
 
         Assert.Equal(0.15, options.CentralityWeight);
-        Assert.Equal(0.5, options.HopDecay);
-        Assert.Equal(0.2, options.ExpansionWeight);
-        Assert.True(options.QueryExpansion);
-        Assert.True(options.BudgetAwareExpansion);
-    }
-
-    [Fact]
-    public void ResolveFromEnvironment_HopDecay_ParsesWithinRange()
-    {
-        var resolved = WithEnvironment(
-            ("FUSE_HOP_DECAY", "0.6"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
-            () => ExperimentalOptions.ResolveFromEnvironment());
-
-        Assert.Equal(0.6, resolved.HopDecay);
-    }
-
-    [Fact]
-    public void ResolveFromEnvironment_HopDecayOutOfRange_KeepsConfigured()
-    {
-        // The decay factor must be in (0, 1]; an out-of-range value is ignored so a bad override cannot
-        // silently invert the ranking (a value above 1 would amplify distant neighbours over seeds).
-        var configured = new ExperimentalOptions { HopDecay = 0.5 };
-
-        var resolvedHigh = WithEnvironment(
-            ("FUSE_HOP_DECAY", "1.5"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
-            () => ExperimentalOptions.ResolveFromEnvironment(configured));
-        var resolvedZero = WithEnvironment(
-            ("FUSE_HOP_DECAY", "0"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
-            () => ExperimentalOptions.ResolveFromEnvironment(configured));
-
-        Assert.Equal(0.5, resolvedHigh.HopDecay);
-        Assert.Equal(0.5, resolvedZero.HopDecay);
-    }
-
-    [Fact]
-    public void ResolveFromEnvironment_ExpansionWeight_Parses()
-    {
-        var resolved = WithEnvironment(
-            ("FUSE_EXPANSION_WEIGHT", "0.35"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
-            () => ExperimentalOptions.ResolveFromEnvironment());
-
-        Assert.Equal(0.35, resolved.ExpansionWeight);
-    }
-
-    [Fact]
-    public void Defaults_NoChurnPrior()
-    {
-        var options = new ExperimentalOptions();
-        Assert.Equal(0, options.GitChurnWeight);
+        Assert.True(options.TieredEmission);
         Assert.False(options.SketchHugeFiles);
         Assert.True(options.DowngradeBeforeDrop);
+        Assert.False(options.ProximityEdges);
+        Assert.False(options.ProjectGraph);
+    }
+
+    [Fact]
+    public void ResolveFromEnvironment_CentralityWeight_Parses()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_CENTRALITY_WEIGHT", "0.42"),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.Equal(0.42, resolved.CentralityWeight);
+    }
+
+    [Fact]
+    public void ResolveFromEnvironment_TieredEmissionOff_Disables()
+    {
+        var resolved = WithEnvironment(
+            ("FUSE_TIERED_EMISSION", "0"),
+            () => ExperimentalOptions.ResolveFromEnvironment());
+
+        Assert.False(resolved.TieredEmission);
     }
 
     [Fact]
@@ -74,21 +44,9 @@ public sealed class ExperimentalOptionsTests
     {
         var resolved = WithEnvironment(
             ("FUSE_DOWNGRADE_DROP", "0"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
             () => ExperimentalOptions.ResolveFromEnvironment());
 
         Assert.False(resolved.DowngradeBeforeDrop);
-    }
-
-    [Fact]
-    public void ResolveFromEnvironment_ThesaurusOn_Enables()
-    {
-        var resolved = WithEnvironment(
-            ("FUSE_THESAURUS", "1"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
-            () => ExperimentalOptions.ResolveFromEnvironment());
-
-        Assert.True(resolved.DistributionalThesaurus);
     }
 
     [Fact]
@@ -96,54 +54,40 @@ public sealed class ExperimentalOptionsTests
     {
         var resolved = WithEnvironment(
             ("FUSE_PROXIMITY", "1"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
             () => ExperimentalOptions.ResolveFromEnvironment());
 
         Assert.True(resolved.ProximityEdges);
     }
 
     [Fact]
-    public void ResolveFromEnvironment_MemberLevelOn_Enables()
+    public void ResolveFromEnvironment_ProjectGraphOn_Enables()
     {
         var resolved = WithEnvironment(
-            ("FUSE_MEMBER_LEVEL", "1"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
+            ("FUSE_PROJECT_GRAPH", "1"),
             () => ExperimentalOptions.ResolveFromEnvironment());
 
-        Assert.True(resolved.MemberLevelRetrieval);
+        Assert.True(resolved.ProjectGraph);
     }
 
     [Fact]
-    public void ResolveFromEnvironment_GitChurnWeight_Parses()
+    public void ResolveFromEnvironment_SketchHugeOn_Enables()
     {
         var resolved = WithEnvironment(
-            ("FUSE_GIT_CHURN_WEIGHT", "0.2"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
+            ("FUSE_SKETCH_HUGE", "1"),
             () => ExperimentalOptions.ResolveFromEnvironment());
 
-        Assert.Equal(0.2, resolved.GitChurnWeight);
-    }
-
-    [Fact]
-    public void ResolveFromEnvironment_BudgetExpansionOff_Disables()
-    {
-        var resolved = WithEnvironment(
-            ("FUSE_BUDGET_EXPANSION", "0"),
-            ("FUSE_CENTRALITY_WEIGHT", null),
-            () => ExperimentalOptions.ResolveFromEnvironment());
-
-        Assert.False(resolved.BudgetAwareExpansion);
+        Assert.True(resolved.SketchHugeFiles);
     }
 
     [Fact]
     public void ResolveFromEnvironment_NoEnv_PassesConfiguredValuesThrough()
     {
-        var configured = new ExperimentalOptions { CentralityWeight = 0.42, QueryExpansion = false };
+        var configured = new ExperimentalOptions { CentralityWeight = 0.42, TieredEmission = false };
 
         var resolved = WithoutEnvironment(() => ExperimentalOptions.ResolveFromEnvironment(configured));
 
         Assert.Equal(0.42, resolved.CentralityWeight);
-        Assert.False(resolved.QueryExpansion);
+        Assert.False(resolved.TieredEmission);
     }
 
     [Fact]
@@ -152,27 +96,39 @@ public sealed class ExperimentalOptionsTests
         var resolved = WithoutEnvironment(() => ExperimentalOptions.ResolveFromEnvironment());
 
         Assert.Equal(0.15, resolved.CentralityWeight);
-        Assert.True(resolved.QueryExpansion);
+        Assert.True(resolved.TieredEmission);
     }
 
     [Fact]
     public void ResolveFromEnvironment_EnvironmentOverridesConfiguredValues()
     {
-        var configured = new ExperimentalOptions { CentralityWeight = 0.5, QueryExpansion = true };
+        var configured = new ExperimentalOptions { CentralityWeight = 0.5, TieredEmission = true };
 
         var resolved = WithEnvironment(
             ("FUSE_CENTRALITY_WEIGHT", "0"),
-            ("FUSE_QUERY_EXPANSION", "0"),
+            ("FUSE_TIERED_EMISSION", "0"),
             () => ExperimentalOptions.ResolveFromEnvironment(configured));
 
         Assert.Equal(0, resolved.CentralityWeight);
-        Assert.False(resolved.QueryExpansion);
+        Assert.False(resolved.TieredEmission);
     }
 
-    // Runs the resolver with the two experimental environment variables cleared, restoring them after, so the
-    // test is deterministic regardless of the host environment and leaves no global state behind.
     private static T WithoutEnvironment<T>(Func<T> action) =>
-        WithEnvironment(("FUSE_CENTRALITY_WEIGHT", null), ("FUSE_QUERY_EXPANSION", null), action);
+        WithEnvironment(("FUSE_CENTRALITY_WEIGHT", null), action);
+
+    private static T WithEnvironment<T>((string Name, string? Value) env, Func<T> action)
+    {
+        var original = Environment.GetEnvironmentVariable(env.Name);
+        try
+        {
+            Environment.SetEnvironmentVariable(env.Name, env.Value);
+            return action();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(env.Name, original);
+        }
+    }
 
     private static T WithEnvironment<T>(
         (string Name, string? Value) first,

@@ -1,5 +1,9 @@
 <!-- mcp-name: io.github.Litenova-Solutions/fuse -->
 
+<p align="center">
+  <img src="assets/fuse-icon.svg" alt="Fuse" width="72" height="72">
+</p>
+
 # Fuse
 
 Fuse is a local .NET tool with a persistent semantic index and pre-write compiler
@@ -44,7 +48,7 @@ syntax-level indexing for that project and reports the mode.
   handlers, and tests with provenance. On 69 recorded pull requests the median response was
   1,026 tokens at 93.4 percent precision (`review.json`).
 - **Read warm.** On the recorded NodaTime run, exact symbol lookup took 2.2 ms at the
-  median, task localization 42 ms, and review planning 117 ms (`performance.json`;
+  median, task localization 23.4 ms, and review planning 97.8 ms (`performance.json`;
   timings are environment-dependent).
 
 <p align="center">

@@ -125,7 +125,7 @@ public sealed class FusionConcurrencyTests : IDisposable
         foreach (var result in results)
             Assert.Equal(first, result.InMemoryContent);
 
-        Assert.True(File.Exists(SqliteTestHelpers.FuseDatabasePath(dir)));
+        Assert.True(File.Exists(SqliteTestHelpers.FuseCacheDatabasePath(dir)));
     }
 
     [Fact]

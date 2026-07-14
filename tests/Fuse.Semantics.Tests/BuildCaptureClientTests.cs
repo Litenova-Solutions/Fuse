@@ -33,11 +33,11 @@ public sealed class BuildCaptureClientTests
     }
 
     [Fact]
+    [Trait("Category", "RequiresSdk")]
     public async Task Parent_spawns_the_worker_and_reads_the_graph_bundle()
     {
         var workerDll = WorkerDll();
-        if (workerDll is null)
-            return; // Worker not built in this layout; nothing to validate.
+        RequiresSdk.RequireArtifact(workerDll, "fuse-build-capture.dll");
 
         var work = Path.Combine(Path.GetTempPath(), "fuse-capture-client-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
@@ -62,9 +62,8 @@ public sealed class BuildCaptureClientTests
 
             if (!result.Succeeded)
             {
-                // The SDK could not build here; the client reports a concrete reason and does not throw.
                 Assert.False(string.IsNullOrEmpty(result.Reason));
-                return;
+                RequiresSdk.RequireCondition(false, $"SDK build failed: {result.Reason}");
             }
 
             // The parent deserialized the worker's bundle: at least one project with extracted symbols.
@@ -83,11 +82,11 @@ public sealed class BuildCaptureClientTests
     // oracle-grade diagnostics WITHOUT building. This is the no-restore consumer contract end to end across the
     // process boundary: export a complog once, then check a proposed edit against it with no build.
     [Fact]
+    [Trait("Category", "RequiresSdk")]
     public async Task Parent_checks_a_patch_against_a_complog_without_building()
     {
         var workerDll = WorkerDll();
-        if (workerDll is null)
-            return; // Worker not built in this layout; nothing to validate.
+        RequiresSdk.RequireArtifact(workerDll, "fuse-build-capture.dll");
 
         var work = Path.Combine(Path.GetTempPath(), "fuse-check-complog-client-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
@@ -113,7 +112,7 @@ public sealed class BuildCaptureClientTests
             if (!captured.Succeeded)
             {
                 Assert.False(string.IsNullOrEmpty(captured.Reason));
-                return;
+                RequiresSdk.RequireCondition(false, $"complog capture failed: {captured.Reason}");
             }
 
             // A type error in the proposed edit is reported oracle-grade from the complog, spawned worker, no build.
@@ -196,6 +195,57 @@ public sealed class BuildCaptureClientTests
             {
                 try { File.Delete(shipped); } catch (IOException) { }
             }
+        }
+    }
+
+    // CI excludes Category=RequiresSdk from the default test run:
+    //   dotnet test Fuse.slnx -c Release --no-build --filter "Category!=RequiresSdk"
+    // Release publish smoke sets FUSE_PUBLISH_SMOKE=1; bundled worker beside fuse.dll also forbids silent abstain.
+    private static class RequiresSdk
+    {
+        private static bool PublishSmoke =>
+            string.Equals(Environment.GetEnvironmentVariable("FUSE_PUBLISH_SMOKE"), "1", StringComparison.Ordinal)
+            || string.Equals(Environment.GetEnvironmentVariable("FUSE_PUBLISH_SMOKE"), "true", StringComparison.OrdinalIgnoreCase);
+
+        private static bool WorkerBundledInRepo(string? repoRoot)
+        {
+            if (repoRoot is null)
+                return false;
+
+            foreach (var config in new[] { "Release", "Debug" })
+            {
+                var fuseDll = Path.Combine(repoRoot, "src", "Host", "Fuse.Cli", "bin", config, "net10.0", "fuse.dll");
+                if (!File.Exists(fuseDll))
+                    continue;
+
+                var shipped = Path.Combine(Path.GetDirectoryName(fuseDll)!, "build-capture", "fuse-build-capture.dll");
+                if (File.Exists(shipped))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public static void RequireArtifact(string? path, string description)
+        {
+            if (path is not null && File.Exists(path))
+                return;
+
+            if (PublishSmoke || WorkerBundledInRepo(RepoRoot()))
+                throw new Xunit.Sdk.XunitException($"{description} is required but missing at '{path}'.");
+
+            throw Xunit.Sdk.SkipException.ForSkip($"{description} not built; skipped (RequiresSdk).");
+        }
+
+        public static void RequireCondition(bool condition, string abstainReason)
+        {
+            if (condition)
+                return;
+
+            if (PublishSmoke)
+                throw new Xunit.Sdk.XunitException($"Publish smoke required this test to pass: {abstainReason}");
+
+            throw Xunit.Sdk.SkipException.ForSkip(abstainReason);
         }
     }
 }

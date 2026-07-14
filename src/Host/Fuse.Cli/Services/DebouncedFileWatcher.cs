@@ -10,7 +10,7 @@ namespace Fuse.Cli.Services;
 ///     event cancels the pending debounce timer and restarts it, so <see cref="Changed" /> fires once per quiet
 ///     interval rather than once per raw event.
 /// </remarks>
-public sealed class DebouncedFileWatcher : IDisposable
+public sealed class DebouncedFileWatcher : IResidentBatchWatcher
 {
     private const int DefaultDebounceMilliseconds = 500;
 

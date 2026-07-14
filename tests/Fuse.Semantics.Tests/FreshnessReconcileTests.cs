@@ -58,6 +58,55 @@ public sealed class FreshnessReconcileTests : IAsyncLifetime
         Assert.Equal("0", await _store.GetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task Reconcile_stamps_stale_when_more_than_three_hundred_files_are_dirty()
+    {
+        const int fileCount = 301;
+        var root = Path.Combine(Path.GetTempPath(), "fuse-freshness-storm", Guid.NewGuid().ToString("N"));
+        var databasePath = Path.Combine(Path.GetTempPath(), "fuse-freshness-storm-db", Guid.NewGuid().ToString("N"), "fuse.db");
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+
+        try
+        {
+            for (var i = 0; i < fileCount; i++)
+                File.WriteAllText(Path.Combine(root, $"T{i}.cs"), $"namespace Storm; public class Type{i} {{ }}");
+
+            await using var store = new WorkspaceIndexStore(databasePath);
+            await store.InitializeAsync(CancellationToken.None);
+            await CreateIndexer().IndexAsync(root, store, CancellationToken.None);
+
+            for (var i = 0; i < fileCount; i++)
+                File.WriteAllText(Path.Combine(root, $"T{i}.cs"), $"namespace Storm; public class Type{i} {{ public void M() {{ }} }}");
+
+            var result = await CreateIndexer().ReconcileDirtyFilesAsync(root, store, CancellationToken.None);
+
+            Assert.False(result.IsFresh);
+            Assert.True(result.Stamped);
+            Assert.Equal(fileCount, result.Checked);
+            Assert.Equal(0, result.Reconciled);
+            Assert.Equal(fileCount, result.DirtyRemaining);
+            Assert.Equal(
+                fileCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                await store.GetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, CancellationToken.None));
+        }
+        finally
+        {
+            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
+            foreach (var dir in new[] { root, Path.GetDirectoryName(databasePath)! })
+            {
+                try
+                {
+                    if (Directory.Exists(dir))
+                        Directory.Delete(dir, recursive: true);
+                }
+                catch (IOException)
+                {
+                }
+            }
+        }
+    }
+
     private async Task<long> CountSymbolNamedAsync(string name) =>
         await ScalarAsync("SELECT count(*) FROM symbols WHERE name = $n;", ("$n", name));
 

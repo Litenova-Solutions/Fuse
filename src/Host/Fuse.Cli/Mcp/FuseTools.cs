@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using Fuse.Cli;
 using Fuse.Collection.Templates;
 using Fuse.Fusion;
 using Fuse.Indexing;
@@ -42,6 +43,7 @@ public sealed partial class FuseTools
 
         await using var store = await OpenStoreAsync(root, cancellationToken);
         var result = await indexer.IndexAsync(root, store, cancellationToken);
+        FuseMetrics.RecordIndexMode(root, result.Mode);
         return $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects, " +
                $"{result.SymbolCount} symbols, {result.ChunkCount} chunks, {result.RouteCount} routes.";
     }
@@ -156,6 +158,7 @@ public sealed partial class FuseTools
         builder.AppendLine(await OracleAvailabilityHeaderAsync(store, root, cancellationToken));
         builder.AppendLine($"workspace: {root}");
         builder.AppendLine($"index mode: {mode}");
+        builder.AppendLine($"full-text search: {(store.FullTextSearchAvailable ? "available" : "unavailable")}");
 
         // Daemon visibility (G5): name the shared daemon serving this root, if one is, so a developer can see and
         // stop it. A short probe; when no daemon serves the root, say so rather than implying one must run.
@@ -231,7 +234,17 @@ public sealed partial class FuseTools
             case "neighbors":
                 return await FuseNeighborsAsync(indexer, path, symbol: query, cancellationToken: cancellationToken);
             case "task":
-                return await FuseLocalizeAsync(indexer, changeSource, path, task: query, cancellationToken: cancellationToken);
+                {
+                    var taskRoot = Path.GetFullPath(path);
+                    await using var taskStore = await OpenIndexedAsync(indexer, path, cancellationToken);
+                    if (!taskStore.FullTextSearchAvailable)
+                    {
+                        return AvailabilityHeaderHelpers.FormatTaskLocalizationFtsRefusal(
+                            await OracleAvailabilityHeaderAsync(taskStore, taskRoot, cancellationToken));
+                    }
+
+                    return await FuseLocalizeAsync(indexer, changeSource, path, task: query, cancellationToken: cancellationToken);
+                }
         }
 
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
@@ -357,8 +370,12 @@ public sealed partial class FuseTools
             // store writer (it projects the changed cone on each edit), so the read path must NOT also reconcile -
             // two writers would race. The condition is false only when a resident provider is wired (opt-in), so
             // the default store-backed path reconciles exactly as before.
-            await indexer.ReconcileDirtyFilesAsync(root, store, cancellationToken);
+            var freshness = await indexer.ReconcileDirtyFilesAsync(root, store, cancellationToken);
+            if (freshness.Stamped)
+                FuseMetrics.RecordReconcileStamped(root);
         }
+
+        await RecordIndexModeAsync(store, root, cancellationToken);
         return store;
     }
 
@@ -408,7 +425,15 @@ public sealed partial class FuseTools
                 ? " semantic upgrade in progress (a build is running for tier-1);"
                 : " semantic upgrade in progress;")
             : "";
-        return $"availability: index mode {mode}; tier-1 build capture {tier1}; {verifyGrade}; workspace {residentClause};{upgradeClause} {freshness}.";
+        var ftsClause = AvailabilityHeaderHelpers.FormatFtsAvailabilityClause(store.FullTextSearchAvailable);
+        return $"availability: index mode {mode}; {ftsClause}; tier-1 build capture {tier1}; {verifyGrade}; workspace {residentClause};{upgradeClause} {freshness}.";
+    }
+
+    private static async Task RecordIndexModeAsync(
+        WorkspaceIndexStore store, string root, CancellationToken cancellationToken)
+    {
+        var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
+        FuseMetrics.RecordIndexMode(root, mode);
     }
 
     // Runs the semantic upgrade in the background on its own store handle (the foreground store is disposed when

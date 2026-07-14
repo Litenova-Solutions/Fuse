@@ -22,6 +22,9 @@ internal static class SqliteTestHelpers
     internal static string FuseDatabasePath(string sourceDirectory) =>
         FuseStorePaths.ResolveDatabasePath(sourceDirectory);
 
+    internal static string FuseCacheDatabasePath(string sourceDirectory) =>
+        FuseStorePaths.ResolveCacheDatabasePath(sourceDirectory);
+
     internal static int CountStoreEntries(string databasePath, string store)
     {
         using var connection = new SqliteConnection($"Data Source={databasePath}");

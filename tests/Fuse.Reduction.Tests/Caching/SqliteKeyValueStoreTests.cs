@@ -12,7 +12,7 @@ public sealed class SqliteKeyValueStoreTests : IDisposable
     {
         var root = Path.Combine(Path.GetTempPath(), "fuse-sqlite-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
-        _databasePath = Path.Combine(root, "fuse.db");
+        _databasePath = Path.Combine(root, "fuse-cache.db");
     }
 
     [Fact]

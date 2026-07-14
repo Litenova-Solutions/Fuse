@@ -96,7 +96,7 @@ public sealed class FusionOrchestrator
     ///     change scope, an empty result is returned rather than throwing.
     /// </returns>
     /// <exception cref="FusionValidationException">
-    ///     Thrown by validation when the request is invalid, and at runtime when a focus seed or query matches
+    ///     Thrown by validation when the request is invalid, and at runtime when a focus seed matches
     ///     no collected files.
     /// </exception>
     /// <exception cref="FusionException">
@@ -106,7 +106,7 @@ public sealed class FusionOrchestrator
     ///     Stages run in a fixed order:
     ///     <list type="number">
     ///         <item><description>Collection: discover and filter candidate files via the collection pipeline.</description></item>
-    ///         <item><description>Optional filtering/scoping: narrow the set by focus, git changes, or BM25 query. These three scoping modes are mutually exclusive.</description></item>
+    ///         <item><description>Optional filtering/scoping: narrow the set by focus or git changes. These two scoping modes are mutually exclusive.</description></item>
     ///         <item><description>Reduction: apply per-file content reduction, optionally cached on disk.</description></item>
     ///         <item><description>Emission: format and write output, then append optional route maps, project graphs, redaction reports, and pattern summaries.</description></item>
     ///     </list>
@@ -118,8 +118,8 @@ public sealed class FusionOrchestrator
     {
         _validator.ValidateOrThrow(request);
 
-        // Run-scoped collaborators: a fresh content cache (read-once per run) and, when a query is present, a
-        // fresh BM25 index. Holding no cross-run state is what lets fusion runs execute concurrently.
+        // Run-scoped collaborators: a fresh content cache (read-once per run). Holding no cross-run state is what
+        // lets fusion runs execute concurrently.
         var contentProvider = _contentProviderFactory();
 
         var parallelism = request.Parallelism > 0 ? request.Parallelism : Environment.ProcessorCount;
@@ -171,7 +171,7 @@ public sealed class FusionOrchestrator
 
             // Build the explicit context plan: assign each selected file a role and reduction tier once,
             // instead of inferring seed versus neighbour from the provenance chain length downstream. The plan
-            // drives the per-file reduction tier below. Tiered emission (query and focus only) reduces
+            // drives the per-file reduction tier below. Tiered emission (focus only) reduces
             // dependency-expanded neighbours to signature skeletons so each costs fewer tokens and the
             // budget-aware packer fits more files; seeds keep the request's level. Redaction-correct because the
             // skeleton is produced inside the reduction stage, not by a post-reduction source re-read.
@@ -180,8 +180,8 @@ public sealed class FusionOrchestrator
                 ? contextPlan.TierFor
                 : (Func<Fuse.Collection.Models.SourceFile, Fuse.Plugins.Abstractions.Options.ReductionLevel>?)null;
 
-            // Project the internal plan to the public read-only view carried on the result, so explain surfaces
-            // (the VS Code extension) can show each file's role, tier, and score without re-running scoping.
+            // Project the internal plan to the public read-only view carried on the result, so callers can show
+            // each file's role, tier, and score without re-running scoping.
             var planProjection = contextPlan.Files
                 .Select(p => new PlannedFileInfo(
                     p.File.NormalizedRelativePath, p.Role.ToString(), p.Tier.ToString(), p.Score))

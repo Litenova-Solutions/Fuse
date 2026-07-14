@@ -9,7 +9,7 @@ This page is for engineers operating or extending the host, security reviewers a
 
 ## Role In The Product
 
-The host is the local-IPC twin of `fuse mcp serve`. The MCP server exposes the warm engine to an agent over stdio; the host exposes it to a local client over an IPC transport, sharing the same semantic index, SQLite store, and engine path, so a read the host answers is the same read an agent would get for the same options. The ambient-verification hooks use it for the `fuse/check` delta; the remaining read methods are the general host surface a future editor client or the shared daemon can consume.
+The host is the local-IPC twin of `fuse mcp serve`. The MCP server exposes the warm engine to an agent over stdio; the host exposes it to a local client over an IPC transport, sharing the same semantic index, SQLite store, and engine path, so a read the host answers is the same read an agent would get for the same options. The ambient-verification hooks use `fuse/check` for session deltas and `fuse/checkOverlay` to typecheck a proposed single-file edit against the daemon's resident workspace; the remaining read methods are the general host surface the shared daemon and future local clients consume.
 
 The endpoint address is derived from the repository root, not passed out of band. Given an absolute root path, the host and its client compute the same address: on Windows a pipe named `fuse-host-{hash}`, elsewhere a socket file `{temp}/fuse-host-{hash}.sock`, where `{hash}` is the first eight bytes of SHA-256 over the normalized root path. A second client for the same repository connects to the already-running host; two different repositories stay on distinct endpoints.
 
@@ -27,10 +27,25 @@ Connections use Content-Length framed JSON-RPC (the same framing VS Code languag
 | `fuse/explain` | Returns the context plan without writing a payload |
 | `fuse/diagnostics` | Returns secret spans, token hotspots, graph gaps, and generated-file hints |
 | `fuse/check` | Returns the diagnostics a session's edits introduced or resolved since its baseline (the hook path) |
+| `fuse/checkOverlay` | Typechecks a proposed single-file edit against the resident workspace without a build; returns diagnostics for the overlay |
 | `fuse/shutdown` | Stops the host |
 | `fuse/invalidated` | Server push when watched files change (notification, not a request) |
 
 Logging goes to stderr only; the transport carries RPC traffic and notifications, not log lines.
+
+## Local-Trust IPC Model
+
+Fuse treats host RPC as **local-trust IPC**: a same-user client on the same machine that knows which repository it is working in can reach the warm engine without a network login or TLS. Three mechanisms stack to keep casual cross-process abuse down without pretending the endpoint is internet-hardened.
+
+| Layer | Mechanism | What it blocks |
+|-------|-----------|----------------|
+| Endpoint | A predictable pipe or socket name derived from the repository root (`fuse-host-{hash}`) | A client for repo A accidentally connecting to repo B's daemon |
+| Handshake | A random session token returned once from `fuse/handshake` and required on every other method | Scripted scanning of predictable pipe names without observing a handshake |
+| Root binding | Every RPC that carries a `root` argument must match the `--directory` the `fuse host` process was started with (normalized absolute path) | A peer on the correct pipe pivoting to read or index a different repository the host process could otherwise reach |
+
+The predictable endpoint is intentional: a second client for the same repository finds the already-running daemon without passing an address out of band. The session token is not a substitute for network authentication; it raises the bar from "know the pipe name" to "observe the handshake or win a race against the legitimate client." Root binding closes the remaining pivot where a holder of the token could pass an arbitrary filesystem path the host process can read.
+
+Methods without a `root` argument (`fuse/handshake`, `fuse/stats`, `fuse/shutdown`) are not root-bound. `fuse/stats` and `fuse/shutdown` still require the session token.
 
 ## Trust Boundary
 
@@ -40,10 +55,10 @@ Fuse treats the host as a **local development tool**, not a network service.
 |------------|-------------|
 | The machine is a single-user developer workstation | Any process running as the same OS user can open local pipes and Unix sockets |
 | The repository root is not a secret | The pipe or socket name is a deterministic function of the root path |
-| A local client (the ambient-verification hooks today) is the intended caller | No caller identity is checked today |
+| A local client (the ambient-verification hooks today) is the intended caller | No caller identity is checked beyond the session token and served-root binding |
 | Co-tenants on the machine are out of scope | Shared CI agents, remote desktops with untrusted peers, and multi-user servers are unsupported |
 
-There is **no authentication** on the wire today beyond a per-session token (see below). The first RPC method a client calls is `fuse/handshake`, which returns version metadata and the session token. Every other method requires that token but is otherwise served to any connected peer with equal privilege: index, scope, diagnostics, check, and shutdown are all callable by a peer that has the token.
+There is **no network authentication** on the wire. The first RPC method a client calls is `fuse/handshake`, which returns version metadata and the session token. Every other method requires that token. Methods that carry a `root` argument also require that root to match the daemon's served root; a mismatch returns an invalid-params error. A peer with the token and a matching root can still call index, scope, diagnostics, check, checkOverlay, and shutdown with equal privilege.
 
 On Windows, named pipes are reachable by local processes subject to the pipe's security descriptor (the default host uses the platform default for user-created pipes). On Linux and macOS, Unix domain socket files live under the system temp directory with permissions inherited from the creating process; any same-user process that knows the path can connect.
 
@@ -57,8 +72,10 @@ The table below lists realistic local threats given the current design. Severity
 | Derive the endpoint from a known repo path | Connection target | Endpoint is public given the root |
 | Call `fuse/scope` | Reduced source for arbitrary focus, search, or change scopes; path to a temp payload file | Secret redaction in emitted output is heuristic (see [Keep Secrets Out](/docs/scenarios/keep-secrets-out)) |
 | Call `fuse/diagnostics` | Precise file locations and kinds of detected secrets (not the secret values in the DTO, but enough to locate them in the tree) | Session token |
-| Call `fuse/index` or `fuse/graph` | CPU and disk load; reads the working tree | Session token |
+| Call `fuse/index` or `fuse/graph` | CPU and disk load; reads the working tree | Session token; root must match served root |
+| Call `fuse/checkOverlay` | Compiler diagnostics for a proposed file edit against the held resident compilation | Session token; root must match served root; requires a warm resident workspace |
 | Call `fuse/shutdown` | Denial of service for connected clients | Session token |
+| Pass a different `root` on an otherwise valid connection | Read or index another repository path the host process could reach | Rejected when root does not match the served root |
 | Read scope payload files | Copy of a recent emitted fusion from the temp payloads directory | OS temp-directory permissions; see payload lifecycle below |
 | Hold multiple connections | Same as a single connection; the host accepts several clients | Session token |
 
@@ -75,11 +92,11 @@ The host RPC surface is **not** a substitute for:
 - **Malware resistance.** Malware with user privileges can observe the handshake, connect, scope the repository, and shut the host down.
 - **Compliance-grade secret scanning.** Diagnostics and scope output use the same heuristic redactor as fusion; they reduce accidental exposure but do not guarantee removal.
 
-Fuse does not sandbox repository access: a caller that can connect and holds the token can ask the host to read any root path the host process can read.
+Fuse does not sandbox repository access beyond served-root binding: a caller that can connect, holds the token, and passes the daemon's served root can ask the host to read that repository. A caller cannot pivot to a different root path through the RPC surface.
 
 ## The Session Token
 
-The host issues a **session token** at start, returned in the `fuse/handshake` response; every subsequent RPC method requires it. This raises the bar from "know the pipe name" to "observe the handshake or win a race against the legitimate client." It remains **local IPC security**: it blocks casual cross-process snooping and scripted scanning of predictable pipe names, but it does not defend against a determined same-user attacker who can read the client's process memory or intercept the handshake on the same machine. The token is not a substitute for network TLS or user login.
+The host issues a **session token** at start, returned in the `fuse/handshake` response; every subsequent RPC method requires it. Together with the predictable per-root endpoint and served-root binding (see Local-Trust IPC Model above), this raises the bar from "know the pipe name" to "observe the handshake or win a race against the legitimate client." It remains **local IPC security**: it blocks casual cross-process snooping and scripted scanning of predictable pipe names, but it does not defend against a determined same-user attacker who can read the client's process memory or intercept the handshake on the same machine. The token is not a substitute for network TLS or user login.
 
 ## Operational Guidance
 
@@ -93,7 +110,7 @@ The host issues a **session token** at start, returned in the `fuse/handshake` r
 
 | Surface | Transport | Caller identity |
 |---------|-----------|-----------------|
-| `fuse host` | Named pipe or Unix socket | Session token issued at handshake |
+| `fuse host` | Named pipe or Unix socket | Session token issued at handshake; `root` must match served root |
 | `fuse mcp serve` | stdio to parent MCP client | Parent process spawns the server |
 | One-shot `fuse` CLI | In-process | Shell user |
 

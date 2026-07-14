@@ -41,6 +41,34 @@ public sealed class FuseHostClientTests : IDisposable
     }
 
     [Fact]
+    public async Task TryStatsAsync_over_real_transport_reports_host_version_and_working_set()
+    {
+        Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
+        var root = Path.Combine(Path.GetTempPath(), "fuse-client-stats", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var service = NewService();
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var serverTask = ServeOneAsync(root, service, ready, cts.Token);
+        try
+        {
+            await ready.Task.WaitAsync(TimeSpan.FromSeconds(10), cts.Token);
+            var stats = await FuseHostClient.TryStatsAsync(root, TimeSpan.FromSeconds(5), cts.Token);
+
+            Assert.NotNull(stats);
+            Assert.False(string.IsNullOrWhiteSpace(stats!.HostVersion));
+            Assert.True(stats.WorkingSetBytes > 0);
+            Assert.True(stats.UptimeMs >= 0);
+        }
+        finally
+        {
+            await cts.CancelAsync();
+            try { await serverTask; } catch (OperationCanceledException) { }
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public async Task Connects_to_a_running_host_and_gets_the_delta()
     {
         Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;

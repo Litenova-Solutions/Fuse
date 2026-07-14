@@ -2,6 +2,45 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 4.0.0 is the first public release; it carries the whole product and there is no prior public version to migrate from.
 
+## [Unreleased]
+
+Planned for 4.2.0 (see [roadmap/v4.2-plan.md](roadmap/v4.2-plan.md)):
+
+- Split `WorkspaceIndexStore` into narrow stores; profile the index hot path first.
+- Semantic-tier provider seam (C# behind an interface; no second language in 4.2).
+- Unify Fusion and Retrieval scoping; delete the retired flat FTS generator.
+- CI job for `RequiresSdk` tests; finish `briefing.md` drift cleanup.
+- Unified MCP/CLI/host RPC contract documentation; host IPC and hook ergonomics.
+- Narrow `fuse update` process termination.
+
+## [4.1.0] - 2026-07-14
+
+### Added
+
+- Fuse brand icon (`assets/fuse-icon.png`, `assets/fuse-icon.svg`) on the NuGet package gallery, MCP Registry manifest, WinGet locale, site favicons, and the repository README.
+- Host RPC threat-model documentation (`internals/host-rpc`) describes the local-trust IPC model: predictable per-root pipe or socket, handshake session token, and served-root binding on RPC methods that carry a `root` argument. The page documents `fuse/check` and `fuse/checkOverlay`.
+- Opt-in MCP metrics via `FUSE_METRICS=1` (`fuse.tool.duration`, `fuse.index.mode`, `fuse.reconcile.stamped`) using `System.Diagnostics.Metrics` (no OpenTelemetry dependency).
+- `WorkspacePathResolver` confines MCP file arguments (`fuse_check`, `fuse_test`, `fuse_reduce`, `fuse_context`, and related paths) to the workspace root.
+- `fuse.json` / `.fuserc` parse failures write a warning to stderr with the file path instead of failing silently.
+- `FUSE_MCP_INSTALL_HOME` redirects user-scope MCP install paths for isolated testing; user-scope install coverage for Cursor and Copilot.
+- Integration tests for split-store cache recovery, storm reconcile (>300 dirty files), MCP read-after-edit freshness, resident storm eviction (301-file batch), and workspace path escape refusal.
+
+### Changed
+
+- Derived key-value cache data (reduction cache and per-file analysis index) now lives in `.fuse/fuse-cache.db` instead of sharing `.fuse/fuse.db` with the semantic index. Existing cached entries in `fuse.db` are not migrated; rerun with `--use-cache` or `--use-persistent-index` to rebuild the derived cache. The semantic index in `fuse.db` is unchanged.
+- `ExperimentalOptions` now carries only focus/change scoping and emission-shaping knobs the fusion pipeline consumes (`CentralityWeight`, `TieredEmission`, `SketchHugeFiles`, `DowngradeBeforeDrop`, `ProximityEdges`, `ProjectGraph`). Query-path retrieval levers were removed from this type; open-ended localize and related lexical ranking live in `Fuse.Retrieval`.
+- Host RPC methods that carry a `root` argument reject calls where the root differs from the daemon's served root (the `--directory` the `fuse host` process started with).
+- Syntax indexing routes exclusively through `SemanticIndexer` and language syntax providers; the standalone `SyntaxIndexer` type is removed.
+- The retired flat FTS candidate generator is gated behind `FUSE_FLAT_FTS=1` diagnostic mode; shipping default remains `LexicalCandidateGenerator` only.
+- Performance documentation and README warm-latency figures align with `tests/benchmarks/results/performance.json` and `resident-latency.json`.
+- `briefing.md` opening reflects nine MCP tools, no VS Code extension (D15), and corpus-v2 localize recall (37.7 percent).
+- The fuse.codes landing page uses a centered hero with terminal-style install commands, benchmark stats, and a shared site footer; WinGet manifests are included in `set-version.ps1` and `verify-version.ps1`.
+
+### Fixed
+
+- When FTS5 is unavailable at index init, the store persists `fts_available=false` in index meta, names it in `fuse_workspace` status and the availability header, and `fuse_find kind=task` refuses with an actionable message instead of returning empty hits.
+- `SqliteKeyValueStore` corruption recovery refuses to delete the semantic index database; only `fuse-cache.db` is recreated on corruption.
+
 ## [4.0.1] - 2026-07-13
 
 ### Added

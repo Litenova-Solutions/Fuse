@@ -708,7 +708,12 @@ public sealed partial class FuseTools
                 ? " semantic upgrade in progress (a build is running for tier-1);"
                 : " semantic upgrade in progress;")
             : "";
-        var ftsClause = AvailabilityHeaderHelpers.FormatFtsAvailabilityClause(store.FullTextSearchAvailable);
+        // R23 single source of truth: report the reconciled FTS availability (the stamp AND the chunk_fts table),
+        // exactly as the status body does via WorkspaceIndexState.FtsAvailable. The store's FullTextSearchAvailable
+        // property reflects only whether THIS store instance initialized FTS; on the fast-status path the state is
+        // read without opening the store, so that property stays default-false and disagreed with the body.
+        var ftsState = await store.GetStateAsync(cancellationToken);
+        var ftsClause = AvailabilityHeaderHelpers.FormatFtsAvailabilityClause(ftsState.FtsAvailable);
         return $"availability: index mode {mode}; {ftsClause}; tier-1 build capture {tier1}; {verifyGrade}; workspace {residentClause};{upgradeClause} {freshness}.";
     }
 

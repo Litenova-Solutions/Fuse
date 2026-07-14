@@ -58,6 +58,61 @@ public sealed class CaptureComplogRoundTripTests
         }
     }
 
+    // Regression: the worker must key extracted symbol file paths to the WORKSPACE ROOT it is given, not to each
+    // project's directory. On a nested layout (project in a subdirectory) the two diverge, and a project-relative
+    // path never resolves against the consumer's root-relative file rows, so every symbol is dropped. Building the
+    // same nested project and rehydrating with an explicit workspaceRoot must produce a root-relative symbol path;
+    // rehydrating with no root reproduces the legacy project-relative basis. Self-guards on the SDK like the tests
+    // above.
+    [Fact]
+    public async Task Rehydrate_keys_symbol_paths_to_the_workspace_root_when_given()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-root-basis-it", Guid.NewGuid().ToString("N"));
+        var projectDir = Path.Combine(work, "src", "App");
+        Directory.CreateDirectory(projectDir);
+        var complogPath = Path.Combine(work, "capture.complog");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(projectDir, "App.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                    <Nullable>enable</Nullable>
+                  </PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(projectDir, "Widget.cs"),
+                "namespace Sample; public sealed class Widget { public int Spin() => 42; }");
+
+            var rehydrator = new BuildCaptureRehydrator();
+            var target = Path.Combine(projectDir, "App.csproj");
+
+            var exported = await rehydrator.ExportCompilerLogAsync(target, complogPath, TimeSpan.FromMinutes(5), CancellationToken.None);
+            if (!exported.Succeeded)
+            {
+                Assert.False(string.IsNullOrEmpty(exported.Reason)); // SDK could not build here; abstain.
+                return;
+            }
+
+            // With the workspace root, the Widget symbol's path is relative to the root (src/App/Widget.cs), so it
+            // matches the store's root-relative file rows and the symbol survives the file-id join.
+            var rooted = rehydrator.RehydrateFromBinlog(complogPath, work, CancellationToken.None);
+            var rootedWidget = rooted.Projects.SelectMany(p => p.Symbols ?? []).FirstOrDefault(s => s.Name == "Widget");
+            Assert.NotNull(rootedWidget);
+            Assert.Equal("src/App/Widget.cs", rootedWidget!.FilePath);
+
+            // With no root the legacy project-directory basis returns just the file name - the bug that dropped symbols.
+            var unrooted = rehydrator.RehydrateFromBinlog(complogPath, workspaceRoot: null, CancellationToken.None);
+            var unrootedWidget = unrooted.Projects.SelectMany(p => p.Symbols ?? []).FirstOrDefault(s => s.Name == "Widget");
+            Assert.NotNull(unrootedWidget);
+            Assert.Equal("Widget.cs", unrootedWidget!.FilePath);
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
+
     // C2 gate: the bundle round trip. Export a complog, write a bundle from the captured graph, then read the bundle
     // back with no build and confirm the manifest and the graph survive the round trip unchanged - the same projects,
     // and per project the same symbol, node, and edge counts. This is the edge-set equality the C2 gate names: what a

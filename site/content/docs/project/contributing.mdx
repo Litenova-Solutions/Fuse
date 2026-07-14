@@ -39,6 +39,17 @@ dotnet test Fuse.slnx -c Release --no-build --filter "Category=RequiresSdk"
 
 Tests marked `RequiresSdk` call `SkipException.ForSkip` when the SDK or worker is absent, so a plain `dotnet test` without the filter can look green while doing nothing. Use the filter that matches the leg you intend to exercise. `build/verify-ci-sdk.ps1` runs in the default CI job and fails if `RequiresSdk`-tagged tests exist but either workflow leg is missing or misconfigured.
 
+### Releasing (version propagation)
+
+The product version lives in `Directory.Build.props` `<Version>`; bump every package in lockstep with `build/set-version.ps1 X.Y.Z`. A version bump is reflected in the built assembly without a manual clean: the `FuseStampVersionMarker` target invalidates the compile when `<Version>` changes, so a normal `dotnet build` no longer serves a stale-version `bin`. Before tagging, run the release safety net:
+
+```bash
+./build/verify-version.ps1 -Build           # build Fuse.Cli and assert `fuse --version` == the codebase version
+./build/verify-version.ps1 -Tag vX.Y.Z       # also assert the tag matches
+```
+
+`-Build` builds `Fuse.Cli` (Release) and fails if the built `fuse --version` does not equal `Directory.Build.props` `<Version>`, or if the Release `fuse.dll` is missing, so a mis-versioned or missing artifact cannot ship.
+
 ## Project Layout
 
 Fuse separates concerns along the pipeline. A change should touch one part and respect the boundaries between them.

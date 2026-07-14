@@ -49,6 +49,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 - `FtsCandidateGenerator` and the `FUSE_FLAT_FTS=1` diagnostic flag; `LexicalCandidateGenerator` is the sole lexical retrieval path.
 
+### Fixed (release build)
+
+- Release build reliably propagates the version (R29): a `build/set-version.ps1` bump is now reflected in the built assembly without a manual clean. A `FuseStampVersionMarker` target (in `Directory.Build.props`) writes a generated marker only when `Version` changes, forcing `CoreCompile` to restamp the assembly version, so the incremental build can no longer serve a stale-version `bin`. `build/verify-version.ps1 -Build` builds `Fuse.Cli` and asserts the built `fuse --version` equals the codebase version and that the Release `fuse.dll` is produced, as a release safety net against a mis-versioned or missing artifact.
+
 ### Fixed (semantic discovery)
 
 - Indexing scope excludes vendored and generated trees (R25): the file scanner honors a `fuse.json` `ignore` array (directory names, merged with `.fuseignore` and the built-in defaults) and prunes any nested version-control root (a vendored checkout or submodule with its own `.git`) in the directory-walk path, matching the git-native path which already excludes `.gitignore`d trees such as `tests/benchmarks/.corpus` and `site/node_modules`. There is no silent file cap; `fuse_workspace action=status` counts reflect the real source set.

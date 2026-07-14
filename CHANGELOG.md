@@ -30,6 +30,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Changed
 
+- Index freshness is decoupled from the product version (R22): reuse is gated on the relational schema version AND a new extraction-contract version (`WorkspaceIndexSchema.ExtractionContractVersion`, stamped as `index_extraction_version` in `index_meta`), never on `fuse_version`. A minor or patch upgrade that does not change what is extracted now reuses a good index instead of forcing a reindex on every bump (with `FUSE_AUTO_UPDATE` default-on, the old policy discarded a good index on each minor bump). The `fuse_version` stamp is kept for diagnostics only. Migration: a pre-4.2 index carrying only `fuse_version` rebuilds once on first open to gain the extraction stamp, then reuses. This supersedes the earlier `FuseBuildInfo.IsCompatible` major.minor index-open gate (capture-bundle compatibility still uses it).
 - `FUSE_DAEMON` defaults on for `fuse mcp serve`; set `FUSE_DAEMON=0` to run in-process without the shared `fuse host` daemon per repository.
 - `FUSE_AUTO_UPDATE` defaults on for `fuse mcp serve`; the updater runs after session exit without killing sibling sessions (`stopOtherHosts: false`). Set `FUSE_AUTO_UPDATE=0` to opt out.
 - `fuse mcp install` writes command-only client config (no `env` block); agent-first defaults (daemon, auto-update, background upgrade, build capture) ship in the binary unless explicitly opted out.

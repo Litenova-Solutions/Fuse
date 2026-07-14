@@ -15,7 +15,8 @@ public enum WorkspaceIndexReadOpenStatus
     SchemaMismatch,
 
     /// <summary>
-    ///     The index was stamped by an incompatible Fuse build; write initialization must rebuild it.
+    ///     The index was built under a different extraction-contract version (R22); write initialization must
+    ///     rebuild it. The product version alone no longer forces a rebuild.
     /// </summary>
     IncompatibleVersion,
 }

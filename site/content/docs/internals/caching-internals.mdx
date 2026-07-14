@@ -90,6 +90,18 @@ The `IndexCoordinator` (MCP host and CLI) enforces single-writer discipline per 
 
 Warm foreground reads use a read-only open path (`OpenForReadAsync`): when `fuse.db` already exists at the current schema version, the store verifies the on-disk version and reads FTS availability from `index_meta` without writing metadata. That avoids turning every read into a meta write (which contended with background semantic upgrades under WAL). Write initialization (`InitializeAsync`) runs on first create, schema migration, incompatible-version rebuild, and explicit `fuse index`; it applies migrations, probes FTS5, and stamps `index_meta` once. A background upgrade writer and multiple concurrent read opens can therefore share the same populated database without the read path acquiring a write lock for meta updates.
 
+## What forces a rebuild
+
+Index reuse is gated on two versions, never the product version. The relational **schema version**
+(`WorkspaceIndexSchema.TargetVersion`) gates structure, and the **extraction-contract version**
+(`WorkspaceIndexSchema.ExtractionContractVersion`, stamped as `index_extraction_version` in `index_meta`)
+gates what the indexer extracts (symbol, edge, chunk, and route semantics). A store is reused when both
+match; a mismatch rebuilds. The `fuse_version` stamp is kept for diagnostics only and no longer forces a
+rebuild, so a minor or patch upgrade (auto-update is default-on) reuses a good index instead of discarding
+it on every cosmetic bump. Bump `ExtractionContractVersion` in the same change as any extractor behavior
+change; a forgotten bump is the only failure mode, never routine over-rebuilding. A pre-R22 store that
+carries only `fuse_version` (no extraction stamp) rebuilds once to gain the stamp, then reuses thereafter.
+
 ## Rebuild to a working, searchable index
 
 A version or schema mismatch (and corruption) rebuilds the store's derived data from scratch, and the rebuild always lands on a store that can actually answer a search. Every initialization path, including the incompatible-version rebuild, flows through the FTS5 probe and re-creates `chunk_fts`, then stamps FTS availability and the index mode; the read path returns `index_rebuilding:` until the next pass repopulates chunks. Earlier the version-mismatch path returned before the FTS probe, so a rebuilt store had indexed files but no `chunk_fts`, and the next search threw `no such table: chunk_fts`.

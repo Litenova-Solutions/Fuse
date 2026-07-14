@@ -77,7 +77,8 @@ public sealed class WorkspaceIndexSearchRebuildTests : IDisposable
         {
             await seed.InitializeAsync(CancellationToken.None);
             await SeedSearchableChunkAsync(seed);
-            await seed.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, "999999.0.0", CancellationToken.None);
+            // R22: an older extraction-contract stamp (not a product-version bump) is what forces a rebuild now.
+            await seed.SetMetaAsync(WorkspaceIndexStore.ExtractionVersionMetaKey, "0", CancellationToken.None);
         }
 
         SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));

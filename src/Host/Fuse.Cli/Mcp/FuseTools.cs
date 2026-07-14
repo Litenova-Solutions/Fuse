@@ -207,6 +207,13 @@ public sealed partial class FuseTools
                 builder.AppendLine($"  {project.Name}: {(project.Loaded ? "loaded" : "not loaded")} - {project.Reason}");
         }
 
+        // R28: list the running fuse host daemons with their served root and version, so a stale or mismatched
+        // daemon (accumulated across respawns or left after an upgrade) is visible rather than an invisible orphan.
+        var daemons = Fuse.Cli.Rpc.DaemonRegistry.List();
+        builder.AppendLine($"running daemons: {daemons.Count}");
+        foreach (var daemon in daemons)
+            builder.AppendLine($"  PID {daemon.ProcessId} (fuse host {daemon.Version}) serving {daemon.Root}");
+
         return builder.ToString().TrimEnd();
     }
 

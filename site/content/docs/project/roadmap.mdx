@@ -25,6 +25,17 @@ A richer build-exact graph improves verification (`fuse_check`, `fuse_impact`, c
 
 Dense embedding reranking and learned per-repo ranking were evaluated and set aside: they added model dependency or tuning cost without measured recall lift on the corpus. The product bet is precise anchors (symbols, routes, services, git diffs) resolved through the graph, with ranked prose localization as fallback, not the headline.
 
+## 4.2 hardening (planned)
+
+After 4.1.0, the next engineering wave closes architecture-review tails rather than opening new retrieval bets. The internal checklist is [roadmap/v4.2-plan.md](https://github.com/Litenova-Solutions/Fuse/blob/main/roadmap/v4.2-plan.md). Themes:
+
+- **Index maintainability:** profile warm reads, then split the monolithic index store into focused components without changing on-disk behavior unless required.
+- **One scoping model:** retire the parallel Fusion and Retrieval planning stacks where they still duplicate centrality and `ContextPlan` types.
+- **Integrator clarity:** document MCP tools, CLI commands, and host RPC in one matrix; finish planner doc (`briefing.md`) cleanup.
+- **CI and operator honesty:** run SDK-heavy tests on a dedicated CI leg; optional verbose hook logging; narrower `fuse update` kill behavior; optional host pipe ACL on Windows.
+
+No dates are attached here. Shipped work moves to the changelog when it lands.
+
 ## Recently shipped
 
 These moved to the [Changelog](/docs/project/changelog) when they landed:

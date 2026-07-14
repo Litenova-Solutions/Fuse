@@ -266,6 +266,9 @@ public sealed partial class FuseTools
         var databasePath = FuseStorePaths.ResolveDatabasePath(root);
         if (File.Exists(databasePath))
         {
+            // R37: store health - size on disk and when it was last written - so a stale or bloated store is visible.
+            var dbInfo = new FileInfo(databasePath);
+            builder.AppendLine($"store size: {dbInfo.Length / 1024} KB; last written: {dbInfo.LastWriteTimeUtc:O}");
             try
             {
                 await using var integrityStore = new WorkspaceIndexStore(databasePath);
@@ -283,6 +286,22 @@ public sealed partial class FuseTools
             {
             }
         }
+
+        // R37: degraded-state counts this process has served, so a fallback or not-ready read is never silent.
+        var degraded = new[]
+        {
+            (DegradedStateKind.IndexBusy, "index_busy"),
+            (DegradedStateKind.IndexRebuilding, "index_rebuilding"),
+            (DegradedStateKind.IntegrityFailed, "integrity_failed"),
+            (DegradedStateKind.Deferred, "deferred"),
+            (DegradedStateKind.LexicalFallback, "lexical_fallback"),
+            (DegradedStateKind.VerifyAbstained, "verify_abstained"),
+        };
+        var degradedSummary = degraded
+            .Where(d => FuseMetrics.GetDegradedCount(d.Item1) > 0)
+            .Select(d => $"{d.Item2}={FuseMetrics.GetDegradedCount(d.Item1)}")
+            .ToList();
+        builder.AppendLine($"degraded states this session: {(degradedSummary.Count == 0 ? "none" : string.Join(", ", degradedSummary))}");
 
         // R28: list the running fuse host daemons with their served root and version, so a stale or mismatched
         // daemon (accumulated across respawns or left after an upgrade) is visible rather than an invisible orphan.
@@ -558,14 +577,24 @@ public sealed partial class FuseTools
             if (await store.OpenForReadAsync(cancellationToken) is WorkspaceIndexReadOpenStatus.Ready)
             {
                 var state = await store.GetStateAsync(cancellationToken);
-                return await FormatAvailabilityHeaderAsync(store, root, "building_syntax", state.FileCount, cancellationToken);
+                return await FormatAvailabilityHeaderAsync(store, root, "building_syntax", state.FileCount, cancellationToken)
+                    + ElapsedProgressSuffix(root);
             }
         }
         catch (SqliteException)
         {
         }
 
-        return await FormatAvailabilityHeaderAsync(store: null, root, "building_syntax", filesIndexed: 0, cancellationToken);
+        return await FormatAvailabilityHeaderAsync(store: null, root, "building_syntax", filesIndexed: 0, cancellationToken)
+            + ElapsedProgressSuffix(root);
+    }
+
+    // R37: a progress suffix naming how long the in-flight cold build has been running, so a building header is
+    // visible progress rather than a bare state. Empty when no build elapsed is known.
+    private static string ElapsedProgressSuffix(string root)
+    {
+        var elapsed = ColdStartCoordinator.Default.ElapsedFor(root);
+        return elapsed is null ? string.Empty : $"{Environment.NewLine}progress: building for ~{(int)elapsed.Value.TotalSeconds}s";
     }
 
     internal static async Task<string> FormatBlockedReadHeaderAsync(string root, CancellationToken cancellationToken)
@@ -601,9 +630,25 @@ public sealed partial class FuseTools
         builder.AppendLine($"index_state: {indexState}");
         if (filesIndexed >= 0)
             builder.AppendLine($"files_indexed: {filesIndexed}");
+        // R37: on any not-ready state, carry an actionable wait hint so a cold or contended read is never a
+        // silent stall - the agent uses its native search meanwhile and retries fuse once index_state is ready.
+        var hint = WaitHintFor(indexState);
+        if (hint is not null)
+            builder.AppendLine($"hint: {hint}");
         builder.Append(await BuildAvailabilityLineAsync(store, root, cancellationToken));
         return builder.ToString().TrimEnd();
     }
+
+    // R37: the actionable wait hint for a not-ready index_state, or null when the index is ready/not-indexed.
+    private static string? WaitHintFor(string indexState) => indexState switch
+    {
+        "building_syntax" => "index warming (syntax tier building); use your native search meanwhile and retry fuse once index_state is ready.",
+        "upgrade_pending" => "syntax tier is live; the semantic graph is upgrading. Retry fuse shortly for the richer answer.",
+        "index_busy" => "the index is briefly contended; retry in a moment, or run a shared fuse host.",
+        "index_rebuilding" => "the index is rebuilding derived data; use your native search meanwhile and retry fuse once index_state is ready.",
+        "stale_as_of" => "a bulk change outran the incremental reconcile; results may lag the working tree until the next index pass.",
+        _ => null,
+    };
 
     private static async Task<string> BuildAvailabilityLineAsync(
         WorkspaceIndexStore? store, string root, CancellationToken cancellationToken)
@@ -735,7 +780,10 @@ public sealed partial class FuseTools
         // no chunks on an FTS-available runtime) is internally inconsistent; never report it ready. Signal a
         // rebuild so the read path repairs it rather than serving a silent-empty "ready" index.
         if (!IndexIntegrity.Check(state).Healthy)
+        {
+            FuseMetrics.RecordDegraded(DegradedStateKind.IntegrityFailed); // R37
             return "index_rebuilding";
+        }
 
         return "ready";
     }

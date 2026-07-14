@@ -59,24 +59,30 @@ internal static class FuseOperationalErrors
             case OperationCanceledException:
                 return Format(InternalErrorPrefix, "operation canceled.");
             case IndexRebuildingException ex:
+                FuseMetrics.RecordDegraded(DegradedStateKind.IndexRebuilding); // R37
                 return Format(IndexRebuildingPrefix, ex.Message);
             case SearchIndexUnavailableException ex:
+                FuseMetrics.RecordDegraded(DegradedStateKind.IndexRebuilding); // R37
                 return Format(IndexRebuildingPrefix, ex.Message);
             case IndexBusyException ex:
+                FuseMetrics.RecordDegraded(DegradedStateKind.IndexBusy); // R37
                 return Format(IndexBusyPrefix, ex.Message);
             case FusionValidationException ex:
                 return Format(ValidationErrorPrefix, string.Join("; ", ex.Errors));
             case ArgumentException ex:
                 return Format(ValidationErrorPrefix, ex.Message);
             case SqliteException ex when IsSqliteBusyOrLocked(ex):
+                FuseMetrics.RecordDegraded(DegradedStateKind.IndexBusy); // R37
                 return Format(IndexBusyPrefix, "the index database is locked or busy; retry shortly or use a shared fuse host.");
             case SqliteException ex when IsMissingSearchTable(ex):
                 // R23: a search issued against a store missing chunk_fts must never surface as a raw internal error;
                 // it is a rebuildable derived-data gap, so it maps to index_rebuilding: and the read path rebuilds.
+                FuseMetrics.RecordDegraded(DegradedStateKind.IndexRebuilding); // R37
                 return Format(IndexRebuildingPrefix, "the full-text search index is missing; the index is rebuilding.");
             case SqliteException ex:
                 return Format(InternalErrorPrefix, ex.Message);
             case IOException ex when IsSharingViolation(ex):
+                FuseMetrics.RecordDegraded(DegradedStateKind.IndexBusy); // R37
                 return Format(IndexBusyPrefix, "the index database is in use by another process; retry shortly or use a shared fuse host.");
             case IOException ex:
                 return Format(InternalErrorPrefix, ex.Message);

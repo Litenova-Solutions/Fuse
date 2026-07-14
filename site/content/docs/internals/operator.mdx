@@ -43,11 +43,22 @@ If SQLite reports a malformed `fuse.db` on open, Fuse deletes the derived index 
 
 Every rebuild lands on a store that can actually search. The rebuild re-probes FTS5, re-creates the `chunk_fts` table, and stamps the index mode, so a rebuilt index is fully functional rather than a store with indexed files but no full-text search. If a store is ever found internally inconsistent (its full-text stamp says available but the table is gone, or it has symbols but zero chunks on an FTS-capable runtime), it is not reported `ready`; it reports `index_rebuilding` and the read path repairs it. A search against a store missing `chunk_fts` returns the `index_rebuilding:` prefix and never a raw `internal_error: SQLite Error`.
 
+## Observability of degraded states
+
+Fuse makes a degraded state loud rather than silent (R37):
+
+- **Counts**: each degraded path increments the `fuse.degraded.state` metric (tagged by kind: `index_busy`, `index_rebuilding`, `integrity_failed`, `deferred`, `lexical_fallback`, `verify_abstained`) when `FUSE_METRICS` is on, and is tracked in-process regardless so `doctor` can report it.
+- **Header hint**: every not-ready availability header (`building_syntax`, `upgrade_pending`, `index_busy`, `index_rebuilding`, `stale_as_of`) carries an actionable `hint:` line telling the agent to use its native search meanwhile and retry once `index_state` is `ready`, plus a `progress: building for ~Ns` line during a cold build.
+- **Doctor**: `fuse_workspace action=doctor` reports store size and last-written time, index integrity (R31), the files skipped during indexing (R35), the running `fuse host` daemons with their served roots and versions (R28), and the degraded-state counts for this session.
+- **Daemon log**: `fuse host` writes a size-rotating log at `{user-data}/logs/fuse-host.log` (rotated to `.1` past 1 MB), so lifecycle and degraded events survive a detached run.
+
+The pull-based header remains the source of truth for progress; MCP `notifications/progress` push is a best-effort future add for clients that surface it, not required for the signal to be visible.
+
 ## Environment variables
 
 | Variable | Effect |
 |----------|--------|
-| `FUSE_USER_DATA` | Directory for machine-wide Fuse data when the workspace is outside a git repository (default `~/.fuse`). The store file is `{FUSE_USER_DATA}/fuse.db`. Inside a git repo the store stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
+| `FUSE_USER_DATA` | Directory for machine-wide Fuse data when the workspace is outside a git repository (default `~/.fuse`). The store is per-root under `{FUSE_USER_DATA}/roots/{hash}/fuse.db`; inside a git repo it stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
 
 When driving an agent against the Fuse MCP server (for example in the agent evaluation suite), the Claude CLI variables `MCP_TOOL_TIMEOUT` and `MCP_TIMEOUT` bound per-tool-call and startup time; these are read by the agent client, not by Fuse.
 

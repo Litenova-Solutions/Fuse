@@ -104,6 +104,7 @@ public sealed class HostCommand
         // served root and version, and a crashed daemon's stale entry is pruned on the next read. One descriptor
         // per root (the single-instance lock guarantees one daemon per root), removed on shutdown.
         DaemonRegistry.Register(root, FuseHostService.HostVersion, DateTimeOffset.UtcNow.ToString("O"));
+        RollingFileLog.Write($"host {FuseHostService.HostVersion} serving {root}"); // R37: rotating daemon log.
         try
         {
             if (OperatingSystem.IsWindows())
@@ -121,6 +122,7 @@ public sealed class HostCommand
         }
 
         await idleTask; // let the idle monitor observe cancellation and stop cleanly
+        RollingFileLog.Write($"host stopped ({root})"); // R37: rotating daemon log.
         logger.LogInformation("Fuse host stopped.");
     }
 

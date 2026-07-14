@@ -44,12 +44,25 @@ public sealed class WarmCommand
     public string Path { get; set; } = ".";
 
     /// <summary>
+    ///     The always-on warm service action (R40): <c>install</c>, <c>uninstall</c>, or <c>status</c>. Opt-in and
+    ///     never installed by <c>fuse mcp install</c>. Empty for a one-shot warm of <see cref="Path" />.
+    /// </summary>
+    [CliOption(Name = "--service", Description = "Manage the opt-in always-on warm service: install, uninstall, or status.")]
+    public string Service { get; set; } = "";
+
+    /// <summary>
     ///     Runs the warm command.
     /// </summary>
     /// <param name="context">The CLI invocation context supplying the cancellation token.</param>
     /// <returns>A task that completes when the index has been warmed.</returns>
     public async Task RunAsync(CliContext context)
     {
+        if (!string.IsNullOrWhiteSpace(Service))
+        {
+            RunServiceAction(Service.Trim().ToLowerInvariant());
+            return;
+        }
+
         var root = System.IO.Path.GetFullPath(Path);
         if (!Directory.Exists(root))
         {
@@ -60,5 +73,31 @@ public sealed class WarmCommand
         _consoleUI.WriteStep($"Warming the index for {root}");
         await EagerIndex.WarmAsync(_indexer, root, context.CancellationToken);
         _consoleUI.WriteResult($"warmed: {root} (syntax-first index built; the semantic upgrade continues in the background).");
+    }
+
+    // R40: the opt-in always-on warm service surface. Reports the platform-native register/unregister command and
+    // the first-run notice. The service is store-backed, LRU-capped, and battery-aware (WarmService); it is never
+    // installed by `fuse mcp install`.
+    private void RunServiceAction(string action)
+    {
+        var invocation = Environment.ProcessPath ?? "fuse";
+        switch (action)
+        {
+            case "install":
+                _consoleUI.WriteResult(
+                    $"warm service ({WarmServiceDefinition.PlatformMechanism()}): opt-in, store-backed, LRU-capped at {WarmServiceLru.DefaultCap} repos, battery-aware." + Environment.NewLine +
+                    $"register with: {WarmServiceDefinition.InstallCommand(invocation)}" + Environment.NewLine +
+                    WarmServiceDefinition.FirstRunNotice());
+                break;
+            case "uninstall":
+                _consoleUI.WriteResult(
+                    $"warm service uninstall ({WarmServiceDefinition.PlatformMechanism()}): {WarmServiceDefinition.UninstallCommand()}");
+                break;
+            case "status":
+            default:
+                _consoleUI.WriteResult(
+                    $"warm service: opt-in ({WarmServiceDefinition.PlatformMechanism()}); install with 'fuse warm --service install', remove with 'fuse warm --service uninstall'. Never installed by 'fuse mcp install'.");
+                break;
+        }
     }
 }

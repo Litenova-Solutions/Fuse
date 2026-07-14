@@ -55,6 +55,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 - `FtsCandidateGenerator` and the `FUSE_FLAT_FTS=1` diagnostic flag; `LexicalCandidateGenerator` is the sole lexical retrieval path.
 
+### Added (warm service)
+
+- Opt-in always-on warm service (R40): `fuse warm --service install|uninstall|status` manages a background OS service (Windows service, launchd agent, or systemd user unit) that keeps a store-backed warm daemon alive and re-warms a bounded LRU of recently-used repos so they are ready before a session opens. Guardrails are enforced: store-backed only (never a resident Roslyn compilation), a hard LRU cap (5 repos), battery/load-aware pause, idle-evict, and a clean uninstall with a first-run notice. It is never installed by `fuse mcp install` and stays opt-in for the agent-first default (R38/R39 cover the agent case); a promotion to opt-out requires measuring idle RSS/CPU/battery and showing they are light.
+
 ### Changed (indexing performance)
 
 - Faster indexing: the git co-change collector no longer runs on the default index path (R41). The co-change prior is off in the shipping ranking (Decision D6, net-negative on the corpus), so mining and storing co-change on every index - a large share of the index hot path in `profile-v42.json` (the `git log` walk) - was wasted work. It is now gated behind `FUSE_COCHANGE` (default off), removing that cost from every default index. No ranking or semantics change (the prior was already default-off, so its collected data was unused by default): `fuse eval semantics` remains 24/24 (recall/precision 1.0) and the ranking default arm is unaffected.

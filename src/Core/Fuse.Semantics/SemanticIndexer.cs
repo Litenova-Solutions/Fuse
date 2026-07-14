@@ -229,19 +229,56 @@ public sealed class SemanticIndexer
     }
 
     /// <summary>
+    ///     Maximum number of files committed in one upgrade batch before yielding the SQLite writer (R14).
+    /// </summary>
+    internal const int UpgradeCommitFileBatchSize = 50;
+
+    /// <summary>
     ///     Upgrades a syntax-first index to the full semantic graph by running the complete indexing pass, then
     ///     clearing <see cref="SemanticPendingMetaKey" />. Intended to run in the background after
-    ///     <see cref="IndexSyntaxFirstAsync" /> served the first call.
+    ///     <see cref="IndexSyntaxFirstAsync" /> served the first call. Commits per project and per
+    ///     <see cref="UpgradeCommitFileBatchSize" /> files so warm reads can interleave under WAL.
     /// </summary>
     /// <param name="rootDirectory">The workspace root.</param>
     /// <param name="store">The index store to write to (a fresh store handle, since the foreground store is disposed).</param>
     /// <param name="cancellationToken">A token to cancel the upgrade.</param>
     /// <returns>The full index summary (semantic, partial, or syntax if the load could not improve on syntax).</returns>
-    public Task<SemanticIndexResult> UpgradeToSemanticAsync(
+    public async Task<SemanticIndexResult> UpgradeToSemanticAsync(
         string rootDirectory,
         IWorkspaceIndexStore store,
-        CancellationToken cancellationToken) =>
-        IndexAsync(rootDirectory, store, cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(rootDirectory);
+        var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
+        var files = await ScanFilesAsync(root, cancellationToken);
+        var capture = await TryBuildCaptureAsync(discovery, cancellationToken);
+        SemanticIndexResult result;
+        if (capture is not null)
+        {
+            result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
+        }
+        else
+        {
+            var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
+            result = snapshot.SemanticLoadSucceeded
+                ? await IndexSemanticChunkedAsync(root, store, files, snapshot, cancellationToken)
+                : await IndexSyntaxChunkedAsync(root, store, files, snapshot, cancellationToken);
+        }
+
+        await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
+        await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
+        await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
+
+        try
+        {
+            await _coChangeCollector.CollectAndStoreAsync(root, store, cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+        }
+
+        return result;
+    }
 
     // Scans the extensions the registered language providers claim, plus the .NET config files needed for
     // discovery, so a non-C# spike language is surfaced to the indexer without hardwiring its extension.
@@ -425,6 +462,164 @@ public sealed class SemanticIndexer
 
         var routeCount = syntaxRoutes.Count + graph.Routes.Count;
         return new SemanticIndexResult(mode, linkedFiles.Count, projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
+    }
+
+    // R14: semantic upgrade commits per project and per file batch so WAL readers are not blocked by one long write.
+    private async Task<SemanticIndexResult> IndexSemanticChunkedAsync(
+        string root,
+        IWorkspaceIndexStore store,
+        IReadOnlyList<IndexedFileRecord> files,
+        RoslynWorkspaceSnapshot snapshot,
+        CancellationToken cancellationToken)
+    {
+        var projects = BuildProjectRecords(snapshot, cancellationToken);
+        await store.UpsertProjectsAsync(projects, cancellationToken);
+
+        var fileToProject = BuildFileProjectMap(root, snapshot);
+        var linkedFiles = files
+            .Select(f => (fileToProject.TryGetValue(f.NormalizedPath, out var projectPath)
+                ? f with { ProjectPath = projectPath }
+                : f) with
+            { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
+            .ToList();
+
+        for (var i = 0; i < linkedFiles.Count; i += UpgradeCommitFileBatchSize)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var batch = linkedFiles.Skip(i).Take(UpgradeCommitFileBatchSize).ToList();
+            await store.UpsertFilesAsync(batch, cancellationToken);
+        }
+
+        var symbols = new List<SymbolRecord>();
+        foreach (var project in snapshot.Projects)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var projectSymbols = _semanticSymbols.Extract(project, root, cancellationToken).ToList();
+            symbols.AddRange(projectSymbols);
+            await store.UpsertSymbolsAsync(projectSymbols, cancellationToken);
+        }
+
+        var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesChunkedAsync(
+            store, root, files, dropChunkSymbolIds: true, cancellationToken);
+        await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
+
+        var edges = new List<SemanticEdgeRecord>();
+        var semanticRoutes = new List<RouteRecord>();
+        var registrations = new List<DiRegistrationRecord>();
+        var bindings = new List<OptionsBindingRecord>();
+        var graphDiagnostics = new List<DiagnosticRecord>();
+
+        foreach (var project in snapshot.Projects)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var graph = _analysisRunner.Run(new SemanticAnalysisContext(project, root), cancellationToken);
+            edges.AddRange(graph.Edges);
+            semanticRoutes.AddRange(graph.Routes);
+            registrations.AddRange(graph.DiRegistrations);
+            bindings.AddRange(graph.OptionsBindings);
+            graphDiagnostics.AddRange(graph.Diagnostics);
+
+            await store.UpsertNodesAsync(graph.Nodes, cancellationToken);
+            await store.UpsertEdgesAsync(graph.Edges, cancellationToken);
+            await store.UpsertRoutesAsync(graph.Routes, cancellationToken);
+            await store.UpsertDiRegistrationsAsync(graph.DiRegistrations, cancellationToken);
+            await store.UpsertOptionsBindingsAsync(graph.OptionsBindings, cancellationToken);
+        }
+
+        var diagnostics = snapshot.Diagnostics.Concat(graphDiagnostics).ToList();
+        var mode = snapshot.Diagnostics.Any(d => d.Severity is DiagnosticSeverity.Warning or DiagnosticSeverity.Error)
+            ? "partial"
+            : "semantic";
+        var routeCount = syntaxRoutes.Count + semanticRoutes.Count;
+        return new SemanticIndexResult(mode, linkedFiles.Count, projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
+    }
+
+    private async Task<SemanticIndexResult> IndexSyntaxChunkedAsync(
+        string root,
+        IWorkspaceIndexStore store,
+        IReadOnlyList<IndexedFileRecord> files,
+        RoslynWorkspaceSnapshot snapshot,
+        CancellationToken cancellationToken)
+    {
+        var taggedFiles = files
+            .Select(f => f with { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
+            .ToList();
+
+        for (var i = 0; i < taggedFiles.Count; i += UpgradeCommitFileBatchSize)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var batch = taggedFiles.Skip(i).Take(UpgradeCommitFileBatchSize).ToList();
+            await store.UpsertFilesAsync(batch, cancellationToken);
+        }
+
+        var perFile = new (List<SymbolRecord> Symbols, List<ChunkRecord> Chunks, List<RouteRecord> Routes)?[files.Count];
+        var parallelOptions = new ParallelOptions
+        {
+            CancellationToken = cancellationToken,
+            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount)
+        };
+        await Parallel.ForEachAsync(Enumerable.Range(0, files.Count), parallelOptions, async (i, ct) =>
+        {
+            var file = files[i];
+            var provider = _syntaxProviders.ForExtension(file.Extension);
+            if (provider is null)
+                return;
+
+            var content = await File.ReadAllTextAsync(Path.Combine(root, file.Path), ct);
+            var extracted = provider.Extract(file.NormalizedPath, content);
+            var fileRoutes = file.Extension == ".cs"
+                ? _routeExtractor.Extract(file.NormalizedPath, content).ToList()
+                : [];
+            perFile[i] = (extracted.Symbols.ToList(), extracted.Chunks.ToList(), fileRoutes);
+        });
+
+        var symbols = new List<SymbolRecord>();
+        var chunks = new List<ChunkRecord>();
+        var routes = new List<RouteRecord>();
+        foreach (var entry in perFile)
+        {
+            if (entry is not { } e)
+                continue;
+            symbols.AddRange(e.Symbols);
+            chunks.AddRange(e.Chunks);
+            routes.AddRange(e.Routes);
+        }
+
+        await store.UpsertSymbolsAsync(symbols, cancellationToken);
+        for (var i = 0; i < chunks.Count; i += UpgradeCommitFileBatchSize)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var batch = chunks.Skip(i).Take(UpgradeCommitFileBatchSize).ToList();
+            if (batch.Count > 0)
+                await store.UpsertChunksAsync(batch, cancellationToken);
+        }
+
+        await store.UpsertRoutesAsync(routes, cancellationToken);
+
+        return new SemanticIndexResult("syntax", files.Count, 0, symbols.Count, chunks.Count, routes.Count, snapshot.Diagnostics);
+    }
+
+    private async Task<(List<ChunkRecord> Chunks, List<RouteRecord> Routes)> ExtractChunksAndRoutesChunkedAsync(
+        IWorkspaceIndexStore store,
+        string root,
+        IReadOnlyList<IndexedFileRecord> files,
+        bool dropChunkSymbolIds,
+        CancellationToken cancellationToken)
+    {
+        var allChunks = new List<ChunkRecord>();
+        var allRoutes = new List<RouteRecord>();
+        for (var i = 0; i < files.Count; i += UpgradeCommitFileBatchSize)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var batch = files.Skip(i).Take(UpgradeCommitFileBatchSize).ToList();
+            var (chunks, routes) = await ExtractChunksAndRoutesAsync(root, batch, dropChunkSymbolIds, cancellationToken);
+            allChunks.AddRange(chunks);
+            allRoutes.AddRange(routes);
+            if (chunks.Count > 0)
+                await store.UpsertChunksAsync(chunks, cancellationToken);
+        }
+
+        return (allChunks, allRoutes);
     }
 
     // Tier 1 write path: the graph came from the out-of-process build-capture worker (exact compilations), so

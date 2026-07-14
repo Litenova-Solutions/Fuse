@@ -1,14 +1,17 @@
 using System.Text;
 using DotMake.CommandLine;
+using Fuse.Cli.Mcp;
 using Fuse.Cli.Services;
 using Fuse.Indexing;
 using Fuse.Reduction.Caching;
+using Fuse.Semantics;
 
 namespace Fuse.Cli.Commands;
 
 /// <summary>
 ///     Reports the state of a workspace's index: schema version, mode, status, record counts, full-text search
-///     availability, and the database location. Useful for diagnosing a missing or stale index.
+///     availability, and the database location. Useful for diagnosing a missing or stale index. Mirrors
+///     <c>fuse_workspace action=status</c> on the fast read-only path (R16).
 /// </summary>
 [CliCommand(
     Name = "diagnostics",
@@ -44,33 +47,70 @@ public sealed class DiagnosticsCommand
     /// <returns>A task that completes when the diagnostics have been written.</returns>
     public async Task RunAsync(CliContext context)
     {
-        var root = System.IO.Path.GetFullPath(Path);
-        var databasePath = FuseStorePaths.ResolveDatabasePath(root);
-
-        var builder = new StringBuilder();
-        builder.AppendLine($"workspace: {root}");
-        builder.AppendLine($"store: {databasePath}");
-        if (!File.Exists(databasePath))
+        try
         {
-            builder.AppendLine("index: not built (run 'fuse index')");
+            var root = System.IO.Path.GetFullPath(Path);
+            if (!Directory.Exists(root))
+            {
+                FuseOperationalErrors.WriteCliError(_consoleUI, FuseOperationalErrors.FormatWorkspaceNotFound(root));
+                return;
+            }
+
+            var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+            var builder = new StringBuilder();
+            builder.AppendLine($"workspace: {root}");
+            builder.AppendLine($"store: {databasePath}");
+
+            if (!File.Exists(databasePath))
+            {
+                builder.AppendLine("index_state: not_indexed");
+                builder.AppendLine("index: not built (run 'fuse index')");
+                _consoleUI.WriteResult(builder.ToString());
+                return;
+            }
+
+            await using var store = await IndexCoordinator.Default.OpenForReadOnlyAsync(root, context.CancellationToken);
+            var state = await store.GetStateAsync(context.CancellationToken);
+            var indexedBy = await store.GetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, context.CancellationToken);
+            var indexState = state.FileCount == 0
+                ? "not_indexed"
+                : await ComputeIndexStateAsync(store, state, context.CancellationToken);
+
+            builder.AppendLine($"index_state: {indexState}");
+            builder.AppendLine($"fuse version: {FuseBuildInfo.Current}");
+            builder.AppendLine($"indexed by: {indexedBy ?? "(unknown; pre-stamp or rebuilt)"}");
+            builder.AppendLine($"schema version: {state.SchemaVersion}");
+            builder.AppendLine($"status: {state.Status}");
+            builder.AppendLine($"index mode: {state.Mode ?? "(never indexed)"}");
+            builder.AppendLine($"files: {state.FileCount}");
+            builder.AppendLine($"symbols: {state.SymbolCount}");
+            builder.AppendLine($"full-text search: {(state.FtsAvailable ? "available" : "unavailable")}");
+
             _consoleUI.WriteResult(builder.ToString());
-            return;
+        }
+        catch (Exception ex)
+        {
+            FuseOperationalErrors.ReportCli(_consoleUI, ex);
+        }
+    }
+
+    private static async Task<string> ComputeIndexStateAsync(
+        WorkspaceIndexStore store, WorkspaceIndexState state, CancellationToken cancellationToken)
+    {
+        if (state.FileCount == 0)
+            return "not_indexed";
+
+        var pending = await store.GetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, cancellationToken);
+        if (pending == "1")
+        {
+            var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
+            return mode == "syntax" ? "building_syntax" : "upgrade_pending";
         }
 
-        await using var store = new WorkspaceIndexStore(databasePath);
-        await store.InitializeAsync(context.CancellationToken);
-        var state = await store.GetStateAsync(context.CancellationToken);
-        var indexedBy = await store.GetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, context.CancellationToken);
+        var staleRaw = await store.GetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, cancellationToken);
+        if (int.TryParse(staleRaw, out var stale) && stale > 0)
+            return "stale_as_of";
 
-        builder.AppendLine($"fuse version: {FuseBuildInfo.Current}");
-        builder.AppendLine($"indexed by: {indexedBy ?? "(unknown; pre-stamp or rebuilt)"}");
-        builder.AppendLine($"schema version: {state.SchemaVersion}");
-        builder.AppendLine($"status: {state.Status}");
-        builder.AppendLine($"index mode: {state.Mode ?? "(never indexed)"}");
-        builder.AppendLine($"files: {state.FileCount}");
-        builder.AppendLine($"symbols: {state.SymbolCount}");
-        builder.AppendLine($"full-text search: {(store.FullTextSearchAvailable ? "available" : "unavailable")}");
-
-        _consoleUI.WriteResult(builder.ToString());
+        return "ready";
     }
 }

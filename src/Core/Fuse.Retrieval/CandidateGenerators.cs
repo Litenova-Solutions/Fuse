@@ -3,23 +3,6 @@ using Fuse.Indexing;
 namespace Fuse.Retrieval;
 
 /// <summary>
-///     Diagnostic-only retrieval flags. Off in shipping; the ranking gate (N1) scores
-///     <see cref="LexicalCandidateGenerator" /> via <see cref="CandidateGenerator.CreateDefault" />.
-/// </summary>
-public static class RetrievalDiagnosticFlags
-{
-    /// <summary>The environment variable that enables the retired flat per-source FTS generator.</summary>
-    public const string FlatFtsEnvironmentVariable = "FUSE_FLAT_FTS";
-
-    /// <summary>
-    ///     Whether the retired flat per-source FTS generator is enabled. Set <c>FUSE_FLAT_FTS</c> to
-    ///     <c>1</c>, <c>on</c>, or <c>true</c> to reproduce the pre-R1 lexical channel for diagnostics.
-    /// </summary>
-    public static bool EnableFlatFts =>
-        Environment.GetEnvironmentVariable(FlatFtsEnvironmentVariable) is "1" or "on" or "true";
-}
-
-/// <summary>
 ///     Produces candidate files and symbols for a localization request from one signal (exact resolution,
 ///     full-text, path, or diff).
 /// </summary>
@@ -55,10 +38,8 @@ public sealed class CandidateGenerator
     /// <returns>A generator with the standard candidate sources.</returns>
     /// <remarks>
     ///     The lexical channel is <see cref="LexicalCandidateGenerator" />, which preserves the BM25F rank and
-    ///     adds pseudo-relevance feedback. The retired flat per-source <see cref="FtsCandidateGenerator" /> is
-    ///     diagnostic-only (<see cref="RetrievalDiagnosticFlags.EnableFlatFts" />); it is not in this set. The
-    ///     <see cref="ICandidateGenerator" /> seam stays open for a future generator (for example a re-added
-    ///     dense channel via a plugin).
+    ///     adds pseudo-relevance feedback. The <see cref="ICandidateGenerator" /> seam stays open for a future
+    ///     generator (for example a re-added dense channel via a plugin).
     /// </remarks>
     public static CandidateGenerator CreateDefault(
         IWorkspaceIndexStore store, IChangeSource? changeSource = null)
@@ -142,54 +123,6 @@ public sealed class ExactCandidateGenerator : ICandidateGenerator
                 TokenEstimate: 0));
         }
     }
-}
-
-/// <summary>
-///     Diagnostic-only: generates candidates from full-text search with a flat per-source weight (the pre-R1
-///     lexical channel). Not used by <see cref="CandidateGenerator.CreateDefault" />; enable via
-///     <see cref="RetrievalDiagnosticFlags.EnableFlatFts" /> for conformance checks only.
-/// </summary>
-internal sealed class FtsCandidateGenerator : ICandidateGenerator
-{
-    private readonly IWorkspaceIndexStore _store;
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="FtsCandidateGenerator" /> class.
-    /// </summary>
-    /// <param name="store">The index store to query.</param>
-    public FtsCandidateGenerator(IWorkspaceIndexStore store) => _store = store;
-
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<CandidateNode>> GenerateAsync(LocalizationRequest request, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(request.Query))
-            return [];
-
-        var hits = await _store.SearchAsync(new SearchQuery(request.Query, request.MaxCandidates), cancellationToken);
-        var candidates = new List<CandidateNode>();
-        foreach (var hit in hits)
-        {
-            // A hit whose name matches a query token is a stronger (symbol) signal than a body-only match.
-            var source = hit.Name is not null && ContainsToken(request.Query, hit.Name)
-                ? CandidateSource.FtsSymbol
-                : CandidateSource.FtsBody;
-
-            candidates.Add(new CandidateNode(
-                NodeId: string.Empty,
-                FilePath: hit.FilePath,
-                Kind: hit.Kind,
-                BaseScore: CandidateSourceWeights.Weight(source),
-                Source: source,
-                Reasons: [$"FTS match: {hit.Name ?? hit.Kind} ({hit.FilePath}:{hit.StartLine})"],
-                TokenEstimate: 0));
-        }
-
-        return candidates;
-    }
-
-    private static bool ContainsToken(string query, string name) =>
-        query.Split([' ', '\t', '\n', '.', '(', ')', ',', '/'], StringSplitOptions.RemoveEmptyEntries)
-            .Any(token => name.Contains(token, StringComparison.OrdinalIgnoreCase));
 }
 
 /// <summary>

@@ -3,6 +3,7 @@ using Fuse.Collection.Models;
 using Fuse.Plugins.Abstractions.Options;
 using Fuse.Reduction;
 using Fuse.Retrieval;
+using Fuse.Scoping;
 
 namespace Fuse.Context;
 

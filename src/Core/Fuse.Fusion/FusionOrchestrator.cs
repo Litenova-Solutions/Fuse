@@ -13,6 +13,7 @@ using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Reduction.Models;
+using Fuse.Scoping;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -176,15 +177,20 @@ public sealed class FusionOrchestrator
             // budget-aware packer fits more files; seeds keep the request's level. Redaction-correct because the
             // skeleton is produced inside the reduction stage, not by a post-reduction source re-read.
             var contextPlan = ContextPlanBuilder.Build(request, experimental, filterResult);
-            var perFileLevel = contextPlan.AppliesTieredEmission
-                ? contextPlan.TierFor
-                : (Func<Fuse.Collection.Models.SourceFile, Fuse.Plugins.Abstractions.Options.ReductionLevel>?)null;
+            var appliesTieredEmission = ContextPlanBuilder.AppliesTieredEmission(request, experimental, filterResult);
+            var perFileLevel = appliesTieredEmission
+                ? (Func<Fuse.Collection.Models.SourceFile, Fuse.Plugins.Abstractions.Options.ReductionLevel>?)(file =>
+                    ContextPlanBuilder.TierFor(contextPlan, file, request.Reduction.Level))
+                : null;
 
-            // Project the internal plan to the public read-only view carried on the result, so callers can show
+            // Project the shared plan to the public read-only view carried on the result, so callers can show
             // each file's role, tier, and score without re-running scoping.
-            var planProjection = contextPlan.Files
+            var planProjection = contextPlan.Items
                 .Select(p => new PlannedFileInfo(
-                    p.File.NormalizedRelativePath, p.Role.ToString(), p.Tier.ToString(), p.Score))
+                    p.Path,
+                    FusionPlanRole.ForEmission(p.Role),
+                    RenderTierMapping.ToReductionLevel(p.Tier).ToString(),
+                    p.Score))
                 .ToList();
 
             stageTimer.Restart();

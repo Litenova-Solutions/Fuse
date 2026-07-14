@@ -19,6 +19,7 @@
       <Project Path="src/Core/Fuse.Fusion/Fuse.Fusion.csproj" />
       <Project Path="src/Core/Fuse.Indexing/Fuse.Indexing.csproj" />
       <Project Path="src/Core/Fuse.Semantics/Fuse.Semantics.csproj" />
+      <Project Path="src/Core/Fuse.Scoping/Fuse.Scoping.csproj" />
       <Project Path="src/Core/Fuse.Workspace/Fuse.Workspace.csproj" />
       <Project Path="src/Core/Fuse.Retrieval/Fuse.Retrieval.csproj" />
       <Project Path="src/Core/Fuse.Context/Fuse.Context.csproj" />
@@ -46,6 +47,7 @@
     <Project Path="src/Core/Fuse.Semantics/Fuse.Semantics.csproj" />
     <Project Path="src/Core/Fuse.Workspace/Fuse.Workspace.csproj" />
     <Project Path="src/Core/Fuse.Retrieval/Fuse.Retrieval.csproj" />
+    <Project Path="src/Core/Fuse.Scoping/Fuse.Scoping.csproj" />
     <Project Path="src/Core/Fuse.Context/Fuse.Context.csproj" />
   </Folder>
   <Folder Name="/src/Plugins/">

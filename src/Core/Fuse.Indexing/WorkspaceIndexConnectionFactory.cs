@@ -15,22 +15,31 @@ namespace Fuse.Indexing;
 /// </remarks>
 public sealed class WorkspaceIndexConnectionFactory
 {
-    private const int BusyTimeoutMilliseconds = 30000;
+    /// <summary>The default per-connection busy timeout for write and long-lived paths.</summary>
+    public const int DefaultBusyTimeoutMilliseconds = 30000;
 
+    private readonly int _busyTimeoutMilliseconds;
     private readonly string _connectionString;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="WorkspaceIndexConnectionFactory" /> class.
     /// </summary>
     /// <param name="databasePath">The absolute path to the index database file.</param>
-    public WorkspaceIndexConnectionFactory(string databasePath)
+    /// <param name="busyTimeoutMilliseconds">
+    ///     The SQLite <c>busy_timeout</c> for every connection. The default suits write and index paths; read-tool
+    ///     opens pass a short value so a contended store surfaces <c>index_busy</c> quickly instead of hanging (R18/R20).
+    /// </param>
+    public WorkspaceIndexConnectionFactory(
+        string databasePath, int busyTimeoutMilliseconds = DefaultBusyTimeoutMilliseconds)
     {
         DatabasePath = databasePath;
+        _busyTimeoutMilliseconds = busyTimeoutMilliseconds;
         _connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = databasePath,
             Pooling = true,
-            DefaultTimeout = BusyTimeoutMilliseconds / 1000,
+            // Command timeout is in seconds; keep at least 1s so a value of 0 is never read as "no timeout".
+            DefaultTimeout = Math.Max(1, busyTimeoutMilliseconds / 1000),
         }.ToString();
     }
 
@@ -52,7 +61,7 @@ public sealed class WorkspaceIndexConnectionFactory
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText =
-            $"PRAGMA busy_timeout = {BusyTimeoutMilliseconds};" +
+            $"PRAGMA busy_timeout = {_busyTimeoutMilliseconds};" +
             "PRAGMA foreign_keys = ON;";
         await command.ExecuteNonQueryAsync(cancellationToken);
         return connection;

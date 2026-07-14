@@ -210,3 +210,17 @@ public sealed record CheckOverlayResultDto(
     bool HasResident,
     IReadOnlyList<CheckDiagnosticDto> Diagnostics);
 
+/// <summary>
+///     The result of the <c>fuse/openIndexed</c> method (R19, G5 phase 2): whether the daemon prepared a readable
+///     index for store-backed MCP tools and the coarse state when it did not. A non-owner process delegates index
+///     open, reconcile, syntax-first cold start, and background semantic upgrade to the daemon over this RPC, then
+///     opens the store read-only locally for queries.
+/// </summary>
+/// <param name="Status">
+///     A coarse outcome: <c>ready</c>, <c>index_busy</c>, <c>index_rebuilding</c>, or <c>not_indexed</c>.
+/// </param>
+/// <param name="Detail">An actionable detail when <paramref name="Status" /> is not <c>ready</c>.</param>
+/// <param name="FileCount">The indexed file count when <paramref name="Status" /> is <c>ready</c>; otherwise zero.</param>
+/// <param name="Mode">The index tier when ready (<c>semantic</c>, <c>partial</c>, or <c>syntax</c>).</param>
+public sealed record OpenIndexedResultDto(string Status, string? Detail, int FileCount, string? Mode);
+

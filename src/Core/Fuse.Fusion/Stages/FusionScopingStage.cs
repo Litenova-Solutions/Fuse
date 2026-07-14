@@ -129,7 +129,7 @@ public sealed class FusionScopingStage
             request.Focus.Depth,
             FollowReferences: true,
             FollowDependents: true,
-            Centrality: GraphCentrality.Compute(graph),
+            Centrality: DependencyGraphCentrality.Compute(graph),
             CentralityWeight: experimental.CentralityWeight,
             ProximityEdges: focusProximityEdges,
             ProximityWeight: focusProximityWeight);

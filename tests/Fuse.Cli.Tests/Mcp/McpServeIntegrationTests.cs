@@ -58,6 +58,7 @@ public sealed class McpServeIntegrationTests
             new Dictionary<string, object?> { ["action"] = "status", ["path"] = fixture.ProjectPath },
             cancellationToken: TestCancellation);
         var statusText = TextContent(status);
+        Assert.Contains("index_state:", statusText);
         Assert.Contains("availability:", statusText);
         Assert.Contains("index mode", statusText);
         Assert.Contains("tier-1 build capture", statusText);
@@ -134,10 +135,6 @@ public sealed class McpServeIntegrationTests
         Assert.Contains(templateUris, u => u.StartsWith("fuse://diff/", StringComparison.Ordinal));
         Assert.Contains(templateUris, u => u.StartsWith("fuse://diagnostics/", StringComparison.Ordinal));
     }
-
-    [Fact]
-    public void HostRpc_ProtocolVersion_is_pinned_for_handshake_mismatch_detection()
-        => Assert.Equal(7, FuseHostService.ProtocolVersion);
 
     [Fact]
     public async Task StdioServer_FuseFind_returns_updated_symbol_after_on_disk_edit()

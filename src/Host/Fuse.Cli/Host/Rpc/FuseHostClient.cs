@@ -7,6 +7,38 @@ using StreamJsonRpc;
 namespace Fuse.Cli.Rpc;
 
 /// <summary>
+///     Opt-in stderr logging for hook RPC failures when <c>FUSE_HOOK_VERBOSE</c> is set.
+/// </summary>
+internal static class FuseHookVerbose
+{
+    /// <summary>The environment variable that enables hook RPC failure logging.</summary>
+    internal const string EnvironmentVariable = "FUSE_HOOK_VERBOSE";
+
+    /// <summary>Whether hook RPC failure logging is enabled for this process.</summary>
+    /// <returns>True when <see cref="EnvironmentVariable" /> is set to a truthy value.</returns>
+    internal static bool IsEnabled()
+    {
+        var value = Environment.GetEnvironmentVariable(EnvironmentVariable);
+        return value is not null
+            && (value.Equals("1", StringComparison.Ordinal)
+                || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("on", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Writes one stderr line naming the RPC method and failure code when verbose mode is on.</summary>
+    /// <param name="method">The RPC method that failed (or was about to run).</param>
+    /// <param name="errorCode">A stable failure code (<c>no_host</c>, <c>protocol_mismatch</c>, or <c>rpc_error</c>).</param>
+    internal static void LogRpcFailure(string method, string errorCode)
+    {
+        if (!IsEnabled())
+            return;
+
+        Console.Error.WriteLine($"fuse hook rpc: {method} failed ({errorCode})");
+    }
+}
+
+/// <summary>
 ///     A short-lived client to a running <c>fuse host</c> / <c>fuse mcp serve</c> over the UI transport, used by
 ///     the S3 ambient-verification commands (<c>fuse check --delta</c>, <c>fuse gate</c>) to fetch the
 ///     <c>fuse/check</c> delta from the resident process. It connects to the deterministic endpoint for a root
@@ -16,7 +48,7 @@ namespace Fuse.Cli.Rpc;
 ///     Never throws for the absence of a host: when no process is serving the root (the endpoint is missing or the
 ///     connect times out) or the host protocol does not match, it returns <c>null</c>, so a hook exits silently and
 ///     never blocks editing. The connect timeout bounds the no-host probe; a live host on the local machine
-///     connects well inside it.
+///     connects well inside it. Set <c>FUSE_HOOK_VERBOSE=1</c> to log swallowed RPC failures to stderr.
 /// </remarks>
 public static class FuseHostClient
 {
@@ -29,43 +61,15 @@ public static class FuseHostClient
     /// <param name="connectTimeout">How long to wait for a connection before giving up (the no-host probe bound).</param>
     /// <param name="cancellationToken">A token to cancel the call.</param>
     /// <returns>The delta from <c>fuse/check</c>, or <c>null</c> when no compatible host serves the root.</returns>
-    public static async Task<CheckDeltaDto?> TryCheckDeltaAsync(
-        string root, string session, TimeSpan connectTimeout, CancellationToken cancellationToken)
-    {
-        Stream? stream = null;
-        try
-        {
-            stream = await ConnectAsync(root, connectTimeout, cancellationToken);
-            if (stream is null)
-                return null;
-
-            var formatter = new SystemTextJsonFormatter();
-            formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
-            formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-            using var rpc = new JsonRpc(new HeaderDelimitedMessageHandler(
-                PipeWriter.Create(stream), PipeReader.Create(stream), formatter));
-            rpc.StartListening();
-
-            var handshake = await rpc.InvokeWithCancellationAsync<FuseHostHandshake>(
-                "fuse/handshake", [], cancellationToken);
-            // A protocol mismatch means a stale host; treat it as no host rather than risk a malformed exchange.
-            if (handshake.ProtocolVersion != FuseHostService.ProtocolVersion)
-                return null;
-
-            return await rpc.InvokeWithCancellationAsync<CheckDeltaDto>(
-                "fuse/check", [handshake.SessionToken, root, session], cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // No host, a stale endpoint, or a transient RPC error: stay silent so the hook never blocks editing.
-            return null;
-        }
-        finally
-        {
-            if (stream is not null)
-                await stream.DisposeAsync();
-        }
-    }
+    public static Task<CheckDeltaDto?> TryCheckDeltaAsync(
+        string root, string session, TimeSpan connectTimeout, CancellationToken cancellationToken) =>
+        TryInvokeAsync(
+            root,
+            "fuse/check",
+            connectTimeout,
+            (rpc, handshake, ct) => rpc.InvokeWithCancellationAsync<CheckDeltaDto>(
+                "fuse/check", [handshake.SessionToken, root, session], ct),
+            cancellationToken);
 
     /// <summary>
     ///     Asks the daemon serving a root to typecheck a proposed single-file edit against its live resident
@@ -79,41 +83,15 @@ public static class FuseHostClient
     /// <param name="connectTimeout">How long to wait for a connection before concluding no daemon serves the root.</param>
     /// <param name="cancellationToken">A token to cancel the call.</param>
     /// <returns>The overlay result, or null when no compatible daemon serves the root.</returns>
-    public static async Task<CheckOverlayResultDto?> TryCheckOverlayAsync(
-        string root, string relativeFilePath, string newContent, bool includeAnalyzers, TimeSpan connectTimeout, CancellationToken cancellationToken)
-    {
-        Stream? stream = null;
-        try
-        {
-            stream = await ConnectAsync(root, connectTimeout, cancellationToken);
-            if (stream is null)
-                return null;
-
-            var formatter = new SystemTextJsonFormatter();
-            formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
-            formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-            using var rpc = new JsonRpc(new HeaderDelimitedMessageHandler(
-                PipeWriter.Create(stream), PipeReader.Create(stream), formatter));
-            rpc.StartListening();
-
-            var handshake = await rpc.InvokeWithCancellationAsync<FuseHostHandshake>(
-                "fuse/handshake", [], cancellationToken);
-            if (handshake.ProtocolVersion != FuseHostService.ProtocolVersion)
-                return null;
-
-            return await rpc.InvokeWithCancellationAsync<CheckOverlayResultDto>(
-                "fuse/checkOverlay", [handshake.SessionToken, root, relativeFilePath, newContent, includeAnalyzers], cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            return null;
-        }
-        finally
-        {
-            if (stream is not null)
-                await stream.DisposeAsync();
-        }
-    }
+    public static Task<CheckOverlayResultDto?> TryCheckOverlayAsync(
+        string root, string relativeFilePath, string newContent, bool includeAnalyzers, TimeSpan connectTimeout, CancellationToken cancellationToken) =>
+        TryInvokeAsync(
+            root,
+            "fuse/checkOverlay",
+            connectTimeout,
+            (rpc, handshake, ct) => rpc.InvokeWithCancellationAsync<CheckOverlayResultDto>(
+                "fuse/checkOverlay", [handshake.SessionToken, root, relativeFilePath, newContent, includeAnalyzers], ct),
+            cancellationToken);
 
     /// <summary>
     ///     Fetches a running daemon's stats for a root (G5), or returns null when no compatible daemon serves it.
@@ -124,41 +102,51 @@ public static class FuseHostClient
     /// <param name="connectTimeout">How long to wait for a connection before concluding no daemon serves the root.</param>
     /// <param name="cancellationToken">A token to cancel the call.</param>
     /// <returns>The daemon stats, or null when no compatible daemon serves the root.</returns>
-    public static async Task<FuseHostStats?> TryStatsAsync(
-        string root, TimeSpan connectTimeout, CancellationToken cancellationToken)
-    {
-        Stream? stream = null;
-        try
-        {
-            stream = await ConnectAsync(root, connectTimeout, cancellationToken);
-            if (stream is null)
-                return null;
+    public static Task<FuseHostStats?> TryStatsAsync(
+        string root, TimeSpan connectTimeout, CancellationToken cancellationToken) =>
+        TryInvokeAsync(
+            root,
+            "fuse/stats",
+            connectTimeout,
+            (rpc, handshake, ct) => rpc.InvokeWithCancellationAsync<FuseHostStats>(
+                "fuse/stats", [handshake.SessionToken], ct),
+            cancellationToken);
 
-            var formatter = new SystemTextJsonFormatter();
-            formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
-            formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-            using var rpc = new JsonRpc(new HeaderDelimitedMessageHandler(
-                PipeWriter.Create(stream), PipeReader.Create(stream), formatter));
-            rpc.StartListening();
+    /// <summary>
+    ///     Asks the daemon to prepare the workspace index for store-backed reads (R19), or returns null when no
+    ///     compatible daemon serves the root. Never throws for the absence of a daemon.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="connectTimeout">How long to wait for a connection before concluding no daemon serves the root.</param>
+    /// <param name="cancellationToken">A token to cancel the call.</param>
+    /// <returns>The open-indexed result, or null when no compatible daemon serves the root.</returns>
+    public static Task<OpenIndexedResultDto?> TryOpenIndexedAsync(
+        string root, TimeSpan connectTimeout, CancellationToken cancellationToken) =>
+        TryInvokeAsync(
+            root,
+            "fuse/openIndexed",
+            connectTimeout,
+            (rpc, handshake, ct) => rpc.InvokeWithCancellationAsync<OpenIndexedResultDto>(
+                "fuse/openIndexed", [handshake.SessionToken, root], ct),
+            cancellationToken);
 
-            var handshake = await rpc.InvokeWithCancellationAsync<FuseHostHandshake>(
-                "fuse/handshake", [], cancellationToken);
-            if (handshake.ProtocolVersion != FuseHostService.ProtocolVersion)
-                return null;
-
-            return await rpc.InvokeWithCancellationAsync<FuseHostStats>(
-                "fuse/stats", [handshake.SessionToken], cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            return null;
-        }
-        finally
-        {
-            if (stream is not null)
-                await stream.DisposeAsync();
-        }
-    }
+    /// <summary>
+    ///     Asks the daemon to build or refresh the semantic index (R19), or returns null when no compatible daemon
+    ///     serves the root. Never throws for the absence of a daemon.
+    /// </summary>
+    /// <param name="root">The absolute repository root.</param>
+    /// <param name="connectTimeout">How long to wait for a connection before concluding no daemon serves the root.</param>
+    /// <param name="cancellationToken">A token to cancel the call.</param>
+    /// <returns>The index summary, or null when no compatible daemon serves the root.</returns>
+    public static Task<IndexResultDto?> TryIndexAsync(
+        string root, TimeSpan connectTimeout, CancellationToken cancellationToken) =>
+        TryInvokeAsync(
+            root,
+            "fuse/index",
+            connectTimeout,
+            (rpc, handshake, ct) => rpc.InvokeWithCancellationAsync<IndexResultDto>(
+                "fuse/index", [handshake.SessionToken, root], ct),
+            cancellationToken);
 
     /// <summary>
     ///     Probes whether a compatible daemon is serving a root (G5): connects to the root's endpoint and completes
@@ -173,25 +161,33 @@ public static class FuseHostClient
     public static async Task<bool> IsServingAsync(string root, TimeSpan connectTimeout, CancellationToken cancellationToken)
     {
         Stream? stream = null;
+        var activeMethod = "connect";
         try
         {
             stream = await ConnectAsync(root, connectTimeout, cancellationToken);
             if (stream is null)
+            {
+                FuseHookVerbose.LogRpcFailure("fuse/handshake", "no_host");
                 return false;
+            }
 
-            var formatter = new SystemTextJsonFormatter();
-            formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
-            formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-            using var rpc = new JsonRpc(new HeaderDelimitedMessageHandler(
-                PipeWriter.Create(stream), PipeReader.Create(stream), formatter));
+            using var rpc = CreateRpc(stream, CreateFormatter());
             rpc.StartListening();
 
+            activeMethod = "fuse/handshake";
             var handshake = await rpc.InvokeWithCancellationAsync<FuseHostHandshake>(
-                "fuse/handshake", [], cancellationToken);
-            return handshake.ProtocolVersion == FuseHostService.ProtocolVersion;
+                activeMethod, [], cancellationToken);
+            if (handshake.ProtocolVersion != FuseHostService.ProtocolVersion)
+            {
+                FuseHookVerbose.LogRpcFailure(activeMethod, "protocol_mismatch");
+                return false;
+            }
+
+            return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            FuseHookVerbose.LogRpcFailure(activeMethod, "rpc_error");
             return false;
         }
         finally
@@ -200,6 +196,65 @@ public static class FuseHostClient
                 await stream.DisposeAsync();
         }
     }
+
+    private static async Task<T?> TryInvokeAsync<T>(
+        string root,
+        string method,
+        TimeSpan connectTimeout,
+        Func<JsonRpc, FuseHostHandshake, CancellationToken, Task<T>> invoke,
+        CancellationToken cancellationToken)
+    {
+        Stream? stream = null;
+        var activeMethod = "connect";
+        try
+        {
+            stream = await ConnectAsync(root, connectTimeout, cancellationToken);
+            if (stream is null)
+            {
+                FuseHookVerbose.LogRpcFailure(method, "no_host");
+                return default;
+            }
+
+            using var rpc = CreateRpc(stream, CreateFormatter());
+            rpc.StartListening();
+
+            activeMethod = "fuse/handshake";
+            var handshake = await rpc.InvokeWithCancellationAsync<FuseHostHandshake>(
+                activeMethod, [], cancellationToken);
+            // A protocol mismatch means a stale host; treat it as no host rather than risk a malformed exchange.
+            if (handshake.ProtocolVersion != FuseHostService.ProtocolVersion)
+            {
+                FuseHookVerbose.LogRpcFailure(activeMethod, "protocol_mismatch");
+                return default;
+            }
+
+            activeMethod = method;
+            return await invoke(rpc, handshake, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // No host, a stale endpoint, or a transient RPC error: stay silent unless verbose mode is on.
+            FuseHookVerbose.LogRpcFailure(activeMethod, "rpc_error");
+            return default;
+        }
+        finally
+        {
+            if (stream is not null)
+                await stream.DisposeAsync();
+        }
+    }
+
+    private static SystemTextJsonFormatter CreateFormatter()
+    {
+        var formatter = new SystemTextJsonFormatter();
+        formatter.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, FuseHostJsonContext.Default);
+        formatter.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        return formatter;
+    }
+
+    private static JsonRpc CreateRpc(Stream stream, SystemTextJsonFormatter formatter) =>
+        new(new HeaderDelimitedMessageHandler(
+            PipeWriter.Create(stream), PipeReader.Create(stream), formatter));
 
     // Connects to the deterministic endpoint for a root: a named pipe on Windows, a Unix domain socket elsewhere.
     // Returns null (not throw) when nothing is serving, so the caller stays silent.

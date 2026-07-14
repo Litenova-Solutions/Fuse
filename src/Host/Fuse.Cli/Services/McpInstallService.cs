@@ -19,7 +19,8 @@ public sealed class McpInstallService
 
     private const string ServerName = "fuse";
 
-    // The client launches `fuse mcp serve`; both tokens are passed as the stdio command arguments.
+    // The client launches `fuse mcp serve` with no environment block: agent-first defaults (shared daemon,
+    // auto-update, background upgrade, build capture) ship in the binary. Opt-outs are documented under Advanced.
     private static readonly string[] ServeArguments = ["mcp", "serve"];
 
     /// <summary>

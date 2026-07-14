@@ -7,7 +7,9 @@ description: Narrow a context request to the code a task needs by localizing, re
 everything. It works against the warm semantic index in two steps: pick a
 **seed** set (by localizing a task, resolving named wiring, or diffing a git change), then
 expand from those seeds through the typed graph to a configurable depth, so you get the
-relevant neighborhood whole rather than a single file in isolation.
+relevant neighborhood whole rather than a single file in isolation. MCP review, MCP context, and
+offline fusion focus scoping all build the same `ContextPlan` type from the shared `Fuse.Scoping`
+module.
 
 There are three ways to seed a request.
 
@@ -138,7 +140,8 @@ Roslyn the graph is semantic; when a project falls back to syntax-only indexing 
 fewer edges. Resolution can still miss edges from dynamic dispatch or reflection because
 those targets are not visible to static analysis. Localization ranking rests on the
 indexed names, so a task that shares no vocabulary with the target can rank it low. The
-ranking and traversal are detailed in [Scoping internals](/docs/internals/scoping-internals).
+shared plan shape, centrality helpers, and packing rules are detailed in
+[Scoping internals](/docs/internals/scoping-internals).
 
 ## Try a Route
 

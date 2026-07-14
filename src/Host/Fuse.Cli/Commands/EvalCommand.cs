@@ -26,7 +26,7 @@ namespace Fuse.Cli.Commands;
 /// </remarks>
 [CliCommand(
     Name = "eval",
-    Description = "Run Fuse evaluation suites (semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance).",
+    Description = "Run Fuse evaluation suites (semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance, profile-v42).",
     ShortFormAutoGenerate = CliNameAutoGenerate.None,
     Parent = typeof(FuseCliCommand))]
 public sealed class EvalCommand
@@ -68,7 +68,7 @@ public sealed class EvalCommand
     }
 
     /// <summary>The suite to run: <c>semantics</c>, <c>review</c>, <c>localize</c>, <c>ranking</c>, or <c>agent</c>.</summary>
-    [CliArgument(Description = "The suite to run: semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance.")]
+    [CliArgument(Description = "The suite to run: semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance, profile-v42.")]
     public string Suite { get; set; } = "semantics";
 
     /// <summary>The benchmark root holding corpus.json, prs.json, and results. Defaults to tests/benchmarks under the current directory.</summary>
@@ -179,18 +179,24 @@ public sealed class EvalCommand
         var suite = BuildSuite(Suite.Trim().ToLowerInvariant());
         if (suite is null)
         {
-            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance.");
+            _consoleUI.WriteError($"Unknown suite '{Suite}'. Supported: semantics, review, localize, ranking, checkgate, diagbench, loop, agent, reduce, performance, profile-v42.");
             return;
         }
 
         var result = await suite.RunAsync(options, context.CancellationToken);
         _consoleUI.WriteResult(Reporting.FormatScorecard(result));
 
-        // The corpus-health suite writes its own machine-readable report (corpus-health.json) inside RunAsync;
-        // skip the generic SuiteResult write so it is not clobbered. All other suites write their SuiteResult.
+        // The corpus-health and profile-v42 suites write their own machine-readable reports inside RunAsync;
+        // skip the generic SuiteResult write so they are not clobbered. All other suites write their SuiteResult.
         if (suite.Name == "corpus-health" && Output is null)
         {
             _consoleUI.WriteStep($"Wrote results to {Path.Combine(options.ResultsRoot, CorpusHealthReport.FileName)}");
+            return;
+        }
+
+        if (suite.Name == "profile-v42" && Output is null)
+        {
+            _consoleUI.WriteStep($"Wrote results to {Path.Combine(options.ResultsRoot, ProfileV42Report.FileName)}");
             return;
         }
 
@@ -214,6 +220,7 @@ public sealed class EvalCommand
         "corpus-health" => new CorpusHealthSuite(_indexer),
         "corpus-prs" => new CorpusPrSuite(),
         "performance" => new PerformanceSuite(_indexer, _changeSource),
+        "profile-v42" => new ProfileV42Suite(_indexer, _changeSource),
         "reduce" => new ReductionSuite((dir, files, level, ct) =>
             ReduceRunner.ReduceFilesAsync(_orchestrator, _templateRegistry, dir, files, ParseLevel(level), null, ct)),
         _ => null

@@ -4,14 +4,55 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
-Planned for 4.2.0 (see [roadmap/v4.2-plan.md](roadmap/v4.2-plan.md)):
+## [4.2.0] - 2026-07-14
 
-- Split `WorkspaceIndexStore` into narrow stores; profile the index hot path first.
-- Semantic-tier provider seam (C# behind an interface; no second language in 4.2).
-- Unify Fusion and Retrieval scoping; delete the retired flat FTS generator.
-- CI job for `RequiresSdk` tests; finish `briefing.md` drift cleanup.
-- Unified MCP/CLI/host RPC contract documentation; host IPC and hook ergonomics.
-- Narrow `fuse update` process termination.
+### Added
+
+- CI SDK workflow (`.github/workflows/ci-sdk.yml`) runs `Category=RequiresSdk` integration tests on win-x64 and linux-x64 with the .NET 10 SDK; the default PR leg excludes them via `Category!=RequiresSdk`. `build/verify-ci-sdk.ps1` fails when either leg is missing or misconfigured.
+- `build/verify-briefing.ps1` fails on stale product claims in `briefing.md` (fourteen MCP tools, `ext/vscode`, retired tool names); wired into the default CI build job.
+- `FUSE_HOOK_VERBOSE=1` logs swallowed hook RPC failures to stderr with method name and error code; default remains silent.
+- `fuse update --force-kill-peers` restores the pre-4.2 broad peer termination behavior; the default path terminates only the updating tool's own child lineage and same-install peers.
+- Unified API surface reference (`reference/api-surfaces`) maps each user intent to the MCP tool, CLI command, and host RPC method; `ApiSurfacesDocParityTests` keeps the doc in sync with shipped tools and RPC methods.
+- `FUSE_HOST_RESTRICT_PIPE=1` restricts the Windows named pipe ACL to the current user; default remains open to local processes.
+- Recorded index hot-path profile artifact (`tests/benchmarks/results/profile-v42.json`) with schema validation in `ProfileV42ResultTests`; regenerate with `fuse eval profile-v42 --repo NodaTime`.
+- Narrow index store ports behind `WorkspaceIndexStore`: `IndexSchemaMigrator`, `FtsSearchEngine`, `SymbolGraphStore`, and `SessionStore`.
+- Shared `Fuse.Scoping` module with a single `ContextPlan` type used by Fusion focus scoping and MCP review/localize.
+- Semantic-tier provider seam (`ISemanticLanguageProvider`, `SemanticLanguageProviderRegistry`); C# registers through `CSharpSemanticLanguageProvider` from the Roslyn plugin; `Fuse.Semantics` no longer references the Roslyn plugin project directly.
+- Host RPC outcome tests for protocol version mismatch, served-root rejection, reconcile stamped headers, and `fuse_check` grade stamping.
+- `IndexCoordinator`: one writer queue per workspace root; cross-process contention returns `index_busy:` instead of throwing.
+- Stable operational error prefixes on MCP tools and mirrored CLI commands: `index_busy:`, `index_not_built:`, `workspace_not_found:`, `validation_error:`, `index_rebuilding:`, and `internal_error:`.
+- Fast `fuse_workspace action=status` and `action=doctor` summary header: read-only `index_meta` when `.fuse/fuse.db` exists; cold workspaces report `not_indexed` without creating the database.
+- `WorkspaceIndexStore.OpenForReadAsync` for warm read opens that verify schema without writing `index_meta`.
+- `fuse_check` and `fuse_test` run compiler-grade verification before opening the store; repair-packet enrichment is omitted with a named note when the store is unavailable.
+- Daemon-owned index writes (G5 phase 2): `fuse host` owns index open, reconcile, syntax-first, and semantic upgrade; `fuse mcp serve` delegates store-backed calls over the pipe when the daemon is active. `FuseHostService.ProtocolVersion` bumped to 8.
+- Availability headers on store-backed read tools lead with `index_state:` (`not_indexed`, `building_syntax`, `upgrade_pending`, `ready`, `index_busy`, `stale_as_of`) plus `files_indexed` when known; blocked reads return the header as the tool body within bounded time instead of hanging.
+- Corrupt or version-incompatible `fuse.db` self-heals: derived index data is deleted and rebuilt from source with serialized recovery per root; MCP callers receive `index_rebuilding:` instead of an unhandled exception.
+
+### Changed
+
+- `FUSE_DAEMON` defaults on for `fuse mcp serve`; set `FUSE_DAEMON=0` to run in-process without the shared `fuse host` daemon per repository.
+- `FUSE_AUTO_UPDATE` defaults on for `fuse mcp serve`; the updater runs after session exit without killing sibling sessions (`stopOtherHosts: false`). Set `FUSE_AUTO_UPDATE=0` to opt out.
+- `fuse mcp install` writes command-only client config (no `env` block); agent-first defaults (daemon, auto-update, background upgrade, build capture) ship in the binary unless explicitly opted out.
+- `fuse update` default peer termination is narrowed to the updating install's lineage; unrelated `fuse mcp serve` sessions in other repositories are not killed.
+- `fuse_workspace action=status` no longer triggers a full syntax-first index on a cold workspace; use `action=index` to build explicitly.
+- Warm `WorkspaceIndexStore` reads use `OpenForReadAsync` instead of write init, reducing lock contention during background semantic upgrade.
+- `briefing.md` body aligned with nine MCP tools, no VS Code extension (D15), and canonical benchmark figures from `tests/benchmarks/results`.
+- `roadmap/README.md` notes that `briefing.md` tracks shipped product, not the executable checklist.
+- `SECURITY.md` local-trust subsection documents host pipe limits and `FUSE_HOST_RESTRICT_PIPE`.
+- `AGENTS.md` design invariants updated for default-on daemon (D13), single-writer index, semantic provider seam, and index self-heal policy.
+
+### Removed
+
+- `FtsCandidateGenerator` and the `FUSE_FLAT_FTS=1` diagnostic flag; `LexicalCandidateGenerator` is the sole lexical retrieval path.
+
+### Fixed
+
+- `SqliteException` database locked during `OpenIndexedAsync` no longer escapes MCP tool boundaries as an opaque `An error occurred invoking ...` error; CLI `fuse find` no longer crashes with a stack trace on index lock.
+- Read-tool store opens and the per-read reconcile now apply a short (1 s) SQLite `busy_timeout`, so a contended store surfaces the `index_busy` availability header within a couple of seconds instead of blocking on the 30 s write-path timeout; cold index builds keep the long timeout. This makes the R20 "blocked reads return the header within bounded time" contract hold in practice.
+- Host RPC error responses serialize `StreamJsonRpc.Protocol.CommonErrorData` through the source-generated `FuseHostJsonContext`; previously any RPC method that threw surfaced a `NotSupportedException` at the transport instead of the actual error (the ambient-verification hooks then stayed silent on real failures).
+- `fuse_check` delta mode initializes the session-baseline store when the index is not yet built, matching the host RPC baseline path, instead of abstaining with "index unavailable" while a resident workspace is active.
+- Served-root binding enforced on every host RPC entry point that carries a `root` argument.
+- `operator.mdx` no longer overclaims automatic `fuse.db` recreation; corrupt index recovery matches the implemented self-heal path.
 
 ## [4.1.0] - 2026-07-14
 

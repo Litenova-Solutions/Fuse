@@ -1,4 +1,5 @@
 using Fuse.Retrieval;
+using Fuse.Scoping;
 using Xunit;
 
 namespace Fuse.Retrieval.Tests;

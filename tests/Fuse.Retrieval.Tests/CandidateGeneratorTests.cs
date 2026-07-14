@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Fuse.Retrieval.Tests;
 
-// P5.1: candidate generation per source (exact, lexical BM25F, path, diff).
+// P5.1 / R3: candidate generation per source (exact, lexical BM25F via LexicalCandidateGenerator, path, diff).
 public sealed class CandidateGeneratorTests : IAsyncLifetime
 {
     private readonly string _databasePath =

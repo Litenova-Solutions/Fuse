@@ -1,4 +1,5 @@
 using Fuse.Indexing;
+using Fuse.Scoping;
 
 namespace Fuse.Retrieval;
 
@@ -16,7 +17,7 @@ namespace Fuse.Retrieval;
 public sealed class GraphCentralityPrior
 {
     /// <summary>The maximum fractional boost a fully-central file receives (a capped, tuning-only multiplier).</summary>
-    public const double CentralityWeight = 0.10;
+    public const double CentralityWeight = GraphCentrality.RetrievalCentralityWeight;
 
     // Apply the prior only to the leading candidates that could enter the returned set, to bound the per-file
     // node lookups for file-only candidates.
@@ -58,7 +59,7 @@ public sealed class GraphCentralityPrior
             }
 
             var centrality = await CentralityForAsync(candidate, degree, cancellationToken);
-            var boosted = Math.Min(1.0, candidate.Score * (1.0 + CentralityWeight * centrality));
+            var boosted = GraphCentrality.ApplyRetrievalPrior(candidate.Score, centrality);
             adjusted.Add(candidate with { Score = boosted });
         }
 
@@ -95,18 +96,8 @@ public sealed class GraphCentralityPrior
         if (edges.Count == 0)
             return EmptyDegree;
 
-        var degree = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var edge in edges)
-        {
-            degree[edge.FromNodeId] = degree.GetValueOrDefault(edge.FromNodeId) + 1;
-            degree[edge.ToNodeId] = degree.GetValueOrDefault(edge.ToNodeId) + 1;
-        }
-
-        var max = degree.Values.Max();
-        if (max == 0)
-            return EmptyDegree;
-
-        return degree.ToDictionary(kv => kv.Key, kv => (double)kv.Value / max, StringComparer.Ordinal);
+        return GraphCentrality.NormalizedDegree(
+            edges.Select(edge => (edge.FromNodeId, edge.ToNodeId)));
     }
 
     private static readonly IReadOnlyDictionary<string, double> EmptyDegree =

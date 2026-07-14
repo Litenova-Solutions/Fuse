@@ -22,6 +22,40 @@ All semantic index data lives in a single SQLite database file named `fuse.db`. 
 
 Derived cache data (reduction output and per-run analysis index) lives in a sibling file `fuse-cache.db` in the same `.fuse/` directory (or `~/.fuse/fuse-cache.db` outside a repo). Corruption recovery on the cache file recreates only that database; it never deletes `fuse.db`.
 
+## Store modules (R9)
+
+`WorkspaceIndexStore` is the only public entry for host and MCP callers. Implementation is split across four internal ports in `Fuse.Indexing`; the facade wires lifecycle, delegates reads and writes, and owns the connection factory.
+
+| Port | Responsibility |
+|------|----------------|
+| `IndexSchemaMigrator` | Pragmas, `schema_version` migration and rebuild, relational DDL ensure, `index_meta` read/write, row counts for state |
+| `FtsSearchEngine` | FTS5 availability probe, `chunk_fts` indexing on chunk upsert/delete, BM25-ranked `SearchAsync` |
+| `SymbolGraphStore` | Files, projects, symbols, chunks (relational), nodes, edges, routes, DI and options bindings, co-change, graph and symbol queries |
+| `SessionStore` | `check_sessions` baselines and `claim_ledger` rows, session listing per workspace root |
+
+```mermaid
+flowchart TB
+    subgraph public [Public API]
+        WIS[WorkspaceIndexStore]
+    end
+    subgraph ports [Internal ports]
+        ISM[IndexSchemaMigrator]
+        FTS[FtsSearchEngine]
+        SGS[SymbolGraphStore]
+        SS[SessionStore]
+    end
+    DB[(.fuse/fuse.db)]
+    WIS --> ISM
+    WIS --> FTS
+    WIS --> SGS
+    WIS --> SS
+    SGS --> FTS
+    ISM --> DB
+    FTS --> DB
+    SGS --> DB
+    SS --> DB
+```
+
 The file uses WAL journal mode with `synchronous = NORMAL` and foreign keys on. It is a relational schema, not a key-value cache: separate tables hold files, projects, symbols, chunks, semantic nodes, typed edges, routes, DI registrations, and options bindings, plus an FTS5 virtual table over chunk text (path, name, declared symbols, signature, comments, body, and a subtokens field that holds the subword expansion of the chunk's identifiers so a prose query word matches a compound name). A `schema_version` row gates migration: a database older than the current version is dropped and rebuilt rather than migrated in place, so adding a full-text column (such as subtokens) is a version bump that rebuilds the index on the next run, with no incremental migration.
 
 The `files` table carries a `language` column tagged from the provider that claims each file's extension (for example `csharp`, `python`), so retrieval can filter or blend by language over the language-agnostic tables; symbols and nodes inherit their language through their `file_id`. Adding the column is a schema version bump (currently 14), so the index rebuilds on the next run.
@@ -51,6 +85,10 @@ Symbols carry a stable id so the same declaration keeps its identity across re-i
 ## Concurrency
 
 Writes within an index batch run in one transaction; reads use pooled connections and a per-connection busy timeout. Across processes, safety comes from WAL mode and content-addressed rows: because a row is derived from a content hash, a concurrent rebuild can only recompute the same bytes, never produce a conflicting answer. The MCP server and the host hold one store open across calls so the warm graph is shared by every call in the session.
+
+The `IndexCoordinator` (MCP host and CLI) enforces single-writer discipline per workspace root: an in-process queue serializes write paths (`InitializeAsync`, `fuse index`, background semantic upgrade), and a per-root named mutex (`fuse-index-writer-{hash}`) arbitrates cross-process contention. A second process that cannot acquire the writer mutex receives `index_busy:` instead of blocking on SQLite or surfacing an opaque exception. Foreground read tools use `OpenForReadAsync` and do not take the writer mutex, so warm reads can proceed while a background upgrade commits in chunks (per project and per 50 files).
+
+Warm foreground reads use a read-only open path (`OpenForReadAsync`): when `fuse.db` already exists at the current schema version, the store verifies the on-disk version and reads FTS availability from `index_meta` without writing metadata. That avoids turning every read into a meta write (which contended with background semantic upgrades under WAL). Write initialization (`InitializeAsync`) runs on first create, schema migration, incompatible-version rebuild, and explicit `fuse index`; it applies migrations, probes FTS5, and stamps `index_meta` once. A background upgrade writer and multiple concurrent read opens can therefore share the same populated database without the read path acquiring a write lock for meta updates.
 
 ## The reduction cache
 

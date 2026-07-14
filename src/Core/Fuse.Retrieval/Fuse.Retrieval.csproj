@@ -13,6 +13,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Fuse.Indexing\Fuse.Indexing.csproj"/>
+        <ProjectReference Include="..\Fuse.Scoping\Fuse.Scoping.csproj"/>
         <ProjectReference Include="..\Fuse.Semantics\Fuse.Semantics.csproj"/>
     </ItemGroup>
 </Project>

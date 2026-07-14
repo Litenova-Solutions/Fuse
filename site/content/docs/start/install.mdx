@@ -92,12 +92,17 @@ dotnet tool install -g Fuse --add-source src/Host/Fuse.Cli/nupkg
 
 Use `fuse update`, not a bare `dotnet tool update`. A running Fuse (an MCP server
 or an editor host) locks its own files on Windows, so a direct update fails with
-"Access is denied". `fuse update` stops the running hosts and hands the upgrade to
-a detached step that waits for the current process to exit before replacing the
-files:
+"Access is denied". `fuse update` stops only the Fuse processes from this install
+that are in the updating session's child lineage or that hold the install mutex
+(typically a `fuse host` for the same global-tool install), then hands the upgrade
+to a detached step that waits for the current process to exit before replacing the
+files. Unrelated `fuse mcp serve` peers in other repositories are left running by
+default. Use `--force-kill-peers` when you need the old behavior that stopped
+every Fuse process on the machine before updating:
 
 ```bash
 fuse update
+fuse update --force-kill-peers
 ```
 
 **You will be told when an update is available.** The CLI and the MCP server do a

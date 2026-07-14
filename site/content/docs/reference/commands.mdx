@@ -9,7 +9,19 @@ This page is for engineers choosing a command and for maintainers who need the e
 
 ## Purpose and scope
 
-The index lives in `.fuse/fuse.db` inside a repository, or under `FUSE_USER_DATA` outside one. Run `fuse index [path]` before one-shot CLI read commands. MCP read tools build the index on first use. Running `fuse` with no command prints connection and workflow guidance.
+The index lives in `.fuse/fuse.db` inside a repository, or under `FUSE_USER_DATA` outside one. Run `fuse index [path]` before one-shot CLI read commands. MCP read tools build the index on first use, except `fuse_workspace action=status` and the `fuse diagnostics` CLI command, which read `index_meta` only and return `not_indexed` without creating a database on a cold workspace. Running `fuse` with no command prints connection and workflow guidance.
+
+## Operational error prefixes
+
+CLI commands that open the store (`fuse find`, `fuse index`, `fuse diagnostics`) mirror the MCP prefixes on stderr, set exit code 1, and do not print a stack trace for expected failures:
+
+| Prefix | Meaning |
+|--------|---------|
+| `index_busy:` | Index database locked or busy |
+| `index_not_built:` | No index; run `fuse index` first |
+| `workspace_not_found:` | Workspace directory does not exist |
+| `validation_error:` | Invalid or incomplete arguments |
+| `internal_error:` | Unexpected failure |
 
 ## Summary
 
@@ -24,7 +36,7 @@ The index lives in `.fuse/fuse.db` inside a repository, or under `FUSE_USER_DATA
 | `fuse impact <symbol>` | Compute symbol impact or a package upgrade break set | yes | no |
 | `fuse test <symbol>` | Run the covering tests for a symbol | yes | no |
 | `fuse find <query>` | Find an exact symbol, path, or text match | yes | no |
-| `fuse diagnostics [path]` | Report index state | yes | no |
+| `fuse diagnostics [path]` | Report index state (fast read-only status) | yes | no |
 | `fuse doctor [path]` | Diagnose the semantic load tier and per-project downgrade reasons | no | no |
 | `fuse up [path]` | Report the environment-remediation plan (remedies per failure, workable subset); `--apply` applies the install-free NU1507 overlay and re-attempts the load | no | no |
 | `fuse reduce` | Compact a known set of files or content | no | no |
@@ -34,6 +46,30 @@ The index lives in `.fuse/fuse.db` inside a repository, or under `FUSE_USER_DATA
 | `fuse mcp install` | Register Fuse with an MCP client | no | no |
 | `fuse mcp serve` | Run the MCP server | n/a | first-use |
 | `fuse host` | Run the long-lived host service | n/a | yes |
+| `fuse update` | Update the global Fuse tool after stopping a narrow peer set | no | no |
+
+## fuse update
+
+Update the installed Fuse global tool. A running global tool locks its own files on
+Windows, so `fuse update` stops a narrow set of Fuse peers, then launches a
+detached script that waits for the current process to exit before running
+`dotnet tool update --global Fuse`.
+
+By default it stops only peers in the updating process child lineage and
+same-install `fuse host` processes that hold the install mutex. It does not stop
+unrelated `fuse mcp serve` sessions in other repositories. Add `--force-kill-peers`
+to restore the pre-4.2 behavior that stopped every Fuse process on the machine
+before updating.
+
+```text
+fuse update
+fuse update --to-version 4.2.0
+fuse update --force-kill-peers
+```
+
+Accepts `--to-version` (pin the NuGet version) and `--force-kill-peers` (stop every
+Fuse peer before updating). Reload your editor or MCP client afterward so it
+re-handshakes with the new tool surface.
 
 ## fuse index
 
@@ -143,7 +179,7 @@ Accepts `--path` and `--kind` (`symbol`, `path`, `text`, `all`).
 
 ## fuse diagnostics
 
-Report the index state: schema version, mode, status, record counts, and the store location.
+Report the index state: schema version, mode, status, record counts, `index_state`, and the store location. Uses the same fast read-only path as `fuse_workspace action=status`: when `.fuse/fuse.db` is absent it reports `not_indexed` without creating the database.
 
 ```text
 fuse diagnostics ./src

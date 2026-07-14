@@ -43,4 +43,31 @@ public sealed class ToolUpdatePlannerTests
         Assert.Contains("dotnet tool update --global Fuse", script);
         Assert.Contains("/tmp/u.log", script);
     }
+
+    [Fact]
+    public void BuildUpdaterScript_Windows_HealthChecksAndRollsBack()
+    {
+        // R33: the updater captures the previous version, health-checks the new binary, and rolls back on failure.
+        var script = ToolUpdatePlanner.BuildUpdaterScript(
+            isWindows: true, waitForProcessId: 1, dotnetArguments: "tool update --global Fuse", logPath: @"C:\tmp\u.log");
+
+        Assert.Contains("dotnet tool list --global", script); // captures the previous version.
+        Assert.Contains("fuse --version", script); // health check: the new binary starts and reports a version.
+        Assert.Contains("rolling back to $prev", script); // rollback path on failure.
+        Assert.Contains("--version $prev", script);
+        Assert.Contains("reindex scheduled", script); // healthy-switch signal.
+    }
+
+    [Fact]
+    public void BuildUpdaterScript_Posix_HealthChecksAndRollsBack()
+    {
+        var script = ToolUpdatePlanner.BuildUpdaterScript(
+            isWindows: false, waitForProcessId: 1, dotnetArguments: "tool update --global Fuse", logPath: "/tmp/u.log");
+
+        Assert.Contains("dotnet tool list --global", script);
+        Assert.Contains("fuse --version", script);
+        Assert.Contains("rolling back to $prev", script);
+        Assert.Contains("--version \"$prev\"", script);
+        Assert.Contains("reindex scheduled", script);
+    }
 }

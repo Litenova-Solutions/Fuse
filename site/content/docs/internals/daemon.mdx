@@ -46,6 +46,8 @@ Exactly one daemon serves a root: the single-instance lock (a per-user named mut
 
 Running daemons are visible. Each `fuse host` writes a small descriptor (served root, process id, version, start time) under `{user-data}/daemons/` on start and removes it on shutdown; `fuse_workspace action=doctor` lists them (`running daemons: N`, one line per daemon with its PID, version, and served root), pruning any descriptor whose process is no longer alive. So a stale or version-mismatched daemon is visible rather than an invisible orphan.
 
+In-session upgrade is staged with a health check and rollback (R33). The detached updater records the previously installed version, runs `dotnet tool update`, then health-checks the new binary (it starts and reports a version); on failure it rolls back to the previous version and warns, so an unattended upgrade never bricks the tool. A healthy switch logs `reindex scheduled on next open` (the extraction-contract check rebuilds the index if the contract changed, R22/R23).
+
 In-session upgrade is a clean handoff, not a kill race. Auto-update (default-on for `mcp serve`) launches a detached updater that waits for the current process to exit before running `dotnet tool update`, so the running server releases its own locked binary on exit rather than being killed mid-flight; sibling sessions are left running. After the client reconnects it finds one daemon at the new version (the single-instance lock) serving a working index (rebuilt if the extraction contract changed, R22/R23), with no manual `.fuse` wipe.
 
 ## Why one daemon

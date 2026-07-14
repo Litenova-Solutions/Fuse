@@ -100,6 +100,10 @@ public sealed class HostCommand
             IdleWindowFromEnv());
         var idleTask = idleMonitor.RunAsync(stopCts.Token);
 
+        // R28: publish this daemon to the machine-visible registry so doctor can list running daemons with their
+        // served root and version, and a crashed daemon's stale entry is pruned on the next read. One descriptor
+        // per root (the single-instance lock guarantees one daemon per root), removed on shutdown.
+        DaemonRegistry.Register(root, FuseHostService.HostVersion, DateTimeOffset.UtcNow.ToString("O"));
         try
         {
             if (OperatingSystem.IsWindows())
@@ -110,6 +114,10 @@ public sealed class HostCommand
         catch (OperationCanceledException)
         {
             // Normal shutdown path.
+        }
+        finally
+        {
+            DaemonRegistry.Deregister(root);
         }
 
         await idleTask; // let the idle monitor observe cancellation and stop cleanly

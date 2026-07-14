@@ -72,6 +72,12 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     public const string IndexIntegrityMetaKey = "index_integrity";
 
     /// <summary>
+    ///     The <c>index_meta</c> key under which an index pass records the files skipped during scanning (R35:
+    ///     too large, unreadable, permission-denied), so <c>doctor</c> can surface them.
+    /// </summary>
+    public const string SkippedFilesMetaKey = "skipped_files";
+
+    /// <summary>
     ///     The <c>index_meta</c> key under which <c>fuse index --from-capture</c> stamps the absolute path to the
     ///     bundle's portable compiler log (C2), so <c>fuse_check</c> can answer oracle-grade from the captured
     ///     compilation without building on a machine that cannot restore or build.

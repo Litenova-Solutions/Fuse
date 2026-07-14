@@ -2,6 +2,17 @@
 
 All notable changes to Fuse are documented here. The format is based on Keep a Changelog. Fuse 4.0.0 is the first public release; it carries the whole product and there is no prior public version to migrate from.
 
+## [Unreleased]
+
+Planned for 4.2.0 (see [roadmap/v4.2-plan.md](roadmap/v4.2-plan.md)):
+
+- Split `WorkspaceIndexStore` into narrow stores; profile the index hot path first.
+- Semantic-tier provider seam (C# behind an interface; no second language in 4.2).
+- Unify Fusion and Retrieval scoping; delete the retired flat FTS generator.
+- CI job for `RequiresSdk` tests; finish `briefing.md` drift cleanup.
+- Unified MCP/CLI/host RPC contract documentation; host IPC and hook ergonomics.
+- Narrow `fuse update` process termination.
+
 ## [4.1.0] - 2026-07-14
 
 ### Added

@@ -70,6 +70,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 - A search issued against a store missing `chunk_fts` now maps to the `index_rebuilding:` operational prefix (via `SearchIndexUnavailableException`) and triggers a rebuild, never a raw `internal_error: SQLite Error`.
 - FTS availability is a single source of truth (R23): `OpenForReadAsync` and `GetStateAsync` reconcile the `fts_available` stamp against the actual `chunk_fts` table, so the availability line and the status body never disagree, and a stamp of "available" over a store missing the table forces a rebuild rather than serving broken search.
 - A store with indexed symbols but zero chunks on an FTS-available runtime is never reported `index_state: ready` (R23); it reports `index_rebuilding` so the read path repairs it instead of serving silent-empty results.
+- Self-verifying index (R31): cheap state-based invariants (`IndexIntegrity`) are checked on open and status - schema version set, index mode set (never `unknown`), and chunks present when symbols exist on an FTS-available runtime. A store failing any invariant is never reported `ready`; it reports `index_rebuilding` and is repaired. A full index pass records the result under `index_integrity` in `index_meta`, and `fuse_workspace action=status`/`doctor` surface the integrity line.
 
 ## [4.1.0] - 2026-07-14
 

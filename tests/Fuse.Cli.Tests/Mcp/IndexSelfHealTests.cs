@@ -152,6 +152,36 @@ public sealed class IndexSelfHealTests : IDisposable
         Assert.Equal("index_rebuilding", indexState);
     }
 
+    [Fact]
+    public async Task ComputeIndexState_UnknownMode_NotReady()
+    {
+        // R31: a populated, searchable store whose index_mode was never stamped fails the integrity check and is
+        // never reported ready, even though it has chunks.
+        await using var store = new WorkspaceIndexStore(_databasePath);
+        await store.InitializeAsync(CancellationToken.None);
+        const string path = "src/Gadget.cs";
+        await store.UpsertFilesAsync(
+        [
+            new IndexedFileRecord(path, path, ".cs", 10, 0, "hash-g", Language: "csharp"),
+        ], CancellationToken.None);
+        await store.UpsertSymbolsAsync(
+        [
+            new SymbolRecord("sym-g", path, "type", "Gadget", "Shop.Gadget", IsPublicApi: true),
+        ], CancellationToken.None);
+        await store.UpsertChunksAsync(
+        [
+            new ChunkRecord("chunk-g", path, "type", "stable-g", 1, 5, "th-g", 10, 5, SymbolId: "sym-g", Name: "Gadget", Body: "class Gadget {}", SymbolsText: "Gadget"),
+        ], CancellationToken.None);
+        // Deliberately do not set index_mode: the store is searchable but its mode is unknown.
+
+        var state = await store.GetStateAsync(CancellationToken.None);
+        Assert.True(state.ChunkCount > 0);
+        Assert.True(string.IsNullOrWhiteSpace(state.Mode));
+
+        var indexState = await FuseTools.ComputeIndexStateAsync(store, state, CancellationToken.None);
+        Assert.Equal("index_rebuilding", indexState);
+    }
+
     private async Task SeedPopulatedAsync(string? stampedVersion = null, string? stampedExtractionVersion = null)
     {
         await using (var seed = new WorkspaceIndexStore(_databasePath))

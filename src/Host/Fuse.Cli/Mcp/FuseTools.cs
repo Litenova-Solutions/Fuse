@@ -207,6 +207,24 @@ public sealed partial class FuseTools
                 builder.AppendLine($"  {project.Name}: {(project.Loaded ? "loaded" : "not loaded")} - {project.Reason}");
         }
 
+        // R31: report the store's integrity so a self-inconsistent index (which is never served ready) is visible.
+        var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+        if (File.Exists(databasePath))
+        {
+            try
+            {
+                await using var integrityStore = new WorkspaceIndexStore(databasePath);
+                if (await integrityStore.OpenForReadAsync(cancellationToken) is WorkspaceIndexReadOpenStatus.Ready)
+                {
+                    var integrityState = await integrityStore.GetStateAsync(cancellationToken);
+                    builder.AppendLine($"index integrity: {IndexIntegrity.Check(integrityState).Summary()}");
+                }
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException)
+            {
+            }
+        }
+
         // R28: list the running fuse host daemons with their served root and version, so a stale or mismatched
         // daemon (accumulated across respawns or left after an upgrade) is visible rather than an invisible orphan.
         var daemons = Fuse.Cli.Rpc.DaemonRegistry.List();
@@ -612,6 +630,7 @@ public sealed partial class FuseTools
             builder.AppendLine($"index mode: {state.Mode ?? "unknown"}");
             builder.AppendLine($"files indexed: {state.FileCount}");
             builder.AppendLine($"full-text search: {(state.FtsAvailable ? "available" : "unavailable")}");
+            builder.AppendLine($"index integrity: {IndexIntegrity.Check(state).Summary()}"); // R31
         }
 
         var daemon = await Fuse.Cli.Rpc.FuseHostClient.TryStatsAsync(root, TimeSpan.FromMilliseconds(500), cancellationToken);
@@ -653,10 +672,10 @@ public sealed partial class FuseTools
         if (int.TryParse(staleRaw, out var stale) && stale > 0)
             return "stale_as_of";
 
-        // R23/R31: a store with symbols but zero chunks on an FTS-available runtime is internally inconsistent
-        // (search would return nothing over indexed source); never report it ready. Signal a rebuild so the read
-        // path repairs it rather than serving a silent-empty "ready" index.
-        if (state.FtsAvailable && state.SymbolCount > 0 && state.ChunkCount == 0)
+        // R31: a store that fails its integrity invariants (unknown mode, missing schema version, or symbols with
+        // no chunks on an FTS-available runtime) is internally inconsistent; never report it ready. Signal a
+        // rebuild so the read path repairs it rather than serving a silent-empty "ready" index.
+        if (!IndexIntegrity.Check(state).Healthy)
             return "index_rebuilding";
 
         return "ready";

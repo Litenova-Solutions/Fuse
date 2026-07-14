@@ -70,6 +70,9 @@ public sealed class DoctorCommand
         var builder = new StringBuilder();
         builder.AppendLine($"workspace: {root}");
         builder.AppendLine($"load tier: {diagnosis.Tier}");
+        builder.AppendLine($"selected solution: {diagnosis.SelectedSolution ?? "none (syntax-only)"}");
+        if (diagnosis.SelectionNote is not null)
+            builder.AppendLine($"WARNING: {diagnosis.SelectionNote}");
         builder.AppendLine($"projects loaded: {diagnosis.ProjectsLoaded}/{diagnosis.ProjectsTotal}");
         builder.AppendLine();
         if (diagnosis.Projects.Count == 0)

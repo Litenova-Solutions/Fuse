@@ -194,7 +194,11 @@ public sealed class SemanticIndexer
         else
             tier = "oracle-grade (all projects loaded clean)";
 
-        return new LoadDiagnosis(tier, loaded, total, snapshot.ProjectReports, snapshot.Diagnostics);
+        var selectedSolution = discovery.Kind == WorkspaceKind.Solution
+            ? discovery.SolutionPath
+            : discovery.Kind == WorkspaceKind.Projects ? $"{discovery.ProjectPaths.Count} project(s), no single solution" : null;
+        return new LoadDiagnosis(
+            tier, loaded, total, snapshot.ProjectReports, snapshot.Diagnostics, selectedSolution, discovery.SelectionNote);
     }
 
     /// <summary>
@@ -1007,9 +1011,19 @@ public sealed record FreshnessResult(int Checked, int Reconciled, int DirtyRemai
 /// <param name="ProjectsTotal">The total number of projects the loader opened.</param>
 /// <param name="Projects">The per-project load reports with their concrete reasons.</param>
 /// <param name="Diagnostics">The load diagnostics (SDK, restore, MSBuild) gathered during loading.</param>
+/// <param name="SelectedSolution">
+///     The solution (or project-set summary) discovery selected as the semantic target, so doctor names the exact
+///     workspace bound to the typed graph rather than leaving it implicit (R24).
+/// </param>
+/// <param name="SelectionNote">
+///     A warning when the selection was ambiguous, pinned, or fell back from a fixture-directory solution (R24);
+///     <see langword="null" /> for an unambiguous root-level solution.
+/// </param>
 public sealed record LoadDiagnosis(
     string Tier,
     int ProjectsLoaded,
     int ProjectsTotal,
     IReadOnlyList<ProjectLoadReport> Projects,
-    IReadOnlyList<DiagnosticRecord> Diagnostics);
+    IReadOnlyList<DiagnosticRecord> Diagnostics,
+    string? SelectedSolution = null,
+    string? SelectionNote = null);

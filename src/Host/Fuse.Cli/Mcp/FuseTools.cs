@@ -193,6 +193,9 @@ public sealed partial class FuseTools
         var diagnosis = await indexer.DiagnoseLoadAsync(root, cancellationToken);
         builder.AppendLine($"workspace: {root}");
         builder.AppendLine($"load tier: {diagnosis.Tier}");
+        builder.AppendLine($"selected solution: {diagnosis.SelectedSolution ?? "none (syntax-only)"}");
+        if (diagnosis.SelectionNote is not null)
+            builder.AppendLine($"WARNING: {diagnosis.SelectionNote}");
         builder.AppendLine($"projects loaded: {diagnosis.ProjectsLoaded}/{diagnosis.ProjectsTotal}");
         if (diagnosis.Projects.Count == 0)
         {

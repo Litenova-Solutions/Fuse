@@ -33,6 +33,29 @@ public sealed class WorkspaceExclusionsTests : IDisposable
     }
 
     [Fact]
+    public void LoadMergesFuseJsonIgnoreArray()
+    {
+        // R25: a fuse.json "ignore" array adds directory names to the exclusion set, alongside defaults.
+        File.WriteAllText(Path.Combine(_root, "fuse.json"), "{ \"ignore\": [\"vendored\", \"gen/output/\"] }");
+
+        var names = WorkspaceExclusions.LoadDirectoryNames(_root);
+
+        Assert.Contains("vendored", names, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("output", names, StringComparer.OrdinalIgnoreCase); // path reduced to final segment
+        Assert.Contains("node_modules", names, StringComparer.OrdinalIgnoreCase); // defaults still present
+    }
+
+    [Fact]
+    public void LoadMergesFuseJsonIgnoreSingleString()
+    {
+        File.WriteAllText(Path.Combine(_root, "fuse.json"), "{ \"ignore\": \"thirdparty\" }");
+
+        var names = WorkspaceExclusions.LoadDirectoryNames(_root);
+
+        Assert.Contains("thirdparty", names, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void LoadWithoutFuseIgnoreReturnsDefaults()
     {
         var names = WorkspaceExclusions.LoadDirectoryNames(_root);

@@ -79,11 +79,23 @@ public sealed class IndexCoordinator
         {
             if (backgroundSemanticUpgradeEnabled)
             {
-                await ExecuteWriteAsync(
+                // R27: bound the cold read. Run the syntax-first build in the background (deduped per root) and wait
+                // only up to the cold-read deadline; if it does not finish, signal building_syntax so the read
+                // returns a bounded header instead of blocking for the whole build, and the next read serves warm.
+                var built = await ColdStartCoordinator.Default.BuildWithDeadlineAsync(
                     root,
-                    (writeStore, ct) => indexer.IndexSyntaxFirstAsync(root, writeStore, ct),
+                    async _ =>
+                    {
+                        await ExecuteWriteAsync(
+                            root,
+                            (writeStore, wct) => indexer.IndexSyntaxFirstAsync(root, writeStore, wct),
+                            CancellationToken.None);
+                        scheduleSemanticUpgrade(indexer, root);
+                    },
+                    ColdStartCoordinator.DeadlineMilliseconds(),
                     cancellationToken);
-                scheduleSemanticUpgrade(indexer, root);
+                if (!built)
+                    throw new ColdStartInProgressException(root);
             }
             else
             {

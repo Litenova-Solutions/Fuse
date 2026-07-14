@@ -1077,10 +1077,11 @@ public sealed partial class FuseTools
         [Description("Session id; files already sent unchanged in this session are elided.")] string? sessionId = null,
         [Description("Produce a paste-ready PR handoff packet instead of the review context; refuses while the check session has unresolved introduced errors (U2).")] bool handoff = false,
         [Description("For handoff: the fuse_check session id to gate on (refuses while it has unresolved introduced errors).")] string checkSession = "",
+        [Description("Maximum changed files before review returns a bounded partial (changed-file list only). 0 uses FUSE_REVIEW_MAX_CHANGED_FILES or the default of 150.")] int maxChangedFiles = 0,
         CancellationToken cancellationToken = default) =>
         FuseOperationalErrors.ExecuteMcpAsync(() => FuseReviewCoreAsync(
             indexer, reductionPipeline, changeSource, sessionStore, path, changedSince, maxTokens, includeTests,
-            format, sessionId, handoff, checkSession, cancellationToken));
+            format, sessionId, handoff, checkSession, maxChangedFiles, cancellationToken));
 
     private static async Task<string> FuseReviewCoreAsync(
         SemanticIndexer indexer,
@@ -1095,6 +1096,7 @@ public sealed partial class FuseTools
         string? sessionId,
         bool handoff,
         string checkSession,
+        int maxChangedFiles,
         CancellationToken cancellationToken)
     {
         var root = Path.GetFullPath(path);
@@ -1104,6 +1106,18 @@ public sealed partial class FuseTools
             return await BuildHandoffAsync(indexer, changeSource, root, changedSince, checkSession, cancellationToken);
 
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+
+        // R26: bound a huge diff. Fetch the changed-file set first (a cheap git name-only diff); if it exceeds the
+        // cap, return the changed-file list and a narrow-the-base-ref note rather than running blast-radius
+        // resolution over hundreds of files unbounded. maxTokens bounds output; this bounds the graph work.
+        var changedFiles = await changeSource.GetChangedFilesAsync(root, changedSince, cancellationToken);
+        var cap = ReviewBounds.ResolveCap(maxChangedFiles);
+        if (ReviewBounds.ShouldBound(changedFiles.Count, cap))
+        {
+            var header = await OracleAvailabilityHeaderAsync(store, root, cancellationToken);
+            return ReviewBounds.FormatBoundedReview(header, changedSince, changedFiles, cap);
+        }
+
         var engine = new SemanticRetrievalEngine(store, changeSource);
         var plan = await engine.ReviewAsync(
             new ReviewRequest(root, changedSince, MaxTokens: maxTokens > 0 ? maxTokens : null, IncludeTests: includeTests),

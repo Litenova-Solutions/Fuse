@@ -13,10 +13,10 @@ using Microsoft.Extensions.Logging;
 namespace Fuse.Cli.Commands;
 
 /// <summary>
-///     Runs the Fuse host: a long-lived process that serves the warm engine to the VS Code extension over a
+///     Runs the Fuse host: a long-lived process that serves the warm engine to ambient-verification hooks over a
 ///     JSON-RPC endpoint (a named pipe on Windows, a Unix domain socket elsewhere), sharing the same
-///     <c>AddFuse</c> dependency graph the MCP server uses. This is the UI twin of <c>fuse mcp serve</c>: the
-///     agent reads the warm engine over MCP, the developer reads the same warm engine over this transport.
+///     <c>AddFuse</c> dependency graph the MCP server uses. This is the daemon twin of <c>fuse mcp serve</c>: the
+///     agent reads the warm engine over MCP, hooks read the same warm engine over this transport.
 /// </summary>
 /// <remarks>
 ///     The endpoint address is derived from the repository root (see <see cref="HostEndpoint" />), so a second
@@ -27,7 +27,7 @@ namespace Fuse.Cli.Commands;
 /// </remarks>
 [CliCommand(
     Name = "host",
-    Description = "Run the Fuse host: serve the warm engine to the VS Code extension over a named pipe or Unix socket.",
+    Description = "Run the Fuse host: serve the warm engine to ambient-verification hooks over a named pipe or Unix socket.",
     Parent = typeof(FuseCliCommand))]
 public sealed class HostCommand
 {

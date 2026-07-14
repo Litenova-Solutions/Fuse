@@ -17,5 +17,6 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\src\Core\Fuse.Indexing\Fuse.Indexing.csproj"/>
+        <ProjectReference Include="..\..\src\Core\Fuse.Reduction\Fuse.Reduction.csproj"/>
     </ItemGroup>
 </Project>

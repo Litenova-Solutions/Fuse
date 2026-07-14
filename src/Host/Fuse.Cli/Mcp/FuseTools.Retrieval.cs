@@ -33,7 +33,7 @@ public sealed partial class FuseTools
     /// <param name="expand">When true, the selected candidates are enriched with their typed-graph neighbors for discovery; off by default.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>Ranked candidates with reasons and token costs, or a navigation map when the request is not confident.</returns>
-    // Folded into fuse_find (kind=task) in U1; kept as an internal helper the find union calls, shimmed by name.
+    // Folded into fuse_find (kind=task) in U1; kept as an internal helper the find union calls.
     public static async Task<string> FuseLocalizeAsync(
         SemanticIndexer indexer,
         IChangeSource changeSource,
@@ -72,7 +72,7 @@ public sealed partial class FuseTools
     /// <param name="limitPerName">The maximum matches to return per requested name.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The signatures grouped by requested name, with a note for any name that did not match.</returns>
-    // Folded into fuse_find (kind=signatures) in U1; kept as an internal helper the find union calls, shimmed by name.
+    // Folded into fuse_find (kind=signatures) in U1; kept as an internal helper the find union calls.
     public static async Task<string> FuseSignaturesAsync(
         SemanticIndexer indexer,
         [Description("Symbol names to look up (simple name or fully qualified).")] string[] names,
@@ -147,7 +147,7 @@ public sealed partial class FuseTools
     /// <param name="limit">The maximum results to return.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The ranked exploration items with provenance and no bodies.</returns>
-    // Folded into fuse_find (kind=neighbors) in U1; kept as an internal helper the find union calls, shimmed by name.
+    // Folded into fuse_find (kind=neighbors) in U1; kept as an internal helper the find union calls.
     public static async Task<string> FuseNeighborsAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
@@ -427,6 +427,9 @@ public sealed partial class FuseTools
             var input = parsed[i];
             if (string.IsNullOrWhiteSpace(input.File) || input.Content is null)
                 return $"Error: candidate {i + 1} needs a file and content.";
+            var (candidateResolved, _, candidateError) = WorkspacePathResolver.ResolveWorkspacePath(root, input.File, "race");
+            if (!candidateResolved)
+                return candidateError!;
             var id = string.IsNullOrWhiteSpace(input.Id) ? $"#{i + 1}" : input.Id!;
             candidates.Add(new Fuse.Workspace.RaceCandidate(id, input.File, input.Content));
         }
@@ -576,6 +579,9 @@ public sealed partial class FuseTools
             case "apply-codefix":
                 if (string.IsNullOrWhiteSpace(diagnosticId) || string.IsNullOrWhiteSpace(file))
                     return "Error: apply-codefix needs a diagnosticId and a file.";
+                var (fixResolved, _, fixError) = WorkspacePathResolver.ResolveWorkspacePath(root, file, "refactor");
+                if (!fixResolved)
+                    return fixError!;
                 var fixResult = await new Fuse.Semantics.CodeFixApplier().ApplyCodeFixAsync(target, diagnosticId, file, cancellationToken);
                 if (!fixResult.Changed)
                     return $"cannot apply the fix for {diagnosticId} in {file}: {fixResult.Reason}";
@@ -713,6 +719,11 @@ public sealed partial class FuseTools
 
         if (string.IsNullOrWhiteSpace(file) || string.IsNullOrEmpty(content))
             return "Error: provide the changed file path and its proposed new content (or a session id for delta mode).";
+
+        var (fileResolved, absoluteFile, fileError) = WorkspacePathResolver.ResolveWorkspacePath(root, file, "check");
+        if (!fileResolved)
+            return fileError!;
+        file = WorkspacePathResolver.ToRepoRelative(root, absoluteFile!);
 
         var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
 
@@ -930,7 +941,7 @@ public sealed partial class FuseTools
     /// <param name="symbol">A symbol to resolve to its declaration.</param>
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The resolved target(s) with paths and evidence.</returns>
-    // Folded into fuse_find (kind=service/request/route/config) in U1; kept as an internal helper, shimmed by name.
+    // Folded into fuse_find (kind=service/request/route/config) in U1; kept as an internal helper the find union calls.
     public static async Task<string> FuseResolveAsync(
         SemanticIndexer indexer,
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
@@ -1026,7 +1037,14 @@ public sealed partial class FuseTools
         if (seedList.Count == 0)
             return "Error: provide at least one seed (symbol/file/service/request/config/route).";
 
-        var root = Path.GetFullPath(path);
+        var root = WorkspacePathResolver.ResolveRoot(path);
+        if (files is { Length: > 0 })
+        {
+            var fileError = WorkspacePathResolver.ValidateWorkspacePaths(root, files, "read");
+            if (fileError is not null)
+                return fileError;
+        }
+
         await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
         var engine = new SemanticRetrievalEngine(store);
         var plan = await engine.PlanContextAsync(

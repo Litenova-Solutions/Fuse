@@ -11,6 +11,9 @@ namespace Fuse.Fusion;
 ///     Builds <see cref="FusionRequest" /> instances with fluent configuration and template resolution.
 /// </summary>
 /// <remarks>
+///     Open-ended task localization and other query-path retrieval knobs live in <c>Fuse.Retrieval</c>, not
+///     in <see cref="ExperimentalOptions" />. The builder's experimental surface covers only focus/change
+///     scoping and emission shaping consumed by the fusion pipeline.
 ///     Extension and exclusion lists are resolved during <see cref="Build" /> using the same rules
 ///     as the legacy configuration resolver:
 ///     <list type="number">
@@ -49,6 +52,7 @@ public sealed class FusionRequestBuilder
     private bool _clearReductionCache = false;
     private bool _usePersistentIndex = false;
     private List<string>? _explicitFiles;
+    private ExperimentalOptions? _experimental;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FusionRequestBuilder" /> class.
@@ -331,6 +335,17 @@ public sealed class FusionRequestBuilder
     }
 
     /// <summary>
+    ///     Sets experimental knobs for focus/change scoping and emission shaping on the fusion run.
+    /// </summary>
+    /// <param name="experimental">The experimental options, or <c>null</c> to use defaults.</param>
+    /// <returns>The current builder instance.</returns>
+    public FusionRequestBuilder WithExperimentalOptions(ExperimentalOptions? experimental)
+    {
+        _experimental = experimental;
+        return this;
+    }
+
+    /// <summary>
     ///     Builds the fusion request after resolving extensions and exclusions.
     /// </summary>
     /// <returns>A configured <see cref="FusionRequest" />.</returns>
@@ -364,7 +379,8 @@ public sealed class FusionRequestBuilder
             _parallelism,
             _useReductionCache,
             _clearReductionCache,
-            _usePersistentIndex);
+            _usePersistentIndex,
+            _experimental);
     }
 
     private CollectionOptions ResolveCollectionOptions()

@@ -6,10 +6,10 @@ using Xunit;
 namespace Fuse.Cli.Tests.Host;
 
 // G5 gate (one truth): two clients reading the same daemon see one truth. A daemon holds the single resident
-// workspace; two independent pipe clients checking the same edit get the same diagnostics from it. Guarded: the
-// daemon needs the SDK plus the bundled build-capture worker to reach a resident workspace, so if it does not come
-// up within the window the test returns rather than failing (the same abstain shape as the other integration
-// tests). Runs where the environment supports it (CI with the SDK and the worker bundled beside fuse.dll).
+// workspace; two independent pipe clients checking the same edit get the same diagnostics from it. Guarded with
+// Category=RequiresSdk (see RequiresSdkIntegration): CI excludes it from the default test run; publish smoke fails
+// when the SDK or bundled worker cannot reach a resident workspace.
+[Trait(RequiresSdkIntegration.TraitName, RequiresSdkIntegration.TraitValue)]
 public sealed class DaemonOneTruthTests
 {
     private static string? RepoRoot([CallerFilePath] string sourceFilePath = "")
@@ -39,8 +39,7 @@ public sealed class DaemonOneTruthTests
     public async Task Two_clients_reading_one_daemon_see_one_truth()
     {
         var fuseDll = FuseDll();
-        if (fuseDll is null)
-            return; // No built CLI in this layout; nothing to drive.
+        RequiresSdkIntegration.RequireArtifact(fuseDll, "fuse.dll");
 
         var work = Path.Combine(Path.GetTempPath(), "fuse-onetruth-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
@@ -69,8 +68,7 @@ public sealed class DaemonOneTruthTests
         try
         {
             daemon = Process.Start(psi);
-            if (daemon is null)
-                return;
+            RequiresSdkIntegration.RequireCondition(daemon is not null, "could not start fuse host daemon");
 
             // Wait for the daemon to serve a resident workspace (build + rehydrate). Poll the overlay check until
             // it answers resident-grade or the window elapses; a non-resident environment abstains cleanly.
@@ -85,8 +83,9 @@ public sealed class DaemonOneTruthTests
                 await Task.Delay(1000);
             }
 
-            if (a is not { HasResident: true })
-                return; // The daemon never reached a resident workspace here (no SDK or worker); abstain.
+            RequiresSdkIntegration.RequireCondition(
+                a is { HasResident: true },
+                "the daemon never reached a resident workspace (no SDK or bundled build-capture worker)");
 
             // A second, independent client checks the same edit against the same daemon: one truth.
             var b = await FuseHostClient.TryCheckOverlayAsync(work, "Widget.cs", broken, includeAnalyzers: false, TimeSpan.FromSeconds(5), CancellationToken.None);

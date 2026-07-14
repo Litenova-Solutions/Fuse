@@ -88,6 +88,11 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         }
 
         _ftsAvailable = await TryCreateFtsAsync(connection, cancellationToken);
+        await WriteMetaAsync(
+            connection,
+            IndexAvailability.FtsAvailableMetaKey,
+            IndexAvailability.ToFtsMetaValue(_ftsAvailable),
+            cancellationToken);
         _initialized = true;
         _logger?.LogDebug(
             "Workspace index initialized at {DatabasePath} (schema v{SchemaVersion}, fts={FtsAvailable}).",
@@ -131,13 +136,23 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         var symbolCount = await CountAsync(connection, "symbols", cancellationToken);
         var status = fileCount == 0 ? WorkspaceIndexStatus.Cold : WorkspaceIndexStatus.Warm;
         var mode = await ReadMetaAsync(connection, "index_mode", cancellationToken);
-        return new WorkspaceIndexState(version, status, fileCount, symbolCount, mode);
+        var ftsAvailable = _initialized
+            ? _ftsAvailable
+            : IndexAvailability.ParseFtsMeta(
+                await ReadMetaAsync(connection, IndexAvailability.FtsAvailableMetaKey, cancellationToken));
+        return new WorkspaceIndexState(version, status, fileCount, symbolCount, mode, ftsAvailable);
     }
 
     /// <inheritdoc />
     public async Task SetMetaAsync(string key, string value, CancellationToken cancellationToken)
     {
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await WriteMetaAsync(connection, key, value, cancellationToken);
+    }
+
+    private static async Task WriteMetaAsync(
+        SqliteConnection connection, string key, string value, CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
         command.CommandText =
             "INSERT INTO index_meta(key, value) VALUES($k, $v) " +

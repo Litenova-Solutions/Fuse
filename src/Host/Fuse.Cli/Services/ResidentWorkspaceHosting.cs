@@ -36,7 +36,7 @@ public static class ResidentWorkspaceHosting
     ///     provider, warms the root in the background, and subscribes the watcher's batch to the registry.
     /// </summary>
     /// <param name="root">The absolute repository root the host serves.</param>
-    /// <param name="watcher">The host's file watcher; its <see cref="DebouncedFileWatcher.BatchChanged" /> drives updates.</param>
+    /// <param name="watcher">The host's file watcher; its <see cref="IResidentBatchWatcher.BatchChanged" /> drives updates.</param>
     /// <param name="indexer">The semantic indexer the registry projects resident edits through into the store.</param>
     /// <param name="log">A sink for non-fatal diagnostics (stderr), or null.</param>
     /// <param name="cancellationToken">The host's lifetime token.</param>
@@ -45,7 +45,7 @@ public static class ResidentWorkspaceHosting
     ///     default null provider. The caller owns the watcher's lifetime.
     /// </returns>
     public static IDisposable Enable(
-        string root, DebouncedFileWatcher watcher, SemanticIndexer indexer, Action<string>? log, CancellationToken cancellationToken)
+        string root, IResidentBatchWatcher watcher, SemanticIndexer indexer, Action<string>? log, CancellationToken cancellationToken)
     {
         var fullRoot = Path.GetFullPath(root);
         var registry = new ResidentWorkspaceRegistry();

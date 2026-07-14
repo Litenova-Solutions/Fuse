@@ -3,19 +3,36 @@
   "name": "io.github.Litenova-Solutions/fuse",
   "title": "Fuse",
   "description": "Local .NET compiler verification, change impact, and typed wiring for AI agents.",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "repository": {
     "url": "https://github.com/Litenova-Solutions/Fuse",
     "source": "github",
     "subfolder": "src/Host/Fuse.Cli"
   },
   "websiteUrl": "https://fuse.codes",
+  "icons": [
+    {
+      "src": "https://fuse.codes/fuse-icon.png",
+      "mimeType": "image/png",
+      "sizes": ["128x128"]
+    },
+    {
+      "src": "https://fuse.codes/fuse-icon-256.png",
+      "mimeType": "image/png",
+      "sizes": ["256x256"]
+    },
+    {
+      "src": "https://fuse.codes/fuse-icon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
   "packages": [
     {
       "registryType": "nuget",
       "registryBaseUrl": "https://api.nuget.org/v3/index.json",
       "identifier": "Fuse",
-      "version": "4.0.1",
+      "version": "4.1.0",
       "runtimeHint": "dnx",
       "transport": {
         "type": "stdio"

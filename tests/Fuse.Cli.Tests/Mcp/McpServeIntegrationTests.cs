@@ -1,4 +1,6 @@
 using Fuse.Cli.Mcp;
+using Fuse.Cli.Rpc;
+using Fuse.Cli.Tests.Host;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -49,6 +51,18 @@ public sealed class McpServeIntegrationTests
         var tools = await client.ListToolsAsync(cancellationToken: TestCancellation);
         var expected = ExpectedToolNames.OrderBy(n => n, StringComparer.Ordinal).ToArray();
         Assert.Equal(expected, tools.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
+
+        // fuse_workspace action=status stamps the verification grade and index availability (R3/T0).
+        var status = await client.CallToolAsync(
+            "fuse_workspace",
+            new Dictionary<string, object?> { ["action"] = "status", ["path"] = fixture.ProjectPath },
+            cancellationToken: TestCancellation);
+        var statusText = TextContent(status);
+        Assert.Contains("availability:", statusText);
+        Assert.Contains("index mode", statusText);
+        Assert.Contains("tier-1 build capture", statusText);
+        Assert.Contains("verify serves", statusText);
+        Assert.Contains("full-text search:", statusText);
 
         // fuse_workspace action=map builds the index on first use (the fixture is a git repo, so the store stays
         // inside it).
@@ -119,6 +133,62 @@ public sealed class McpServeIntegrationTests
         Assert.Contains(templateUris, u => u.StartsWith("fuse://status/", StringComparison.Ordinal));
         Assert.Contains(templateUris, u => u.StartsWith("fuse://diff/", StringComparison.Ordinal));
         Assert.Contains(templateUris, u => u.StartsWith("fuse://diagnostics/", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void HostRpc_ProtocolVersion_is_pinned_for_handshake_mismatch_detection()
+        => Assert.Equal(7, FuseHostService.ProtocolVersion);
+
+    [Fact]
+    public async Task StdioServer_FuseFind_returns_updated_symbol_after_on_disk_edit()
+    {
+        using var fixture = new McpFixtureProject();
+        fixture.AddFile("Services/WidgetService.cs", """
+            namespace App;
+            public class WidgetService
+            {
+                public void Spin() { }
+            }
+            """);
+
+        var transport = new StdioClientTransport(new StdioClientTransportOptions
+        {
+            Command = DotNetExecutablePath(),
+            Arguments = [FuseAssemblyPath(), "mcp", "serve"],
+            Name = "fuse-mcp-freshness-test",
+        });
+
+        await using var client = await McpClient.CreateAsync(transport, cancellationToken: TestCancellation);
+
+        var indexResult = await client.CallToolAsync(
+            "fuse_workspace",
+            new Dictionary<string, object?> { ["action"] = "index", ["path"] = fixture.ProjectPath },
+            cancellationToken: TestCancellation);
+        Assert.StartsWith("Indexed", TextContent(indexResult));
+
+        var beforeEdit = await client.CallToolAsync(
+            "fuse_find",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["query"] = "GearboxService", ["kind"] = "symbol" },
+            cancellationToken: TestCancellation);
+        Assert.DoesNotContain("GearboxService", TextContent(beforeEdit));
+
+        fixture.AddFile("Services/WidgetService.cs", """
+            namespace App;
+            public class WidgetService
+            {
+                public void Spin() { }
+            }
+            public class GearboxService
+            {
+                public void Engage() { }
+            }
+            """);
+
+        var afterEdit = await client.CallToolAsync(
+            "fuse_find",
+            new Dictionary<string, object?> { ["path"] = fixture.ProjectPath, ["query"] = "GearboxService", ["kind"] = "symbol" },
+            cancellationToken: TestCancellation);
+        Assert.Contains("GearboxService", TextContent(afterEdit));
     }
 
     private static CancellationToken TestCancellation => default;

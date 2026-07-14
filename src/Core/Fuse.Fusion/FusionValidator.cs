@@ -5,7 +5,7 @@ namespace Fuse.Fusion;
 
 /// <summary>
 ///     Validates fusion requests before execution, enforcing source-directory existence, mutually exclusive
-///     scoping modes, depth bounds, and query constraints.
+///     scoping modes and depth bounds.
 /// </summary>
 public sealed class FusionValidator
 {
@@ -24,8 +24,8 @@ public sealed class FusionValidator
     /// </summary>
     /// <param name="request">The fusion request to validate.</param>
     /// <returns>
-    ///     The validation error messages. Empty when the request is valid. Note that focus, change, and query
-    ///     scoping are mutually exclusive, so specifying more than one yields an error.
+    ///     The validation error messages. Empty when the request is valid. Focus and change scoping are
+    ///     mutually exclusive, so specifying both yields an error.
     /// </returns>
     public IReadOnlyList<string> Validate(FusionRequest request)
     {

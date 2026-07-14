@@ -15,7 +15,6 @@ using Fuse.Plugins.Abstractions.Markers;
 using Fuse.Plugins.Abstractions.Outline;
 using Fuse.Plugins.Abstractions.Patterns;
 using Fuse.Plugins.Abstractions.Reducers;
-using Fuse.Plugins.Abstractions.Scoping;
 using Fuse.Plugins.Abstractions.Skeleton;
 using Fuse.Reduction;
 using Fuse.Reduction.Caching;

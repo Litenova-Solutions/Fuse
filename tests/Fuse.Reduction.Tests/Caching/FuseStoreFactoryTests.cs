@@ -23,8 +23,9 @@ public sealed class FuseStoreFactoryTests
                 await store.FlushAsync();
             }
 
-            var expectedPath = Path.Combine(repo, ".fuse", "fuse.db");
+            var expectedPath = Path.Combine(repo, ".fuse", "fuse-cache.db");
             Assert.True(File.Exists(expectedPath));
+            Assert.False(File.Exists(Path.Combine(repo, ".fuse", "fuse.db")));
             Assert.False(Directory.Exists(Path.Combine(source, ".fuse")));
         }
         finally

@@ -173,18 +173,11 @@ public abstract class CommandBase
         var experimental = new Fuse.Emission.Serialization.JsonExperimentalOptionsDto
         {
             CentralityWeight = resolved.CentralityWeight,
-            HopDecay = resolved.HopDecay,
-            ExpansionWeight = resolved.ExpansionWeight,
-            QueryExpansion = resolved.QueryExpansion,
             TieredEmission = resolved.TieredEmission,
-            MultiQueryFusion = resolved.MultiQueryFusion,
-            BudgetAwareExpansion = resolved.BudgetAwareExpansion,
-            GitChurnWeight = resolved.GitChurnWeight,
             SketchHugeFiles = resolved.SketchHugeFiles,
             DowngradeBeforeDrop = resolved.DowngradeBeforeDrop,
-            DistributionalThesaurus = resolved.DistributionalThesaurus,
             ProximityEdges = resolved.ProximityEdges,
-            MemberLevelRetrieval = resolved.MemberLevelRetrieval,
+            ProjectGraph = resolved.ProjectGraph,
         };
 
         var json = RunReportBuilder.Build(result, request.Emission, experimental);

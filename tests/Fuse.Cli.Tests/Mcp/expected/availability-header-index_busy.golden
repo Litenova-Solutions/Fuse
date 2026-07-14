@@ -1,3 +1,5 @@
 index_state: index_busy
 files_indexed: 1
+grade: deferred (not semantic-ready)
+hint: the index is briefly contended; retry in a moment, or run a shared fuse host.
 availability: index mode syntax; full-text search available; tier-1 build capture {tier1}; verify serves {verify-grade}; workspace store-backed; up to date.

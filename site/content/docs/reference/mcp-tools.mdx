@@ -83,6 +83,7 @@ availability: index mode semantic; full-text search available; tier-1 build capt
 
 Workspace status and lifecycle: the loop's first stop and the one explicit tree-write path. Select the operation with `action`.
 
+- **`doctor`**: the semantic load tier, the selected solution (R24), per-project load reasons, the index integrity result (R31), the files skipped during indexing (R35: too large, unreadable), and the running `fuse host` daemons with their served roots and versions (R28).
 - **`status`** (default): the index mode, verification grade, freshness, and `index_state` (`not_indexed`, `building_syntax`, `upgrade_pending`, `ready`, `index_busy`, `stale_as_of`), plus `files_indexed` when known. This is a read-only fast path: it reads `index_meta` when `.fuse/fuse.db` exists and never starts a build on a cold workspace.
 - **`index`**: build or refresh the persistent semantic index. The index mode is `semantic` when the workspace loads through MSBuild/Roslyn, `partial` when some projects fall back, and `syntax` when no project loads.
 - **`map`**: the workspace map of indexed symbols, routes, and counts.

@@ -120,7 +120,8 @@ public sealed class SemanticIndexer
     {
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
-        var files = await ScanFilesAsync(root, cancellationToken);
+        var scan = await ScanFilesAsync(root, cancellationToken);
+        var files = scan.Files;
 
         // Tier 1 (build capture, oracle-grade) when enabled and available: run the out-of-process worker, which
         // builds the repo and rehydrates the exact compilations, and write its graph bundle. Falls back to the
@@ -151,6 +152,7 @@ public sealed class SemanticIndexer
             WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
             cancellationToken);
         await StampIntegrityAsync(store, cancellationToken); // R31: record the post-build integrity result.
+        await StampSkippedFilesAsync(store, scan.Skipped, cancellationToken); // R35: record skipped files.
 
         // Mine git co-change couplings so the open-ended scorer can recover sibling files of a multi-file change.
         // Best-effort and bounded (a commit cap, wide commits skipped); a non-repository or a git failure is a
@@ -238,7 +240,8 @@ public sealed class SemanticIndexer
         CancellationToken cancellationToken)
     {
         var root = Path.GetFullPath(rootDirectory);
-        var files = await ScanFilesAsync(root, cancellationToken);
+        var scan = await ScanFilesAsync(root, cancellationToken);
+        var files = scan.Files;
         var snapshot = new RoslynWorkspaceSnapshot(
             SemanticLoadSucceeded: false,
             Projects: [],
@@ -256,6 +259,7 @@ public sealed class SemanticIndexer
             WorkspaceIndexStore.ExtractionVersionMetaKey,
             WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
             cancellationToken);
+        await StampSkippedFilesAsync(store, scan.Skipped, cancellationToken); // R35: surface skips from the first pass.
         return result;
     }
 
@@ -281,7 +285,8 @@ public sealed class SemanticIndexer
     {
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
-        var files = await ScanFilesAsync(root, cancellationToken);
+        var scan = await ScanFilesAsync(root, cancellationToken);
+        var files = scan.Files;
         var capture = await TryBuildCaptureAsync(discovery, cancellationToken);
         SemanticIndexResult result;
         if (capture is not null)
@@ -320,10 +325,23 @@ public sealed class SemanticIndexer
 
     // Scans the extensions the registered language providers claim, plus the .NET config files needed for
     // discovery, so a non-C# spike language is surfaced to the indexer without hardwiring its extension.
-    private async Task<IReadOnlyList<IndexedFileRecord>> ScanFilesAsync(string root, CancellationToken cancellationToken)
+    private async Task<FileScanResult> ScanFilesAsync(string root, CancellationToken cancellationToken)
     {
         var scanExtensions = _syntaxProviders.Extensions.Concat(ConfigExtensions).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        return await _scanner.ScanAsync(new FileScanRequest(root, scanExtensions), cancellationToken);
+        return await _scanner.ScanWithSkipsAsync(new FileScanRequest(root, scanExtensions), cancellationToken);
+    }
+
+    // R35: record the files skipped during a scan (too large, unreadable) into index_meta so doctor can surface
+    // them; a bounded summary keeps the meta value small on a repo with many skips.
+    private static async Task StampSkippedFilesAsync(
+        IWorkspaceIndexStore store, IReadOnlyList<SkippedFile> skipped, CancellationToken cancellationToken)
+    {
+        const int MaxListed = 20;
+        var summary = skipped.Count == 0
+            ? "0"
+            : $"{skipped.Count}: " + string.Join("; ", skipped.Take(MaxListed).Select(s => $"{s.Path} ({s.Reason})"))
+              + (skipped.Count > MaxListed ? $"; and {skipped.Count - MaxListed} more" : string.Empty);
+        await store.SetMetaAsync(WorkspaceIndexStore.SkippedFilesMetaKey, summary, cancellationToken);
     }
 
     /// <summary>
@@ -690,7 +708,8 @@ public sealed class SemanticIndexer
         string? captureBundleDir = null)
     {
         var root = Path.GetFullPath(rootDirectory);
-        var files = await ScanFilesAsync(root, cancellationToken);
+        var scan = await ScanFilesAsync(root, cancellationToken);
+        var files = scan.Files;
         var result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);

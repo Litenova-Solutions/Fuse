@@ -218,6 +218,10 @@ public sealed partial class FuseTools
                 {
                     var integrityState = await integrityStore.GetStateAsync(cancellationToken);
                     builder.AppendLine($"index integrity: {IndexIntegrity.Check(integrityState).Summary()}");
+                    // R35: surface the files skipped during indexing (too large, unreadable), so a coverage gap is visible.
+                    var skipped = await integrityStore.GetMetaAsync(WorkspaceIndexStore.SkippedFilesMetaKey, cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(skipped) && skipped != "0")
+                        builder.AppendLine($"skipped files: {skipped}");
                 }
             }
             catch (Microsoft.Data.Sqlite.SqliteException)

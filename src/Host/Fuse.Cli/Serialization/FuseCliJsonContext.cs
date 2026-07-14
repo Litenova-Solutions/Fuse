@@ -4,6 +4,7 @@ using Fuse.Cli.Configuration;
 using Fuse.Cli.Configuration.McpInstall;
 using Fuse.Cli.Mcp;
 using Fuse.Cli.Rpc;
+using Fuse.Cli.Services;
 
 namespace Fuse.Cli.Serialization;
 
@@ -18,4 +19,5 @@ namespace Fuse.Cli.Serialization;
 [JsonSerializable(typeof(CopilotMcpConfig))]
 [JsonSerializable(typeof(RaceCandidateInput[]))]
 [JsonSerializable(typeof(DaemonDescriptor))]
+[JsonSerializable(typeof(WarmServiceRecent))]
 internal partial class FuseCliJsonContext : JsonSerializerContext;

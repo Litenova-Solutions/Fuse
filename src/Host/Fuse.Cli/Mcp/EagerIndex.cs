@@ -57,6 +57,9 @@ public static class EagerIndex
 
     private static async Task WarmSafelyAsync(SemanticIndexer indexer, string normalizedRoot, CancellationToken cancellationToken)
     {
+        // R40: remember this root as recently-used so the opt-in always-on warm service can keep it warm across
+        // sessions and reboots. Best-effort; never affects warming.
+        Services.WarmServiceState.Record(normalizedRoot);
         try
         {
             await IndexCoordinator.Default.OpenForWriteAsync(

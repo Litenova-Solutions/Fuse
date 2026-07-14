@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Fuse.Collection.FileSystem;
 
 namespace Fuse.Reduction.Caching;
@@ -91,6 +93,24 @@ public static class FuseStorePaths
                 repositoryRelativePath.Replace('/', Path.DirectorySeparatorChar));
         }
 
-        return Path.Combine(GetUserDataDirectory(), userDataFileName);
+        // R34: a non-git directory has no repository root to anchor its store, so it used to fall back to one
+        // shared machine-wide fuse.db. Two unrelated non-git directories then collided on a single store,
+        // polluting each other's results (a dogfood run mixed 32 MB of temp-path junk into the real store). Give
+        // each non-git root its own store under {user-data}/roots/{hash}/, keyed by the normalized absolute root,
+        // so non-git workspaces never share a store. FUSE_USER_DATA still redirects the base for tests.
+        return Path.Combine(GetUserDataDirectory(), "roots", RootHash(sourceDirectory), userDataFileName);
+    }
+
+    /// <summary>
+    ///     The per-root subdirectory name for a non-git directory's fallback store: a short, stable hex hash of the
+    ///     normalized absolute root, so two distinct non-git roots never share a store (R34).
+    /// </summary>
+    /// <param name="sourceDirectory">The non-git source directory.</param>
+    /// <returns>A stable 16-character hex hash.</returns>
+    public static string RootHash(string sourceDirectory)
+    {
+        var normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourceDirectory)).ToLowerInvariant();
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
+        return Convert.ToHexStringLower(hash.AsSpan(0, 8));
     }
 }

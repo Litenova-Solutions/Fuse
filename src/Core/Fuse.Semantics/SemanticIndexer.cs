@@ -157,13 +157,18 @@ public sealed class SemanticIndexer
         // Mine git co-change couplings so the open-ended scorer can recover sibling files of a multi-file change.
         // Best-effort and bounded (a commit cap, wide commits skipped); a non-repository or a git failure is a
         // no-op, so it never breaks indexing. Only the full pass mines; the syntax-first fast path skips it.
-        try
+        // R41: only mine co-change when it is enabled (FUSE_COCHANGE). The prior is default-off (D6), so the
+        // git log walk - a large share of the index hot path - is wasted work on the default index path.
+        if (GitCoChangeCollector.IsCollectionEnabled())
         {
-            await _coChangeCollector.CollectAndStoreAsync(root, store, cancellationToken);
-        }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Co-change is an optional prior; a mining or write failure must not fail the index.
+            try
+            {
+                await _coChangeCollector.CollectAndStoreAsync(root, store, cancellationToken);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Co-change is an optional prior; a mining or write failure must not fail the index.
+            }
         }
 
         return result;
@@ -312,12 +317,16 @@ public sealed class SemanticIndexer
             cancellationToken);
         await StampIntegrityAsync(store, cancellationToken); // R31: record the post-upgrade integrity result.
 
-        try
+        // R41: only mine co-change when enabled (FUSE_COCHANGE); the default-off prior (D6) makes it wasted work.
+        if (GitCoChangeCollector.IsCollectionEnabled())
         {
-            await _coChangeCollector.CollectAndStoreAsync(root, store, cancellationToken);
-        }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
-        {
+            try
+            {
+                await _coChangeCollector.CollectAndStoreAsync(root, store, cancellationToken);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+            }
         }
 
         return result;

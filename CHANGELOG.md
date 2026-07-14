@@ -55,6 +55,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 - `FtsCandidateGenerator` and the `FUSE_FLAT_FTS=1` diagnostic flag; `LexicalCandidateGenerator` is the sole lexical retrieval path.
 
+### Changed (indexing performance)
+
+- Faster indexing: the git co-change collector no longer runs on the default index path (R41). The co-change prior is off in the shipping ranking (Decision D6, net-negative on the corpus), so mining and storing co-change on every index - a large share of the index hot path in `profile-v42.json` (the `git log` walk) - was wasted work. It is now gated behind `FUSE_COCHANGE` (default off), removing that cost from every default index. No ranking or semantics change (the prior was already default-off, so its collected data was unused by default): `fuse eval semantics` remains 24/24 (recall/precision 1.0) and the ranking default arm is unaffected.
+
 ### Changed (on-disk layout)
 
 - Per-root fallback store for non-git directories (R34): a directory outside a git repository now gets its own store at `~/.fuse/roots/{hash}/fuse.db` (keyed by a hash of the normalized absolute path) instead of the single shared `~/.fuse/fuse.db`, so two unrelated non-git workspaces never collide on one store. `FUSE_USER_DATA` still redirects the base. Migration: the old shared `~/.fuse/fuse.db` fallback is abandoned, not migrated (it is derived data); delete it and the next index rebuilds per-root. The per-root stores under `~/.fuse/roots/` are safe to delete to reclaim space.

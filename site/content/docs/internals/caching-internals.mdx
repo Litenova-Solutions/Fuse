@@ -18,9 +18,11 @@ All semantic index data lives in a single SQLite database file named `fuse.db`. 
 | Context | Path |
 |---------|------|
 | Inside a git repo | `{repoRoot}/.fuse/fuse.db` at the directory that contains `.git`, not under the scoped subdirectory or process working directory |
-| Outside a git repo | `~/.fuse/fuse.db` (override the directory with the `FUSE_USER_DATA` environment variable) |
+| Outside a git repo | `~/.fuse/roots/{hash}/fuse.db`, where `{hash}` is a stable hash of the normalized absolute directory (override the base with the `FUSE_USER_DATA` environment variable) |
 
-Derived cache data (reduction output and per-run analysis index) lives in a sibling file `fuse-cache.db` in the same `.fuse/` directory (or `~/.fuse/fuse-cache.db` outside a repo). Corruption recovery on the cache file recreates only that database; it never deletes `fuse.db`.
+Derived cache data (reduction output and per-run analysis index) lives in a sibling file `fuse-cache.db` in the same directory as the index (`{repoRoot}/.fuse/fuse-cache.db` in a repo, or `~/.fuse/roots/{hash}/fuse-cache.db` outside one). Corruption recovery on the cache file recreates only that database; it never deletes `fuse.db`.
+
+Each non-git directory gets its own per-root store (R34), so two unrelated non-git workspaces never share a store and pollute each other's results. The per-root stores under `~/.fuse/roots/` are derived data: an abandoned one is safe to delete (the next index of that directory rebuilds it), so cleaning up `~/.fuse/roots/` reclaims space for directories you no longer index. The pre-4.2 single shared `~/.fuse/fuse.db` fallback is abandoned, not migrated; delete it if it lingers.
 
 ## Store modules (R9)
 

@@ -49,6 +49,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 - `FtsCandidateGenerator` and the `FUSE_FLAT_FTS=1` diagnostic flag; `LexicalCandidateGenerator` is the sole lexical retrieval path.
 
+### Changed (on-disk layout)
+
+- Per-root fallback store for non-git directories (R34): a directory outside a git repository now gets its own store at `~/.fuse/roots/{hash}/fuse.db` (keyed by a hash of the normalized absolute path) instead of the single shared `~/.fuse/fuse.db`, so two unrelated non-git workspaces never collide on one store. `FUSE_USER_DATA` still redirects the base. Migration: the old shared `~/.fuse/fuse.db` fallback is abandoned, not migrated (it is derived data); delete it and the next index rebuilds per-root. The per-root stores under `~/.fuse/roots/` are safe to delete to reclaim space.
+
 ### Fixed (release build)
 
 - Release build reliably propagates the version (R29): a `build/set-version.ps1` bump is now reflected in the built assembly without a manual clean. A `FuseStampVersionMarker` target (in `Directory.Build.props`) writes a generated marker only when `Version` changes, forcing `CoreCompile` to restamp the assembly version, so the incremental build can no longer serve a stale-version `bin`. `build/verify-version.ps1 -Build` builds `Fuse.Cli` and asserts the built `fuse --version` equals the codebase version and that the Release `fuse.dll` is produced, as a release safety net against a mis-versioned or missing artifact.

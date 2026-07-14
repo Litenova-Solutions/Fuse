@@ -241,6 +241,7 @@ public sealed class BuildGradeChecker
     {
         var psi = new ProcessStartInfo("dotnet")
         {
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -256,6 +257,9 @@ public sealed class BuildGradeChecker
         process.OutputDataReceived += (_, e) => { if (e.Data is not null) output.AppendLine(e.Data); };
         process.ErrorDataReceived += (_, e) => { if (e.Data is not null) output.AppendLine(e.Data); };
         process.Start();
+        // Close the child's stdin so it gets EOF, never the parent's inherited stdin (the live MCP client pipe
+        // inside `fuse mcp serve`), which could otherwise block the build. dotnet build never reads stdin here.
+        process.StandardInput.Close();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 

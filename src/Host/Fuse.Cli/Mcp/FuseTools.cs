@@ -387,6 +387,12 @@ public sealed partial class FuseTools
             await RecordIndexModeAsync(store, root, cancellationToken);
             return store;
         }
+        catch (ColdStartInProgressException)
+        {
+            // R27: the cold syntax build did not finish within the deadline; return a bounded building_syntax
+            // header as the tool body while the build continues, instead of blocking the read for the whole build.
+            throw new IndexBlockedReadException(await FormatBuildingSyntaxHeaderAsync(root, cancellationToken));
+        }
         catch (Exception ex) when (IsIndexContention(ex))
         {
             throw new IndexBlockedReadException(await FormatBlockedReadHeaderAsync(root, cancellationToken));
@@ -453,6 +459,30 @@ public sealed partial class FuseTools
 
     internal static Task<string> FormatNotIndexedAvailabilityHeaderAsync(string root, CancellationToken cancellationToken) =>
         FormatAvailabilityHeaderAsync(store: null, root, "not_indexed", filesIndexed: 0, cancellationToken);
+
+    // R27: the availability header for a cold read whose background syntax build is still running. Reports
+    // building_syntax plus files_indexed so far, so the agent sees progress and retries rather than blocking.
+    internal static async Task<string> FormatBuildingSyntaxHeaderAsync(string root, CancellationToken cancellationToken)
+    {
+        var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+        if (!File.Exists(databasePath))
+            return await FormatAvailabilityHeaderAsync(store: null, root, "building_syntax", filesIndexed: 0, cancellationToken);
+
+        try
+        {
+            await using var store = new WorkspaceIndexStore(databasePath);
+            if (await store.OpenForReadAsync(cancellationToken) is WorkspaceIndexReadOpenStatus.Ready)
+            {
+                var state = await store.GetStateAsync(cancellationToken);
+                return await FormatAvailabilityHeaderAsync(store, root, "building_syntax", state.FileCount, cancellationToken);
+            }
+        }
+        catch (SqliteException)
+        {
+        }
+
+        return await FormatAvailabilityHeaderAsync(store: null, root, "building_syntax", filesIndexed: 0, cancellationToken);
+    }
 
     internal static async Task<string> FormatBlockedReadHeaderAsync(string root, CancellationToken cancellationToken)
     {

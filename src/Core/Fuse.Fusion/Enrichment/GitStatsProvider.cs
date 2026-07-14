@@ -264,6 +264,7 @@ public sealed class GitStatsProvider : IGitStatsProvider
             FileName = gitPath,
             Arguments = arguments,
             WorkingDirectory = workingDirectory,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -281,6 +282,10 @@ public sealed class GitStatsProvider : IGitStatsProvider
         {
             return (-1, string.Empty, "Failed to start git process.");
         }
+
+        // Close git's stdin so it gets EOF, never the parent's inherited stdin (the live MCP client pipe in
+        // `fuse mcp serve`); git never reads stdin for these commands.
+        process.StandardInput.Close();
 
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);

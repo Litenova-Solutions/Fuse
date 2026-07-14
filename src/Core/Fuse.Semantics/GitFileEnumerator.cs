@@ -56,6 +56,7 @@ public sealed class GitFileEnumerator
         {
             FileName = "git",
             WorkingDirectory = workingDirectory,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -75,6 +76,10 @@ public sealed class GitFileEnumerator
             process = new Process { StartInfo = startInfo };
             if (!process.Start())
                 return null;
+
+            // Close git's stdin so it gets EOF, never the parent's inherited stdin (the live MCP client pipe in
+            // `fuse mcp serve`); git never reads stdin for these commands.
+            process.StandardInput.Close();
 
             var stdoutTask = process.StandardOutput.ReadToEndAsync(linked.Token);
             _ = process.StandardError.ReadToEndAsync(linked.Token);

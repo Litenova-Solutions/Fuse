@@ -48,14 +48,18 @@ public sealed class SemanticIndexer
     // Runs the tier-1 build-capture worker for the discovered workspace. Returns the captured graph on success, or
     // null when capture is disabled, the worker is unavailable, there is no build target, or the build failed.
     private async Task<Fuse.Indexing.CaptureResult?> TryBuildCaptureAsync(
-        WorkspaceDiscoveryResult discovery, CancellationToken cancellationToken)
+        WorkspaceDiscoveryResult discovery, string root, CancellationToken cancellationToken)
     {
         if (!BuildCaptureEnabled() || !_buildCaptureClient.IsAvailable)
             return null;
         var buildTarget = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
         if (buildTarget is null)
             return null;
-        var result = await _buildCaptureClient.CaptureAsync(buildTarget, BuildCaptureTimeout, cancellationToken);
+        // Pass the workspace root so the worker keys extracted symbol/node/route/DI/options file paths to it, matching
+        // the root-relative files.normalized_path the store resolves foreign keys against. Without it the worker fell
+        // back to each project's directory, producing project-relative paths that never resolved on a nested layout,
+        // so every symbol was dropped and every node stored an unlinked file_id.
+        var result = await _buildCaptureClient.CaptureAsync(buildTarget, BuildCaptureTimeout, cancellationToken, root);
         return result.Succeeded ? result : null;
     }
 
@@ -126,7 +130,7 @@ public sealed class SemanticIndexer
         // Tier 1 (build capture, oracle-grade) when enabled and available: run the out-of-process worker, which
         // builds the repo and rehydrates the exact compilations, and write its graph bundle. Falls back to the
         // MSBuildWorkspace load (tier 2), which itself falls back to syntax (tier 3), on any capture failure.
-        var capture = await TryBuildCaptureAsync(discovery, cancellationToken);
+        var capture = await TryBuildCaptureAsync(discovery, root, cancellationToken);
         SemanticIndexResult result;
         if (capture is not null)
         {
@@ -292,7 +296,7 @@ public sealed class SemanticIndexer
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
         var scan = await ScanFilesAsync(root, cancellationToken);
         var files = scan.Files;
-        var capture = await TryBuildCaptureAsync(discovery, cancellationToken);
+        var capture = await TryBuildCaptureAsync(discovery, root, cancellationToken);
         SemanticIndexResult result;
         if (capture is not null)
         {
@@ -815,14 +819,18 @@ public sealed class SemanticIndexer
         foreach (var (projectFilePath, compilation) in compilations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var projectDir = Path.GetDirectoryName(projectFilePath) ?? root;
             var loaded = new LoadedProject(
                 Name: Path.GetFileNameWithoutExtension(projectFilePath),
                 FilePath: projectFilePath,
                 AssemblyName: compilation.AssemblyName,
                 Compilation: compilation);
-            var symbols = _semanticSymbols.Extract(loaded, projectDir, cancellationToken);
-            var graph = _analysisRunner.Run(new SemanticAnalysisContext(loaded, projectDir), cancellationToken);
+            // Paths are made relative to the workspace root (not the project directory) so symbol and node
+            // rows match the root-relative files.normalized_path the store links foreign keys against. Passing
+            // the project directory here produced project-relative paths that never resolved, so every symbol
+            // was dropped (null file_id) and every node stored an unlinked file_id. Matches the root passed by
+            // IndexSemanticChunkedAsync.
+            var symbols = _semanticSymbols.Extract(loaded, root, cancellationToken);
+            var graph = _analysisRunner.Run(new SemanticAnalysisContext(loaded, root), cancellationToken);
             var errorCount = compilation.GetDiagnostics(cancellationToken)
                 .Count(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
             captured.Add(new CapturedProject(

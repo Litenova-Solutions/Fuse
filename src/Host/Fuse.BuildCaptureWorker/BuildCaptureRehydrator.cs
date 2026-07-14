@@ -23,7 +23,7 @@ public sealed class BuildCaptureRehydrator
     /// <param name="cancellationToken">A token to cancel the capture.</param>
     /// <returns>The capture result: the achieved outcome plus one entry per rehydrated C# compilation.</returns>
     public async Task<CaptureResult> CaptureAsync(
-        string buildTarget, TimeSpan buildTimeout, CancellationToken cancellationToken)
+        string buildTarget, TimeSpan buildTimeout, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         var binlogPath = Path.Combine(Path.GetTempPath(), $"fuse-capture-{Guid.NewGuid():N}.binlog");
         try
@@ -34,7 +34,7 @@ public sealed class BuildCaptureRehydrator
             if (exitCode != 0 || !File.Exists(binlogPath))
                 return CaptureResult.Failed(firstError is null ? $"build failed (exit {exitCode})" : $"build failed ({firstError})");
 
-            return RehydrateFromBinlog(binlogPath, cancellationToken);
+            return RehydrateFromBinlog(binlogPath, workspaceRoot, cancellationToken);
         }
         finally
         {
@@ -55,7 +55,7 @@ public sealed class BuildCaptureRehydrator
     /// <param name="cancellationToken">A token to cancel the capture.</param>
     /// <returns>The capture result (the extracted graph) on success, or a concrete failure; the complog is at <paramref name="complogPath" /> on success.</returns>
     public async Task<CaptureResult> ExportCompilerLogAsync(
-        string buildTarget, string complogPath, TimeSpan buildTimeout, CancellationToken cancellationToken)
+        string buildTarget, string complogPath, TimeSpan buildTimeout, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         var binlogPath = Path.Combine(Path.GetTempPath(), $"fuse-capture-{Guid.NewGuid():N}.binlog");
         try
@@ -97,7 +97,7 @@ public sealed class BuildCaptureRehydrator
             }
 
             // Rehydrate the graph from the binlog too, so the bundle carries the extracted graph next to the complog.
-            return RehydrateFromBinlog(binlogPath, cancellationToken);
+            return RehydrateFromBinlog(binlogPath, workspaceRoot, cancellationToken);
         }
         finally
         {
@@ -248,7 +248,7 @@ public sealed class BuildCaptureRehydrator
     /// <param name="complogOutDir">The directory to write the per-project portable compiler logs to.</param>
     /// <param name="cancellationToken">A token to cancel the merge.</param>
     /// <returns>The merged graph, or a failure when no fragment recorded a C# compilation or a secret was found.</returns>
-    public CaptureResult MergeFragmentsToBundle(string fragmentsDir, string complogOutDir, CancellationToken cancellationToken)
+    public CaptureResult MergeFragmentsToBundle(string fragmentsDir, string complogOutDir, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         if (!Directory.Exists(fragmentsDir))
             return CaptureResult.Failed($"fragments directory not found: {fragmentsDir}");
@@ -293,7 +293,7 @@ public sealed class BuildCaptureRehydrator
         if (written.Count == 0)
             return CaptureResult.Failed("no fragment recorded a C# compilation");
 
-        return MergeFragments(binlogs, cancellationToken);
+        return MergeFragments(binlogs, cancellationToken, workspaceRoot);
     }
 
     /// <summary>
@@ -307,7 +307,7 @@ public sealed class BuildCaptureRehydrator
     /// <param name="fragmentLogPaths">The per-project fragment log paths (binary or compiler logs).</param>
     /// <param name="cancellationToken">A token to cancel the merge.</param>
     /// <returns>The unioned capture result, or a failure when no fragment recorded a C# compilation.</returns>
-    public CaptureResult MergeFragments(IReadOnlyList<string> fragmentLogPaths, CancellationToken cancellationToken)
+    public CaptureResult MergeFragments(IReadOnlyList<string> fragmentLogPaths, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         var merged = new List<CapturedProject>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -316,7 +316,7 @@ public sealed class BuildCaptureRehydrator
             cancellationToken.ThrowIfCancellationRequested();
             if (!File.Exists(fragment))
                 continue;
-            var result = RehydrateFromBinlog(fragment, cancellationToken);
+            var result = RehydrateFromBinlog(fragment, workspaceRoot, cancellationToken);
             if (!result.Succeeded)
                 continue;
             foreach (var project in result.Projects)
@@ -340,6 +340,22 @@ public sealed class BuildCaptureRehydrator
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The capture result with one entry per rehydrated C# compilation.</returns>
     public CaptureResult RehydrateFromBinlog(string binlogPath, CancellationToken cancellationToken)
+        => RehydrateFromBinlog(binlogPath, workspaceRoot: null, cancellationToken);
+
+    /// <summary>
+    ///     Rehydrates every C# compilation in the binary log and extracts the symbol and wiring graph, keying file
+    ///     paths relative to <paramref name="workspaceRoot" /> so they match the consumer's root-relative file rows.
+    /// </summary>
+    /// <param name="binlogPath">The path to the binary log.</param>
+    /// <param name="workspaceRoot">
+    ///     The workspace root the consumer indexes against. Symbol, node, route, DI, and options file paths are made
+    ///     relative to it, so they resolve against the root-relative <c>files.normalized_path</c> the store links
+    ///     foreign keys against. When null or empty, falls back to each project's directory (the legacy basis, which
+    ///     only matched when the project sat at the workspace root).
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The capture result with one entry per rehydrated C# compilation.</returns>
+    public CaptureResult RehydrateFromBinlog(string binlogPath, string? workspaceRoot, CancellationToken cancellationToken)
     {
         using var reader = CompilerCallReaderUtil.Create(binlogPath);
         var symbolExtractor = new SemanticSymbolExtractor();
@@ -360,13 +376,18 @@ public sealed class BuildCaptureRehydrator
             // Run Fuse's semantic extraction over the rehydrated compilation (never MSBuildWorkspace), the crux of
             // tier-1: the worker produces the same symbol and wiring-graph data the in-process semantic pass does.
             var projectDir = Path.GetDirectoryName(call.ProjectFilePath) ?? Directory.GetCurrentDirectory();
+            // Normalize file paths against the workspace root (not the project directory) so symbol and node rows
+            // match the root-relative files.normalized_path the store links foreign keys against. Falling back to the
+            // project directory reproduces the pre-fix basis, which only matched when a project sat at the root; on a
+            // nested layout it produced project-relative paths that never resolved, dropping every symbol.
+            var normalizeRoot = string.IsNullOrEmpty(workspaceRoot) ? projectDir : workspaceRoot;
             var loaded = new LoadedProject(
                 Name: Path.GetFileNameWithoutExtension(call.ProjectFilePath) ?? call.ProjectFileName ?? "project",
                 FilePath: call.ProjectFilePath ?? "",
                 AssemblyName: compilation.AssemblyName,
                 Compilation: compilation);
-            var symbols = symbolExtractor.Extract(loaded, projectDir, cancellationToken);
-            var graph = analyzers.Run(new SemanticAnalysisContext(loaded, projectDir), cancellationToken);
+            var symbols = symbolExtractor.Extract(loaded, normalizeRoot, cancellationToken);
+            var graph = analyzers.Run(new SemanticAnalysisContext(loaded, normalizeRoot), cancellationToken);
 
             projects.Add(new CapturedProject(
                 Name: loaded.Name,

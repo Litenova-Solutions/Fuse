@@ -90,7 +90,7 @@ public sealed class CaptureCommand
         var complogTemp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"fuse-capture-{Guid.NewGuid():N}.complog");
         _consoleUI.WriteStep($"Capturing {target} (build + portable compiler-log export + secret scan)");
 
-        var result = await client.CaptureBundleAsync(target, complogTemp, TimeSpan.FromMinutes(15), context.CancellationToken);
+        var result = await client.CaptureBundleAsync(target, complogTemp, TimeSpan.FromMinutes(15), context.CancellationToken, root);
         if (!result.Succeeded)
         {
             TryDelete(complogTemp);
@@ -125,7 +125,7 @@ public sealed class CaptureCommand
         var complogTemp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"fuse-merge-{Guid.NewGuid():N}");
         _consoleUI.WriteStep($"Merging capture fragments in {fragmentsDir} (secret scan per fragment); no build");
 
-        var result = await client.MergeFragmentsAsync(fragmentsDir, complogTemp, TimeSpan.FromMinutes(10), cancellationToken);
+        var result = await client.MergeFragmentsAsync(fragmentsDir, complogTemp, TimeSpan.FromMinutes(10), cancellationToken, root);
         if (!result.Succeeded)
         {
             TryDeleteDir(complogTemp);

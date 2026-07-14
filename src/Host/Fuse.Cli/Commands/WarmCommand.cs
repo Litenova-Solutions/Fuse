@@ -59,7 +59,7 @@ public sealed class WarmCommand
     {
         if (!string.IsNullOrWhiteSpace(Service))
         {
-            RunServiceAction(Service.Trim().ToLowerInvariant());
+            await RunServiceActionAsync(Service.Trim().ToLowerInvariant(), context.CancellationToken);
             return;
         }
 
@@ -75,29 +75,59 @@ public sealed class WarmCommand
         _consoleUI.WriteResult($"warmed: {root} (syntax-first index built; the semantic upgrade continues in the background).");
     }
 
-    // R40: the opt-in always-on warm service surface. Reports the platform-native register/unregister command and
-    // the first-run notice. The service is store-backed, LRU-capped, and battery-aware (WarmService); it is never
+    // R40: the opt-in always-on warm service surface. install/uninstall actually attempt the platform
+    // registration and fall back to the manual command on failure (option 1); run is the service loop that
+    // re-warms recently-used repos, battery-aware. The service is store-backed and LRU-capped; it is never
     // installed by `fuse mcp install`.
-    private void RunServiceAction(string action)
+    private async Task RunServiceActionAsync(string action, CancellationToken cancellationToken)
     {
         var invocation = Environment.ProcessPath ?? "fuse";
         switch (action)
         {
             case "install":
-                _consoleUI.WriteResult(
-                    $"warm service ({WarmServiceDefinition.PlatformMechanism()}): opt-in, store-backed, LRU-capped at {WarmServiceLru.DefaultCap} repos, battery-aware." + Environment.NewLine +
-                    $"register with: {WarmServiceDefinition.InstallCommand(invocation)}" + Environment.NewLine +
-                    WarmServiceDefinition.FirstRunNotice());
+                var installResult = WarmServiceInstaller.Install(invocation);
+                _consoleUI.WriteResult(installResult.Message);
+                if (!installResult.Succeeded)
+                    Environment.ExitCode = 1;
                 break;
             case "uninstall":
-                _consoleUI.WriteResult(
-                    $"warm service uninstall ({WarmServiceDefinition.PlatformMechanism()}): {WarmServiceDefinition.UninstallCommand()}");
+                var uninstallResult = WarmServiceInstaller.Uninstall();
+                _consoleUI.WriteResult(uninstallResult.Message);
+                if (!uninstallResult.Succeeded)
+                    Environment.ExitCode = 1;
+                break;
+            case "run":
+                await RunServiceLoopAsync(cancellationToken);
                 break;
             case "status":
             default:
+                var repos = WarmServiceState.Recent();
                 _consoleUI.WriteResult(
-                    $"warm service: opt-in ({WarmServiceDefinition.PlatformMechanism()}); install with 'fuse warm --service install', remove with 'fuse warm --service uninstall'. Never installed by 'fuse mcp install'.");
+                    $"warm service: opt-in ({WarmServiceDefinition.PlatformMechanism()}), store-backed, LRU-capped at {WarmServiceLru.DefaultCap} repos, battery-aware. " +
+                    $"Recently-used repos tracked: {repos.Count}. Install with 'fuse warm --service install', remove with 'fuse warm --service uninstall'. Never installed by 'fuse mcp install'.");
                 break;
+        }
+    }
+
+    // The warm-service loop (R40): re-warm the recently-used repos on an interval, pausing on battery or high load.
+    private async Task RunServiceLoopAsync(CancellationToken cancellationToken)
+    {
+        _consoleUI.WriteStep("Fuse warm service running (store-backed, battery-aware; Ctrl+C to stop).");
+        var interval = TimeSpan.FromMinutes(10);
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var repos = WarmServiceState.Recent();
+            var paused = WarmServicePolicy.ShouldPause(PowerState.OnBattery(), highLoad: false);
+            await WarmServiceRunner.RunOnceAsync(
+                repos, paused, (root, ct) => EagerIndex.WarmAsync(_indexer, root, ct), cancellationToken);
+            try
+            {
+                await Task.Delay(interval, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
     }
 }

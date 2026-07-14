@@ -60,6 +60,59 @@ public sealed class WarmServiceTests
     }
 
     [Fact]
+    public void Install_WhenRegistrationSucceeds_ReportsInstalled()
+    {
+        var result = WarmServiceInstaller.Install("/usr/local/bin/fuse", runner: _ => 0);
+
+        Assert.True(result.Succeeded);
+        Assert.Contains("installed", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Install_WhenRegistrationFails_FallsBackToManualCommand()
+    {
+        // Option 1: install attempts registration and, on failure (for example no elevation), falls back to the
+        // exact manual command rather than silently failing.
+        var result = WarmServiceInstaller.Install("/usr/local/bin/fuse", runner: _ => 1);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("Run manually", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(WarmService.ServiceName, result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Uninstall_WhenSucceeds_ReportsUninstalled_ElseFallsBack()
+    {
+        Assert.True(WarmServiceInstaller.Uninstall(runner: _ => 0).Succeeded);
+        var failed = WarmServiceInstaller.Uninstall(runner: _ => 1);
+        Assert.False(failed.Succeeded);
+        Assert.Contains("run manually", failed.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Runner_Warms_WhenNotPaused_And_SkipsWhenPaused()
+    {
+        var warmed = 0;
+        Func<string, CancellationToken, Task> warmOne = (_, _) => { Interlocked.Increment(ref warmed); return Task.CompletedTask; };
+        var repos = new[] { "/r/a", "/r/b" };
+
+        Assert.Equal(0, await WarmServiceRunner.RunOnceAsync(repos, paused: true, warmOne, CancellationToken.None));
+        Assert.Equal(0, warmed);
+
+        Assert.Equal(2, await WarmServiceRunner.RunOnceAsync(repos, paused: false, warmOne, CancellationToken.None));
+        Assert.Equal(2, warmed);
+    }
+
+    [Fact]
+    public void State_RecordsAndReturnsRecentRepo()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-warm-state", Guid.NewGuid().ToString("N"));
+        WarmServiceState.Record(root);
+
+        Assert.Contains(WarmServiceState.Recent(), r => string.Equals(Path.GetFullPath(r), Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void McpInstall_NeverInstallsTheWarmService()
     {
         // R40 guardrail: `fuse mcp install` must never install the always-on service; it stays opt-in via

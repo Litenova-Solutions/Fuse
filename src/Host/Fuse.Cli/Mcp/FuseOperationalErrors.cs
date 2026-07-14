@@ -1,6 +1,7 @@
 using Fuse.Cli.Services;
 using Fuse.Fusion;
 using Fuse.Fusion.Scoping;
+using Fuse.Indexing;
 using Microsoft.Data.Sqlite;
 
 namespace Fuse.Cli.Mcp;
@@ -59,6 +60,8 @@ internal static class FuseOperationalErrors
                 return Format(InternalErrorPrefix, "operation canceled.");
             case IndexRebuildingException ex:
                 return Format(IndexRebuildingPrefix, ex.Message);
+            case SearchIndexUnavailableException ex:
+                return Format(IndexRebuildingPrefix, ex.Message);
             case IndexBusyException ex:
                 return Format(IndexBusyPrefix, ex.Message);
             case FusionValidationException ex:
@@ -67,6 +70,10 @@ internal static class FuseOperationalErrors
                 return Format(ValidationErrorPrefix, ex.Message);
             case SqliteException ex when IsSqliteBusyOrLocked(ex):
                 return Format(IndexBusyPrefix, "the index database is locked or busy; retry shortly or use a shared fuse host.");
+            case SqliteException ex when IsMissingSearchTable(ex):
+                // R23: a search issued against a store missing chunk_fts must never surface as a raw internal error;
+                // it is a rebuildable derived-data gap, so it maps to index_rebuilding: and the read path rebuilds.
+                return Format(IndexRebuildingPrefix, "the full-text search index is missing; the index is rebuilding.");
             case SqliteException ex:
                 return Format(InternalErrorPrefix, ex.Message);
             case IOException ex when IsSharingViolation(ex):
@@ -115,6 +122,10 @@ internal static class FuseOperationalErrors
 
     private static bool IsSqliteBusyOrLocked(SqliteException exception) =>
         exception.SqliteErrorCode is 5 or 6; // SQLITE_BUSY, SQLITE_LOCKED
+
+    private static bool IsMissingSearchTable(SqliteException exception) =>
+        exception.SqliteErrorCode == 1 // SQLITE_ERROR
+        && exception.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsSharingViolation(IOException exception) =>
         exception.HResult is unchecked((int)0x80070020); // ERROR_SHARING_VIOLATION

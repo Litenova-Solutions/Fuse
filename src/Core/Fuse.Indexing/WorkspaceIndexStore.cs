@@ -112,7 +112,8 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         await IndexSchemaMigrator.EnsureTablesAsync(connection, cancellationToken);
 
         var storedVersion = await IndexSchemaMigrator.ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
-        if (!FuseBuildInfo.IsCompatible(storedVersion))
+        var versionRebuilt = !FuseBuildInfo.IsCompatible(storedVersion);
+        if (versionRebuilt)
         {
             _logger?.LogInformation(
                 "Index at {DatabasePath} was built by Fuse {StoredVersion}; rebuilding for {CurrentVersion}.",
@@ -121,9 +122,40 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
                 FuseBuildInfo.Current);
             await IndexSchemaMigrator.RebuildAsync(connection, cancellationToken);
             _schemaVersion = WorkspaceIndexSchema.TargetVersion;
-            return new WorkspaceIndexInitializeOutcome(true, $"after upgrade to {FuseBuildInfo.Current}");
         }
 
+        // R23: a version-compatible store can still be internally inconsistent - it has indexed files but the
+        // chunk_fts table went missing (a store rebuilt without FTS). Recreating an empty chunk_fts here would
+        // leave search silent-empty over real source. Detect the inconsistency and force a full derived-data
+        // rebuild so the caller re-indexes and repopulates both chunks and FTS, rather than serving a broken index.
+        if (!versionRebuilt)
+        {
+            var fileCount = await IndexSchemaMigrator.CountAsync(connection, "files", cancellationToken);
+            var ftsStamped = IndexAvailability.ParseFtsMeta(
+                await IndexSchemaMigrator.ReadMetaAsync(connection, IndexAvailability.FtsAvailableMetaKey, cancellationToken));
+            if (fileCount > 0 && ftsStamped
+                && !await IndexSchemaMigrator.TableExistsAsync(connection, "chunk_fts", cancellationToken))
+            {
+                _logger?.LogWarning(
+                    "Index at {DatabasePath} has {FileCount} files but chunk_fts is missing; rebuilding derived data.",
+                    _connectionFactory.DatabasePath,
+                    fileCount);
+                await IndexSchemaMigrator.RebuildAsync(connection, cancellationToken);
+                var ftsRepaired = await _fts.TryCreateAsync(connection, cancellationToken);
+                await IndexSchemaMigrator.WriteMetaAsync(
+                    connection,
+                    IndexAvailability.FtsAvailableMetaKey,
+                    IndexAvailability.ToFtsMetaValue(ftsRepaired),
+                    cancellationToken);
+                MarkInitialized(_schemaVersion, ftsRepaired);
+                return new WorkspaceIndexInitializeOutcome(true, "search index missing; rebuilding derived data");
+            }
+        }
+
+        // R23: probe FTS and stamp availability on every init path, including the version-mismatch and
+        // schema-migration rebuilds. The earlier version-mismatch path returned before this, so a rebuilt store
+        // was left without chunk_fts and with a stale fts_available stamp; the next search then threw
+        // "no such table: chunk_fts". Flowing every rebuild through the probe keeps the rebuilt store searchable.
         var ftsAvailable = await _fts.TryCreateAsync(connection, cancellationToken);
         await IndexSchemaMigrator.WriteMetaAsync(
             connection,
@@ -136,6 +168,9 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             _connectionFactory.DatabasePath,
             _schemaVersion,
             ftsAvailable);
+
+        if (versionRebuilt)
+            return new WorkspaceIndexInitializeOutcome(true, $"after upgrade to {FuseBuildInfo.Current}");
 
         if (schemaRebuilt)
             return new WorkspaceIndexInitializeOutcome(true, "schema migration");
@@ -162,8 +197,15 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             if (!FuseBuildInfo.IsCompatible(storedVersion))
                 return WorkspaceIndexReadOpenStatus.IncompatibleVersion;
 
-            var ftsAvailable = IndexAvailability.ParseFtsMeta(
+            var ftsStamped = IndexAvailability.ParseFtsMeta(
                 await IndexSchemaMigrator.ReadMetaAsync(connection, IndexAvailability.FtsAvailableMetaKey, cancellationToken));
+            // R23: FTS availability is a single source of truth. If the stamp says available but chunk_fts is
+            // absent (a store rebuilt without the FTS table), do not open ready: report a mismatch so the
+            // coordinator write-initializes and recreates chunk_fts, rather than serving a search that throws.
+            if (ftsStamped && !await IndexSchemaMigrator.TableExistsAsync(connection, "chunk_fts", cancellationToken))
+                return WorkspaceIndexReadOpenStatus.SchemaMismatch;
+
+            var ftsAvailable = ftsStamped;
             MarkInitialized(version, ftsAvailable);
             _logger?.LogDebug(
                 "Workspace index opened read-only at {DatabasePath} (schema v{SchemaVersion}, fts={FtsAvailable}).",
@@ -192,13 +234,18 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         var version = _initialized ? _schemaVersion : await IndexSchemaMigrator.ReadVersionAsync(connection, cancellationToken);
         var fileCount = await IndexSchemaMigrator.CountAsync(connection, "files", cancellationToken);
         var symbolCount = await IndexSchemaMigrator.CountAsync(connection, "symbols", cancellationToken);
+        var chunkCount = await IndexSchemaMigrator.CountAsync(connection, "chunks", cancellationToken);
         var status = fileCount == 0 ? WorkspaceIndexStatus.Cold : WorkspaceIndexStatus.Warm;
         var mode = await IndexSchemaMigrator.ReadMetaAsync(connection, "index_mode", cancellationToken);
-        var ftsAvailable = _initialized
+        var ftsStamped = _initialized
             ? _fts.Available
             : IndexAvailability.ParseFtsMeta(
                 await IndexSchemaMigrator.ReadMetaAsync(connection, IndexAvailability.FtsAvailableMetaKey, cancellationToken));
-        return new WorkspaceIndexState(version, status, fileCount, symbolCount, mode, ftsAvailable);
+        // R23: reconcile the FTS stamp with the actual chunk_fts table so the status line and body never disagree.
+        // A stamp of "available" over a store missing chunk_fts is reported unavailable, matching what a search sees.
+        var ftsAvailable = ftsStamped
+            && await IndexSchemaMigrator.TableExistsAsync(connection, "chunk_fts", cancellationToken);
+        return new WorkspaceIndexState(version, status, fileCount, symbolCount, mode, ftsAvailable, chunkCount);
     }
 
     /// <inheritdoc />

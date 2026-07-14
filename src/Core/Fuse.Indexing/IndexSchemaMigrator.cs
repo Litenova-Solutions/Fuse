@@ -176,6 +176,36 @@ internal sealed class IndexSchemaMigrator
         }
     }
 
+    /// <summary>
+    ///     Whether a table or virtual table of the given name exists in the database.
+    /// </summary>
+    /// <param name="connection">An open connection to the index database.</param>
+    /// <param name="table">The table name to probe.</param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns><see langword="true" /> when a table with that name exists.</returns>
+    /// <remarks>
+    ///     Used to make FTS availability a single source of truth (R23): the <c>fts_available</c> meta stamp and
+    ///     the presence of <c>chunk_fts</c> can disagree after a partial rebuild, so callers verify the table
+    ///     actually exists rather than trusting the stamp, and never issue a search that throws
+    ///     <c>no such table: chunk_fts</c>.
+    /// </remarks>
+    public static async Task<bool> TableExistsAsync(
+        SqliteConnection connection, string table, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name = $n LIMIT 1;";
+        command.Parameters.AddWithValue("$n", table);
+        try
+        {
+            return await command.ExecuteScalarAsync(cancellationToken) is not null;
+        }
+        catch (SqliteException)
+        {
+            return false;
+        }
+    }
+
     private static async Task EnsureVersionTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();

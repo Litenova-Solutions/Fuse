@@ -52,11 +52,19 @@ public enum WorkspaceIndexStatus
 /// <param name="FileCount">The number of indexed files.</param>
 /// <param name="SymbolCount">The number of indexed symbols.</param>
 /// <param name="Mode">The last index mode (<c>semantic</c>, <c>partial</c>, or <c>syntax</c>), or null if never indexed.</param>
-/// <param name="FtsAvailable">Whether FTS5 full-text search was available when the store last initialized.</param>
+/// <param name="FtsAvailable">
+///     Whether FTS5 full-text search is available: the stored stamp reconciled with the actual presence of the
+///     <c>chunk_fts</c> table, so this never claims availability over a store that would throw on search (R23).
+/// </param>
+/// <param name="ChunkCount">
+///     The number of indexed chunks. Zero over a store with symbols on an FTS-available runtime is an internally
+///     inconsistent state that must never be reported <c>ready</c> (R23/R31).
+/// </param>
 public sealed record WorkspaceIndexState(
     int SchemaVersion,
     WorkspaceIndexStatus Status,
     int FileCount,
     int SymbolCount,
     string? Mode = null,
-    bool FtsAvailable = true);
+    bool FtsAvailable = true,
+    int ChunkCount = 0);

@@ -53,6 +53,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 - `fuse_check` delta mode initializes the session-baseline store when the index is not yet built, matching the host RPC baseline path, instead of abstaining with "index unavailable" while a resident workspace is active.
 - Served-root binding enforced on every host RPC entry point that carries a `root` argument.
 - `operator.mdx` no longer overclaims automatic `fuse.db` recreation; corrupt index recovery matches the implemented self-heal path.
+- A version/schema-mismatch rebuild now produces a fully working, searchable index (R23): the rebuild path re-probes FTS, recreates `chunk_fts`, and stamps the index mode, instead of returning early and leaving a store that had indexed files but no `chunk_fts`. Previously the next search threw `internal_error: SQLite Error 1: 'no such table: chunk_fts'`.
+- A search issued against a store missing `chunk_fts` now maps to the `index_rebuilding:` operational prefix (via `SearchIndexUnavailableException`) and triggers a rebuild, never a raw `internal_error: SQLite Error`.
+- FTS availability is a single source of truth (R23): `OpenForReadAsync` and `GetStateAsync` reconcile the `fts_available` stamp against the actual `chunk_fts` table, so the availability line and the status body never disagree, and a stamp of "available" over a store missing the table forces a rebuild rather than serving broken search.
+- A store with indexed symbols but zero chunks on an FTS-available runtime is never reported `index_state: ready` (R23); it reports `index_rebuilding` so the read path repairs it instead of serving silent-empty results.
 
 ## [4.1.0] - 2026-07-14
 

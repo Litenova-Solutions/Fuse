@@ -89,21 +89,38 @@ internal sealed class FtsSearchEngine
         command.Parameters.AddWithValue("$limit", query.Limit);
 
         var hits = new List<SearchHit>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        try
         {
-            hits.Add(new SearchHit(
-                ChunkId: reader.GetString(0),
-                FilePath: reader.GetString(1),
-                Kind: reader.GetString(2),
-                Name: reader.IsDBNull(3) ? null : reader.GetString(3),
-                StartLine: reader.GetInt32(4),
-                EndLine: reader.GetInt32(5),
-                Score: reader.GetDouble(6)));
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                hits.Add(new SearchHit(
+                    ChunkId: reader.GetString(0),
+                    FilePath: reader.GetString(1),
+                    Kind: reader.GetString(2),
+                    Name: reader.IsDBNull(3) ? null : reader.GetString(3),
+                    StartLine: reader.GetInt32(4),
+                    EndLine: reader.GetInt32(5),
+                    Score: reader.GetDouble(6)));
+            }
+        }
+        catch (SqliteException ex) when (IsMissingFtsTable(ex))
+        {
+            // R23: the FTS stamp said available but chunk_fts is gone (a store rebuilt without the FTS table).
+            // Do not let the raw "no such table: chunk_fts" escape as an internal error; mark unavailable and
+            // raise a typed signal the operational-error boundary maps to index_rebuilding: so a rebuild triggers.
+            Available = false;
+            _logger?.LogWarning(ex, "chunk_fts missing at {DatabasePath}; search unavailable pending rebuild.", _connectionFactory.DatabasePath);
+            throw new SearchIndexUnavailableException("the full-text search index is missing; the index is rebuilding.");
         }
 
         return hits;
     }
+
+    // The FTS virtual table is absent: SQLITE_ERROR (code 1) with a "no such table" message naming chunk_fts.
+    private static bool IsMissingFtsTable(SqliteException exception) =>
+        exception.SqliteErrorCode == 1
+        && exception.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     ///     Indexes or re-indexes FTS rows for the given chunks inside an existing transaction.

@@ -50,6 +50,7 @@ MCP tools return errors as a single prefixed string rather than throwing. Match 
 | `index_not_built:` | No index exists at `.fuse/fuse.db` (or it is empty). | Run `fuse_workspace action=index` (or `fuse index`) before indexed reads. |
 | `workspace_not_found:` | The `path` directory does not exist. | Fix the workspace path. |
 | `validation_error:` | The tool arguments are invalid or incomplete. | Correct the parameters and call again. |
+| `index_rebuilding:` | The store's derived data was rebuilt (version or schema mismatch, corruption, or a missing/inconsistent full-text index) and is being repopulated from source. A search against a store missing its `chunk_fts` table maps here, never to `internal_error`. | Retry after a few seconds; the next pass serves a working, searchable index. |
 | `internal_error:` | An unexpected failure (including cancellation). | Retry once; if it persists, run `fuse_workspace action=doctor` and check daemon or disk health. |
 
 When a **read** tool cannot open the index yet (another process holds the writer mutex, SQLite is busy, or a cold build is still committing), it returns the **availability header** as the tool result body instead of hanging or throwing. The header always leads with `index_state:` and `files_indexed:` (when known), then the `availability:` line. Retry the same call after a short pause.
@@ -73,6 +74,7 @@ availability: index mode semantic; full-text search available; tier-1 build capt
 | `upgrade_pending` | The index exists at syntax or partial tier and a background semantic or tier-1 upgrade is running. |
 | `ready` | The index is current for reads at its loaded tier. |
 | `index_busy` | The writer lock or SQLite blocked this read; retry shortly. |
+| `index_rebuilding` | The store failed an integrity check (missing or inconsistent full-text index, or symbols with zero chunks) and is being rebuilt; it is never reported `ready` in this state. |
 | `stale_as_of` | A bulk change outran per-read reconcile; results may lag the working tree. |
 
 `files_indexed` is omitted only when the store cannot be read (for example an exclusive SQLite lock). `fuse_workspace action=status` and `fuse diagnostics` report the same `index_state` values on the fast read-only path without starting a build on a cold workspace.

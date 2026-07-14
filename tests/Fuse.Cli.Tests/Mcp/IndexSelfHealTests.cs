@@ -81,6 +81,64 @@ public sealed class IndexSelfHealTests : IDisposable
         Assert.Equal(WorkspaceIndexReadOpenStatus.Ready, await new WorkspaceIndexStore(_databasePath).OpenForReadAsync(CancellationToken.None));
     }
 
+    [Fact]
+    public void SearchIndexUnavailable_MapsToIndexRebuilding_NotInternalError()
+    {
+        var message = FuseOperationalErrors.FromException(
+            new SearchIndexUnavailableException("the full-text search index is missing; the index is rebuilding."));
+
+        Assert.StartsWith(FuseOperationalErrors.IndexRebuildingPrefix, message);
+        Assert.DoesNotContain(FuseOperationalErrors.InternalErrorPrefix, message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RawNoSuchTableSqlite_MapsToIndexRebuilding_NotInternalError()
+    {
+        await using (var store = new WorkspaceIndexStore(_databasePath))
+            await store.InitializeAsync(CancellationToken.None);
+
+        // The raw error the reproduction hit: a search against a store missing its FTS table. It must never
+        // surface as internal_error: SQLite Error - the operational boundary maps it to index_rebuilding:.
+        SqliteException raw;
+        await using (var connection = new SqliteConnection($"Data Source={_databasePath}"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT * FROM chunk_fts_missing;";
+            raw = await Assert.ThrowsAsync<SqliteException>(() => command.ExecuteReaderAsync());
+        }
+
+        var message = FuseOperationalErrors.FromException(raw);
+        Assert.StartsWith(FuseOperationalErrors.IndexRebuildingPrefix, message);
+        Assert.DoesNotContain("SQLite Error", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ComputeIndexState_SymbolsButZeroChunks_NotReady()
+    {
+        await using var store = new WorkspaceIndexStore(_databasePath);
+        await store.InitializeAsync(CancellationToken.None);
+        const string path = "src/Widget.cs";
+        await store.UpsertFilesAsync(
+        [
+            new IndexedFileRecord(path, path, ".cs", 10, 0, "hash-w", Language: "csharp"),
+        ], CancellationToken.None);
+        await store.UpsertSymbolsAsync(
+        [
+            new SymbolRecord("sym-w", path, "type", "Widget", "Shop.Widget", IsPublicApi: true),
+        ], CancellationToken.None);
+        // Deliberately no chunks: an FTS-available store with symbols and zero chunks is internally inconsistent.
+
+        var state = await store.GetStateAsync(CancellationToken.None);
+        Assert.True(state.FtsAvailable);
+        Assert.True(state.SymbolCount > 0);
+        Assert.Equal(0, state.ChunkCount);
+
+        var indexState = await FuseTools.ComputeIndexStateAsync(store, state, CancellationToken.None);
+        Assert.NotEqual("ready", indexState);
+        Assert.Equal("index_rebuilding", indexState);
+    }
+
     private async Task SeedPopulatedAsync(string? stampedVersion = null)
     {
         await using (var seed = new WorkspaceIndexStore(_databasePath))

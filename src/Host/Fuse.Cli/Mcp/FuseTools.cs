@@ -613,6 +613,12 @@ public sealed partial class FuseTools
         if (int.TryParse(staleRaw, out var stale) && stale > 0)
             return "stale_as_of";
 
+        // R23/R31: a store with symbols but zero chunks on an FTS-available runtime is internally inconsistent
+        // (search would return nothing over indexed source); never report it ready. Signal a rebuild so the read
+        // path repairs it rather than serving a silent-empty "ready" index.
+        if (state.FtsAvailable && state.SymbolCount > 0 && state.ChunkCount == 0)
+            return "index_rebuilding";
+
         return "ready";
     }
 

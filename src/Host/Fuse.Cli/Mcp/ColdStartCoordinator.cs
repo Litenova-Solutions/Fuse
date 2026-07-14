@@ -47,8 +47,7 @@ internal sealed class ColdStartCoordinator
         int deadlineMilliseconds,
         CancellationToken waitToken)
     {
-        var key = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)).ToLowerInvariant();
-        var task = _builds.GetOrAdd(key, _ => RunAndCleanupAsync(key, build));
+        var task = StartBuild(root, build);
         var finished = await Task.WhenAny(task, Task.Delay(deadlineMilliseconds, waitToken));
         if (finished == task)
         {
@@ -57,6 +56,19 @@ internal sealed class ColdStartCoordinator
         }
 
         return false;
+    }
+
+    /// <summary>
+    ///     Starts (or joins) the per-root background build without waiting (R38 eager warm-on-start). The build is
+    ///     deduplicated per root, so an eager start at daemon spawn and a later read share one build.
+    /// </summary>
+    /// <param name="root">The absolute workspace root (dedup key).</param>
+    /// <param name="build">The build to run in the background; invoked at most once per concurrent set of callers.</param>
+    /// <returns>The running (or already-running) build task.</returns>
+    public Task StartBuild(string root, Func<CancellationToken, Task> build)
+    {
+        var key = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)).ToLowerInvariant();
+        return _builds.GetOrAdd(key, _ => RunAndCleanupAsync(key, build));
     }
 
     /// <summary>Whether a background build is currently in flight for the root (test and diagnostic seam).</summary>

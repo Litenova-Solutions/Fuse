@@ -105,6 +105,12 @@ public sealed class HostCommand
         // per root (the single-instance lock guarantees one daemon per root), removed on shutdown.
         DaemonRegistry.Register(root, FuseHostService.HostVersion, DateTimeOffset.UtcNow.ToString("O"));
         RollingFileLog.Write($"host {FuseHostService.HostVersion} serving {root}"); // R37: rotating daemon log.
+
+        // R38: eager warm-on-start. The daemon owns index writes (R19), so it warms the served root's index in
+        // the background the moment it starts serving, before any client call, so the first read hits a warm or
+        // bounded-building index. Fire-and-forget and best-effort; opt out with FUSE_EAGER_INDEX=0.
+        _ = Mcp.EagerIndex.Start(app.Services.GetRequiredService<SemanticIndexer>(), root);
+
         try
         {
             if (OperatingSystem.IsWindows())

@@ -58,6 +58,14 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     public const string FuseVersionMetaKey = "fuse_version";
 
     /// <summary>
+    ///     The <c>index_meta</c> key under which the indexer stamps the extraction-contract version
+    ///     (<see cref="WorkspaceIndexSchema.ExtractionContractVersion" />). Index reuse is gated on this and the
+    ///     schema version, not on the product version, so a minor or patch bump that does not change extraction
+    ///     reuses a good index (R22).
+    /// </summary>
+    public const string ExtractionVersionMetaKey = "index_extraction_version";
+
+    /// <summary>
     ///     The <c>index_meta</c> key under which <c>fuse index --from-capture</c> stamps the absolute path to the
     ///     bundle's portable compiler log (C2), so <c>fuse_check</c> can answer oracle-grade from the captured
     ///     compilation without building on a machine that cannot restore or build.
@@ -111,15 +119,20 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         var schemaRebuilt = priorSchemaVersion > 0 && priorSchemaVersion < WorkspaceIndexSchema.TargetVersion;
         await IndexSchemaMigrator.EnsureTablesAsync(connection, cancellationToken);
 
-        var storedVersion = await IndexSchemaMigrator.ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
-        var versionRebuilt = !FuseBuildInfo.IsCompatible(storedVersion);
+        // R22: gate index reuse on the extraction-contract version, not the product version. A store carrying a
+        // different fuse_version but the current schema and extraction version is reused (a minor or patch bump no
+        // longer discards a good index); only an extraction-contract change forces a rebuild. The fuse_version stamp
+        // is kept for diagnostics (read here only to detect a pre-R22 store that predates the extraction stamp).
+        var storedExtractionRaw = await IndexSchemaMigrator.ReadMetaAsync(connection, ExtractionVersionMetaKey, cancellationToken);
+        var storedFuseVersion = await IndexSchemaMigrator.ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
+        var versionRebuilt = ExtractionContractChanged(storedExtractionRaw, storedFuseVersion);
         if (versionRebuilt)
         {
             _logger?.LogInformation(
-                "Index at {DatabasePath} was built by Fuse {StoredVersion}; rebuilding for {CurrentVersion}.",
+                "Index at {DatabasePath} was built for extraction contract {StoredExtraction}; rebuilding for {CurrentExtraction}.",
                 _connectionFactory.DatabasePath,
-                storedVersion,
-                FuseBuildInfo.Current);
+                storedExtractionRaw ?? "(unset)",
+                WorkspaceIndexSchema.ExtractionContractVersion);
             await IndexSchemaMigrator.RebuildAsync(connection, cancellationToken);
             _schemaVersion = WorkspaceIndexSchema.TargetVersion;
         }
@@ -147,6 +160,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
                     IndexAvailability.FtsAvailableMetaKey,
                     IndexAvailability.ToFtsMetaValue(ftsRepaired),
                     cancellationToken);
+                await StampExtractionVersionAsync(connection, cancellationToken);
                 MarkInitialized(_schemaVersion, ftsRepaired);
                 return new WorkspaceIndexInitializeOutcome(true, "search index missing; rebuilding derived data");
             }
@@ -162,6 +176,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             IndexAvailability.FtsAvailableMetaKey,
             IndexAvailability.ToFtsMetaValue(ftsAvailable),
             cancellationToken);
+        await StampExtractionVersionAsync(connection, cancellationToken);
         MarkInitialized(_schemaVersion, ftsAvailable);
         _logger?.LogDebug(
             "Workspace index initialized at {DatabasePath} (schema v{SchemaVersion}, fts={FtsAvailable}).",
@@ -170,13 +185,32 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             ftsAvailable);
 
         if (versionRebuilt)
-            return new WorkspaceIndexInitializeOutcome(true, $"after upgrade to {FuseBuildInfo.Current}");
+            return new WorkspaceIndexInitializeOutcome(
+                true, $"after upgrade to extraction contract v{WorkspaceIndexSchema.ExtractionContractVersion}");
 
         if (schemaRebuilt)
             return new WorkspaceIndexInitializeOutcome(true, "schema migration");
 
         return WorkspaceIndexInitializeOutcome.Normal;
     }
+
+    // R22: index reuse is gated on the extraction-contract version and the schema version, never the product
+    // version. A parseable stored version rebuilds only when it differs from the current contract; an unset stamp
+    // over a populated store (a pre-R22 index carrying only fuse_version) rebuilds once to gain the stamp, while a
+    // fresh empty store (neither stamp set) is not treated as a mismatch.
+    private static bool ExtractionContractChanged(string? storedExtractionRaw, string? storedFuseVersion)
+    {
+        if (int.TryParse(storedExtractionRaw, out var stored))
+            return stored != WorkspaceIndexSchema.ExtractionContractVersion;
+        return !string.IsNullOrWhiteSpace(storedFuseVersion);
+    }
+
+    private static Task StampExtractionVersionAsync(SqliteConnection connection, CancellationToken cancellationToken) =>
+        IndexSchemaMigrator.WriteMetaAsync(
+            connection,
+            ExtractionVersionMetaKey,
+            WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            cancellationToken);
 
     /// <inheritdoc />
     public async Task<WorkspaceIndexReadOpenStatus> OpenForReadAsync(CancellationToken cancellationToken)
@@ -193,8 +227,11 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             if (version != WorkspaceIndexSchema.TargetVersion)
                 return WorkspaceIndexReadOpenStatus.SchemaMismatch;
 
-            var storedVersion = await IndexSchemaMigrator.ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
-            if (!FuseBuildInfo.IsCompatible(storedVersion))
+            // R22: reuse is gated on the extraction-contract version, not the product version. A store built by a
+            // different fuse_version but the current extraction contract opens ready (a minor bump reuses the index).
+            var storedExtractionRaw = await IndexSchemaMigrator.ReadMetaAsync(connection, ExtractionVersionMetaKey, cancellationToken);
+            var storedFuseVersion = await IndexSchemaMigrator.ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
+            if (ExtractionContractChanged(storedExtractionRaw, storedFuseVersion))
                 return WorkspaceIndexReadOpenStatus.IncompatibleVersion;
 
             var ftsStamped = IndexAvailability.ParseFtsMeta(

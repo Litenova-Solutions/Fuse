@@ -29,6 +29,21 @@ public static class WorkspaceIndexSchema
     public const int TargetVersion = 16;
 
     /// <summary>
+    ///     The extraction-contract version: what the indexer extracts (symbol, edge, chunk, and route semantics),
+    ///     independent of the relational <see cref="TargetVersion" /> and of the product version.
+    /// </summary>
+    /// <remarks>
+    ///     Index reuse is gated on a schema-version match AND an extraction-version match, never on the product
+    ///     version (R22). A minor or patch product bump that does not change what is extracted reuses a good index;
+    ///     the <c>fuse_version</c> stamp is kept for diagnostics only and no longer forces a rebuild. Bump this
+    ///     constant in the same change as any extractor behavior change (symbol, edge, chunk, or route semantics)
+    ///     so a stale index rebuilds; a forgotten bump is the only failure mode, never routine over-rebuilding.
+    ///     Version 1 (v4.2 R22): the extraction contract is decoupled from the product version. Set to the value
+    ///     that describes the extractor as of the schema-16 index; increment on the next extractor change.
+    /// </remarks>
+    public const int ExtractionContractVersion = 1;
+
+    /// <summary>
     ///     Database-level pragmas applied once at schema creation. WAL journaling and
     ///     <c>synchronous = NORMAL</c> persist with the file.
     /// </summary>

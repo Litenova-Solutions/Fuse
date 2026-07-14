@@ -34,16 +34,29 @@ public sealed class IndexSelfHealTests : IDisposable
     }
 
     [Fact]
-    public async Task VersionMismatch_ReturnsIndexRebuildingPrefix_FromCoordinator()
+    public async Task ExtractionContractMismatch_ReturnsIndexRebuildingPrefix_FromCoordinator()
     {
-        await SeedPopulatedAsync(stampedVersion: "999999.0.0");
+        // R22: an older extraction-contract stamp forces a rebuild (the product version no longer does).
+        await SeedPopulatedAsync(stampedExtractionVersion: "0");
 
         var ex = await Assert.ThrowsAsync<IndexRebuildingException>(() =>
             IndexCoordinator.Default.OpenForReadOnlyAsync(_root, CancellationToken.None));
 
         var message = FuseOperationalErrors.FromException(ex);
         Assert.StartsWith(FuseOperationalErrors.IndexRebuildingPrefix, message);
-        Assert.Contains("after upgrade to", message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("extraction contract", message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task DifferentProductVersion_SameExtractionContract_IsReused_NoRebuild()
+    {
+        // R22: a minor/patch product bump (different fuse_version) with the current schema+extraction version must
+        // reuse the good index, not discard it. Auto-update is default-on, so this is the common upgrade path.
+        await SeedPopulatedAsync(stampedVersion: "999999.0.0");
+
+        await using var store = await IndexCoordinator.Default.OpenForReadOnlyAsync(_root, CancellationToken.None);
+        var marker = await store.GetMetaAsync("marker", CancellationToken.None);
+        Assert.Equal("keep", marker); // the pre-existing data survived: no rebuild.
     }
 
     [Fact]
@@ -139,14 +152,21 @@ public sealed class IndexSelfHealTests : IDisposable
         Assert.Equal("index_rebuilding", indexState);
     }
 
-    private async Task SeedPopulatedAsync(string? stampedVersion = null)
+    private async Task SeedPopulatedAsync(string? stampedVersion = null, string? stampedExtractionVersion = null)
     {
         await using (var seed = new WorkspaceIndexStore(_databasePath))
         {
             await seed.InitializeAsync(CancellationToken.None);
+            // A file so the store is non-empty (a rebuilt empty store would also lose the marker meta).
+            await seed.UpsertFilesAsync(
+            [
+                new IndexedFileRecord("src/Seed.cs", "src/Seed.cs", ".cs", 10, 0, "hash-seed", Language: "csharp"),
+            ], CancellationToken.None);
             await seed.SetMetaAsync("marker", "keep", CancellationToken.None);
             if (stampedVersion is not null)
                 await seed.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, stampedVersion, CancellationToken.None);
+            if (stampedExtractionVersion is not null)
+                await seed.SetMetaAsync(WorkspaceIndexStore.ExtractionVersionMetaKey, stampedExtractionVersion, CancellationToken.None);
         }
 
         SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));

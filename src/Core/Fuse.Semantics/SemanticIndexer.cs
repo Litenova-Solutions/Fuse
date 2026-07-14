@@ -144,6 +144,12 @@ public sealed class SemanticIndexer
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
         // Stamp the Fuse build that wrote this index so a later run on an incompatible upgrade rebuilds it.
         await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
+        // R22: stamp the extraction-contract version so index reuse is gated on what was extracted, not the product
+        // version. Bump WorkspaceIndexSchema.ExtractionContractVersion in the same change as any extractor change.
+        await store.SetMetaAsync(
+            WorkspaceIndexStore.ExtractionVersionMetaKey,
+            WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            cancellationToken);
 
         // Mine git co-change couplings so the open-ended scorer can recover sibling files of a multi-file change.
         // Best-effort and bounded (a commit cap, wide commits skipped); a non-repository or a git failure is a
@@ -225,6 +231,12 @@ public sealed class SemanticIndexer
         await store.SetMetaAsync(SemanticPendingMetaKey, "1", cancellationToken);
         // Stamp the Fuse build even on the syntax-first pass so a partial index also carries provenance.
         await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
+        // R22: stamp the extraction-contract version so index reuse is gated on what was extracted, not the product
+        // version. Bump WorkspaceIndexSchema.ExtractionContractVersion in the same change as any extractor change.
+        await store.SetMetaAsync(
+            WorkspaceIndexStore.ExtractionVersionMetaKey,
+            WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            cancellationToken);
         return result;
     }
 
@@ -268,6 +280,12 @@ public sealed class SemanticIndexer
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
         await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
+        // R22: stamp the extraction-contract version so index reuse is gated on what was extracted, not the product
+        // version. Bump WorkspaceIndexSchema.ExtractionContractVersion in the same change as any extractor change.
+        await store.SetMetaAsync(
+            WorkspaceIndexStore.ExtractionVersionMetaKey,
+            WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            cancellationToken);
 
         try
         {
@@ -657,6 +675,12 @@ public sealed class SemanticIndexer
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
         await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
+        // R22: stamp the extraction-contract version so index reuse is gated on what was extracted, not the product
+        // version. Bump WorkspaceIndexSchema.ExtractionContractVersion in the same change as any extractor change.
+        await store.SetMetaAsync(
+            WorkspaceIndexStore.ExtractionVersionMetaKey,
+            WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            cancellationToken);
         if (!string.IsNullOrEmpty(captureBundleDir) && Directory.Exists(captureBundleDir))
             await store.SetMetaAsync(WorkspaceIndexStore.CaptureComplogPathMetaKey, Path.GetFullPath(captureBundleDir), cancellationToken);
         return result;

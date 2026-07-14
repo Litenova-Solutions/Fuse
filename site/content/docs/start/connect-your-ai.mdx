@@ -90,11 +90,12 @@ Fuse labels the compiler path used for each check. This label is the verificatio
 oracle grade uses a build-captured compilation, while build grade runs a scoped real
 `dotnet build`. If neither path can answer, Fuse abstains and states what is missing.
 
-The first MCP tool call builds the local `.fuse/fuse.db` index automatically; you do not
-need to run `fuse index` first. A large repository can take from a few seconds to tens of
-seconds on that cold call. To pre-warm the index before the agent's first turn, run
-`fuse index` or ask the agent to call `fuse_workspace` with `action=index`. Fuse reports
-`partial` or `syntax` analysis when MSBuild cannot load every project.
+Index the repository once after connecting, so the agent's first turn reads a warm index:
+run `fuse index` (or ask the agent to call `fuse_workspace` with `action=index`). You do
+this once; Fuse then re-indexes changed files automatically on the next read. If you skip
+it, the first MCP tool call builds `.fuse/fuse.db` automatically, which can take a few
+seconds to tens of seconds on a large repository. Fuse reports `partial` or `syntax`
+analysis when MSBuild cannot load every project.
 
 ## Local Process and Network Behavior
 

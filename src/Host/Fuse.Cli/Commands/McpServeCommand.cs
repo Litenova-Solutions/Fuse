@@ -157,6 +157,14 @@ public sealed class McpServeCommand
                 daemonRoot, residentWatcher,
                 app.Services.GetRequiredService<Fuse.Semantics.SemanticIndexer>(), Console.Error.WriteLine, context.CancellationToken);
 
+        // R38: eager warm-on-start. When serving in-process (no daemon owns the index), kick off a background
+        // syntax-first index for the served root the moment we start, so the first tool call hits a warm or a
+        // bounded-building index (R27) rather than paying the full cold cost. Fire-and-forget and best-effort
+        // (EagerIndex swallows build failures), so it never blocks or breaks startup. The daemon path warms in
+        // fuse host instead. Opt out with FUSE_EAGER_INDEX=0.
+        if (daemonDelegation is null)
+            _ = Mcp.EagerIndex.Start(app.Services.GetRequiredService<Fuse.Semantics.SemanticIndexer>(), daemonRoot);
+
         try
         {
             await app.RunAsync(context.CancellationToken);

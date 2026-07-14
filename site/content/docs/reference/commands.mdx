@@ -28,6 +28,7 @@ CLI commands that open the store (`fuse find`, `fuse index`, `fuse diagnostics`)
 | Command | Does | Reads index | Writes index |
 |---------|------|-------------|--------------|
 | `fuse index [path]` | Build or refresh the semantic index | n/a | yes |
+| `fuse warm [path]` | Warm the index now (syntax-first build) so the next read is fast; a warm store is a no-op | n/a | yes |
 | `fuse map [path]` | Print a workspace map (symbols, routes, counts) | yes | no |
 | `fuse localize [path]` | Rank candidate files and symbols for a task (no bodies) | yes | no |
 | `fuse resolve [path]` | Resolve a service, request, route, config, or symbol | yes | no |

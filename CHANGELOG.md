@@ -25,6 +25,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 - `WorkspaceIndexStore.OpenForReadAsync` for warm read opens that verify schema without writing `index_meta`.
 - `fuse_check` and `fuse_test` run compiler-grade verification before opening the store; repair-packet enrichment is omitted with a named note when the store is unavailable.
 - Daemon-owned index writes (G5 phase 2): `fuse host` owns index open, reconcile, syntax-first, and semantic upgrade; `fuse mcp serve` delegates store-backed calls over the pipe when the daemon is active. `FuseHostService.ProtocolVersion` bumped to 8.
+- `fuse_review` bounds a large diff (R26): when the changed-file set exceeds a cap (default 150, override with the `maxChangedFiles` parameter or `FUSE_REVIEW_MAX_CHANGED_FILES`), it returns the changed-file list and a narrow-the-base-ref note instead of running blast-radius resolution unbounded. A normal PR-sized diff is unaffected. `maxTokens` still bounds output.
 - Availability headers on store-backed read tools lead with `index_state:` (`not_indexed`, `building_syntax`, `upgrade_pending`, `ready`, `index_busy`, `stale_as_of`) plus `files_indexed` when known; blocked reads return the header as the tool body within bounded time instead of hanging.
 - Corrupt or version-incompatible `fuse.db` self-heals: derived index data is deleted and rebuilt from source with serialized recovery per root; MCP callers receive `index_rebuilding:` instead of an unhandled exception.
 

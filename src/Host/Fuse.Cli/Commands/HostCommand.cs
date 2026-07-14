@@ -133,9 +133,7 @@ public sealed class HostCommand
         var connections = new List<Task>();
         while (!cancellationToken.IsCancellationRequested)
         {
-            var server = new NamedPipeServerStream(
-                pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-                PipeTransmissionMode.Byte, System.IO.Pipes.PipeOptions.Asynchronous);
+            var server = HostPipeSecurity.CreateServerStream(pipeName);
 
             try
             {

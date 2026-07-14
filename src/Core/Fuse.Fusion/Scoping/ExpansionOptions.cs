@@ -25,8 +25,8 @@ namespace Fuse.Fusion.Scoping;
 ///     cost nothing. Ignored when <paramref name="TokenBudget" /> is <c>null</c>.
 /// </param>
 /// <param name="Centrality">
-///     Optional query-independent importance prior (normalized in-degree per path, see
-///     <see cref="GraphCentrality" />). Blended additively into the rank score so that at equal relevance the
+///     Optional query-independent importance prior (normalized PageRank per path, see
+///     <see cref="GraphCentrality" /> in <c>Fuse.Scoping</c>). Blended additively into the rank score so that at equal relevance the
 ///     more depended-upon file ranks earlier. <c>null</c> disables the prior.
 /// </param>
 /// <param name="CentralityWeight">

@@ -1,0 +1,3 @@
+index_state: not_indexed
+files_indexed: 0
+availability: index mode not_indexed; full-text search unavailable; tier-1 build capture {tier1}; verify serves {verify-grade}; workspace store-backed; not indexed (run fuse_workspace action=index to build).

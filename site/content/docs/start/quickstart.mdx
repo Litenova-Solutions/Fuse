@@ -10,6 +10,10 @@ dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
+No client environment variables are required. `fuse mcp serve` defaults to a shared
+`fuse host` daemon per repository, syntax-first indexing with background semantic upgrade,
+build capture, and auto-update between sessions.
+
 Reload your MCP client, then ask:
 
 ```text
@@ -35,7 +39,9 @@ that Fuse is available does not.
 The first MCP tool call builds `.fuse/fuse.db` automatically; you do not need to run
 `fuse index` first. A large repository can take from a few seconds to tens of seconds on
 that cold call. Run `fuse index` first if you want the agent's first turn to read a warm
-index. Later calls reuse the local store.
+index. Later calls reuse the local store. If a tool returns `index_rebuilding:` (after an
+upgrade or corrupt recovery), retry after a few seconds or call `fuse_workspace` with
+`action=index`.
 
 ## Check the First Proposed Edit
 

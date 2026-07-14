@@ -1,6 +1,26 @@
 namespace Fuse.Indexing;
 
 /// <summary>
+///     The outcome of a read-only warm open (<see cref="IWorkspaceIndexStore.OpenForReadAsync" />).
+/// </summary>
+public enum WorkspaceIndexReadOpenStatus
+{
+    /// <summary>The database exists, schema matches, and the store is ready for reads.</summary>
+    Ready,
+
+    /// <summary>The database file does not exist yet; call <see cref="IWorkspaceIndexStore.InitializeAsync" />.</summary>
+    DatabaseMissing,
+
+    /// <summary>The on-disk schema version is below the target; write initialization is required.</summary>
+    SchemaMismatch,
+
+    /// <summary>
+    ///     The index was stamped by an incompatible Fuse build; write initialization must rebuild it.
+    /// </summary>
+    IncompatibleVersion,
+}
+
+/// <summary>
 ///     The indexing status of a workspace, reported by the warm host and the CLI.
 /// </summary>
 public enum WorkspaceIndexStatus

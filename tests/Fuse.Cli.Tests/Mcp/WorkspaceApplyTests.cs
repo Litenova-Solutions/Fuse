@@ -70,7 +70,8 @@ public sealed class WorkspaceApplyTests
         try
         {
             var result = await FuseTools.FuseWorkspaceAsync(null!, "apply", root, file: "", content: "x", write: true);
-            Assert.Contains("Error", result);
+            // R15 operational-error taxonomy: a missing file argument is a validation_error, not a bare "Error".
+            Assert.StartsWith("validation_error:", result);
         }
         finally { Directory.Delete(root, recursive: true); }
     }

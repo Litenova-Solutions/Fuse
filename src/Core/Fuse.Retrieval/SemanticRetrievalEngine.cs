@@ -1,4 +1,5 @@
 using Fuse.Indexing;
+using Fuse.Scoping;
 
 namespace Fuse.Retrieval;
 
@@ -333,7 +334,7 @@ public sealed class SemanticRetrievalEngine
                 ProvenanceChain: best.Provenance));
         }
 
-        var packed = Pack(items, maxTokens, warnings);
+        var packed = ContextPlanPacker.Pack(items, maxTokens, warnings);
         var estimated = packed.Sum(i => i.EstimatedTokens);
         return new ContextPlan(mode, packed, [], estimated, warnings);
     }
@@ -392,41 +393,6 @@ public sealed class SemanticRetrievalEngine
                 node.NodeId, node.FilePath ?? string.Empty, node.Kind, 1.0,
                 CandidateSource.RouteExact, [$"seed: route {route}"], 0));
         }
-    }
-
-    // Greedily include must-keep files first, then by score, until the budget is reached. Must-keep files are
-    // always included; optional files past the budget are dropped with a warning.
-    private static List<ContextPlanItem> Pack(List<ContextPlanItem> items, int? maxTokens, List<string> warnings)
-    {
-        var ordered = items
-            .OrderByDescending(i => i.MustKeep)
-            .ThenByDescending(i => i.Score)
-            .ThenBy(i => i.Path, StringComparer.Ordinal)
-            .ToList();
-
-        if (maxTokens is not { } budget)
-            return ordered;
-
-        var kept = new List<ContextPlanItem>();
-        var used = 0;
-        var dropped = 0;
-        foreach (var item in ordered)
-        {
-            if (item.MustKeep || used + item.EstimatedTokens <= budget)
-            {
-                kept.Add(item);
-                used += item.EstimatedTokens;
-            }
-            else
-            {
-                dropped++;
-            }
-        }
-
-        if (dropped > 0)
-            warnings.Add($"{dropped} file(s) dropped to fit the {budget} token budget.");
-
-        return kept;
     }
 
     private static string RoleFor(ExpandedNode node)

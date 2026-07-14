@@ -28,7 +28,10 @@
         ],
         "misses": [],
         "extras": []
-      }
+      },
+      "checks": 0,
+      "oraclePassed": null,
+      "falseDone": false
     }
   ],
   "notes": [

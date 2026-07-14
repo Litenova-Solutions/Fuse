@@ -1,0 +1,3 @@
+index_state: stale_as_of
+files_indexed: 1
+availability: index mode semantic; full-text search available; tier-1 build capture {tier1}; verify serves {verify-grade}; workspace store-backed; 4 known file(s) changed since index, results may lag the working tree.

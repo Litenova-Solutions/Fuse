@@ -77,9 +77,12 @@ Roslyn structural analysis is always included; there is no trimmed or regex-only
 ```bash
 fuse eval performance --repo NodaTime     # warm reads + cold start -> performance.json
 fuse eval performance --repo eShopOnWeb    # second scale point -> performance-eshop.json
+fuse eval profile-v42 --repo NodaTime      # index hot-path profile -> profile-v42.json
 fuse testexec                              # build-grade test execution -> testexec.json
 fuse resident-latency                      # verify verbs -> resident-latency.json
 ```
+
+`profile-v42.json` records SQL and Roslyn frame attribution on the warm index path (`WorkspaceIndexStore`, `SemanticIndexer`) for store-split planning. It is maintainer evidence for R8/R9, not a published latency SLO; compare wall-clock numbers to `performance.json` for the same verbs.
 
 Token efficiency (median tokens a review returns) is on [Benchmarks](/docs/project/benchmarks). Test-selection latency is the covering-tests query inside `fuse_impact`; a standalone timer for it is follow-up work.
 

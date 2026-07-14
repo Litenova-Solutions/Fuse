@@ -3,15 +3,17 @@ title: Shared daemon
 description: One Fuse daemon per repository holds the warm compilation as a shared asset, so multiple agent sessions and the ambient hooks read one resident workspace instead of each paying its own cold start and memory.
 ---
 
-A Fuse daemon is one long-lived `fuse host` process per repository root. It owns the resident workspace (the live Roslyn compilation) so that every client reading the same repository shares one warm compilation instead of each holding its own. This is opt-in while it bakes: set `FUSE_DAEMON=1` for `fuse mcp serve` to delegate to a shared daemon.
+A Fuse daemon is one long-lived `fuse host` process per repository root. It owns the resident workspace (the live Roslyn compilation) and the index write path (open, reconcile, syntax-first cold start, and background semantic upgrade) so that every client reading the same repository shares one warm compilation and one writer on `.fuse/fuse.db`. `fuse mcp serve` enables the shared daemon by default; set `FUSE_DAEMON=0` to hold an in-process workspace and index instead.
 
 ## What runs
 
 - One daemon per root. `fuse host` acquires a single-instance lock keyed by the repository root at startup; if another daemon already owns the root, the second process exits cleanly ("a daemon already serves ...; not starting a second"). A spawn race resolves to exactly one daemon.
-- `fuse mcp serve` with `FUSE_DAEMON=1` does not hold its own resident workspace. It ensures a daemon is running for the working-directory repo (spawning one on demand) and delegates resident-grade checks to it over the pipe. When the daemon cannot start, serve falls back to an in-process workspace, so a one-shot CLI and a no-daemon environment still work.
+- `fuse mcp serve` does not hold its own resident workspace or index writer by default. It ensures a daemon is running for the working-directory repo (spawning one on demand) and delegates resident-grade checks and store-backed index writes to it over the pipe (`fuse/checkOverlay`, `fuse/openIndexed`, `fuse/index`). When the daemon cannot start, serve falls back to an in-process workspace and the local `IndexCoordinator`, so a one-shot CLI and a no-daemon environment still work. Set `FUSE_DAEMON=0` to skip daemon delegation entirely.
 - The ambient-verification hooks (`fuse check --delta`, `fuse gate`) already connect to the same per-root pipe, so they read the daemon's workspace too.
 
 The payoff is measured on NodaTime: one daemon holds the resident workspace at about 109 MB; a second daemon on the same root exits rather than duplicating it, so two sessions cost one workspace, not two.
+
+Index writes (explicit `fuse index`, syntax-first cold start, reconcile, and background semantic upgrade) run in the shared daemon when `FUSE_DAEMON` is on (the default for `fuse mcp serve`). Non-owner MCP clients call `fuse/openIndexed` over the pipe, then open `.fuse/fuse.db` read-only locally for queries. Daemon-less CLI commands (`fuse find`, `fuse index`) and `FUSE_DAEMON=0` serve use the in-process `IndexCoordinator`: one writer queue per root plus a cross-process `fuse-index-writer-{hash}` mutex. When multiple processes contend for the same root without a daemon, the loser gets `index_busy:` and the agent retries; warm reads use `OpenForReadAsync` and do not take the writer mutex.
 
 ## How to see it
 

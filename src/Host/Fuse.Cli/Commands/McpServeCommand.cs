@@ -3,6 +3,7 @@ using System.Reflection;
 using DotMake.CommandLine;
 using Fuse.Cli.Extensions;
 using Fuse.Cli.Mcp;
+using Fuse.Cli.Rpc;
 using Fuse.Cli.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -81,8 +82,10 @@ public sealed class McpServeCommand
                     "THE LOOP: after an edit, fuse_check; before a signature change, fuse_impact; before done, fuse_review.\n\n" +
                     "VERIFICATION: fuse_check tries oracle-grade compiler state first. Without oracle state, it runs " +
                     "a scoped local dotnet build and returns build grade. It abstains only when neither path can run. " +
-                    "The default server is store-backed. FUSE_RESIDENT=1 enables the opt-in warm compilation path, " +
-                    "which can answer oracle-grade checks without a build; do not assume that speed on the default path.\n\n" +
+                    "The default server is store-backed and delegates resident-grade checks to a shared fuse host " +
+                    "daemon per repository (set FUSE_DAEMON=0 to serve in-process). FUSE_RESIDENT=1 enables an " +
+                    "opt-in in-process warm compilation path when the daemon is off; do not assume that speed on " +
+                    "the default path.\n\n" +
                     "Use fuse_review for PR/change work when a git base exists.\n" +
                     "Use fuse_find with kind=service|request|route|config for typed .NET wiring, or kind=task for an open-ended task.\n" +
                     "Use fuse_context only after fuse_find unless the user asks for one-shot context.\n" +
@@ -134,32 +137,18 @@ public sealed class McpServeCommand
         // bulk change above the storm threshold evicts to store-backed rather than serving stale. Wired after Build
         // so the SemanticIndexer (used for the store projection) is resolvable from the host services. Promotion to
         // default-on with the recorded latency and single-writer validation is the S1 gate.
-        // Shared daemon (G5), opt-in via FUSE_DAEMON: instead of holding its own resident workspace, serve ensures
-        // one shared `fuse host` daemon runs for this root (spawning it on demand; the daemon's single-instance
-        // lock resolves any race) and delegates resident-grade checks to it over the pipe, so one warm compilation
-        // serves every client. Falls back to an in-process workspace when the daemon cannot start.
+        // Shared daemon (G5, R13 default-on): serve ensures one shared `fuse host` daemon runs for this root
+        // (spawning it on demand; the daemon's single-instance lock resolves any race) and delegates
+        // resident-grade checks to it over the pipe, so one warm compilation serves every client. Set
+        // FUSE_DAEMON=0 to hold an in-process workspace instead. Falls back to in-process when the daemon
+        // cannot start.
         var daemonRoot = Path.GetFullPath(Environment.CurrentDirectory);
-        var delegatedToDaemon = false;
-        if (DaemonOptIn())
-        {
-            var supervisor = new Rpc.DaemonSupervisor(
-                ct => Rpc.FuseHostClient.IsServingAsync(daemonRoot, TimeSpan.FromMilliseconds(500), ct),
-                () => Rpc.DaemonProcessLauncher.Spawn(daemonRoot, idleMinutes: 30));
-            var outcome = await supervisor.EnsureRunningAsync(TimeSpan.FromSeconds(20), context.CancellationToken);
-            if (outcome != Rpc.DaemonSupervisor.Outcome.FailedToStart)
-            {
-                FuseTools.ResidentWorkspaces = new Rpc.RemoteResidentWorkspaceProvider();
-                delegatedToDaemon = true;
-                Console.Error.WriteLine($"Fuse serve: resident workspace delegated to the shared daemon for {daemonRoot} ({outcome}).");
-            }
-            else
-            {
-                Console.Error.WriteLine($"Fuse serve: could not start a daemon for {daemonRoot}; serving in-process.");
-            }
-        }
+        using var daemonDelegation = IsDaemonEnabled()
+            ? await TryAttachToDaemonAsync(daemonRoot, context.CancellationToken)
+            : null;
 
         // Own resident workspace (S1) when not delegating to a daemon and FUSE_RESIDENT is opt-in.
-        using var residentWatcher = !delegatedToDaemon && ResidentWorkspaceHosting.OptIn()
+        using var residentWatcher = daemonDelegation is null && ResidentWorkspaceHosting.OptIn()
             ? new DebouncedFileWatcher(daemonRoot, recursive: true, cancellationToken: context.CancellationToken)
             : null;
         using var resident = residentWatcher is null
@@ -194,15 +183,35 @@ public sealed class McpServeCommand
                  || value.Equals("off", StringComparison.OrdinalIgnoreCase));
     }
 
-    // The shared-daemon delegation (G5) is opt-in via FUSE_DAEMON truthy, default off, so the shipped serve path
-    // holds its own workspace unchanged until the daemon consolidation is promoted (its RSS and one-truth gate).
-    private static bool DaemonOptIn()
+    // The shared-daemon delegation (G5, R13 default-on; R19 index writes): serve ensures one shared `fuse host`
+    // per repository serves every client unless FUSE_DAEMON=0 opts out.
+    internal static bool IsDaemonEnabled()
     {
         var value = Environment.GetEnvironmentVariable("FUSE_DAEMON");
-        return value is not null
-               && (value.Equals("1", StringComparison.Ordinal)
-                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
-                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
-                   || value.Equals("on", StringComparison.OrdinalIgnoreCase));
+        if (value is null)
+            return true;
+
+        return !(value.Equals("0", StringComparison.Ordinal)
+                 || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("off", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static async Task<RemoteDaemonDelegation?> TryAttachToDaemonAsync(string root, CancellationToken cancellationToken)
+    {
+        var supervisor = new DaemonSupervisor(
+            ct => FuseHostClient.IsServingAsync(root, TimeSpan.FromMilliseconds(500), ct),
+            () => DaemonProcessLauncher.Spawn(root, idleMinutes: 30));
+        var outcome = await supervisor.EnsureRunningAsync(TimeSpan.FromSeconds(20), cancellationToken);
+        if (outcome == DaemonSupervisor.Outcome.FailedToStart)
+        {
+            Console.Error.WriteLine($"Fuse serve: could not start a daemon for {root}; serving in-process.");
+            return null;
+        }
+
+        var delegation = new RemoteDaemonDelegation();
+        Console.Error.WriteLine(
+            $"Fuse serve: resident workspace and index writes delegated to the shared daemon for {root} ({outcome}).");
+        return delegation;
     }
 }

@@ -1,4 +1,5 @@
 using DotMake.CommandLine;
+using Fuse.Cli.Mcp;
 using Fuse.Cli.Services;
 using Fuse.Indexing;
 using Fuse.Reduction.Caching;
@@ -58,65 +59,86 @@ public sealed class IndexCommand
     /// <returns>A task that completes when indexing finishes.</returns>
     public async Task RunAsync(CliContext context)
     {
-        var root = System.IO.Path.GetFullPath(Path);
-        if (!Directory.Exists(root))
+        try
         {
-            _consoleUI.WriteError($"Directory not found: {root}");
-            return;
-        }
-
-        // Surface an available update (cache-first, no auto-update on a one-shot CLI command). The background
-        // refresh overlaps the indexing pass, so the cache is warm for the next run.
-        FuseUpdatePrompt.Emit(_consoleUI.WriteStep, allowAutoUpdate: false);
-
-        var databasePath = FuseStorePaths.ResolveDatabasePath(root);
-        _consoleUI.WriteStep($"Indexing {root}");
-        _consoleUI.WriteStep($"Store: {databasePath}");
-
-        await using var store = new WorkspaceIndexStore(databasePath);
-        await store.InitializeAsync(context.CancellationToken);
-
-        SemanticIndexResult result;
-        if (FromCapture is not null)
-        {
-            var bundle = System.IO.Path.GetFullPath(FromCapture);
-            var manifest = CaptureBundleIo.ReadManifest(bundle);
-            if (manifest is null)
+            var root = System.IO.Path.GetFullPath(Path);
+            if (!Directory.Exists(root))
             {
-                _consoleUI.WriteError($"no capture bundle found at {bundle} (missing or unreadable {CaptureManifest.ManifestFileName}).");
+                FuseOperationalErrors.WriteCliError(_consoleUI, FuseOperationalErrors.FormatWorkspaceNotFound(root));
                 return;
             }
 
-            // Upgrade invariant: refuse an incompatible bundle with an actionable message rather than rehydrating
-            // into a wrong-shaped store.
-            if (!manifest.IsCompatibleWithRunningBuild)
+            // Surface an available update (cache-first, no auto-update on a one-shot CLI command). The background
+            // refresh overlaps the indexing pass, so the cache is warm for the next run.
+            FuseUpdatePrompt.Emit(_consoleUI.WriteStep, allowAutoUpdate: false);
+
+            var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+            _consoleUI.WriteStep($"Indexing {root}");
+            _consoleUI.WriteStep($"Store: {databasePath}");
+
+            SemanticIndexResult result;
+            if (FromCapture is not null)
             {
-                _consoleUI.WriteError($"incompatible capture bundle: {manifest.IncompatibilityReason}");
-                return;
+                var bundle = System.IO.Path.GetFullPath(FromCapture);
+                var manifest = CaptureBundleIo.ReadManifest(bundle);
+                if (manifest is null)
+                {
+                    FuseOperationalErrors.WriteCliError(
+                        _consoleUI,
+                        FuseOperationalErrors.Format(
+                            FuseOperationalErrors.ValidationErrorPrefix,
+                            $"no capture bundle found at {bundle} (missing or unreadable {CaptureManifest.ManifestFileName})."));
+                    return;
+                }
+
+                // Upgrade invariant: refuse an incompatible bundle with an actionable message rather than rehydrating
+                // into a wrong-shaped store.
+                if (!manifest.IsCompatibleWithRunningBuild)
+                {
+                    FuseOperationalErrors.WriteCliError(
+                        _consoleUI,
+                        FuseOperationalErrors.Format(
+                            FuseOperationalErrors.ValidationErrorPrefix,
+                            $"incompatible capture bundle: {manifest.IncompatibilityReason}"));
+                    return;
+                }
+
+                var graph = CaptureBundleIo.ReadGraph(bundle);
+                if (graph is null || !graph.Succeeded)
+                {
+                    FuseOperationalErrors.WriteCliError(
+                        _consoleUI,
+                        FuseOperationalErrors.Format(
+                            FuseOperationalErrors.ValidationErrorPrefix,
+                            $"capture bundle at {bundle} has no readable extracted graph ({CaptureManifest.GraphFileName})."));
+                    return;
+                }
+
+                _consoleUI.WriteStep($"Rehydrating from capture bundle {bundle} (fuse {manifest.FuseVersion}, {manifest.Projects.Count} project(s)); no build");
+                // Stamp the bundle directory so fuse_check answers oracle-grade from its compiler log(s) without
+                // building - the single capture.complog of a direct bundle or the per-project logs of a merged bundle.
+                result = await IndexCoordinator.Default.OpenForWriteAsync(
+                    root,
+                    (store, ct) => _indexer.IndexFromCaptureGraphAsync(root, store, graph, ct, bundle),
+                    context.CancellationToken);
+            }
+            else
+            {
+                result = await IndexCoordinator.Default.OpenForWriteAsync(
+                    root,
+                    (store, ct) => _indexer.IndexAsync(root, store, ct),
+                    context.CancellationToken);
             }
 
-            var graph = CaptureBundleIo.ReadGraph(bundle);
-            if (graph is null || !graph.Succeeded)
-            {
-                _consoleUI.WriteError($"capture bundle at {bundle} has no readable extracted graph ({CaptureManifest.GraphFileName}).");
-                return;
-            }
-
-            _consoleUI.WriteStep($"Rehydrating from capture bundle {bundle} (fuse {manifest.FuseVersion}, {manifest.Projects.Count} project(s)); no build");
-            // Stamp the bundle directory so fuse_check answers oracle-grade from its compiler log(s) without
-            // building - the single capture.complog of a direct bundle or the per-project logs of a merged bundle.
-            result = await _indexer.IndexFromCaptureGraphAsync(
-                root, store, graph, context.CancellationToken, bundle);
+            _consoleUI.WriteSuccess(
+                $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects: " +
+                $"{result.SymbolCount} symbols, {result.ChunkCount} chunks, {result.RouteCount} routes.");
+            foreach (var diagnostic in result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))
+                _consoleUI.WriteStep($"  {diagnostic.Code}: {diagnostic.Message}");
         }
-        else
+        catch (Exception ex)
         {
-            result = await _indexer.IndexAsync(root, store, context.CancellationToken);
+            FuseOperationalErrors.ReportCli(_consoleUI, ex);
         }
-
-        _consoleUI.WriteSuccess(
-            $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects: " +
-            $"{result.SymbolCount} symbols, {result.ChunkCount} chunks, {result.RouteCount} routes.");
-        foreach (var diagnostic in result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))
-            _consoleUI.WriteStep($"  {diagnostic.Code}: {diagnostic.Message}");
     }
 }

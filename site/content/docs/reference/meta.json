@@ -5,6 +5,7 @@
     "commands",
     "options",
     "mcp-tools",
+    "api-surfaces",
     "mcp-resources",
     "environment-remediation",
     "capture-bundles",

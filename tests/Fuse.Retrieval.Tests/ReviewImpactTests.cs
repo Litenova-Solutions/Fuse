@@ -1,5 +1,6 @@
 using Fuse.Indexing;
 using Fuse.Retrieval;
+using Fuse.Scoping;
 using Microsoft.Data.Sqlite;
 using Xunit;
 

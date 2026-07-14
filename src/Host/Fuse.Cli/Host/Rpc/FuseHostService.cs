@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using Fuse.Cli.Mcp;
 using Fuse.Collection.FileSystem;
 using Fuse.Context;
 using Fuse.Indexing;
@@ -8,6 +9,7 @@ using Fuse.Reduction;
 using Fuse.Reduction.Caching;
 using Fuse.Reduction.Security;
 using Fuse.Retrieval;
+using Fuse.Scoping;
 using Fuse.Semantics;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
@@ -39,7 +41,7 @@ public sealed class FuseHostService : IDisposable
     ///     serialization error. There is no external client to mirror: the VS Code extension was removed in v4
     ///     (Decision D15), so the host is the minimal pipe endpoint the hooks need.
     /// </summary>
-    public const int ProtocolVersion = 7;
+    public const int ProtocolVersion = 8;
 
     private const int ListLimit = 100_000;
 
@@ -55,6 +57,15 @@ public sealed class FuseHostService : IDisposable
     private readonly TaskCompletionSource _shutdownRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly object _payloadLock = new();
     private readonly HashSet<string> _payloadPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly SemanticUpgradeSupervisor _upgradeSupervisor;
+    private readonly bool _backgroundSemanticUpgradeEnabled;
+    private readonly Fuse.Workspace.IResidentWorkspaceProvider? _residentWorkspacesOverride;
+
+    // The resident workspace this daemon checks against. In production the daemon process owns the process-wide
+    // provider, so reading the static is correct; the override lets an in-process test give the daemon its own
+    // provider distinct from a client's provider (both would otherwise share the one static).
+    private Fuse.Workspace.IResidentWorkspaceProvider ResidentWorkspaces =>
+        _residentWorkspacesOverride ?? Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="FuseHostService" /> class.
@@ -70,6 +81,11 @@ public sealed class FuseHostService : IDisposable
     ///     resolved from <c>--directory</c> on the command line (defaulting to the current directory). When unset,
     ///     root arguments are not validated (in-process tests and non-host callers).
     /// </param>
+    /// <param name="residentWorkspaces">
+    ///     The resident workspace provider this daemon checks against. When null (production), the process-wide
+    ///     <see cref="Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces" /> is read at call time. An in-process test passes
+    ///     its own provider so the daemon's resident is distinct from a client's provider on the shared static.
+    /// </param>
     public FuseHostService(
         SemanticIndexer indexer,
         IChangeSource changeSource,
@@ -77,8 +93,10 @@ public sealed class FuseHostService : IDisposable
         ISecretRedactor redactor,
         IGeneratedCodeDetector generatedCodeDetector,
         ILogger<FuseHostService> logger,
-        string? servedRoot = null)
+        string? servedRoot = null,
+        Fuse.Workspace.IResidentWorkspaceProvider? residentWorkspaces = null)
     {
+        _residentWorkspacesOverride = residentWorkspaces;
         _indexer = indexer;
         _changeSource = changeSource;
         _reductionPipeline = reductionPipeline;
@@ -90,6 +108,8 @@ public sealed class FuseHostService : IDisposable
             ? NormalizeRoot(servedRoot)
             : TryResolveServedRootFromCommandLine();
         _startTimestamp = Stopwatch.GetTimestamp();
+        _upgradeSupervisor = new SemanticUpgradeSupervisor(message => _logger.LogInformation("{Message}", message));
+        _backgroundSemanticUpgradeEnabled = BackgroundSemanticUpgradeEnabled();
     }
 
     /// <summary>
@@ -152,37 +172,71 @@ public sealed class FuseHostService : IDisposable
             return new IndexResultDto("NotIndexed", 0, 0, "none", 0, 0, 0, false, FuseBuildInfo.Current, []);
         }
 
-        await using var store = await OpenStoreAsync(resolved);
-        var state = await store.GetStateAsync(CancellationToken.None);
-        long elapsedMs = 0;
-        if (state.FileCount == 0)
+        try
         {
             var stopwatch = Stopwatch.StartNew();
-            await _indexer.IndexAsync(resolved, store, CancellationToken.None);
-            elapsedMs = stopwatch.ElapsedMilliseconds;
-            state = await store.GetStateAsync(CancellationToken.None);
+            var pass = await IndexCoordinator.Default.OpenForWriteAsync(
+                resolved,
+                async (writeStore, ct) =>
+                {
+                    var state = await writeStore.GetStateAsync(ct);
+                    if (state.FileCount == 0)
+                        return await _indexer.IndexAsync(resolved, writeStore, ct);
+                    return new SemanticIndexResult(
+                        state.Mode ?? "unknown",
+                        state.FileCount,
+                        ProjectCount: 0,
+                        state.SymbolCount,
+                        ChunkCount: 0,
+                        RouteCount: await writeStore.GetRouteCountAsync(ct),
+                        Diagnostics: []);
+                },
+                CancellationToken.None);
+            stopwatch.Stop();
+            return await BuildIndexResultDtoAsync(resolved, pass, stopwatch.ElapsedMilliseconds);
         }
+        catch (IndexBusyException)
+        {
+            return new IndexResultDto("IndexBusy", 0, 0, "none", 0, 0, 0, false, FuseBuildInfo.Current, []);
+        }
+        catch (IndexRebuildingException)
+        {
+            return new IndexResultDto("Rebuilding", 0, 0, "none", 0, 0, 0, false, FuseBuildInfo.Current, []);
+        }
+    }
 
-        var routeCount = await store.GetRouteCountAsync(CancellationToken.None);
-        var languages = (await store.GetLanguageCountsAsync(CancellationToken.None))
-            .Select(l => new LanguageCountDto(l.Language, l.Count))
-            .ToList();
-        var fuseVersion = await store.GetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, CancellationToken.None)
-                          ?? FuseBuildInfo.Current;
+    /// <summary>
+    ///     Prepares the semantic index for store-backed reads (R19): open, reconcile, syntax-first cold start, and
+    ///     background semantic upgrade run under the daemon's single-writer <see cref="IndexCoordinator" />.
+    ///     Non-owner MCP clients call this before opening the store read-only locally.
+    /// </summary>
+    /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
+    /// <param name="root">The absolute repository root.</param>
+    /// <returns>A coarse readiness result for the client to map to tool output.</returns>
+    /// <exception cref="LocalRpcException">The session token is missing or invalid, or the root does not match the served root.</exception>
+    [JsonRpcMethod("fuse/openIndexed")]
+    public async Task<OpenIndexedResultDto> OpenIndexedAsync(string sessionToken, string root)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
+        var resolved = Path.GetFullPath(root);
+        if (!Directory.Exists(resolved))
+            return new OpenIndexedResultDto("not_indexed", "workspace directory not found", 0, null);
 
-        _logger.LogInformation("Index {Root}: [{Mode}] {Files} files, {Symbols} symbols, {Routes} routes.",
-            resolved, state.Mode, state.FileCount, state.SymbolCount, routeCount);
-        return new IndexResultDto(
-            state.FileCount > 0 ? "Warm" : "NotIndexed",
-            state.FileCount,
-            elapsedMs,
-            state.Mode ?? "none",
-            state.SymbolCount,
-            routeCount,
-            state.SchemaVersion,
-            store.FullTextSearchAvailable,
-            fuseVersion,
-            languages);
+        try
+        {
+            await using var store = await OpenIndexedForHostAsync(resolved, CancellationToken.None);
+            var state = await store.GetStateAsync(CancellationToken.None);
+            return new OpenIndexedResultDto("ready", null, state.FileCount, state.Mode);
+        }
+        catch (IndexBusyException)
+        {
+            return new OpenIndexedResultDto("index_busy", "the index database is in use; retry shortly", 0, null);
+        }
+        catch (IndexRebuildingException ex)
+        {
+            return new OpenIndexedResultDto("index_rebuilding", ex.Message, 0, null);
+        }
     }
 
     /// <summary>
@@ -213,8 +267,7 @@ public sealed class FuseHostService : IDisposable
         if (!Directory.Exists(resolved))
             return new GraphDto([], [], directories ? "Directories" : "Files");
 
-        await using var store = await OpenStoreAsync(resolved);
-        await EnsureIndexedAsync(store, resolved);
+        await using var store = await OpenIndexedForHostAsync(resolved, CancellationToken.None);
 
         var files = await store.FindFilesByPathAsync(string.Empty, ListLimit, CancellationToken.None);
         var tokenByPath = await store.GetFileTokenEstimatesAsync(CancellationToken.None);
@@ -332,8 +385,7 @@ public sealed class FuseHostService : IDisposable
         if (!Directory.Exists(resolved))
             return new ScopeResultDto((mode ?? "search").Trim().ToLowerInvariant(), [], 0, null);
 
-        await using var store = await OpenStoreAsync(resolved);
-        await EnsureIndexedAsync(store, resolved);
+        await using var store = await OpenIndexedForHostAsync(resolved, CancellationToken.None);
 
         var (normalizedMode, plan) = await PlanScopeAsync(store, resolved, mode, seed, query, since, maxTokens);
 
@@ -385,8 +437,7 @@ public sealed class FuseHostService : IDisposable
         if (!Directory.Exists(resolved))
             return new ExplainResultDto((mode ?? "search").Trim().ToLowerInvariant(), []);
 
-        await using var store = await OpenStoreAsync(resolved);
-        await EnsureIndexedAsync(store, resolved);
+        await using var store = await OpenIndexedForHostAsync(resolved, CancellationToken.None);
 
         var (normalizedMode, plan) = await PlanScopeAsync(store, resolved, mode, seed, query, since, 0);
         var files = plan.Items
@@ -415,8 +466,7 @@ public sealed class FuseHostService : IDisposable
         if (!Directory.Exists(resolved))
             return new DiagnosticsDto([], [], [], []);
 
-        await using var store = await OpenStoreAsync(resolved);
-        await EnsureIndexedAsync(store, resolved);
+        await using var store = await OpenIndexedForHostAsync(resolved, CancellationToken.None);
 
         var files = await store.FindFilesByPathAsync(string.Empty, ListLimit, CancellationToken.None);
 
@@ -517,7 +567,7 @@ public sealed class FuseHostService : IDisposable
         // The current whole-state diagnostics come from a live resident workspace (the same process-wide provider
         // the MCP fuse_check delta mode reads); delta mode must not run a build, so with no resident workspace this
         // returns an empty, non-resident delta and the hook stays silent.
-        var current = Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.TryGetCurrentDiagnostics(resolved);
+        var current = ResidentWorkspaces.TryGetCurrentDiagnostics(resolved);
         if (current is null)
             return new CheckDeltaDto(false, [], []);
 
@@ -558,7 +608,7 @@ public sealed class FuseHostService : IDisposable
         FuseHostSessionToken.Validate(_sessionToken, sessionToken);
         ValidateServedRoot(root);
         var resolved = Path.GetFullPath(root);
-        var diagnostics = await Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.TryCheckOverlayAsync(
+        var diagnostics = await ResidentWorkspaces.TryCheckOverlayAsync(
             resolved, relativeFilePath, newContent, includeAnalyzers, CancellationToken.None);
         return diagnostics is null
             ? new CheckOverlayResultDto(false, [])
@@ -611,22 +661,69 @@ public sealed class FuseHostService : IDisposable
     ///     Deletes any scope payload files written during this host session. Called from <c>fuse/shutdown</c> and
     ///     when the host service is disposed.
     /// </summary>
-    public void Dispose() => DeleteTrackedPayloads();
+    public void Dispose()
+    {
+        DeleteTrackedPayloads();
+        _ = _upgradeSupervisor.DisposeAsync();
+    }
 
-    // Opens (and migrates) the semantic index store for a repository root, without indexing.
+    private Task<WorkspaceIndexStore> OpenIndexedForHostAsync(string root, CancellationToken cancellationToken) =>
+        IndexCoordinator.Default.OpenIndexedAsync(
+            _indexer,
+            root,
+            _backgroundSemanticUpgradeEnabled,
+            _upgradeSupervisor,
+            ScheduleSemanticUpgrade,
+            residentRoot => Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces.DescribeResident(residentRoot) is not null,
+            cancellationToken);
+
+    private void ScheduleSemanticUpgrade(SemanticIndexer indexer, string root) =>
+        _upgradeSupervisor.Schedule(root, cancellationToken =>
+            IndexCoordinator.Default.RunBackgroundUpgradeAsync(indexer, root, cancellationToken));
+
+    private static bool BackgroundSemanticUpgradeEnabled()
+    {
+        var value = Environment.GetEnvironmentVariable("FUSE_BG_UPGRADE");
+        if (value is null)
+            return true;
+        return !(value.Equals("0", StringComparison.Ordinal)
+                 || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                 || value.Equals("off", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task<IndexResultDto> BuildIndexResultDtoAsync(
+        string resolved, SemanticIndexResult pass, long elapsedMs)
+    {
+        await using var store = await IndexCoordinator.Default.OpenForReadOnlyAsync(resolved, CancellationToken.None);
+        var state = await store.GetStateAsync(CancellationToken.None);
+        var languages = (await store.GetLanguageCountsAsync(CancellationToken.None))
+            .Select(l => new LanguageCountDto(l.Language, l.Count))
+            .ToList();
+        var fuseVersion = await store.GetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, CancellationToken.None)
+                          ?? FuseBuildInfo.Current;
+
+        _logger.LogInformation("Index {Root}: [{Mode}] {Files} files, {Symbols} symbols, {Routes} routes.",
+            resolved, pass.Mode, pass.FileCount, pass.SymbolCount, pass.RouteCount);
+        return new IndexResultDto(
+            state.FileCount > 0 ? "Warm" : "NotIndexed",
+            pass.FileCount,
+            elapsedMs,
+            pass.Mode,
+            pass.SymbolCount,
+            pass.RouteCount,
+            state.SchemaVersion,
+            store.FullTextSearchAvailable,
+            fuseVersion,
+            languages);
+    }
+
+    // Opens the store for check-session baseline persistence (daemon-owned small writes).
     private static async Task<WorkspaceIndexStore> OpenStoreAsync(string root)
     {
         var store = new WorkspaceIndexStore(FuseStorePaths.ResolveDatabasePath(root));
         await store.InitializeAsync(CancellationToken.None);
         return store;
-    }
-
-    // Builds the index on first use so a cold store serves data; a warm store is left as-is.
-    private async Task EnsureIndexedAsync(WorkspaceIndexStore store, string root)
-    {
-        var state = await store.GetStateAsync(CancellationToken.None);
-        if (state.FileCount == 0)
-            await _indexer.IndexAsync(root, store, CancellationToken.None);
     }
 
     // Plans a scoped context payload for a mode: focus (a symbol or file seed), changes (a git review), or search

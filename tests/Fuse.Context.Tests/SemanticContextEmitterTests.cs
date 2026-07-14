@@ -1,5 +1,5 @@
 using Fuse.Context;
-using Fuse.Retrieval;
+using Fuse.Scoping;
 using Xunit;
 
 namespace Fuse.Context.Tests;

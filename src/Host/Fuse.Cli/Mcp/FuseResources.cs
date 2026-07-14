@@ -312,18 +312,6 @@ public sealed class FuseResources
         return SemanticContextEmitter.Emit(plan, rendered, ContextOutputFormat.Xml, root, since);
     }
 
-    // Opens the store and builds the index on first use, so a resource works without an explicit index call.
-    private static async Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
-    {
-        var root = Path.GetFullPath(path);
-        var store = new WorkspaceIndexStore(FuseStorePaths.ResolveDatabasePath(root));
-        await store.InitializeAsync(cancellationToken);
-        var state = await store.GetStateAsync(cancellationToken);
-        if (state.FileCount == 0)
-            await indexer.IndexAsync(root, store, cancellationToken);
-        else
-            // Freshness contract (N6): reconcile dirty known files before serving a resource read.
-            await indexer.ReconcileDirtyFilesAsync(root, store, cancellationToken);
-        return store;
-    }
+    private static Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken) =>
+        FuseTools.IndexAccess.OpenIndexedAsync(indexer, path, cancellationToken);
 }

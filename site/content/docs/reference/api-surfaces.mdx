@@ -1,0 +1,94 @@
+---
+title: API surfaces
+description: Map each user intent to the MCP tool, CLI command, and host RPC method that answer it.
+---
+
+Fuse exposes the same warm semantic engine through three local surfaces: nine MCP tools for coding agents (`fuse mcp serve`), one-shot CLI commands for shells and scripts, and JSON-RPC methods on `fuse host` for ambient-verification hooks and future local clients. This page maps user intents across those surfaces so integrators do not have to learn three parallel catalogs.
+
+For MCP parameter defaults see [Tools reference](/docs/reference/mcp-tools). For CLI flags see [Commands reference](/docs/reference/commands). For transport security and trust boundaries on the host pipe see [Host RPC threat model](/docs/internals/host-rpc).
+
+## Choosing a surface
+
+| Surface | Transport | Typical caller |
+|---------|-----------|----------------|
+| MCP tools | stdio to the parent MCP client | Cursor, Claude Code, Copilot, or any MCP-compatible agent |
+| CLI commands | In-process shell invocation | Humans, CI scripts, Claude Code hooks |
+| Host RPC | Named pipe (Windows) or Unix domain socket | `fuse check --delta`, `fuse gate`, shared daemon clients |
+
+Agents should prefer MCP. Hooks and editor integrations that need a warm resident compilation without spawning an MCP server use host RPC. One-shot exploration and scripting use the CLI.
+
+## Intent map
+
+The table lists the canonical entry point per intent. A cell marked "none" means that surface has no dedicated command for that intent; use the MCP or CLI column instead. Deprecated CLI aliases remain for scripts; prefer the canonical command in new work.
+
+| Intent | MCP tool | CLI command | Host RPC | Notes |
+|--------|----------|-------------|----------|-------|
+| Workspace status and index freshness | `fuse_workspace` (`action=status`) | `fuse diagnostics [path]` | none | Fast read of `index_meta` only; does not create `.fuse/fuse.db` on a cold workspace |
+| Build or refresh the index | `fuse_workspace` (`action=index`) | `fuse index [path]` | `fuse/index` | MCP read tools also build on first use via `fuse/openIndexed` when the daemon is active |
+| Workspace map (symbols, routes, counts) | `fuse_workspace` (`action=map`) | `fuse map [path]` | `fuse/graph` | Host graph adds dependency edges and optional scope overlay |
+| Semantic load diagnosis | `fuse_workspace` (`action=doctor`) | `fuse doctor [path]` | none | Actively loads through MSBuild; explains per-project downgrade |
+| Apply a verified single-file edit | `fuse_workspace` (`action=apply`) | none | none | The one explicit server tree-write path; dry run unless `write=true` |
+| Task localization (rank candidate files) | `fuse_find` (`kind=task`) | `fuse find <query> --kind task` | `fuse/scope` (`mode=search`), `fuse/graph` (`scopeMode=search`), `fuse/openIndexed` | Deprecated alias: `fuse localize [path] --task "..."` |
+| Wiring resolution (service, request, route, config) | `fuse_find` (`kind=service\|request\|route\|config`) | `fuse find <query> --kind service` (etc.) | none | Deprecated alias: `fuse resolve [path] --service ...` (and `--request`, `--route`, `--config`, `--symbol`) |
+| Exact symbol, path, or text lookup | `fuse_find` (`kind=symbol\|path\|text\|all`) | `fuse find <query> [--kind symbol\|path\|text\|all]` | none | |
+| Symbol exact signature | `fuse_find` (`kind=signatures`) | none | none | Resident workspace (`FUSE_RESIDENT=1`) answers from compiler metadata when qualified |
+| Symbol callers and implementers | `fuse_find` (`kind=neighbors`) | none | none | |
+| Emit scoped, reduced context | `fuse_context` | `fuse context [path]` | `fuse/scope`, `fuse/explain` | `fuse/explain` is plan-only; `fuse/scope` writes a temp payload file |
+| Review a change since a git base | `fuse_review` | `fuse review [path]` | `fuse/scope` (`mode=changes`), `fuse/graph` (`scopeMode=changes`) | |
+| Blast radius before editing | `fuse_impact` | `fuse impact <symbol>` | none | Package-upgrade mode: `fuse impact --package ... --from-version ... --to-version ...` |
+| Typecheck a proposed single-file edit | `fuse_check` | none (use MCP) | `fuse/checkOverlay` | Overlay path needs a resident workspace on the daemon |
+| Session diagnostics delta (ambient verification) | none | `fuse check --delta [--fast]` | `fuse/check` | Never runs a build; silent when no host serves the root |
+| Block turn while session has introduced errors | none | `fuse gate` | `fuse/check` | Exit nonzero when introduced errors remain unresolved |
+| Run covering tests for a symbol | `fuse_test` | `fuse test <symbol>` | none | Candidate racing (`candidates` JSON) is MCP-only |
+| Compiler-executed refactor (staged diff) | `fuse_refactor` | none | none | Returns a verified diff or abstains; apply with `fuse_workspace action=apply` |
+| Compact known files or raw content | `fuse_reduce` | `fuse reduce` | none | Out-of-loop utility; does not walk the index |
+| Host process health | none | none | `fuse/stats` | Process id, uptime, working-set size |
+| Host compatibility handshake | none | none | `fuse/handshake` | Returns protocol version and session token |
+| Context diagnostics (secrets, hotspots, gaps) | none | none | `fuse/diagnostics` | Not the same as `fuse diagnostics` CLI (index state) |
+| Stop the host daemon | none | none | `fuse/shutdown` | |
+
+## Deprecated CLI aliases
+
+These commands predate the `fuse_find` union. They remain for existing scripts; new agent instructions should call `fuse_find` or `fuse find` with the matching `kind`.
+
+| Deprecated command | Canonical replacement |
+|--------------------|----------------------|
+| `fuse localize [path] --task "..."` | `fuse find "..." --kind task` or MCP `fuse_find` with `kind=task` |
+| `fuse resolve [path] --service IOrderService` | `fuse find IOrderService --kind service` or MCP `fuse_find` with `kind=service` |
+| `fuse resolve [path] --request CreateOrderCommand` | `fuse find CreateOrderCommand --kind request` |
+| `fuse resolve [path] --route "POST /api/orders"` | `fuse find "POST /api/orders" --kind route` |
+| `fuse resolve [path] --config Orders` | `fuse find Orders --kind config` |
+| `fuse resolve [path] --symbol OrderService` | `fuse find OrderService --kind symbol` |
+
+## Surface registry
+
+`ApiSurfacesDocParityTests` in the repository reflects every shipped MCP tool name and host RPC request method against this table. Add a row here when a new tool or RPC method ships.
+
+| Surface | Identifier |
+|---------|------------|
+| mcp | `fuse_workspace` |
+| mcp | `fuse_find` |
+| mcp | `fuse_context` |
+| mcp | `fuse_impact` |
+| mcp | `fuse_check` |
+| mcp | `fuse_test` |
+| mcp | `fuse_refactor` |
+| mcp | `fuse_review` |
+| mcp | `fuse_reduce` |
+| rpc | `fuse/handshake` |
+| rpc | `fuse/stats` |
+| rpc | `fuse/index` |
+| rpc | `fuse/openIndexed` |
+| rpc | `fuse/graph` |
+| rpc | `fuse/scope` |
+| rpc | `fuse/explain` |
+| rpc | `fuse/diagnostics` |
+| rpc | `fuse/check` |
+| rpc | `fuse/checkOverlay` |
+| rpc | `fuse/shutdown` |
+
+## Related pages
+
+- [Connect your coding agent](/docs/start/connect-your-ai) for MCP registration
+- [Ambient verification](/docs/scenarios/ambient-verification) for `fuse check --delta` and `fuse gate` over host RPC
+- [Context for an agent](/docs/scenarios/context-for-an-agent) for the recommended MCP call order

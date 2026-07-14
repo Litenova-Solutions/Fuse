@@ -2,6 +2,7 @@ using Fuse.Plugins.Abstractions;
 using Fuse.Plugins.Abstractions.Dependencies;
 using Fuse.Collection.FileSystem;
 using Fuse.Collection.Models;
+using Fuse.Scoping;
 
 namespace Fuse.Fusion.Scoping;
 
@@ -184,10 +185,7 @@ public sealed class FocusSeedResolver
     // so a zero weight reproduces the prior ordering exactly.
     private static double RankScore(ExpansionOptions options, string path, double traversalScore)
     {
-        if (options.CentralityWeight == 0 || options.Centrality is null)
-            return traversalScore;
-
-        return traversalScore + options.CentralityWeight * options.Centrality.GetValueOrDefault(path);
+        return GraphCentrality.BlendRankScore(traversalScore, path, options.Centrality, options.CentralityWeight);
     }
 
     private static void EnqueueNeighbours(

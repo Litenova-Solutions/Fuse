@@ -34,6 +34,9 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
 
         var header = await FuseTools.OracleAvailabilityHeaderAsync(_store, _root, CancellationToken.None);
 
+        Assert.StartsWith("index_state:", header);
+        Assert.Contains("files_indexed:", header);
+        Assert.Contains("availability:", header);
         Assert.Contains("index mode semantic", header);
         Assert.Contains("up to date", header);
         Assert.DoesNotContain("may lag", header);

@@ -1,13 +1,26 @@
 ---
 title: Semantic Analyzer
-description: What the shipped semantic analyzers cover, and how to contribute a new one for a framework Fuse does not yet understand.
+description: What the shipped semantic analyzers cover, how the semantic-tier provider seam works, and how to contribute a new analyzer or language.
 ---
 
-A semantic analyzer turns a loaded Roslyn compilation into typed graph edges: this service resolves to that implementation, this request is handled there, this route maps to that action. The analyzers are what make `fuse_find` (wiring and neighbors), `fuse_review`, and `fuse_impact` answer wiring questions a text search cannot. This page states exactly what the shipped analyzers cover, so the picture is honest, and shows how to add one for a framework they miss.
+A semantic analyzer turns a loaded Roslyn compilation into typed graph edges: this service resolves to that implementation, this request is handled there, this route maps to that action. The analyzers are what make `fuse_find` (wiring and neighbors), `fuse_review`, and `fuse_impact` answer wiring questions a text search cannot. This page states exactly what the shipped analyzers cover, documents the semantic-tier provider seam, and shows how to add an analyzer for a framework they miss.
+
+## Semantic-tier provider seam
+
+The syntax tier is provider-driven through `ILanguageSyntaxProvider`; the semantic (typed-graph) tier uses the same pattern through `ISemanticLanguageProvider` in `Fuse.Semantics`. A semantic provider supplies:
+
+- a **language id** (for example `csharp`);
+- the ordered list of **`ISemanticAnalyzer`** instances that run over a loaded compilation for that language.
+
+`SemanticLanguageProviderRegistry` selects a provider by language and builds a `SemanticAnalysisRunner` from its analyzers. C# is the only shipped semantic provider in 4.2 (`CSharpSemanticLanguageProvider`); it registers the wiring analyzers in the table below. Host composition registers it through `AddCSharpSemanticLanguageProvider()` in `Fuse.Plugins.Languages.CSharp.Roslyn` (called from `AddFuse`).
+
+`Fuse.Semantics` does not reference `Fuse.Plugins.Languages.CSharp.Roslyn` directly; the plugin project references semantics and wires the C# provider at the host. A second semantic language registers another `ISemanticLanguageProvider` alongside C# without changing the shared runner or indexer. First-party multi-language semantic work remains behind the F6 entry bar (bind a language's real compiler service, not a parser).
+
+`SemanticAnalysisRunner.CreateDefault()` delegates to `CSharpSemanticLanguageProvider` so existing call sites and Suite A semantics are unchanged.
 
 ## Coverage
 
-Every analyzer implements `ISemanticAnalyzer` and runs per project over the Roslyn compilation. The table lists what ships today. An analyzer sees only the project's own source plus its referenced symbols, so it discovers wiring declared in the code Fuse indexed, not wiring that lives in a dependency's compiled assembly.
+Every analyzer implements `ISemanticAnalyzer` and runs per project over the Roslyn compilation. The table lists what ships today through the C# provider. An analyzer sees only the project's own source plus its referenced symbols, so it discovers wiring declared in the code Fuse indexed, not wiring that lives in a dependency's compiled assembly.
 
 | Analyzer | Framework / pattern | Edge or record it produces |
 |----------|--------------------|----------------------------|
@@ -24,15 +37,25 @@ Every analyzer implements `ISemanticAnalyzer` and runs per project over the Rosl
 | `ReferenceEdgeAnalyzer` | Type-level use of another source type's member or type | `references` edges, the substrate `fuse_impact` reads |
 | `TestEdgeExtractor` | A test type's references to the source types it exercises (runs after the per-project analyzers merge) | `tests` edges, the substrate for covering-test selection |
 
-The semantic (typed-graph) tier is C# and Roslyn only. The syntax tier is provider-driven and language-agnostic, but the analyzers above run against a Roslyn `Compilation`, so a second language reaches the semantic tier only when a semantic-tier provider for it is built. The semantics benchmark (`fuse eval semantics`) measures analyzer accuracy against a hand-built edge ground truth on the OrderingApp fixture; it is the gate any new analyzer extends.
+The semantics benchmark (`fuse eval semantics`) measures analyzer accuracy against a hand-built edge ground truth on the OrderingApp fixture; it is the gate any new analyzer extends.
 
 ## Contributing an analyzer
 
 The steps to add coverage for a framework not in the table:
 
 1. Implement `ISemanticAnalyzer` in `src/Core/Fuse.Semantics/Analyzers`. `Analyze` receives a `SemanticAnalysisContext` (the loaded project and the workspace root) and returns a `SemanticAnalyzerResult` carrying the nodes and typed edges it discovered. Use `SemanticAnalyzerResult.FromGraph(nodes, edges)` when you emit only nodes and edges; include every node an edge references, so the endpoint exists before the edge is stored. Read the framework's wiring off the Roslyn semantic model (symbols and their attributes), not off syntax text, so the edge is only emitted when the types actually bind.
-2. Register it in `SemanticAnalysisRunner.CreateDefault()`. Order matters only where one analyzer consumes another's output (for example `ConstructorInjectionAnalyzer` takes the `DiRegistrationAnalyzer` so it can resolve a dependency to its registered implementation).
+2. Register it on `CSharpSemanticLanguageProvider.CreateAnalyzers()` (or on a new `ISemanticLanguageProvider` if the analyzer belongs to a different semantic language). Order matters only where one analyzer consumes another's output (for example `ConstructorInjectionAnalyzer` takes the `DiRegistrationAnalyzer` so it can resolve a dependency to its registered implementation).
 3. Add a fixture and a golden edge test. Extend the OrderingApp wiring fixture (or add a focused fixture) with the new pattern, and assert the exact edges in the semantics ground truth. An analyzer without a ground-truth edge is unmeasured, and the semantics suite is the strictest gate in the harness: it must match the hand-built edges exactly.
 4. Keep the three gates green: `dotnet build Fuse.slnx -c Release`, `dotnet test Fuse.slnx -c Release --no-build`, `dotnet format Fuse.slnx --verify-no-changes`. Add XML docs on the public analyzer type per the project's documentation standard.
 
 A few rules keep an analyzer honest. Emit an edge only when the symbols resolve; a name-based guess that fires on a partial load produces a false edge, which is worse than a missing one. Weight a soft signal (a `references` edge is weight 0.15) below a hard wiring edge, so ranking reflects certainty. And measure precision, not just recall: `fuse eval semantics --corpus-sample N` samples predicted edges over the corpus for adjudication, which is how a new resolver's false-positive rate is checked before it ships.
+
+## Contributing a semantic language (F6 entry bar)
+
+A second semantic language is out of scope for 4.2. When the F6 entry bar is met:
+
+1. Implement `ISemanticLanguageProvider` with a real compiler-backed loader for that language (not a syntax-only parser).
+2. Register the provider through DI (`ISemanticLanguageProvider`) before or alongside `AddCSharpSemanticLanguageProvider()`.
+3. Add a fixture, golden edges, and a `fuse eval semantics` gate for that language's wiring patterns.
+
+Community syntax providers continue through `ILanguageSyntaxProvider`; the semantic tier is a separate, compiler-backed capability.

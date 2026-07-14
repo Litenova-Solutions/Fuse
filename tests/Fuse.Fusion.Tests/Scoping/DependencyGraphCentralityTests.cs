@@ -1,8 +1,9 @@
 using Fuse.Fusion.Scoping;
+using Fuse.Scoping;
 
 namespace Fuse.Fusion.Tests.Scoping;
 
-public sealed class GraphCentralityTests
+public sealed class DependencyGraphCentralityTests
 {
     // Builds a graph where Core.cs declares a type referenced by three other files (central), while Leaf.cs
     // declares a type no one references (peripheral).
@@ -39,12 +40,10 @@ public sealed class GraphCentralityTests
     [Fact]
     public void Compute_RanksCentralFileHighest()
     {
-        var centrality = GraphCentrality.Compute(BuildGraph());
+        var centrality = DependencyGraphCentrality.Compute(BuildGraph());
 
         Assert.True(centrality.TryGetValue("Core.cs", out var core));
-        Assert.Equal(1.0, core); // most depended-upon -> normalized to 1
-        // PageRank gives every node a floor score, so the peripheral file is present but ranks well below the
-        // central one (in-degree centrality omitted it entirely).
+        Assert.Equal(1.0, core);
         Assert.True(centrality.TryGetValue("Leaf.cs", out var leaf));
         Assert.True(leaf < core);
     }
@@ -52,9 +51,6 @@ public sealed class GraphCentralityTests
     [Fact]
     public void Compute_PageRankRewardsBeingReferencedByCentralFiles()
     {
-        // Hub is referenced by Core (itself heavily referenced) and by nobody-else; Lonely is referenced only
-        // by an otherwise-peripheral file. PageRank, unlike raw in-degree (both have one referrer), ranks Hub
-        // above Lonely because the importance flows from the central Core.
         var fileReferences = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
         {
             ["A.cs"] = ["CoreType"],
@@ -81,7 +77,7 @@ public sealed class GraphCentralityTests
             ["LonelyType"] = ["Edge.cs"],
         };
 
-        var centrality = GraphCentrality.Compute(
+        var centrality = DependencyGraphCentrality.Compute(
             new DependencyGraph(fileReferences, typeIndex, declaredTypes, typeReferences));
 
         Assert.True(centrality["Hub.cs"] > centrality["Lonely.cs"]);
@@ -91,8 +87,8 @@ public sealed class GraphCentralityTests
     public void Compute_IsDeterministic()
     {
         var graph = BuildGraph();
-        var first = GraphCentrality.Compute(graph);
-        var second = GraphCentrality.Compute(graph);
+        var first = DependencyGraphCentrality.Compute(graph);
+        var second = DependencyGraphCentrality.Compute(graph);
 
         Assert.Equal(first.Count, second.Count);
         foreach (var (key, value) in first)
@@ -108,7 +104,7 @@ public sealed class GraphCentralityTests
             new Dictionary<string, IReadOnlyList<string>>(),
             new Dictionary<string, IReadOnlyList<string>>());
 
-        Assert.Empty(GraphCentrality.Compute(empty));
+        Assert.Empty(DependencyGraphCentrality.Compute(empty));
     }
 
     [Fact]
@@ -116,9 +112,8 @@ public sealed class GraphCentralityTests
     {
         var graph = BuildGraph();
         var resolver = new FocusSeedResolver(new Plugins.Abstractions.CapabilityRegistry<Plugins.Abstractions.Dependencies.ITypeNameLocator>([]));
-        var centrality = GraphCentrality.Compute(graph);
+        var centrality = DependencyGraphCentrality.Compute(graph);
 
-        // Two seeds at identical relevance: the central one must score higher with the prior on.
         var seeds = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
         {
             ["Core.cs"] = 1.0,
@@ -129,7 +124,6 @@ public sealed class GraphCentralityTests
             new ExpansionOptions(Depth: 0, Centrality: centrality, CentralityWeight: 0.5));
         Assert.True(withPrior.Scores["Core.cs"] > withPrior.Scores["Leaf.cs"]);
 
-        // Weight 0 reproduces equal scores (prior ordering unchanged).
         var noPrior = resolver.Expand(graph, seeds,
             new ExpansionOptions(Depth: 0, Centrality: centrality, CentralityWeight: 0.0));
         Assert.Equal(noPrior.Scores["Core.cs"], noPrior.Scores["Leaf.cs"]);

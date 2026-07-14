@@ -5,7 +5,8 @@ description: Register Fuse with any MCP-compatible coding agent and confirm a co
 
 Connect Fuse from the current .NET project. `fuse mcp install` writes configuration for
 Cursor, Claude Code, and Copilot; any other MCP client uses the same stdio server with
-manual registration.
+manual registration. No environment block is required: shared daemon, background upgrade,
+build capture, and session auto-update default on inside `fuse mcp serve`.
 
 ```bash
 fuse mcp install --rules
@@ -106,6 +107,21 @@ contact NuGet for a daily update check; set `FUSE_UPDATE_CHECK=0` in the server 
 to disable it. A compiler fallback can run the repository's normal `dotnet build`,
 including any package-feed access required by that build.
 
+## Advanced opt-outs
+
+The defaults above suit most agent sessions. Set these only when you need to override them
+in the client `env` block or your shell:
+
+| Variable | Opt-out value | Effect |
+|----------|---------------|--------|
+| `FUSE_DAEMON` | `0` | Serve in-process instead of delegating to a shared `fuse host` per repository |
+| `FUSE_AUTO_UPDATE` | `0` | Do not launch a background updater between MCP sessions |
+| `FUSE_BG_UPGRADE` | `0` | Block the first read on a full synchronous index instead of syntax-first serving |
+| `FUSE_BUILD_CAPTURE` | `0` | Skip tier-1 build capture (oracle-grade checks need a local build instead) |
+| `FUSE_UPDATE_CHECK` | `0` | Disable the NuGet update notice on stderr |
+
+See [Configuration keys](/docs/reference/configuration-keys) for the full list.
+
 ## Other MCP clients
 
 Any client that supports MCP over stdio can launch Fuse. Add a server entry that runs
@@ -201,4 +217,5 @@ rebuilds it.
 ## Next
 
 Continue with the [Quickstart](/docs/start/quickstart). Use the
-[tool reference](/docs/reference/mcp-tools) for every operation and parameter.
+[tool reference](/docs/reference/mcp-tools) for every operation and parameter, or the
+[API surfaces map](/docs/reference/api-surfaces) when you need the CLI or host RPC equivalent of an MCP tool.

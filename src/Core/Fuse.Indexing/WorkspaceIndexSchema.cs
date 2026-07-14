@@ -6,7 +6,7 @@ namespace Fuse.Indexing;
 /// </summary>
 /// <remarks>
 ///     The schema is rebuilt from scratch whenever the on-disk version is below
-///     <see cref="TargetVersion" /> (see <see cref="WorkspaceIndexMigrator" />); there is no
+///     <see cref="TargetVersion" /> (see <see cref="IndexSchemaMigrator" />); there is no
 ///     incremental migration path in V3. The full-text search virtual table is created separately
 ///     so a runtime lacking FTS5 can still build the relational schema and fall back.
 /// </remarks>

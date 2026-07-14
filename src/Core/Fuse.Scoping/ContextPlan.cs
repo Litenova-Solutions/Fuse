@@ -1,4 +1,4 @@
-namespace Fuse.Retrieval;
+namespace Fuse.Scoping;
 
 /// <summary>
 ///     A plan describing which files to include in a context payload, at what render tier, why, and at what

@@ -5,6 +5,9 @@ using Fuse.Cli.Services;
 
 namespace Fuse.Cli.Tests;
 
+// Shares a collection with IndexCommandParseTests: both build the DotMake command tree via Cli.Parse<FuseCliCommand>,
+// and concurrent builds race on DotMake's process-global command registry ("diagnostics conflicts"). Serialize them.
+[Collection("DotMakeCliParse")]
 public sealed class McpInstallTests
 {
     [Fact]

@@ -12,6 +12,16 @@ compiler or test verdicts from graph inferences.
 The rule is one sentence: **grades are computed, never asserted.** Fuse grades only statements
 it emitted itself, from evidence it can point at; it never grades prose a model wrote.
 
+## Availability header and index state
+
+Before claim grades, store-backed read tools lead with an **availability header**: `index_state`,
+`files_indexed` (when known), and an `availability:` line naming index mode, FTS status, tier-1
+build capture, verification grade, workspace truth source (store or resident), upgrade progress,
+and freshness. When a read cannot proceed yet (`index_busy`, or a cold build still committing),
+the tool returns this header as the full result body so the agent can retry instead of waiting on
+a hung call. Claim grades apply to statements inside a completed answer; the header names the
+operational state of the index that produced (or will produce) those claims.
+
 ## The grades
 
 ```mermaid

@@ -5,11 +5,11 @@ description: Parameters and defaults for the MCP tools the Fuse server exposes t
 
 The Fuse MCP server exposes a loop-shaped surface of eight tools (`fuse_workspace`, `fuse_find`, `fuse_context`, `fuse_impact`, `fuse_check`, `fuse_test`, `fuse_refactor`, `fuse_review`), plus `fuse_reduce` as the one out-of-loop utility. Each tool is one mental act, so the loop is teachable: after an edit run `fuse_check`; before a signature change run `fuse_impact`; before done run `fuse_review`. MCP (Model Context Protocol) is the open protocol that lets an AI client call external tools. This page documents each tool and its parameters so an agent or its author can choose the right call and supply correct arguments.
 
-This page is for engineers writing agent instructions and for experts who need the exact default of each parameter. For the recommended order in which to call these tools, see [Context for an agent](/docs/scenarios/context-for-an-agent). The equivalent CLI flags are in [Commands Reference](/docs/reference/commands).
+This page is for engineers writing agent instructions and for experts who need the exact default of each parameter. For the recommended order in which to call these tools, see [Context for an agent](/docs/scenarios/context-for-an-agent). The equivalent CLI flags are in [Commands Reference](/docs/reference/commands). For a single table mapping each intent to MCP, CLI, and host RPC, see [API surfaces](/docs/reference/api-surfaces).
 
 ## Purpose and scope
 
-Read tools build the persistent index on first use, so an explicit `fuse_workspace action=index` call is optional. The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace. Tools return their result in the tool response; the only writes are the index (`fuse_workspace action=index`) and the one explicit tree-write path (`fuse_workspace action=apply`, a dry run unless `write=true`). Token budgets are honored by the plan, and secret redaction runs before any source reaches the payload.
+Read tools build the persistent index on first use, so an explicit `fuse_workspace action=index` call is optional. The exception is `fuse_workspace action=status` (and `fuse diagnostics` on the CLI): both read `index_meta` only, report `index_state`, and return `not_indexed` on a cold workspace without creating `.fuse/fuse.db`. The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace. Tools return their result in the tool response; the only writes are the index (`fuse_workspace action=index`) and the one explicit tree-write path (`fuse_workspace action=apply`, a dry run unless `write=true`). Token budgets are honored by the plan, and secret redaction runs before any source reaches the payload.
 
 Choosing a tool:
 
@@ -18,14 +18,73 @@ Choosing a tool:
 - Use `fuse_context` after `fuse_find`, unless you want one-shot context.
 - Use `fuse_find` with `kind=symbol|path|text` for exact lookup, or `kind=neighbors` to explore the callers and implementers of a symbol.
 
+## Tool tiers
+
+Each MCP tool belongs to one of three tiers. The tier names what must be available before the tool can answer,
+not how fast it is.
+
+| Tier | Tools | Needs `.fuse/fuse.db` |
+|------|-------|------------------------|
+| **offline** | `fuse_reduce` | No |
+| **compiler** | `fuse_check`, `fuse_refactor`, `fuse_test` (build-grade verify, candidate racing, and `dotnet test` execution) | No for verification or test execution; the index is optional enrichment only |
+| **indexed** | `fuse_workspace` (`index`, `map`, `doctor`, `apply`), `fuse_find`, `fuse_context`, `fuse_impact`, `fuse_review`, `fuse_test` (covering-test selection) | Yes (built on first use for read tools, or warm read when already present) |
+
+`fuse_workspace action=status` and `fuse diagnostics` read `index_meta` only and never start a build.
+
+Compiler-tier tools discover projects and run the toolchain first. `fuse_check` verifies a proposed edit before
+opening the index; repair packets are attached afterward when the store is available, with a named omission note
+when it is not. `fuse_refactor` loads the solution through Roslyn without the store. `fuse_test` selects covering
+tests from persisted `tests` edges (indexed-tier); when the store is contended it returns `index_busy:` rather than
+blocking the subsequent `dotnet test` path on index build.
+
+Indexed-tier read tools use a warm read-only open when the database already exists. They acquire the writer lock only
+when the index must be created, reconciled, or upgraded.
+
+## Operational error prefixes
+
+MCP tools return errors as a single prefixed string rather than throwing. Match the prefix to decide the next step:
+
+| Prefix | Meaning | Agent retry guidance |
+|--------|---------|----------------------|
+| `index_busy:` | The index writer lock or SQLite database is busy on an explicit write path (`action=index`) or a tool that does not use the read header contract. | Retry after a short pause, or run `fuse host` so one shared daemon serves the root. |
+| `index_not_built:` | No index exists at `.fuse/fuse.db` (or it is empty). | Run `fuse_workspace action=index` (or `fuse index`) before indexed reads. |
+| `workspace_not_found:` | The `path` directory does not exist. | Fix the workspace path. |
+| `validation_error:` | The tool arguments are invalid or incomplete. | Correct the parameters and call again. |
+| `internal_error:` | An unexpected failure (including cancellation). | Retry once; if it persists, run `fuse_workspace action=doctor` and check daemon or disk health. |
+
+When a **read** tool cannot open the index yet (another process holds the writer mutex, SQLite is busy, or a cold build is still committing), it returns the **availability header** as the tool result body instead of hanging or throwing. The header always leads with `index_state:` and `files_indexed:` (when known), then the `availability:` line. Retry the same call after a short pause.
+
+### Availability header
+
+Store-backed read tools (`fuse_find`, `fuse_context`, `fuse_impact`, `fuse_review`, and related resources) prepend this header to their answer, or return it alone when the read cannot proceed yet.
+
+```text
+index_state: ready
+files_indexed: 1284
+availability: index mode semantic; full-text search available; tier-1 build capture configured; verify serves oracle-grade; workspace store-backed; up to date.
+```
+
+`index_state` is one of:
+
+| Value | Meaning |
+|-------|---------|
+| `not_indexed` | No `.fuse/fuse.db` or zero indexed files. |
+| `building_syntax` | Syntax-first cold start: the syntax tier is live and a semantic upgrade is pending. |
+| `upgrade_pending` | The index exists at syntax or partial tier and a background semantic or tier-1 upgrade is running. |
+| `ready` | The index is current for reads at its loaded tier. |
+| `index_busy` | The writer lock or SQLite blocked this read; retry shortly. |
+| `stale_as_of` | A bulk change outran per-read reconcile; results may lag the working tree. |
+
+`files_indexed` is omitted only when the store cannot be read (for example an exclusive SQLite lock). `fuse_workspace action=status` and `fuse diagnostics` report the same `index_state` values on the fast read-only path without starting a build on a cold workspace.
+
 ## fuse_workspace
 
 Workspace status and lifecycle: the loop's first stop and the one explicit tree-write path. Select the operation with `action`.
 
-- **`status`** (default): the index mode, verification grade, and freshness.
+- **`status`** (default): the index mode, verification grade, freshness, and `index_state` (`not_indexed`, `building_syntax`, `upgrade_pending`, `ready`, `index_busy`, `stale_as_of`), plus `files_indexed` when known. This is a read-only fast path: it reads `index_meta` when `.fuse/fuse.db` exists and never starts a build on a cold workspace.
 - **`index`**: build or refresh the persistent semantic index. The index mode is `semantic` when the workspace loads through MSBuild/Roslyn, `partial` when some projects fall back, and `syntax` when no project loads.
 - **`map`**: the workspace map of indexed symbols, routes, and counts.
-- **`doctor`**: the per-project semantic-load diagnosis (why a project loaded at the tier it did).
+- **`doctor`**: the per-project semantic-load diagnosis (why a project loaded at the tier it did). The summary header uses the same fast `index_meta` read as `status`; the MSBuild load diagnosis still runs below it.
 - **`apply`**: write a proposed single-file edit (`file` plus `content`) to the working tree. This is the server's one explicit tree-write path: it is a dry run that only reports the change unless `write=true`, and it refuses any `file` that resolves outside the workspace root.
 
 | Parameter | Type | Default | Meaning |
@@ -167,7 +226,7 @@ Typecheck a proposed single-file edit and get the compiler errors and warnings t
 - **build** grade: when no oracle substrate is available, Fuse runs the real `dotnet build` toolchain scoped to the owning project and parses its diagnostics into the same shape. This is ground truth (the compiler itself answered) at the cost of build latency (tens of seconds), reported with the elapsed time. The working tree is never written: the owning project is mirrored to a temporary directory, the proposed content replaces the one file in the copy, its `<ProjectReference>` includes are rewritten to absolute paths pointing at the untouched originals, and the build runs there.
 - **abstain**: returned only when even the toolchain cannot run (no buildable project, or a build that exceeds the timeout), always naming the missing prerequisite.
 
-The response opens with the grade line so a client knows the class of truth and the latency to expect before reading the verdict. When a diagnostic is an API-shape error an agent commonly hits (CS1061 a member that does not exist, CS0246 a type that could not be found), the response attaches a repair packet: the receiver type's real members with the nearest names first, or the nearest type names in the index, drawn from the persisted symbol table so the fix does not cost another round-trip. A packet is added only where a concrete suggestion is possible, never as empty padding.
+The response opens with the grade line so a client knows the class of truth and the latency to expect before reading the verdict. When a diagnostic is an API-shape error an agent commonly hits (CS1061 a member that does not exist, CS0246 a type that could not be found), the response attaches a repair packet when the index is available for symbol lookup: the receiver type's real members with the nearest names first, or the nearest type names in the index. When the index is busy or not built, verification still runs at build or oracle grade and a named note reports that repair packets were omitted. A packet is added only where a concrete suggestion is possible, never as empty padding.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -189,7 +248,7 @@ Pass a `session` id with no `content` and `fuse_check` answers the inverse quest
 
 ## fuse_impact
 
-Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, enumerated from the persisted semantic graph (reference edges plus wiring edges). No source bodies. The exact signature-change break set (which call sites would no longer bind) is an oracle-grade answer that needs a build capture; until one is available the tool reports it as unavailable rather than guessing, and returns the graph-grade blast radius. Reverse traversal is the store's incoming-edge query, so the result is deduped by source node. The response also lists the covering tests for the symbol: the tests that reach it through DI-resolved `tests` edges, called out distinctly from the blast radius so you can run just that subset with your own `dotnet test --filter`. The covering set is a lower bound (a test reached only by reflection has no edge and is not listed), never presented as "all the tests". The response opens with an availability header (index mode, whether build capture is configured, and the freshness stamp) so a client can see the grade of the answer before reading it.
+Blast radius for a symbol before you edit it: the callers, implementers, consumers, and referencing types a change would touch, enumerated from the persisted semantic graph (reference edges plus wiring edges). No source bodies. The exact signature-change break set (which call sites would no longer bind) is an oracle-grade answer that needs a build capture; until one is available the tool reports it as unavailable rather than guessing, and returns the graph-grade blast radius. Reverse traversal is the store's incoming-edge query, so the result is deduped by source node. The response also lists the covering tests for the symbol: the tests that reach it through DI-resolved `tests` edges, called out distinctly from the blast radius so you can run just that subset with your own `dotnet test --filter`. The covering set is a lower bound (a test reached only by reflection has no edge and is not listed), never presented as "all the tests". The response opens with the availability header (`index_state`, `files_indexed` when known, then index mode, whether build capture is configured, and the freshness stamp) so a client can see the grade of the answer before reading it.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
@@ -209,7 +268,7 @@ The response also carries a public API surface line: whether the target symbol i
 
 ## fuse_test
 
-Run the covering tests for a symbol: the tests that reach it through the persisted `tests` edges (the same selection `fuse_impact` reports), run scoped by filter to just those test types so the whole suite never runs. The verdicts come back per test. When no `tests` edge reaches the symbol the tool reports the selection-only floor with nothing to run (a test reached only by reflection or a source generator has no edge and is not selected, so the set is a lower bound). This first cut runs at build grade: it invokes the real `dotnet test` scoped to the covering set, so it works on any repository and any test framework (the target's own adapter runs the tests), at the cost of the build. The emit-and-run fast path (run the speculative compilation's assembly in an isolated micro-host with no build) is future work behind a flag; the response stamps the grade. A run that exceeds its budget is killed and reported as timed out, never left hanging.
+Run the covering tests for a symbol: the tests that reach it through the persisted `tests` edges (the same selection `fuse_impact` reports), run scoped by filter to just those test types so the whole suite never runs. The verdicts come back per test. When no `tests` edge reaches the symbol the tool reports the selection-only floor with nothing to run (a test reached only by reflection or a source generator has no edge and is not selected, so the set is a lower bound). Covering selection is indexed-tier: when `.fuse/fuse.db` is missing the tool returns `index_not_built:`; when the store is contended it returns `index_busy:` without starting an index build. This first cut runs at build grade: it invokes the real `dotnet test` scoped to the covering set, so it works on any repository and any test framework (the target's own adapter runs the tests), at the cost of the build. The emit-and-run fast path (run the speculative compilation's assembly in an isolated micro-host with no build) is future work behind a flag; the response stamps the grade. A run that exceeds its budget is killed and reported as timed out, never left hanging.
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|

@@ -17,9 +17,11 @@ public sealed class WorkspaceIndexVersionHealTests : IDisposable
         await SeedAsync(markerValue: "keep", stampedVersion: "999999.0.0");
 
         await using var store = new WorkspaceIndexStore(_databasePath);
-        await store.InitializeAsync(CancellationToken.None);
+        var outcome = await store.InitializeAsync(CancellationToken.None);
 
         // The rebuild drops and recreates index_meta, so the marker and the stale stamp are gone.
+        Assert.True(outcome.RebuiltEmptyStore);
+        Assert.Contains("after upgrade to", outcome.Detail, StringComparison.OrdinalIgnoreCase);
         Assert.Null(await store.GetMetaAsync("marker", CancellationToken.None));
         Assert.Null(await store.GetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, CancellationToken.None));
     }

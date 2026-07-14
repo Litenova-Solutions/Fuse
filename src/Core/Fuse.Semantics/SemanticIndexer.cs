@@ -150,6 +150,7 @@ public sealed class SemanticIndexer
             WorkspaceIndexStore.ExtractionVersionMetaKey,
             WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
             cancellationToken);
+        await StampIntegrityAsync(store, cancellationToken); // R31: record the post-build integrity result.
 
         // Mine git co-change couplings so the open-ended scorer can recover sibling files of a multi-file change.
         // Best-effort and bounded (a commit cap, wide commits skipped); a non-repository or a git failure is a
@@ -199,6 +200,20 @@ public sealed class SemanticIndexer
             : discovery.Kind == WorkspaceKind.Projects ? $"{discovery.ProjectPaths.Count} project(s), no single solution" : null;
         return new LoadDiagnosis(
             tier, loaded, total, snapshot.ProjectReports, snapshot.Diagnostics, selectedSolution, discovery.SelectionNote);
+    }
+
+    // R31: record the post-build integrity result in index_meta, so the recorded health is auditable alongside
+    // the live check the read paths run. Best-effort: a read/write hiccup must not fail the index pass.
+    private static async Task StampIntegrityAsync(IWorkspaceIndexStore store, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var state = await store.GetStateAsync(cancellationToken);
+            await store.SetMetaAsync(WorkspaceIndexStore.IndexIntegrityMetaKey, IndexIntegrity.Check(state).Summary(), cancellationToken);
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+        {
+        }
     }
 
     /// <summary>
@@ -290,6 +305,7 @@ public sealed class SemanticIndexer
             WorkspaceIndexStore.ExtractionVersionMetaKey,
             WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
             cancellationToken);
+        await StampIntegrityAsync(store, cancellationToken); // R31: record the post-upgrade integrity result.
 
         try
         {

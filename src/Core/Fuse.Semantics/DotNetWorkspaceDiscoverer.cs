@@ -34,6 +34,16 @@ public sealed class DotNetWorkspaceDiscoverer
         "testdata", "testassets", "benchmark", "benchmarks",
     ];
 
+    // Path segments that mark a solution as auxiliary build or tooling rather than the repo's product surface. A
+    // solution under one of these (a common .NET convention: NodaTime's build/Tools.slnx, Arcade's eng/) must never
+    // be loaded as the repo's semantic tier ahead of a product solution under src or the root: on NodaTime, the
+    // plain alphabetical tie-break otherwise picked build/Tools.slnx (2 tooling projects) over src/NodaTime.slnx
+    // (the real library), producing a thin 343-symbol graph. Deprioritized above fixtures but below product code.
+    private static readonly string[] AuxiliarySegments =
+    [
+        "build", "eng", "tools", "scripts",
+    ];
+
     /// <summary>The <c>fuse.json</c> key that pins the target solution or project (R24).</summary>
     public const string SolutionConfigKey = "solution";
 
@@ -68,10 +78,12 @@ public sealed class DotNetWorkspaceDiscoverer
                 WorkspaceKind.Solution, pinned, projects, fullRoot, $"solution pinned by fuse.json: {Path.GetFileName(pinned)}"));
         }
 
-        // Rank solutions so a root-level, non-fixture solution wins: fixture-tree solutions last, then shallower
-        // (closer to the root), then .sln before .slnx, then a stable path order.
+        // Rank solutions so the repo's own product solution wins: product code first (tier 0), then auxiliary
+        // build/tooling solutions (tier 1), then test/fixture solutions last (tier 2); within a tier, shallower
+        // (closer to the root) wins, then .sln before .slnx, then a stable path order. The tier is what keeps a
+        // build/eng/tools solution from beating a src solution on the plain alphabetical tie-break (R24).
         var ranked = uniqueSolutions
-            .OrderBy(s => IsFixturePath(fullRoot, s) ? 1 : 0)
+            .OrderBy(s => Tier(fullRoot, s))
             .ThenBy(s => Depth(fullRoot, s))
             .ThenBy(s => Path.GetExtension(s).Equals(".sln", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ThenBy(s => s, StringComparer.OrdinalIgnoreCase)
@@ -87,30 +99,32 @@ public sealed class DotNetWorkspaceDiscoverer
         }
 
         var best = ranked[0];
-        var bestIsFixture = IsFixturePath(fullRoot, best);
+        var bestTier = Tier(fullRoot, best);
 
-        // Never silently load a fixture solution as the repo's semantic tier: if the only solutions live under
-        // test/fixture/sample trees but the repo has non-fixture projects, load those projects instead.
-        if (bestIsFixture)
+        // Never silently load a fixture or auxiliary-tooling solution as the repo's semantic tier ahead of the
+        // repo's own product code: if the best solution is under a test/fixture/sample or build/eng/tools/scripts
+        // tree but the repo has product projects (outside those trees), load those projects instead.
+        if (bestTier > 0)
         {
-            var nonFixtureProjects = projects.Where(p => !IsFixturePath(fullRoot, p)).ToList();
-            if (nonFixtureProjects.Count > 0)
+            var treeKind = bestTier == FixtureTier ? "test/fixture" : "build/tooling";
+            var productProjects = projects.Where(p => Tier(fullRoot, p) == ProductTier).ToList();
+            if (productProjects.Count > 0)
             {
                 return Task.FromResult(new WorkspaceDiscoveryResult(
-                    WorkspaceKind.Projects, null, nonFixtureProjects, fullRoot,
-                    "the only solutions found are under test/fixture directories; loading the repo's non-fixture projects instead. Pin one with a fuse.json \"solution\" key."));
+                    WorkspaceKind.Projects, null, productProjects, fullRoot,
+                    $"the only solutions found are under {treeKind} directories; loading the repo's product projects instead. Pin one with a fuse.json \"solution\" key."));
             }
 
             return Task.FromResult(new WorkspaceDiscoveryResult(
                 WorkspaceKind.Solution, best, projects, fullRoot,
-                $"selected a solution under a test/fixture directory ({Relative(fullRoot, best)}); no root-level solution was found. Pin one with a fuse.json \"solution\" key."));
+                $"selected a solution under a {treeKind} directory ({Relative(fullRoot, best)}); no product solution was found. Pin one with a fuse.json \"solution\" key."));
         }
 
-        // Ambiguity among distinct-named top-tier solutions (same fixture rank and depth): pick the alphabetical
-        // first by rule and surface the choice. A .sln and .slnx of the same base name are the same solution in two
-        // formats, not an ambiguity.
+        // Ambiguity among distinct-named product solutions (same tier and depth): pick the alphabetical first by
+        // rule and surface the choice. A .sln and .slnx of the same base name are the same solution in two formats,
+        // not an ambiguity; a deprioritized build/tooling or fixture solution is not an ambiguity either.
         var topTier = ranked
-            .Where(s => (IsFixturePath(fullRoot, s) ? 1 : 0) == 0 && Depth(fullRoot, s) == Depth(fullRoot, best))
+            .Where(s => Tier(fullRoot, s) == ProductTier && Depth(fullRoot, s) == Depth(fullRoot, best))
             .ToList();
         var distinctNames = topTier
             .Select(s => Path.GetFileNameWithoutExtension(s))
@@ -154,14 +168,27 @@ public sealed class DotNetWorkspaceDiscoverer
         return null;
     }
 
-    private static bool IsFixturePath(string root, string path)
+    // Selection tiers, lowest wins: the repo's own product code, then auxiliary build/tooling solutions, then
+    // test/fixture solutions. The tier is the primary discovery-ranking key (R24).
+    private const int ProductTier = 0;
+    private const int AuxiliaryTier = 1;
+    private const int FixtureTier = 2;
+
+    private static int Tier(string root, string path) =>
+        IsFixturePath(root, path) ? FixtureTier
+        : ContainsSegment(root, path, AuxiliarySegments) ? AuxiliaryTier
+        : ProductTier;
+
+    private static bool IsFixturePath(string root, string path) => ContainsSegment(root, path, FixtureSegments);
+
+    // True when any DIRECTORY segment of the path (relative to the root, excluding the file name) is in the set.
+    private static bool ContainsSegment(string root, string path, string[] segmentSet)
     {
         var relative = Relative(root, path);
         var segments = relative.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
-        // The final segment is the file name; only directory segments mark a fixture tree.
         for (var i = 0; i < segments.Length - 1; i++)
         {
-            if (FixtureSegments.Contains(segments[i], StringComparer.OrdinalIgnoreCase))
+            if (segmentSet.Contains(segments[i], StringComparer.OrdinalIgnoreCase))
                 return true;
         }
 

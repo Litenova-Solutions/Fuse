@@ -28,7 +28,8 @@
       "commit": "59692eaa575cbbf8437f8f6ad94338bd25c2d4c3",
       "committed": "2026-06-11",
       "cs_files": 488,
-      "note": "A date and time library for .NET. Restores clean on .NET 10 (global.json pins 10.0.101, latestMinor). Large merge-PR history; the solution is src/NodaTime.slnx."
+      "solution": "src/NodaTime.slnx",
+      "note": "A date and time library for .NET. Restores clean on .NET 10 (global.json pins 10.0.101, latestMinor). Large merge-PR history; the solution is src/NodaTime.slnx (pinned, since NodaTime also ships build/Tools.slnx)."
     },
     {
       "name": "eShopOnWeb",

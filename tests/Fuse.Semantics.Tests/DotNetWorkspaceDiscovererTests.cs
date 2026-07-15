@@ -188,6 +188,52 @@ public sealed class DotNetWorkspaceDiscovererTests : IDisposable
         Assert.NotNull(result.SolutionPath);
     }
 
+    [Fact]
+    public async Task PrefersProductSolutionOverBuildToolingSolution()
+    {
+        // Reproduces the NodaTime case: a build/ tooling solution sorts alphabetically before the src/ product
+        // solution ("build" < "src"), but the product solution must win. Distinct non-empty content so neither is
+        // collapsed as a copy.
+        Write("build/Tools.slnx", "<Solution>tools</Solution>");
+        Write("src/NodaTime.slnx", "<Solution>product</Solution>");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.EndsWith("NodaTime.slnx", result.SolutionPath);
+        Assert.Null(result.SelectionNote); // A single product solution is unambiguous; the tooling one is silently deprioritized.
+    }
+
+    [Fact]
+    public async Task DeprioritizesEngAndScriptsAndToolsDirectories()
+    {
+        Write("eng/Eng.slnx", "<Solution>eng</Solution>");
+        Write("scripts/Scripts.slnx", "<Solution>scripts</Solution>");
+        Write("tools/Tools.slnx", "<Solution>tools</Solution>");
+        Write("App.slnx", "<Solution>app</Solution>"); // root product solution
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.EndsWith("App.slnx", result.SolutionPath);
+    }
+
+    [Fact]
+    public async Task BuildOnlySolutionLoadsProductProjectsInstead()
+    {
+        // Only a build/ tooling solution exists, but the repo has product projects under src/: load those projects
+        // rather than binding the tooling solution as the repo's semantic tier.
+        Write("build/Tools.slnx", "<Solution>tools</Solution>");
+        Write("src/App/App.csproj", "<Project/>");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Projects, result.Kind);
+        Assert.Contains(result.ProjectPaths, p => p.EndsWith("App.csproj"));
+        Assert.NotNull(result.SelectionNote);
+        Assert.Contains("build/tooling", result.SelectionNote!);
+    }
+
     private void Write(string relativePath, string content)
     {
         var full = Path.Combine(_root, relativePath.Replace('/', Path.DirectorySeparatorChar));

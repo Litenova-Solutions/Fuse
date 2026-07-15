@@ -87,6 +87,25 @@ public sealed class FuseOperationalErrorsTests
     }
 
     [Fact]
+    public void FromException_maps_change_source_to_validation_error_prefix()
+    {
+        // A non-git workspace (or a bad base ref) is an expected precondition miss for fuse_review, not an
+        // internal failure; it must surface as validation_error, never internal_error.
+        var message = FuseOperationalErrors.FromException(
+            new Fuse.Retrieval.ChangeSourceException("Source directory is not a git repository."));
+        Assert.StartsWith(FuseOperationalErrors.ValidationErrorPrefix, message);
+        Assert.Contains("not a git repository", message);
+    }
+
+    [Fact]
+    public void FromException_maps_change_detection_to_validation_error_prefix()
+    {
+        var message = FuseOperationalErrors.FromException(
+            new Fuse.Fusion.Scoping.ChangeDetectionException("Git is not available on PATH."));
+        Assert.StartsWith(FuseOperationalErrors.ValidationErrorPrefix, message);
+    }
+
+    [Fact]
     public async Task ExecuteMcpAsync_never_throws_on_operational_failure()
     {
         var result = await FuseOperationalErrors.ExecuteMcpAsync(() =>

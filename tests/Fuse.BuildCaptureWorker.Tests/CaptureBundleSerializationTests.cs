@@ -26,7 +26,8 @@ public sealed class CaptureBundleSerializationTests
             Edges: [new SemanticEdgeRecord("type:App.IOrderService", "type:App.OrderService", "di_resolves_to", 0.95, 0.95, Evidence: "registered scoped")],
             Routes: [new RouteRecord("route:POST:/api/orders", "POST", "/api/orders", "src/OrdersController.cs", 10, 12, "mvc")],
             DiRegistrations: [],
-            OptionsBindings: []);
+            OptionsBindings: [],
+            TargetFramework: "net8.0");
         var result = CaptureResult.Ok([project]);
 
         var json = JsonSerializer.Serialize(result, BuildCaptureJsonContext.Default.CaptureResult);
@@ -45,5 +46,6 @@ public sealed class CaptureBundleSerializationTests
         Assert.Equal(0.95, edge.Weight);
         var route = Assert.Single(p.Routes!);
         Assert.Equal("POST", route.HttpMethod);
+        Assert.Equal("net8.0", p.TargetFramework);
     }
 }

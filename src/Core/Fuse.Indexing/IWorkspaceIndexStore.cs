@@ -54,6 +54,17 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>A task that completes when the batch is committed.</returns>
     Task UpsertProjectsAsync(IReadOnlyList<ProjectRecord> projects, CancellationToken cancellationToken);
 
+    /// <summary>Replaces the stored target-framework availability facts with one complete canonical union.</summary>
+    /// <param name="availability">The availability rows from the complete capture union.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the replacement is committed.</returns>
+    Task ReplaceTfmAvailabilityAsync(IReadOnlyList<TfmAvailabilityRecord> availability, CancellationToken cancellationToken);
+
+    /// <summary>Lists the stored target-framework availability facts in deterministic order.</summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The canonical availability rows.</returns>
+    Task<IReadOnlyList<TfmAvailabilityRecord>> GetTfmAvailabilityAsync(CancellationToken cancellationToken);
+
     /// <summary>Inserts or updates semantic graph nodes.</summary>
     /// <param name="nodes">The nodes to upsert.</param>
     /// <param name="cancellationToken">A token to cancel the write.</param>

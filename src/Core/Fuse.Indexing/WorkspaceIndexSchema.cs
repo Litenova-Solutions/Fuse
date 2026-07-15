@@ -25,8 +25,12 @@ public static class WorkspaceIndexSchema
     ///     dropped from the schema; the version bump forces a stale index that still carries the table to rebuild
     ///     without it (the migrator drops and recreates, so the bump is the whole migration).
     ///     </para>
+    ///     <para>
+    ///     Version 17 (v4.2 R60): <c>tfm_availability</c> records the target-framework availability of canonical
+    ///     multi-target semantic declarations and graph facts.
+    ///     </para>
     /// </remarks>
-    public const int TargetVersion = 16;
+    public const int TargetVersion = 17;
 
     /// <summary>
     ///     The extraction-contract version: what the indexer extracts (symbol, edge, chunk, and route semantics),
@@ -40,8 +44,10 @@ public static class WorkspaceIndexSchema
     ///     so a stale index rebuilds; a forgotten bump is the only failure mode, never routine over-rebuilding.
     ///     Version 1 (v4.2 R22): the extraction contract is decoupled from the product version. Set to the value
     ///     that describes the extractor as of the schema-16 index; increment on the next extractor change.
+    ///     Version 2 (v4.2 R60): canonical multi-target union preserves every declaration and graph fact while
+    ///     recording its target-framework availability.
     /// </remarks>
-    public const int ExtractionContractVersion = 1;
+    public const int ExtractionContractVersion = 2;
 
     /// <summary>
     ///     Database-level pragmas applied once at schema creation. WAL journaling and
@@ -91,6 +97,15 @@ public static class WorkspaceIndexSchema
           project_hash TEXT NOT NULL,
           indexed_at_utc TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS tfm_availability(
+          entity_kind TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          target_framework TEXT NOT NULL,
+          PRIMARY KEY(entity_kind, entity_id, target_framework)
+        );
+        CREATE INDEX IF NOT EXISTS idx_tfm_availability_entity
+          ON tfm_availability(entity_kind, entity_id);
 
         CREATE TABLE IF NOT EXISTS nodes(
           node_id TEXT PRIMARY KEY,

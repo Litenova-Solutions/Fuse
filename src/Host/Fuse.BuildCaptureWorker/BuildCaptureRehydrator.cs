@@ -489,7 +489,8 @@ public sealed class BuildCaptureRehydrator
                 Edges: graph.Edges,
                 Routes: graph.Routes,
                 DiRegistrations: graph.DiRegistrations,
-                OptionsBindings: graph.OptionsBindings));
+                OptionsBindings: graph.OptionsBindings,
+                TargetFramework: call.TargetFramework));
         }
 
         return projects.Count == 0

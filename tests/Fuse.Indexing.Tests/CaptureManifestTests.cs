@@ -54,12 +54,11 @@ public sealed class CaptureManifestTests
     }
 
     [Fact]
-    public void An_older_format_version_is_still_accepted()
+    public void An_older_format_version_is_refused_when_the_graph_contract_requires_a_recapture()
     {
-        // The format is backward-compatible (G4): a version-1 bundle is still read by a version-2 build.
-        Assert.True(CaptureManifest.CurrentFormatVersion >= 2, "this test assumes the format has advanced past v1");
+        Assert.True(CaptureManifest.CurrentFormatVersion >= 3, "this test pins the R60 captured-graph format");
         var manifest = Sample(FuseBuildInfo.Current, formatVersion: 1);
-        Assert.True(manifest.IsCompatibleWithRunningBuild);
-        Assert.Null(manifest.IncompatibilityReason);
+        Assert.False(manifest.IsCompatibleWithRunningBuild);
+        Assert.Contains("re-capture", manifest.IncompatibilityReason!);
     }
 }

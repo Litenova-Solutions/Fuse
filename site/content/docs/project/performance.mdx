@@ -75,6 +75,8 @@ Tier-1 build capture (`dotnet build` then rehydrate from the log) is the higher-
 
 The held solution is memory-heavy (a full compilation set), so the cache is a hard LRU (`FUSE_WARM_SOLUTION_CAP`, default 3) with an idle window (`FUSE_WARM_SOLUTION_IDLE_MINUTES`, default 30); the held-solution RSS ceiling was about 594 MB at cap 3. A freshness check reloads when the source changed, so a reused solution matches a cold load exactly and a changed tree is never slower than before.
 
+For the store-backed default (no resident workspace), `fuse_check`'s oracle path keeps a pooled build-capture worker per captured compiler log (R48): it rehydrates the log once, then answers many checks against the held compilation, so the second and later checks in a session skip the rehydrate. Measured on a captured log: spawn-per-call is ~1.7s per check, while a pooled session rehydrates once and answers subsequent checks near-instantly (three pooled checks totaled ~1.3s versus ~5s spawn-per-call). Verdicts are identical to the spawn-per-call path (check honesty preserved).
+
 ## Distribution
 
 Fuse distributes as a framework-dependent .NET global tool and as self-contained runtime-specific packages:

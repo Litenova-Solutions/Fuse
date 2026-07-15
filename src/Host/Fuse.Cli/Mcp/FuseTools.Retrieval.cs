@@ -1434,7 +1434,11 @@ public sealed partial class FuseTools
             : File.Exists(bundleDir) ? [bundleDir] : [];
         foreach (var log in logs)
         {
-            var candidate = await client.CheckFromComplogAsync(log, file, content, TimeSpan.FromMinutes(2), cancellationToken);
+            // R48: try the pooled, kept-alive worker first (rehydrate once, reuse across checks in a session); on a
+            // cold/absent/failed pooled worker it returns null and we fall back to the spawn-per-call path, so the
+            // verdict and honesty are unchanged and it is never worse than today.
+            var pooled = await Fuse.Semantics.PooledCheckWorker.Shared.TryCheckAsync(log, file, content, cancellationToken);
+            var candidate = pooled ?? await client.CheckFromComplogAsync(log, file, content, TimeSpan.FromMinutes(2), cancellationToken);
             if (candidate.Verified)
                 return candidate;
         }

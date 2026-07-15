@@ -109,6 +109,15 @@ public sealed record CheckResult(bool Verified, string? Reason, IReadOnlyList<Ch
 }
 
 /// <summary>
+///     One speculative-check request sent to a pooled build-capture check worker (R48): the repo-relative file
+///     being changed and a temp file holding its proposed new content. The content is passed by path (never inline)
+///     so it is never a length-bounded value on the request line.
+/// </summary>
+/// <param name="File">The repo-relative path of the file being changed.</param>
+/// <param name="ContentPath">The path to a temp file holding the proposed full new content.</param>
+public sealed record CheckRequest(string File, string ContentPath);
+
+/// <summary>
 ///     Source-generated JSON context for the build-capture worker-to-parent contract, per the project invariant
 ///     that JSON uses a source-generated <see cref="JsonSerializerContext" /> rather than reflection serialization.
 /// </summary>
@@ -116,6 +125,7 @@ public sealed record CheckResult(bool Verified, string? Reason, IReadOnlyList<Ch
 [JsonSerializable(typeof(CaptureResult))]
 [JsonSerializable(typeof(CapturedProject))]
 [JsonSerializable(typeof(CheckResult))]
+[JsonSerializable(typeof(CheckRequest))]
 [JsonSerializable(typeof(CheckDiagnostic))]
 [JsonSerializable(typeof(List<CheckDiagnostic>))]
 [JsonSerializable(typeof(SymbolRecord))]

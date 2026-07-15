@@ -21,6 +21,7 @@ public sealed class BuildCaptureRehydrator
     /// <param name="buildTarget">The absolute path to the solution or project to build.</param>
     /// <param name="buildTimeout">The maximum time to allow the build to run.</param>
     /// <param name="cancellationToken">A token to cancel the capture.</param>
+    /// <param name="workspaceRoot">The workspace root used to make captured source paths relative.</param>
     /// <returns>The capture result: the achieved outcome plus one entry per rehydrated C# compilation.</returns>
     public async Task<CaptureResult> CaptureAsync(
         string buildTarget, TimeSpan buildTimeout, CancellationToken cancellationToken, string? workspaceRoot = null)
@@ -53,6 +54,7 @@ public sealed class BuildCaptureRehydrator
     /// <param name="complogPath">The absolute path to write the portable compiler log to.</param>
     /// <param name="buildTimeout">The maximum time to allow the build to run.</param>
     /// <param name="cancellationToken">A token to cancel the capture.</param>
+    /// <param name="workspaceRoot">The workspace root used to make captured source paths relative.</param>
     /// <returns>The capture result (the extracted graph) on success, or a concrete failure; the complog is at <paramref name="complogPath" /> on success.</returns>
     public async Task<CaptureResult> ExportCompilerLogAsync(
         string buildTarget, string complogPath, TimeSpan buildTimeout, CancellationToken cancellationToken, string? workspaceRoot = null)
@@ -333,6 +335,7 @@ public sealed class BuildCaptureRehydrator
     /// <param name="fragmentsDir">The directory holding per-project fragment binary logs (<c>*.binlog</c>).</param>
     /// <param name="complogOutDir">The directory to write the per-project portable compiler logs to.</param>
     /// <param name="cancellationToken">A token to cancel the merge.</param>
+    /// <param name="workspaceRoot">The workspace root used to make captured source paths relative.</param>
     /// <returns>The merged graph, or a failure when no fragment recorded a C# compilation or a secret was found.</returns>
     public CaptureResult MergeFragmentsToBundle(string fragmentsDir, string complogOutDir, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
@@ -386,28 +389,28 @@ public sealed class BuildCaptureRehydrator
     ///     Merges per-project capture fragments (G4): rehydrates each fragment log and unions the resulting
     ///     projects into one capture result, so a bundle assembled from fragments carries the same extracted graph
     ///     as a direct whole-solution capture. Each fragment is a per-project binary (or compiler) log; a fragment
-    ///     that records no C# compilation contributes nothing. The union is deduplicated by
-    ///     <see cref="CapturedProject.FilePath" /> then project name, so a fragment that a dependency build caused
-    ///     to also record a referenced project does not double-count it.
+    ///     that records no C# compilation contributes nothing. The union is deduplicated by project path (or name)
+    ///     and target framework, so a fragment that a dependency build caused to also record a referenced project
+    ///     does not double-count it while a multi-target project keeps every target's facts.
     /// </summary>
     /// <param name="fragmentLogPaths">The per-project fragment log paths (binary or compiler logs).</param>
     /// <param name="cancellationToken">A token to cancel the merge.</param>
+    /// <param name="workspaceRoot">The workspace root used to make captured source paths relative.</param>
     /// <returns>The unioned capture result, or a failure when no fragment recorded a C# compilation.</returns>
     public CaptureResult MergeFragments(IReadOnlyList<string> fragmentLogPaths, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
-        var merged = new List<CapturedProject>();
+        var merged = new List<RehydratedProject>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var fragment in fragmentLogPaths)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!File.Exists(fragment))
                 continue;
-            var result = RehydrateFromBinlog(fragment, workspaceRoot, cancellationToken);
-            if (!result.Succeeded)
-                continue;
-            foreach (var project in result.Projects)
+            foreach (var project in RehydrateProjects(fragment, workspaceRoot, cancellationToken))
             {
-                var key = string.IsNullOrEmpty(project.FilePath) ? project.Name : project.FilePath;
+                // Keep one compiler invocation per project and target framework. A project can legitimately appear
+                // once for each target, and the canonical union downstream needs all of those facts.
+                var key = $"{(string.IsNullOrEmpty(project.Project.FilePath) ? project.Project.Name : project.Project.FilePath)}\u001f{project.Project.TargetFramework}";
                 if (seen.Add(key))
                     merged.Add(project);
             }
@@ -415,7 +418,7 @@ public sealed class BuildCaptureRehydrator
 
         return merged.Count == 0
             ? CaptureResult.Failed("no capture fragment recorded a C# compilation")
-            : CaptureResult.Ok(merged);
+            : CaptureResult.Ok(ProjectCoveringTestEdges(merged, workspaceRoot, cancellationToken));
     }
 
     /// <summary>
@@ -443,10 +446,19 @@ public sealed class BuildCaptureRehydrator
     /// <returns>The capture result with one entry per rehydrated C# compilation.</returns>
     public CaptureResult RehydrateFromBinlog(string binlogPath, string? workspaceRoot, CancellationToken cancellationToken)
     {
+        var projects = RehydrateProjects(binlogPath, workspaceRoot, cancellationToken);
+        return projects.Count == 0
+            ? CaptureResult.Failed("the build log recorded no C# compiler invocations")
+            : CaptureResult.Ok(ProjectCoveringTestEdges(projects, workspaceRoot, cancellationToken));
+    }
+
+    private static List<RehydratedProject> RehydrateProjects(
+        string binlogPath, string? workspaceRoot, CancellationToken cancellationToken)
+    {
         using var reader = CompilerCallReaderUtil.Create(binlogPath);
         var symbolExtractor = new SemanticSymbolExtractor();
         var analyzers = SemanticAnalysisRunner.CreateDefault();
-        var projects = new List<CapturedProject>();
+        var projects = new List<RehydratedProject>();
         foreach (var data in reader.ReadAllCompilationData())
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -475,7 +487,7 @@ public sealed class BuildCaptureRehydrator
             var symbols = symbolExtractor.Extract(loaded, normalizeRoot, cancellationToken);
             var graph = analyzers.Run(new SemanticAnalysisContext(loaded, normalizeRoot), cancellationToken);
 
-            projects.Add(new CapturedProject(
+            projects.Add(new RehydratedProject(new CapturedProject(
                 Name: loaded.Name,
                 FilePath: loaded.FilePath,
                 AssemblyName: compilation.AssemblyName,
@@ -490,13 +502,104 @@ public sealed class BuildCaptureRehydrator
                 Routes: graph.Routes,
                 DiRegistrations: graph.DiRegistrations,
                 OptionsBindings: graph.OptionsBindings,
-                TargetFramework: call.TargetFramework));
+                TargetFramework: call.TargetFramework),
+                loaded));
         }
 
-        return projects.Count == 0
-            ? CaptureResult.Failed("the build log recorded no C# compiler invocations")
-            : CaptureResult.Ok(projects);
+        return projects;
     }
+
+    // TestEdgeExtractor deliberately runs after every project's wiring graph exists, because test code commonly
+    // references production types from a different project. The normal workspace path does this in
+    // SemanticIndexer.RunAnalyzers; build capture must do the equivalent projection before serializing its graph.
+    // Keep target frameworks separate so CanonicalTfmUnion can record the edge availability correctly.
+    private static IReadOnlyList<CapturedProject> ProjectCoveringTestEdges(
+        IReadOnlyList<RehydratedProject> captures, string? workspaceRoot, CancellationToken cancellationToken)
+    {
+        var projected = captures.Select(c => c.Project).ToList();
+        foreach (var targetGroup in captures
+            .Select((capture, index) => (Capture: capture, Index: index))
+            .GroupBy(x => x.Capture.Project.TargetFramework ?? string.Empty, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var members = targetGroup.ToList();
+            var nodesById = new Dictionary<string, int>(StringComparer.Ordinal);
+            var existingNodeIds = new HashSet<string>(StringComparer.Ordinal);
+            var allEdges = new List<SemanticEdgeRecord>();
+            foreach (var member in members)
+            {
+                foreach (var node in projected[member.Index].Nodes ?? [])
+                {
+                    existingNodeIds.Add(node.NodeId);
+                    nodesById.TryAdd(node.NodeId, member.Index);
+                }
+
+                allEdges.AddRange(projected[member.Index].Edges ?? []);
+            }
+
+            var diResolvesTo = allEdges
+                .Where(edge => edge.EdgeType == "di_resolves_to")
+                .GroupBy(edge => edge.FromNodeId, StringComparer.Ordinal)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyList<string>)group.Select(edge => edge.ToNodeId).Distinct(StringComparer.Ordinal).ToList(),
+                    StringComparer.Ordinal);
+            var root = !string.IsNullOrEmpty(workspaceRoot)
+                ? workspaceRoot
+                : Path.GetDirectoryName(members[0].Capture.Project.FilePath) ?? Directory.GetCurrentDirectory();
+            var (testNodes, testEdges) = new TestEdgeExtractor().Extract(
+                members.Select(member => member.Capture.Loaded).ToList(),
+                existingNodeIds,
+                diResolvesTo,
+                root,
+                cancellationToken);
+
+            var nodesToAdd = new Dictionary<int, List<NodeRecord>>();
+            foreach (var node in testNodes)
+            {
+                if (nodesById.TryGetValue(node.NodeId, out var owner))
+                    (nodesToAdd.TryGetValue(owner, out var list) ? list : nodesToAdd[owner] = []).Add(node);
+            }
+
+            var edgesToAdd = new Dictionary<int, List<SemanticEdgeRecord>>();
+            foreach (var edge in testEdges)
+            {
+                if (nodesById.TryGetValue(edge.FromNodeId, out var owner))
+                    (edgesToAdd.TryGetValue(owner, out var list) ? list : edgesToAdd[owner] = []).Add(edge);
+            }
+
+            foreach (var member in members)
+            {
+                var hasNodes = nodesToAdd.TryGetValue(member.Index, out var memberNodes);
+                var hasEdges = edgesToAdd.TryGetValue(member.Index, out var memberEdges);
+                if (!hasNodes && !hasEdges)
+                    continue;
+
+                var nodes = (projected[member.Index].Nodes ?? [])
+                    .Concat(memberNodes ?? [])
+                    .GroupBy(node => node.NodeId, StringComparer.Ordinal)
+                    .Select(group => group.First())
+                    .ToList();
+                var edges = (projected[member.Index].Edges ?? [])
+                    .Concat(memberEdges ?? [])
+                    .GroupBy(edge => (edge.FromNodeId, edge.ToNodeId, edge.EdgeType, edge.EvidenceFilePath), EqualityComparer<(string, string, string, string?)>.Default)
+                    .Select(group => group.First())
+                    .ToList();
+                projected[member.Index] = projected[member.Index] with
+                {
+                    Nodes = nodes,
+                    NodeCount = nodes.Count,
+                    Edges = edges,
+                    EdgeCount = edges.Count,
+                };
+            }
+        }
+
+        return projected;
+    }
+
+    private sealed record RehydratedProject(CapturedProject Project, LoadedProject Loaded);
 
     private static int CountTypes(INamespaceSymbol ns)
     {

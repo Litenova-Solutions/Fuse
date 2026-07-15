@@ -7,7 +7,8 @@ namespace Fuse.BuildCaptureWorker.Tests;
 
 // G4: the capture fragment-merge channel. A per-project fragment is a per-project binary log; merging the
 // fragments must yield the same extracted graph as a direct whole-solution capture (edge-set equality is the
-// gate's proof). Two independent projects are used so each per-project build records exactly one compilation.
+// gate's proof). The test project references the production project, proving both direct and merged capture project
+// the post-merge cross-project tests edge.
 // Guarded: if the SDK cannot build here, the direct capture abstains and the test returns rather than failing.
 public sealed class CaptureFragmentMergeTests
 {
@@ -19,7 +20,17 @@ public sealed class CaptureFragmentMergeTests
         try
         {
             WriteProject(work, "Alpha", "namespace Alpha; public sealed class Widget { public int Spin() => 1; }");
-            WriteProject(work, "Beta", "namespace Beta; public sealed class Gadget { public int Whirl() => 2; }");
+            WriteProject(work, "Beta", """
+                using Alpha;
+                using Xunit;
+                namespace Beta;
+                public sealed class GadgetTests { [Fact] public void Covers_widget() => _ = new Widget().Spin(); }
+                """, "../Alpha/Alpha.csproj");
+            File.WriteAllText(Path.Combine(work, "Beta", "TestFramework.cs"), """
+                namespace Xunit;
+                [System.AttributeUsage(System.AttributeTargets.Method)]
+                public sealed class FactAttribute : System.Attribute { }
+                """);
 
             // Build the solution via the dotnet CLI so it is well-formed (a hand-written solution is fragile).
             // .NET 10's `dotnet new sln` emits the XML solution format (.slnx), which `dotnet build` consumes.
@@ -59,6 +70,8 @@ public sealed class CaptureFragmentMergeTests
             Assert.Equal(direct.Projects.Sum(p => p.SymbolCount), merged.Projects.Sum(p => p.SymbolCount));
             Assert.Equal(direct.Projects.Sum(p => p.NodeCount), merged.Projects.Sum(p => p.NodeCount));
             Assert.Equal(direct.Projects.Sum(p => p.EdgeCount), merged.Projects.Sum(p => p.EdgeCount));
+            Assert.Contains(direct.Projects.SelectMany(p => p.Edges ?? []), IsCoveringEdge);
+            Assert.Contains(merged.Projects.SelectMany(p => p.Edges ?? []), IsCoveringEdge);
         }
         finally
         {
@@ -66,15 +79,24 @@ public sealed class CaptureFragmentMergeTests
         }
     }
 
-    private static void WriteProject(string root, string name, string source)
+    private static bool IsCoveringEdge(SemanticEdgeRecord edge) => edge is
+    {
+        FromNodeId: "type:Beta.GadgetTests",
+        ToNodeId: "type:Alpha.Widget",
+        EdgeType: "tests",
+    };
+
+    private static void WriteProject(string root, string name, string source, string? projectReference = null)
     {
         var dir = Path.Combine(root, name);
         Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, $"{name}.csproj"), """
+        var reference = projectReference is null ? string.Empty : $"<ItemGroup><ProjectReference Include=\"{projectReference}\" /></ItemGroup>";
+        File.WriteAllText(Path.Combine(dir, $"{name}.csproj"), $"""
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup>
                 <TargetFramework>net10.0</TargetFramework>
               </PropertyGroup>
+              {reference}
             </Project>
             """);
         File.WriteAllText(Path.Combine(dir, $"{name}.cs"), source);

@@ -46,8 +46,10 @@ public static class WorkspaceIndexSchema
     ///     that describes the extractor as of the schema-16 index; increment on the next extractor change.
     ///     Version 2 (v4.2 R60): canonical multi-target union preserves every declaration and graph fact while
     ///     recording its target-framework availability.
+    ///     Version 3 (v4.2): tier-1 build capture projects cross-project <c>tests</c> edges before the graph is
+    ///     stored, so <c>fuse_test</c> selects the same covering tests as the ordinary semantic workspace path.
     /// </remarks>
-    public const int ExtractionContractVersion = 2;
+    public const int ExtractionContractVersion = 3;
 
     /// <summary>
     ///     Database-level pragmas applied once at schema creation. WAL journaling and

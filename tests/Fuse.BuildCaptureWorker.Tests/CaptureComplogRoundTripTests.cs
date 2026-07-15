@@ -276,4 +276,68 @@ public sealed class CaptureComplogRoundTripTests
             try { Directory.Delete(work, recursive: true); } catch (IOException) { }
         }
     }
+
+    // Regression: a tier-1 capture serializes each compiler invocation separately. The cross-project tests edges
+    // must be projected after those graphs are merged, just as SemanticIndexer.RunAnalyzers does for the ordinary
+    // workspace path; otherwise fuse_test sees no covering tests in the default build-capture mode.
+    [Fact]
+    public async Task Capture_projects_include_cross_project_covering_test_edges()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "fuse-capture-test-edges-it", Guid.NewGuid().ToString("N"));
+        var appDir = Path.Combine(work, "App");
+        var testDir = Path.Combine(work, "App.Tests");
+        Directory.CreateDirectory(appDir);
+        Directory.CreateDirectory(testDir);
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(appDir, "App.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(appDir, "Calculator.cs"), """
+                namespace SmokeApp;
+                public sealed class Calculator { public int Add(int left, int right) => left + right; }
+                """);
+            await File.WriteAllTextAsync(Path.Combine(testDir, "App.Tests.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+                  <ItemGroup><ProjectReference Include="../App/App.csproj" /></ItemGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(testDir, "TestFramework.cs"), """
+                namespace Xunit;
+                [System.AttributeUsage(System.AttributeTargets.Method)]
+                public sealed class FactAttribute : System.Attribute { }
+                """);
+            await File.WriteAllTextAsync(Path.Combine(testDir, "CalculatorTests.cs"), """
+                using SmokeApp;
+                using Xunit;
+                namespace SmokeApp.Tests;
+                public sealed class CalculatorTests
+                {
+                    [Fact] public void Add_returns_sum() => _ = new Calculator().Add(2, 3);
+                }
+                """);
+
+            var capture = await new BuildCaptureRehydrator().CaptureAsync(
+                Path.Combine(testDir, "App.Tests.csproj"),
+                TimeSpan.FromMinutes(5),
+                CancellationToken.None,
+                workspaceRoot: work);
+            Assert.True(capture.Succeeded, $"capture should succeed: {capture.Reason}");
+            Assert.Contains(
+                capture.Projects.SelectMany(project => project.Edges ?? []),
+                edge => edge is
+                {
+                    FromNodeId: "type:SmokeApp.Tests.CalculatorTests",
+                    ToNodeId: "type:SmokeApp.Calculator",
+                    EdgeType: "tests",
+                });
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { }
+        }
+    }
 }

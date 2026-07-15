@@ -90,18 +90,19 @@ Fuse labels the compiler path used for each check. This label is the verificatio
 oracle grade uses a build-captured compilation, while build grade runs a scoped real
 `dotnet build`. If neither path can answer, Fuse abstains and states what is missing.
 
-Index the repository once after connecting, so the agent's first turn reads a warm index:
-run `fuse index` (or ask the agent to call `fuse_workspace` with `action=index`). You do
-this once; Fuse then re-indexes changed files automatically on the next read. If you skip
-it, the first MCP tool call builds `.fuse/fuse.db` automatically, which can take a few
-seconds to tens of seconds on a large repository. Fuse reports `partial` or `syntax`
-analysis when MSBuild cannot load every project.
+The shared daemon starts warming `.fuse/fuse.db` when the MCP server starts. Run
+`fuse index` (or ask the agent to call `fuse_workspace` with `action=index`) only when you
+want to wait for a complete semantic index before the first task. Otherwise a cold read
+uses a bounded syntax-first pass and reports when the semantic upgrade is still running.
+Fuse then re-indexes changed files through the live watcher and read-time backstop. It
+reports `partial` or `syntax` analysis when MSBuild cannot load every project.
 
 ## Local Process and Network Behavior
 
 The client launches `fuse mcp serve` as a child process and communicates over standard
 input and output. Fuse does not listen on a TCP port. Source files and the derived index
-remain on your machine, and Fuse does not send source to a hosted Fuse service.
+remain on your machine. Indexing, retrieval, reduction, and captured-compiler checks can
+work offline.
 
 Your coding agent still applies its own data policy to prompts and tool results. Fuse can
 contact NuGet for a daily update check; set `FUSE_UPDATE_CHECK=0` in the server environment
@@ -117,6 +118,7 @@ in the client `env` block or your shell:
 |----------|---------------|--------|
 | `FUSE_DAEMON` | `0` | Serve in-process instead of delegating to a shared `fuse host` per repository |
 | `FUSE_AUTO_UPDATE` | `0` | Do not launch a background updater between MCP sessions |
+| `FUSE_EAGER_INDEX` | `0` | Do not start warming the repository when the daemon or MCP server starts |
 | `FUSE_BG_UPGRADE` | `0` | Block the first read on a full synchronous index instead of syntax-first serving |
 | `FUSE_BUILD_CAPTURE` | `0` | Skip tier-1 build capture (oracle-grade checks need a local build instead) |
 | `FUSE_UPDATE_CHECK` | `0` | Disable the NuGet update notice on stderr |

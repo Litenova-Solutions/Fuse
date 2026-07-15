@@ -1,0 +1,108 @@
+---
+title: "Why Fuse keeps a persistent MSBuild and Roslyn index"
+description: "The read, context, and compiler-feedback delays that led to Fuse, and why its index is specific to .NET and C#."
+date: "2026-07-15"
+author: "The Fuse team"
+---
+
+The starting problem for Fuse was time.
+
+Coding agents can learn a repository through file reads, grep, regex, and language tools.
+Those operations are useful, but a task can make the agent reconstruct the same symbols,
+references, project relationships, and framework registrations across several turns.
+
+Editor-side repository indexes, including the experience in Cursor, showed the value of
+keeping codebase context warm. Fuse applies that idea narrowly to .NET. It loads the real
+solution through MSBuild, uses Roslyn for C# structure and compiler state, stores the derived
+index in `.fuse/fuse.db`, and updates changed files incrementally.
+
+## The Read Path: Reuse Discovery
+
+An interface name is easy to find with text search. The code that runs for that interface
+can depend on a DI registration in another project. A MediatR request, an ASP.NET route, or
+an options section has the same problem: the useful answer is a relationship, not another
+occurrence of the same text.
+
+Fuse records symbols, references, projects, and framework relationships during indexing.
+Later calls can ask for an exact symbol, its callers, its implementations, or the handler
+behind an anchored request or route without reopening the same set of source files.
+
+When the MCP server starts, the shared daemon begins warming the repository. A cold read
+waits for a bounded syntax-first pass and reports when semantic indexing is still running.
+Once warm, later calls read the persistent store and changed files are reconciled
+incrementally.
+
+On the recorded NodaTime run, the semantic index contained 14,760 symbols. Exact symbol
+lookup took 1.8 ms at the median, task localization 15.7 ms, and review planning 106.3 ms
+(`performance.json`). These are measurements from one machine and repository, not fixed
+latency guarantees.
+
+## The Context Path: Return Less Source
+
+Finding the right files is only part of the cost. Returning every selected file in full can
+send implementation detail that is not needed for the current question.
+
+`fuse_context` starts from indexed anchors, selects a task scope, reduces the source under a
+token budget, and includes provenance for each file. A session can also skip unchanged
+context it already received.
+
+Across four recorded repositories, skeleton reduction removed 38 to 44 percent of tokens
+while retaining every measured public and protected type name and 96.3 to 99.4 percent of
+measured method names (`reduce.json`). The test measures declaration-name retention. It is
+not a claim that every part of the public API is preserved at every reduction level.
+
+## The Write Path: Ask the Compiler About the Proposal
+
+The other delay was the verification loop. A coding agent proposes a C# edit, writes it,
+runs `dotnet build`, reads the diagnostics, and revises the file. A full build remains the
+right final check, but it is a slow way to learn that one proposed member or argument is
+invalid.
+
+`fuse_check` accepts the proposed content of one file without changing the working tree.
+Oracle grade checks it against compiler state captured from the real build. When captured
+state is unavailable, build grade runs a scoped build for the owning project. If neither
+compiler path can run, Fuse abstains and states what is missing.
+
+The recorded check gate used the C# compiler to label 1,000 mutation-derived single-file
+edits over the OrderingApp test families, split into 500 breaking and 500 neutral cases.
+Fuse recorded zero false green and zero false red on that set; eight curated cases had the
+same result (`checkgate.json`). This result is bounded to those edits and projects.
+
+The broader agent-loop run did not show fewer normal builds: agent-visible build and test
+calls were 3.1 for Fuse versus 3.2 for native tools (`loop.json`). The proposed-file check
+is therefore described as earlier semantic feedback, not as proof that Fuse halves builds
+or makes every task faster.
+
+## Related Indexing and Code-Graph Tools
+
+Repository indexing and code graphs are an existing category.
+[CodeGraphContext](https://github.com/CodeGraphContext/CodeGraphContext) builds a local
+multi-language code graph. [Serena](https://github.com/oraios/serena) exposes
+language-server-backed symbol and editing operations.
+[Sourcegraph](https://sourcegraph.com/code-search) provides code search and navigation
+across repositories. Coding clients also maintain their own indexes.
+
+Fuse does not try to replace every one of those systems. Its scope is local .NET work where
+MSBuild and Roslyn can supply framework-specific structure and compiler state: DI and
+request wiring, reduced scoped source, proposed-file checks, change impact, and
+covering-test selection. It can run alongside another index or search tool.
+
+The [peer comparison](/docs/project/benchmarks#peer-comparison-fuse-versus-codegraph-coa-codesearch-and-serena)
+is a bounded, dated experiment with unequal sample sizes for its model-driven arms. It is
+not a general ranking of code-intelligence tools.
+
+## Local and Offline Behavior
+
+Indexing, retrieval, reduction, and captured-compiler checks run locally and can work
+offline. Fuse requires no model. The optional daily update check can contact NuGet, and a
+build-grade operation can use the package feeds configured for the repository.
+
+To try the indexed read and compiler-check paths in a .NET project:
+
+```bash
+dotnet tool install -g Fuse
+fuse mcp install --rules
+```
+
+Continue with the [quickstart](/docs/start/quickstart), or read the
+[benchmark methods and limits](/docs/project/benchmarks).

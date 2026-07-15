@@ -121,7 +121,7 @@ public sealed class GraphNeighborhoodExplorerTests : IAsyncLifetime
     {
         await _store.DisposeAsync();
         var directory = Path.GetDirectoryName(_databasePath);
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
         try
         {
             if (directory is not null && Directory.Exists(directory))

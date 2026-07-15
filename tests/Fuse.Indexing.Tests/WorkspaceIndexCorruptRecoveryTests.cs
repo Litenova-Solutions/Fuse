@@ -30,7 +30,7 @@ public sealed class WorkspaceIndexCorruptRecoveryTests : IDisposable
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_databasePath)!);
         await File.WriteAllTextAsync(_databasePath, "not a sqlite database");
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
 
         await using var store = new WorkspaceIndexStore(_databasePath);
         var status = await store.OpenForReadAsync(CancellationToken.None);

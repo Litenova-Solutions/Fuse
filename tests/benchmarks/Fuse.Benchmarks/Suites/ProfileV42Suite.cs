@@ -209,7 +209,7 @@ public sealed class ProfileV42Suite : IEvalSuite
         try
         {
             var directory = Path.GetDirectoryName(databasePath);
-            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
+            SqliteConnection.ClearAllPools();
             if (directory is not null && Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
         }

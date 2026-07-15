@@ -85,7 +85,7 @@ public sealed class IndexFromCaptureTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await _store.DisposeAsync();
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
         foreach (var dir in new[] { _root, Path.GetDirectoryName(_databasePath)! })
         {
             try

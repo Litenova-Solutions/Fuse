@@ -62,7 +62,7 @@ public sealed class HostRpcOutcomeTests : IDisposable
         }
         finally
         {
-            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={FuseStorePaths.ResolveDatabasePath(root)}"));
+            SqliteConnection.ClearAllPools();
             try { Directory.Delete(root, recursive: true); } catch (IOException) { }
         }
     }

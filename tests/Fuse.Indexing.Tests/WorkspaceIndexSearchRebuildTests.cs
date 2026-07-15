@@ -58,7 +58,7 @@ public sealed class WorkspaceIndexSearchRebuildTests : IDisposable
             await SeedSearchableChunkAsync(seed);
         }
 
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
         DropChunkFts();
 
         await using var reopened = new WorkspaceIndexStore(_databasePath);
@@ -81,7 +81,7 @@ public sealed class WorkspaceIndexSearchRebuildTests : IDisposable
             await seed.SetMetaAsync(WorkspaceIndexStore.ExtractionVersionMetaKey, "0", CancellationToken.None);
         }
 
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
 
         await using var reopened = new WorkspaceIndexStore(_databasePath);
         var outcome = await reopened.InitializeAsync(CancellationToken.None);

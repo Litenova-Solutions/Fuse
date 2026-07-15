@@ -52,7 +52,7 @@ public sealed class ExtractionContractVersionTests : IDisposable
             Assert.True(outcome.RebuiltEmptyStore); // one-time rebuild to gain the stamp.
         }
 
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
         await using var second = new WorkspaceIndexStore(_databasePath);
         var secondOutcome = await second.InitializeAsync(CancellationToken.None);
         Assert.False(secondOutcome.RebuiltEmptyStore); // now stamped: reused.
@@ -87,7 +87,7 @@ public sealed class ExtractionContractVersionTests : IDisposable
                 await seed.SetMetaAsync(WorkspaceIndexStore.ExtractionVersionMetaKey, stampExtractionVersion, CancellationToken.None);
         }
 
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
     }
 
     private async Task ExecuteAsync(string sql)

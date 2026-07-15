@@ -68,7 +68,7 @@ public sealed class ResidentEdgeFreshnessTests
                 m.DisplayName.Contains("EmailNotifier", StringComparison.Ordinal)
                 || (m.FilePath?.EndsWith("Program.cs", StringComparison.OrdinalIgnoreCase) ?? false));
 
-            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
+            SqliteConnection.ClearAllPools();
         }
         finally
         {

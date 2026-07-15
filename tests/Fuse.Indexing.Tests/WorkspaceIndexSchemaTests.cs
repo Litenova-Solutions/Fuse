@@ -52,7 +52,7 @@ public sealed class WorkspaceIndexSchemaTests : IDisposable
             await command.ExecuteNonQueryAsync(CancellationToken.None);
         }
 
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
 
         await using var store = new WorkspaceIndexStore(_databasePath);
         await store.InitializeAsync(CancellationToken.None);
@@ -80,7 +80,7 @@ public sealed class WorkspaceIndexSchemaTests : IDisposable
             await command.ExecuteNonQueryAsync(CancellationToken.None);
         }
 
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
 
         await using var store = new WorkspaceIndexStore(_databasePath);
         await store.InitializeAsync(CancellationToken.None);
@@ -105,7 +105,7 @@ public sealed class WorkspaceIndexSchemaTests : IDisposable
     public void Dispose()
     {
         var directory = Path.GetDirectoryName(_databasePath);
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
         try
         {
             if (directory is not null && Directory.Exists(directory))

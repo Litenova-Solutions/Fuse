@@ -60,6 +60,17 @@ Measured on NodaTime (`performance.json`) and eShopOnWeb (`performance-eshop.jso
 
 `fuse mcp serve` uses syntax-first cold start by default, then upgrades the semantic graph in the background. Set `FUSE_BG_UPGRADE=0`, `false`, `no`, or `off` to make the first read index synchronously. The explicit `fuse index` command is always synchronous.
 
+## Warm Solution for refactor and doctor
+
+`fuse_refactor` and `fuse_workspace action=doctor`'s live load each need a design-time MSBuild workspace, and opening one is essentially their whole latency. The daemon holds the loaded Roslyn `Solution` per root and reuses it across calls (R42), so only the first call in a session pays the load. Measured on the Fuse repo through the refactor and diagnose engine (environment-dependent, recorded in the R42 progress log, not a canonical result file):
+
+| Tool | First call (cold load) | Warm reuse |
+|------|-----:|-----:|
+| `fuse_refactor` (rename) | ~23,700 ms | ~450 ms |
+| `fuse_workspace doctor` (live load) | ~13,900 ms | ~870 ms |
+
+The held solution is memory-heavy (a full compilation set), so the cache is a hard LRU (`FUSE_WARM_SOLUTION_CAP`, default 3) with an idle window (`FUSE_WARM_SOLUTION_IDLE_MINUTES`, default 30); the held-solution RSS ceiling was about 594 MB at cap 3. A freshness check reloads when the source changed, so a reused solution matches a cold load exactly and a changed tree is never slower than before.
+
 ## Distribution
 
 Fuse distributes as a framework-dependent .NET global tool and as self-contained runtime-specific packages:

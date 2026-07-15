@@ -3,7 +3,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
-using Microsoft.CodeAnalysis.MSBuild;
 
 namespace Fuse.Semantics;
 
@@ -17,6 +16,17 @@ namespace Fuse.Semantics;
 public sealed class TypeRefactorer
 {
     private static readonly object LocatorGate = new();
+
+    private readonly WarmSolutionCache _cache;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="TypeRefactorer" /> class.
+    /// </summary>
+    /// <param name="cache">
+    ///     The warm-solution cache (R42) the refactor loads through; defaults to the process-wide
+    ///     <see cref="WarmSolutionCache.Shared" />.
+    /// </param>
+    public TypeRefactorer(WarmSolutionCache? cache = null) => _cache = cache ?? WarmSolutionCache.Shared;
 
     /// <summary>
     ///     Extracts an interface with the class's public instance methods and properties, adds it to the class's
@@ -256,9 +266,9 @@ public sealed class TypeRefactorer
         };
     }
 
-    // Opens the solution/project through MSBuild, oracle-shaped: abstains on a locator failure, a load exception,
-    // or a WorkspaceFailed event.
-    private static async Task<(Solution? Solution, string? Reason)> LoadSolutionAsync(
+    // Loads the solution/project through the warm-solution cache (R42), oracle-shaped: abstains on a locator
+    // failure, a load exception, or a WorkspaceFailed event. A held, still-fresh solution is reused.
+    private async Task<(Solution? Solution, string? Reason)> LoadSolutionAsync(
         string solutionOrProjectPath, CancellationToken cancellationToken)
     {
         lock (LocatorGate)
@@ -270,27 +280,21 @@ public sealed class TypeRefactorer
             }
         }
 
-        using var workspace = MSBuildWorkspace.Create();
-        var loadFailures = WorkspaceLoadFailures.Track(workspace);
-
-        Solution solution;
+        CachedSolution loaded;
         try
         {
-            solution = solutionOrProjectPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)
-                       || solutionOrProjectPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
-                ? await workspace.OpenSolutionAsync(solutionOrProjectPath, cancellationToken: cancellationToken)
-                : (await workspace.OpenProjectAsync(solutionOrProjectPath, cancellationToken: cancellationToken)).Solution;
+            loaded = await _cache.OpenAsync(solutionOrProjectPath, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return (null, $"could not load the workspace: {ex.Message}");
         }
 
-        if (loadFailures.Count > 0)
+        if (loaded.LoadFailures.Count > 0)
             return (null, "the workspace did not load cleanly; a solution-wide change could be incomplete, so it is refused. " +
-                          $"First load failure: {loadFailures[0]}");
+                          $"First load failure: {loaded.LoadFailures[0]}");
 
-        return (solution, null);
+        return (loaded.Solution, null);
     }
 
     private static async Task<HashSet<string>> CollectErrorSignaturesAsync(Solution solution, CancellationToken cancellationToken)

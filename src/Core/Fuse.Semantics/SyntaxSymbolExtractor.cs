@@ -37,6 +37,20 @@ public sealed class SyntaxSymbolExtractor
             return SyntaxExtractionResult.Empty;
         }
 
+        return Extract(normalizedPath, root);
+    }
+
+    /// <summary>
+    ///     Extracts the symbols and chunks from an already-parsed C# syntax root (R47), so a caller that already
+    ///     has the tree (the semantic index pipeline, which also extracts routes from the same file) parses once
+    ///     and shares the tree instead of re-parsing from the content string. Produces byte-identical records to
+    ///     the content overload for the same source.
+    /// </summary>
+    /// <param name="normalizedPath">The forward-slash relative path used to key records to the file.</param>
+    /// <param name="root">The parsed syntax root of the file.</param>
+    /// <returns>The extracted symbols and chunks; empty when the file declares nothing.</returns>
+    public SyntaxExtractionResult Extract(string normalizedPath, SyntaxNode root)
+    {
         var symbols = new List<SymbolRecord>();
         var chunks = new List<ChunkRecord>();
 

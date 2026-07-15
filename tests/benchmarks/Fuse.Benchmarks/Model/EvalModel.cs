@@ -22,12 +22,18 @@ public sealed record CorpusManifest(
 /// <param name="Commit">The pinned commit hash to check out, or null for a local fixture.</param>
 /// <param name="Local">A repo-relative path for an in-repo local fixture, or null for a cloned repo.</param>
 /// <param name="CsFiles">The recorded count of C# files at the pinned commit (for sanity checks).</param>
+/// <param name="Solution">
+///     A repo-relative solution to pin (written as a <c>fuse.json</c> "solution" key on restore), for a repo with
+///     more than one solution where discovery could otherwise bind the wrong one (for example NodaTime ships
+///     <c>build/Tools.slnx</c> alongside <c>src/NodaTime.slnx</c>). Null lets discovery choose.
+/// </param>
 public sealed record CorpusRepo(
     string Name,
     string? Url = null,
     string? Commit = null,
     string? Local = null,
-    [property: JsonPropertyName("cs_files")] int CsFiles = 0);
+    [property: JsonPropertyName("cs_files")] int CsFiles = 0,
+    string? Solution = null);
 
 /// <summary>
 ///     The raw shape of one entry in <c>prs.json</c>: a real merged pull request reconstructed from

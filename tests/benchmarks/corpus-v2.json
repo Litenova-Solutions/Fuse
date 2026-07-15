@@ -14,7 +14,7 @@
     { "name": "Flurl", "url": "https://github.com/tmenier/Flurl.git", "commit": "36a3fa2b7e29ba1e44a39edfd0d4ae36284a6c75" },
     { "name": "YamlDotNet", "url": "https://github.com/aaubry/YamlDotNet.git", "commit": "748334a8fa7c227740018b284b71ad95cc6b7fc7" },
     { "name": "CommandLineParser", "url": "https://github.com/commandlineparser/commandline.git", "commit": "1e3607b97af6141743edb3c434c06d5b492f6fb3" },
-    { "name": "NodaTime", "url": "https://github.com/nodatime/nodatime.git", "commit": "d3964660c5770de6d3a98988bc136cbfe7d6881d" },
+    { "name": "NodaTime", "url": "https://github.com/nodatime/nodatime.git", "commit": "d3964660c5770de6d3a98988bc136cbfe7d6881d", "solution": "src/NodaTime.slnx" },
     { "name": "AutoFixture", "url": "https://github.com/AutoFixture/AutoFixture.git", "commit": "331685e33c5a3ab45692da027b4b5246dcbdac9b", "cs_files": 1036 },
     { "name": "AutoMapper", "url": "https://github.com/AutoMapper/AutoMapper.git", "commit": "dfa6dd587c5854b4beee5934beb39ba6e9569b84", "cs_files": 512 },
     { "name": "Dapper", "url": "https://github.com/DapperLib/Dapper.git", "commit": "72a54c475f75e18cb93cba0809d00a5e6e49efd9", "cs_files": 157 },

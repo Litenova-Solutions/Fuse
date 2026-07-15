@@ -13,18 +13,18 @@ One-shot CLI commands pay startup cost on every invocation. A long-running serve
 
 ## Warm read verbs (two scales)
 
-Each verb is the primitive the matching MCP tool calls, timed over 25 iterations at two scales: NodaTime (512 files, 7,657 symbols, `performance.json`) and eShopOnWeb (287 files, 1,216 symbols, `performance-eshop.json`).
+Each verb is the primitive the matching MCP tool calls, timed over 25 iterations at two scales: NodaTime (512 files, 14,760 symbols, semantic tier, `performance.json`) and eShopOnWeb (287 files, 2,216 symbols, partial semantic tier, `performance-eshop.json`).
 
 | Verb (tool) | NodaTime P50 | NodaTime P95 | eShopOnWeb P50 | eShopOnWeb P95 |
 |-------------|----:|----:|----:|----:|
-| Exact symbol lookup (`fuse_find`) | 2.2 ms | 3.6 ms | 0.1 ms | 0.2 ms |
-| Blast radius (`fuse_impact`) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
-| Localize (`fuse_find` kind=task) | 23.4 ms | 25.2 ms | 2.6 ms | 4.2 ms |
-| Resolve symbol (`fuse_find` kind=service) | ~0 ms | 0.1 ms | ~0 ms | ~0 ms |
-| Review plan (`fuse_review`) | 97.8 ms | 101.3 ms | 38.3 ms | 41.6 ms |
-| Single-file incremental re-index | 20.9 ms | 25.4 ms | 1.9 ms | 2.3 ms |
+| Exact symbol lookup (`fuse_find`) | 1.8 ms | 2.3 ms | 0.2 ms | 0.3 ms |
+| Blast radius (`fuse_impact`) | ~0 ms | 0.1 ms | ~0 ms | ~0 ms |
+| Localize (`fuse_find` kind=task) | 15.7 ms | 22.3 ms | 2.3 ms | 2.9 ms |
+| Resolve symbol (`fuse_find` kind=service) | ~0 ms | 0.1 ms | ~0 ms | 0.1 ms |
+| Review plan (`fuse_review`) | 106.3 ms | 131.1 ms | 49.7 ms | 66.5 ms |
+| Single-file incremental re-index | 22.0 ms | 24.2 ms | 1.9 ms | 2.2 ms |
 
-Every recorded warm read sits inside a sub-second budget on this machine. eShopOnWeb is faster in this run, but two repositories do not establish a proportional scaling law. `fuse_impact` reads ~0 ms on these syntax-mode checkouts because there is no semantic graph to walk; on a semantically loaded checkout the query walks real edges, bounded by neighborhood size.
+Every recorded warm read sits inside a sub-second budget on this machine. eShopOnWeb is faster in this run, but two repositories do not establish a proportional scaling law. Both checkouts now load a semantic graph (NodaTime via the product solution `src/NodaTime.slnx`, eShopOnWeb at partial tier), so `fuse_impact` walks real edges; it still reads ~0 ms because these neighborhoods are small, bounded by neighborhood size rather than by an empty graph.
 
 ## Verify verbs (NodaTime, `resident-latency.json`)
 
@@ -54,9 +54,11 @@ Measured on NodaTime (`performance.json`) and eShopOnWeb (`performance-eshop.jso
 
 | Milestone | NodaTime | eShopOnWeb |
 |-----------|-----:|-----:|
-| Syntax tier served (no MSBuild) | 17,840 ms | 618 ms |
-| Semantic-ready (background upgrade) | +48,329 ms | +3,479 ms |
-| Full synchronous semantic index (`fuse index`) | 24,554 ms | 2,795 ms |
+| Syntax tier served (no MSBuild) | 17,768 ms | 1,349 ms |
+| Semantic-ready (background upgrade) | +71,052 ms | +22,742 ms |
+| Full synchronous semantic index (`fuse index`) | 45,859 ms | 10,718 ms |
+
+These are re-measured (2026-07-15) after the workspace-discovery fix, which selects the product solution `src/NodaTime.slnx` (21 projects, 14,760 symbols) rather than the auxiliary `build/Tools.slnx` (2 projects, 343 symbols); the prior snapshot indexed at the syntax tier and so understated the real semantic cold-index cost. The semantic pass loads via tier-1 build capture (graph-grade), which is why it is slower than the earlier syntax-only figure - it is doing strictly more (the full typed graph).
 
 `fuse mcp serve` uses syntax-first cold start by default, then upgrades the semantic graph in the background. Set `FUSE_BG_UPGRADE=0`, `false`, `no`, or `off` to make the first read index synchronously. The explicit `fuse index` command is always synchronous.
 

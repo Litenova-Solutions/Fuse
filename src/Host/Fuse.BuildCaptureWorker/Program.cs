@@ -74,10 +74,10 @@ if (args.Length == 4 && args[0] == "--check-complog")
 // for each speculative edit through CheckHeld. A "ready" line signals rehydration is complete; EOF or "quit" exits.
 if (args.Length == 2 && args[0] == "--serve-check")
 {
-    HeldComplog held;
+    LazyHeldComplog held;
     try
     {
-        held = rehydrator.RehydrateHeld(args[1], CancellationToken.None);
+        held = rehydrator.RehydrateLazyHeld(args[1], CancellationToken.None);
     }
     catch (Exception ex)
     {
@@ -108,7 +108,7 @@ if (args.Length == 2 && args[0] == "--serve-check")
                 else
                 {
                     var newContent = await File.ReadAllTextAsync(request.ContentPath);
-                    check = rehydrator.CheckHeld(held, request.File, newContent, CancellationToken.None);
+                    check = rehydrator.CheckLazyHeld(held, request.File, newContent, CancellationToken.None);
                 }
             }
             catch (Exception ex)

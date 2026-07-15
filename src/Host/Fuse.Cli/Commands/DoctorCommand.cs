@@ -1,5 +1,6 @@
 using System.Text;
 using DotMake.CommandLine;
+using Fuse.Cli.Rpc;
 using Fuse.Cli.Services;
 using Fuse.Semantics;
 
@@ -66,6 +67,17 @@ public sealed class DoctorCommand
         {
             _consoleUI.WriteError($"Directory not found: {root}");
             return;
+        }
+
+        if (Refresh && McpServeCommand.IsDaemonEnabled())
+        {
+            var remote = await FuseHostClient.TryDoctorAsync(root, TimeSpan.FromSeconds(2), context.CancellationToken);
+            if (remote is not null)
+            {
+                _consoleUI.WriteStep($"Diagnosing semantic load for {root}");
+                _consoleUI.WriteResult(remote.Report);
+                return;
+            }
         }
 
         // R43: report the diagnosis stamped in the warm index (sub-second, no MSBuild load) unless a live load is
@@ -145,5 +157,43 @@ public sealed class DoctorCommand
             : "The oracle tools abstain here (not oracle-grade); retrieval still works at the available tier.");
 
         _consoleUI.WriteResult(builder.ToString());
+    }
+
+    /// <summary>Builds the live-load report shared by the CLI fallback and daemon RPC path.</summary>
+    internal static async Task<string> BuildLiveReportAsync(SemanticIndexer indexer, string root, CancellationToken cancellationToken)
+    {
+        var diagnosis = await indexer.DiagnoseLoadAsync(root, cancellationToken);
+        var builder = new StringBuilder();
+        builder.AppendLine($"workspace: {root}");
+        builder.AppendLine("diagnosis source: live MSBuild load (--refresh)");
+        builder.AppendLine($"load tier: {diagnosis.Tier}");
+        builder.AppendLine($"selected solution: {diagnosis.SelectedSolution ?? "none (syntax-only)"}");
+        if (diagnosis.SelectionNote is not null)
+            builder.AppendLine($"WARNING: {diagnosis.SelectionNote}");
+        builder.AppendLine($"projects loaded: {diagnosis.ProjectsLoaded}/{diagnosis.ProjectsTotal}");
+        builder.AppendLine();
+        if (diagnosis.Projects.Count == 0)
+        {
+            builder.AppendLine("no projects: the workspace has no solution or project, or none opened; indexing is syntax-only.");
+        }
+        else
+        {
+            builder.AppendLine("per project:");
+            foreach (var project in diagnosis.Projects)
+                builder.AppendLine($"  [{(project.Loaded ? "ok" : "downgraded")}] {project.Name}: {project.Reason}");
+        }
+        var errors = diagnosis.Diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning).ToList();
+        if (errors.Count > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("load diagnostics:");
+            foreach (var diagnostic in errors.Take(20))
+                builder.AppendLine($"  {diagnostic.Code}: {diagnostic.Message}");
+        }
+        builder.AppendLine();
+        builder.AppendLine(diagnosis.Tier.StartsWith("oracle", StringComparison.Ordinal)
+            ? "The compiler-backed oracle tools can answer for this workspace."
+            : "The oracle tools abstain here (not oracle-grade); retrieval still works at the available tier.");
+        return builder.ToString();
     }
 }

@@ -97,6 +97,8 @@ public sealed class HostCommand
         using var resident = Services.ResidentWorkspaceHosting.OptIn()
             ? Services.ResidentWorkspaceHosting.Enable(root, watcher, app.Services.GetRequiredService<SemanticIndexer>(), message => logger.LogInformation("{Message}", message), stopCts.Token)
             : null;
+        if (resident is not null)
+            service.ActivateResidentBudget(root);
 
         // R39: keep the index live. On a debounced change (including .git/HEAD and .git/index, so branch switches
         // and pulls are caught), reconcile the changed files into the store through the single-writer coordinator,

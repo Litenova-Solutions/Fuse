@@ -148,6 +148,23 @@ public static class FuseHostClient
                 "fuse/index", [handshake.SessionToken, root], ct),
             cancellationToken);
 
+    /// <summary>Runs a live doctor request on the root's daemon, or returns null when no compatible daemon serves it.</summary>
+    public static Task<DoctorResultDto?> TryDoctorAsync(string root, TimeSpan connectTimeout, CancellationToken cancellationToken) =>
+        TryInvokeAsync(root, "fuse/doctor", connectTimeout,
+            (rpc, handshake, ct) => rpc.InvokeWithCancellationAsync<DoctorResultDto>("fuse/doctor", [handshake.SessionToken, root], ct), cancellationToken);
+
+    /// <summary>Runs a staged refactor on the root's daemon, or returns null when no compatible daemon serves it.</summary>
+    public static Task<RefactorResultDto?> TryRefactorAsync(
+        string root, RefactorRequestDto request, TimeSpan connectTimeout, CancellationToken cancellationToken) =>
+        TryInvokeAsync(root, "fuse/refactor", connectTimeout,
+            (rpc, handshake, ct) => rpc.InvokeWithCancellationAsync<RefactorResultDto>("fuse/refactor", [handshake.SessionToken, root, request], ct), cancellationToken);
+
+    /// <summary>Runs a capture-backed oracle check on the root's daemon, or returns null when no compatible daemon serves it.</summary>
+    public static Task<CaptureCheckResultDto?> TryCaptureCheckAsync(
+        string root, string relativeFilePath, string newContent, TimeSpan connectTimeout, CancellationToken cancellationToken) =>
+        TryInvokeAsync(root, "fuse/checkCapture", connectTimeout,
+            (rpc, handshake, ct) => rpc.InvokeWithCancellationAsync<CaptureCheckResultDto>("fuse/checkCapture", [handshake.SessionToken, root, relativeFilePath, newContent], ct), cancellationToken);
+
     /// <summary>
     ///     Probes whether a compatible daemon is serving a root (G5): connects to the root's endpoint and completes
     ///     the handshake, returning true only when a process answers and its protocol version matches. Used by the

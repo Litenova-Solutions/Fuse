@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using Fuse.Cli.Rpc;
 using Fuse.Collection.FileSystem;
 using Fuse.Context;
 using Fuse.Indexing;
@@ -554,7 +555,7 @@ public sealed partial class FuseTools
         FuseOperationalErrors.ExecuteMcpAsync(() => FuseRefactorCoreAsync(
             path, symbol, newName, operation, containingType, parameterType, parameterName, argument, newOrder, diagnosticId, file, cancellationToken));
 
-    private static async Task<string> FuseRefactorCoreAsync(
+    internal static async Task<string> FuseRefactorCoreAsync(
         string path,
         string symbol,
         string newName,
@@ -566,9 +567,18 @@ public sealed partial class FuseTools
         string newOrder,
         string diagnosticId,
         string file,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool routeToHost = true)
     {
         var root = Path.GetFullPath(path);
+        if (routeToHost && Commands.McpServeCommand.IsDaemonEnabled())
+        {
+            var request = new RefactorRequestDto(symbol, newName, operation, containingType, parameterType, parameterName,
+                argument, newOrder, diagnosticId, file);
+            var remote = await FuseHostClient.TryRefactorAsync(root, request, TimeSpan.FromSeconds(5), cancellationToken);
+            if (remote is not null)
+                return remote.Output;
+        }
         var discovery = await new Fuse.Semantics.DotNetWorkspaceDiscoverer().DiscoverAsync(root, cancellationToken);
         var target = discovery.SolutionPath ?? discovery.ProjectPaths.FirstOrDefault();
         if (target is null)
@@ -1388,6 +1398,17 @@ public sealed partial class FuseTools
 
         var client = new Fuse.Semantics.BuildCaptureClient();
 
+        if (oracle is null && Commands.McpServeCommand.IsDaemonEnabled())
+        {
+            var remote = await FuseHostClient.TryCaptureCheckAsync(
+                root, file, content, TimeSpan.FromSeconds(5), cancellationToken);
+            if (remote is { Available: true })
+            {
+                oracle = CheckResult.Ok(remote.Diagnostics.Select(d => new CheckDiagnostic(
+                    d.Id, d.Severity, d.Message, d.Path, d.Line)).ToList());
+            }
+        }
+
         if (oracle is null)
             oracle = await TryOracleFromCaptureBundleAsync(root, file, content, client, cancellationToken);
 
@@ -1411,7 +1432,7 @@ public sealed partial class FuseTools
         return (buildResult, stopwatch.ElapsedMilliseconds);
     }
 
-    private static async Task<Fuse.Indexing.CheckResult?> TryOracleFromCaptureBundleAsync(
+    internal static async Task<Fuse.Indexing.CheckResult?> TryOracleFromCaptureBundleAsync(
         string root,
         string file,
         string content,
@@ -1437,7 +1458,8 @@ public sealed partial class FuseTools
             // R48: try the pooled, kept-alive worker first (rehydrate once, reuse across checks in a session); on a
             // cold/absent/failed pooled worker it returns null and we fall back to the spawn-per-call path, so the
             // verdict and honesty are unchanged and it is never worse than today.
-            var pooled = await Fuse.Semantics.PooledCheckWorker.Shared.TryCheckAsync(log, file, content, cancellationToken);
+            var pooled = await Fuse.Semantics.PooledCheckWorker.Shared.TryCheckAsync(
+                log, file, content, cancellationToken, ownerRoot: root);
             var candidate = pooled ?? await client.CheckFromComplogAsync(log, file, content, TimeSpan.FromMinutes(2), cancellationToken);
             if (candidate.Verified)
                 return candidate;

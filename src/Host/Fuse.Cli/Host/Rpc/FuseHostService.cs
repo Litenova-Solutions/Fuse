@@ -41,7 +41,7 @@ public sealed class FuseHostService : IDisposable
     ///     serialization error. There is no external client to mirror: the VS Code extension was removed in v4
     ///     (Decision D15), so the host is the minimal pipe endpoint the hooks need.
     /// </summary>
-    public const int ProtocolVersion = 8;
+    public const int ProtocolVersion = 10;
 
     private const int ListLimit = 100_000;
 
@@ -60,6 +60,7 @@ public sealed class FuseHostService : IDisposable
     private readonly SemanticUpgradeSupervisor _upgradeSupervisor;
     private readonly bool _backgroundSemanticUpgradeEnabled;
     private readonly Fuse.Workspace.IResidentWorkspaceProvider? _residentWorkspacesOverride;
+    private CompilerStateBudget? _compilerStateBudget;
 
     // The resident workspace this daemon checks against. In production the daemon process owns the process-wide
     // provider, so reading the static is correct; the override lets an in-process test give the daemon its own
@@ -615,8 +616,57 @@ public sealed class FuseHostService : IDisposable
             : new CheckOverlayResultDto(true, diagnostics.Select(ToCheckDiagnosticDto).ToList());
     }
 
+    /// <summary>Runs a live doctor load through this root's held warm solution cache.</summary>
+    [JsonRpcMethod("fuse/doctor")]
+    public async Task<DoctorResultDto> DoctorAsync(string sessionToken, string root)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
+        BudgetFor(root).ActivateWarm();
+        return new DoctorResultDto(await Fuse.Cli.Commands.DoctorCommand.BuildLiveReportAsync(_indexer, Path.GetFullPath(root), CancellationToken.None));
+    }
+
+    /// <summary>Runs a staged compiler refactor through this root's held warm solution cache.</summary>
+    [JsonRpcMethod("fuse/refactor")]
+    public async Task<RefactorResultDto> RefactorAsync(string sessionToken, string root, RefactorRequestDto request)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
+        BudgetFor(root).ActivateWarm();
+        var output = await FuseTools.FuseRefactorCoreAsync(
+            root, request.Symbol, request.NewName, request.Operation, request.ContainingType, request.ParameterType,
+            request.ParameterName, request.Argument, request.NewOrder, request.DiagnosticId, request.File,
+            CancellationToken.None, routeToHost: false);
+        return new RefactorResultDto(output);
+    }
+
+    /// <summary>Runs a capture-bundle oracle check through this host's pooled worker ownership domain.</summary>
+    [JsonRpcMethod("fuse/checkCapture")]
+    public async Task<CaptureCheckResultDto> CheckCaptureAsync(
+        string sessionToken, string root, string relativeFilePath, string newContent)
+    {
+        FuseHostSessionToken.Validate(_sessionToken, sessionToken);
+        ValidateServedRoot(root);
+        BudgetFor(root).ActivateCapture();
+        var result = await FuseTools.TryOracleFromCaptureBundleAsync(
+            Path.GetFullPath(root), relativeFilePath, newContent, new BuildCaptureClient(), CancellationToken.None);
+        return result is { Verified: true }
+            ? new CaptureCheckResultDto(true, null, result.Diagnostics.Select(ToCheckDiagnosticDto).ToList())
+            : new CaptureCheckResultDto(false, result?.Reason, []);
+    }
+
+    /// <summary>Reserves the daemon's per-root budget for an opt-in resident workspace.</summary>
+    public void ActivateResidentBudget(string root)
+    {
+        ValidateServedRoot(root);
+        BudgetFor(root).ActivateResident();
+    }
+
     private static CheckDiagnosticDto ToCheckDiagnosticDto(CheckDiagnostic diagnostic) =>
         new(diagnostic.Id, diagnostic.Severity, diagnostic.Message, diagnostic.FilePath, diagnostic.Line);
+
+    private CompilerStateBudget BudgetFor(string root) =>
+        _compilerStateBudget ??= new CompilerStateBudget(Path.GetFullPath(root));
 
     // Confirms the caller's root matches the repository root this daemon was started to serve.
     private void ValidateServedRoot(string root)

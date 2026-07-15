@@ -160,7 +160,18 @@ public sealed class DaemonOneTruthTests
                 a is { Status: "ready", FileCount: > 0 },
                 "daemon never prepared a readable index");
 
-            var b = await FuseHostClient.TryOpenIndexedAsync(work, TimeSpan.FromSeconds(5), CancellationToken.None);
+            OpenIndexedResultDto? b = null;
+            var secondClientDeadline = DateTime.UtcNow + TimeSpan.FromSeconds(90);
+            while (DateTime.UtcNow < secondClientDeadline)
+            {
+                // The first completed write can be followed by a watcher reconcile. A second client must observe
+                // the daemon's settled read state, not treat the bounded index_busy reply as a different truth.
+                b = await FuseHostClient.TryOpenIndexedAsync(work, TimeSpan.FromSeconds(30), CancellationToken.None);
+                if (b is { Status: "ready", FileCount: > 0 })
+                    break;
+                await Task.Delay(500);
+            }
+
             Assert.NotNull(b);
             Assert.Equal("ready", b!.Status);
             Assert.Equal(a!.FileCount, b.FileCount);

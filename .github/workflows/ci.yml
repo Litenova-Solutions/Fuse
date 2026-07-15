@@ -91,7 +91,7 @@ jobs:
         run: dotnet tool install --global dotnet-coverage
 
       - name: Test with coverage
-        run: dotnet-coverage collect "dotnet test Fuse.slnx --configuration Release --no-build --verbosity normal --filter \"Category!=RequiresSdk\"" --output coverage.cobertura.xml --output-format cobertura
+        run: dotnet-coverage collect 'dotnet test Fuse.slnx --configuration Release --no-build --verbosity normal --filter "Category!=RequiresSdk"' --output coverage.cobertura.xml --output-format cobertura
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

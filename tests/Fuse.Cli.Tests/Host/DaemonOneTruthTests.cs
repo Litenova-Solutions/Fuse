@@ -133,6 +133,9 @@ public sealed class DaemonOneTruthTests
         psi.ArgumentList.Add("host");
         psi.ArgumentList.Add("--directory");
         psi.ArgumentList.Add(work);
+        // A first open below owns the full index synchronously. Do not also start the eager syntax pass, because
+        // its background upgrade can hold the single writer while the two-client assertion is trying to read it.
+        psi.Environment["FUSE_EAGER_INDEX"] = "0";
         psi.Environment["FUSE_BG_UPGRADE"] = "0";
 
         Process? daemon = null;
@@ -142,10 +145,12 @@ public sealed class DaemonOneTruthTests
             RequiresSdkIntegration.RequireCondition(daemon is not null, "could not start fuse host daemon");
 
             OpenIndexedResultDto? a = null;
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(60);
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(90);
             while (DateTime.UtcNow < deadline)
             {
-                a = await FuseHostClient.TryOpenIndexedAsync(work, TimeSpan.FromSeconds(2), CancellationToken.None);
+                // A two-second cancellation can abort the daemon's first full index repeatedly on a cold SDK
+                // runner. Let one request hold the writer long enough to finish, then the second client reads it.
+                a = await FuseHostClient.TryOpenIndexedAsync(work, TimeSpan.FromSeconds(30), CancellationToken.None);
                 if (a is { Status: "ready", FileCount: > 0 })
                     break;
                 await Task.Delay(500);

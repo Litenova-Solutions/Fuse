@@ -71,6 +71,13 @@ internal static class FuseOperationalErrors
                 return Format(ValidationErrorPrefix, string.Join("; ", ex.Errors));
             case ArgumentException ex:
                 return Format(ValidationErrorPrefix, ex.Message);
+            // A missing git precondition (not a repository, no such base ref) is an expected operational condition
+            // for change-scoped tools (fuse_review), not an internal failure; surface it as validation_error so the
+            // caller sees an actionable message rather than an opaque internal_error prefix.
+            case Fuse.Retrieval.ChangeSourceException ex:
+                return Format(ValidationErrorPrefix, ex.Message);
+            case ChangeDetectionException ex:
+                return Format(ValidationErrorPrefix, ex.Message);
             case SqliteException ex when IsSqliteBusyOrLocked(ex):
                 FuseMetrics.RecordDegraded(DegradedStateKind.IndexBusy); // R37
                 return Format(IndexBusyPrefix, "the index database is locked or busy; retry shortly or use a shared fuse host.");

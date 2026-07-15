@@ -37,9 +37,10 @@ full benchmark record (methodology, every canonical result file, and cross-suite
 planner can reason about roadmap tradeoffs from this file alone without the source tree.
 
 Everything here was assembled from the live codebase rather than from memory, so the file and
-line references are real and current as of Fuse version 4.0.0 (last verified 2026-07-10, through the
-v4 program's substrate and surface waves). Where a described behavior is still in flight, the section
-says so and points at the item in [roadmap/v4-plan.md](roadmap/v4-plan.md).
+line references are real and current as of Fuse version 4.1.0 (last verified 2026-07-14, through the
+v4.1 release and [roadmap/v4.2-plan.md](roadmap/v4.2-plan.md) hardening). Where a described behavior
+is still in flight, the section says so and points at the item in [roadmap/v4-plan.md](roadmap/v4-plan.md)
+or [roadmap/v4.2-plan.md](roadmap/v4.2-plan.md).
 
 Two conventions this project enforces, visible throughout: plain ASCII prose only (no em
 dashes, no smart quotes, no emoji outside code fences), and every performance number sourced to
@@ -113,9 +114,9 @@ measurements and their ceilings.
 
 Solution file: `Fuse.slnx`. Target framework: `net10.0` across all assemblies. SDK pinned to
 `10.0.100` in `global.json`. Single version source of truth: `Directory.Build.props`
-`<Version>` (currently 4.0.0), mirrored into the MCP registry manifest and the docs site, all bumped
+`<Version>` (currently 4.1.0), mirrored into the MCP registry manifest and the docs site, all bumped
 together by `build/set-version.ps1` (the VS Code extension was removed in v4, Decision D15, so there is
-no extension to sync). License: Apache-2.0 (migrated from MIT in v4 item L1).
+no extension package to sync). License: Apache-2.0 (migrated from MIT in v4 item L1).
 
 - `src/Core` - the pipeline libraries:
   - `Fuse.Collection` - file discovery, filtering, gitignore, security guards.
@@ -131,7 +132,7 @@ no extension to sync). License: Apache-2.0 (migrated from MIT in v4 item L1).
   - `Fuse.Context` - semantic context emission, manifest building, provenance rendering,
     session deduplication for repeated context calls.
 - `src/Host` - user-facing surfaces:
-  - `Fuse.Cli` - the CLI commands, the MCP stdio server, the VS Code JSON-RPC host.
+  - `Fuse.Cli` - the CLI commands, the MCP stdio server, and the JSON-RPC host (`fuse host`).
   - `Fuse.BuildCaptureWorker` - out-of-process tier-1 build capture worker (binlog rehydration,
     semantic extraction, graph serialization back to the parent process).
 - `src/Plugins` - capability plugins resolved by file extension:
@@ -143,7 +144,6 @@ no extension to sync). License: Apache-2.0 (migrated from MIT in v4 item L1).
   corpus manifest, recorded results, peer harness.
 - `site/` - the documentation website (Next.js + Fumadocs), published at fuse.codes. All prose
   docs are MDX under `site/content/docs`.
-- `ext/vscode/` - the VS Code extension (TypeScript client for the JSON-RPC host).
 - `briefing.md` (repo root) - this file: project briefing for planners and contributors (architecture,
   benchmarks, gaps, plan history).
 - `roadmap/` - the internal engineering plans (v3, v3.1, v3.2, v4); start at
@@ -249,8 +249,8 @@ dependency graph).
 BM25F relevance (`Scoping/Bm25RelevanceIndex.cs`) is a fielded inverted index with four fields
 (Body, Symbols, Path, Comments), each with its own length-normalization b and boost. A term in
 a declared symbol name counts 5x, in the path 3x, in comments 1.5x, versus the body at 1x.
-K1 = 1.2. This is the in-memory BM25F used by the classic fusion path (the VS Code host
-`fuse/scope` path); the persistent index uses FTS5 bm25 with a corrected weight table (section 5,
+K1 = 1.2. This is the in-memory BM25F used by the classic fusion path (the host RPC `fuse/scope`
+path); the persistent index uses FTS5 bm25 with a corrected weight table (section 5,
 N1 shipped). N2 part 1 archived stale results and fixed citations; deletion of the in-memory
 ranker from the classic fusion path is deferred (non-shipping, heavy test coupling).
 
@@ -301,9 +301,9 @@ A third mechanism, the **N6 freshness contract**, applies on warm MCP read paths
 `ReconcileDirtyFilesAsync` compares stored content hashes against on-disk files before answering.
 If the dirty count exceeds 300 (storm threshold), it stamps `stale_dirty_count` in `index_meta`
 and skips reconcile rather than blocking the agent; otherwise it re-indexes each dirty known file
-(syntax rows only; cross-file edges still need a full pass, issue 5). The VS Code host RPC path
-opens the same store but does not yet call reconcile on warm reads; it relies on
-`fuse/invalidated` to trigger a refresh instead.
+(syntax rows only; cross-file edges still need a full pass, issue 5). The host RPC path opens the
+same store but does not yet call reconcile on warm reads; it relies on `fuse/invalidated` to
+trigger a refresh instead.
 
 **Oracle availability header**: store-backed MCP read tools prepend a one-line grade from
 `OracleAvailabilityHeaderAsync`: index mode (semantic/partial/syntax), tier-1 build capture
@@ -481,10 +481,10 @@ tier-1 runs out-of-process via `Fuse.BuildCaptureWorker`:
 
 ---
 
-## 7. The surfaces: CLI, MCP server, VS Code host
+## 7. The surfaces: CLI, MCP server, host RPC
 
 One executable (`Fuse.Cli`) hosts three surfaces over one shared engine (`SemanticRetrievalEngine`
-plus `WorkspaceIndexStore`), so agent, developer UI, and CLI see identical data. The command
+plus `WorkspaceIndexStore`), so agent, ambient hooks, and CLI see identical data. The command
 framework is DotMake.CommandLine.
 
 ### 7.1 CLI commands
@@ -497,7 +497,7 @@ a running tool locks its own
 files on Windows, so it stops other running Fuse hosts and launches a detached platform-native
 updater script that waits for the process to exit before replacing files.
 
-### 7.2 The MCP tools (fourteen)
+### 7.2 The MCP tools (nine)
 
 All defined on the partial class `FuseTools`, each `[McpServerTool]`, returning descriptive error
 strings rather than throwing, and building the index on first use. MCP warm reads run N6 reconcile
@@ -538,24 +538,21 @@ MCP resources cover the map, localize, context, and review workflow reads plus t
 diagnostics, and session-ledger reads in a fixed-default addressable form. v4 is the first public
 release and ships exactly these nine tools with no deprecation shims and no legacy names (D14).
 
-### 7.3 The VS Code host (JSON-RPC)
+### 7.3 The host RPC (`fuse host`)
 
 `fuse host` is a long-lived process, one per repo root, sharing the same engine and
 `.fuse/fuse.db` store. Transport is a named pipe on Windows, a Unix domain socket elsewhere;
-the endpoint address is a stable SHA-256 of the normalized repo-root path (8 bytes hex), mirrored
-in the TS client so a second editor window finds the running host. Methods (`[JsonRpcMethod]`,
-`fuse/` namespace): handshake, stats, index, graph, scope, explain, diagnostics, shutdown. Every
-method except handshake is gated by a per-session random token. A debounced file watcher
-broadcasts `fuse/invalidated` to connected editors. Unlike MCP read tools, the host does not yet
-run N6 reconcile on warm opens (section 4); it cold-builds when the store is empty and relies on
-invalidation to trigger refresh after edits.
+the endpoint address is a stable SHA-256 of the normalized repo-root path (8 bytes hex). Methods
+(`[JsonRpcMethod]`, `fuse/` namespace): handshake, stats, index, graph, scope, explain,
+diagnostics, shutdown. Every method except handshake is gated by a per-session random token. A
+debounced file watcher broadcasts `fuse/invalidated` to connected clients. Unlike MCP read tools,
+the host does not yet run N6 reconcile on warm opens (section 4); it cold-builds when the store
+is empty and relies on invalidation to trigger refresh after edits.
 
 Change-safety invariant: any change to a `Fuse.Cli.Rpc` DTO or `[JsonRpcMethod]` signature must
-bump both `FuseHostService.ProtocolVersion` and `ext/vscode/src/host/protocol.ts`
-`PROTOCOL_VERSION` in the same change, and update the extension client and the contract test. The
-version constant exists to surface a stale-extension or new-host mismatch cleanly. As of 4.0.0
-both sides declare protocol 3 (the earlier drift where the extension lagged at protocol 2 is
-resolved).
+bump `FuseHostService.ProtocolVersion` in the same change. The version constant surfaces a
+stale-hook-client or new-host mismatch cleanly. The VS Code extension and its TypeScript protocol
+mirror were removed in v4 (Decision D15); ambient verification hooks are the in-repo client.
 
 ---
 
@@ -564,16 +561,15 @@ resolved).
 These were found while assembling this briefing. Each is tagged with its current status and, if
 open, the v4 item that addresses it.
 
-1. **Host protocol version drift.** RESOLVED in 3.2.0, still accurate at 4.0.0. Both
-   `FuseHostService.ProtocolVersion` and the TypeScript `PROTOCOL_VERSION` declare 3, and the
-   contract test guards them. Generating the TS mirror from C# source remains a future hardening
-   item; the immediate drift is gone.
+1. **Host protocol version drift.** RESOLVED in 3.2.0; the VS Code extension and TypeScript
+   protocol mirror were removed in v4 (Decision D15). `FuseHostService.ProtocolVersion` is the
+   sole contract stamp; ambient hooks must match the running host version.
 2. **BM25 weight vector versus intent comment.** RESOLVED in v4 N1. The FTS5 bm25 column weights
    now rank name/symbols/signature above path (`WorkspaceIndexStore.SearchAsync`). The ranking
    regression suite (`fuse eval ranking`, `results/ranking.json`) guards the table.
 3. **Two disagreeing lexical rankers.** PARTIAL, v4 N2. N2 part 1 archived stale results and
    fixed citations. The in-memory `Bm25RelevanceIndex` still exists for the classic fusion path
-   (VS Code host scoping) but is non-shipping; deletion is deferred due to test coupling. The
+   (host RPC scoping) but is non-shipping; deletion is deferred due to test coupling. The
    persistent FTS5 path is the shipping ranker and matches N1's weight table.
 4. **Corpus generational gap in recorded results.** MOSTLY RESOLVED. The current corpus
    (`corpus.json`) no longer references the prior 5-library set (AutoMapper, FluentValidation,
@@ -584,8 +580,8 @@ open, the v4 item that addresses it.
    `ReindexFileAsync` and N6 reconcile re-extract a file's syntax rows only; cross-file graph
    edges (DI, route, MediatR, EF, references) are recomputed only by a full `IndexAsync`. N3
    adds a dependency-scoped semantic re-index over a resident compilation.
-6. **Host N6 reconcile gap.** OPEN. MCP read tools reconcile dirty files on warm opens; the VS
-   Code host RPC path does not yet call `ReconcileDirtyFilesAsync` before answering.
+6. **Host N6 reconcile gap.** OPEN. MCP read tools reconcile dirty files on warm opens; the host
+   RPC path does not yet call `ReconcileDirtyFilesAsync` before answering.
 
 ---
 
@@ -599,12 +595,13 @@ as `fuse eval <suite>`. Each suite writes a scorecard JSON; the canonical files 
 
 ### 9.0 Shared methodology
 
-**Corpus** (`tests/benchmarks/corpus.json`, 53 PRs in `prs.json`): Scrutor (45 C# files, 3 PRs),
-Ardalis Specification (233 files, 14 PRs), NodaTime (488 files, 18 PRs), eShopOnWeb (254 files,
-18 PRs, the only application), plus in-repo fixtures OrderingApp (Suite A) and SampleShop. Repos
-are cloned `--no-checkout` then detached at a pinned commit. PR ground truth is reconstructed from
-merge commits (parent 1 = base, parent 2 = head), keeping diffs of 2 to 25 changed C# files and
-dropping maintenance titles that cannot locate their own diff.
+**Corpus** (`tests/benchmarks/corpus.json`, corpus v2 with 69 PRs in `prs.json`; the retired
+mixed corpus with 53 PRs is preserved as `corpus-retired.json` / `localize-retired.json` for
+provenance): Scrutor, Ardalis Specification, NodaTime, eShopOnWeb (the application), plus
+in-repo fixtures OrderingApp (Suite A) and SampleShop. Repos are cloned `--no-checkout` then
+detached at a pinned commit. PR ground truth is reconstructed from merge commits (parent 1 = base,
+parent 2 = head), keeping diffs of 2 to 25 changed C# files and dropping maintenance titles that
+cannot locate their own diff.
 
 **Signal buckets** (title classification in `prs.json`): no-signal, dependency-bump, config-ci,
 formatting, route-api, test-only, identifier-rich, nl-domain. Only no-signal is treated as
@@ -638,9 +635,10 @@ insufficient).
 ```bash
 fuse eval semantics                    # Suite A (in-repo fixture, no corpus)
 fuse eval review --restore             # Suite B
-fuse eval localize --restore           # Suite C (dense on by default)
+fuse eval localize --restore           # Suite C (lexical channel, shipping default)
 fuse eval ranking --restore            # ranking gate
-fuse eval checkgate                    # Suite F (in-process; tier-1 arm skipped without worker)
+fuse eval checkgate                    # Suite F (in-process plus mutation arm)
+fuse eval checkgate --mutations 500    # Suite F mutation gate (1000 verified cases)
 FUSE_LOOP_RUN=1 fuse eval loop --restore --limit 1   # Suite R4 (model + claude CLI)
 fuse eval agent --restore              # Suite D (model + claude CLI)
 fuse eval reduce                       # Suite E
@@ -654,9 +652,9 @@ pwsh -File tests/benchmarks/harness/layer6-peers.ps1 # peer comparison
 |------|-------|----------------|
 | `semantics.json` | A, wiring fixture | yes |
 | `review.json` | B, change impact | yes |
-| `localize.json` | C, default (dense on) | yes |
-| `localize.a1-lexical.json` | C, dense off (lexical A/B) | yes |
-| `localize.tier1.json` | C, tier-1 build capture on | yes |
+| `localize.json` | C, shipping default (lexical) | yes |
+| `localize-retired.json` | C, retired mixed corpus | yes (provenance) |
+| `localize.tier1.json` | C, tier-1 build capture on retired corpus | yes |
 | `ranking.json` | N1 ranking gate | yes |
 | `checkgate.json` | F, check honesty | yes |
 | `loop.json` | R4, loop metric | no (model) |
@@ -684,7 +682,7 @@ where only the registered impl resolves).
 
 | Metric | Value |
 |--------|------:|
-| Edges matched | 22 / 22 |
+| Edges matched | 24 / 24 |
 | Recall | 1.0 |
 | Precision | 1.0 |
 | False positives | 0 |
@@ -700,10 +698,10 @@ predicted corpus edges into `semantics-corpus-sample.json` for human adjudicatio
 
 **Question:** Does `fuse review` return the changed files plus relevant semantic blast radius?
 
-**How measured:** 53 real merged PRs, 25,000-token budget, `--restore` (each PR worktree
-restored before index). Changed files are seeded must-keep, so changed-file recall is 100 percent
-by construction; the discriminating metric is **precision**. Grep baseline: rank C# files by
-title-token matches, admit to the same budget.
+**How measured:** 69 PRs on corpus v2 (retired mixed corpus: 53 PRs), 25,000-token budget,
+`--restore` (each PR worktree restored before index). Changed files are seeded must-keep, so
+changed-file recall is 100 percent by construction; the discriminating metric is **precision**.
+Grep baseline: rank C# files by title-token matches, admit to the same budget.
 
 **Result:**
 
@@ -731,24 +729,24 @@ retired mixed corpus (`review-retired.json`) is preserved for provenance.
 
 ### 9.3 Suite C: open-ended localization (`localize.json` and variants)
 
-**Question:** Given only a PR title (no git base), does `fuse localize` find the changed files?
+**Question:** Given only a PR title (no git base), does `fuse_find kind=task` (or the CLI
+`localize` command) find the changed files?
 
 > Note (v4.1 K1, 2026-07-08): the dense embedding channel and the ONNX plugin were retired.
-> Retrieval is now the lexical channel with the offline subword, stem, comment, centrality, and
-> co-change signals. The dense-on and dense-off descriptions below are the pre-K1 record; the
-> current numbers are in AGENTS.md (measured-results source of truth), the benchmarks page, and
-> `localize.json` / `ranking.json`. `FUSE_DENSE` and `FUSE_RERANK` are no longer read.
+> Retrieval is the lexical channel with offline subword, stem, comment, dependency-centrality, and
+> an opt-in git co-change prior (off in the shipping default since D6). `FUSE_DENSE` and
+> `FUSE_RERANK` are no longer read. Pre-K1 dense A/B artifacts (`localize.a1-lexical.json`) are
+> archived for provenance only.
 
-**How measured:** Same 53 PRs, title-only query, top 20 candidates, `--restore`. The
-signal-sufficiency contract is graded on every query. (Pre-K1 the default run had dense on and
-`localize.a1-lexical.json` was the dense-off A/B; post-K1 the default is the lexical path.)
-Variant `localize.tier1.json`: `FUSE_BUILD_CAPTURE=1` with worker configured.
+**How measured:** Corpus v2, 69 PRs, title-only query, top 20 candidates, `--restore`. The
+signal-sufficiency contract is graded on every query. The retired mixed corpus (53 PRs,
+`localize-retired.json`) preserves the low-signal abstention measurements.
 
-**Result (default, `localize.json`, corpus v2):**
+**Result (shipping default, `localize.json`, corpus v2):**
 
 | Metric | Value (corpus v2) | Retired mixed corpus |
 |--------|------:|------:|
-| Changed-file recall | 37.7% (CI 30% to 46%) | 14.9% |
+| Changed-file recall | 37.7% (CI 30% to 46%) | 15.0% |
 | Precision | 21.1% | 8.1% |
 | Median returned tokens | 1,348 | 1,033 |
 | Index modes | semantic 14, partial 4, syntax 5 | partial 2, syntax 2 |
@@ -756,27 +754,20 @@ Variant `localize.tier1.json`: `FUSE_BUILD_CAPTURE=1` with worker configured.
 | Bucket nl-domain | 24% (n=31) | 17% |
 | Precision when confident | 46.7% (10 tasks) | 5.6% (9 tasks) |
 
-The buildable corpus more than doubles open-ended recall (37.7 percent versus 14.9 percent) because
-more of it loads semantically. The reconstructed set drops maintenance titles, so it carries no
-no-signal tasks; the low-signal refuse-and-route contract (F1 1.0, false rejection 0.0 percent) is
-measured on the retired corpus, which had them.
+The buildable corpus more than doubles open-ended recall (37.7 percent versus 15.0 percent on the
+retired mixed corpus) because more of it loads semantically. The reconstructed set drops
+maintenance titles, so it carries no no-signal tasks; the low-signal refuse-and-route contract
+(F1 1.0, false rejection 0.0 percent) is measured on the retired corpus, which had them.
 
-**Lexical A/B (`localize.a1-lexical.json`, dense off):**
+**Tier-1 re-run (`localize.tier1.json`, retired mixed corpus):** recall 15.0% versus 15.0%
+baseline; index modes unchanged (partial 2, syntax 2). No measurable lift from a richer graph on
+the same repos; build capture is a verification asset, not an open-ended-recall lever (N4 Phase 4
+gate).
 
-| Metric | Lexical | Dense (default) |
-|--------|--------:|----------------:|
-| Recall | 13.3% | 14.9% |
-| identifier-rich bucket | 20% | 21% |
-| nl-domain bucket | 14% | 17% |
-| False-rejection | 5.8% (3/52) | 0.0% |
-| Insufficient grades | 4 | 1 |
-
-**Tier-1 re-run (`localize.tier1.json`):** recall 15.0% vs 14.9% baseline; index modes unchanged
-(partial 2, syntax 2). No measurable lift from richer graph on this corpus.
-
-**Finding:** Weakest deliberate mode. Recall is bounded by index mode more than retrieval
-cleverness. Dense lifts recall slightly and removes false rejections. The contract works: refuses
-low-signal rather than returning junk. With a git base, use review (Suite B) instead.
+**Finding:** Weakest deliberate mode on title-only queries, but corpus v2 recall is 37.7 percent
+when more repos load semantically. Recall remains bounded by index mode more than retrieval
+cleverness. The contract works: refuses low-signal rather than returning junk. With a git base,
+use review (Suite B) instead.
 
 ---
 
@@ -784,10 +775,10 @@ low-signal rather than returning junk. With a git base, use review (Suite B) ins
 
 **Question:** Do lexical field weights rank symbol-name matches above folder-path matches?
 
-**How measured:** 53 PRs, title-only, changed-file ground truth, top 20 candidates, three configs:
-lexical only (no embedder, no priors); shipping default (dense if present, both priors on);
-default without git co-change prior. Recorded 2026-07-03. Required gate on any weight,
-tokenization, expansion, or prior change.
+**How measured:** Corpus v2, 69 PRs, title-only, changed-file ground truth, top 20 candidates,
+three configs: lexical only; shipping default (lexical plus centrality, co-change off); diagnostic
+default-plus-cochange (re-adds the git co-change prior). Recorded 2026-07-12. Required gate on any
+weight, tokenization, expansion, or prior change.
 
 **Result (corpus v2, 69 PRs, index modes semantic 14 / partial 4 / syntax 5):**
 
@@ -843,23 +834,26 @@ and-build loop (motivates Suite R4).
 known-good (equivalent rewrite, valid overload, comment-only) and five known-bad (missing member
 CS1061, wrong return CS0029, undefined type CS0246, syntax error CS1513, init-only assignment
 CS8852). Each edit replaces one document; classified with the shipped `CheckResult.IsClean`
-rule. Abstention counts as neither false green nor false red. Tier-1 worker arm skipped when
-`FUSE_BUILD_CAPTURE_WORKER` unset (worker path covered by `BuildCaptureCheckTests` when
-provisioned).
+rule. Abstention counts as neither false green nor false red. A mutation arm adds 1,000
+compiler-verified cases (500 breaking, 500 neutral) from Roslyn rewriters over OrderingApp,
+labeled by the compiler. A verify-agreement arm compares oracle-grade and build-grade paths on
+24 OrderingApp mutants when the build-capture worker is provisioned.
 
 **Result:**
 
 | Metric | Value |
 |--------|------:|
-| Cases | 8 |
-| Correct | 8 |
+| Cases | 8 (+ 1,000 mutation-verified) |
+| Correct | 8 / 8; mutations 1,000 / 1,000 |
 | False green | 0 (0.0%) |
-| False red | 0 (0.0%) |
+| False red | 0 (0.0%) over 1,000 verified mutations |
 | Abstained | 0 |
+| Verify-agreement (24 mutants) | diagnostic-id 24/24; verdict 24/24 |
 | Gate | PASS |
 
-**Finding:** In-process classification contract is honest. End-to-end tier-1 path is gated
-separately on worker provisioning.
+**Finding:** In-process and mutation-derived classification contracts are honest. Verify-agreement
+meets the 99 percent gate at 100 percent on the recorded 24-mutant sample. SampleShop mutants are
+skipped in-process (recorded, not fabricated).
 
 ---
 
@@ -929,23 +923,25 @@ scoped output (review median 1,026 tokens on corpus v2), not session totals (Sui
 
 **Question:** How fast are warm reads and cold indexing?
 
-**How measured:** NodaTime checkout, 512 files, 7657 symbols, syntax index mode on main checkout.
-25 repetitions for warm paths; single cold pass. Environment-dependent; not cross-machine
-published.
+**How measured:** NodaTime checkout, 512 files, 14,760 symbols, semantic index mode on the
+product solution `src/NodaTime.slnx` (re-measured 2026-07-15 after the workspace-discovery fix;
+the earlier snapshot indexed at syntax tier because discovery had bound the 2-project
+`build/Tools.slnx`). 25 repetitions for warm paths; single cold pass. Environment-dependent; not
+cross-machine published.
 
 **Result:**
 
 | Operation | P50 | P95 |
 |-----------|----:|----:|
-| Warm localize | 23.4 ms | 25.2 ms |
-| Warm find symbol | 2.2 ms | 3.6 ms |
+| Warm localize | 15.7 ms | 22.3 ms |
+| Warm find symbol | 1.8 ms | 2.3 ms |
 | Warm resolve | 0.0 ms | 0.1 ms |
-| Warm review plan | 97.8 ms | 101.3 ms |
-| Incremental re-index (one file) | 20.9 ms | 25.4 ms |
+| Warm review plan | 106.3 ms | 131.1 ms |
+| Incremental re-index (one file) | 22.0 ms | 24.2 ms |
 
-Cold: syntax tier served in 17,840 ms; semantic-ready after further 48,329 ms (background
-upgrade path); full semantic pass 24,554 ms. Incremental re-index updates syntax rows only, not
-cross-file semantic edges.
+Cold: syntax tier served in 17,768 ms; semantic-ready after further 71,052 ms (background
+upgrade path); full semantic pass (tier-1 build capture, graph-grade) 45,859 ms. Incremental
+re-index updates syntax rows only, not cross-file semantic edges.
 
 **Resident verify path (`resident-latency.json`, NodaTime, opt-in with `FUSE_RESIDENT=1`):**
 resident warm (build plus rehydrate) 14,092 ms; RSS 162 MB; overlay check (speculative
@@ -1010,12 +1006,12 @@ Read these together when prioritizing work:
 
 1. **Semantic ceiling (A) vs corpus reality (B/C/ranking):** Wiring resolution is exact on the
    fixture (24/24). Corpus suites run mostly syntax/partial, so they understate the moat.
-2. **Retrieval is not the win (C, ranking, peers):** ~15% open-ended recall; tier-1 did not lift
-   it; ranking tweaks are guarded but bounded by index mode. Fuse beats CodeGraph on peers but
-   open-ended recall remains low.
+2. **Retrieval is bounded (C, ranking, peers):** 37.7 percent open-ended recall on corpus v2;
+   tier-1 did not lift it on the same repos; ranking tweaks are guarded but bounded by index mode.
+   Fuse beats CodeGraph on peers but open-ended recall remains moderate, not oracle-grade.
 3. **Scoped change work is strong (B):** on corpus v2, 93.4% precision, 1,026 median tokens, beats grep 67/8.
-4. **Oracle honesty works (F):** 8/8 check gate; abstention model is load-bearing.
-5. **Oracle loop not yet proven (R4):** Directional null; build/index-mode ceiling dominates.
+4. **Oracle honesty works (F):** 8/8 check gate plus 1,000 mutation-verified cases; abstention model is load-bearing.
+5. **Oracle loop measured (R4):** Fuse leads true pass@1 on the corpus-v2 arena; build round-trips are not halved.
 6. **Session tokens flat (D):** Context in without loop collapse; motivates oracle tools and R4,
    not payload reduction alone.
 7. **Coverage ceiling (N4 bake-off):** Realized oracle value = theoretical gain x ~65% build-
@@ -1043,7 +1039,7 @@ section adds operational detail for reproducing or extending runs.
   localize (Suite C).
 
 **PR filter:** merge-commit reconstruction, 2 to 25 changed C# files, misleading maintenance
-titles dropped. 53 PRs survive into `prs.json`.
+titles dropped. Corpus v2 keeps 69 PRs in `prs.json`; the retired mixed corpus kept 53.
 
 **Harness architecture:** one C# `Fuse.Benchmarks` driver behind `fuse eval` (v4 N5 retired
 legacy PowerShell layer scripts). Exception: peer comparison orchestration in
@@ -1055,7 +1051,7 @@ clock backstop and process-tree kill.
 - `--restore`: `dotnet restore` before index (required for semantic mode on corpus).
 - `--require-semantic`: skip checkouts that fail to reach semantic mode (do not score at syntax
   fallback silently).
-- `FUSE_DENSE=0`: lexical-only retrieval (localize A/B).
+- `FUSE_DENSE=0`: retired; lexical-only was the pre-K1 A/B flag (archived results only).
 - `FUSE_BUILD_CAPTURE=1` + `FUSE_BUILD_CAPTURE_WORKER`: tier-1 indexing and check/refactor
   oracle paths.
 - `FUSE_LOOP_RUN=1`: enable model rollouts in loop suite (never fires silently).
@@ -1088,6 +1084,9 @@ format), every number sourced, weaknesses published.
   (protocol 3) and the rich index panel. Left two of its highest-value items only partly landed:
   the resident Roslyn workspace with dependency-scoped freshness (W1) and semantic-mode corpus
   coverage (W4). Those are picked up in v4.
+- [v4.2-plan.md](v4.2-plan.md): the post-4.1 hardening wave (2026-07-14). Closes deferred
+  architecture-review findings: briefing drift guards, store split, semantic provider seam,
+  scoping unification, host IPC, and operator ergonomics. Twelve checklist items (R1-R12).
 - **`roadmap/v4-plan.md`** (4.0.0 release, oracle wave): repositioned Fuse from a retrieval tool into the
   .NET agent's ground-truth oracle. **Shipped in 4.0.0:** L1 (Apache-2.0), L2 (DCO), N1 (ranking
   fix plus suite), N2 part 1 (archive plus citations), N5 (harness retirement), N6 (freshness
@@ -1126,16 +1125,16 @@ edit, list blast radius before changing a signature, rename across the solution 
 and diagnose a proposed edit before writing it.
 
 **What the evidence still says.** See section 9.12 for the cross-suite synthesis. In short:
-open-ended retrieval recall remains about 15 percent (Suite C); the tier-1 re-run did not lift it.
-Suite D's flat session tokens and the B1 loop referendum (on the corpus-v2 arena with the D22a-fixed
-harness, fuse resolves more tasks at true pass@1, 89 versus 82 percent, with lower false-done, 8
-versus 9, but at essentially equal agent-visible build-plus-test round-trips, 3.1 versus 3.2, once
-`fuse_check` is counted separately) show that oracle tools raise the agent's true success and honesty
-on the loop, though not by halving build round-trips on this arena; the build/index-mode ceiling
-(most corpus repos load syntax or partial) still dominates the wider corpus. Every
-oracle answer is gated on tier-1 actually loading: realized value is theoretical gain times
-load-success rate. The N4 bake-off records about 65 percent build-success as the coverage ceiling
-(section 9.10).
+open-ended retrieval recall is 37.7 percent on corpus v2 (Suite C); the tier-1 re-run did not lift
+it on the same repos. Suite D's flat session tokens and the B1 loop referendum (on the corpus-v2
+arena with the D22a-fixed harness, fuse resolves more tasks at true pass@1, 89 versus 82 percent,
+with lower false-done, 8 versus 9, but at essentially equal agent-visible build-plus-test
+round-trips, 3.1 versus 3.2, once `fuse_check` is counted separately) show that oracle tools
+raise the agent's true success and honesty on the loop, though not by halving build round-trips
+on this arena; index mode (whether the checkout loads semantically) still caps realized value on
+the wider corpus. Every oracle answer is gated on tier-1 actually loading: realized value is
+theoretical gain times load-success rate. The N4 bake-off records about 65 percent build-success
+as the coverage ceiling (section 9.10).
 
 **What remains.** N3 resident workspace and dependency-scoped semantic re-index (issue 5); host
 N6 reconcile (issue 6); R3 tool-surface collapse; R7 change-signature; a larger buildable loop

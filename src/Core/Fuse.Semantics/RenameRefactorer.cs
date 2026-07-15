@@ -1,6 +1,5 @@
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Rename;
 
 namespace Fuse.Semantics;
@@ -20,6 +19,18 @@ namespace Fuse.Semantics;
 public sealed class RenameRefactorer
 {
     private static readonly object LocatorGate = new();
+
+    private readonly WarmSolutionCache _cache;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="RenameRefactorer" /> class.
+    /// </summary>
+    /// <param name="cache">
+    ///     The warm-solution cache (R42) the rename loads through; defaults to the process-wide
+    ///     <see cref="WarmSolutionCache.Shared" />, so a second refactor in the same session reuses the held
+    ///     solution instead of re-opening MSBuild.
+    /// </param>
+    public RenameRefactorer(WarmSolutionCache? cache = null) => _cache = cache ?? WarmSolutionCache.Shared;
 
     /// <summary>
     ///     Renames a symbol solution-wide and returns the staged diffs.
@@ -44,22 +55,21 @@ public sealed class RenameRefactorer
             }
         }
 
-        using var workspace = MSBuildWorkspace.Create();
-        var loadFailed = false;
-        workspace.WorkspaceFailed += (_, _) => loadFailed = true;
-
-        Solution solution;
+        // Load through the warm-solution cache (R42): a held, still-fresh solution is reused; otherwise a fresh
+        // MSBuildWorkspace is opened and cached. Only real load failures abstain; benign warnings (analyzer/
+        // SDK-resolver notes) are ignored. See WorkspaceLoadFailures.
+        CachedSolution loaded;
         try
         {
-            solution = solutionOrProjectPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)
-                       || solutionOrProjectPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
-                ? (await workspace.OpenSolutionAsync(solutionOrProjectPath, cancellationToken: cancellationToken))
-                : (await workspace.OpenProjectAsync(solutionOrProjectPath, cancellationToken: cancellationToken)).Solution;
+            loaded = await _cache.OpenAsync(solutionOrProjectPath, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return RenameResult.Abstain($"could not load the workspace to rename: {ex.Message}");
         }
+
+        var solution = loaded.Solution;
+        var loadFailures = loaded.LoadFailures;
 
         // Resolve the symbol across all projects; if it does not resolve, or the load reported problems, abstain
         // rather than produce an incomplete rename.
@@ -75,8 +85,10 @@ public sealed class RenameRefactorer
 
         if (symbol is null)
             return RenameResult.Abstain($"symbol '{symbolName}' was not found in the loaded solution");
-        if (loadFailed)
-            return RenameResult.Abstain("the workspace did not load cleanly; a solution-wide rename could be incomplete, so it is refused");
+        if (loadFailures.Count > 0)
+            return RenameResult.Abstain(
+                "the workspace did not load cleanly; a solution-wide rename could be incomplete, so it is refused. " +
+                $"First load failure: {loadFailures[0]}");
 
         Solution renamed;
         try

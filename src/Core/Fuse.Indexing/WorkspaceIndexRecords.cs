@@ -61,6 +61,14 @@ public sealed record ProjectRecord(
     DateTimeOffset? IndexedAtUtc = null);
 
 /// <summary>
+///     The target-framework availability of one canonical semantic declaration or graph fact.
+/// </summary>
+/// <param name="EntityKind">The persisted entity kind, for example <c>symbol</c> or <c>edge</c>.</param>
+/// <param name="EntityId">The stable identifier of the canonical entity.</param>
+/// <param name="TargetFramework">The target framework in which the entity exists.</param>
+public sealed record TfmAvailabilityRecord(string EntityKind, string EntityId, string TargetFramework);
+
+/// <summary>
 ///     A node in the semantic graph: a symbol, route, service, config section, file, or chunk.
 /// </summary>
 /// <param name="NodeId">The stable node identifier (primary key).</param>

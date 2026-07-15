@@ -19,6 +19,16 @@ public sealed class WorkspaceFileScanner
 {
     private const int ContentPrefixBytes = 2048;
 
+    /// <summary>
+    ///     The default per-file size cap (bytes) above which a file is skipped rather than read into the index
+    ///     (R35). A generated giant or a mislabeled binary would otherwise cost memory and time for no signal.
+    ///     Override with the <c>FUSE_MAX_FILE_BYTES</c> environment variable.
+    /// </summary>
+    public const long DefaultMaxFileBytes = 5L * 1024 * 1024;
+
+    /// <summary>The environment variable overriding <see cref="DefaultMaxFileBytes" />.</summary>
+    public const string MaxFileBytesEnvVar = "FUSE_MAX_FILE_BYTES";
+
     private static readonly string[] DefaultExtensions = [".cs", ".csproj", ".props", ".targets", ".json"];
 
     private readonly FileCollectionPipeline _pipeline;
@@ -45,7 +55,17 @@ public sealed class WorkspaceFileScanner
     /// <param name="request">The scan request.</param>
     /// <param name="cancellationToken">A token to cancel the scan.</param>
     /// <returns>The discovered files as index records, sorted by the pipeline's deterministic path order.</returns>
-    public async Task<IReadOnlyList<IndexedFileRecord>> ScanAsync(FileScanRequest request, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<IndexedFileRecord>> ScanAsync(FileScanRequest request, CancellationToken cancellationToken) =>
+        (await ScanWithSkipsAsync(request, cancellationToken)).Files;
+
+    /// <summary>
+    ///     Discovers files under a root directory and builds their index records, also reporting the files skipped
+    ///     (too large, unreadable, permission-denied) so one hostile file never aborts the index (R35).
+    /// </summary>
+    /// <param name="request">The scan request.</param>
+    /// <param name="cancellationToken">A token to cancel the scan.</param>
+    /// <returns>The index records and the skipped files with reasons.</returns>
+    public async Task<FileScanResult> ScanWithSkipsAsync(FileScanRequest request, CancellationToken cancellationToken)
     {
         // Prefer git's own view of the working tree; null (not a git repo) falls back to the directory walk.
         var candidateFiles = await _gitFiles.TryListAsync(request.RootDirectory, cancellationToken);
@@ -66,28 +86,49 @@ public sealed class WorkspaceFileScanner
 
         var collection = await _pipeline.CollectAsync(options, cancellationToken);
         var records = new List<IndexedFileRecord>(collection.Files.Count);
+        var skipped = new List<SkippedFile>();
+        var maxFileBytes = ResolveMaxFileBytes();
 
         foreach (var file in collection.Files)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var bytes = await File.ReadAllBytesAsync(file.FullPath, cancellationToken);
-            var hash = _hashService.ComputeHash(bytes);
-            var prefix = DecodePrefix(bytes);
+            // R35: one hostile file (oversized, unreadable, permission-denied, or a mid-scan IO error) must never
+            // abort the whole index. Skip it with a recorded reason and keep indexing the good files.
+            if (maxFileBytes > 0 && file.FileInfo.Length > maxFileBytes)
+            {
+                skipped.Add(new SkippedFile(file.NormalizedRelativePath, $"too large ({file.FileInfo.Length} bytes > {maxFileBytes} cap)"));
+                continue;
+            }
 
-            records.Add(new IndexedFileRecord(
-                Path: file.RelativePath,
-                NormalizedPath: file.NormalizedRelativePath,
-                Extension: file.Extension,
-                SizeBytes: file.FileInfo.Length,
-                MtimeUtcTicks: file.FileInfo.LastWriteTimeUtc.Ticks,
-                ContentHash: hash,
-                IsGenerated: FileClassifier.IsGenerated(file.NormalizedRelativePath, prefix),
-                IsTest: FileClassifier.IsTestFile(file.NormalizedRelativePath, prefix)));
+            try
+            {
+                var bytes = await File.ReadAllBytesAsync(file.FullPath, cancellationToken);
+                var hash = _hashService.ComputeHash(bytes);
+                var prefix = DecodePrefix(bytes);
+
+                records.Add(new IndexedFileRecord(
+                    Path: file.RelativePath,
+                    NormalizedPath: file.NormalizedRelativePath,
+                    Extension: file.Extension,
+                    SizeBytes: file.FileInfo.Length,
+                    MtimeUtcTicks: file.FileInfo.LastWriteTimeUtc.Ticks,
+                    ContentHash: hash,
+                    IsGenerated: FileClassifier.IsGenerated(file.NormalizedRelativePath, prefix),
+                    IsTest: FileClassifier.IsTestFile(file.NormalizedRelativePath, prefix)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                skipped.Add(new SkippedFile(file.NormalizedRelativePath, $"{ex.GetType().Name}: {ex.Message}"));
+            }
         }
 
-        return records;
+        return new FileScanResult(records, skipped);
     }
+
+    // The per-file size cap from FUSE_MAX_FILE_BYTES, or the default; a non-positive override disables the cap.
+    private static long ResolveMaxFileBytes() =>
+        long.TryParse(Environment.GetEnvironmentVariable(MaxFileBytesEnvVar), out var bytes) ? bytes : DefaultMaxFileBytes;
 
     // Decode a UTF-8 prefix for the test/generated content heuristics, skipping a BOM if present.
     private static string DecodePrefix(byte[] bytes)
@@ -109,3 +150,18 @@ public sealed class WorkspaceFileScanner
 public sealed record FileScanRequest(
     string RootDirectory,
     IReadOnlyCollection<string>? Extensions = null);
+
+/// <summary>
+///     The result of a workspace scan: the indexable file records, and the files skipped with the reason each was
+///     skipped (R35), so one hostile file never aborts the index and the skips are visible in doctor.
+/// </summary>
+/// <param name="Files">The files that were read and turned into index records.</param>
+/// <param name="Skipped">The files skipped (too large, unreadable, permission-denied) and why.</param>
+public sealed record FileScanResult(
+    IReadOnlyList<IndexedFileRecord> Files,
+    IReadOnlyList<SkippedFile> Skipped);
+
+/// <summary>A file the scanner skipped during indexing, with the reason (R35).</summary>
+/// <param name="Path">The file's normalized relative path.</param>
+/// <param name="Reason">A short human-readable reason (too large, IO error, access denied).</param>
+public sealed record SkippedFile(string Path, string Reason);

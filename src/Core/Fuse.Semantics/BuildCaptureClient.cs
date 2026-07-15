@@ -70,7 +70,7 @@ public sealed class BuildCaptureClient
     ///     The capture result, or a failed result when the worker is unavailable, times out, or emits no parseable
     ///     output, so the caller falls back to a lower tier.
     /// </returns>
-    public async Task<CaptureResult> CaptureAsync(string buildTarget, TimeSpan timeout, CancellationToken cancellationToken)
+    public async Task<CaptureResult> CaptureAsync(string buildTarget, TimeSpan timeout, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         if (!IsAvailable)
             return CaptureResult.Failed("build-capture worker not configured (set FUSE_BUILD_CAPTURE_WORKER)");
@@ -85,6 +85,13 @@ public sealed class BuildCaptureClient
         psi.ArgumentList.Add(_workerDllPath!);
         psi.ArgumentList.Add("--build");
         psi.ArgumentList.Add(buildTarget);
+        // Pass the workspace root so the worker keys extracted file paths to it (matching the store's root-relative
+        // file rows). Two fixed tokens, so the argument list stays bounded.
+        if (!string.IsNullOrEmpty(workspaceRoot))
+        {
+            psi.ArgumentList.Add("--root");
+            psi.ArgumentList.Add(workspaceRoot);
+        }
 
         using var process = new Process { StartInfo = psi };
         var stdout = new StringBuilder();
@@ -144,7 +151,7 @@ public sealed class BuildCaptureClient
     /// <param name="cancellationToken">A token to cancel the capture.</param>
     /// <returns>The capture result (the extracted graph) on success, or a failed result.</returns>
     public async Task<CaptureResult> CaptureBundleAsync(
-        string buildTarget, string complogOutPath, TimeSpan timeout, CancellationToken cancellationToken)
+        string buildTarget, string complogOutPath, TimeSpan timeout, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         if (!IsAvailable)
             return CaptureResult.Failed("build-capture worker not configured (set FUSE_BUILD_CAPTURE_WORKER)");
@@ -160,6 +167,12 @@ public sealed class BuildCaptureClient
         psi.ArgumentList.Add("--capture-bundle");
         psi.ArgumentList.Add(buildTarget);
         psi.ArgumentList.Add(complogOutPath);
+        // Pass the workspace root so the bundle's extracted graph keys file paths to it (portable, root-relative).
+        if (!string.IsNullOrEmpty(workspaceRoot))
+        {
+            psi.ArgumentList.Add("--root");
+            psi.ArgumentList.Add(workspaceRoot);
+        }
 
         using var process = new Process { StartInfo = psi };
         var stdout = new StringBuilder();
@@ -216,7 +229,7 @@ public sealed class BuildCaptureClient
     /// <param name="cancellationToken">A token to cancel the merge.</param>
     /// <returns>The merged graph on success, or a failed result (worker unavailable, timeout, or a secret finding).</returns>
     public async Task<CaptureResult> MergeFragmentsAsync(
-        string fragmentsDir, string complogOutDir, TimeSpan timeout, CancellationToken cancellationToken)
+        string fragmentsDir, string complogOutDir, TimeSpan timeout, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         if (!IsAvailable)
             return CaptureResult.Failed("build-capture worker not configured (set FUSE_BUILD_CAPTURE_WORKER)");
@@ -232,6 +245,12 @@ public sealed class BuildCaptureClient
         psi.ArgumentList.Add("--merge");
         psi.ArgumentList.Add(fragmentsDir);
         psi.ArgumentList.Add(complogOutDir);
+        // Pass the workspace root so the merged graph keys file paths to it (portable, root-relative).
+        if (!string.IsNullOrEmpty(workspaceRoot))
+        {
+            psi.ArgumentList.Add("--root");
+            psi.ArgumentList.Add(workspaceRoot);
+        }
 
         using var process = new Process { StartInfo = psi };
         var stdout = new StringBuilder();

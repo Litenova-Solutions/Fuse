@@ -1,5 +1,6 @@
 using Fuse.Indexing;
 using Fuse.Retrieval;
+using Fuse.Scoping;
 using Microsoft.Data.Sqlite;
 using Xunit;
 
@@ -85,7 +86,6 @@ public sealed class ReviewImpactTests : IAsyncLifetime
     {
         await _store.DisposeAsync();
         var directory = Path.GetDirectoryName(_databasePath);
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
         try
         {
             if (directory is not null && Directory.Exists(directory))

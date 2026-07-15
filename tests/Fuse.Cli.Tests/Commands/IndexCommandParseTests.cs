@@ -11,6 +11,9 @@ namespace Fuse.Cli.Tests.Commands;
 // ("Option '--from-capture' is required"). DotMake's Cli.Parse returns a runnable result that hides the underlying
 // ParseResult, so these tests reflect into it and assert no parse errors - catching a future option added without
 // Required = false before it ships.
+// Shares the DotMakeCliParse collection with McpInstallTests: both build the DotMake command tree via
+// Cli.Parse<FuseCliCommand>, and concurrent builds race on DotMake's process-global command registry. Serialize them.
+[Collection("DotMakeCliParse")]
 public sealed class IndexCommandParseTests
 {
     private static IReadOnlyList<string> ParseErrors(params string[] args)

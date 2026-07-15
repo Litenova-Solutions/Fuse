@@ -7,7 +7,8 @@
 #
 # Prints the agreed version on success; throws (non-zero exit) on any mismatch.
 param(
-    [string]$Tag = ""
+    [string]$Tag = "",
+    [switch]$Build
 )
 
 $ErrorActionPreference = "Stop"
@@ -70,6 +71,30 @@ if (-not [string]::IsNullOrWhiteSpace($Tag)) {
     if ($tagVersion -ne $version) {
         throw "Release tag '$Tag' does not match the codebase version '$version'. Run build/set-version.ps1 $tagVersion and commit before tagging."
     }
+}
+
+# R29: the release safety net. Build the CLI (a normal incremental build, no manual clean) and assert the built
+# binary reports the codebase version, so a stale-version bin can never ship. Also assert the slnx Release build
+# produces the CLI's Release output (a Debug/Release mixup once left Fuse.Cli without a Release fuse.dll).
+if ($Build) {
+    $cliProject = Join-Path $root "src/Host/Fuse.Cli/Fuse.Cli.csproj"
+    Write-Host "Building $cliProject (Release) to verify the stamped version..."
+    & dotnet build $cliProject -c Release | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet build of Fuse.Cli (Release) failed; cannot verify the built version."
+    }
+
+    $fuseDll = Join-Path $root "src/Host/Fuse.Cli/bin/Release/net10.0/fuse.dll"
+    if (-not (Test-Path $fuseDll)) {
+        throw "Release build did not produce fuse.dll at $fuseDll (a Debug/Release mixup)."
+    }
+
+    $reported = (& dotnet $fuseDll --version 2>&1 | Select-Object -First 1).ToString().Trim()
+    if ($reported -ne $version) {
+        throw "Built fuse --version '$reported' does not match the codebase version '$version'. The incremental build served a stale-version assembly; a version bump must invalidate the compile (see the FuseStampVersionMarker target)."
+    }
+
+    Write-Host "Built version OK: fuse --version = $reported (matches $version); Release fuse.dll present."
 }
 
 Write-Host "Version OK: $version"

@@ -13,6 +13,22 @@ using Fuse.Indexing;
 
 var rehydrator = new BuildCaptureRehydrator();
 
+// Optional --root <path>: the workspace root the parent indexes against. Extracted file paths are made relative to
+// it so symbol and node rows match the consumer's root-relative file rows. Stripped here (not position-dependent)
+// so the fixed-length mode checks below operate on the remaining arguments unchanged. Absent for legacy callers,
+// which fall back to the project directory basis.
+string? workspaceRoot = null;
+{
+    var argList = new List<string>(args);
+    var rootIndex = argList.IndexOf("--root");
+    if (rootIndex >= 0 && rootIndex + 1 < argList.Count)
+    {
+        workspaceRoot = argList[rootIndex + 1];
+        argList.RemoveRange(rootIndex, 2);
+        args = argList.ToArray();
+    }
+}
+
 // --check <target> <relativeFilePath> <newContentFile>: speculative typecheck of a proposed single-file patch.
 // The new content is passed via a file (not an argument) so it is never a length-bounded command-line value.
 if (args.Length == 4 && args[0] == "--check")
@@ -52,6 +68,66 @@ if (args.Length == 4 && args[0] == "--check-complog")
     return check.Verified ? 0 : 1;
 }
 
+// --serve-check <complogPath>: a long-lived check worker (R48). Rehydrate the compiler log ONCE, then loop reading
+// one JSON CheckRequest per stdin line and writing one CheckResult per stdout line, holding the compilations across
+// requests so the rehydrate cost is paid once per session, not per check. The parent forks the in-memory document
+// for each speculative edit through CheckHeld. A "ready" line signals rehydration is complete; EOF or "quit" exits.
+if (args.Length == 2 && args[0] == "--serve-check")
+{
+    LazyHeldComplog held;
+    try
+    {
+        held = rehydrator.RehydrateLazyHeld(args[1], CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        await Console.Error.WriteLineAsync($"serve-check rehydrate error: {ex.Message}");
+        return 1;
+    }
+
+    try
+    {
+        // Signal readiness so the parent knows the (slow) rehydration finished before it sends the first request.
+        Console.Out.WriteLine("{\"ready\":true}");
+        Console.Out.Flush();
+
+        string? line;
+        while ((line = await Console.In.ReadLineAsync()) is not null)
+        {
+            if (line.Length == 0 || line == "quit")
+                break;
+
+            CheckResult check;
+            try
+            {
+                var request = JsonSerializer.Deserialize(line, BuildCaptureJsonContext.Default.CheckRequest);
+                if (request is null)
+                {
+                    check = CheckResult.Abstain("serve-check: unparseable request");
+                }
+                else
+                {
+                    var newContent = await File.ReadAllTextAsync(request.ContentPath);
+                    check = rehydrator.CheckLazyHeld(held, request.File, newContent, CancellationToken.None);
+                }
+            }
+            catch (Exception ex)
+            {
+                check = CheckResult.Abstain($"serve-check error: {ex.Message}");
+            }
+
+            Console.Out.WriteLine(JsonSerializer.Serialize(check, BuildCaptureJsonContext.Default.CheckResult));
+            Console.Out.Flush();
+        }
+    }
+    finally
+    {
+        held.Dispose();
+    }
+
+    return 0;
+}
+
 // --merge <fragmentsDir> <complogOutDir>: convert per-project fragment binlogs to portable compiler logs
 // (fail-closed secret scanned) and emit the merged extracted graph as JSON (the G4 fragment-merge channel).
 if (args.Length == 3 && args[0] == "--merge")
@@ -59,7 +135,7 @@ if (args.Length == 3 && args[0] == "--merge")
     CaptureResult merged;
     try
     {
-        merged = rehydrator.MergeFragmentsToBundle(args[1], args[2], CancellationToken.None);
+        merged = rehydrator.MergeFragmentsToBundle(args[1], args[2], CancellationToken.None, workspaceRoot);
     }
     catch (Exception ex)
     {
@@ -77,7 +153,7 @@ if (args.Length == 3 && args[0] == "--capture-bundle")
     CaptureResult bundle;
     try
     {
-        bundle = await rehydrator.ExportCompilerLogAsync(args[1], args[2], TimeSpan.FromMinutes(10), CancellationToken.None);
+        bundle = await rehydrator.ExportCompilerLogAsync(args[1], args[2], TimeSpan.FromMinutes(10), CancellationToken.None, workspaceRoot);
     }
     catch (Exception ex)
     {
@@ -90,7 +166,7 @@ if (args.Length == 3 && args[0] == "--capture-bundle")
 
 if (args.Length < 2 || args[0] is not ("--build" or "--binlog"))
 {
-    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --capture-bundle <target> <complogOut> | --merge <fragmentsDir> <complogOutDir> | --check <target> <file> <newContentFile> | --check-complog <complogPath> <file> <newContentFile>)");
+    await Console.Error.WriteLineAsync("usage: fuse-build-capture (--build <target> | --binlog <path> | --capture-bundle <target> <complogOut> | --merge <fragmentsDir> <complogOutDir> | --check <target> <file> <newContentFile> | --check-complog <complogPath> <file> <newContentFile>) [--root <workspaceRoot>]");
     return 2;
 }
 
@@ -98,8 +174,8 @@ CaptureResult result;
 try
 {
     result = args[0] == "--build"
-        ? await rehydrator.CaptureAsync(args[1], TimeSpan.FromMinutes(10), CancellationToken.None)
-        : rehydrator.RehydrateFromBinlog(args[1], CancellationToken.None);
+        ? await rehydrator.CaptureAsync(args[1], TimeSpan.FromMinutes(10), CancellationToken.None, workspaceRoot)
+        : rehydrator.RehydrateFromBinlog(args[1], workspaceRoot, CancellationToken.None);
 }
 catch (Exception ex)
 {

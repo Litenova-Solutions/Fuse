@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "fuseVersion": "4.2.0",
+  "suite": "profile-v42",
+  "description": "R8 index hot-path profile: warm localize, symbol lookup, review planning, and single-file reconcile.",
+  "generated": "2026-07-14T12:35:26.5839112Z",
+  "placeholder": false,
+  "repo": "NodaTime",
+  "indexMode": "semantic",
+  "fileCount": 512,
+  "symbolCount": 332,
+  "iterations": 25,
+  "operations": {
+    "localize": {
+      "p50Ms": 44.0256,
+      "p95Ms": 48.4449,
+      "selfTimePercent": 7.936507936507937,
+      "sampleCount": 25
+    },
+    "findSymbol": {
+      "p50Ms": 0.028,
+      "p95Ms": 0.045559999999999955,
+      "selfTimePercent": 7.936507936507937,
+      "sampleCount": 25
+    },
+    "reviewPlan": {
+      "p50Ms": 111.0655,
+      "p95Ms": 141.36269999999996,
+      "selfTimePercent": 0,
+      "sampleCount": 25
+    },
+    "reconcile": {
+      "p50Ms": 23.1027,
+      "p95Ms": 26.158939999999998,
+      "selfTimePercent": 2.380952380952381,
+      "sampleCount": 25
+    }
+  },
+  "hotspots": {
+    "sql": [],
+    "roslyn": [
+      {
+        "frame": "Fuse.Semantics.SemanticIndexer\u002B\u003CIndexAsync\u003Ed__17.MoveNext",
+        "selfTimePercent": 18.181818181818183,
+        "samples": 50
+      },
+      {
+        "frame": "Fuse.Semantics.GitCoChangeCollector\u002B\u003CCollectAndStoreAsync\u003Ed__6.MoveNext",
+        "selfTimePercent": 18.181818181818183,
+        "samples": 50
+      },
+      {
+        "frame": "Fuse.Semantics.GitCoChangeCollector\u002B\u003CCollectAsync\u003Ed__7.MoveNext",
+        "selfTimePercent": 18.181818181818183,
+        "samples": 50
+      },
+      {
+        "frame": "Fuse.Semantics.GitCoChangeCollector\u002B\u003CRunGitLogAsync\u003Ed__12.MoveNext",
+        "selfTimePercent": 18.181818181818183,
+        "samples": 50
+      },
+      {
+        "frame": "Fuse.Semantics.GitCoChangeCollector\u002B\u003CRunGitAsync\u003Ed__13.MoveNext",
+        "selfTimePercent": 18.181818181818183,
+        "samples": 50
+      },
+      {
+        "frame": "Fuse.Semantics.SemanticIndexer\u002B\u003CReindexFileAsync\u003Ed__23.MoveNext",
+        "selfTimePercent": 9.090909090909092,
+        "samples": 25
+      }
+    ]
+  },
+  "notes": [
+    "methodology: warm a persistent index, run each verb 25 times, attribute stack samples to SQLite and Roslyn frames for R9 store-split ordering.",
+    "compare wall-clock P50/P95 to performance.json for the same verbs; this artifact adds self-time and top-frame attribution, not a new SLO headline.",
+    "repo NodaTime, index mode semantic, 512 files, 332 symbols",
+    "cold index: 28,333 ms",
+    "reconcile target: src/NodaTime/IClock.cs",
+    "localize P50 44.0 ms P95 48.4 ms",
+    "findSymbol P50 0.0 ms P95 0.0 ms",
+    "reviewPlan P50 111.1 ms P95 141.4 ms",
+    "reconcile P50 23.1 ms P95 26.2 ms"
+  ]
+}

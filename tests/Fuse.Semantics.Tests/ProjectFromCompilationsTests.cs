@@ -60,7 +60,58 @@ public sealed class ProjectFromCompilationsTests
             Assert.Contains("Renamed", namesAfterRemoval);
             Assert.DoesNotContain("Bar", namesAfterRemoval);
 
-            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    // Regression: the projection must key symbols to the SAME root-relative path the store links file rows against.
+    // A nested layout (project in a subdirectory, source under it) is where a project-relative path diverges from the
+    // root-relative files.normalized_path. Passing the project directory instead of the workspace root produced
+    // project-relative symbol paths that never resolved, so every symbol was dropped (null file_id) and no symbol was
+    // queryable - exactly what the daemon's resident projection produced on a real repo. The flat-layout test above
+    // could not catch this because there the project directory equals the root.
+    [Fact]
+    public async Task Projecting_nested_project_links_symbols_to_root_relative_files()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "fuse-project-nested", Guid.NewGuid().ToString("N"));
+        var projectDir = Path.Combine(dir, "src", "App");
+        Directory.CreateDirectory(projectDir);
+        var databasePath = Path.Combine(dir, ".fuse", "fuse.db");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(projectDir, "Widget.cs"), "namespace Demo; public sealed class Widget { public int Spin() => 1; }", Ct);
+
+            var projectPath = Path.Combine(projectDir, "App.csproj");
+            var indexer = CreateIndexer();
+
+            await using var store = new WorkspaceIndexStore(databasePath);
+            await store.InitializeAsync(Ct);
+
+            // Root is the workspace root (dir); the file's normalized path is root-relative ("src/App/Widget.cs").
+            var files = new[]
+            {
+                new IndexedFileRecord(
+                    Path: Path.Combine(projectDir, "Widget.cs"),
+                    NormalizedPath: "src/App/Widget.cs",
+                    Extension: ".cs",
+                    SizeBytes: new FileInfo(Path.Combine(projectDir, "Widget.cs")).Length,
+                    MtimeUtcTicks: 0,
+                    ContentHash: "hash-widget")
+            };
+            var trees = new[] { CSharpSyntaxTree.ParseText(File.ReadAllText(Path.Combine(projectDir, "Widget.cs")), path: Path.Combine(projectDir, "Widget.cs")) };
+            var compilation = CSharpCompilation.Create("App", trees, ReferencePaths(), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+            await indexer.ProjectFromCompilationsAsync(dir, store, [(projectPath, compilation)], files, Ct);
+
+            var symbols = await store.ListSymbolsAsync(500, Ct);
+            // The symbol resolved its file_id (ListSymbolsAsync inner-joins symbols to files), so it appears with the
+            // root-relative path. Under the projectDir bug the symbol path was "Widget.cs" and never joined - empty.
+            Assert.Contains(symbols, s => s.Name == "Widget");
+            Assert.Contains(symbols, s => s.Name == "Widget" && s.FilePath == "src/App/Widget.cs");
+
         }
         finally
         {

@@ -14,5 +14,9 @@
         <ProjectReference Include="..\..\Plugins\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj"/>
         <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
         <ProjectReference Include="..\Fuse.Emission\Fuse.Emission.csproj"/>
+        <ProjectReference Include="..\Fuse.Scoping\Fuse.Scoping.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="Fuse.Fusion.Tests"/>
     </ItemGroup>
 </Project>

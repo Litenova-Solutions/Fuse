@@ -12,6 +12,7 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\Fuse.Scoping\Fuse.Scoping.csproj"/>
         <ProjectReference Include="..\Fuse.Retrieval\Fuse.Retrieval.csproj"/>
         <ProjectReference Include="..\Fuse.Reduction\Fuse.Reduction.csproj"/>
         <ProjectReference Include="..\Fuse.Emission\Fuse.Emission.csproj"/>

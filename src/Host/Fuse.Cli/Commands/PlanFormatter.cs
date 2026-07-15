@@ -1,6 +1,7 @@
 using System.Text;
 using Fuse.Context;
 using Fuse.Retrieval;
+using Fuse.Scoping;
 
 namespace Fuse.Cli.Commands;
 

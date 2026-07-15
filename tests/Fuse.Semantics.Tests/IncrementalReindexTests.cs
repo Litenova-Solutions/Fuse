@@ -84,7 +84,6 @@ public sealed class IncrementalReindexTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await _store.DisposeAsync();
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
         foreach (var dir in new[] { _root, Path.GetDirectoryName(_databasePath)! })
         {
             try

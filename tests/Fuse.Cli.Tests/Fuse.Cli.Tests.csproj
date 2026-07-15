@@ -19,4 +19,9 @@
         <ProjectReference Include="..\..\src\Host\Fuse.Cli\Fuse.Cli.csproj"/>
         <ProjectReference Include="..\..\src\Plugins\Fuse.Plugins.Languages.CSharp.Roslyn\Fuse.Plugins.Languages.CSharp.Roslyn.csproj"/>
     </ItemGroup>
+    <ItemGroup>
+        <None Update="Mcp\expected\*.golden">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 </Project>

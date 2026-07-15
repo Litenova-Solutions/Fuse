@@ -92,7 +92,6 @@ public sealed class FreshnessReconcileTests : IAsyncLifetime
         }
         finally
         {
-            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
             foreach (var dir in new[] { root, Path.GetDirectoryName(databasePath)! })
             {
                 try
@@ -142,7 +141,6 @@ public sealed class FreshnessReconcileTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await _store.DisposeAsync();
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
         foreach (var dir in new[] { _root, Path.GetDirectoryName(_databasePath)! })
         {
             try

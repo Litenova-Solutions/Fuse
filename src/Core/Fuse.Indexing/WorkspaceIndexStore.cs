@@ -1,6 +1,3 @@
-using System.IO.Hashing;
-using System.Text;
-using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -11,28 +8,47 @@ namespace Fuse.Indexing;
 ///     <c>.fuse/fuse.db</c> in WAL mode.
 /// </summary>
 /// <remarks>
-///     On <see cref="InitializeAsync" /> the store applies the database-level pragmas and runs
-///     <see cref="WorkspaceIndexMigrator" />, which rebuilds the schema from scratch when the on-disk
-///     version is below <see cref="WorkspaceIndexSchema.TargetVersion" />. Connections are pooled via
-///     <see cref="WorkspaceIndexConnectionFactory" />; the pool is cleared on dispose.
+///     <see cref="InitializeAsync" /> is the write path: pragmas, <see cref="IndexSchemaMigrator" />
+///     (rebuild when the on-disk version is below <see cref="WorkspaceIndexSchema.TargetVersion" />),
+///     FTS probe, and <c>index_meta</c> stamps. <see cref="OpenForReadAsync" /> is the warm read path:
+///     schema verify only, no meta write, so concurrent foreground reads do not contend with a
+///     background upgrade writer. Connections are pooled via <see cref="WorkspaceIndexConnectionFactory" />;
+///     the pool is cleared on dispose.
+///     Implementation is split across internal ports (<see cref="IndexSchemaMigrator" />,
+///     <see cref="FtsSearchEngine" />, <see cref="SymbolGraphStore" />, <see cref="SessionStore" />);
+///     this type is the only public entry for host and MCP callers.
 /// </remarks>
 public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
 {
     private readonly WorkspaceIndexConnectionFactory _connectionFactory;
+    private readonly IndexSchemaMigrator _schema;
+    private readonly FtsSearchEngine _fts;
+    private readonly SymbolGraphStore _graph;
+    private readonly SessionStore _sessions;
     private readonly ILogger<WorkspaceIndexStore>? _logger;
     private int _schemaVersion;
     private bool _initialized;
-    private bool _ftsAvailable;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="WorkspaceIndexStore" /> class.
     /// </summary>
     /// <param name="databasePath">The absolute path to the index database file.</param>
     /// <param name="logger">An optional logger for lifecycle diagnostics.</param>
-    public WorkspaceIndexStore(string databasePath, ILogger<WorkspaceIndexStore>? logger = null)
+    /// <param name="busyTimeoutMilliseconds">
+    ///     The SQLite <c>busy_timeout</c> for this store's connections. Defaults to the write-path timeout; a
+    ///     read-tool open passes a short value so a contended store surfaces <c>index_busy</c> quickly (R18/R20).
+    /// </param>
+    public WorkspaceIndexStore(
+        string databasePath,
+        ILogger<WorkspaceIndexStore>? logger = null,
+        int busyTimeoutMilliseconds = WorkspaceIndexConnectionFactory.DefaultBusyTimeoutMilliseconds)
     {
-        _connectionFactory = new WorkspaceIndexConnectionFactory(databasePath);
+        _connectionFactory = new WorkspaceIndexConnectionFactory(databasePath, busyTimeoutMilliseconds);
         _logger = logger;
+        _schema = new IndexSchemaMigrator(_connectionFactory, logger);
+        _fts = new FtsSearchEngine(_connectionFactory, logger);
+        _graph = new SymbolGraphStore(_connectionFactory, _fts);
+        _sessions = new SessionStore(_connectionFactory);
     }
 
     /// <summary>
@@ -40,6 +56,36 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     ///     later run can detect an incompatible upgrade and rebuild.
     /// </summary>
     public const string FuseVersionMetaKey = "fuse_version";
+
+    /// <summary>
+    ///     The <c>index_meta</c> key under which the indexer stamps the extraction-contract version
+    ///     (<see cref="WorkspaceIndexSchema.ExtractionContractVersion" />). Index reuse is gated on this and the
+    ///     schema version, not on the product version, so a minor or patch bump that does not change extraction
+    ///     reuses a good index (R22).
+    /// </summary>
+    public const string ExtractionVersionMetaKey = "index_extraction_version";
+
+    /// <summary>
+    ///     The <c>index_meta</c> key under which a full index pass records the last integrity-check result (R31),
+    ///     so the recorded health is auditable alongside the live check the read paths run.
+    /// </summary>
+    public const string IndexIntegrityMetaKey = "index_integrity";
+
+    /// <summary>
+    ///     The <c>index_meta</c> key under which an index pass records the files skipped during scanning (R35:
+    ///     too large, unreadable, permission-denied), so <c>doctor</c> can surface them.
+    /// </summary>
+    public const string SkippedFilesMetaKey = "skipped_files";
+
+    /// <summary>
+    ///     The <c>index_meta</c> key under which an index pass stamps the per-project semantic-load diagnosis (R43):
+    ///     the achieved tier, the selected solution, and each project's load outcome, serialized as JSON. It is
+    ///     stamped with the index pass (so it reflects what was actually indexed), letting
+    ///     <c>fuse_workspace action=doctor</c> report the load tier and per-project reasons from the warm index in
+    ///     sub-second time instead of re-running the full MSBuild/Roslyn load; a live re-load runs only on an
+    ///     explicit refresh or when this stamp is absent.
+    /// </summary>
+    public const string LoadDiagnosisMetaKey = "load_diagnosis";
 
     /// <summary>
     ///     The <c>index_meta</c> key under which <c>fuse index --from-capture</c> stamps the absolute path to the
@@ -55,1566 +101,394 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     ///     Whether full-text search is available. False when the runtime lacks FTS5; searches then
     ///     return no hits until a fallback index is built.
     /// </summary>
-    public bool FullTextSearchAvailable => _ftsAvailable;
+    public bool FullTextSearchAvailable => _fts.Available;
 
     /// <inheritdoc />
-    public async Task InitializeAsync(CancellationToken cancellationToken)
+    public Task<WorkspaceIndexInitializeOutcome> InitializeAsync(CancellationToken cancellationToken) =>
+        WorkspaceIndexRecovery.SerializeAsync(
+            _connectionFactory.DatabasePath,
+            () => InitializeSerializedAsync(cancellationToken));
+
+    private async Task<WorkspaceIndexInitializeOutcome> InitializeSerializedAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await InitializeCoreAsync(cancellationToken);
+        }
+        catch (SqliteException ex) when (WorkspaceIndexRecovery.IsCorrupt(ex))
+        {
+            _logger?.LogWarning(
+                ex,
+                "Corrupt index at {DatabasePath}; deleting and recreating.",
+                _connectionFactory.DatabasePath);
+            WorkspaceIndexRecovery.DeleteDatabaseFiles(_connectionFactory);
+            Directory.CreateDirectory(Path.GetDirectoryName(_connectionFactory.DatabasePath)!);
+            await InitializeCoreAsync(cancellationToken);
+            return new WorkspaceIndexInitializeOutcome(true, "corrupt database recovered");
+        }
+    }
+
+    private async Task<WorkspaceIndexInitializeOutcome> InitializeCoreAsync(CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_connectionFactory.DatabasePath)!);
 
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await ApplyDatabasePragmasAsync(connection, cancellationToken);
-        _schemaVersion = await WorkspaceIndexMigrator.MigrateAsync(connection, cancellationToken);
-        // Ensure the relational schema on every init (all statements are IF NOT EXISTS). This self-heals an
-        // additive schema change made within the same schema version, where migration is skipped because the
-        // on-disk version already equals the target.
-        await EnsureTablesAsync(connection, cancellationToken);
+        await _schema.PrepareDatabaseAsync(connection, cancellationToken);
 
-        // Version-drift self-heal: if the index was written by a Fuse whose major.minor differs from this
-        // build, its extraction contract may have changed, so drop and rebuild the schema. The store is then
-        // empty and the next index pass repopulates it. Gated to major.minor so a patch upgrade does not force
-        // a costly reindex, and skipped when no version was stamped (a pre-stamp index) so it is not wiped
-        // blindly. This runs after EnsureTables so index_meta exists to read the stamp from.
-        var storedVersion = await ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
-        if (!FuseBuildInfo.IsCompatible(storedVersion))
+        var priorSchemaVersion = await IndexSchemaMigrator.ReadVersionAsync(connection, cancellationToken);
+        _schemaVersion = await IndexSchemaMigrator.MigrateAsync(connection, cancellationToken);
+        var schemaRebuilt = priorSchemaVersion > 0 && priorSchemaVersion < WorkspaceIndexSchema.TargetVersion;
+        await IndexSchemaMigrator.EnsureTablesAsync(connection, cancellationToken);
+
+        // R22: gate index reuse on the extraction-contract version, not the product version. A store carrying a
+        // different fuse_version but the current schema and extraction version is reused (a minor or patch bump no
+        // longer discards a good index); only an extraction-contract change forces a rebuild. The fuse_version stamp
+        // is kept for diagnostics (read here only to detect a pre-R22 store that predates the extraction stamp).
+        var storedExtractionRaw = await IndexSchemaMigrator.ReadMetaAsync(connection, ExtractionVersionMetaKey, cancellationToken);
+        var storedFuseVersion = await IndexSchemaMigrator.ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
+        var versionRebuilt = ExtractionContractChanged(storedExtractionRaw, storedFuseVersion);
+        if (versionRebuilt)
         {
             _logger?.LogInformation(
-                "Index at {DatabasePath} was built by Fuse {StoredVersion}; rebuilding for {CurrentVersion}.",
+                "Index at {DatabasePath} was built for extraction contract {StoredExtraction}; rebuilding for {CurrentExtraction}.",
                 _connectionFactory.DatabasePath,
-                storedVersion,
-                FuseBuildInfo.Current);
-            await WorkspaceIndexMigrator.RebuildAsync(connection, cancellationToken);
+                storedExtractionRaw ?? "(unset)",
+                WorkspaceIndexSchema.ExtractionContractVersion);
+            await IndexSchemaMigrator.RebuildAsync(connection, cancellationToken);
             _schemaVersion = WorkspaceIndexSchema.TargetVersion;
         }
 
-        _ftsAvailable = await TryCreateFtsAsync(connection, cancellationToken);
-        await WriteMetaAsync(
+        // R23: a version-compatible store can still be internally inconsistent - it has indexed files but the
+        // chunk_fts table went missing (a store rebuilt without FTS). Recreating an empty chunk_fts here would
+        // leave search silent-empty over real source. Detect the inconsistency and force a full derived-data
+        // rebuild so the caller re-indexes and repopulates both chunks and FTS, rather than serving a broken index.
+        if (!versionRebuilt)
+        {
+            var fileCount = await IndexSchemaMigrator.CountAsync(connection, "files", cancellationToken);
+            var ftsStamped = IndexAvailability.ParseFtsMeta(
+                await IndexSchemaMigrator.ReadMetaAsync(connection, IndexAvailability.FtsAvailableMetaKey, cancellationToken));
+            if (fileCount > 0 && ftsStamped
+                && !await IndexSchemaMigrator.TableExistsAsync(connection, "chunk_fts", cancellationToken))
+            {
+                _logger?.LogWarning(
+                    "Index at {DatabasePath} has {FileCount} files but chunk_fts is missing; rebuilding derived data.",
+                    _connectionFactory.DatabasePath,
+                    fileCount);
+                await IndexSchemaMigrator.RebuildAsync(connection, cancellationToken);
+                var ftsRepaired = await _fts.TryCreateAsync(connection, cancellationToken);
+                await IndexSchemaMigrator.WriteMetaAsync(
+                    connection,
+                    IndexAvailability.FtsAvailableMetaKey,
+                    IndexAvailability.ToFtsMetaValue(ftsRepaired),
+                    cancellationToken);
+                await StampExtractionVersionAsync(connection, cancellationToken);
+                MarkInitialized(_schemaVersion, ftsRepaired);
+                return new WorkspaceIndexInitializeOutcome(true, "search index missing; rebuilding derived data");
+            }
+        }
+
+        // R23: probe FTS and stamp availability on every init path, including the version-mismatch and
+        // schema-migration rebuilds. The earlier version-mismatch path returned before this, so a rebuilt store
+        // was left without chunk_fts and with a stale fts_available stamp; the next search then threw
+        // "no such table: chunk_fts". Flowing every rebuild through the probe keeps the rebuilt store searchable.
+        var ftsAvailable = await _fts.TryCreateAsync(connection, cancellationToken);
+        await IndexSchemaMigrator.WriteMetaAsync(
             connection,
             IndexAvailability.FtsAvailableMetaKey,
-            IndexAvailability.ToFtsMetaValue(_ftsAvailable),
+            IndexAvailability.ToFtsMetaValue(ftsAvailable),
             cancellationToken);
-        _initialized = true;
+        await StampExtractionVersionAsync(connection, cancellationToken);
+        MarkInitialized(_schemaVersion, ftsAvailable);
         _logger?.LogDebug(
             "Workspace index initialized at {DatabasePath} (schema v{SchemaVersion}, fts={FtsAvailable}).",
             _connectionFactory.DatabasePath,
             _schemaVersion,
-            _ftsAvailable);
+            ftsAvailable);
+
+        if (versionRebuilt)
+            return new WorkspaceIndexInitializeOutcome(
+                true, $"after upgrade to extraction contract v{WorkspaceIndexSchema.ExtractionContractVersion}");
+
+        if (schemaRebuilt)
+            return new WorkspaceIndexInitializeOutcome(true, "schema migration");
+
+        return WorkspaceIndexInitializeOutcome.Normal;
     }
 
-    private static async Task EnsureTablesAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    // R22: index reuse is gated on the extraction-contract version and the schema version, never the product
+    // version. A parseable stored version rebuilds only when it differs from the current contract; an unset stamp
+    // over a populated store (a pre-R22 index carrying only fuse_version) rebuilds once to gain the stamp, while a
+    // fresh empty store (neither stamp set) is not treated as a mismatch.
+    private static bool ExtractionContractChanged(string? storedExtractionRaw, string? storedFuseVersion)
     {
-        await using var command = connection.CreateCommand();
-        command.CommandText = WorkspaceIndexSchema.CreateTablesDdl;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        if (int.TryParse(storedExtractionRaw, out var stored))
+            return stored != WorkspaceIndexSchema.ExtractionContractVersion;
+        return !string.IsNullOrWhiteSpace(storedFuseVersion);
     }
 
-    // FTS5 ships with the bundled SQLite, but a stripped runtime can lack it. Creating the virtual table is the
-    // honest availability probe: on failure the relational schema is intact and search degrades to empty rather
-    // than crashing the run.
-    private async Task<bool> TryCreateFtsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    private static Task StampExtractionVersionAsync(SqliteConnection connection, CancellationToken cancellationToken) =>
+        IndexSchemaMigrator.WriteMetaAsync(
+            connection,
+            ExtractionVersionMetaKey,
+            WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<WorkspaceIndexReadOpenStatus> OpenForReadAsync(CancellationToken cancellationToken)
     {
+        if (!File.Exists(_connectionFactory.DatabasePath))
+            return WorkspaceIndexReadOpenStatus.DatabaseMissing;
+
         try
         {
-            await using var command = connection.CreateCommand();
-            command.CommandText = WorkspaceIndexSchema.CreateFtsDdl;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-            return true;
+            await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+            await _schema.PrepareDatabaseAsync(connection, cancellationToken);
+
+            var version = await IndexSchemaMigrator.ReadVersionAsync(connection, cancellationToken);
+            if (version != WorkspaceIndexSchema.TargetVersion)
+                return WorkspaceIndexReadOpenStatus.SchemaMismatch;
+
+            // R22: reuse is gated on the extraction-contract version, not the product version. A store built by a
+            // different fuse_version but the current extraction contract opens ready (a minor bump reuses the index).
+            var storedExtractionRaw = await IndexSchemaMigrator.ReadMetaAsync(connection, ExtractionVersionMetaKey, cancellationToken);
+            var storedFuseVersion = await IndexSchemaMigrator.ReadMetaAsync(connection, FuseVersionMetaKey, cancellationToken);
+            if (ExtractionContractChanged(storedExtractionRaw, storedFuseVersion))
+                return WorkspaceIndexReadOpenStatus.IncompatibleVersion;
+
+            var ftsStamped = IndexAvailability.ParseFtsMeta(
+                await IndexSchemaMigrator.ReadMetaAsync(connection, IndexAvailability.FtsAvailableMetaKey, cancellationToken));
+            // R23: FTS availability is a single source of truth. If the stamp says available but chunk_fts is
+            // absent (a store rebuilt without the FTS table), do not open ready: report a mismatch so the
+            // coordinator write-initializes and recreates chunk_fts, rather than serving a search that throws.
+            if (ftsStamped && !await IndexSchemaMigrator.TableExistsAsync(connection, "chunk_fts", cancellationToken))
+                return WorkspaceIndexReadOpenStatus.SchemaMismatch;
+
+            var ftsAvailable = ftsStamped;
+            MarkInitialized(version, ftsAvailable);
+            _logger?.LogDebug(
+                "Workspace index opened read-only at {DatabasePath} (schema v{SchemaVersion}, fts={FtsAvailable}).",
+                _connectionFactory.DatabasePath,
+                _schemaVersion,
+                ftsAvailable);
+            return WorkspaceIndexReadOpenStatus.Ready;
         }
-        catch (SqliteException ex)
+        catch (SqliteException ex) when (WorkspaceIndexRecovery.IsCorrupt(ex))
         {
-            _logger?.LogWarning(ex, "FTS5 unavailable at {DatabasePath}; full-text search disabled.", _connectionFactory.DatabasePath);
-            return false;
+            return WorkspaceIndexReadOpenStatus.SchemaMismatch;
         }
+    }
+
+    private void MarkInitialized(int schemaVersion, bool ftsAvailable)
+    {
+        _schemaVersion = schemaVersion;
+        _fts.MarkAvailable(ftsAvailable);
+        _initialized = true;
     }
 
     /// <inheritdoc />
     public async Task<WorkspaceIndexState> GetStateAsync(CancellationToken cancellationToken)
     {
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        var version = _initialized ? _schemaVersion : await ReadVersionAsync(connection, cancellationToken);
-        var fileCount = await CountAsync(connection, "files", cancellationToken);
-        var symbolCount = await CountAsync(connection, "symbols", cancellationToken);
+        var version = _initialized ? _schemaVersion : await IndexSchemaMigrator.ReadVersionAsync(connection, cancellationToken);
+        var fileCount = await IndexSchemaMigrator.CountAsync(connection, "files", cancellationToken);
+        var symbolCount = await IndexSchemaMigrator.CountAsync(connection, "symbols", cancellationToken);
+        var chunkCount = await IndexSchemaMigrator.CountAsync(connection, "chunks", cancellationToken);
         var status = fileCount == 0 ? WorkspaceIndexStatus.Cold : WorkspaceIndexStatus.Warm;
-        var mode = await ReadMetaAsync(connection, "index_mode", cancellationToken);
-        var ftsAvailable = _initialized
-            ? _ftsAvailable
+        var mode = await IndexSchemaMigrator.ReadMetaAsync(connection, "index_mode", cancellationToken);
+        var ftsStamped = _initialized
+            ? _fts.Available
             : IndexAvailability.ParseFtsMeta(
-                await ReadMetaAsync(connection, IndexAvailability.FtsAvailableMetaKey, cancellationToken));
-        return new WorkspaceIndexState(version, status, fileCount, symbolCount, mode, ftsAvailable);
+                await IndexSchemaMigrator.ReadMetaAsync(connection, IndexAvailability.FtsAvailableMetaKey, cancellationToken));
+        // R23: reconcile the FTS stamp with the actual chunk_fts table so the status line and body never disagree.
+        // A stamp of "available" over a store missing chunk_fts is reported unavailable, matching what a search sees.
+        var ftsAvailable = ftsStamped
+            && await IndexSchemaMigrator.TableExistsAsync(connection, "chunk_fts", cancellationToken);
+        return new WorkspaceIndexState(version, status, fileCount, symbolCount, mode, ftsAvailable, chunkCount);
     }
 
     /// <inheritdoc />
     public async Task SetMetaAsync(string key, string value, CancellationToken cancellationToken)
     {
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await WriteMetaAsync(connection, key, value, cancellationToken);
-    }
-
-    private static async Task WriteMetaAsync(
-        SqliteConnection connection, string key, string value, CancellationToken cancellationToken)
-    {
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "INSERT INTO index_meta(key, value) VALUES($k, $v) " +
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value;";
-        command.Parameters.AddWithValue("$k", key);
-        command.Parameters.AddWithValue("$v", value);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await IndexSchemaMigrator.WriteMetaAsync(connection, key, value, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<string?> GetMetaAsync(string key, CancellationToken cancellationToken)
     {
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        return await ReadMetaAsync(connection, key, cancellationToken);
-    }
-
-    private static async Task<string?> ReadMetaAsync(SqliteConnection connection, string key, CancellationToken cancellationToken)
-    {
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT value FROM index_meta WHERE key = $k LIMIT 1;";
-        command.Parameters.AddWithValue("$k", key);
-        try
-        {
-            return await command.ExecuteScalarAsync(cancellationToken) as string;
-        }
-        catch (SqliteException)
-        {
-            return null;
-        }
+        return await IndexSchemaMigrator.ReadMetaAsync(connection, key, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SaveCheckSessionBaselineAsync(
-        string sessionId, string root, IReadOnlyList<CheckDiagnostic> baseline, CancellationToken cancellationToken)
-    {
-        var json = JsonSerializer.Serialize(
-            baseline.ToList(), BuildCaptureJsonContext.Default.ListCheckDiagnostic);
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "INSERT INTO check_sessions(session_id, root, baseline_json, updated_utc) VALUES($id, $root, $json, $utc) " +
-            "ON CONFLICT(session_id) DO UPDATE SET root = excluded.root, baseline_json = excluded.baseline_json, updated_utc = excluded.updated_utc;";
-        command.Parameters.AddWithValue("$id", sessionId);
-        command.Parameters.AddWithValue("$root", root);
-        command.Parameters.AddWithValue("$json", json);
-        command.Parameters.AddWithValue("$utc", DateTime.UtcNow.ToString("O"));
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
+    public Task SaveCheckSessionBaselineAsync(
+        string sessionId, string root, IReadOnlyList<CheckDiagnostic> baseline, CancellationToken cancellationToken) =>
+        _sessions.SaveCheckSessionBaselineAsync(sessionId, root, baseline, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<CheckSessionBaseline?> GetCheckSessionBaselineAsync(string sessionId, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT root, baseline_json, updated_utc FROM check_sessions WHERE session_id = $id LIMIT 1;";
-        command.Parameters.AddWithValue("$id", sessionId);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        if (!await reader.ReadAsync(cancellationToken))
-            return null;
-
-        var root = reader.GetString(0);
-        var json = reader.GetString(1);
-        var updatedUtc = reader.GetString(2);
-        var diagnostics = JsonSerializer.Deserialize(json, BuildCaptureJsonContext.Default.ListCheckDiagnostic)
-            ?? [];
-        return new CheckSessionBaseline(sessionId, root, diagnostics, updatedUtc);
-    }
+    public Task<CheckSessionBaseline?> GetCheckSessionBaselineAsync(string sessionId, CancellationToken cancellationToken) =>
+        _sessions.GetCheckSessionBaselineAsync(sessionId, cancellationToken);
 
     /// <inheritdoc />
-    public async Task SaveClaimLedgerAsync(string sessionId, string root, string claimsJson, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "INSERT INTO claim_ledger(session_id, root, claims_json, updated_utc) VALUES($id, $root, $json, $utc) " +
-            "ON CONFLICT(session_id) DO UPDATE SET root = excluded.root, claims_json = excluded.claims_json, updated_utc = excluded.updated_utc;";
-        command.Parameters.AddWithValue("$id", sessionId);
-        command.Parameters.AddWithValue("$root", root);
-        command.Parameters.AddWithValue("$json", claimsJson);
-        command.Parameters.AddWithValue("$utc", DateTime.UtcNow.ToString("O"));
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
+    public Task SaveClaimLedgerAsync(string sessionId, string root, string claimsJson, CancellationToken cancellationToken) =>
+        _sessions.SaveClaimLedgerAsync(sessionId, root, claimsJson, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<ClaimLedgerRecord?> GetClaimLedgerAsync(string sessionId, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT root, claims_json, updated_utc FROM claim_ledger WHERE session_id = $id LIMIT 1;";
-        command.Parameters.AddWithValue("$id", sessionId);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        if (!await reader.ReadAsync(cancellationToken))
-            return null;
-
-        return new ClaimLedgerRecord(sessionId, reader.GetString(0), reader.GetString(1), reader.GetString(2));
-    }
+    public Task<ClaimLedgerRecord?> GetClaimLedgerAsync(string sessionId, CancellationToken cancellationToken) =>
+        _sessions.GetClaimLedgerAsync(sessionId, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<SessionSummary>> ListSessionsAsync(string root, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        // Union the two session tables by id (a session may have a baseline, a claim ledger, or both), taking the
-        // latest updated_utc and OR-ing the has-* flags. Filtered by root so the panel shows only this workspace.
-        command.CommandText =
-            "SELECT session_id, MAX(updated_utc) AS updated_utc, MAX(has_baseline) AS has_baseline, MAX(has_claims) AS has_claims FROM (" +
-            "  SELECT session_id, updated_utc, 1 AS has_baseline, 0 AS has_claims FROM check_sessions WHERE root = $root" +
-            "  UNION ALL" +
-            "  SELECT session_id, updated_utc, 0 AS has_baseline, 1 AS has_claims FROM claim_ledger WHERE root = $root" +
-            ") GROUP BY session_id ORDER BY updated_utc DESC;";
-        command.Parameters.AddWithValue("$root", root);
-
-        var sessions = new List<SessionSummary>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            sessions.Add(new SessionSummary(
-                reader.GetString(0),
-                reader.GetString(1),
-                reader.GetInt64(2) != 0,
-                reader.GetInt64(3) != 0));
-        }
-
-        return sessions;
-    }
+    public Task<IReadOnlyList<SessionSummary>> ListSessionsAsync(string root, CancellationToken cancellationToken) =>
+        _sessions.ListSessionsAsync(root, cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertFilesAsync(IReadOnlyList<IndexedFileRecord> files, CancellationToken cancellationToken)
-    {
-        if (files.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        var projectIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT INTO files(path, normalized_path, extension, size_bytes, mtime_utc_ticks, content_hash,
-                              project_id, is_generated, is_test, language, indexed_at_utc)
-            VALUES($path, $norm, $ext, $size, $mtime, $hash, $project, $generated, $test, $language, $indexed)
-            ON CONFLICT(normalized_path) DO UPDATE SET
-              path = excluded.path, extension = excluded.extension, size_bytes = excluded.size_bytes,
-              mtime_utc_ticks = excluded.mtime_utc_ticks, content_hash = excluded.content_hash,
-              project_id = excluded.project_id, is_generated = excluded.is_generated,
-              is_test = excluded.is_test, language = excluded.language, indexed_at_utc = excluded.indexed_at_utc;
-            """;
-        var pathParam = command.Parameters.Add("$path", SqliteType.Text);
-        var normParam = command.Parameters.Add("$norm", SqliteType.Text);
-        var extParam = command.Parameters.Add("$ext", SqliteType.Text);
-        var sizeParam = command.Parameters.Add("$size", SqliteType.Integer);
-        var mtimeParam = command.Parameters.Add("$mtime", SqliteType.Integer);
-        var hashParam = command.Parameters.Add("$hash", SqliteType.Text);
-        var projectParam = command.Parameters.Add("$project", SqliteType.Integer);
-        var generatedParam = command.Parameters.Add("$generated", SqliteType.Integer);
-        var testParam = command.Parameters.Add("$test", SqliteType.Integer);
-        var languageParam = command.Parameters.Add("$language", SqliteType.Text);
-        var indexedParam = command.Parameters.Add("$indexed", SqliteType.Text);
-
-        foreach (var file in files)
-        {
-            pathParam.Value = file.Path;
-            normParam.Value = file.NormalizedPath;
-            extParam.Value = file.Extension;
-            sizeParam.Value = file.SizeBytes;
-            mtimeParam.Value = file.MtimeUtcTicks;
-            hashParam.Value = file.ContentHash;
-            projectParam.Value = (object?)await ResolveProjectIdAsync(connection, transaction, file.ProjectPath, projectIds, cancellationToken) ?? DBNull.Value;
-            generatedParam.Value = file.IsGenerated ? 1 : 0;
-            testParam.Value = file.IsTest ? 1 : 0;
-            languageParam.Value = (object?)file.Language ?? DBNull.Value;
-            indexedParam.Value = (file.IndexedAtUtc ?? DateTimeOffset.UtcNow).ToString("o");
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertFilesAsync(IReadOnlyList<IndexedFileRecord> files, CancellationToken cancellationToken) =>
+        _graph.UpsertFilesAsync(files, cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertProjectsAsync(IReadOnlyList<ProjectRecord> projects, CancellationToken cancellationToken)
-    {
-        if (projects.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT INTO projects(path, name, assembly_name, target_framework, project_hash, indexed_at_utc)
-            VALUES($path, $name, $assembly, $tfm, $hash, $indexed)
-            ON CONFLICT(path) DO UPDATE SET
-              name = excluded.name, assembly_name = excluded.assembly_name,
-              target_framework = excluded.target_framework, project_hash = excluded.project_hash,
-              indexed_at_utc = excluded.indexed_at_utc;
-            """;
-        var pathParam = command.Parameters.Add("$path", SqliteType.Text);
-        var nameParam = command.Parameters.Add("$name", SqliteType.Text);
-        var assemblyParam = command.Parameters.Add("$assembly", SqliteType.Text);
-        var tfmParam = command.Parameters.Add("$tfm", SqliteType.Text);
-        var hashParam = command.Parameters.Add("$hash", SqliteType.Text);
-        var indexedParam = command.Parameters.Add("$indexed", SqliteType.Text);
-
-        foreach (var project in projects)
-        {
-            pathParam.Value = project.Path;
-            nameParam.Value = project.Name;
-            assemblyParam.Value = (object?)project.AssemblyName ?? DBNull.Value;
-            tfmParam.Value = (object?)project.TargetFramework ?? DBNull.Value;
-            hashParam.Value = project.ProjectHash;
-            indexedParam.Value = (project.IndexedAtUtc ?? DateTimeOffset.UtcNow).ToString("o");
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertProjectsAsync(IReadOnlyList<ProjectRecord> projects, CancellationToken cancellationToken) =>
+        _graph.UpsertProjectsAsync(projects, cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertNodesAsync(IReadOnlyList<NodeRecord> nodes, CancellationToken cancellationToken)
-    {
-        if (nodes.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-        var projectIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT OR REPLACE INTO nodes(node_id, kind, display_name, file_id, project_id, symbol_id,
-                                         stable_key, start_line, end_line, signature, metadata_json)
-            VALUES($id, $kind, $display, $file, $project, $symbol, $stable, $start, $end, $sig, $meta);
-            """;
-        var idParam = command.Parameters.Add("$id", SqliteType.Text);
-        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
-        var displayParam = command.Parameters.Add("$display", SqliteType.Text);
-        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
-        var projectParam = command.Parameters.Add("$project", SqliteType.Integer);
-        var symbolParam = command.Parameters.Add("$symbol", SqliteType.Text);
-        var stableParam = command.Parameters.Add("$stable", SqliteType.Text);
-        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
-        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
-        var sigParam = command.Parameters.Add("$sig", SqliteType.Text);
-        var metaParam = command.Parameters.Add("$meta", SqliteType.Text);
-
-        foreach (var node in nodes)
-        {
-            idParam.Value = node.NodeId;
-            kindParam.Value = node.Kind;
-            displayParam.Value = node.DisplayName;
-            fileParam.Value = (object?)await ResolveFileIdAsync(connection, transaction, node.FilePath, fileIds, cancellationToken) ?? DBNull.Value;
-            projectParam.Value = (object?)await ResolveProjectIdAsync(connection, transaction, node.ProjectPath, projectIds, cancellationToken) ?? DBNull.Value;
-            symbolParam.Value = (object?)node.SymbolId ?? DBNull.Value;
-            stableParam.Value = node.StableKey;
-            startParam.Value = (object?)node.StartLine ?? DBNull.Value;
-            endParam.Value = (object?)node.EndLine ?? DBNull.Value;
-            sigParam.Value = (object?)node.Signature ?? DBNull.Value;
-            metaParam.Value = (object?)node.MetadataJson ?? DBNull.Value;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task ReplaceTfmAvailabilityAsync(IReadOnlyList<TfmAvailabilityRecord> availability, CancellationToken cancellationToken) =>
+        _graph.ReplaceTfmAvailabilityAsync(availability, cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertSymbolsAsync(IReadOnlyList<SymbolRecord> symbols, CancellationToken cancellationToken)
-    {
-        if (symbols.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-        var projectIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT OR REPLACE INTO symbols(symbol_id, file_id, project_id, kind, name, fully_qualified_name,
-                                           metadata_name, containing_type, namespace, assembly_name,
-                                           accessibility, signature, start_line, end_line, is_public_api)
-            VALUES($id, $file, $project, $kind, $name, $fqn, $meta, $containing, $ns, $assembly,
-                   $access, $sig, $start, $end, $public);
-            """;
-        var idParam = command.Parameters.Add("$id", SqliteType.Text);
-        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
-        var projectParam = command.Parameters.Add("$project", SqliteType.Integer);
-        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
-        var nameParam = command.Parameters.Add("$name", SqliteType.Text);
-        var fqnParam = command.Parameters.Add("$fqn", SqliteType.Text);
-        var metaParam = command.Parameters.Add("$meta", SqliteType.Text);
-        var containingParam = command.Parameters.Add("$containing", SqliteType.Text);
-        var nsParam = command.Parameters.Add("$ns", SqliteType.Text);
-        var assemblyParam = command.Parameters.Add("$assembly", SqliteType.Text);
-        var accessParam = command.Parameters.Add("$access", SqliteType.Text);
-        var sigParam = command.Parameters.Add("$sig", SqliteType.Text);
-        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
-        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
-        var publicParam = command.Parameters.Add("$public", SqliteType.Integer);
-
-        foreach (var symbol in symbols)
-        {
-            var fileId = await ResolveFileIdAsync(connection, transaction, symbol.FilePath, fileIds, cancellationToken);
-            if (fileId is null)
-                continue;
-
-            idParam.Value = symbol.SymbolId;
-            fileParam.Value = fileId.Value;
-            projectParam.Value = (object?)await ResolveProjectIdAsync(connection, transaction, symbol.ProjectPath, projectIds, cancellationToken) ?? DBNull.Value;
-            kindParam.Value = symbol.Kind;
-            nameParam.Value = symbol.Name;
-            fqnParam.Value = symbol.FullyQualifiedName;
-            metaParam.Value = (object?)symbol.MetadataName ?? DBNull.Value;
-            containingParam.Value = (object?)symbol.ContainingType ?? DBNull.Value;
-            nsParam.Value = (object?)symbol.Namespace ?? DBNull.Value;
-            assemblyParam.Value = (object?)symbol.AssemblyName ?? DBNull.Value;
-            accessParam.Value = (object?)symbol.Accessibility ?? DBNull.Value;
-            sigParam.Value = (object?)symbol.Signature ?? DBNull.Value;
-            startParam.Value = symbol.StartLine;
-            endParam.Value = symbol.EndLine;
-            publicParam.Value = symbol.IsPublicApi ? 1 : 0;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task<IReadOnlyList<TfmAvailabilityRecord>> GetTfmAvailabilityAsync(CancellationToken cancellationToken) =>
+        _graph.GetTfmAvailabilityAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertChunksAsync(IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken)
-    {
-        if (chunks.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT OR REPLACE INTO chunks(chunk_id, file_id, symbol_id, kind, name, stable_key,
-                                          start_line, end_line, text_hash, token_estimate,
-                                          reduced_token_estimate, signature, outline)
-            VALUES($id, $file, $symbol, $kind, $name, $stable, $start, $end, $hash, $tokens,
-                   $reduced, $sig, $outline);
-            """;
-        var idParam = command.Parameters.Add("$id", SqliteType.Text);
-        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
-        var symbolParam = command.Parameters.Add("$symbol", SqliteType.Text);
-        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
-        var nameParam = command.Parameters.Add("$name", SqliteType.Text);
-        var stableParam = command.Parameters.Add("$stable", SqliteType.Text);
-        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
-        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
-        var hashParam = command.Parameters.Add("$hash", SqliteType.Text);
-        var tokensParam = command.Parameters.Add("$tokens", SqliteType.Integer);
-        var reducedParam = command.Parameters.Add("$reduced", SqliteType.Integer);
-        var sigParam = command.Parameters.Add("$sig", SqliteType.Text);
-        var outlineParam = command.Parameters.Add("$outline", SqliteType.Text);
-
-        // FTS is a standalone (non-content) table managed manually: delete then insert by chunk_id so a
-        // re-indexed chunk replaces its prior search row instead of duplicating it.
-        SqliteCommand? ftsDelete = null;
-        SqliteCommand? ftsInsert = null;
-        if (_ftsAvailable)
-        {
-            ftsDelete = connection.CreateCommand();
-            ftsDelete.Transaction = transaction;
-            ftsDelete.CommandText = "DELETE FROM chunk_fts WHERE chunk_id = $id;";
-            ftsDelete.Parameters.Add("$id", SqliteType.Text);
-
-            ftsInsert = connection.CreateCommand();
-            ftsInsert.Transaction = transaction;
-            ftsInsert.CommandText = """
-                INSERT INTO chunk_fts(chunk_id, path, name, symbols, signature, comments, body, subtokens, stems)
-                VALUES($id, $path, $name, $symbols, $sig, $comments, $body, $subtokens, $stems);
-                """;
-            ftsInsert.Parameters.Add("$id", SqliteType.Text);
-            ftsInsert.Parameters.Add("$path", SqliteType.Text);
-            ftsInsert.Parameters.Add("$name", SqliteType.Text);
-            ftsInsert.Parameters.Add("$symbols", SqliteType.Text);
-            ftsInsert.Parameters.Add("$sig", SqliteType.Text);
-            ftsInsert.Parameters.Add("$comments", SqliteType.Text);
-            ftsInsert.Parameters.Add("$body", SqliteType.Text);
-            ftsInsert.Parameters.Add("$subtokens", SqliteType.Text);
-            ftsInsert.Parameters.Add("$stems", SqliteType.Text);
-        }
-
-        try
-        {
-            foreach (var chunk in chunks)
-            {
-                var fileId = await ResolveFileIdAsync(connection, transaction, chunk.FilePath, fileIds, cancellationToken);
-                if (fileId is null)
-                    continue;
-
-                idParam.Value = chunk.ChunkId;
-                fileParam.Value = fileId.Value;
-                symbolParam.Value = (object?)chunk.SymbolId ?? DBNull.Value;
-                kindParam.Value = chunk.Kind;
-                nameParam.Value = (object?)chunk.Name ?? DBNull.Value;
-                stableParam.Value = chunk.StableKey;
-                startParam.Value = chunk.StartLine;
-                endParam.Value = chunk.EndLine;
-                hashParam.Value = chunk.TextHash;
-                tokensParam.Value = chunk.TokenEstimate;
-                reducedParam.Value = chunk.ReducedTokenEstimate;
-                sigParam.Value = (object?)chunk.Signature ?? DBNull.Value;
-                outlineParam.Value = (object?)chunk.Outline ?? DBNull.Value;
-                await command.ExecuteNonQueryAsync(cancellationToken);
-
-                if (ftsDelete is not null && ftsInsert is not null)
-                {
-                    ftsDelete.Parameters["$id"].Value = chunk.ChunkId;
-                    await ftsDelete.ExecuteNonQueryAsync(cancellationToken);
-
-                    ftsInsert.Parameters["$id"].Value = chunk.ChunkId;
-                    ftsInsert.Parameters["$path"].Value = chunk.FilePath;
-                    ftsInsert.Parameters["$name"].Value = (object?)chunk.Name ?? DBNull.Value;
-                    ftsInsert.Parameters["$symbols"].Value = (object?)chunk.SymbolsText ?? DBNull.Value;
-                    ftsInsert.Parameters["$sig"].Value = (object?)chunk.Signature ?? DBNull.Value;
-                    ftsInsert.Parameters["$comments"].Value = (object?)chunk.Comments ?? DBNull.Value;
-                    ftsInsert.Parameters["$body"].Value = (object?)chunk.Body ?? DBNull.Value;
-                    // The subtokens field is the subword expansion of the chunk's identifiers (name, declared
-                    // symbols, signature), computed in C# so a prose query word matches a compound name.
-                    var subtokens = IdentifierSplitter.Expand(chunk.Name, chunk.SymbolsText, chunk.Signature);
-                    ftsInsert.Parameters["$subtokens"].Value = subtokens.Length == 0 ? DBNull.Value : subtokens;
-                    // The stems field is the Porter-stemmed form of the chunk's identifiers and comment prose, so
-                    // an inflected query word (rounds, rounded) matches an inflected code or comment word (rounding).
-                    var stems = PorterStemmer.Expand(chunk.Name, chunk.SymbolsText, chunk.Signature, chunk.Comments);
-                    ftsInsert.Parameters["$stems"].Value = stems.Length == 0 ? DBNull.Value : stems;
-                    await ftsInsert.ExecuteNonQueryAsync(cancellationToken);
-                }
-            }
-        }
-        finally
-        {
-            ftsDelete?.Dispose();
-            ftsInsert?.Dispose();
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertNodesAsync(IReadOnlyList<NodeRecord> nodes, CancellationToken cancellationToken) =>
+        _graph.UpsertNodesAsync(nodes, cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertEdgesAsync(IReadOnlyList<SemanticEdgeRecord> edges, CancellationToken cancellationToken)
-    {
-        if (edges.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT OR REPLACE INTO edges(edge_id, from_node_id, to_node_id, edge_type, weight, confidence,
-                                         evidence, evidence_file_id, evidence_start_line, evidence_end_line,
-                                         metadata_json)
-            VALUES($id, $from, $to, $type, $weight, $confidence, $evidence, $file, $start, $end, $meta);
-            """;
-        var idParam = command.Parameters.Add("$id", SqliteType.Text);
-        var fromParam = command.Parameters.Add("$from", SqliteType.Text);
-        var toParam = command.Parameters.Add("$to", SqliteType.Text);
-        var typeParam = command.Parameters.Add("$type", SqliteType.Text);
-        var weightParam = command.Parameters.Add("$weight", SqliteType.Real);
-        var confidenceParam = command.Parameters.Add("$confidence", SqliteType.Real);
-        var evidenceParam = command.Parameters.Add("$evidence", SqliteType.Text);
-        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
-        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
-        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
-        var metaParam = command.Parameters.Add("$meta", SqliteType.Text);
-
-        foreach (var edge in edges)
-        {
-            var evidenceFileId = await ResolveFileIdAsync(connection, transaction, edge.EvidenceFilePath, fileIds, cancellationToken);
-            idParam.Value = BuildEdgeId(edge.FromNodeId, edge.ToNodeId, edge.EdgeType, evidenceFileId);
-            fromParam.Value = edge.FromNodeId;
-            toParam.Value = edge.ToNodeId;
-            typeParam.Value = edge.EdgeType;
-            weightParam.Value = edge.Weight;
-            confidenceParam.Value = edge.Confidence;
-            evidenceParam.Value = (object?)edge.Evidence ?? DBNull.Value;
-            fileParam.Value = (object?)evidenceFileId ?? DBNull.Value;
-            startParam.Value = (object?)edge.EvidenceStartLine ?? DBNull.Value;
-            endParam.Value = (object?)edge.EvidenceEndLine ?? DBNull.Value;
-            metaParam.Value = (object?)edge.MetadataJson ?? DBNull.Value;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertSymbolsAsync(IReadOnlyList<SymbolRecord> symbols, CancellationToken cancellationToken) =>
+        _graph.UpsertSymbolsAsync(symbols, cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertRoutesAsync(IReadOnlyList<RouteRecord> routes, CancellationToken cancellationToken)
-    {
-        if (routes.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT OR REPLACE INTO routes(route_id, http_method, route_pattern, handler_symbol_id, file_id,
-                                          start_line, end_line, source_kind, metadata_json)
-            VALUES($id, $method, $pattern, $handler, $file, $start, $end, $source, $meta);
-            """;
-        var idParam = command.Parameters.Add("$id", SqliteType.Text);
-        var methodParam = command.Parameters.Add("$method", SqliteType.Text);
-        var patternParam = command.Parameters.Add("$pattern", SqliteType.Text);
-        var handlerParam = command.Parameters.Add("$handler", SqliteType.Text);
-        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
-        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
-        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
-        var sourceParam = command.Parameters.Add("$source", SqliteType.Text);
-        var metaParam = command.Parameters.Add("$meta", SqliteType.Text);
-
-        foreach (var route in routes)
-        {
-            var fileId = await ResolveFileIdAsync(connection, transaction, route.FilePath, fileIds, cancellationToken);
-            if (fileId is null)
-                continue;
-
-            idParam.Value = route.RouteId;
-            methodParam.Value = route.HttpMethod;
-            patternParam.Value = route.RoutePattern;
-            handlerParam.Value = (object?)route.HandlerSymbolId ?? DBNull.Value;
-            fileParam.Value = fileId.Value;
-            startParam.Value = route.StartLine;
-            endParam.Value = route.EndLine;
-            sourceParam.Value = route.SourceKind;
-            metaParam.Value = (object?)route.MetadataJson ?? DBNull.Value;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertChunksAsync(IReadOnlyList<ChunkRecord> chunks, CancellationToken cancellationToken) =>
+        _graph.UpsertChunksAsync(chunks, cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertDiRegistrationsAsync(IReadOnlyList<DiRegistrationRecord> registrations, CancellationToken cancellationToken)
-    {
-        if (registrations.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT OR REPLACE INTO di_registrations(registration_id, service_symbol_id, implementation_symbol_id,
-                                                    service_name, implementation_name, lifetime, file_id,
-                                                    start_line, end_line, registration_kind, confidence, evidence)
-            VALUES($id, $service_symbol, $impl_symbol, $service, $impl, $lifetime, $file, $start, $end,
-                   $kind, $confidence, $evidence);
-            """;
-        var idParam = command.Parameters.Add("$id", SqliteType.Text);
-        var serviceSymbolParam = command.Parameters.Add("$service_symbol", SqliteType.Text);
-        var implSymbolParam = command.Parameters.Add("$impl_symbol", SqliteType.Text);
-        var serviceParam = command.Parameters.Add("$service", SqliteType.Text);
-        var implParam = command.Parameters.Add("$impl", SqliteType.Text);
-        var lifetimeParam = command.Parameters.Add("$lifetime", SqliteType.Text);
-        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
-        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
-        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
-        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
-        var confidenceParam = command.Parameters.Add("$confidence", SqliteType.Real);
-        var evidenceParam = command.Parameters.Add("$evidence", SqliteType.Text);
-
-        foreach (var registration in registrations)
-        {
-            var fileId = await ResolveFileIdAsync(connection, transaction, registration.FilePath, fileIds, cancellationToken);
-            if (fileId is null)
-                continue;
-
-            idParam.Value = registration.RegistrationId;
-            serviceSymbolParam.Value = (object?)registration.ServiceSymbolId ?? DBNull.Value;
-            implSymbolParam.Value = (object?)registration.ImplementationSymbolId ?? DBNull.Value;
-            serviceParam.Value = registration.ServiceName;
-            implParam.Value = (object?)registration.ImplementationName ?? DBNull.Value;
-            lifetimeParam.Value = registration.Lifetime;
-            fileParam.Value = fileId.Value;
-            startParam.Value = registration.StartLine;
-            endParam.Value = registration.EndLine;
-            kindParam.Value = registration.RegistrationKind;
-            confidenceParam.Value = registration.Confidence;
-            evidenceParam.Value = (object?)registration.Evidence ?? DBNull.Value;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertEdgesAsync(IReadOnlyList<SemanticEdgeRecord> edges, CancellationToken cancellationToken) =>
+        _graph.UpsertEdgesAsync(edges, cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertOptionsBindingsAsync(IReadOnlyList<OptionsBindingRecord> bindings, CancellationToken cancellationToken)
-    {
-        if (bindings.Count == 0)
-            return;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT OR REPLACE INTO options_bindings(binding_id, options_symbol_id, options_name, config_section,
-                                                    file_id, start_line, end_line, binding_kind, confidence, evidence)
-            VALUES($id, $symbol, $name, $section, $file, $start, $end, $kind, $confidence, $evidence);
-            """;
-        var idParam = command.Parameters.Add("$id", SqliteType.Text);
-        var symbolParam = command.Parameters.Add("$symbol", SqliteType.Text);
-        var nameParam = command.Parameters.Add("$name", SqliteType.Text);
-        var sectionParam = command.Parameters.Add("$section", SqliteType.Text);
-        var fileParam = command.Parameters.Add("$file", SqliteType.Integer);
-        var startParam = command.Parameters.Add("$start", SqliteType.Integer);
-        var endParam = command.Parameters.Add("$end", SqliteType.Integer);
-        var kindParam = command.Parameters.Add("$kind", SqliteType.Text);
-        var confidenceParam = command.Parameters.Add("$confidence", SqliteType.Real);
-        var evidenceParam = command.Parameters.Add("$evidence", SqliteType.Text);
-
-        foreach (var binding in bindings)
-        {
-            var fileId = await ResolveFileIdAsync(connection, transaction, binding.FilePath, fileIds, cancellationToken);
-            if (fileId is null)
-                continue;
-
-            idParam.Value = binding.BindingId;
-            symbolParam.Value = (object?)binding.OptionsSymbolId ?? DBNull.Value;
-            nameParam.Value = binding.OptionsName;
-            sectionParam.Value = (object?)binding.ConfigSection ?? DBNull.Value;
-            fileParam.Value = fileId.Value;
-            startParam.Value = binding.StartLine;
-            endParam.Value = binding.EndLine;
-            kindParam.Value = binding.BindingKind;
-            confidenceParam.Value = binding.Confidence;
-            evidenceParam.Value = (object?)binding.Evidence ?? DBNull.Value;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertRoutesAsync(IReadOnlyList<RouteRecord> routes, CancellationToken cancellationToken) =>
+        _graph.UpsertRoutesAsync(routes, cancellationToken);
 
     /// <inheritdoc />
-    public async Task DeleteFileDataAsync(string normalizedPath, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-
-        var fileIds = new Dictionary<string, long?>(StringComparer.Ordinal);
-        var fileId = await ResolveFileIdAsync(connection, transaction, normalizedPath, fileIds, cancellationToken);
-        if (fileId is null)
-        {
-            await transaction.CommitAsync(cancellationToken);
-            return;
-        }
-
-        // Edges whose evidence is this file but whose endpoints live in other files do not cascade from
-        // the node delete below, so remove them explicitly first. Deleting this file's nodes then cascades
-        // (ON DELETE CASCADE) to any remaining edges that touch them.
-        // Clear the FTS rows for this file's chunks before the chunks themselves are deleted; the FTS table
-        // is managed manually and does not cascade.
-        if (_ftsAvailable)
-        {
-            await using var ftsCommand = connection.CreateCommand();
-            ftsCommand.Transaction = transaction;
-            ftsCommand.CommandText =
-                "DELETE FROM chunk_fts WHERE chunk_id IN (SELECT chunk_id FROM chunks WHERE file_id = $file);";
-            ftsCommand.Parameters.AddWithValue("$file", fileId.Value);
-            await ftsCommand.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await using (var command = connection.CreateCommand())
-        {
-            command.Transaction = transaction;
-            command.CommandText = """
-                DELETE FROM edges WHERE evidence_file_id = $file;
-                DELETE FROM chunks WHERE file_id = $file;
-                DELETE FROM symbols WHERE file_id = $file;
-                DELETE FROM routes WHERE file_id = $file;
-                DELETE FROM di_registrations WHERE file_id = $file;
-                DELETE FROM options_bindings WHERE file_id = $file;
-                DELETE FROM nodes WHERE file_id = $file;
-                """;
-            command.Parameters.AddWithValue("$file", fileId.Value);
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertDiRegistrationsAsync(IReadOnlyList<DiRegistrationRecord> registrations, CancellationToken cancellationToken) =>
+        _graph.UpsertDiRegistrationsAsync(registrations, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<SearchHit>> SearchAsync(SearchQuery query, CancellationToken cancellationToken)
-    {
-        if (!_ftsAvailable || string.IsNullOrWhiteSpace(query.Text))
-            return [];
-
-        var match = BuildMatchExpression(query.Text);
-        if (match.Length == 0)
-            return [];
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        // bm25() takes one weight per column in declaration order: chunk_id (unindexed, weight ignored),
-        // path, name, symbols, signature, comments, body, subtokens, stems. The intended ordering (N1, finding 4)
-        // is name > symbols > signature > subtokens > path > comments > body > stems: a term hitting a declared
-        // symbol name or signature must outrank the same term appearing only in a folder path, so a symbol-name
-        // match wins over a folder-name match. subtokens (subword expansion of identifiers) sits below the exact
-        // name but above the body, so an exact name still beats a subword match; stems (Porter-stemmed identifiers
-        // and comments) is lowest, a fuzzy inflection bridge. This is the single intended weight table, guarded by
-        // the ranking suite (RankingSuite). Before this fix the path column was weighted highest (4.0), inverting
-        // the documented intent and letting folder-name matches outrank symbol-name matches. bm25 is
-        // lower-is-better, so the score is negated to make higher better.
-        command.CommandText = """
-            SELECT f.chunk_id, files.normalized_path, c.kind, c.name, c.start_line, c.end_line,
-                   -bm25(chunk_fts, 0.0, 2.0, 5.0, 4.0, 3.0, 1.5, 1.0, 2.5, 0.7) AS score
-            FROM chunk_fts f
-            JOIN chunks c ON c.chunk_id = f.chunk_id
-            JOIN files ON files.file_id = c.file_id
-            WHERE chunk_fts MATCH $match
-            ORDER BY score DESC
-            LIMIT $limit;
-            """;
-        command.Parameters.AddWithValue("$match", match);
-        command.Parameters.AddWithValue("$limit", query.Limit);
-
-        var hits = new List<SearchHit>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            hits.Add(new SearchHit(
-                ChunkId: reader.GetString(0),
-                FilePath: reader.GetString(1),
-                Kind: reader.GetString(2),
-                Name: reader.IsDBNull(3) ? null : reader.GetString(3),
-                StartLine: reader.GetInt32(4),
-                EndLine: reader.GetInt32(5),
-                Score: reader.GetDouble(6)));
-        }
-
-        return hits;
-    }
+    public Task UpsertOptionsBindingsAsync(IReadOnlyList<OptionsBindingRecord> bindings, CancellationToken cancellationToken) =>
+        _graph.UpsertOptionsBindingsAsync(bindings, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<SymbolListItem>> ListSymbolsAsync(int limit, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT s.symbol_id, s.name, s.kind, s.fully_qualified_name, files.normalized_path,
-                   s.start_line, s.is_public_api
-            FROM symbols s
-            JOIN files ON files.file_id = s.file_id
-            ORDER BY s.is_public_api DESC, s.name COLLATE NOCASE
-            LIMIT $limit;
-            """;
-        command.Parameters.AddWithValue("$limit", limit);
-
-        var items = new List<SymbolListItem>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            items.Add(new SymbolListItem(
-                SymbolId: reader.GetString(0),
-                Name: reader.GetString(1),
-                Kind: reader.GetString(2),
-                FullyQualifiedName: reader.GetString(3),
-                FilePath: reader.GetString(4),
-                StartLine: reader.GetInt32(5),
-                IsPublicApi: reader.GetInt64(6) != 0));
-        }
-
-        return items;
-    }
+    public Task DeleteFileDataAsync(string normalizedPath, CancellationToken cancellationToken) =>
+        _graph.DeleteFileDataAsync(normalizedPath, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<SymbolListItem>> FindSymbolsByNameAsync(string nameFragment, int limit, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT s.symbol_id, s.name, s.kind, s.fully_qualified_name, files.normalized_path,
-                   s.start_line, s.is_public_api
-            FROM symbols s
-            JOIN files ON files.file_id = s.file_id
-            WHERE s.name LIKE '%' || $n || '%' COLLATE NOCASE
-            ORDER BY s.is_public_api DESC, length(s.name), s.name COLLATE NOCASE
-            LIMIT $limit;
-            """;
-        command.Parameters.AddWithValue("$n", nameFragment);
-        command.Parameters.AddWithValue("$limit", limit);
-
-        var items = new List<SymbolListItem>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            items.Add(new SymbolListItem(
-                SymbolId: reader.GetString(0),
-                Name: reader.GetString(1),
-                Kind: reader.GetString(2),
-                FullyQualifiedName: reader.GetString(3),
-                FilePath: reader.GetString(4),
-                StartLine: reader.GetInt32(5),
-                IsPublicApi: reader.GetInt64(6) != 0));
-        }
-
-        return items;
-    }
+    public Task<IReadOnlyList<SearchHit>> SearchAsync(SearchQuery query, CancellationToken cancellationToken) =>
+        _fts.SearchAsync(query, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<SymbolSignature>> GetSignaturesByNamesAsync(
-        IReadOnlyCollection<string> names, int limitPerName, CancellationToken cancellationToken)
-    {
-        var distinct = names
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Select(n => n.Trim())
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-        if (distinct.Count == 0)
-            return [];
-
-        var results = new List<SymbolSignature>();
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        // One query per requested name so the per-name limit and ordering (public API and exact-name first) apply
-        // independently; the name count is the caller's small batch, not a variable-length repo-scale list.
-        foreach (var name in distinct)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await using var command = connection.CreateCommand();
-            command.CommandText = """
-                SELECT s.name, s.kind, s.fully_qualified_name, s.signature, s.accessibility, s.containing_type,
-                       files.normalized_path, s.start_line, s.is_public_api
-                FROM symbols s
-                JOIN files ON files.file_id = s.file_id
-                WHERE s.name = $n COLLATE NOCASE OR s.fully_qualified_name = $n COLLATE NOCASE
-                ORDER BY s.is_public_api DESC, length(s.fully_qualified_name), s.fully_qualified_name COLLATE NOCASE
-                LIMIT $limit;
-                """;
-            command.Parameters.AddWithValue("$n", name);
-            command.Parameters.AddWithValue("$limit", limitPerName);
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                results.Add(new SymbolSignature(
-                    Name: reader.GetString(0),
-                    Kind: reader.GetString(1),
-                    FullyQualifiedName: reader.GetString(2),
-                    Signature: reader.IsDBNull(3) ? null : reader.GetString(3),
-                    Accessibility: reader.IsDBNull(4) ? null : reader.GetString(4),
-                    ContainingType: reader.IsDBNull(5) ? null : reader.GetString(5),
-                    FilePath: reader.GetString(6),
-                    StartLine: reader.GetInt32(7),
-                    IsPublicApi: reader.GetInt64(8) != 0));
-            }
-        }
-
-        return results;
-    }
+    public Task<IReadOnlyList<SymbolListItem>> ListSymbolsAsync(int limit, CancellationToken cancellationToken) =>
+        _graph.ListSymbolsAsync(limit, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<SymbolSignature>> GetMembersOfTypeAsync(
-        string typeName, int limit, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(typeName))
-            return [];
-
-        // A member's containing_type and the requested type name may each be simple or fully qualified, and they
-        // need not agree. Match four ways so a request in either form finds a stored value in either form: exact
-        // on the request, exact on the request's simple suffix, and a suffix match ('%.' || simple) against a
-        // stored fully qualified containing_type. A diagnostic message usually carries the fully qualified name.
-        var simple = typeName.Contains('.', StringComparison.Ordinal)
-            ? typeName[(typeName.LastIndexOf('.') + 1)..]
-            : typeName;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT s.name, s.kind, s.fully_qualified_name, s.signature, s.accessibility, s.containing_type,
-                   files.normalized_path, s.start_line, s.is_public_api
-            FROM symbols s
-            JOIN files ON files.file_id = s.file_id
-            WHERE s.containing_type = $full COLLATE NOCASE
-               OR s.containing_type = $simple COLLATE NOCASE
-               OR s.containing_type LIKE '%.' || $simple COLLATE NOCASE
-            ORDER BY s.is_public_api DESC, s.name COLLATE NOCASE
-            LIMIT $limit;
-            """;
-        command.Parameters.AddWithValue("$full", typeName);
-        command.Parameters.AddWithValue("$simple", simple);
-        command.Parameters.AddWithValue("$limit", limit);
-
-        var results = new List<SymbolSignature>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            results.Add(new SymbolSignature(
-                Name: reader.GetString(0),
-                Kind: reader.GetString(1),
-                FullyQualifiedName: reader.GetString(2),
-                Signature: reader.IsDBNull(3) ? null : reader.GetString(3),
-                Accessibility: reader.IsDBNull(4) ? null : reader.GetString(4),
-                ContainingType: reader.IsDBNull(5) ? null : reader.GetString(5),
-                FilePath: reader.GetString(6),
-                StartLine: reader.GetInt32(7),
-                IsPublicApi: reader.GetInt64(8) != 0));
-        }
-
-        return results;
-    }
+    public Task<IReadOnlyList<SymbolListItem>> FindSymbolsByNameAsync(string nameFragment, int limit, CancellationToken cancellationToken) =>
+        _graph.FindSymbolsByNameAsync(nameFragment, limit, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT r.route_id, r.http_method, r.route_pattern, files.normalized_path, r.start_line
-            FROM routes r
-            JOIN files ON files.file_id = r.file_id
-            ORDER BY r.route_pattern COLLATE NOCASE, r.http_method
-            LIMIT $limit;
-            """;
-        command.Parameters.AddWithValue("$limit", limit);
-
-        var items = new List<RouteListItem>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            items.Add(new RouteListItem(
-                RouteId: reader.GetString(0),
-                HttpMethod: reader.GetString(1),
-                RoutePattern: reader.GetString(2),
-                FilePath: reader.GetString(3),
-                StartLine: reader.GetInt32(4)));
-        }
-
-        return items;
-    }
+    public Task<IReadOnlyList<SymbolSignature>> GetSignaturesByNamesAsync(
+        IReadOnlyCollection<string> names, int limitPerName, CancellationToken cancellationToken) =>
+        _graph.GetSignaturesByNamesAsync(names, limitPerName, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<NodeRecord?> GetNodeAsync(string nodeId, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = NodeSelect + " WHERE n.node_id = $id LIMIT 1;";
-        command.Parameters.AddWithValue("$id", nodeId);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        return await reader.ReadAsync(cancellationToken) ? ReadNode(reader) : null;
-    }
+    public Task<IReadOnlyList<SymbolSignature>> GetMembersOfTypeAsync(
+        string typeName, int limit, CancellationToken cancellationToken) =>
+        _graph.GetMembersOfTypeAsync(typeName, limit, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<NodeRecord>> FindNodesByDisplayNameAsync(string displayName, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = NodeSelect + " WHERE n.display_name = $name COLLATE NOCASE;";
-        command.Parameters.AddWithValue("$name", displayName);
-        return await ReadNodesAsync(command, cancellationToken);
-    }
+    public Task<IReadOnlyList<RouteListItem>> ListRoutesAsync(int limit, CancellationToken cancellationToken) =>
+        _graph.ListRoutesAsync(limit, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<NodeRecord>> GetNodesByFileAsync(string normalizedPath, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = NodeSelect + " WHERE files.normalized_path = $p;";
-        command.Parameters.AddWithValue("$p", normalizedPath);
-        return await ReadNodesAsync(command, cancellationToken);
-    }
+    public Task<NodeRecord?> GetNodeAsync(string nodeId, CancellationToken cancellationToken) =>
+        _graph.GetNodeAsync(nodeId, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<SemanticEdgeRecord>> GetAllEdgesAsync(CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT e.from_node_id, e.to_node_id, e.edge_type, e.weight, e.confidence, e.evidence, " +
-            "files.normalized_path, e.evidence_start_line, e.evidence_end_line, e.metadata_json " +
-            "FROM edges e LEFT JOIN files ON files.file_id = e.evidence_file_id;";
+    public Task<IReadOnlyList<NodeRecord>> FindNodesByDisplayNameAsync(string displayName, CancellationToken cancellationToken) =>
+        _graph.FindNodesByDisplayNameAsync(displayName, cancellationToken);
 
-        var edges = new List<SemanticEdgeRecord>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            edges.Add(new SemanticEdgeRecord(
-                FromNodeId: reader.GetString(0),
-                ToNodeId: reader.GetString(1),
-                EdgeType: reader.GetString(2),
-                Weight: reader.GetDouble(3),
-                Confidence: reader.GetDouble(4),
-                Evidence: reader.IsDBNull(5) ? null : reader.GetString(5),
-                EvidenceFilePath: reader.IsDBNull(6) ? null : reader.GetString(6),
-                EvidenceStartLine: reader.IsDBNull(7) ? null : reader.GetInt32(7),
-                EvidenceEndLine: reader.IsDBNull(8) ? null : reader.GetInt32(8),
-                MetadataJson: reader.IsDBNull(9) ? null : reader.GetString(9)));
-        }
+    /// <inheritdoc />
+    public Task<IReadOnlyList<NodeRecord>> GetNodesByFileAsync(string normalizedPath, CancellationToken cancellationToken) =>
+        _graph.GetNodesByFileAsync(normalizedPath, cancellationToken);
 
-        return edges;
-    }
+    /// <inheritdoc />
+    public Task<IReadOnlyList<SemanticEdgeRecord>> GetAllEdgesAsync(CancellationToken cancellationToken) =>
+        _graph.GetAllEdgesAsync(cancellationToken);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<SemanticEdgeRecord>> GetOutgoingEdgesAsync(string nodeId, CancellationToken cancellationToken) =>
-        GetEdgesAsync("from_node_id", nodeId, cancellationToken);
+        _graph.GetOutgoingEdgesAsync(nodeId, cancellationToken);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<SemanticEdgeRecord>> GetIncomingEdgesAsync(string nodeId, CancellationToken cancellationToken) =>
-        GetEdgesAsync("to_node_id", nodeId, cancellationToken);
+        _graph.GetIncomingEdgesAsync(nodeId, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<FileListItem>> FindFilesByPathAsync(string fragment, int limit, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT path, normalized_path, extension, is_test, is_generated FROM files " +
-            "WHERE normalized_path LIKE '%' || $f || '%' COLLATE NOCASE ORDER BY length(normalized_path) LIMIT $limit;";
-        command.Parameters.AddWithValue("$f", fragment);
-        command.Parameters.AddWithValue("$limit", limit);
-
-        var files = new List<FileListItem>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            files.Add(new FileListItem(
-                Path: reader.GetString(0),
-                NormalizedPath: reader.GetString(1),
-                Extension: reader.GetString(2),
-                IsTest: reader.GetInt64(3) != 0,
-                IsGenerated: reader.GetInt64(4) != 0));
-        }
-
-        return files;
-    }
+    public Task<IReadOnlyList<FileListItem>> FindFilesByPathAsync(string fragment, int limit, CancellationToken cancellationToken) =>
+        _graph.FindFilesByPathAsync(fragment, limit, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<int> GetFileTokenEstimateAsync(string normalizedPath, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT COALESCE(SUM(c.reduced_token_estimate), 0) FROM chunks c " +
-            "JOIN files f ON f.file_id = c.file_id WHERE f.normalized_path = $p;";
-        command.Parameters.AddWithValue("$p", normalizedPath);
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        return result is long value ? (int)value : 0;
-    }
+    public Task<int> GetFileTokenEstimateAsync(string normalizedPath, CancellationToken cancellationToken) =>
+        _graph.GetFileTokenEstimateAsync(normalizedPath, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyDictionary<string, int>> GetFileTokenEstimatesAsync(CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT files.normalized_path, COALESCE(SUM(c.reduced_token_estimate), 0) " +
-            "FROM files LEFT JOIN chunks c ON c.file_id = files.file_id GROUP BY files.file_id, files.normalized_path;";
-
-        var estimates = new Dictionary<string, int>(StringComparer.Ordinal);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-            estimates[reader.GetString(0)] = (int)reader.GetInt64(1);
-        return estimates;
-    }
+    public Task<IReadOnlyDictionary<string, int>> GetFileTokenEstimatesAsync(CancellationToken cancellationToken) =>
+        _graph.GetFileTokenEstimatesAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyDictionary<string, string>> GetContentHashesAsync(
-        IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken)
-    {
-        var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        var names = normalizedPaths.Distinct(StringComparer.Ordinal).ToList();
-        if (names.Count == 0)
-            return result;
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        // A parameterized IN list over the (small) candidate set; the caller passes at most the candidate cap.
-        var placeholders = new string[names.Count];
-        for (var i = 0; i < names.Count; i++)
-        {
-            placeholders[i] = "$p" + i;
-            command.Parameters.AddWithValue(placeholders[i], names[i]);
-        }
-
-        command.CommandText =
-            $"SELECT normalized_path, content_hash FROM files WHERE normalized_path IN ({string.Join(',', placeholders)});";
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-            result[reader.GetString(0)] = reader.GetString(1);
-
-        return result;
-    }
+    public Task<IReadOnlyDictionary<string, string>> GetContentHashesAsync(
+        IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken) =>
+        _graph.GetContentHashesAsync(normalizedPaths, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyDictionary<string, string>> GetAllFileHashesAsync(CancellationToken cancellationToken)
-    {
-        var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT normalized_path, content_hash FROM files;";
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-            result[reader.GetString(0)] = reader.GetString(1);
-
-        return result;
-    }
+    public Task<IReadOnlyDictionary<string, string>> GetAllFileHashesAsync(CancellationToken cancellationToken) =>
+        _graph.GetAllFileHashesAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<string>> GetFilesByLanguageAsync(string language, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT normalized_path FROM files WHERE language = $lang ORDER BY normalized_path;";
-        command.Parameters.AddWithValue("$lang", language);
-
-        var paths = new List<string>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-            paths.Add(reader.GetString(0));
-        return paths;
-    }
+    public Task<IReadOnlyList<string>> GetFilesByLanguageAsync(string language, CancellationToken cancellationToken) =>
+        _graph.GetFilesByLanguageAsync(language, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<int> GetRouteCountAsync(CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM routes;";
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        return result is long value ? (int)value : 0;
-    }
+    public Task<int> GetRouteCountAsync(CancellationToken cancellationToken) =>
+        _graph.GetRouteCountAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<LanguageCount>> GetLanguageCountsAsync(CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        // Untagged files (an extension no syntax provider claims) group under 'unknown' rather than vanish.
-        command.CommandText =
-            "SELECT COALESCE(NULLIF(language, ''), 'unknown') AS lang, COUNT(*) AS n FROM files GROUP BY lang ORDER BY n DESC, lang;";
-
-        var counts = new List<LanguageCount>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-            counts.Add(new LanguageCount(reader.GetString(0), (int)reader.GetInt64(1)));
-        return counts;
-    }
+    public Task<IReadOnlyList<LanguageCount>> GetLanguageCountsAsync(CancellationToken cancellationToken) =>
+        _graph.GetLanguageCountsAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<FileDependencyEdge>> GetFileDependencyEdgesAsync(CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        // Resolve each typed edge's endpoints to the files they live in, dropping self-edges (endpoints in the
-        // same file) so the projection is a file-to-file graph.
-        command.CommandText = """
-            SELECT ff.normalized_path, tf.normalized_path, e.edge_type
-            FROM edges e
-            JOIN nodes fn ON fn.node_id = e.from_node_id
-            JOIN nodes tn ON tn.node_id = e.to_node_id
-            JOIN files ff ON ff.file_id = fn.file_id
-            JOIN files tf ON tf.file_id = tn.file_id
-            WHERE fn.file_id IS NOT NULL AND tn.file_id IS NOT NULL AND ff.file_id <> tf.file_id;
-            """;
-
-        var edges = new List<FileDependencyEdge>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-            edges.Add(new FileDependencyEdge(reader.GetString(0), reader.GetString(1), reader.GetString(2)));
-        return edges;
-    }
+    public Task<IReadOnlyList<FileDependencyEdge>> GetFileDependencyEdgesAsync(CancellationToken cancellationToken) =>
+        _graph.GetFileDependencyEdgesAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task UpsertCoChangesAsync(IReadOnlyList<CoChangeRecord> records, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
-
-        // A re-mine is authoritative, so clear the prior table before writing the fresh set.
-        await using (var clear = connection.CreateCommand())
-        {
-            clear.Transaction = transaction;
-            clear.CommandText = "DELETE FROM git_cochange;";
-            await clear.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText =
-            "INSERT OR REPLACE INTO git_cochange(path_a, path_b, count, pmi, jaccard, last_seen_utc) " +
-            "VALUES($a, $b, $count, $pmi, $jaccard, $last);";
-        var aParam = command.Parameters.Add("$a", SqliteType.Text);
-        var bParam = command.Parameters.Add("$b", SqliteType.Text);
-        var countParam = command.Parameters.Add("$count", SqliteType.Integer);
-        var pmiParam = command.Parameters.Add("$pmi", SqliteType.Real);
-        var jaccardParam = command.Parameters.Add("$jaccard", SqliteType.Real);
-        var lastParam = command.Parameters.Add("$last", SqliteType.Text);
-
-        foreach (var record in records)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            aParam.Value = record.PathA;
-            bParam.Value = record.PathB;
-            countParam.Value = record.Count;
-            pmiParam.Value = record.Pmi;
-            jaccardParam.Value = record.Jaccard;
-            lastParam.Value = (object?)record.LastSeenUtc ?? DBNull.Value;
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-    }
+    public Task UpsertCoChangesAsync(IReadOnlyList<CoChangeRecord> records, CancellationToken cancellationToken) =>
+        _graph.UpsertCoChangesAsync(records, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<CoChangeRecord>> GetCoChangesForAsync(
-        IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken)
-    {
-        if (normalizedPaths.Count == 0)
-            return [];
-
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-
-        // A parameterized IN list over the (small) seed set, matching either column of the pair.
-        var names = new List<string>(normalizedPaths.Count);
-        var i = 0;
-        foreach (var path in normalizedPaths)
-        {
-            var name = $"$p{i++}";
-            names.Add(name);
-            command.Parameters.AddWithValue(name, path);
-        }
-
-        var inList = string.Join(", ", names);
-        command.CommandText =
-            $"SELECT path_a, path_b, count, pmi, jaccard, last_seen_utc FROM git_cochange " +
-            $"WHERE path_a IN ({inList}) OR path_b IN ({inList});";
-
-        var results = new List<CoChangeRecord>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            results.Add(new CoChangeRecord(
-                PathA: reader.GetString(0),
-                PathB: reader.GetString(1),
-                Count: reader.GetInt32(2),
-                Pmi: reader.GetDouble(3),
-                Jaccard: reader.GetDouble(4),
-                LastSeenUtc: reader.IsDBNull(5) ? null : reader.GetString(5)));
-        }
-
-        return results;
-    }
+    public Task<IReadOnlyList<CoChangeRecord>> GetCoChangesForAsync(
+        IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken) =>
+        _graph.GetCoChangesForAsync(normalizedPaths, cancellationToken);
 
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _connectionFactory.ClearPool();
         return ValueTask.CompletedTask;
-    }
-
-    private const string NodeSelect =
-        "SELECT n.node_id, n.kind, n.display_name, n.stable_key, files.normalized_path, n.symbol_id, " +
-        "n.start_line, n.end_line, n.signature, n.metadata_json " +
-        "FROM nodes n LEFT JOIN files ON files.file_id = n.file_id";
-
-    private async Task<IReadOnlyList<SemanticEdgeRecord>> GetEdgesAsync(string column, string nodeId, CancellationToken cancellationToken)
-    {
-        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT e.from_node_id, e.to_node_id, e.edge_type, e.weight, e.confidence, e.evidence, " +
-            "files.normalized_path, e.evidence_start_line, e.evidence_end_line, e.metadata_json " +
-            "FROM edges e LEFT JOIN files ON files.file_id = e.evidence_file_id " +
-            $"WHERE e.{column} = $id;";
-        command.Parameters.AddWithValue("$id", nodeId);
-
-        var edges = new List<SemanticEdgeRecord>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            edges.Add(new SemanticEdgeRecord(
-                FromNodeId: reader.GetString(0),
-                ToNodeId: reader.GetString(1),
-                EdgeType: reader.GetString(2),
-                Weight: reader.GetDouble(3),
-                Confidence: reader.GetDouble(4),
-                Evidence: reader.IsDBNull(5) ? null : reader.GetString(5),
-                EvidenceFilePath: reader.IsDBNull(6) ? null : reader.GetString(6),
-                EvidenceStartLine: reader.IsDBNull(7) ? null : reader.GetInt32(7),
-                EvidenceEndLine: reader.IsDBNull(8) ? null : reader.GetInt32(8),
-                MetadataJson: reader.IsDBNull(9) ? null : reader.GetString(9)));
-        }
-
-        return edges;
-    }
-
-    private static async Task<IReadOnlyList<NodeRecord>> ReadNodesAsync(SqliteCommand command, CancellationToken cancellationToken)
-    {
-        var nodes = new List<NodeRecord>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-            nodes.Add(ReadNode(reader));
-        return nodes;
-    }
-
-    private static NodeRecord ReadNode(SqliteDataReader reader) => new(
-        NodeId: reader.GetString(0),
-        Kind: reader.GetString(1),
-        DisplayName: reader.GetString(2),
-        StableKey: reader.GetString(3),
-        FilePath: reader.IsDBNull(4) ? null : reader.GetString(4),
-        SymbolId: reader.IsDBNull(5) ? null : reader.GetString(5),
-        StartLine: reader.IsDBNull(6) ? null : reader.GetInt32(6),
-        EndLine: reader.IsDBNull(7) ? null : reader.GetInt32(7),
-        Signature: reader.IsDBNull(8) ? null : reader.GetString(8),
-        MetadataJson: reader.IsDBNull(9) ? null : reader.GetString(9));
-
-    // Build a safe FTS5 MATCH expression from free text. Each whitespace-separated run of letters/digits
-    // becomes a quoted term (double quotes doubled per FTS5 escaping); terms are OR-ed for recall. Quoting
-    // every term keeps user punctuation from being parsed as FTS5 operators.
-    private static string BuildMatchExpression(string text)
-    {
-        var terms = new List<string>();
-        var current = new StringBuilder();
-        foreach (var ch in text)
-        {
-            if (char.IsLetterOrDigit(ch) || ch == '_')
-            {
-                current.Append(ch);
-            }
-            else if (current.Length > 0)
-            {
-                terms.Add(current.ToString());
-                current.Clear();
-            }
-        }
-
-        if (current.Length > 0)
-            terms.Add(current.ToString());
-
-        // Expand each raw term with its subword parts so a compound query term (or a single prose word) matches
-        // the subtokens column: "ApplyRoundingMode" adds apply, rounding, mode; "rounding" already matches the
-        // subtokens of "ApplyRoundingMode". The raw term is kept so an exact name match still ranks first.
-        var expanded = new List<string>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var term in terms)
-        {
-            if (seen.Add(term))
-                expanded.Add(term);
-            // Subword parts match the subtokens column; the Porter stem of each part matches the stems column,
-            // so an inflected query word (rounds) reaches an inflected indexed word (rounding). The raw term is
-            // kept first so an exact name match still ranks above the subword and stemmed bridges.
-            foreach (var part in IdentifierSplitter.Split(term))
-            {
-                if (seen.Add(part))
-                    expanded.Add(part);
-                var stem = PorterStemmer.Stem(part);
-                if (seen.Add(stem))
-                    expanded.Add(stem);
-            }
-        }
-
-        return string.Join(" OR ", expanded.Select(t => $"\"{t.Replace("\"", "\"\"", StringComparison.Ordinal)}\""));
-    }
-
-    // Derives a stable, bounded edge id from the components of the unique edge index so re-indexing the same
-    // edge replaces the prior row rather than accumulating duplicates.
-    private static string BuildEdgeId(string fromNodeId, string toNodeId, string edgeType, long? evidenceFileId)
-    {
-        var key = $"{fromNodeId}{toNodeId}{edgeType}{evidenceFileId?.ToString() ?? string.Empty}";
-        var hash = XxHash64.HashToUInt64(Encoding.UTF8.GetBytes(key));
-        return "edge:" + hash.ToString("x16");
-    }
-
-    private static async Task<long?> ResolveFileIdAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        string? normalizedPath,
-        Dictionary<string, long?> cache,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(normalizedPath))
-            return null;
-        if (cache.TryGetValue(normalizedPath, out var cached))
-            return cached;
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "SELECT file_id FROM files WHERE normalized_path = $p LIMIT 1;";
-        command.Parameters.AddWithValue("$p", normalizedPath);
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        var id = result is long value ? value : (long?)null;
-        cache[normalizedPath] = id;
-        return id;
-    }
-
-    private static async Task<long?> ResolveProjectIdAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        string? projectPath,
-        Dictionary<string, long?> cache,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(projectPath))
-            return null;
-        if (cache.TryGetValue(projectPath, out var cached))
-            return cached;
-
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "SELECT project_id FROM projects WHERE path = $p LIMIT 1;";
-        command.Parameters.AddWithValue("$p", projectPath);
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        var id = result is long value ? value : (long?)null;
-        cache[projectPath] = id;
-        return id;
-    }
-
-    private static async Task ApplyDatabasePragmasAsync(SqliteConnection connection, CancellationToken cancellationToken)
-    {
-        await using var command = connection.CreateCommand();
-        command.CommandText = WorkspaceIndexSchema.CreatePragmas;
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    private static async Task<int> ReadVersionAsync(SqliteConnection connection, CancellationToken cancellationToken)
-    {
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1;";
-        try
-        {
-            var result = await command.ExecuteScalarAsync(cancellationToken);
-            return result is long version ? (int)version : 0;
-        }
-        catch (SqliteException)
-        {
-            // No schema_version table yet: the store has never been initialized.
-            return 0;
-        }
-    }
-
-    private static async Task<int> CountAsync(SqliteConnection connection, string table, CancellationToken cancellationToken)
-    {
-        await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT count(*) FROM {table};";
-        try
-        {
-            var result = await command.ExecuteScalarAsync(cancellationToken);
-            return result is long count ? (int)count : 0;
-        }
-        catch (SqliteException)
-        {
-            return 0;
-        }
     }
 }

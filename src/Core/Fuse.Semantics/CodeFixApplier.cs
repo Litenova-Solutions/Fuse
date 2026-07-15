@@ -5,7 +5,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.MSBuild;
 
 namespace Fuse.Semantics;
 
@@ -26,6 +25,17 @@ public sealed class CodeFixApplier
 {
     private const int MaxFixes = 100;
     private static readonly object LocatorGate = new();
+
+    private readonly WarmSolutionCache _cache;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CodeFixApplier" /> class.
+    /// </summary>
+    /// <param name="cache">
+    ///     The warm-solution cache (R42) the fix loads through; defaults to the process-wide
+    ///     <see cref="WarmSolutionCache.Shared" />.
+    /// </param>
+    public CodeFixApplier(WarmSolutionCache? cache = null) => _cache = cache ?? WarmSolutionCache.Shared;
 
     /// <summary>
     ///     Loads the workspace, discovers the analyzers and code fix providers the project's analyzer references
@@ -51,25 +61,20 @@ public sealed class CodeFixApplier
             }
         }
 
-        using var workspace = MSBuildWorkspace.Create();
-        var loadFailed = false;
-        workspace.WorkspaceFailed += (_, _) => loadFailed = true;
-        Solution solution;
+        CachedSolution loaded;
         try
         {
-            solution = solutionOrProjectPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)
-                       || solutionOrProjectPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
-                ? await workspace.OpenSolutionAsync(solutionOrProjectPath, cancellationToken: cancellationToken)
-                : (await workspace.OpenProjectAsync(solutionOrProjectPath, cancellationToken: cancellationToken)).Solution;
+            loaded = await _cache.OpenAsync(solutionOrProjectPath, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return CodeFixResult.Abstain($"could not load the workspace: {ex.Message}");
         }
 
-        if (loadFailed)
-            return CodeFixResult.Abstain("the workspace did not load cleanly; refused");
+        if (loaded.LoadFailures.Count > 0)
+            return CodeFixResult.Abstain($"the workspace did not load cleanly; refused. First load failure: {loaded.LoadFailures[0]}");
 
+        var solution = loaded.Solution;
         var normalized = file.Replace('\\', '/');
         var document = solution.Projects
             .SelectMany(p => p.Documents)

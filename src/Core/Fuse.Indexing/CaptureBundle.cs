@@ -44,9 +44,11 @@ public sealed record CaptureManifest(
     /// <summary>
     ///     The current bundle layout version. Version 2 (G4) added an additive <c>fragments/</c> folder of
     ///     per-project compiler logs beside the version-1 single <c>capture.complog</c>; a version-2 reader still
-    ///     reads a version-1 bundle, so a bundle is refused only when its version is NEWER than this.
+    ///     reads a version-1 bundle. Version 3 (R60) adds target-framework information to the captured graph so a
+    ///     consumer can build the canonical multi-target union. Version 4 adds cross-project <c>tests</c> edges to
+    ///     the captured graph, so older bundles must be re-captured rather than silently omitting coverage.
     /// </summary>
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 4;
 
     /// <summary>The manifest file name inside a bundle directory.</summary>
     public const string ManifestFileName = "manifest.json";
@@ -61,15 +63,15 @@ public sealed record CaptureManifest(
     public const string GraphFileName = "graph.json";
 
     /// <summary>
-    ///     Whether this bundle can be rehydrated by the running Fuse build: the bundle layout is one this build
-    ///     understands (its version is at most <see cref="CurrentFormatVersion" /> - newer, unknown layouts are
-    ///     refused; older layouts are read, since the format is backward-compatible) and the producing Fuse
-    ///     version is compatible by <c>major.minor</c> (<see cref="FuseBuildInfo.IsCompatible" />), so the
-    ///     extraction contract has not changed under it.
+    ///     Whether this bundle can be rehydrated by the running Fuse build: its layout must exactly match the
+    ///     current graph contract, because R60 needs target-framework availability and coverage edges from every
+    ///     captured project.
+    ///     The producing Fuse version must also be compatible by <c>major.minor</c>
+    ///     (<see cref="FuseBuildInfo.IsCompatible" />), so the extraction contract has not changed under it.
     /// </summary>
     [JsonIgnore]
     public bool IsCompatibleWithRunningBuild =>
-        BundleFormatVersion <= CurrentFormatVersion && FuseBuildInfo.IsCompatible(FuseVersion);
+        BundleFormatVersion == CurrentFormatVersion && FuseBuildInfo.IsCompatible(FuseVersion);
 
     /// <summary>
     ///     The actionable reason a bundle is incompatible with the running build, or null when it is compatible.
@@ -81,6 +83,8 @@ public sealed record CaptureManifest(
         {
             if (BundleFormatVersion > CurrentFormatVersion)
                 return $"bundle format version {BundleFormatVersion} is newer than this Fuse understands (supports up to {CurrentFormatVersion}); upgrade Fuse or re-capture with this version.";
+            if (BundleFormatVersion < CurrentFormatVersion)
+                return $"bundle format version {BundleFormatVersion} lacks the current captured graph layout (requires {CurrentFormatVersion}); re-capture with the running version.";
             if (!FuseBuildInfo.IsCompatible(FuseVersion))
                 return $"bundle was produced by Fuse {FuseVersion}, incompatible with the running {FuseBuildInfo.Current} (major.minor differs); re-capture with the running version.";
             return null;

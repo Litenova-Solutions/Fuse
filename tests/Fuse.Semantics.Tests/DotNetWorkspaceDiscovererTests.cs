@@ -50,17 +50,65 @@ public sealed class DotNetWorkspaceDiscovererTests : IDisposable
     }
 
     [Fact]
-    public async Task FallsBackToProjectsWhenMultipleSolutions()
+    public async Task MultipleRootSolutions_PicksByNameOrder_WithNote()
     {
-        Write("A.sln", "");
-        Write("B.sln", "");
+        // R24: several distinct root-level solutions are resolved by a documented rule (name order) and the choice
+        // is surfaced, rather than silently dropping to projects mode.
+        Write("A.sln", "aaa");
+        Write("B.sln", "bbb");
+        Write("src/App/App.csproj", "<Project/>");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.EndsWith("A.sln", result.SolutionPath);
+        Assert.NotNull(result.SelectionNote);
+        Assert.Contains("multiple root-level solutions", result.SelectionNote, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PrefersRootSolutionOverNestedFixtureSolution()
+    {
+        // R24 reproduction: the Fuse repo has a root Fuse.slnx and a nested tests/.../SampleShop.sln; discovery
+        // must bind the root solution, not the fixture one.
+        Write("Repo.slnx", "root");
+        Write("tests/Fixture/Sample.sln", "fixture");
+        Write("src/App/App.csproj", "<Project/>");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.EndsWith("Repo.slnx", result.SolutionPath);
+        Assert.Null(result.SelectionNote); // an unambiguous root solution needs no warning.
+    }
+
+    [Fact]
+    public async Task FuseJsonSolutionOverride_PinsTarget()
+    {
+        Write("App.sln", "app");
+        Write("Custom.sln", "custom");
+        Write("fuse.json", "{ \"solution\": \"Custom.sln\" }");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.EndsWith("Custom.sln", result.SolutionPath);
+        Assert.Contains("pinned by fuse.json", result.SelectionNote!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AllSolutionsUnderFixtureDirs_LoadsNonFixtureProjectsInstead()
+    {
+        // R24: never silently load a fixture solution as the repo's semantic tier when the repo has real projects.
+        Write("tests/Fixture/Sample.sln", "fixture");
         Write("src/App/App.csproj", "<Project/>");
 
         var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
 
         Assert.Equal(WorkspaceKind.Projects, result.Kind);
         Assert.Null(result.SolutionPath);
-        Assert.Single(result.ProjectPaths);
+        Assert.Contains(result.ProjectPaths, p => p.Contains("App.csproj", StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(result.SelectionNote);
     }
 
     [Fact]
@@ -138,6 +186,52 @@ public sealed class DotNetWorkspaceDiscovererTests : IDisposable
 
         Assert.Equal(WorkspaceKind.Solution, result.Kind);
         Assert.NotNull(result.SolutionPath);
+    }
+
+    [Fact]
+    public async Task PrefersProductSolutionOverBuildToolingSolution()
+    {
+        // Reproduces the NodaTime case: a build/ tooling solution sorts alphabetically before the src/ product
+        // solution ("build" < "src"), but the product solution must win. Distinct non-empty content so neither is
+        // collapsed as a copy.
+        Write("build/Tools.slnx", "<Solution>tools</Solution>");
+        Write("src/NodaTime.slnx", "<Solution>product</Solution>");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.EndsWith("NodaTime.slnx", result.SolutionPath);
+        Assert.Null(result.SelectionNote); // A single product solution is unambiguous; the tooling one is silently deprioritized.
+    }
+
+    [Fact]
+    public async Task DeprioritizesEngAndScriptsAndToolsDirectories()
+    {
+        Write("eng/Eng.slnx", "<Solution>eng</Solution>");
+        Write("scripts/Scripts.slnx", "<Solution>scripts</Solution>");
+        Write("tools/Tools.slnx", "<Solution>tools</Solution>");
+        Write("App.slnx", "<Solution>app</Solution>"); // root product solution
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Solution, result.Kind);
+        Assert.EndsWith("App.slnx", result.SolutionPath);
+    }
+
+    [Fact]
+    public async Task BuildOnlySolutionLoadsProductProjectsInstead()
+    {
+        // Only a build/ tooling solution exists, but the repo has product projects under src/: load those projects
+        // rather than binding the tooling solution as the repo's semantic tier.
+        Write("build/Tools.slnx", "<Solution>tools</Solution>");
+        Write("src/App/App.csproj", "<Project/>");
+
+        var result = await _discoverer.DiscoverAsync(_root, CancellationToken.None);
+
+        Assert.Equal(WorkspaceKind.Projects, result.Kind);
+        Assert.Contains(result.ProjectPaths, p => p.EndsWith("App.csproj"));
+        Assert.NotNull(result.SelectionNote);
+        Assert.Contains("build/tooling", result.SelectionNote!);
     }
 
     private void Write(string relativePath, string content)

@@ -8,7 +8,7 @@ using Fuse.Plugins.Languages.CSharp.Roslyn;
 using Fuse.Reduction;
 using Fuse.Reduction.Security;
 using Fuse.Reduction.Tokenization;
-using Fuse.Retrieval;
+using Fuse.Scoping;
 using Xunit;
 
 namespace Fuse.Context.Tests;

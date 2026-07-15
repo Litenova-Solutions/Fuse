@@ -2,6 +2,9 @@ using Fuse.Cli.Configuration;
 
 namespace Fuse.Cli.Tests;
 
+// Shares the ConsoleCapture collection with FuseHostClientVerboseTests: both redirect the process-global
+// Console.Out/Error, and parallel redirects corrupt each other's save/restore chain.
+[Collection("ConsoleCapture")]
 public sealed class FuseConfigTests
 {
     [Fact]

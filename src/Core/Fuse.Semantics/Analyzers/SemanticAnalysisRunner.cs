@@ -22,28 +22,10 @@ public sealed class SemanticAnalysisRunner
     public SemanticAnalysisRunner(IEnumerable<ISemanticAnalyzer> analyzers) => _analyzers = analyzers.ToList();
 
     /// <summary>
-    ///     Creates a runner wired with the default analyzer set (interface, DI, constructor injection, MediatR,
-    ///     route, options, hosted services, pipeline behaviors, EF Core).
+    ///     Creates a runner wired with the default C# semantic provider's analyzers.
     /// </summary>
-    /// <returns>A runner with the standard analyzers.</returns>
-    public static SemanticAnalysisRunner CreateDefault()
-    {
-        var di = new DiRegistrationAnalyzer();
-        return new SemanticAnalysisRunner(
-        [
-            new InterfaceImplementationAnalyzer(),
-            di,
-            new ConstructorInjectionAnalyzer(di),
-            new MediatRAnalyzer(),
-            new AspNetRouteAnalyzer(),
-            new OptionsBindingAnalyzer(),
-            new HostedServiceAnalyzer(),
-            new PipelineBehaviorAnalyzer(),
-            new EfCoreAnalyzer(),
-            new EndpointAnalyzer(),
-            new ReferenceEdgeAnalyzer(),
-        ]);
-    }
+    /// <returns>A runner with the standard C# analyzers.</returns>
+    public static SemanticAnalysisRunner CreateDefault() => new CSharpSemanticLanguageProvider().CreateRunner();
 
     /// <summary>
     ///     Runs every analyzer and merges their output.

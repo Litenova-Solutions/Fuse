@@ -133,7 +133,6 @@ public sealed class MultiLanguageSeamTests
     {
         try
         {
-            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
             if (Directory.Exists(root))
                 Directory.Delete(root, recursive: true);
         }

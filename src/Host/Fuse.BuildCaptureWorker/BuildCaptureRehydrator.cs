@@ -21,9 +21,10 @@ public sealed class BuildCaptureRehydrator
     /// <param name="buildTarget">The absolute path to the solution or project to build.</param>
     /// <param name="buildTimeout">The maximum time to allow the build to run.</param>
     /// <param name="cancellationToken">A token to cancel the capture.</param>
+    /// <param name="workspaceRoot">The workspace root used to make captured source paths relative.</param>
     /// <returns>The capture result: the achieved outcome plus one entry per rehydrated C# compilation.</returns>
     public async Task<CaptureResult> CaptureAsync(
-        string buildTarget, TimeSpan buildTimeout, CancellationToken cancellationToken)
+        string buildTarget, TimeSpan buildTimeout, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         var binlogPath = Path.Combine(Path.GetTempPath(), $"fuse-capture-{Guid.NewGuid():N}.binlog");
         try
@@ -34,7 +35,7 @@ public sealed class BuildCaptureRehydrator
             if (exitCode != 0 || !File.Exists(binlogPath))
                 return CaptureResult.Failed(firstError is null ? $"build failed (exit {exitCode})" : $"build failed ({firstError})");
 
-            return RehydrateFromBinlog(binlogPath, cancellationToken);
+            return RehydrateFromBinlog(binlogPath, workspaceRoot, cancellationToken);
         }
         finally
         {
@@ -53,9 +54,10 @@ public sealed class BuildCaptureRehydrator
     /// <param name="complogPath">The absolute path to write the portable compiler log to.</param>
     /// <param name="buildTimeout">The maximum time to allow the build to run.</param>
     /// <param name="cancellationToken">A token to cancel the capture.</param>
+    /// <param name="workspaceRoot">The workspace root used to make captured source paths relative.</param>
     /// <returns>The capture result (the extracted graph) on success, or a concrete failure; the complog is at <paramref name="complogPath" /> on success.</returns>
     public async Task<CaptureResult> ExportCompilerLogAsync(
-        string buildTarget, string complogPath, TimeSpan buildTimeout, CancellationToken cancellationToken)
+        string buildTarget, string complogPath, TimeSpan buildTimeout, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         var binlogPath = Path.Combine(Path.GetTempPath(), $"fuse-capture-{Guid.NewGuid():N}.binlog");
         try
@@ -97,7 +99,7 @@ public sealed class BuildCaptureRehydrator
             }
 
             // Rehydrate the graph from the binlog too, so the bundle carries the extracted graph next to the complog.
-            return RehydrateFromBinlog(binlogPath, cancellationToken);
+            return RehydrateFromBinlog(binlogPath, workspaceRoot, cancellationToken);
         }
         finally
         {
@@ -149,15 +151,101 @@ public sealed class BuildCaptureRehydrator
     public CheckResult CheckFromLog(
         string logPath, string relativeFilePath, string newContent, CancellationToken cancellationToken)
     {
-        using var reader = CompilerCallReaderUtil.Create(logPath);
+        using var held = RehydrateHeld(logPath, cancellationToken);
+        return CheckHeld(held, relativeFilePath, newContent, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Rehydrates and holds the C# compilations recorded in a compiler log (R48), so a long-lived worker can
+    ///     answer many <see cref="CheckHeld" /> requests against them without re-rehydrating per check. The reader
+    ///     is kept alive for the returned handle's lifetime because a rehydrated compilation resolves some inputs
+    ///     lazily through it; <see cref="HeldComplog.Dispose" /> releases the reader.
+    /// </summary>
+    /// <param name="logPath">The path to the portable compiler log (or binary log) to rehydrate.</param>
+    /// <param name="cancellationToken">A token to cancel the rehydration.</param>
+    /// <returns>The held compilations, disposable.</returns>
+    public HeldComplog RehydrateHeld(string logPath, CancellationToken cancellationToken)
+    {
+        var reader = CompilerCallReaderUtil.Create(logPath);
+        var compilations = new List<Compilation>();
+        try
+        {
+            foreach (var data in reader.ReadAllCompilationData())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (data.CompilerCall.IsCSharp != true)
+                    continue;
+                compilations.Add(NormalizeSigning(data.GetCompilationAfterGenerators(cancellationToken), data.CompilerCall.ProjectFilePath));
+            }
+        }
+        catch
+        {
+            reader.Dispose();
+            throw;
+        }
+
+        return new HeldComplog(reader, compilations);
+    }
+
+    /// <summary>
+    ///     Opens a compiler log for lazy pooled checks (R53). Compiler-call source metadata is read up front, but
+    ///     the costly Roslyn compilation is deferred until a request names a source file that call owns.
+    /// </summary>
+    public LazyHeldComplog RehydrateLazyHeld(string logPath, CancellationToken cancellationToken)
+    {
+        var reader = CompilerCallReaderUtil.Create(logPath);
+        try
+        {
+            var calls = reader.ReadAllCompilationData()
+                .Where(static data => data.CompilerCall.IsCSharp == true)
+                .ToList();
+            var sourcePaths = calls
+                .Select(data => reader.ReadAllSourceTextData(data.CompilerCall)
+                    .Select(source => source.FilePath.Replace('\\', '/'))
+                    .ToList())
+                .ToList();
+            return new LazyHeldComplog(reader, calls, sourcePaths);
+        }
+        catch
+        {
+            reader.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    ///     Speculatively typechecks a proposed single-file patch against already-held compilations (R48): the exact
+    ///     same fork-and-diagnostics as <see cref="CheckFromLog" />, over the held compilations rather than a fresh
+    ///     rehydration, so a pooled worker's verdict is identical to the spawn-per-call verdict.
+    /// </summary>
+    /// <param name="held">The held compilations from <see cref="RehydrateHeld" />.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>The diagnostics for the changed document, or an abstention when the file is not in the log.</returns>
+    public CheckResult CheckHeld(
+        HeldComplog held, string relativeFilePath, string newContent, CancellationToken cancellationToken)
+        => CheckCompilations(held.Compilations, relativeFilePath, newContent, cancellationToken);
+
+    /// <summary>
+    ///     Typechecks a single-file overlay through a lazy held compiler log. Every captured compiler invocation
+    ///     containing the file is rehydrated on first touch, preserving the original log order and the same
+    ///     fork-and-diagnostics behavior as <see cref="CheckHeld"/>.
+    /// </summary>
+    public CheckResult CheckLazyHeld(
+        LazyHeldComplog held, string relativeFilePath, string newContent, CancellationToken cancellationToken)
+    {
+        var compilations = held.GetCompilationsFor(relativeFilePath, NormalizeSigning, cancellationToken);
+        return CheckCompilations(compilations, relativeFilePath, newContent, cancellationToken);
+    }
+
+    private static CheckResult CheckCompilations(
+        IReadOnlyList<Compilation> compilations, string relativeFilePath, string newContent, CancellationToken cancellationToken)
+    {
         var normalized = relativeFilePath.Replace('\\', '/');
-        foreach (var data in reader.ReadAllCompilationData())
+        foreach (var compilation in compilations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (data.CompilerCall.IsCSharp != true)
-                continue;
-
-            var compilation = NormalizeSigning(data.GetCompilationAfterGenerators(cancellationToken), data.CompilerCall.ProjectFilePath);
             var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
                 t.FilePath.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
             if (tree is null)
@@ -247,8 +335,9 @@ public sealed class BuildCaptureRehydrator
     /// <param name="fragmentsDir">The directory holding per-project fragment binary logs (<c>*.binlog</c>).</param>
     /// <param name="complogOutDir">The directory to write the per-project portable compiler logs to.</param>
     /// <param name="cancellationToken">A token to cancel the merge.</param>
+    /// <param name="workspaceRoot">The workspace root used to make captured source paths relative.</param>
     /// <returns>The merged graph, or a failure when no fragment recorded a C# compilation or a secret was found.</returns>
-    public CaptureResult MergeFragmentsToBundle(string fragmentsDir, string complogOutDir, CancellationToken cancellationToken)
+    public CaptureResult MergeFragmentsToBundle(string fragmentsDir, string complogOutDir, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
         if (!Directory.Exists(fragmentsDir))
             return CaptureResult.Failed($"fragments directory not found: {fragmentsDir}");
@@ -293,35 +382,35 @@ public sealed class BuildCaptureRehydrator
         if (written.Count == 0)
             return CaptureResult.Failed("no fragment recorded a C# compilation");
 
-        return MergeFragments(binlogs, cancellationToken);
+        return MergeFragments(binlogs, cancellationToken, workspaceRoot);
     }
 
     /// <summary>
     ///     Merges per-project capture fragments (G4): rehydrates each fragment log and unions the resulting
     ///     projects into one capture result, so a bundle assembled from fragments carries the same extracted graph
     ///     as a direct whole-solution capture. Each fragment is a per-project binary (or compiler) log; a fragment
-    ///     that records no C# compilation contributes nothing. The union is deduplicated by
-    ///     <see cref="CapturedProject.FilePath" /> then project name, so a fragment that a dependency build caused
-    ///     to also record a referenced project does not double-count it.
+    ///     that records no C# compilation contributes nothing. The union is deduplicated by project path (or name)
+    ///     and target framework, so a fragment that a dependency build caused to also record a referenced project
+    ///     does not double-count it while a multi-target project keeps every target's facts.
     /// </summary>
     /// <param name="fragmentLogPaths">The per-project fragment log paths (binary or compiler logs).</param>
     /// <param name="cancellationToken">A token to cancel the merge.</param>
+    /// <param name="workspaceRoot">The workspace root used to make captured source paths relative.</param>
     /// <returns>The unioned capture result, or a failure when no fragment recorded a C# compilation.</returns>
-    public CaptureResult MergeFragments(IReadOnlyList<string> fragmentLogPaths, CancellationToken cancellationToken)
+    public CaptureResult MergeFragments(IReadOnlyList<string> fragmentLogPaths, CancellationToken cancellationToken, string? workspaceRoot = null)
     {
-        var merged = new List<CapturedProject>();
+        var merged = new List<RehydratedProject>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var fragment in fragmentLogPaths)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!File.Exists(fragment))
                 continue;
-            var result = RehydrateFromBinlog(fragment, cancellationToken);
-            if (!result.Succeeded)
-                continue;
-            foreach (var project in result.Projects)
+            foreach (var project in RehydrateProjects(fragment, workspaceRoot, cancellationToken))
             {
-                var key = string.IsNullOrEmpty(project.FilePath) ? project.Name : project.FilePath;
+                // Keep one compiler invocation per project and target framework. A project can legitimately appear
+                // once for each target, and the canonical union downstream needs all of those facts.
+                var key = $"{(string.IsNullOrEmpty(project.Project.FilePath) ? project.Project.Name : project.Project.FilePath)}\u001f{project.Project.TargetFramework}";
                 if (seen.Add(key))
                     merged.Add(project);
             }
@@ -329,7 +418,7 @@ public sealed class BuildCaptureRehydrator
 
         return merged.Count == 0
             ? CaptureResult.Failed("no capture fragment recorded a C# compilation")
-            : CaptureResult.Ok(merged);
+            : CaptureResult.Ok(ProjectCoveringTestEdges(merged, workspaceRoot, cancellationToken));
     }
 
     /// <summary>
@@ -340,11 +429,36 @@ public sealed class BuildCaptureRehydrator
     /// <param name="cancellationToken">A token to cancel the read.</param>
     /// <returns>The capture result with one entry per rehydrated C# compilation.</returns>
     public CaptureResult RehydrateFromBinlog(string binlogPath, CancellationToken cancellationToken)
+        => RehydrateFromBinlog(binlogPath, workspaceRoot: null, cancellationToken);
+
+    /// <summary>
+    ///     Rehydrates every C# compilation in the binary log and extracts the symbol and wiring graph, keying file
+    ///     paths relative to <paramref name="workspaceRoot" /> so they match the consumer's root-relative file rows.
+    /// </summary>
+    /// <param name="binlogPath">The path to the binary log.</param>
+    /// <param name="workspaceRoot">
+    ///     The workspace root the consumer indexes against. Symbol, node, route, DI, and options file paths are made
+    ///     relative to it, so they resolve against the root-relative <c>files.normalized_path</c> the store links
+    ///     foreign keys against. When null or empty, falls back to each project's directory (the legacy basis, which
+    ///     only matched when the project sat at the workspace root).
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The capture result with one entry per rehydrated C# compilation.</returns>
+    public CaptureResult RehydrateFromBinlog(string binlogPath, string? workspaceRoot, CancellationToken cancellationToken)
+    {
+        var projects = RehydrateProjects(binlogPath, workspaceRoot, cancellationToken);
+        return projects.Count == 0
+            ? CaptureResult.Failed("the build log recorded no C# compiler invocations")
+            : CaptureResult.Ok(ProjectCoveringTestEdges(projects, workspaceRoot, cancellationToken));
+    }
+
+    private static List<RehydratedProject> RehydrateProjects(
+        string binlogPath, string? workspaceRoot, CancellationToken cancellationToken)
     {
         using var reader = CompilerCallReaderUtil.Create(binlogPath);
         var symbolExtractor = new SemanticSymbolExtractor();
         var analyzers = SemanticAnalysisRunner.CreateDefault();
-        var projects = new List<CapturedProject>();
+        var projects = new List<RehydratedProject>();
         foreach (var data in reader.ReadAllCompilationData())
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -360,15 +474,20 @@ public sealed class BuildCaptureRehydrator
             // Run Fuse's semantic extraction over the rehydrated compilation (never MSBuildWorkspace), the crux of
             // tier-1: the worker produces the same symbol and wiring-graph data the in-process semantic pass does.
             var projectDir = Path.GetDirectoryName(call.ProjectFilePath) ?? Directory.GetCurrentDirectory();
+            // Normalize file paths against the workspace root (not the project directory) so symbol and node rows
+            // match the root-relative files.normalized_path the store links foreign keys against. Falling back to the
+            // project directory reproduces the pre-fix basis, which only matched when a project sat at the root; on a
+            // nested layout it produced project-relative paths that never resolved, dropping every symbol.
+            var normalizeRoot = string.IsNullOrEmpty(workspaceRoot) ? projectDir : workspaceRoot;
             var loaded = new LoadedProject(
                 Name: Path.GetFileNameWithoutExtension(call.ProjectFilePath) ?? call.ProjectFileName ?? "project",
                 FilePath: call.ProjectFilePath ?? "",
                 AssemblyName: compilation.AssemblyName,
                 Compilation: compilation);
-            var symbols = symbolExtractor.Extract(loaded, projectDir, cancellationToken);
-            var graph = analyzers.Run(new SemanticAnalysisContext(loaded, projectDir), cancellationToken);
+            var symbols = symbolExtractor.Extract(loaded, normalizeRoot, cancellationToken);
+            var graph = analyzers.Run(new SemanticAnalysisContext(loaded, normalizeRoot), cancellationToken);
 
-            projects.Add(new CapturedProject(
+            projects.Add(new RehydratedProject(new CapturedProject(
                 Name: loaded.Name,
                 FilePath: loaded.FilePath,
                 AssemblyName: compilation.AssemblyName,
@@ -382,13 +501,105 @@ public sealed class BuildCaptureRehydrator
                 Edges: graph.Edges,
                 Routes: graph.Routes,
                 DiRegistrations: graph.DiRegistrations,
-                OptionsBindings: graph.OptionsBindings));
+                OptionsBindings: graph.OptionsBindings,
+                TargetFramework: call.TargetFramework),
+                loaded));
         }
 
-        return projects.Count == 0
-            ? CaptureResult.Failed("the build log recorded no C# compiler invocations")
-            : CaptureResult.Ok(projects);
+        return projects;
     }
+
+    // TestEdgeExtractor deliberately runs after every project's wiring graph exists, because test code commonly
+    // references production types from a different project. The normal workspace path does this in
+    // SemanticIndexer.RunAnalyzers; build capture must do the equivalent projection before serializing its graph.
+    // Keep target frameworks separate so CanonicalTfmUnion can record the edge availability correctly.
+    private static IReadOnlyList<CapturedProject> ProjectCoveringTestEdges(
+        IReadOnlyList<RehydratedProject> captures, string? workspaceRoot, CancellationToken cancellationToken)
+    {
+        var projected = captures.Select(c => c.Project).ToList();
+        foreach (var targetGroup in captures
+            .Select((capture, index) => (Capture: capture, Index: index))
+            .GroupBy(x => x.Capture.Project.TargetFramework ?? string.Empty, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var members = targetGroup.ToList();
+            var nodesById = new Dictionary<string, int>(StringComparer.Ordinal);
+            var existingNodeIds = new HashSet<string>(StringComparer.Ordinal);
+            var allEdges = new List<SemanticEdgeRecord>();
+            foreach (var member in members)
+            {
+                foreach (var node in projected[member.Index].Nodes ?? [])
+                {
+                    existingNodeIds.Add(node.NodeId);
+                    nodesById.TryAdd(node.NodeId, member.Index);
+                }
+
+                allEdges.AddRange(projected[member.Index].Edges ?? []);
+            }
+
+            var diResolvesTo = allEdges
+                .Where(edge => edge.EdgeType == "di_resolves_to")
+                .GroupBy(edge => edge.FromNodeId, StringComparer.Ordinal)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyList<string>)group.Select(edge => edge.ToNodeId).Distinct(StringComparer.Ordinal).ToList(),
+                    StringComparer.Ordinal);
+            var root = !string.IsNullOrEmpty(workspaceRoot)
+                ? workspaceRoot
+                : Path.GetDirectoryName(members[0].Capture.Project.FilePath) ?? Directory.GetCurrentDirectory();
+            var (testNodes, testEdges) = new TestEdgeExtractor().Extract(
+                members.Select(member => member.Capture.Loaded).ToList(),
+                existingNodeIds,
+                diResolvesTo,
+                root,
+                cancellationToken);
+
+            var nodesToAdd = new Dictionary<int, List<NodeRecord>>();
+            foreach (var node in testNodes)
+            {
+                if (nodesById.TryGetValue(node.NodeId, out var owner))
+                    (nodesToAdd.TryGetValue(owner, out var list) ? list : nodesToAdd[owner] = []).Add(node);
+            }
+
+            var edgesToAdd = new Dictionary<int, List<SemanticEdgeRecord>>();
+            foreach (var edge in testEdges)
+            {
+                if (nodesById.TryGetValue(edge.FromNodeId, out var owner))
+                    (edgesToAdd.TryGetValue(owner, out var list) ? list : edgesToAdd[owner] = []).Add(edge);
+            }
+
+            foreach (var member in members)
+            {
+                var hasNodes = nodesToAdd.TryGetValue(member.Index, out var memberNodes);
+                var hasEdges = edgesToAdd.TryGetValue(member.Index, out var memberEdges);
+                if (!hasNodes && !hasEdges)
+                    continue;
+
+                var nodes = (projected[member.Index].Nodes ?? [])
+                    .Concat(memberNodes ?? [])
+                    .GroupBy(node => node.NodeId, StringComparer.Ordinal)
+                    .Select(group => group.First())
+                    .ToList();
+                var edges = (projected[member.Index].Edges ?? [])
+                    .Concat(memberEdges ?? [])
+                    .GroupBy(edge => (edge.FromNodeId, edge.ToNodeId, edge.EdgeType, edge.EvidenceFilePath), EqualityComparer<(string, string, string, string?)>.Default)
+                    .Select(group => group.First())
+                    .ToList();
+                projected[member.Index] = projected[member.Index] with
+                {
+                    Nodes = nodes,
+                    NodeCount = nodes.Count,
+                    Edges = edges,
+                    EdgeCount = edges.Count,
+                };
+            }
+        }
+
+        return projected;
+    }
+
+    private sealed record RehydratedProject(CapturedProject Project, LoadedProject Loaded);
 
     private static int CountTypes(INamespaceSymbol ns)
     {
@@ -455,4 +666,78 @@ public sealed class BuildCaptureRehydrator
         {
         }
     }
+}
+
+/// <summary>
+///     A set of rehydrated C# compilations held live for the lifetime of a pooled build-capture check worker
+///     (R48), so many speculative checks reuse one rehydration instead of re-reading the compiler log per check.
+///     Holds the underlying compiler-log reader alive because a rehydrated compilation resolves some inputs lazily
+///     through it; <see cref="Dispose" /> releases both.
+/// </summary>
+public sealed class HeldComplog : IDisposable
+{
+    private readonly ICompilerCallReader _reader;
+
+    internal HeldComplog(ICompilerCallReader reader, IReadOnlyList<Compilation> compilations)
+    {
+        _reader = reader;
+        Compilations = compilations;
+    }
+
+    /// <summary>The rehydrated C# compilations, one per recorded C# compiler invocation in the log.</summary>
+    public IReadOnlyList<Compilation> Compilations { get; }
+
+    /// <summary>Releases the held compilations' underlying compiler-log reader.</summary>
+    public void Dispose() => _reader.Dispose();
+}
+
+/// <summary>
+///     A compiler log held for lazy pooled checks (R53). Source ownership is available before compilation
+///     rehydration; each matching C# project is materialized once on demand and stays cached for later requests.
+/// </summary>
+public sealed class LazyHeldComplog : IDisposable
+{
+    private readonly ICompilerCallReader _reader;
+    private readonly IReadOnlyList<CompilationData> _calls;
+    private readonly IReadOnlyList<IReadOnlyList<string>> _sourcePaths;
+    private readonly Compilation?[] _compilations;
+
+    internal LazyHeldComplog(
+        ICompilerCallReader reader,
+        IReadOnlyList<CompilationData> calls,
+        IReadOnlyList<IReadOnlyList<string>> sourcePaths)
+    {
+        _reader = reader;
+        _calls = calls;
+        _sourcePaths = sourcePaths;
+        _compilations = new Compilation[calls.Count];
+    }
+
+    /// <summary>Gets how many captured C# project compilations have been rehydrated in this worker.</summary>
+    public int RehydratedProjectCount => _compilations.Count(static compilation => compilation is not null);
+
+    internal IReadOnlyList<Compilation> GetCompilationsFor(
+        string relativeFilePath,
+        Func<Compilation, string?, Compilation> normalizeSigning,
+        CancellationToken cancellationToken)
+    {
+        var normalized = relativeFilePath.Replace('\\', '/');
+        var matches = new List<Compilation>();
+        for (var index = 0; index < _calls.Count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_sourcePaths[index].Any(path => path.EndsWith(normalized, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            _compilations[index] ??= normalizeSigning(
+                _calls[index].GetCompilationAfterGenerators(cancellationToken),
+                _calls[index].CompilerCall.ProjectFilePath);
+            matches.Add(_compilations[index]!);
+        }
+
+        return matches;
+    }
+
+    /// <summary>Releases the compiler-log reader and its lazily loaded inputs.</summary>
+    public void Dispose() => _reader.Dispose();
 }

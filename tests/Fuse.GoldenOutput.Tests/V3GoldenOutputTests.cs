@@ -157,7 +157,6 @@ public sealed class V3GoldenOutputTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await _store.DisposeAsync();
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
         try
         {
             if (Directory.Exists(_root))

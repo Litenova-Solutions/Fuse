@@ -99,6 +99,7 @@ public sealed class GitChangeDetector : IChangeDetector
         {
             FileName = gitPath,
             WorkingDirectory = sourceDirectory,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -119,6 +120,12 @@ public sealed class GitChangeDetector : IChangeDetector
         {
             throw new ChangeDetectionException("Git is not available on PATH. Change-scoped fusion requires git.");
         }
+
+        // Redirect and immediately close git's stdin so the child gets EOF, never the parent's inherited stdin.
+        // Inside `fuse mcp serve` the parent's stdin is the live MCP client pipe; a git child that inherited it
+        // could block (the write end stays open on the client side), which hung fuse_review while the CLI, whose
+        // stdin is a real console, was unaffected. git never reads stdin for these commands, so closing it is safe.
+        process.StandardInput.Close();
 
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);

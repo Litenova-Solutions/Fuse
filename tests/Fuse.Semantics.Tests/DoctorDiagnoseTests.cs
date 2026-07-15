@@ -35,6 +35,29 @@ public sealed class DoctorDiagnoseTests : IAsyncLifetime
         Assert.Contains(diagnosis.Diagnostics, d => d.Code == "syntax-only");
     }
 
+    [Fact]
+    public async Task Diagnose_names_selected_solution_and_warns_on_fixture_only()
+    {
+        // R24: the only solution is under a test/fixture tree and there is no real project, so discovery selects the
+        // fixture solution but the diagnosis surfaces both the selection and a warning, rather than binding silently.
+        var fixtureRoot = Path.Combine(Path.GetTempPath(), "fuse-doctor-r24", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(fixtureRoot, "tests", "Fixture"));
+        await File.WriteAllTextAsync(Path.Combine(fixtureRoot, "tests", "Fixture", "Sample.sln"), "not a real solution");
+        try
+        {
+            var diagnosis = await CreateIndexer().DiagnoseLoadAsync(fixtureRoot, CancellationToken.None);
+
+            Assert.NotNull(diagnosis.SelectedSolution);
+            Assert.Contains("Sample.sln", diagnosis.SelectedSolution!, StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(diagnosis.SelectionNote);
+            Assert.Contains("fixture", diagnosis.SelectionNote!, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            try { Directory.Delete(fixtureRoot, recursive: true); } catch (IOException) { }
+        }
+    }
+
     private static SemanticIndexer CreateIndexer()
     {
         var fileSystem = new PhysicalFileSystem();

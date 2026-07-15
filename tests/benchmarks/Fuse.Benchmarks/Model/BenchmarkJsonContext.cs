@@ -20,4 +20,5 @@ namespace Fuse.Benchmarks;
 [JsonSerializable(typeof(CorpusHealthReport))]
 [JsonSerializable(typeof(CorpusTaskSet))]
 [JsonSerializable(typeof(LoopCheckpoint))]
+[JsonSerializable(typeof(ProfileV42Report))]
 public partial class BenchmarkJsonContext : JsonSerializerContext;

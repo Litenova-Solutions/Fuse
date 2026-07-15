@@ -63,6 +63,10 @@ recorded loop benchmark counts build and test calls separately and does not esta
 general reduction in round-trips. See
 [The iterative workflow](/docs/concepts/iterative-workflow).
 
+**Tool tier.** The dependency class of an MCP tool: **offline** (no workspace index),
+**compiler** (Roslyn or `dotnet` toolchain, index optional), or **indexed** (persistent
+graph in `.fuse/fuse.db`). See [Tools Reference](/docs/reference/mcp-tools#tool-tiers).
+
 **Session-delta.** A way to skip resending files an agent already has: pass a `sessionId`
 across calls in the same task and Fuse omits files it sent earlier (tracked by content
 hash), so multi-turn refinement does not re-pay tokens. See

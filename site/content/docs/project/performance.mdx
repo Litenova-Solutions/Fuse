@@ -13,18 +13,18 @@ One-shot CLI commands pay startup cost on every invocation. A long-running serve
 
 ## Warm read verbs (two scales)
 
-Each verb is the primitive the matching MCP tool calls, timed over 25 iterations at two scales: NodaTime (512 files, 7,657 symbols, `performance.json`) and eShopOnWeb (287 files, 1,216 symbols, `performance-eshop.json`).
+Each verb is the primitive the matching MCP tool calls, timed over 25 iterations at two scales: NodaTime (512 files, 14,760 symbols, semantic tier, `performance.json`) and eShopOnWeb (287 files, 2,216 symbols, partial semantic tier, `performance-eshop.json`).
 
 | Verb (tool) | NodaTime P50 | NodaTime P95 | eShopOnWeb P50 | eShopOnWeb P95 |
 |-------------|----:|----:|----:|----:|
-| Exact symbol lookup (`fuse_find`) | 2.2 ms | 3.6 ms | 0.1 ms | 0.2 ms |
-| Blast radius (`fuse_impact`) | ~0 ms | ~0 ms | ~0 ms | ~0 ms |
-| Localize (`fuse_find` kind=task) | 23.4 ms | 25.2 ms | 2.6 ms | 4.2 ms |
-| Resolve symbol (`fuse_find` kind=service) | ~0 ms | 0.1 ms | ~0 ms | ~0 ms |
-| Review plan (`fuse_review`) | 97.8 ms | 101.3 ms | 38.3 ms | 41.6 ms |
-| Single-file incremental re-index | 20.9 ms | 25.4 ms | 1.9 ms | 2.3 ms |
+| Exact symbol lookup (`fuse_find`) | 1.8 ms | 2.3 ms | 0.2 ms | 0.3 ms |
+| Blast radius (`fuse_impact`) | ~0 ms | 0.1 ms | ~0 ms | ~0 ms |
+| Localize (`fuse_find` kind=task) | 15.7 ms | 22.3 ms | 2.3 ms | 2.9 ms |
+| Resolve symbol (`fuse_find` kind=service) | ~0 ms | 0.1 ms | ~0 ms | 0.1 ms |
+| Review plan (`fuse_review`) | 106.3 ms | 131.1 ms | 49.7 ms | 66.5 ms |
+| Single-file incremental re-index | 22.0 ms | 24.2 ms | 1.9 ms | 2.2 ms |
 
-Every recorded warm read sits inside a sub-second budget on this machine. eShopOnWeb is faster in this run, but two repositories do not establish a proportional scaling law. `fuse_impact` reads ~0 ms on these syntax-mode checkouts because there is no semantic graph to walk; on a semantically loaded checkout the query walks real edges, bounded by neighborhood size.
+Every recorded warm read sits inside a sub-second budget on this machine. eShopOnWeb is faster in this run, but two repositories do not establish a proportional scaling law. Both checkouts now load a semantic graph (NodaTime via the product solution `src/NodaTime.slnx`, eShopOnWeb at partial tier), so `fuse_impact` walks real edges; it still reads ~0 ms because these neighborhoods are small, bounded by neighborhood size rather than by an empty graph.
 
 ## Verify verbs (NodaTime, `resident-latency.json`)
 
@@ -54,11 +54,30 @@ Measured on NodaTime (`performance.json`) and eShopOnWeb (`performance-eshop.jso
 
 | Milestone | NodaTime | eShopOnWeb |
 |-----------|-----:|-----:|
-| Syntax tier served (no MSBuild) | 17,840 ms | 618 ms |
-| Semantic-ready (background upgrade) | +48,329 ms | +3,479 ms |
-| Full synchronous semantic index (`fuse index`) | 24,554 ms | 2,795 ms |
+| Syntax tier served (no MSBuild) | 17,768 ms | 1,349 ms |
+| Semantic-ready (background upgrade) | +71,052 ms | +22,742 ms |
+| Full synchronous semantic index (`fuse index`) | 45,859 ms | 10,718 ms |
+
+These are re-measured (2026-07-15) after the workspace-discovery fix, which selects the product solution `src/NodaTime.slnx` (21 projects, 14,760 symbols) rather than the auxiliary `build/Tools.slnx` (2 projects, 343 symbols); the prior snapshot indexed at the syntax tier and so understated the real semantic cold-index cost. The semantic pass loads via tier-1 build capture (graph-grade), which is why it is slower than the earlier syntax-only figure - it is doing strictly more (the full typed graph).
 
 `fuse mcp serve` uses syntax-first cold start by default, then upgrades the semantic graph in the background. Set `FUSE_BG_UPGRADE=0`, `false`, `no`, or `off` to make the first read index synchronously. The explicit `fuse index` command is always synchronous.
+
+On the semantic path the chunk and route extraction share one parse per file with the compilation instead of re-parsing the content string (R47), so the cold-index parse count per file drops with byte-identical output - a reduction of raw work, never an increase. The per-project wiring-analyzer pass also runs concurrently across projects (R45): on eShopOnWeb (10 projects) it dropped from ~3.4s to ~0.75s with byte-identical nodes and edges (environment-dependent, recorded in the R45 progress log).
+
+Tier-1 build capture (`dotnet build` then rehydrate from the log) is the higher-grade cold path, not the faster one. An A/B on eShopOnWeb (10 projects, environment-dependent, recorded in the R49 progress log) cold-indexed capture-on at ~16.4s versus the tier-2 MSBuildWorkspace path at ~13.6-15.0s: the build plus rehydrate costs a few seconds more than the design-time workspace load at this scale, for identical output. Build capture stays on by default because it produces the build-exact oracle graph (the substrate for `fuse_check`, `fuse_impact`, and covering-test selection), which is its justification - not a faster cold index.
+
+## Warm Solution for refactor and doctor
+
+`fuse_refactor` and `fuse_workspace action=doctor`'s live load each need a design-time MSBuild workspace, and opening one is essentially their whole latency. The daemon holds the loaded Roslyn `Solution` per root and reuses it across calls (R42), so only the first call in a session pays the load. Measured on the Fuse repo through the refactor and diagnose engine (environment-dependent, recorded in the R42 progress log, not a canonical result file):
+
+| Tool | First call (cold load) | Warm reuse |
+|------|-----:|-----:|
+| `fuse_refactor` (rename) | ~23,700 ms | ~450 ms |
+| `fuse_workspace doctor` (live load) | ~13,900 ms | ~870 ms |
+
+The held solution is memory-heavy (a full compilation set), so the cache is a hard LRU (`FUSE_WARM_SOLUTION_CAP`, default 3) with an idle window (`FUSE_WARM_SOLUTION_IDLE_MINUTES`, default 30); the held-solution RSS ceiling was about 594 MB at cap 3. A freshness check reloads when the source changed, so a reused solution matches a cold load exactly and a changed tree is never slower than before.
+
+For the store-backed default (no resident workspace), `fuse_check`'s oracle path keeps a pooled build-capture worker per captured compiler log (R48). R53 records source ownership first, then rehydrates only the captured C# project containing the requested file; later checks reuse that project and a request for a different project rehydrates only that project. The check still uses the same speculative fork and diagnostics path as a full-log rehydration, so verdicts remain identical and check honesty is preserved. Environment-dependent first-check measurements are recorded in the roadmap progress log.
 
 ## Distribution
 
@@ -66,20 +85,25 @@ Fuse distributes as a framework-dependent .NET global tool and as self-contained
 
 | Package | Role |
 |---------|------|
-| `Fuse` | Framework-dependent dotnet tool with `RollForward=LatestMajor` and ReadyToRun |
-| `Fuse.Runtime.win-x64` (and other RIDs) | Self-contained binary for that runtime identifier |
+| `Fuse` | Framework-dependent dotnet tool with `RollForward=LatestMajor` (portable IL; no ReadyToRun, since a framework-dependent tool has no target RID to crossgen for) |
+| `Fuse.Runtime.win-x64` (and other RIDs) | Self-contained binary for that runtime identifier, published ReadyToRun (crossgen) for a faster cold start |
 | Windows installer | Ships the self-contained `fuse.exe` from the release workflow |
 
 Roslyn structural analysis is always included; there is no trimmed or regex-only binary.
+
+The self-contained runtime binaries are published ReadyToRun (R50), so a one-shot runtime-binary CLI invocation pays less JIT warmup on cold start. Measured on win-x64 (`fuse --version`, environment-dependent): ReadyToRun ~150 ms versus ~188 ms without it (best 146 vs 181 ms). The configured ambient hooks use the framework-dependent `fuse` tool, so each event still starts that command even though it asks the warm daemon for diagnostics. R57 measured Release `fuse check --delta --fast` at 155 to 171 ms with no host and 239 to 294 ms with a serving host; the latter includes process startup plus the pipe round trip. Full AOT is not used (its native link is unavailable in the build environment); the long-lived daemon pays JIT once per session and is unaffected either way.
 
 ## How these are regenerated
 
 ```bash
 fuse eval performance --repo NodaTime     # warm reads + cold start -> performance.json
 fuse eval performance --repo eShopOnWeb    # second scale point -> performance-eshop.json
+fuse eval profile-v42 --repo NodaTime      # index hot-path profile -> profile-v42.json
 fuse testexec                              # build-grade test execution -> testexec.json
 fuse resident-latency                      # verify verbs -> resident-latency.json
 ```
+
+`profile-v42.json` records SQL and Roslyn frame attribution on the warm index path (`WorkspaceIndexStore`, `SemanticIndexer`) for store-split planning. It is maintainer evidence for R8/R9, not a published latency SLO; compare wall-clock numbers to `performance.json` for the same verbs.
 
 Token efficiency (median tokens a review returns) is on [Benchmarks](/docs/project/benchmarks). Test-selection latency is the covering-tests query inside `fuse_impact`; a standalone timer for it is follow-up work.
 

@@ -204,7 +204,6 @@ public sealed class PerformanceSuite : IEvalSuite
         try
         {
             var directory = Path.GetDirectoryName(databasePath);
-            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
             if (directory is not null && Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
         }

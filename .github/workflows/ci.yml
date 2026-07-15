@@ -24,6 +24,14 @@ jobs:
         shell: pwsh
         run: ./build/verify-version.ps1
 
+      - name: Verify RequiresSdk CI legs
+        shell: pwsh
+        run: ./build/verify-ci-sdk.ps1
+
+      - name: Verify briefing drift guard
+        shell: pwsh
+        run: ./build/verify-briefing.ps1
+
       - name: Validate MCP registry manifest
         shell: pwsh
         run: |
@@ -83,7 +91,7 @@ jobs:
         run: dotnet tool install --global dotnet-coverage
 
       - name: Test with coverage
-        run: dotnet-coverage collect "dotnet test Fuse.slnx --configuration Release --no-build --verbosity normal" --output coverage.cobertura.xml --output-format cobertura
+        run: dotnet-coverage collect 'dotnet test Fuse.slnx --configuration Release --no-build --verbosity normal --filter "Category!=RequiresSdk"' --output coverage.cobertura.xml --output-format cobertura
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

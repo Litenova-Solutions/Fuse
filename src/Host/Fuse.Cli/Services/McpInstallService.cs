@@ -19,7 +19,8 @@ public sealed class McpInstallService
 
     private const string ServerName = "fuse";
 
-    // The client launches `fuse mcp serve`; both tokens are passed as the stdio command arguments.
+    // The client launches `fuse mcp serve` with no environment block: agent-first defaults (shared daemon,
+    // auto-update, background upgrade, build capture) ship in the binary. Opt-outs are documented under Advanced.
     private static readonly string[] ServeArguments = ["mcp", "serve"];
 
     /// <summary>
@@ -359,6 +360,7 @@ public sealed class McpInstallService
         "- Use `fuse_find` with kind=task to find where a feature lives, or kind=service|request|route|config to resolve wiring; then `fuse_context` to read the selected seeds.",
         "- Use `fuse_review` to scope a pull request or diff review.",
         "- The verified-edit loop: after an edit run `fuse_check`; before a signature change run `fuse_impact`; before done run `fuse_review`.",
+        "- If Fuse reports the index is warming or rebuilding (`index_rebuilding:`, `index_busy:`, or an `index_state:` other than `ready`), use your native search for that step and retry the `fuse_*` tool once it reports ready. Fuse is at its best on a warm index.",
         "",
         "Use built-in grep and file reads for exact string or symbol lookups, where they are the better tool.");
 

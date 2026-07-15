@@ -11,6 +11,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Fuse.Plugins.Abstractions\Fuse.Plugins.Abstractions.csproj" />
+        <ProjectReference Include="..\..\Core\Fuse.Semantics\Fuse.Semantics.csproj" />
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="Fuse.Plugins.Languages.CSharp.Roslyn.Tests" />

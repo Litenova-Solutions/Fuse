@@ -10,6 +10,21 @@ dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
+No client environment variables are required. `fuse mcp serve` defaults to a shared
+`fuse host` daemon per repository, syntax-first indexing with background semantic upgrade,
+build capture, and auto-update between sessions.
+
+Then index the repository once, so the agent's first turn reads a warm index instead of
+paying a one-time cold build:
+
+```bash
+fuse index
+```
+
+You run this once. Fuse builds the semantic index at `.fuse/fuse.db` (a few seconds to tens
+of seconds for a large repository) and then re-indexes changed files automatically on the
+next read, so the index stays fresh as you work.
+
 Reload your MCP client, then ask:
 
 ```text
@@ -32,10 +47,12 @@ analysis mode, and freshness exactly as Fuse reports them.
 A response with the repository path confirms the connection. A tool list or a statement
 that Fuse is available does not.
 
-The first MCP tool call builds `.fuse/fuse.db` automatically; you do not need to run
-`fuse index` first. A large repository can take from a few seconds to tens of seconds on
-that cold call. Run `fuse index` first if you want the agent's first turn to read a warm
-index. Later calls reuse the local store.
+If you ran `fuse index` above, this call reads a warm index and returns right away. If you
+skipped it, the first MCP tool call builds `.fuse/fuse.db` automatically, which can take a
+few seconds to tens of seconds on a large repository; that one-time cold cost is why
+indexing once up front is recommended. Later calls reuse the local store. If a tool returns
+`index_rebuilding:` (after an upgrade or corrupt recovery), retry after a few seconds or
+call `fuse_workspace` with `action=index`.
 
 ## Check the First Proposed Edit
 
@@ -94,8 +111,9 @@ fuse review ./src --changed-since origin/main --max-tokens 25000
 
 Fuse loads the workspace through MSBuild and Roslyn when it can, and falls back to
 syntax-level indexing otherwise. The index lives in a single SQLite file at
-`.fuse/fuse.db`. The read commands build it on first use, so this explicit step is
-optional, but running it once up front makes the first read call fast.
+`.fuse/fuse.db`. Read commands build it on first use, but running `fuse index` once up
+front is the recommended setup step so the first read is fast. You only do it once, because
+Fuse keeps the index fresh automatically as files change.
 
 You can also resolve .NET wiring directly:
 

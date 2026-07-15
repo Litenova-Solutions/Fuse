@@ -66,7 +66,18 @@ public sealed class FuseHostServiceRpcTests : IDisposable
             File.WriteAllText(full, content);
         }
 
-        return dir;
+        // Guarantee an isolated {dir}/.fuse store even if git is not on PATH (git init above may have been skipped).
+        return dir.AsIsolatedRepo();
+    }
+
+    // Release the pooled connections to this fixture's store before deleting it, or the open fuse.db handle blocks
+    // the recursive delete. Mirrors the cleanup the other store-backed test classes already do.
+    private static void CleanupFixture(string source)
+    {
+        Microsoft.Data.Sqlite.SqliteConnection.ClearPool(
+            new Microsoft.Data.Sqlite.SqliteConnection(
+                $"Data Source={Fuse.Reduction.Caching.FuseStorePaths.ResolveDatabasePath(source)}"));
+        try { Directory.Delete(source, recursive: true); } catch (IOException) { }
     }
 
     [Fact]
@@ -88,7 +99,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         clientRpc.StartListening();
 
         var handshake = await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
-        Assert.Equal(7, handshake.ProtocolVersion);
+        Assert.Equal(10, handshake.ProtocolVersion);
         Assert.Equal(FuseHostService.ProtocolVersion, handshake.ProtocolVersion);
         Assert.False(string.IsNullOrWhiteSpace(handshake.HostVersion));
         Assert.False(string.IsNullOrWhiteSpace(handshake.SessionToken));
@@ -125,7 +136,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         var handshake = await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
 
-        Assert.Equal(7, handshake.ProtocolVersion);
+        Assert.Equal(10, handshake.ProtocolVersion);
         Assert.Equal(FuseHostService.ProtocolVersion, handshake.ProtocolVersion);
         Assert.False(string.IsNullOrWhiteSpace(handshake.HostVersion));
         Assert.False(string.IsNullOrWhiteSpace(handshake.SessionToken));
@@ -194,7 +205,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -237,7 +248,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -263,7 +274,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -289,7 +300,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -312,7 +323,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -342,7 +353,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -375,7 +386,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -401,7 +412,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -460,7 +471,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -482,7 +493,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 
@@ -502,7 +513,25 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         }
         finally
         {
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
+        }
+    }
+
+    [Fact]
+    public async Task CheckCapture_WithoutACapture_ReturnsFallbackSignal()
+    {
+        var source = NewFixture(("Widget.cs", "public class Widget { }"));
+        try
+        {
+            using var service = NewService();
+            var result = await service.CheckCaptureAsync(SessionToken(service), source, "Widget.cs", "public class Widget { }");
+
+            Assert.False(result.Available);
+            Assert.Empty(result.Diagnostics);
+        }
+        finally
+        {
+            CleanupFixture(source);
         }
     }
 
@@ -527,7 +556,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         finally
         {
             Fuse.Cli.Mcp.FuseTools.ResidentWorkspaces = Fuse.Workspace.NullResidentWorkspaceProvider.Instance;
-            Directory.Delete(source, recursive: true);
+            CleanupFixture(source);
         }
     }
 

@@ -28,4 +28,12 @@ namespace Fuse.Cli.Rpc;
 [JsonSerializable(typeof(CheckDeltaDto))]
 [JsonSerializable(typeof(CheckDiagnosticDto))]
 [JsonSerializable(typeof(CheckOverlayResultDto))]
+[JsonSerializable(typeof(OpenIndexedResultDto))]
+[JsonSerializable(typeof(DoctorResultDto))]
+[JsonSerializable(typeof(RefactorRequestDto))]
+[JsonSerializable(typeof(RefactorResultDto))]
+[JsonSerializable(typeof(CaptureCheckResultDto))]
+// StreamJsonRpc serializes a failed method call's error payload as CommonErrorData through this same
+// source-generated resolver; without it, any RPC error throws NotSupportedException instead of propagating.
+[JsonSerializable(typeof(StreamJsonRpc.Protocol.CommonErrorData))]
 public sealed partial class FuseHostJsonContext : JsonSerializerContext;

@@ -112,7 +112,26 @@ public sealed partial class CorpusManager
             return false;
         }
 
+        WritePinnedSolution(path, repo);
         return true;
+    }
+
+    // Writes a fuse.json pinning the manifest's solution for a multi-solution repo, so the benchmark deterministically
+    // loads the product solution regardless of discovery tie-breaks (belt-and-suspenders alongside the discovery
+    // fix that already deprioritizes build/tooling solutions). Best-effort: a write failure never fails the clone.
+    private void WritePinnedSolution(string repoPath, CorpusRepo repo)
+    {
+        if (string.IsNullOrWhiteSpace(repo.Solution))
+            return;
+        try
+        {
+            var json = $"{{ \"solution\": \"{repo.Solution.Replace("\\", "/")}\" }}\n";
+            File.WriteAllText(Path.Combine(repoPath, "fuse.json"), json);
+            _log?.Invoke($"corpus: pinned {repo.Name} solution to {repo.Solution} (fuse.json)");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     /// <summary>

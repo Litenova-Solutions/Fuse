@@ -1,4 +1,5 @@
 using System.Text;
+using Fuse.Scoping;
 
 namespace Fuse.Retrieval;
 

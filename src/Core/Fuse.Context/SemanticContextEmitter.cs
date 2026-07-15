@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Fuse.Retrieval;
+using Fuse.Scoping;
 
 namespace Fuse.Context;
 

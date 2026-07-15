@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Fuse.Retrieval.Tests;
 
-// P5.1: candidate generation per source (exact, lexical BM25F, path, diff).
+// P5.1 / R3: candidate generation per source (exact, lexical BM25F via LexicalCandidateGenerator, path, diff).
 public sealed class CandidateGeneratorTests : IAsyncLifetime
 {
     private readonly string _databasePath =
@@ -127,7 +127,6 @@ public sealed class CandidateGeneratorTests : IAsyncLifetime
     {
         await _store.DisposeAsync();
         var directory = Path.GetDirectoryName(_databasePath);
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
         try
         {
             if (directory is not null && Directory.Exists(directory))

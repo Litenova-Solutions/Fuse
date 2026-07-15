@@ -1,5 +1,4 @@
 using Fuse.Indexing;
-using Fuse.Plugins.Languages.CSharp.Roslyn;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,15 +10,12 @@ namespace Fuse.Semantics;
 /// </summary>
 /// <remarks>
 ///     This is the Phase 2 approximation: type declarations are walked here for type-level symbols and chunks,
-///     and <see cref="RoslynSymbolChunkExtractor" /> supplies the member chunks (and their collision-free
-///     identities), from which member symbols are derived. Identifiers are not resolved across files; symbol
-///     ids use the source-only fallback form. MSBuild/Roslyn semantic indexing (Phase 3) replaces these ids
-///     with assembly-qualified ones.
+///     and member declarations are walked for member chunks (and their collision-free identities), from which
+///     member symbols are derived. Identifiers are not resolved across files; symbol ids use the source-only
+///     fallback form. MSBuild/Roslyn semantic indexing (Phase 3) replaces these ids with assembly-qualified ones.
 /// </remarks>
 public sealed class SyntaxSymbolExtractor
 {
-    private readonly RoslynSymbolChunkExtractor _chunkExtractor = new();
-
     /// <summary>
     ///     Extracts the symbols and chunks declared in a C# file.
     /// </summary>
@@ -41,6 +37,20 @@ public sealed class SyntaxSymbolExtractor
             return SyntaxExtractionResult.Empty;
         }
 
+        return Extract(normalizedPath, root);
+    }
+
+    /// <summary>
+    ///     Extracts the symbols and chunks from an already-parsed C# syntax root (R47), so a caller that already
+    ///     has the tree (the semantic index pipeline, which also extracts routes from the same file) parses once
+    ///     and shares the tree instead of re-parsing from the content string. Produces byte-identical records to
+    ///     the content overload for the same source.
+    /// </summary>
+    /// <param name="normalizedPath">The forward-slash relative path used to key records to the file.</param>
+    /// <param name="root">The parsed syntax root of the file.</param>
+    /// <returns>The extracted symbols and chunks; empty when the file declares nothing.</returns>
+    public SyntaxExtractionResult Extract(string normalizedPath, SyntaxNode root)
+    {
         var symbols = new List<SymbolRecord>();
         var chunks = new List<ChunkRecord>();
 
@@ -88,46 +98,143 @@ public sealed class SyntaxSymbolExtractor
                 SymbolsText: type.Identifier.ValueText));
         }
 
-        // Member chunks (and the member symbols derived from them) come from the shared chunk extractor, which
-        // already computes a collision-free identity per member.
-        foreach (var chunk in _chunkExtractor.ExtractChunks(content))
+        // Member chunks (and the member symbols derived from them) use the same collision-free identity rules as
+        // the Roslyn structural plugin, inlined here so the semantics core does not reference plugin projects.
+        foreach (var member in ExtractMemberChunks(root))
         {
-            var symbolId = FallbackSymbolId(normalizedPath, chunk.SymbolKind, chunk.Identity, chunk.StartLine);
-            var signature = FirstLine(chunk.Content);
+            var symbolId = FallbackSymbolId(normalizedPath, member.Kind, member.Identity, member.StartLine);
+            var signature = FirstLine(member.Content);
 
             symbols.Add(new SymbolRecord(
                 SymbolId: symbolId,
                 FilePath: normalizedPath,
-                Kind: chunk.SymbolKind,
-                Name: chunk.SymbolName,
-                FullyQualifiedName: chunk.Identity,
-                ContainingType: chunk.ParentType,
+                Kind: member.Kind,
+                Name: member.Name,
+                FullyQualifiedName: member.Identity,
+                ContainingType: member.ParentType,
                 Accessibility: null,
                 Signature: signature,
-                StartLine: chunk.StartLine,
-                EndLine: chunk.EndLine,
+                StartLine: member.StartLine,
+                EndLine: member.EndLine,
                 IsPublicApi: false));
 
             chunks.Add(new ChunkRecord(
-                ChunkId: ChunkId(normalizedPath, chunk.SymbolKind, chunk.Identity, chunk.StartLine),
+                ChunkId: ChunkId(normalizedPath, member.Kind, member.Identity, member.StartLine),
                 FilePath: normalizedPath,
-                Kind: chunk.SymbolKind,
-                StableKey: chunk.Identity,
-                StartLine: chunk.StartLine,
-                EndLine: chunk.EndLine,
-                TextHash: HashEstimate(chunk.Content),
-                TokenEstimate: EstimateTokens(chunk.Content),
+                Kind: member.Kind,
+                StableKey: member.Identity,
+                StartLine: member.StartLine,
+                EndLine: member.EndLine,
+                TextHash: HashEstimate(member.Content),
+                TokenEstimate: EstimateTokens(member.Content),
                 ReducedTokenEstimate: EstimateTokens(signature),
                 SymbolId: symbolId,
-                Name: chunk.SymbolName,
+                Name: member.Name,
                 Signature: signature,
-                Body: chunk.Content,
-                Comments: NullIfEmpty(CommentExtractor.Extract(chunk.Content)),
-                SymbolsText: chunk.ParentType is null ? chunk.SymbolName : $"{chunk.ParentType} {chunk.SymbolName}"));
+                Body: member.Content,
+                Comments: NullIfEmpty(CommentExtractor.Extract(member.Content)),
+                SymbolsText: member.ParentType is null ? member.Name : $"{member.ParentType} {member.Name}"));
         }
 
         return new SyntaxExtractionResult(symbols, chunks);
     }
+
+    private static IEnumerable<MemberChunk> ExtractMemberChunks(SyntaxNode root)
+    {
+        foreach (var type in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
+        {
+            var parent = type.Identifier.ValueText;
+            foreach (var member in type.Members)
+            {
+                switch (member)
+                {
+                    case MethodDeclarationSyntax m:
+                        yield return CreateMemberChunk("method", m.Identifier.ValueText, parent, member);
+                        break;
+                    case ConstructorDeclarationSyntax c:
+                        yield return CreateMemberChunk("constructor", c.Identifier.ValueText, parent, member);
+                        break;
+                    case PropertyDeclarationSyntax p:
+                        yield return CreateMemberChunk("property", p.Identifier.ValueText, parent, member);
+                        break;
+                    case EventDeclarationSyntax e:
+                        yield return CreateMemberChunk("event", e.Identifier.ValueText, parent, member);
+                        break;
+                    case FieldDeclarationSyntax f:
+                        var first = f.Declaration.Variables.FirstOrDefault();
+                        if (first is not null)
+                            yield return CreateMemberChunk("field", first.Identifier.ValueText, parent, member);
+                        break;
+                }
+            }
+        }
+
+        foreach (var enumType in root.DescendantNodes().OfType<EnumDeclarationSyntax>())
+        {
+            foreach (var member in enumType.Members)
+                yield return CreateMemberChunk("enum-member", member.Identifier.ValueText, enumType.Identifier.ValueText, member);
+        }
+    }
+
+    private static MemberChunk CreateMemberChunk(string kind, string name, string parent, SyntaxNode member)
+    {
+        var span = member.GetLocation().GetLineSpan();
+        return new MemberChunk(
+            kind,
+            name,
+            parent,
+            member.ToString(),
+            span.StartLinePosition.Line + 1,
+            span.EndLinePosition.Line + 1,
+            BuildMemberStableId(member, name));
+    }
+
+    private static string BuildMemberStableId(SyntaxNode member, string name)
+    {
+        var prefix = new List<string>();
+
+        var ns = member.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault();
+        if (ns is not null)
+            prefix.Add(ns.Name.ToString());
+
+        foreach (var type in member.Ancestors().OfType<TypeDeclarationSyntax>().Reverse())
+        {
+            var arity = type.TypeParameterList?.Parameters.Count ?? 0;
+            prefix.Add(arity > 0 ? $"{type.Identifier.ValueText}`{arity}" : type.Identifier.ValueText);
+        }
+
+        var enumType = member.Ancestors().OfType<EnumDeclarationSyntax>().FirstOrDefault();
+        if (enumType is not null)
+            prefix.Add(enumType.Identifier.ValueText);
+
+        var head = prefix.Count > 0 ? string.Join(".", prefix) + "." + name : name;
+
+        return member switch
+        {
+            MethodDeclarationSyntax m =>
+                $"{head}{GenericArity(m.TypeParameterList)}({ParameterTypes(m.ParameterList)})",
+            ConstructorDeclarationSyntax c => $"{head}({ParameterTypes(c.ParameterList)})",
+            _ => head,
+        };
+    }
+
+    private static string GenericArity(TypeParameterListSyntax? typeParameters)
+    {
+        var count = typeParameters?.Parameters.Count ?? 0;
+        return count > 0 ? $"`{count}" : string.Empty;
+    }
+
+    private static string ParameterTypes(ParameterListSyntax parameters) =>
+        string.Join(",", parameters.Parameters.Select(p => p.Type?.ToString() ?? "?"));
+
+    private sealed record MemberChunk(
+        string Kind,
+        string Name,
+        string? ParentType,
+        string Content,
+        int StartLine,
+        int EndLine,
+        string Identity);
 
     private static string FallbackSymbolId(string normalizedPath, string kind, string stableKey, int line) =>
         $"symbol:fallback:{normalizedPath}:{kind}:{stableKey}:{line}";

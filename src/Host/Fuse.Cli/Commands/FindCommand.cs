@@ -1,5 +1,6 @@
 using System.Text;
 using DotMake.CommandLine;
+using Fuse.Cli.Mcp;
 using Fuse.Cli.Services;
 using Fuse.Indexing;
 using Fuse.Reduction.Caching;
@@ -55,50 +56,58 @@ public sealed class FindCommand
     /// <returns>A task that completes when the matches have been written.</returns>
     public async Task RunAsync(CliContext context)
     {
-        if (string.IsNullOrWhiteSpace(Query))
+        try
         {
-            _consoleUI.WriteError("Specify a query to find.");
-            return;
-        }
+            if (string.IsNullOrWhiteSpace(Query))
+            {
+                FuseOperationalErrors.WriteCliError(
+                    _consoleUI,
+                    FuseOperationalErrors.Format(FuseOperationalErrors.ValidationErrorPrefix, "specify a query to find."));
+                return;
+            }
 
-        var root = System.IO.Path.GetFullPath(Path);
-        var databasePath = FuseStorePaths.ResolveDatabasePath(root);
-        if (!File.Exists(databasePath))
+            var root = System.IO.Path.GetFullPath(Path);
+            var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+            if (!File.Exists(databasePath))
+            {
+                FuseOperationalErrors.WriteCliError(_consoleUI, FuseOperationalErrors.FormatIndexNotBuilt(databasePath));
+                return;
+            }
+
+            await using var store = await IndexCoordinator.Default.OpenForReadOnlyAsync(root, context.CancellationToken);
+
+            var kind = Kind.Trim().ToLowerInvariant();
+            var builder = new StringBuilder();
+
+            if (kind is "all" or "symbol")
+            {
+                var symbols = await store.FindSymbolsByNameAsync(Query, Limit, context.CancellationToken);
+                builder.AppendLine($"symbols ({symbols.Count}):");
+                foreach (var symbol in symbols)
+                    builder.AppendLine($"  {symbol.Kind,-11} {symbol.FullyQualifiedName}  ({symbol.FilePath}:{symbol.StartLine})");
+            }
+
+            if (kind is "all" or "path")
+            {
+                var files = await store.FindFilesByPathAsync(Query, Limit, context.CancellationToken);
+                builder.AppendLine($"paths ({files.Count}):");
+                foreach (var file in files)
+                    builder.AppendLine($"  {file.NormalizedPath}");
+            }
+
+            if (kind is "all" or "text")
+            {
+                var hits = await store.SearchAsync(new SearchQuery(Query, Limit), context.CancellationToken);
+                builder.AppendLine($"text ({hits.Count}):");
+                foreach (var hit in hits)
+                    builder.AppendLine($"  {hit.Score:F2}  {hit.Name ?? hit.Kind}  ({hit.FilePath}:{hit.StartLine})");
+            }
+
+            _consoleUI.WriteResult(builder.ToString());
+        }
+        catch (Exception ex)
         {
-            _consoleUI.WriteError($"No index found at {databasePath}. Run 'fuse index' first.");
-            return;
+            FuseOperationalErrors.ReportCli(_consoleUI, ex);
         }
-
-        await using var store = new WorkspaceIndexStore(databasePath);
-        await store.InitializeAsync(context.CancellationToken);
-
-        var kind = Kind.Trim().ToLowerInvariant();
-        var builder = new StringBuilder();
-
-        if (kind is "all" or "symbol")
-        {
-            var symbols = await store.FindSymbolsByNameAsync(Query, Limit, context.CancellationToken);
-            builder.AppendLine($"symbols ({symbols.Count}):");
-            foreach (var symbol in symbols)
-                builder.AppendLine($"  {symbol.Kind,-11} {symbol.FullyQualifiedName}  ({symbol.FilePath}:{symbol.StartLine})");
-        }
-
-        if (kind is "all" or "path")
-        {
-            var files = await store.FindFilesByPathAsync(Query, Limit, context.CancellationToken);
-            builder.AppendLine($"paths ({files.Count}):");
-            foreach (var file in files)
-                builder.AppendLine($"  {file.NormalizedPath}");
-        }
-
-        if (kind is "all" or "text")
-        {
-            var hits = await store.SearchAsync(new SearchQuery(Query, Limit), context.CancellationToken);
-            builder.AppendLine($"text ({hits.Count}):");
-            foreach (var hit in hits)
-                builder.AppendLine($"  {hit.Score:F2}  {hit.Name ?? hit.Kind}  ({hit.FilePath}:{hit.StartLine})");
-        }
-
-        _consoleUI.WriteResult(builder.ToString());
     }
 }

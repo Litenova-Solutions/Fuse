@@ -11,12 +11,28 @@ namespace Fuse.Indexing;
 public interface IWorkspaceIndexStore : IAsyncDisposable
 {
     /// <summary>
-    ///     Opens the database, brings the schema to the current version (rebuilding from scratch when
-    ///     the on-disk version is older), and applies the database-level pragmas.
+    ///     Write initialization: opens the database, brings the schema to the current version (rebuilding
+    ///     from scratch when the on-disk version is older), probes FTS availability, and stamps
+    ///     <c>index_meta</c>. Use on first create, schema migration, incompatible-version rebuild, and
+    ///     explicit <c>fuse index</c>; foreground read tools should prefer
+    ///     <see cref="OpenForReadAsync" /> when the database already exists at the target schema.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel initialization.</param>
-    /// <returns>A task that completes when the store is ready for use.</returns>
-    Task InitializeAsync(CancellationToken cancellationToken);
+    /// <returns>
+    ///     The initialization outcome. When <see cref="WorkspaceIndexInitializeOutcome.RebuiltEmptyStore" /> is
+    ///     <see langword="true" />, the store is empty and must be re-indexed from source before serving reads.
+    /// </returns>
+    Task<WorkspaceIndexInitializeOutcome> InitializeAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Read-only warm open: verifies the on-disk schema version and Fuse build stamp without running
+    ///     migrations or writing <c>index_meta</c>. Returns <see cref="WorkspaceIndexReadOpenStatus.Ready" />
+    ///     when the database is usable for reads; otherwise the caller should fall back to
+    ///     <see cref="InitializeAsync" />.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the open.</param>
+    /// <returns>The open outcome.</returns>
+    Task<WorkspaceIndexReadOpenStatus> OpenForReadAsync(CancellationToken cancellationToken);
 
     /// <summary>
     ///     Returns the current schema version, status, and record counts.
@@ -37,6 +53,17 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the write.</param>
     /// <returns>A task that completes when the batch is committed.</returns>
     Task UpsertProjectsAsync(IReadOnlyList<ProjectRecord> projects, CancellationToken cancellationToken);
+
+    /// <summary>Replaces the stored target-framework availability facts with one complete canonical union.</summary>
+    /// <param name="availability">The availability rows from the complete capture union.</param>
+    /// <param name="cancellationToken">A token to cancel the write.</param>
+    /// <returns>A task that completes when the replacement is committed.</returns>
+    Task ReplaceTfmAvailabilityAsync(IReadOnlyList<TfmAvailabilityRecord> availability, CancellationToken cancellationToken);
+
+    /// <summary>Lists the stored target-framework availability facts in deterministic order.</summary>
+    /// <param name="cancellationToken">A token to cancel the read.</param>
+    /// <returns>The canonical availability rows.</returns>
+    Task<IReadOnlyList<TfmAvailabilityRecord>> GetTfmAvailabilityAsync(CancellationToken cancellationToken);
 
     /// <summary>Inserts or updates semantic graph nodes.</summary>
     /// <param name="nodes">The nodes to upsert.</param>

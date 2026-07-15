@@ -45,6 +45,12 @@ public sealed class UpdateCommand
     public string? TargetVersion { get; set; }
 
     /// <summary>
+    ///     When set, stops every Fuse peer on the machine before updating (pre-4.2 breadth).
+    /// </summary>
+    [CliOption(Name = "force-kill-peers", Required = false, Description = "Stop every Fuse peer on the machine before updating.")]
+    public bool ForceKillPeers { get; set; }
+
+    /// <summary>
     ///     Runs the update command: stops other Fuse hosts and launches the detached updater.
     /// </summary>
     /// <param name="context">The CLI invocation context supplying the cancellation token.</param>
@@ -55,7 +61,11 @@ public sealed class UpdateCommand
 
         // Explicit update: stop the other running hosts so they release their file locks, then hand off to the
         // detached updater that waits for this process to exit before replacing the tool files.
-        var result = new ToolUpdateLauncher().Launch(TargetVersion, stopOtherHosts: true, _consoleUI.WriteStep);
+        var result = new ToolUpdateLauncher().Launch(
+            TargetVersion,
+            stopOtherHosts: true,
+            forceKillPeers: ForceKillPeers,
+            onHostStopped: _consoleUI.WriteStep);
         if (!result.Launched)
         {
             // Falling back to a manual instruction is better than a stack trace: the user can still update by hand.

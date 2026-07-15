@@ -88,7 +88,6 @@ public sealed class GitCoChangePriorTests : IAsyncLifetime
     {
         await _store.DisposeAsync();
         var directory = Path.GetDirectoryName(_databasePath);
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
         try
         {
             if (directory is not null && Directory.Exists(directory))

@@ -61,6 +61,18 @@ public sealed class WarmSolutionLatencyMeasurement(ITestOutputHelper output)
         warmDoctor.Stop();
         output.WriteLine($"doctor cold={coldDoctor.ElapsedMilliseconds}ms warm={warmDoctor.ElapsedMilliseconds}ms loads={WarmSolutionCache.Shared.LoadCount}");
 
+        // R44: the MSBuild toolchain warmup at startup does exactly this - discover the target and prime the cache
+        // via OpenAsync - off the critical path. After it completes, the first refactor of the session hits the
+        // warm cache instead of paying the cold load. Here the warmup elapsed is the cost moved to background start.
+        var warmCache = new WarmSolutionCache(cap: 3);
+        var warmup = Stopwatch.StartNew();
+        await warmCache.OpenAsync(sln, CancellationToken.None);
+        warmup.Stop();
+        var firstAfterWarmup = Stopwatch.StartNew();
+        await new RenameRefactorer(warmCache).RenameAsync(sln, "WarmSolutionCache", "WarmSolutionCacheRenamed", CancellationToken.None);
+        firstAfterWarmup.Stop();
+        output.WriteLine($"R44 warmup(background)={warmup.ElapsedMilliseconds}ms firstRefactorAfterWarmup={firstAfterWarmup.ElapsedMilliseconds}ms loads={warmCache.LoadCount}");
+
         var rss = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
         output.WriteLine($"process RSS after holding solutions: {rss} MB (cap {3})");
     }

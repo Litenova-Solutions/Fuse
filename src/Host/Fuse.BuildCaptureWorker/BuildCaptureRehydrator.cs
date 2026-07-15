@@ -186,6 +186,32 @@ public sealed class BuildCaptureRehydrator
     }
 
     /// <summary>
+    ///     Opens a compiler log for lazy pooled checks (R53). Compiler-call source metadata is read up front, but
+    ///     the costly Roslyn compilation is deferred until a request names a source file that call owns.
+    /// </summary>
+    public LazyHeldComplog RehydrateLazyHeld(string logPath, CancellationToken cancellationToken)
+    {
+        var reader = CompilerCallReaderUtil.Create(logPath);
+        try
+        {
+            var calls = reader.ReadAllCompilationData()
+                .Where(static data => data.CompilerCall.IsCSharp == true)
+                .ToList();
+            var sourcePaths = calls
+                .Select(data => reader.ReadAllSourceTextData(data.CompilerCall)
+                    .Select(source => source.FilePath.Replace('\\', '/'))
+                    .ToList())
+                .ToList();
+            return new LazyHeldComplog(reader, calls, sourcePaths);
+        }
+        catch
+        {
+            reader.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
     ///     Speculatively typechecks a proposed single-file patch against already-held compilations (R48): the exact
     ///     same fork-and-diagnostics as <see cref="CheckFromLog" />, over the held compilations rather than a fresh
     ///     rehydration, so a pooled worker's verdict is identical to the spawn-per-call verdict.
@@ -197,9 +223,25 @@ public sealed class BuildCaptureRehydrator
     /// <returns>The diagnostics for the changed document, or an abstention when the file is not in the log.</returns>
     public CheckResult CheckHeld(
         HeldComplog held, string relativeFilePath, string newContent, CancellationToken cancellationToken)
+        => CheckCompilations(held.Compilations, relativeFilePath, newContent, cancellationToken);
+
+    /// <summary>
+    ///     Typechecks a single-file overlay through a lazy held compiler log. Every captured compiler invocation
+    ///     containing the file is rehydrated on first touch, preserving the original log order and the same
+    ///     fork-and-diagnostics behavior as <see cref="CheckHeld"/>.
+    /// </summary>
+    public CheckResult CheckLazyHeld(
+        LazyHeldComplog held, string relativeFilePath, string newContent, CancellationToken cancellationToken)
+    {
+        var compilations = held.GetCompilationsFor(relativeFilePath, NormalizeSigning, cancellationToken);
+        return CheckCompilations(compilations, relativeFilePath, newContent, cancellationToken);
+    }
+
+    private static CheckResult CheckCompilations(
+        IReadOnlyList<Compilation> compilations, string relativeFilePath, string newContent, CancellationToken cancellationToken)
     {
         var normalized = relativeFilePath.Replace('\\', '/');
-        foreach (var compilation in held.Compilations)
+        foreach (var compilation in compilations)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
@@ -542,5 +584,56 @@ public sealed class HeldComplog : IDisposable
     public IReadOnlyList<Compilation> Compilations { get; }
 
     /// <summary>Releases the held compilations' underlying compiler-log reader.</summary>
+    public void Dispose() => _reader.Dispose();
+}
+
+/// <summary>
+///     A compiler log held for lazy pooled checks (R53). Source ownership is available before compilation
+///     rehydration; each matching C# project is materialized once on demand and stays cached for later requests.
+/// </summary>
+public sealed class LazyHeldComplog : IDisposable
+{
+    private readonly ICompilerCallReader _reader;
+    private readonly IReadOnlyList<CompilationData> _calls;
+    private readonly IReadOnlyList<IReadOnlyList<string>> _sourcePaths;
+    private readonly Compilation?[] _compilations;
+
+    internal LazyHeldComplog(
+        ICompilerCallReader reader,
+        IReadOnlyList<CompilationData> calls,
+        IReadOnlyList<IReadOnlyList<string>> sourcePaths)
+    {
+        _reader = reader;
+        _calls = calls;
+        _sourcePaths = sourcePaths;
+        _compilations = new Compilation[calls.Count];
+    }
+
+    /// <summary>Gets how many captured C# project compilations have been rehydrated in this worker.</summary>
+    public int RehydratedProjectCount => _compilations.Count(static compilation => compilation is not null);
+
+    internal IReadOnlyList<Compilation> GetCompilationsFor(
+        string relativeFilePath,
+        Func<Compilation, string?, Compilation> normalizeSigning,
+        CancellationToken cancellationToken)
+    {
+        var normalized = relativeFilePath.Replace('\\', '/');
+        var matches = new List<Compilation>();
+        for (var index = 0; index < _calls.Count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_sourcePaths[index].Any(path => path.EndsWith(normalized, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            _compilations[index] ??= normalizeSigning(
+                _calls[index].GetCompilationAfterGenerators(cancellationToken),
+                _calls[index].CompilerCall.ProjectFilePath);
+            matches.Add(_compilations[index]!);
+        }
+
+        return matches;
+    }
+
+    /// <summary>Releases the compiler-log reader and its lazily loaded inputs.</summary>
     public void Dispose() => _reader.Dispose();
 }

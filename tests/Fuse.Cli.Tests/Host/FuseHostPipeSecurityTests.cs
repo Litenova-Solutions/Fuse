@@ -60,12 +60,12 @@ public sealed class FuseHostPipeSecurityTests
     [Fact]
     [Trait(RequiresSdkIntegration.TraitName, RequiresSdkIntegration.TraitValue)]
     // The body reads Windows-only pipe ACLs (SecurityIdentifier, AccessControlType); the analyzer does not treat
-    // the early-throw guard below as a platform check, so mark the method Windows-only to satisfy CA1416.
+    // the early-return guard below as a platform check, so mark the method Windows-only to satisfy CA1416.
     [SupportedOSPlatform("windows")]
     public void RestrictedPipe_AclGrantsOnlyCurrentUser_OnWindows()
     {
         if (!OperatingSystem.IsWindows())
-            throw Xunit.Sdk.SkipException.ForSkip("Windows-only pipe ACL test.");
+            return;
 
         var prior = Environment.GetEnvironmentVariable(HostPipeSecurity.EnvironmentVariable);
         var pipeName = "fuse-host-restricted-" + Guid.NewGuid().ToString("N");

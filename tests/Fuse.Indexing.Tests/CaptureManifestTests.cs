@@ -56,7 +56,7 @@ public sealed class CaptureManifestTests
     [Fact]
     public void An_older_format_version_is_refused_when_the_graph_contract_requires_a_recapture()
     {
-        Assert.True(CaptureManifest.CurrentFormatVersion >= 3, "this test pins the R60 captured-graph format");
+        Assert.True(CaptureManifest.CurrentFormatVersion >= 4, "this test pins the captured test-edge graph format");
         var manifest = Sample(FuseBuildInfo.Current, formatVersion: 1);
         Assert.False(manifest.IsCompatibleWithRunningBuild);
         Assert.Contains("re-capture", manifest.IncompatibilityReason!);

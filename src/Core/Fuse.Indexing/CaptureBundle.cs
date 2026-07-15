@@ -45,10 +45,10 @@ public sealed record CaptureManifest(
     ///     The current bundle layout version. Version 2 (G4) added an additive <c>fragments/</c> folder of
     ///     per-project compiler logs beside the version-1 single <c>capture.complog</c>; a version-2 reader still
     ///     reads a version-1 bundle. Version 3 (R60) adds target-framework information to the captured graph so a
-    ///     consumer can build the canonical multi-target union; pre-version-3 bundles must be re-captured rather
-    ///     than silently treated as complete availability data.
+    ///     consumer can build the canonical multi-target union. Version 4 adds cross-project <c>tests</c> edges to
+    ///     the captured graph, so older bundles must be re-captured rather than silently omitting coverage.
     /// </summary>
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
 
     /// <summary>The manifest file name inside a bundle directory.</summary>
     public const string ManifestFileName = "manifest.json";
@@ -64,7 +64,8 @@ public sealed record CaptureManifest(
 
     /// <summary>
     ///     Whether this bundle can be rehydrated by the running Fuse build: its layout must exactly match the
-    ///     current graph contract, because R60 needs target-framework availability from every captured project.
+    ///     current graph contract, because R60 needs target-framework availability and coverage edges from every
+    ///     captured project.
     ///     The producing Fuse version must also be compatible by <c>major.minor</c>
     ///     (<see cref="FuseBuildInfo.IsCompatible" />), so the extraction contract has not changed under it.
     /// </summary>

@@ -91,7 +91,7 @@ Fuse distributes as a framework-dependent .NET global tool and as self-contained
 
 Roslyn structural analysis is always included; there is no trimmed or regex-only binary.
 
-The self-contained runtime binaries are published ReadyToRun (R50), so a one-shot CLI invocation (`fuse find`, `fuse context`, or the ambient-verification hooks that shell out per event) pays less JIT warmup on cold start. Measured on win-x64 (`fuse --version`, environment-dependent): ReadyToRun ~150 ms versus ~188 ms without it (best 146 vs 181 ms). Full AOT is not used (its native link is unavailable in the build environment); the long-lived daemon pays JIT once per session and is unaffected either way.
+The self-contained runtime binaries are published ReadyToRun (R50), so a one-shot runtime-binary CLI invocation pays less JIT warmup on cold start. Measured on win-x64 (`fuse --version`, environment-dependent): ReadyToRun ~150 ms versus ~188 ms without it (best 146 vs 181 ms). The configured ambient hooks use the framework-dependent `fuse` tool, so each event still starts that command even though it asks the warm daemon for diagnostics. R57 measured Release `fuse check --delta --fast` at 155 to 171 ms with no host and 239 to 294 ms with a serving host; the latter includes process startup plus the pipe round trip. Full AOT is not used (its native link is unavailable in the build environment); the long-lived daemon pays JIT once per session and is unaffected either way.
 
 ## How these are regenerated
 

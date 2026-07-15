@@ -61,12 +61,14 @@ this session broke.
 ## How It Stays Fast
 
 The hooks talk to the already-running Fuse host (the same process your editor and MCP client
-use) over its local pipe and ask it for the delta; they never run a build. When no host is
-serving the workspace, the commands exit immediately and silently, so a hook is never a
-drag on editing. Set `FUSE_HOOK_VERBOSE=1` when debugging hook wiring to log swallowed RPC
-failures to stderr (method name and error code); leave it off in normal use. This is why
-ambient verification needs a resident host: the delta is read from the live compilation
-the host holds, with no rebuild.
+use) over its local pipe and ask it for the delta; they never run a build. The hook runner
+still starts `fuse check` or `fuse gate` for each event, because its contract is a command
+string. The pipe reuses daemon compiler state but cannot remove that command startup without
+adding another resident hook runner. When no host is serving the workspace, the command
+returns silently after its bounded probe. Set `FUSE_HOOK_VERBOSE=1` when debugging hook wiring
+to log swallowed RPC failures to stderr (method name and error code); leave it off in normal
+use. This is why ambient verification needs a resident host: the delta is read from the live
+compilation the host holds, with no rebuild.
 
 ## Other Harnesses
 

@@ -31,7 +31,7 @@ Connections use Content-Length framed JSON-RPC (the same framing VS Code languag
 | `fuse/shutdown` | Stops the host |
 | `fuse/invalidated` | Server push when watched files change (notification, not a request) |
 
-Logging goes to stderr only; the transport carries RPC traffic and notifications, not log lines. Hook clients (`fuse check --delta`, `fuse gate`) swallow RPC failures so editing is never blocked; set `FUSE_HOOK_VERBOSE=1` to log those failures to stderr with the method name and a stable error code (`no_host`, `protocol_mismatch`, or `rpc_error`).
+Logging goes to stderr only; the transport carries RPC traffic and notifications, not log lines. Hook clients (`fuse check --delta`, `fuse gate`) are short-lived command clients: the hook runner starts one for each event, then the client connects to this endpoint. The pipe reuses daemon state and avoids a build, but it does not remove the hook-command startup cost. Hook clients swallow RPC failures so editing is never blocked; set `FUSE_HOOK_VERBOSE=1` to log those failures to stderr with the method name and a stable error code (`no_host`, `protocol_mismatch`, or `rpc_error`).
 
 ## RPC Outcomes
 

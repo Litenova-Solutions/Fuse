@@ -56,6 +56,19 @@ public sealed class SyntaxRouteExtractor
             return [];
         }
 
+        return Extract(normalizedPath, root);
+    }
+
+    /// <summary>
+    ///     Extracts routes from an already-parsed C# syntax root (R47), so the semantic index pipeline parses each
+    ///     file once and shares the tree with the symbol/chunk extractor instead of re-parsing here. Produces
+    ///     byte-identical records to the content overload for the same source.
+    /// </summary>
+    /// <param name="normalizedPath">The forward-slash relative path used to key records to the file.</param>
+    /// <param name="root">The parsed syntax root of the file.</param>
+    /// <returns>The extracted routes; empty when none are found.</returns>
+    public IReadOnlyList<RouteRecord> Extract(string normalizedPath, SyntaxNode root)
+    {
         var routes = new List<RouteRecord>();
         CollectControllerRoutes(root, normalizedPath, routes);
         CollectMinimalApiRoutes(root, normalizedPath, routes);

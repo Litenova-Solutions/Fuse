@@ -1021,10 +1021,29 @@ public sealed class SemanticIndexer
                 continue;
 
             var content = await File.ReadAllTextAsync(Path.Combine(root, file.Path), cancellationToken);
-            var extracted = _syntaxSymbols.Extract(file.NormalizedPath, content);
+            if (string.IsNullOrEmpty(content))
+                continue;
+
+            // R47: parse each file once and share the tree between the chunk (symbol) and route extractors, instead
+            // of each extractor re-parsing the content string. On the semantic path Roslyn already parsed every file
+            // for the compilation; the chunk/route pass added two more parses per file, so this removes one parse per
+            // file. Byte-identical output: both extractors previously parsed the same content with the same default
+            // parse options, which is exactly the shared tree here. A parse failure yields no chunks/routes for the
+            // file, matching the pre-R47 behavior where both extractors caught the parse error and returned empty.
+            Microsoft.CodeAnalysis.SyntaxNode syntaxRoot;
+            try
+            {
+                syntaxRoot = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(content).GetRoot();
+            }
+            catch
+            {
+                continue;
+            }
+
+            var extracted = _syntaxSymbols.Extract(file.NormalizedPath, syntaxRoot);
             foreach (var chunk in extracted.Chunks)
                 chunks.Add(dropChunkSymbolIds ? chunk with { SymbolId = null } : chunk);
-            routes.AddRange(_routeExtractor.Extract(file.NormalizedPath, content));
+            routes.AddRange(_routeExtractor.Extract(file.NormalizedPath, syntaxRoot));
         }
 
         return (chunks, routes);

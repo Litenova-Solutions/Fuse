@@ -6,6 +6,10 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [4.2.0] - 2026-07-14
 
+### Changed
+
+- Deduplicated Roslyn parsing in the semantic index pipeline (R47): on the semantic/capture path each C# file is now parsed once and the syntax tree is shared between the chunk (symbol) and route extractors, instead of each extractor re-parsing the file's content string. This removes a parse per file on the cold-index hot path with byte-identical chunk and route output (the two extractors previously parsed the same content with the same default parse options). The syntax-only tier is unchanged. No effect on the semantic graph (nodes/edges come from the analyzer pass, which is untouched).
+
 ### Added
 
 - MSBuild toolchain warmed at daemon/serve start (R44): the daemon (and in-process `fuse mcp serve` when not delegating) registers the MSBuild locator and primes the served root's solution into the warm-solution cache (R42) in the background at startup, so the first `fuse_refactor` or `fuse_workspace doctor` of a session does not pay the multi-second locator-plus-first-load warmup (measured on the Fuse repo: a ~5.9s background warmup moved the load off the first refactor, which then reused the primed cache with no reload). Fire-and-forget and best-effort, never blocks startup; opt out with `FUSE_MSBUILD_WARMUP=0`.

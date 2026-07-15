@@ -40,6 +40,7 @@ public sealed class WarmSolutionCache : IDisposable
     private readonly object _gate = new();
     private readonly SemaphoreSlim _loadGate = new(1, 1);
     private readonly Dictionary<string, Entry> _byTarget = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _watchedRoots = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<string> _lru = new(); // front = most-recently-used
     private readonly Dictionary<string, LinkedListNode<string>> _lruIndex = new(StringComparer.OrdinalIgnoreCase);
     private readonly int _cap;
@@ -110,14 +111,16 @@ public sealed class WarmSolutionCache : IDisposable
     public async Task<CachedSolution> OpenAsync(string solutionOrProjectPath, CancellationToken cancellationToken)
     {
         var full = Path.GetFullPath(solutionOrProjectPath);
-        var signature = _signature(full);
 
-        // Fast path: a held, still-fresh solution is returned without touching MSBuild.
+        // A watcher-attached root invalidates held entries on a settled change, so a no-change hit needs neither an
+        // MSBuild load nor the fallback directory scan. One-shot and unobserved roots retain the signature check.
         lock (_gate)
         {
-            if (TryHitLocked(full, signature, out var cached))
+            if (IsWatcherAttachedLocked(full) && TryHitLocked(full, signature: null, requireMatchingSignature: false, out var cached))
                 return cached;
         }
+
+        var signature = _signature(full);
 
         // Miss or stale: serialize loads so two concurrent callers never both pay the full open.
         await _loadGate.WaitAsync(cancellationToken);
@@ -126,7 +129,8 @@ public sealed class WarmSolutionCache : IDisposable
             // Re-check under the load gate: another caller may have just loaded (or refreshed) this target.
             lock (_gate)
             {
-                if (TryHitLocked(full, signature, out var cached))
+                var requireMatchingSignature = !IsWatcherAttachedLocked(full);
+                if (TryHitLocked(full, signature, requireMatchingSignature, out var cached))
                     return cached;
             }
 
@@ -166,9 +170,70 @@ public sealed class WarmSolutionCache : IDisposable
             return EvictLocked(full);
     }
 
-    private bool TryHitLocked(string full, object signature, out CachedSolution cached)
+    /// <summary>
+    ///     Registers a watcher-covered source root. While at least one registration covers a held target, clean
+    ///     cache hits skip the directory signature scan and rely on <see cref="InvalidateWatcherRoot" /> to evict
+    ///     the snapshot after a settled filesystem change. Disposing the returned registration restores the scan
+    ///     fallback for that root.
+    /// </summary>
+    /// <param name="root">The absolute or relative workspace root watched by the caller.</param>
+    /// <returns>A registration to dispose when the caller stops watching the root.</returns>
+    public IDisposable AttachWatcher(string root)
     {
-        if (_byTarget.TryGetValue(full, out var entry) && entry.Signature.Equals(signature))
+        var full = Path.GetFullPath(root);
+        lock (_gate)
+        {
+            _watchedRoots.TryGetValue(full, out var registrations);
+            _watchedRoots[full] = registrations + 1;
+        }
+
+        return new WatcherRegistration(this, full);
+    }
+
+    /// <summary>
+    ///     Evicts all held targets under a watcher-covered root. Call this from the watcher's settled change event;
+    ///     the next caller reloads the same way a changed freshness signature would in the no-watcher path.
+    /// </summary>
+    /// <param name="root">The workspace root whose settled watcher event fired.</param>
+    public void InvalidateWatcherRoot(string root)
+    {
+        var full = Path.GetFullPath(root);
+        lock (_gate)
+        {
+            if (!_watchedRoots.ContainsKey(full))
+                return;
+
+            var affected = _byTarget.Keys.Where(target => IsUnderRoot(full, target)).ToList();
+            foreach (var target in affected)
+                EvictLocked(target);
+        }
+    }
+
+    /// <summary>
+    ///     Returns whether a watcher path can change this cache's fallback freshness signature for the supplied
+    ///     root. The watcher must ignore generated and build trees for the same reason <see cref="ComputeSignature" />
+    ///     does: their writes do not make a held source solution stale.
+    /// </summary>
+    /// <param name="root">The workspace root whose source signature is tracked.</param>
+    /// <param name="path">The changed file path from a watcher batch.</param>
+    /// <returns>True for a tracked C# source file below the root; otherwise false.</returns>
+    public static bool IsTrackedSourceFile(string root, string path)
+    {
+        var fullRoot = Path.GetFullPath(root);
+        var fullPath = Path.GetFullPath(path);
+        if (!fullPath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || !IsUnderRoot(fullRoot, fullPath))
+            return false;
+
+        var directory = Path.GetDirectoryName(Path.GetRelativePath(fullRoot, fullPath));
+        return directory is null
+            || !directory.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(ExcludedDirectories.Contains);
+    }
+
+    private bool TryHitLocked(string full, object? signature, bool requireMatchingSignature, out CachedSolution cached)
+    {
+        if (_byTarget.TryGetValue(full, out var entry)
+            && (!requireMatchingSignature || entry.Signature.Equals(signature)))
         {
             entry.LastAccessUtc = _clock();
             TouchLruLocked(full);
@@ -178,6 +243,32 @@ public sealed class WarmSolutionCache : IDisposable
 
         cached = default!;
         return false;
+    }
+
+    private bool IsWatcherAttachedLocked(string target) => _watchedRoots.Keys.Any(root => IsUnderRoot(root, target));
+
+    private void DetachWatcher(string root)
+    {
+        lock (_gate)
+        {
+            if (!_watchedRoots.TryGetValue(root, out var registrations))
+                return;
+
+            if (registrations == 1)
+                _watchedRoots.Remove(root);
+            else
+                _watchedRoots[root] = registrations - 1;
+        }
+    }
+
+    private static bool IsUnderRoot(string root, string target)
+    {
+        var relative = Path.GetRelativePath(root, target);
+        return relative.Length == 0
+            || (!Path.IsPathRooted(relative)
+                && !relative.Equals("..", StringComparison.Ordinal)
+                && !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !relative.StartsWith("../", StringComparison.Ordinal));
     }
 
     private void TouchLruLocked(string full)
@@ -357,6 +448,7 @@ public sealed class WarmSolutionCache : IDisposable
             _disposed = true;
             entries = _byTarget.Values.ToList();
             _byTarget.Clear();
+            _watchedRoots.Clear();
             _lru.Clear();
             _lruIndex.Clear();
         }
@@ -373,6 +465,17 @@ public sealed class WarmSolutionCache : IDisposable
         public IReadOnlyList<string> LoadFailures { get; } = loadFailures;
         public object Signature { get; } = signature;
         public DateTime LastAccessUtc { get; set; } = lastAccessUtc;
+    }
+
+    private sealed class WatcherRegistration(WarmSolutionCache cache, string root) : IDisposable
+    {
+        private WarmSolutionCache? _cache = cache;
+
+        public void Dispose()
+        {
+            var cache = Interlocked.Exchange(ref _cache, null);
+            cache?.DetachWatcher(root);
+        }
     }
 
     private readonly record struct SourceSignature(int Count, long MaxWriteTicks, long TotalBytes);

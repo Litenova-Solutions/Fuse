@@ -76,6 +76,15 @@ public sealed class HostCommand
         // change, so the extension refreshes its index, diagnostics, and graph without polling. The .fuse cache
         // directory is ignored by the watcher, so the host's own writes do not retrigger.
         using var watcher = new Services.DebouncedFileWatcher(root, recursive: true, cancellationToken: stopCts.Token);
+        using var warmSolutionWatcher = WarmSolutionCache.Shared.AttachWatcher(root);
+        watcher.BatchChanged += (batch, _) =>
+        {
+            // R54: the fallback signature tracks C# sources only. Matching that scope prevents MSBuild's bin/obj
+            // outputs from evicting a still-fresh snapshot after every live doctor or refactor call.
+            if (batch.Any(change => WarmSolutionCache.IsTrackedSourceFile(root, change.FullPath)))
+                WarmSolutionCache.Shared.InvalidateWatcherRoot(root);
+            return Task.CompletedTask;
+        };
         watcher.Changed += async _ =>
         {
             logger.LogInformation("Workspace changed; broadcasting fuse/invalidated to {Count} clients.", notifier.ConnectionCount);

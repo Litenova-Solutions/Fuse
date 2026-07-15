@@ -5,6 +5,7 @@ using Fuse.Cli.Extensions;
 using Fuse.Cli.Mcp;
 using Fuse.Cli.Rpc;
 using Fuse.Cli.Services;
+using Fuse.Semantics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -153,6 +154,18 @@ public sealed class McpServeCommand
         using var residentWatcher = daemonDelegation is null && ResidentWorkspaceHosting.OptIn()
             ? new DebouncedFileWatcher(daemonRoot, recursive: true, cancellationToken: context.CancellationToken)
             : null;
+        using var warmSolutionWatcher = residentWatcher is null
+            ? null
+            : WarmSolutionCache.Shared.AttachWatcher(daemonRoot);
+        if (residentWatcher is not null)
+        {
+            residentWatcher.BatchChanged += (batch, _) =>
+            {
+                if (batch.Any(change => WarmSolutionCache.IsTrackedSourceFile(daemonRoot, change.FullPath)))
+                    WarmSolutionCache.Shared.InvalidateWatcherRoot(daemonRoot);
+                return Task.CompletedTask;
+            };
+        }
         using var resident = residentWatcher is null
             ? null
             : ResidentWorkspaceHosting.Enable(

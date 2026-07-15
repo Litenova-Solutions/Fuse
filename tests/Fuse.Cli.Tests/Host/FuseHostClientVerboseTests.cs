@@ -157,7 +157,9 @@ public sealed class FuseHostClientVerboseTests
     {
         var root = UniqueRoot();
         Directory.CreateDirectory(root);
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        // The coverage runner can delay the test server's first RPC completion beyond the default 15 seconds.
+        // Keep the failure bounded while allowing the test to observe the intended RPC error on that runner.
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var serverTask = ServeTargetAsync(root, new ThrowingCheckTarget(), ready, cts.Token);
         try

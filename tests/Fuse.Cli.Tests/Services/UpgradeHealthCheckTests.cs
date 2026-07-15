@@ -21,8 +21,11 @@ public sealed class UpgradeHealthCheckTests
     {
         var root = RepoRoot();
         Assert.NotNull(root);
-        var fuseDll = Path.Combine(root!, "src", "Host", "Fuse.Cli", "bin", "Release", "net10.0", "fuse.dll");
-        Assert.True(File.Exists(fuseDll), $"built fuse.dll not found at {fuseDll}; build Release first");
+        var fuseDll = new[] { "Release", "Debug" }
+            .Select(configuration => Path.Combine(root!, "src", "Host", "Fuse.Cli", "bin", configuration, "net10.0", "fuse.dll"))
+            .FirstOrDefault(File.Exists)
+            ?? Path.Combine(root!, "src", "Host", "Fuse.Cli", "bin", "Release", "net10.0", "fuse.dll");
+        Assert.True(File.Exists(fuseDll), $"built fuse.dll not found at {fuseDll}; build the solution first");
 
         var result = await UpgradeHealthCheck.CheckAsync(fuseDll, CancellationToken.None);
 

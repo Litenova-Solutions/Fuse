@@ -1,38 +1,58 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Pin transitive dependencies that have a PackageVersion here, so a vulnerable transitive can be lifted to a
+         patched version without taking a direct dependency. Used for Microsoft.Bcl.Memory below. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="DotMake.CommandLine" Version="3.1.0" />
     <PackageVersion Include="DotNet.Glob" Version="3.1.3" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" />
-    <!-- Pinned so the build-capture worker (which pulls Basic.CompilerLog's floor dependency on VisualBasic 4.8)
-         resolves VisualBasic to 4.14, matching CodeAnalysis.Common 4.14; a 4.8 VB assembly over a 4.14 Common
-         throws TypeLoadException. The worker never compiles VB; the pin is purely for version consistency. -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.Build.Locator" Version="1.7.8" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <!-- The Roslyn family is pinned to one version. The metapackage (Microsoft.CodeAnalysis) and the *.Common
+         components arrive transitively (Basic.CompilerLog.Util) at an older floor with exact-version dependencies
+         that conflict with the 5.6.0 stack; pinning them forward via transitive pinning keeps the whole graph
+         version-consistent, so no NU1608 constraint mismatch fails the MSBuildWorkspace design-time load. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.6.0" />
+    <!-- Pinned so the build-capture worker (which pulls Basic.CompilerLog's floor dependency on an older VisualBasic)
+         resolves VisualBasic to 5.6.0, matching CodeAnalysis.Common 5.6.0; a mismatched VB assembly over a newer
+         Common throws TypeLoadException. The worker never compiles VB; the pin is purely for version consistency. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic" Version="5.6.0" />
+    <!-- VisualBasic.Workspaces arrives transitively (Basic.CompilerLog.Util) at an older floor whose exact-version
+         dependencies (Common = 4.8.0, etc.) conflict with the 5.6.0 stack. Pinned forward to 5.6.0 via transitive
+         pinning so the whole Roslyn graph is version-consistent; otherwise the NU1608 constraint mismatch fails the
+         MSBuildWorkspace design-time load and blocks fuse_refactor. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.Build.Locator" Version="1.11.2" />
     <!-- N4 tier-1 build capture. Referenced ONLY by the out-of-process Fuse.BuildCaptureWorker (never by the
          parent process that hosts MSBuildWorkspace), because the two Roslyn-loading closures conflict in one
-         process; the worker uses build capture and never invokes MSBuildWorkspace, so its 4.8 floor resolves to
-         this repo's 4.14 without breaking anything. -->
+         process; the worker uses build capture and never invokes MSBuildWorkspace, so its floor resolves to
+         this repo's 5.6.0 without breaking anything. -->
     <PackageVersion Include="Basic.CompilerLog.Util" Version="0.9.47" />
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+    <!-- Transitive of Microsoft.ML.Tokenizers.Data.* and Basic.CompilerLog.Util. 9.0.4 (the version they request)
+         carries a high-severity advisory (GHSA-73j8-2gch-69rq); pinned forward to the patched net10-aligned 10.0.10
+         via CentralPackageTransitivePinningEnabled. Without this, MSBuild design-time restore fails the audit and
+         MSBuildWorkspace refuses to load the solution, which blocked fuse_refactor. -->
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.27.0" />
-    <PackageVersion Include="Microsoft.ML.Tokenizers" Version="1.0.2" />
-    <PackageVersion Include="Microsoft.ML.Tokenizers.Data.Cl100kBase" Version="1.0.2" />
-    <PackageVersion Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="1.0.2" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
-    <PackageVersion Include="ModelContextProtocol" Version="0.8.0-preview.1" />
+    <PackageVersion Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+    <PackageVersion Include="Microsoft.ML.Tokenizers.Data.Cl100kBase" Version="2.0.0" />
+    <PackageVersion Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="2.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="ModelContextProtocol" Version="1.4.1" />
     <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
     <PackageVersion Include="StreamJsonRpc" Version="2.21.10" />
-    <PackageVersion Include="System.IO.Hashing" Version="9.0.0" />
-    <PackageVersion Include="xunit" Version="2.9.2" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="System.IO.Hashing" Version="10.0.10" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
 </Project>

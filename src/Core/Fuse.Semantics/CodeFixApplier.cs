@@ -52,8 +52,7 @@ public sealed class CodeFixApplier
         }
 
         using var workspace = MSBuildWorkspace.Create();
-        var loadFailed = false;
-        workspace.WorkspaceFailed += (_, _) => loadFailed = true;
+        var loadFailures = WorkspaceLoadFailures.Track(workspace);
         Solution solution;
         try
         {
@@ -67,8 +66,8 @@ public sealed class CodeFixApplier
             return CodeFixResult.Abstain($"could not load the workspace: {ex.Message}");
         }
 
-        if (loadFailed)
-            return CodeFixResult.Abstain("the workspace did not load cleanly; refused");
+        if (loadFailures.Count > 0)
+            return CodeFixResult.Abstain($"the workspace did not load cleanly; refused. First load failure: {loadFailures[0]}");
 
         var normalized = file.Replace('\\', '/');
         var document = solution.Projects

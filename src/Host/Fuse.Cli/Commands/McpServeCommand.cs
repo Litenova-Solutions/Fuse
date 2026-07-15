@@ -105,7 +105,9 @@ public sealed class McpServeCommand
         // F-017: opt-in System.Diagnostics.Metrics for tool duration, index mode, and reconcile-stamped events.
         if (FuseMetrics.Enabled)
         {
-            mcpServer.AddCallToolFilter(next => async (context, cancellationToken) =>
+            // ModelContextProtocol 1.x moved per-request filters behind WithRequestFilters; the call-tool filter is
+            // registered on the IMcpRequestFilterBuilder rather than directly on the server builder (0.8-preview API).
+            mcpServer.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (context, cancellationToken) =>
             {
                 var sw = Stopwatch.StartNew();
                 var toolName = context.Params?.Name ?? "unknown";
@@ -118,7 +120,7 @@ public sealed class McpServeCommand
                     sw.Stop();
                     FuseMetrics.RecordToolDuration(toolName, sw.Elapsed);
                 }
-            });
+            }));
         }
 
         mcpServer

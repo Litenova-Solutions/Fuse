@@ -271,8 +271,7 @@ public sealed class TypeRefactorer
         }
 
         using var workspace = MSBuildWorkspace.Create();
-        var loadFailed = false;
-        workspace.WorkspaceFailed += (_, _) => loadFailed = true;
+        var loadFailures = WorkspaceLoadFailures.Track(workspace);
 
         Solution solution;
         try
@@ -287,8 +286,9 @@ public sealed class TypeRefactorer
             return (null, $"could not load the workspace: {ex.Message}");
         }
 
-        if (loadFailed)
-            return (null, "the workspace did not load cleanly; a solution-wide change could be incomplete, so it is refused");
+        if (loadFailures.Count > 0)
+            return (null, "the workspace did not load cleanly; a solution-wide change could be incomplete, so it is refused. " +
+                          $"First load failure: {loadFailures[0]}");
 
         return (solution, null);
     }

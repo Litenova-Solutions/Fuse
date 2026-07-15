@@ -135,9 +135,11 @@ public sealed class SemanticIndexer
         // MSBuildWorkspace load (tier 2), which itself falls back to syntax (tier 3), on any capture failure.
         var capture = await TryBuildCaptureAsync(discovery, root, cancellationToken);
         SemanticIndexResult result;
+        LoadDiagnosis diagnosis;
         if (capture is not null)
         {
             result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
+            diagnosis = BuildDiagnosisFromCapture(discovery, capture);
         }
         else
         {
@@ -145,11 +147,14 @@ public sealed class SemanticIndexer
             result = snapshot.SemanticLoadSucceeded
                 ? await IndexSemanticAsync(root, store, files, snapshot, cancellationToken)
                 : await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
+            diagnosis = BuildDiagnosisFromSnapshot(discovery, snapshot);
         }
 
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         // A full pass is the final word on the mode: clear any syntax-first pending flag a prior fast pass set.
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
+        // R43: stamp the per-project load diagnosis so doctor reports the tier from the warm index (no live load).
+        await StampLoadDiagnosisAsync(store, diagnosis, cancellationToken);
         // Stamp the Fuse build that wrote this index so a later run on an incompatible upgrade rebuilds it.
         await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
         // R22: stamp the extraction-contract version so index reuse is gated on what was extracted, not the product
@@ -216,24 +221,80 @@ public sealed class SemanticIndexer
             snapshot = await _loader.LoadAsync(discovery, cancellationToken);
         }
 
-        // The oracle tier requires every loaded project to be error-free; a project loaded with compile errors is
-        // graph-grade (retrieval only), and any project that did not load at all drops the tier further.
+        return BuildDiagnosisFromSnapshot(discovery, snapshot);
+    }
+
+    // The tier from a project-report set: oracle requires every loaded project to be error-free; a project loaded
+    // with compile errors is graph-grade (retrieval only), and any project that did not load at all drops the tier
+    // further. Shared so the live diagnosis and the persisted-at-index-time diagnosis (R43) compute one tier.
+    internal static string ComputeTier(bool semanticLoadSucceeded, int loaded, int total, bool anyErrors)
+    {
+        if (!semanticLoadSucceeded || loaded == 0)
+            return "syntax";
+        if (loaded < total || anyErrors)
+            return "graph-grade (partial)";
+        return "oracle-grade (all projects loaded clean)";
+    }
+
+    private static string? DescribeSelectedSolution(WorkspaceDiscoveryResult discovery) =>
+        discovery.Kind == WorkspaceKind.Solution
+            ? discovery.SolutionPath
+            : discovery.Kind == WorkspaceKind.Projects ? $"{discovery.ProjectPaths.Count} project(s), no single solution" : null;
+
+    // Builds the load diagnosis from an MSBuild/Roslyn load snapshot (the live doctor path and the persisted-at-
+    // index-time diagnosis on the MSBuildWorkspace index path).
+    internal static LoadDiagnosis BuildDiagnosisFromSnapshot(WorkspaceDiscoveryResult discovery, RoslynWorkspaceSnapshot snapshot)
+    {
         var loaded = snapshot.ProjectReports.Count(p => p.Loaded);
         var total = snapshot.ProjectReports.Count;
         var anyErrors = snapshot.ProjectReports.Any(p => p.Loaded && p.Reason.Contains("error", StringComparison.OrdinalIgnoreCase));
-        string tier;
-        if (!snapshot.SemanticLoadSucceeded || loaded == 0)
-            tier = "syntax";
-        else if (loaded < total || anyErrors)
-            tier = "graph-grade (partial)";
-        else
-            tier = "oracle-grade (all projects loaded clean)";
-
-        var selectedSolution = discovery.Kind == WorkspaceKind.Solution
-            ? discovery.SolutionPath
-            : discovery.Kind == WorkspaceKind.Projects ? $"{discovery.ProjectPaths.Count} project(s), no single solution" : null;
+        var tier = ComputeTier(snapshot.SemanticLoadSucceeded, loaded, total, anyErrors);
         return new LoadDiagnosis(
-            tier, loaded, total, snapshot.ProjectReports, snapshot.Diagnostics, selectedSolution, discovery.SelectionNote);
+            tier, loaded, total, snapshot.ProjectReports, snapshot.Diagnostics, DescribeSelectedSolution(discovery), discovery.SelectionNote);
+    }
+
+    // Builds the load diagnosis from a tier-1 build capture (the default index path). Every captured project
+    // produced a compilation (a project that failed to build does not rehydrate), so all are loaded; a project with
+    // residual compile errors is graph-grade, matching the per-project reason strings the MSBuild loader produces.
+    internal static LoadDiagnosis BuildDiagnosisFromCapture(WorkspaceDiscoveryResult discovery, Fuse.Indexing.CaptureResult capture)
+    {
+        var reports = capture.Projects
+            .Select(p => new ProjectLoadReport(
+                p.Name,
+                p.FilePath,
+                Loaded: true,
+                p.ErrorCount > 0 ? "loaded with compile errors (graph-grade, not oracle-grade)" : "loaded"))
+            .ToList();
+        var anyErrors = capture.Projects.Any(p => p.ErrorCount > 0);
+        var tier = ComputeTier(semanticLoadSucceeded: reports.Count > 0, loaded: reports.Count, total: reports.Count, anyErrors);
+        var diagnostics = new List<DiagnosticRecord>
+        {
+            new(DiagnosticSeverity.Info, "build-capture", $"Tier-1 build capture: {capture.Projects.Count} project(s)."),
+        };
+        return new LoadDiagnosis(
+            tier, reports.Count, reports.Count, reports, diagnostics, DescribeSelectedSolution(discovery), discovery.SelectionNote);
+    }
+
+    // R43: stamp the load diagnosis into index_meta so doctor can report the tier and per-project reasons from the
+    // warm index without a live MSBuild load. Best-effort: a serialization or write hiccup must not fail the index.
+    private static async Task StampLoadDiagnosisAsync(
+        IWorkspaceIndexStore store, LoadDiagnosis diagnosis, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var persisted = new PersistedLoadDiagnosis(
+                diagnosis.Tier,
+                diagnosis.ProjectsLoaded,
+                diagnosis.ProjectsTotal,
+                diagnosis.Projects.Select(p => new PersistedProjectReport(p.Name, p.FilePath, p.Loaded, p.Reason)).ToList(),
+                diagnosis.SelectedSolution,
+                diagnosis.SelectionNote);
+            var json = System.Text.Json.JsonSerializer.Serialize(persisted, PersistedLoadDiagnosisJsonContext.Default.PersistedLoadDiagnosis);
+            await store.SetMetaAsync(WorkspaceIndexStore.LoadDiagnosisMetaKey, json, cancellationToken);
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or System.Text.Json.JsonException)
+        {
+        }
     }
 
     // R31: record the post-build integrity result in index_meta, so the recorded health is auditable alongside
@@ -283,6 +344,10 @@ public sealed class SemanticIndexer
         var result = await IndexSyntaxAsync(root, store, files, snapshot, cancellationToken);
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "1", cancellationToken);
+        // R43: stamp a syntax-tier diagnosis (discovery is cheap file-globbing, no MSBuild) so doctor reports the
+        // current tier from the warm index while the semantic upgrade is still pending; the upgrade restamps it.
+        var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
+        await StampLoadDiagnosisAsync(store, BuildDiagnosisFromSnapshot(discovery, snapshot), cancellationToken);
         // Stamp the Fuse build even on the syntax-first pass so a partial index also carries provenance.
         await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
         // R22: stamp the extraction-contract version so index reuse is gated on what was extracted, not the product
@@ -321,9 +386,11 @@ public sealed class SemanticIndexer
         var files = scan.Files;
         var capture = await TryBuildCaptureAsync(discovery, root, cancellationToken);
         SemanticIndexResult result;
+        LoadDiagnosis diagnosis;
         if (capture is not null)
         {
             result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
+            diagnosis = BuildDiagnosisFromCapture(discovery, capture);
         }
         else
         {
@@ -331,10 +398,13 @@ public sealed class SemanticIndexer
             result = snapshot.SemanticLoadSucceeded
                 ? await IndexSemanticChunkedAsync(root, store, files, snapshot, cancellationToken)
                 : await IndexSyntaxChunkedAsync(root, store, files, snapshot, cancellationToken);
+            diagnosis = BuildDiagnosisFromSnapshot(discovery, snapshot);
         }
 
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
+        // R43: stamp the per-project load diagnosis so doctor reports the tier from the warm index (no live load).
+        await StampLoadDiagnosisAsync(store, diagnosis, cancellationToken);
         await store.SetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, FuseBuildInfo.Current, cancellationToken);
         // R22: stamp the extraction-contract version so index reuse is gated on what was extracted, not the product
         // version. Bump WorkspaceIndexSchema.ExtractionContractVersion in the same change as any extractor change.

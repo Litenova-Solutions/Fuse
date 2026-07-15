@@ -50,6 +50,10 @@ public sealed class DoctorCommand
     [CliArgument(Description = "The workspace directory. Defaults to the current directory.")]
     public string Path { get; set; } = ".";
 
+    /// <summary>Force a live MSBuild load instead of reporting the diagnosis stamped in the warm index (R43).</summary>
+    [CliOption(Description = "Force a live MSBuild load diagnosis instead of reporting the warm index's stamped diagnosis (R43).")]
+    public bool Refresh { get; set; }
+
     /// <summary>
     ///     Runs the doctor command.
     /// </summary>
@@ -64,32 +68,67 @@ public sealed class DoctorCommand
             return;
         }
 
-        _consoleUI.WriteStep($"Diagnosing semantic load for {root}");
-        var diagnosis = await _indexer.DiagnoseLoadAsync(root, context.CancellationToken);
+        // R43: report the diagnosis stamped in the warm index (sub-second, no MSBuild load) unless a live load is
+        // forced with --refresh or no stamp is present yet.
+        var persisted = Refresh ? null : await PersistedDiagnosisReader.TryReadAsync(root, context.CancellationToken);
+        string tier;
+        string? selectedSolution;
+        string? selectionNote;
+        int projectsLoaded;
+        int projectsTotal;
+        IReadOnlyList<(string Name, bool Loaded, string Reason)> projects;
+        IReadOnlyList<DiagnosticRecord> loadDiagnostics;
+
+        if (persisted is not null)
+        {
+            _consoleUI.WriteStep($"Reading the semantic-load diagnosis stamped in the index for {root}");
+            tier = persisted.Tier;
+            selectedSolution = persisted.SelectedSolution;
+            selectionNote = persisted.SelectionNote;
+            projectsLoaded = persisted.ProjectsLoaded;
+            projectsTotal = persisted.ProjectsTotal;
+            projects = persisted.Projects.Select(p => (p.Name, p.Loaded, p.Reason)).ToList();
+            loadDiagnostics = [];
+        }
+        else
+        {
+            _consoleUI.WriteStep($"Diagnosing semantic load for {root}");
+            var diagnosis = await _indexer.DiagnoseLoadAsync(root, context.CancellationToken);
+            tier = diagnosis.Tier;
+            selectedSolution = diagnosis.SelectedSolution;
+            selectionNote = diagnosis.SelectionNote;
+            projectsLoaded = diagnosis.ProjectsLoaded;
+            projectsTotal = diagnosis.ProjectsTotal;
+            projects = diagnosis.Projects.Select(p => (p.Name, p.Loaded, p.Reason)).ToList();
+            loadDiagnostics = diagnosis.Diagnostics;
+        }
 
         var builder = new StringBuilder();
         builder.AppendLine($"workspace: {root}");
-        builder.AppendLine($"load tier: {diagnosis.Tier}");
-        builder.AppendLine($"selected solution: {diagnosis.SelectedSolution ?? "none (syntax-only)"}");
-        if (diagnosis.SelectionNote is not null)
-            builder.AppendLine($"WARNING: {diagnosis.SelectionNote}");
-        builder.AppendLine($"projects loaded: {diagnosis.ProjectsLoaded}/{diagnosis.ProjectsTotal}");
+        builder.AppendLine(persisted is not null
+            ? "diagnosis source: warm index (stamped at index time; --refresh forces a live load)"
+            : $"diagnosis source: live MSBuild load{(Refresh ? " (--refresh)" : " (no index stamp yet)")}");
+        builder.AppendLine($"load tier: {tier}");
+        builder.AppendLine($"selected solution: {selectedSolution ?? "none (syntax-only)"}");
+        if (selectionNote is not null)
+            builder.AppendLine($"WARNING: {selectionNote}");
+        builder.AppendLine($"projects loaded: {projectsLoaded}/{projectsTotal}");
         builder.AppendLine();
-        if (diagnosis.Projects.Count == 0)
+        if (projects.Count == 0)
         {
             builder.AppendLine("no projects: the workspace has no solution or project, or none opened; indexing is syntax-only.");
         }
         else
         {
             builder.AppendLine("per project:");
-            foreach (var project in diagnosis.Projects)
+            foreach (var project in projects)
             {
                 var mark = project.Loaded ? "ok" : "downgraded";
                 builder.AppendLine($"  [{mark}] {project.Name}: {project.Reason}");
             }
         }
 
-        var errors = diagnosis.Diagnostics
+        var errors = loadDiagnostics
             .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
             .ToList();
         if (errors.Count > 0)
@@ -101,7 +140,7 @@ public sealed class DoctorCommand
         }
 
         builder.AppendLine();
-        builder.AppendLine(diagnosis.Tier.StartsWith("oracle", StringComparison.Ordinal)
+        builder.AppendLine(tier.StartsWith("oracle", StringComparison.Ordinal)
             ? "The compiler-backed oracle tools can answer for this workspace."
             : "The oracle tools abstain here (not oracle-grade); retrieval still works at the available tier.");
 

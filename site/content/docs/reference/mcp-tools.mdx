@@ -87,7 +87,7 @@ Workspace status and lifecycle: the loop's first stop and the one explicit tree-
 - **`status`** (default): the index mode, verification grade, freshness, and `index_state` (`not_indexed`, `building_syntax`, `upgrade_pending`, `ready`, `index_busy`, `stale_as_of`), plus `files_indexed` when known. This is a read-only fast path: it reads `index_meta` when `.fuse/fuse.db` exists and never starts a build on a cold workspace.
 - **`index`**: build or refresh the persistent semantic index. The index mode is `semantic` when the workspace loads through MSBuild/Roslyn, `partial` when some projects fall back, and `syntax` when no project loads.
 - **`map`**: the workspace map of indexed symbols, routes, and counts.
-- **`doctor`**: the per-project semantic-load diagnosis (why a project loaded at the tier it did). The summary header uses the same fast `index_meta` read as `status`; the MSBuild load diagnosis still runs below it.
+- **`doctor`**: the per-project semantic-load diagnosis (why a project loaded at the tier it did). The diagnosis is served from the stamp written into the index at index time (R43), so doctor is sub-second and reflects what was actually indexed - it does not re-run the full MSBuild/Roslyn load (measured tens of seconds on a large repo). The summary header uses the same fast `index_meta` read as `status`. Pass `refresh=true` to force a live MSBuild load instead (or when no stamp is present yet, doctor falls back to a live load automatically). The output names its source (`diagnosis source: warm index` or `diagnosis source: live MSBuild load`).
 - **`apply`**: write a proposed single-file edit (`file` plus `content`) to the working tree. This is the server's one explicit tree-write path: it is a dry run that only reports the change unless `write=true`, and it refuses any `file` that resolves outside the workspace root. The write is atomic (a temp file on the same volume is renamed into place, so a reader never sees a half-written file and an interrupted write leaves the original intact) and conflict-checked: pass `expectedHash` (the SHA-256 hex of the content the edit was derived from) and apply refuses with a `validation_error:` conflict rather than clobbering when the file changed since (a concurrent edit landed, or the file was deleted). The conflict is reported even on a dry run.
 
 | Parameter | Type | Default | Meaning |
@@ -100,6 +100,7 @@ Workspace status and lifecycle: the loop's first stop and the one explicit tree-
 | `content` | string | required (`apply`) | For `apply`: the full new content to write |
 | `write` | bool | false | For `apply`: actually write (otherwise a dry run) |
 | `expectedHash` | string | `""` | For `apply`: the SHA-256 (hex) of the content the edit was derived from. When set, apply refuses (conflict) if the file changed since, rather than clobbering it |
+| `refresh` | bool | false | For `doctor`: force a live MSBuild load diagnosis instead of reporting the diagnosis stamped in the warm index (R43) |
 
 ## Task localization (fuse_find kind=task)
 

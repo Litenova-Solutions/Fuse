@@ -96,9 +96,10 @@ public sealed partial class FuseTools
         [Description("For the apply action: the full new content to write to that file.")] string content = "",
         [Description("For the apply action: actually write (otherwise a dry run reports the change without writing).")] bool write = false,
         [Description("For the apply action: the SHA-256 (hex) of the file content this edit was derived from. When set, apply refuses if the file changed since (a concurrent edit), rather than clobbering it.")] string expectedHash = "",
+        [Description("For the doctor action: force a live MSBuild load diagnosis instead of reporting the diagnosis stamped in the warm index (R43). Default false reports from the index in sub-second time when it is present.")] bool refresh = false,
         CancellationToken cancellationToken = default) =>
         ExecuteReadMcpAsync(() => FuseWorkspaceCoreAsync(
-            indexer, action, path, detail, maxRows, file, content, write, expectedHash, cancellationToken));
+            indexer, action, path, detail, maxRows, file, content, write, expectedHash, refresh, cancellationToken));
 
     private static async Task<string> FuseWorkspaceCoreAsync(
         SemanticIndexer indexer,
@@ -110,6 +111,7 @@ public sealed partial class FuseTools
         string content,
         bool write,
         string expectedHash,
+        bool refresh,
         CancellationToken cancellationToken)
     {
         switch (action.Trim().ToLowerInvariant())
@@ -119,7 +121,7 @@ public sealed partial class FuseTools
             case "map":
                 return await FuseMapAsync(indexer, path, detail, maxRows, cancellationToken);
             case "doctor":
-                return await WorkspaceDoctorAsync(indexer, path, cancellationToken);
+                return await WorkspaceDoctorAsync(indexer, path, refresh, cancellationToken);
             case "apply":
                 return await WorkspaceApplyAsync(path, file, content, write, expectedHash, cancellationToken);
             case "status":
@@ -235,8 +237,10 @@ public sealed partial class FuseTools
     }
 
     // The doctor action: the per-project semantic-load diagnosis, so a downgrade names its reason per project.
-    // The summary header uses the same fast read-only meta path as status (R16); the MSBuild diagnosis still runs.
-    private static async Task<string> WorkspaceDoctorAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
+    // The summary header uses the same fast read-only meta path as status (R16). R43: the diagnosis is served from
+    // the diagnosis stamped in the warm index (sub-second, no MSBuild load); a live load runs only when refresh is
+    // requested or no stamp is present.
+    private static async Task<string> WorkspaceDoctorAsync(SemanticIndexer indexer, string path, bool refresh, CancellationToken cancellationToken)
     {
         var root = Path.GetFullPath(path);
         if (!Directory.Exists(root))
@@ -245,21 +249,37 @@ public sealed partial class FuseTools
         var builder = new StringBuilder();
         builder.AppendLine(await BuildFastDoctorSummaryHeaderAsync(root, cancellationToken));
 
-        var diagnosis = await indexer.DiagnoseLoadAsync(root, cancellationToken);
+        var persisted = refresh ? null : await TryReadPersistedDiagnosisAsync(root, cancellationToken);
         builder.AppendLine($"workspace: {root}");
-        builder.AppendLine($"load tier: {diagnosis.Tier}");
-        builder.AppendLine($"selected solution: {diagnosis.SelectedSolution ?? "none (syntax-only)"}");
-        if (diagnosis.SelectionNote is not null)
-            builder.AppendLine($"WARNING: {diagnosis.SelectionNote}");
-        builder.AppendLine($"projects loaded: {diagnosis.ProjectsLoaded}/{diagnosis.ProjectsTotal}");
-        if (diagnosis.Projects.Count == 0)
+        if (persisted is not null)
         {
-            builder.AppendLine("no projects: the workspace has no solution or project, or none opened; indexing is syntax-only.");
+            // R43: reported from the index stamp, so doctor is sub-second and reflects what was actually indexed.
+            builder.AppendLine("diagnosis source: warm index (stamped at index time; pass refresh=true for a live load)");
+            builder.AppendLine($"load tier: {persisted.Tier}");
+            builder.AppendLine($"selected solution: {persisted.SelectedSolution ?? "none (syntax-only)"}");
+            if (persisted.SelectionNote is not null)
+                builder.AppendLine($"WARNING: {persisted.SelectionNote}");
+            builder.AppendLine($"projects loaded: {persisted.ProjectsLoaded}/{persisted.ProjectsTotal}");
+            if (persisted.Projects.Count == 0)
+                builder.AppendLine("no projects: the workspace has no solution or project, or none opened; indexing is syntax-only.");
+            else
+                foreach (var project in persisted.Projects)
+                    builder.AppendLine($"  {project.Name}: {(project.Loaded ? "loaded" : "not loaded")} - {project.Reason}");
         }
         else
         {
-            foreach (var project in diagnosis.Projects)
-                builder.AppendLine($"  {project.Name}: {(project.Loaded ? "loaded" : "not loaded")} - {project.Reason}");
+            var diagnosis = await indexer.DiagnoseLoadAsync(root, cancellationToken);
+            builder.AppendLine($"diagnosis source: live MSBuild load{(refresh ? " (refresh=true)" : " (no index stamp yet)")}");
+            builder.AppendLine($"load tier: {diagnosis.Tier}");
+            builder.AppendLine($"selected solution: {diagnosis.SelectedSolution ?? "none (syntax-only)"}");
+            if (diagnosis.SelectionNote is not null)
+                builder.AppendLine($"WARNING: {diagnosis.SelectionNote}");
+            builder.AppendLine($"projects loaded: {diagnosis.ProjectsLoaded}/{diagnosis.ProjectsTotal}");
+            if (diagnosis.Projects.Count == 0)
+                builder.AppendLine("no projects: the workspace has no solution or project, or none opened; indexing is syntax-only.");
+            else
+                foreach (var project in diagnosis.Projects)
+                    builder.AppendLine($"  {project.Name}: {(project.Loaded ? "loaded" : "not loaded")} - {project.Reason}");
         }
 
         // R31: report the store's integrity so a self-inconsistent index (which is never served ready) is visible.
@@ -312,6 +332,12 @@ public sealed partial class FuseTools
 
         return builder.ToString().TrimEnd();
     }
+
+    // R43: read the load diagnosis stamped into index_meta at index time, so doctor reports the tier and per-project
+    // reasons without a live MSBuild load. Null when there is no stamp; the caller falls back to a live load.
+    private static Task<Fuse.Semantics.PersistedLoadDiagnosis?> TryReadPersistedDiagnosisAsync(
+        string root, CancellationToken cancellationToken) =>
+        Fuse.Cli.Services.PersistedDiagnosisReader.TryReadAsync(root, cancellationToken);
 
     /// <summary>
     ///     Exact lookup over the index: symbols by name, files by path, and chunks by full-text.

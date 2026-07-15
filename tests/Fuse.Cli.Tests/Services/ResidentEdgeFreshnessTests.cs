@@ -56,9 +56,28 @@ public sealed class ResidentEdgeFreshnessTests
             await using var store = new WorkspaceIndexStore(databasePath);
             await store.InitializeAsync(CancellationToken.None);
 
+            // Seed the complete graph through the resident projection. The regression cleared this existing service
+            // edge after a resident projection wrote empty content hashes, then N6 treated every projected file as
+            // dirty.
+            var baselineProjection = await service.ProjectChangedAsync(indexer, store, [programPath], CancellationToken.None);
+            Assert.True(baselineProjection >= 1, "expected the baseline project's resident state to be projected");
+            var baseline = await new SemanticResolver(store).ResolveServiceAsync("IOrderService", CancellationToken.None);
+            Assert.NotNull(baseline);
+            Assert.Contains(baseline!.Matches, m =>
+                m.DisplayName.Contains("OrderService", StringComparison.Ordinal));
+
             // Project the changed project's resident state into the store (no full re-index).
             var projected = await service.ProjectChangedAsync(indexer, store, [programPath], CancellationToken.None);
             Assert.True(projected >= 1, "expected the composition root's project to be re-projected");
+
+            // Projection hashes must agree with the scanner. A no-op N6 reconcile must retain both the prior graph
+            // and the new resident graph rather than clearing all semantic edges through syntax-only re-indexing.
+            var freshness = await indexer.ReconcileDirtyFilesAsync(root, store, CancellationToken.None);
+            Assert.Equal(0, freshness.Reconciled);
+            var retained = await new SemanticResolver(store).ResolveServiceAsync("IOrderService", CancellationToken.None);
+            Assert.NotNull(retained);
+            Assert.Contains(retained!.Matches, m =>
+                m.DisplayName.Contains("OrderService", StringComparison.Ordinal));
 
             // The new registration is queryable: INotifier resolves to EmailNotifier via the projected DI edge.
             var resolution = await new SemanticResolver(store).ResolveServiceAsync("INotifier", CancellationToken.None);

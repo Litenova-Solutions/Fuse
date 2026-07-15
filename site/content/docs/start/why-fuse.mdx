@@ -40,9 +40,9 @@ The [benchmarks](/docs/project/benchmarks) record its measured latency and envir
 ## Index Once, Query Warm
 
 Fuse builds `.fuse/fuse.db` on first use and reuses it across calls. On the recorded
-NodaTime run, exact symbol lookup took 2.2 ms at the median and task localization 23.4 ms
-(`performance.json`). Syntax mode serves quickly; semantic mode adds DI, handler, route,
-and call edges when the project loads through the compiler.
+NodaTime run (semantic tier, 14,760 symbols), exact symbol lookup took 1.8 ms at the median
+and task localization 15.7 ms (`performance.json`). Syntax mode serves quickly; semantic
+mode adds DI, handler, route, and call edges when the project loads through the compiler.
 
 ## Follow .NET Wiring, Not Just Matching Names
 

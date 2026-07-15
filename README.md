@@ -6,8 +6,13 @@
 
 # Fuse
 
-Fuse is a local .NET tool with a persistent semantic index and pre-write compiler
-verification for coding agents. From a .NET project directory:
+Fuse is a local .NET tool with a persistent semantic index, typed-graph wiring
+resolution, reduced task-scoped source, and pre-write compiler verification for
+coding agents. It indexes a solution through MSBuild and Roslyn, stores the result
+in `.fuse/fuse.db`, and reuses it across agent turns instead of rediscovering the
+same structure through repeated file reads and text searches.
+
+From a .NET project directory:
 
 ```bash
 dotnet tool install -g Fuse
@@ -21,25 +26,32 @@ Resolve IOrderService to its implementation, then check the proposed OrderServic
 with fuse_check before writing it.
 ```
 
-The first MCP tool call builds `.fuse/fuse.db` automatically. Run `fuse index` first if
-you want a warm index before the agent's first turn. `fuse mcp install --rules` also adds
-`.fuse/` to `.gitignore` at project scope.
+When the MCP server starts, its shared local daemon begins warming `.fuse/fuse.db` in
+the background. A cold read waits for a bounded syntax-first pass and reports when the
+semantic graph is still upgrading. Run `fuse index` when you want a synchronous full
+index before connecting the agent. `fuse mcp install --rules` also adds `.fuse/` to
+`.gitignore` at project scope.
 
 <p align="center">
-  <img src="assets/demo/fuse-check-demo.gif" alt="An agent proposes an edit with an invalid OrderOptions member. fuse_check returns CS1061 and a repair packet before the edit lands, then verifies the corrected proposal." width="820">
+  <img src="assets/demo/fuse-check-demo.gif" alt="An agent proposes an edit with an invalid OrderOptions member. fuse_check returns CS1061 and a repair packet, then verifies the corrected proposal." width="820">
 </p>
 
-Fuse runs on your machine. It builds a warm persistent index in `.fuse/fuse.db`, walks a
-typed graph of DI registrations, handlers, routes, and callers, and lets your coding agent
-typecheck a proposed file before writing it. No hosted Fuse service or downloaded embedding
-model is required.
+Analysis runs locally and can work offline. Fuse walks a typed graph of DI registrations,
+handlers, routes, and callers, emits reduced source for a selected scope, and lets a coding
+agent typecheck proposed single-file content before writing it. No model is required. The
+optional update check can contact NuGet, and build-grade operations can use the package
+feeds configured for the repository.
 
-## Warm Index and Typed Graph
+## Persistent Discovery and Reduced Context
 
-Fuse indexes the workspace once through MSBuild and Roslyn, then reuses the store on later
-calls. When a project loads semantically, the graph records DI registrations, request
-handlers, routes, options bindings, and call edges. When it does not, Fuse falls back to
-syntax-level indexing for that project and reports the mode.
+Coding agents can inspect a repository through file reads, grep, and regex. On a large
+solution, those operations can rediscover the same symbols, references, registrations, and
+project structure across several turns. Fuse performs that discovery through MSBuild and
+Roslyn, persists the result, and incrementally re-indexes files as they change.
+
+When a project loads semantically, the graph records DI registrations, request handlers,
+routes, options bindings, and call edges. When it does not, Fuse falls back to syntax-level
+indexing for that project and reports the mode.
 
 - **Resolve wiring.** `fuse_find` traces a service, request, route, or configuration
   section to the code that handles it. Text search finds `IOrderService`; Fuse follows the
@@ -47,6 +59,10 @@ syntax-level indexing for that project and reports the mode.
 - **Pack branch context.** `fuse_review` seeds on the git diff and returns related callers,
   handlers, and tests with provenance. On 69 recorded pull requests the median response was
   1,026 tokens at 93.4 percent precision (`review.json`).
+- **Return less source.** `fuse_context` reduces the selected files under a token budget
+  and records why each file was included. Across four recorded repositories, skeleton
+  reduction removed 38 to 44 percent of tokens while retaining every measured public and
+  protected type name (`reduce.json`).
 - **Read warm.** On the recorded NodaTime run (semantic tier, 14,760 symbols), exact
   symbol lookup took 1.8 ms at the median, task localization 15.7 ms, and review planning
   106.3 ms (`performance.json`; timings are environment-dependent).
@@ -55,12 +71,14 @@ syntax-level indexing for that project and reports the mode.
   <img src="assets/fuse-typed-wiring.svg" alt="Fuse resolves an interface through dependency injection registration to its concrete implementation and related callers." width="820">
 </p>
 
-## Use It During Daily Work
+## Compiler Checks and Change Verification
 
-- Before an edit, `fuse_check` tests the proposed file and returns the compiler
-  diagnostics without changing the working tree. Supported API-shape errors come back
-  with a repair packet carrying a machine-applicable fix; in the recorded run, the top
-  suggestion repaired 20 of 20 near-miss member and type errors (`diagbench.json`).
+- `fuse_check` checks the proposed content of one file and returns compiler diagnostics
+  without changing the working tree. Oracle grade reuses compiler state captured from the
+  real build. Build grade runs a scoped `dotnet build` for the owning project when captured
+  state is unavailable. Supported API-shape errors can include a repair packet; in the
+  recorded run, the top suggestion repaired 20 of 20 near-miss member and type errors
+  (`diagbench.json`).
 - Before changing a public method, `fuse_impact` finds callers, implementations, and
   referencing types. Given a package id and two versions, it returns the break set for
   that NuGet upgrade.
@@ -112,6 +130,21 @@ run unless `write=true`.
 
 Compiler-backed wiring analysis is .NET-only. Other languages receive syntax-level search
 and reduction.
+
+## Related Code-Intelligence Tools
+
+Repository indexes, code graphs, and language-server tools already exist.
+[CodeGraphContext](https://github.com/CodeGraphContext/CodeGraphContext) provides a local
+multi-language graph, [Serena](https://github.com/oraios/serena) exposes
+language-server-backed symbol tools, and [Sourcegraph](https://sourcegraph.com/code-search)
+covers multi-repository search and code intelligence. Fuse concentrates on local .NET work
+through MSBuild and Roslyn: framework wiring, reduced scoped context, compiler-backed
+proposed-file checks, change impact, and covering-test selection. It can run alongside the
+index or search built into a coding client.
+
+The [peer comparison](https://fuse.codes/docs/project/benchmarks#peer-comparison-fuse-versus-codegraph-coa-codesearch-and-serena)
+records a bounded, dated experiment and its sampling limits. It is not a general ranking of
+code-intelligence tools.
 
 ## Start Here
 

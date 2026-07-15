@@ -3,7 +3,10 @@ title: Roadmap
 description: Where Fuse is headed next. Shipped work lives in the changelog; this page states direction, not dates.
 ---
 
-Fuse typechecks a .NET coding agent's proposed edits, computes blast radius, and resolves wiring from a warm Roslyn graph. This page describes where we intend to go next. Nothing here is a commitment or a delivery date. Work that has shipped is recorded in the [Changelog](/docs/project/changelog).
+Fuse maintains a persistent .NET index, returns reduced task-scoped source, resolves
+framework wiring, and checks proposed C# files against compiler state. This page describes
+where we intend to go next. Nothing here is a commitment or a delivery date. Work that has
+shipped is recorded in the [Changelog](/docs/project/changelog).
 
 ## Resident verified-edit loop
 
@@ -25,21 +28,14 @@ A richer build-exact graph improves verification (`fuse_check`, `fuse_impact`, c
 
 Dense embedding reranking and learned per-repo ranking were evaluated and set aside: they added model dependency or tuning cost without measured recall lift on the corpus. The product bet is precise anchors (symbols, routes, services, git diffs) resolved through the graph, with ranked prose localization as fallback, not the headline.
 
-## 4.2 hardening (planned)
-
-After 4.1.0, the next engineering wave closes architecture-review tails rather than opening new retrieval bets. The internal checklist is [roadmap/v4.2-plan.md](https://github.com/Litenova-Solutions/Fuse/blob/main/roadmap/v4.2-plan.md). Themes:
-
-- **Index maintainability:** profile warm reads, then split the monolithic index store into focused components without changing on-disk behavior unless required.
-- **One scoping model:** retire the parallel Fusion and Retrieval planning stacks where they still duplicate centrality and `ContextPlan` types.
-- **Integrator clarity:** document MCP tools, CLI commands, and host RPC in one matrix; finish planner doc (`briefing.md`) cleanup.
-- **CI and operator honesty:** run SDK-heavy tests on a dedicated CI leg; optional verbose hook logging; narrower `fuse update` kill behavior; optional host pipe ACL on Windows.
-
-No dates are attached here. Shipped work moves to the changelog when it lands.
-
 ## Recently shipped
 
 These moved to the [Changelog](/docs/project/changelog) when they landed:
 
+- The 4.2 shared daemon, eager warm-on-start indexing, live incremental updates, bounded
+  syntax-first cold reads, and compiler-state reuse.
+- The semantic-language provider seam, focused index-store components, shared scoping
+  model, and unified API-surface reference.
 - Roslyn structural analysis for C# (skeleton, dependency graph, type location, outlines, route maps, semantic markers) as the default path; regex remains for content reduction, the project graph, and pattern detectors.
 - Symbol-level scoping (`Type.Member` focus seeds and member-granularity query retrieval).
 - A persistent SQLite store at `.fuse/fuse.db` for reduction output, analysis, and relevance tokens.

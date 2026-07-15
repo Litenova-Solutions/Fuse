@@ -1,13 +1,20 @@
 ---
-title: "Announcing Fuse v4: local semantic index and compiler verification for .NET agents"
-description: "Fuse v4 helps coding agents check proposed C# edits, follow .NET application wiring, and review branches with local compiler-backed results."
+title: "Fuse v4: persistent .NET context and compiler verification"
+description: "Why Fuse moves repeated .NET discovery into a local Roslyn index, reduces task-scoped source, and checks proposed C# files against compiler state."
 date: "2026-07-13"
 author: "The Fuse team"
 ---
 
-Fuse v4 indexes your .NET solution locally, resolves DI and routes from a typed graph, and
-lets any MCP-compatible coding agent ask the compiler about a proposed C# file before writing
-it. Install and connect from your project directory:
+Coding agents usually discover a repository through file reads, grep, regex, and language
+tools. On a large .NET solution, that process can reopen the same files and reconstruct the
+same symbols, registrations, and project relationships across several turns.
+
+Fuse moves that discovery into a persistent local index. It loads a solution through MSBuild
+and Roslyn, stores the result in `.fuse/fuse.db`, resolves .NET wiring from a typed graph,
+and emits reduced source for a selected scope. On the write path, it checks proposed C#
+content against compiler state before the working file changes.
+
+Install and connect from your project directory:
 
 ```bash
 dotnet tool install -g Fuse
@@ -21,8 +28,32 @@ Before changing OrderService.cs, check the proposed file with fuse_check and sho
 compiler result before writing it.
 ```
 
-The warm index and compiler-backed checks ship together in v4. `fuse_check` does not write
-the proposed content to the source file. Wiring lookup reads the same store.
+Analysis runs locally and can work offline. No model is required.
+
+## Persistent Discovery
+
+The shared daemon begins warming `.fuse/fuse.db` when the repository is served. Later calls
+reuse the store and re-index changed files instead of rebuilding repository structure from
+raw source on each turn.
+
+On the recorded NodaTime run (semantic tier, 14,760 symbols), exact symbol lookup took 1.8
+ms at the median, task localization 15.7 ms, and review planning 106.3 ms
+(`performance.json`). Timings depend on the repository and machine.
+
+## Reduced Context
+
+`fuse_context` selects source from indexed anchors and emits it under a token budget with
+provenance. Sessions can skip unchanged context on later turns. Across four recorded
+repositories, skeleton reduction removed 38 to 44 percent of tokens while retaining every
+measured public and protected type name and 96.3 to 99.4 percent of measured method names
+(`reduce.json`). This is a declaration-name measurement, not a complete API-fidelity claim.
+
+## Compiler Checks on Proposed Content
+
+`fuse_check` does not write the proposed content to the source file. Oracle grade checks it
+against compiler state captured from the real build. Build grade runs a scoped
+`dotnet build` when captured state is unavailable. If neither path can answer, Fuse
+abstains and states what is missing.
 
 ## What v4 Adds to Daily Work
 
@@ -36,12 +67,7 @@ the proposed content to the source file. Wiring lookup reads the same store.
 - `fuse_refactor` stages a compiler-executed refactor as a diff and returns it only when
   no new compiler diagnostic appears.
 
-Each check states which compiler path produced the answer. Fuse calls this the
-**verification grade**. Oracle grade uses a compilation captured from the real build.
-Build grade runs a scoped `dotnet build`. If neither path can answer, Fuse abstains and
-states what is missing.
-
-## Why agents still run dotnet build
+## Normal Builds and Tests Still Close the Task
 
 The agent-loop benchmark counts agent-visible `dotnet build` and `dotnet test` calls
 separately from speculative `fuse_check` turns. On the recorded run those build counts
@@ -49,9 +75,9 @@ were essentially equal: 3.1 for the Fuse arm versus 3.2 for native. Fuse's measu
 was higher test-verified pass@1 (89 versus 82 percent on scored rollouts) and one fewer
 false-done rollout (8 versus 9), not half the builds.
 
-Pre-write checks catch compile errors before the working tree changes. The warm index
-replaces serial file reads during discovery. Together they cut wrong finishes and blind
-searching; they do not remove the need for normal builds and tests before merge.
+The persistent index removes repeated repository discovery from many anchored questions.
+The proposed-file check provides compiler feedback before a write. Normal builds and tests
+still verify the completed change before merge.
 
 ## What the Recorded Tests Support
 
@@ -86,6 +112,8 @@ intervals, and weaker results. The
   the repository and machine.
 - Fuse runs locally and does not write source during check, impact, review, or read
   operations. `fuse_workspace` with `action=apply` is the explicit write path.
+- The optional daily update check can contact NuGet. A build-grade operation can use the
+  package feeds configured for the repository.
 
 Follow the [quickstart](/docs/start/quickstart) for the first checked edit, or
 [connect your coding agent](/docs/start/connect-your-ai) for project, user, and manual

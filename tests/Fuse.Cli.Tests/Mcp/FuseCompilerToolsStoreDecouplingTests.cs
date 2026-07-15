@@ -105,7 +105,7 @@ public sealed class FuseCompilerToolsStoreDecouplingTests : IDisposable
         }
         finally
         {
-            SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
+            SqliteConnection.ClearAllPools();
             try { Directory.Delete(work, recursive: true); } catch (IOException) { }
         }
     }

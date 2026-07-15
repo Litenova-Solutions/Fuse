@@ -280,7 +280,7 @@ public sealed class IndexConcurrencyIntegrationTests : IAsyncLifetime, IDisposab
     public Task DisposeAsync()
     {
         var databasePath = FuseStorePaths.ResolveDatabasePath(_root);
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
+        SqliteConnection.ClearAllPools();
         try
         {
             if (Directory.Exists(_root))

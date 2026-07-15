@@ -158,7 +158,7 @@ public sealed class SyntaxIndexerTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await _store.DisposeAsync();
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
         try
         {
             if (Directory.Exists(_root))

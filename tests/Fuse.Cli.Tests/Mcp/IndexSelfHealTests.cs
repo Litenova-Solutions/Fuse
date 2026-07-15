@@ -199,7 +199,7 @@ public sealed class IndexSelfHealTests : IDisposable
                 await seed.SetMetaAsync(WorkspaceIndexStore.ExtractionVersionMetaKey, stampedExtractionVersion, CancellationToken.None);
         }
 
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
     }
 
     public void Dispose()

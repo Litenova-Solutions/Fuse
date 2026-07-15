@@ -79,7 +79,7 @@ public sealed class ResilienceHarnessTests : IDisposable
             await seed.SetMetaAsync(WorkspaceIndexStore.ExtractionVersionMetaKey, "0", CancellationToken.None);
         }
 
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={_databasePath}"));
+        SqliteConnection.ClearAllPools();
         await using var reopened = new WorkspaceIndexStore(_databasePath);
         Assert.True((await reopened.InitializeAsync(CancellationToken.None)).RebuiltEmptyStore);
     }

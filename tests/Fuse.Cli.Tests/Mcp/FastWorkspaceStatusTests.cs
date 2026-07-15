@@ -114,7 +114,7 @@ public sealed class FastWorkspaceStatusTests : IAsyncLifetime, IDisposable
     public Task DisposeAsync()
     {
         var databasePath = Fuse.Reduction.Caching.FuseStorePaths.ResolveDatabasePath(_root);
-        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
+        SqliteConnection.ClearAllPools();
         try
         {
             if (Directory.Exists(_root))

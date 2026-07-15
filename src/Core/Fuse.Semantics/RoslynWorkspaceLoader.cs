@@ -98,6 +98,54 @@ public sealed class RoslynWorkspaceLoader
             projects = loaded;
         }
 
+        var (loadedProjects, projectReports) = await BuildProjectReportsAsync(projects, diagnostics, cancellationToken);
+
+        var succeeded = loadedProjects.Count > 0;
+        if (!succeeded)
+        {
+            diagnostics.Add(new DiagnosticRecord(
+                DiagnosticSeverity.Error, "no-projects-loaded",
+                "No projects loaded with a compilation; falling back to syntax indexing."));
+        }
+
+        return new RoslynWorkspaceSnapshot(succeeded, loadedProjects, diagnostics, projectReports);
+    }
+
+    /// <summary>
+    ///     Builds a load snapshot from an already-loaded Roslyn <see cref="Solution" /> (R42), so
+    ///     <c>fuse doctor</c>'s live diagnosis can reuse a warm, daemon-held solution instead of re-opening an
+    ///     <see cref="MSBuildWorkspace" />. The per-project outcome (loaded, loaded-with-errors, no-compilation)
+    ///     is computed exactly as the fresh load computes it, so the reported tier and reasons are identical.
+    /// </summary>
+    /// <param name="solution">The already-loaded solution (from <see cref="WarmSolutionCache" />).</param>
+    /// <param name="loadFailures">The genuine MSBuild load failures observed when the solution was opened.</param>
+    /// <param name="cancellationToken">A token to cancel the diagnosis.</param>
+    /// <returns>The snapshot with per-project reports, equivalent to a fresh load of the same solution.</returns>
+    public static async Task<RoslynWorkspaceSnapshot> SnapshotFromSolutionAsync(
+        Solution solution, IReadOnlyList<string> loadFailures, CancellationToken cancellationToken)
+    {
+        var diagnostics = new List<DiagnosticRecord>();
+        foreach (var failure in loadFailures)
+            diagnostics.Add(new DiagnosticRecord(DiagnosticSeverity.Warning, "msbuild-diagnostic", failure));
+
+        var (loadedProjects, projectReports) = await BuildProjectReportsAsync(solution.Projects, diagnostics, cancellationToken);
+        var succeeded = loadedProjects.Count > 0;
+        if (!succeeded)
+        {
+            diagnostics.Add(new DiagnosticRecord(
+                DiagnosticSeverity.Error, "no-projects-loaded",
+                "No projects loaded with a compilation; falling back to syntax indexing."));
+        }
+
+        return new RoslynWorkspaceSnapshot(succeeded, loadedProjects, diagnostics, projectReports);
+    }
+
+    // The per-project loop shared by the fresh load (LoadCoreAsync) and the warm-solution snapshot: compile each
+    // project and record its outcome (loaded, loaded-with-errors -> graph-grade, or no-compilation), so the doctor
+    // tier and per-project reasons are computed one way regardless of which load produced the solution.
+    private static async Task<(List<LoadedProject> Loaded, List<ProjectLoadReport> Reports)> BuildProjectReportsAsync(
+        IEnumerable<Project> projects, List<DiagnosticRecord> diagnostics, CancellationToken cancellationToken)
+    {
         var loadedProjects = new List<LoadedProject>();
         var projectReports = new List<ProjectLoadReport>();
         foreach (var project in projects)
@@ -131,15 +179,7 @@ public sealed class RoslynWorkspaceLoader
             projectReports.Add(new ProjectLoadReport(project.Name, filePath, Loaded: true, report));
         }
 
-        var succeeded = loadedProjects.Count > 0;
-        if (!succeeded)
-        {
-            diagnostics.Add(new DiagnosticRecord(
-                DiagnosticSeverity.Error, "no-projects-loaded",
-                "No projects loaded with a compilation; falling back to syntax indexing."));
-        }
-
-        return new RoslynWorkspaceSnapshot(succeeded, loadedProjects, diagnostics, projectReports);
+        return (loadedProjects, projectReports);
     }
 
     // Registers MSBuildLocator once per process. Returns false with a diagnostic when no SDK/MSBuild is

@@ -27,6 +27,9 @@ public sealed class SemanticIndexer
     private readonly LanguageSyntaxProviderRegistry _syntaxProviders;
     private readonly GitCoChangeCollector _coChangeCollector = new();
     private readonly BuildCaptureClient _buildCaptureClient = new();
+    // R42: the warm-solution cache doctor's live diagnosis reuses, so a second doctor in a session skips the full
+    // MSBuild load. Shared with the refactorers, so a warm solution loaded by either serves the other.
+    private readonly WarmSolutionCache _warmSolutions = WarmSolutionCache.Shared;
 
     // N4/C3 tier-1 build capture is default-ON: the oracle is the product. Opt out with FUSE_BUILD_CAPTURE=0
     // (or false/no/off); any other value, or unset, enables it. It still no-ops when no worker is discoverable
@@ -191,7 +194,27 @@ public sealed class SemanticIndexer
     {
         var root = Path.GetFullPath(rootDirectory);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
-        var snapshot = await _loader.LoadAsync(discovery, cancellationToken);
+
+        // R42: reuse the warm, daemon-held solution for the common single-solution repo, so a second doctor in a
+        // session (or a doctor after a refactor) skips the full MSBuild load. A locator/open failure falls back to
+        // the loader's graceful syntax/diagnostic handling; the multi-project and syntax-only kinds use the loader.
+        RoslynWorkspaceSnapshot snapshot;
+        if (discovery is { Kind: WorkspaceKind.Solution, SolutionPath: { } solutionPath })
+        {
+            try
+            {
+                var cached = await _warmSolutions.OpenAsync(solutionPath, cancellationToken);
+                snapshot = await RoslynWorkspaceLoader.SnapshotFromSolutionAsync(cached.Solution, cached.LoadFailures, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                snapshot = await _loader.LoadAsync(discovery, cancellationToken);
+            }
+        }
+        else
+        {
+            snapshot = await _loader.LoadAsync(discovery, cancellationToken);
+        }
 
         // The oracle tier requires every loaded project to be error-free; a project loaded with compile errors is
         // graph-grade (retrieval only), and any project that did not load at all drops the tier further.

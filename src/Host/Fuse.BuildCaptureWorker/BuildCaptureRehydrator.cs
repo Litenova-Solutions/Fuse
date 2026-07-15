@@ -149,15 +149,59 @@ public sealed class BuildCaptureRehydrator
     public CheckResult CheckFromLog(
         string logPath, string relativeFilePath, string newContent, CancellationToken cancellationToken)
     {
-        using var reader = CompilerCallReaderUtil.Create(logPath);
+        using var held = RehydrateHeld(logPath, cancellationToken);
+        return CheckHeld(held, relativeFilePath, newContent, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Rehydrates and holds the C# compilations recorded in a compiler log (R48), so a long-lived worker can
+    ///     answer many <see cref="CheckHeld" /> requests against them without re-rehydrating per check. The reader
+    ///     is kept alive for the returned handle's lifetime because a rehydrated compilation resolves some inputs
+    ///     lazily through it; <see cref="HeldComplog.Dispose" /> releases the reader.
+    /// </summary>
+    /// <param name="logPath">The path to the portable compiler log (or binary log) to rehydrate.</param>
+    /// <param name="cancellationToken">A token to cancel the rehydration.</param>
+    /// <returns>The held compilations, disposable.</returns>
+    public HeldComplog RehydrateHeld(string logPath, CancellationToken cancellationToken)
+    {
+        var reader = CompilerCallReaderUtil.Create(logPath);
+        var compilations = new List<Compilation>();
+        try
+        {
+            foreach (var data in reader.ReadAllCompilationData())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (data.CompilerCall.IsCSharp != true)
+                    continue;
+                compilations.Add(NormalizeSigning(data.GetCompilationAfterGenerators(cancellationToken), data.CompilerCall.ProjectFilePath));
+            }
+        }
+        catch
+        {
+            reader.Dispose();
+            throw;
+        }
+
+        return new HeldComplog(reader, compilations);
+    }
+
+    /// <summary>
+    ///     Speculatively typechecks a proposed single-file patch against already-held compilations (R48): the exact
+    ///     same fork-and-diagnostics as <see cref="CheckFromLog" />, over the held compilations rather than a fresh
+    ///     rehydration, so a pooled worker's verdict is identical to the spawn-per-call verdict.
+    /// </summary>
+    /// <param name="held">The held compilations from <see cref="RehydrateHeld" />.</param>
+    /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
+    /// <param name="newContent">The proposed full new content of that file.</param>
+    /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <returns>The diagnostics for the changed document, or an abstention when the file is not in the log.</returns>
+    public CheckResult CheckHeld(
+        HeldComplog held, string relativeFilePath, string newContent, CancellationToken cancellationToken)
+    {
         var normalized = relativeFilePath.Replace('\\', '/');
-        foreach (var data in reader.ReadAllCompilationData())
+        foreach (var compilation in held.Compilations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (data.CompilerCall.IsCSharp != true)
-                continue;
-
-            var compilation = NormalizeSigning(data.GetCompilationAfterGenerators(cancellationToken), data.CompilerCall.ProjectFilePath);
             var tree = compilation.SyntaxTrees.FirstOrDefault(t =>
                 t.FilePath.Replace('\\', '/').EndsWith(normalized, StringComparison.OrdinalIgnoreCase));
             if (tree is null)
@@ -476,4 +520,27 @@ public sealed class BuildCaptureRehydrator
         {
         }
     }
+}
+
+/// <summary>
+///     A set of rehydrated C# compilations held live for the lifetime of a pooled build-capture check worker
+///     (R48), so many speculative checks reuse one rehydration instead of re-reading the compiler log per check.
+///     Holds the underlying compiler-log reader alive because a rehydrated compilation resolves some inputs lazily
+///     through it; <see cref="Dispose" /> releases both.
+/// </summary>
+public sealed class HeldComplog : IDisposable
+{
+    private readonly ICompilerCallReader _reader;
+
+    internal HeldComplog(ICompilerCallReader reader, IReadOnlyList<Compilation> compilations)
+    {
+        _reader = reader;
+        Compilations = compilations;
+    }
+
+    /// <summary>The rehydrated C# compilations, one per recorded C# compiler invocation in the log.</summary>
+    public IReadOnlyList<Compilation> Compilations { get; }
+
+    /// <summary>Releases the held compilations' underlying compiler-log reader.</summary>
+    public void Dispose() => _reader.Dispose();
 }

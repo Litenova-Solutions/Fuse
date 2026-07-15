@@ -68,6 +68,66 @@ if (args.Length == 4 && args[0] == "--check-complog")
     return check.Verified ? 0 : 1;
 }
 
+// --serve-check <complogPath>: a long-lived check worker (R48). Rehydrate the compiler log ONCE, then loop reading
+// one JSON CheckRequest per stdin line and writing one CheckResult per stdout line, holding the compilations across
+// requests so the rehydrate cost is paid once per session, not per check. The parent forks the in-memory document
+// for each speculative edit through CheckHeld. A "ready" line signals rehydration is complete; EOF or "quit" exits.
+if (args.Length == 2 && args[0] == "--serve-check")
+{
+    HeldComplog held;
+    try
+    {
+        held = rehydrator.RehydrateHeld(args[1], CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        await Console.Error.WriteLineAsync($"serve-check rehydrate error: {ex.Message}");
+        return 1;
+    }
+
+    try
+    {
+        // Signal readiness so the parent knows the (slow) rehydration finished before it sends the first request.
+        Console.Out.WriteLine("{\"ready\":true}");
+        Console.Out.Flush();
+
+        string? line;
+        while ((line = await Console.In.ReadLineAsync()) is not null)
+        {
+            if (line.Length == 0 || line == "quit")
+                break;
+
+            CheckResult check;
+            try
+            {
+                var request = JsonSerializer.Deserialize(line, BuildCaptureJsonContext.Default.CheckRequest);
+                if (request is null)
+                {
+                    check = CheckResult.Abstain("serve-check: unparseable request");
+                }
+                else
+                {
+                    var newContent = await File.ReadAllTextAsync(request.ContentPath);
+                    check = rehydrator.CheckHeld(held, request.File, newContent, CancellationToken.None);
+                }
+            }
+            catch (Exception ex)
+            {
+                check = CheckResult.Abstain($"serve-check error: {ex.Message}");
+            }
+
+            Console.Out.WriteLine(JsonSerializer.Serialize(check, BuildCaptureJsonContext.Default.CheckResult));
+            Console.Out.Flush();
+        }
+    }
+    finally
+    {
+        held.Dispose();
+    }
+
+    return 0;
+}
+
 // --merge <fragmentsDir> <complogOutDir>: convert per-project fragment binlogs to portable compiler logs
 // (fail-closed secret scanned) and emit the merged extracted graph as JSON (the G4 fragment-merge channel).
 if (args.Length == 3 && args[0] == "--merge")

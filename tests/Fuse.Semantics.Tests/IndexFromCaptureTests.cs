@@ -64,6 +64,85 @@ public sealed class IndexFromCaptureTests : IAsyncLifetime
         Assert.Contains(edges, e => e.EdgeType == "di_resolves_to" && e.FromNodeId == "type:App.IOrderService");
     }
 
+    [Fact]
+    public async Task Multi_target_capture_unions_exclusive_facts_and_records_deterministic_availability()
+    {
+        var files = new List<IndexedFileRecord>
+        {
+            new("OrderService.cs", "OrderService.cs", ".cs", 120, 1, "h1", Language: "csharp"),
+        };
+        var capture = CaptureResult.Ok(
+        [
+            new CapturedProject(
+                Name: "App", FilePath: "App.csproj", AssemblyName: "App", ErrorCount: 0, TypeCount: 2,
+                Symbols:
+                [
+                    Symbol("symbol:App.Shared", "Shared"),
+                    Symbol("symbol:App.ModernOnly", "ModernOnly"),
+                ],
+                Nodes:
+                [
+                    Node("type:App.Shared", "Shared"),
+                    Node("type:App.ModernOnly", "ModernOnly"),
+                ],
+                Edges: [new SemanticEdgeRecord("type:App.Shared", "type:App.ModernOnly", "references", 1, 1, EvidenceFilePath: "OrderService.cs")],
+                Routes: [new RouteRecord("route:GET:/modern", "GET", "/modern", "OrderService.cs", 1, 1, "minimal-api")],
+                DiRegistrations: [new DiRegistrationRecord("di:shared", "Shared", "Singleton", "OrderService.cs", 1, 1, "generic", 1)],
+                OptionsBindings: [new OptionsBindingRecord("options:shared", "SharedOptions", "OrderService.cs", 1, 1, "bind", 1)],
+                TargetFramework: "net8.0"),
+            new CapturedProject(
+                Name: "App", FilePath: "App.csproj", AssemblyName: "App", ErrorCount: 0, TypeCount: 2,
+                Symbols:
+                [
+                    Symbol("symbol:App.Shared", "Shared"),
+                    Symbol("symbol:App.StandardOnly", "StandardOnly"),
+                ],
+                Nodes:
+                [
+                    Node("type:App.Shared", "Shared"),
+                    Node("type:App.StandardOnly", "StandardOnly"),
+                ],
+                Edges: [new SemanticEdgeRecord("type:App.Shared", "type:App.StandardOnly", "references", 1, 1, EvidenceFilePath: "OrderService.cs")],
+                Routes: [new RouteRecord("route:GET:/standard", "GET", "/standard", "OrderService.cs", 1, 1, "minimal-api")],
+                DiRegistrations: [new DiRegistrationRecord("di:standard", "StandardOnly", "Singleton", "OrderService.cs", 1, 1, "generic", 1)],
+                OptionsBindings: [new OptionsBindingRecord("options:standard", "StandardOptions", "OrderService.cs", 1, 1, "bind", 1)],
+                TargetFramework: "netstandard2.0"),
+        ]);
+
+        var indexer = CreateIndexer();
+        var first = await indexer.IndexFromCaptureAsync(_root, _store, files, capture, CancellationToken.None);
+        var firstAvailability = await _store.GetTfmAvailabilityAsync(CancellationToken.None);
+        var second = await indexer.IndexFromCaptureAsync(_root, _store, files, capture, CancellationToken.None);
+        var secondAvailability = await _store.GetTfmAvailabilityAsync(CancellationToken.None);
+
+        Assert.Equal(1, first.ProjectCount);
+        Assert.Equal(3, first.SymbolCount);
+        Assert.Equal(first.Mode, second.Mode);
+        Assert.Equal(first.FileCount, second.FileCount);
+        Assert.Equal(first.ProjectCount, second.ProjectCount);
+        Assert.Equal(first.SymbolCount, second.SymbolCount);
+        Assert.Equal(first.ChunkCount, second.ChunkCount);
+        Assert.Equal(first.RouteCount, second.RouteCount);
+        Assert.Equal(firstAvailability, secondAvailability);
+        Assert.Equal(3, (await _store.GetStateAsync(CancellationToken.None)).SymbolCount);
+        Assert.Contains(await _store.FindSymbolsByNameAsync("ModernOnly", 10, CancellationToken.None), symbol => symbol.SymbolId == "symbol:App.ModernOnly");
+        Assert.Contains(await _store.FindSymbolsByNameAsync("StandardOnly", 10, CancellationToken.None), symbol => symbol.SymbolId == "symbol:App.StandardOnly");
+        Assert.Equal(
+            ["net8.0", "netstandard2.0"],
+            firstAvailability
+                .Where(item => item.EntityKind == "symbol" && item.EntityId == "symbol:App.Shared")
+                .Select(item => item.TargetFramework)
+                .ToList());
+        Assert.Contains(firstAvailability, item => item.EntityKind == "symbol" && item.EntityId == "symbol:App.StandardOnly" && item.TargetFramework == "netstandard2.0");
+        Assert.Contains(firstAvailability, item => item.EntityKind == "project" && item.EntityId == "App.csproj" && item.TargetFramework == "net8.0");
+    }
+
+    private static SymbolRecord Symbol(string id, string name) =>
+        new(id, "OrderService.cs", "type", name, $"App.{name}", StartLine: 1, EndLine: 1, ProjectPath: "App.csproj");
+
+    private static NodeRecord Node(string id, string name) =>
+        new(id, "type", name, $"App.{name}", "OrderService.cs", ProjectPath: "App.csproj");
+
     private static SemanticIndexer CreateIndexer()
     {
         var fileSystem = new PhysicalFileSystem();

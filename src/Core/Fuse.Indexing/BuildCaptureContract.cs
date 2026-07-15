@@ -22,6 +22,7 @@ namespace Fuse.Indexing;
 /// <param name="Routes">The route records.</param>
 /// <param name="DiRegistrations">The DI registration records.</param>
 /// <param name="OptionsBindings">The options binding records.</param>
+/// <param name="TargetFramework">The target framework represented by this compiler invocation, when known.</param>
 public sealed record CapturedProject(
     string Name,
     string FilePath,
@@ -36,7 +37,8 @@ public sealed record CapturedProject(
     IReadOnlyList<SemanticEdgeRecord>? Edges = null,
     IReadOnlyList<RouteRecord>? Routes = null,
     IReadOnlyList<DiRegistrationRecord>? DiRegistrations = null,
-    IReadOnlyList<OptionsBindingRecord>? OptionsBindings = null);
+    IReadOnlyList<OptionsBindingRecord>? OptionsBindings = null,
+    string? TargetFramework = null);
 
 /// <summary>
 ///     The outcome of a build capture: success plus the rehydrated projects, or a concrete failure reason.

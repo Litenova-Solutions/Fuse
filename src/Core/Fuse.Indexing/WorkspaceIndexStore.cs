@@ -350,6 +350,14 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
         _graph.UpsertProjectsAsync(projects, cancellationToken);
 
     /// <inheritdoc />
+    public Task ReplaceTfmAvailabilityAsync(IReadOnlyList<TfmAvailabilityRecord> availability, CancellationToken cancellationToken) =>
+        _graph.ReplaceTfmAvailabilityAsync(availability, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<TfmAvailabilityRecord>> GetTfmAvailabilityAsync(CancellationToken cancellationToken) =>
+        _graph.GetTfmAvailabilityAsync(cancellationToken);
+
+    /// <inheritdoc />
     public Task UpsertNodesAsync(IReadOnlyList<NodeRecord> nodes, CancellationToken cancellationToken) =>
         _graph.UpsertNodesAsync(nodes, cancellationToken);
 

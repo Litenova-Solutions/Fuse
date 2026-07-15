@@ -121,6 +121,68 @@ internal sealed class SymbolGraphStore
         await transaction.CommitAsync(cancellationToken);
     }
 
+    /// <inheritdoc cref="IWorkspaceIndexStore.ReplaceTfmAvailabilityAsync" />
+    public async Task ReplaceTfmAvailabilityAsync(
+        IReadOnlyList<TfmAvailabilityRecord> availability,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        await using (var delete = connection.CreateCommand())
+        {
+            delete.Transaction = transaction;
+            delete.CommandText = "DELETE FROM tfm_availability;";
+            await delete.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        if (availability.Count > 0)
+        {
+            await using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = """
+                INSERT INTO tfm_availability(entity_kind, entity_id, target_framework)
+                VALUES($kind, $id, $tfm);
+                """;
+            var kind = insert.Parameters.Add("$kind", SqliteType.Text);
+            var id = insert.Parameters.Add("$id", SqliteType.Text);
+            var tfm = insert.Parameters.Add("$tfm", SqliteType.Text);
+
+            foreach (var item in availability)
+            {
+                kind.Value = item.EntityKind;
+                id.Value = item.EntityId;
+                tfm.Value = item.TargetFramework;
+                await insert.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc cref="IWorkspaceIndexStore.GetTfmAvailabilityAsync" />
+    public async Task<IReadOnlyList<TfmAvailabilityRecord>> GetTfmAvailabilityAsync(CancellationToken cancellationToken)
+    {
+        var result = new List<TfmAvailabilityRecord>();
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT entity_kind, entity_id, target_framework
+            FROM tfm_availability
+            ORDER BY entity_kind, entity_id, target_framework;
+            """;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(new TfmAvailabilityRecord(
+                reader.GetString(0),
+                reader.GetString(1),
+                reader.GetString(2)));
+        }
+
+        return result;
+    }
+
     /// <inheritdoc cref="IWorkspaceIndexStore.UpsertNodesAsync" />
     public async Task UpsertNodesAsync(IReadOnlyList<NodeRecord> nodes, CancellationToken cancellationToken)
     {

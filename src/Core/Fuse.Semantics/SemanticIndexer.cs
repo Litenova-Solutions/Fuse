@@ -579,6 +579,9 @@ public sealed class SemanticIndexer
         RoslynWorkspaceSnapshot snapshot,
         CancellationToken cancellationToken)
     {
+        // This non-capture path cannot establish target-framework membership. Clear any prior capture-derived
+        // facts rather than serving availability from an unrelated build.
+        await store.ReplaceTfmAvailabilityAsync([], cancellationToken);
         var projects = BuildProjectRecords(snapshot, cancellationToken);
         await store.UpsertProjectsAsync(projects, cancellationToken);
 
@@ -634,6 +637,9 @@ public sealed class SemanticIndexer
         RoslynWorkspaceSnapshot snapshot,
         CancellationToken cancellationToken)
     {
+        // This non-capture path cannot establish target-framework membership. Clear any prior capture-derived
+        // facts rather than serving availability from an unrelated build.
+        await store.ReplaceTfmAvailabilityAsync([], cancellationToken);
         var projects = BuildProjectRecords(snapshot, cancellationToken);
         await store.UpsertProjectsAsync(projects, cancellationToken);
 
@@ -703,6 +709,8 @@ public sealed class SemanticIndexer
         RoslynWorkspaceSnapshot snapshot,
         CancellationToken cancellationToken)
     {
+        // Syntax extraction has no compiler-target view, so prior capture-derived availability would be stale.
+        await store.ReplaceTfmAvailabilityAsync([], cancellationToken);
         var taggedFiles = files
             .Select(f => f with { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
             .ToList();
@@ -836,14 +844,30 @@ public sealed class SemanticIndexer
         IWorkspaceIndexStore store,
         IReadOnlyList<IndexedFileRecord> files,
         Fuse.Indexing.CaptureResult capture,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool replaceTfmAvailability = true)
     {
+        // R60: a build captures one compiler invocation per target framework. Select a deterministic primary
+        // representation for each project, then union every stable declaration and graph fact from every target
+        // rather than allowing the last compiler invocation to overwrite a non-primary-only fact in SQLite.
+        var union = CanonicalTfmUnion.Create(capture);
+        var projects = BuildCaptureProjectRecords(union.Projects, cancellationToken);
+        await store.UpsertProjectsAsync(projects, cancellationToken);
+
+        var fileToProject = union.Symbols
+            .Where(symbol => !string.IsNullOrWhiteSpace(symbol.ProjectPath))
+            .GroupBy(symbol => symbol.FilePath, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First().ProjectPath!, StringComparer.Ordinal);
         var linkedFiles = files
-            .Select(f => f with { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
+            .Select(f =>
+                (fileToProject.TryGetValue(f.NormalizedPath, out var projectPath)
+                    ? f with { ProjectPath = projectPath }
+                    : f) with
+                { Language = _syntaxProviders.ForExtension(f.Extension)?.Language })
             .ToList();
         await store.UpsertFilesAsync(linkedFiles, cancellationToken);
 
-        var symbols = capture.Projects.SelectMany(p => p.Symbols ?? []).ToList();
+        var symbols = union.Symbols;
         await store.UpsertSymbolsAsync(symbols, cancellationToken);
 
         var (chunks, syntaxRoutes) = await ExtractChunksAndRoutesAsync(root, files, dropChunkSymbolIds: true, cancellationToken);
@@ -851,16 +875,25 @@ public sealed class SemanticIndexer
         await store.UpsertRoutesAsync(syntaxRoutes, cancellationToken);
 
         // Nodes before edges so the edge foreign keys resolve, then the semantic routes/DI/options from the bundle.
-        var nodes = capture.Projects.SelectMany(p => p.Nodes ?? []).ToList();
-        var edges = capture.Projects.SelectMany(p => p.Edges ?? []).ToList();
-        var semanticRoutes = capture.Projects.SelectMany(p => p.Routes ?? []).ToList();
-        var registrations = capture.Projects.SelectMany(p => p.DiRegistrations ?? []).ToList();
-        var bindings = capture.Projects.SelectMany(p => p.OptionsBindings ?? []).ToList();
+        var nodes = union.Nodes;
+        var edges = union.Edges;
+        var semanticRoutes = union.Routes;
+        var registrations = union.Registrations;
+        var bindings = union.Bindings;
         await store.UpsertNodesAsync(nodes, cancellationToken);
         await store.UpsertEdgesAsync(edges, cancellationToken);
         await store.UpsertRoutesAsync(semanticRoutes, cancellationToken);
         await store.UpsertDiRegistrationsAsync(registrations, cancellationToken);
         await store.UpsertOptionsBindingsAsync(bindings, cancellationToken);
+        // Only a complete build capture owns this projection. A partial resident refresh must preserve the
+        // availability facts supplied by the complete capture for the rest of the workspace.
+        if (replaceTfmAvailability)
+            await store.ReplaceTfmAvailabilityAsync(union.Availability, cancellationToken);
+        await store.SetMetaAsync("multi_tfm_union_loss", "0", cancellationToken);
+        await store.SetMetaAsync("multi_tfm_capture_invocations", union.CapturedProjectCount.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken);
+        await store.SetMetaAsync("multi_tfm_unique_projects", union.Projects.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken);
+        await store.SetMetaAsync("multi_tfm_raw_entities", union.RawEntityCount.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken);
+        await store.SetMetaAsync("multi_tfm_canonical_entities", union.CanonicalEntityCount.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken);
 
         // Build capture shares the real build's inputs, so a project with residual compile errors is graph-grade
         // (partial); a clean capture across every project is the oracle-grade semantic tier.
@@ -868,10 +901,11 @@ public sealed class SemanticIndexer
         var diagnostics = new List<DiagnosticRecord>
         {
             new(DiagnosticSeverity.Info, "build-capture",
-                $"Tier-1 build capture: {capture.Projects.Count} project(s), {symbols.Count} symbols, {edges.Count} edges."),
+                $"Tier-1 canonical TFM union: {union.CapturedProjectCount} compiler invocation(s), " +
+                $"{union.Projects.Count} project(s), {symbols.Count} symbols, {edges.Count} edges."),
         };
         var routeCount = syntaxRoutes.Count + semanticRoutes.Count;
-        return new SemanticIndexResult(mode, linkedFiles.Count, capture.Projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
+        return new SemanticIndexResult(mode, linkedFiles.Count, union.Projects.Count, symbols.Count, chunks.Count, routeCount, diagnostics);
     }
 
     /// <summary>
@@ -943,7 +977,13 @@ public sealed class SemanticIndexer
                 OptionsBindings: graph.OptionsBindings));
         }
 
-        return await IndexFromCaptureAsync(root, store, files, CaptureResult.Ok(captured), cancellationToken);
+        return await IndexFromCaptureAsync(
+            root,
+            store,
+            files,
+            CaptureResult.Ok(captured),
+            cancellationToken,
+            replaceTfmAvailability: false);
     }
 
     private async Task<SemanticIndexResult> IndexSyntaxAsync(
@@ -953,6 +993,8 @@ public sealed class SemanticIndexer
         RoslynWorkspaceSnapshot snapshot,
         CancellationToken cancellationToken)
     {
+        // Syntax extraction has no compiler-target view, so prior capture-derived availability would be stale.
+        await store.ReplaceTfmAvailabilityAsync([], cancellationToken);
         // Tag each file with its language from the provider that claims its extension, so retrieval can
         // filter or blend by language; a file no provider claims (a config file) stays untagged.
         var taggedFiles = files
@@ -1119,6 +1161,28 @@ public sealed class SemanticIndexer
                 Name: project.Name,
                 ProjectHash: hash,
                 AssemblyName: project.AssemblyName));
+        }
+
+        return records;
+    }
+
+    private List<ProjectRecord> BuildCaptureProjectRecords(
+        IReadOnlyList<CapturedProject> capturedProjects,
+        CancellationToken cancellationToken)
+    {
+        var records = new List<ProjectRecord>(capturedProjects.Count);
+        foreach (var project in capturedProjects)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var hash = File.Exists(project.FilePath)
+                ? _hashService.ComputeHash(File.ReadAllBytes(project.FilePath))
+                : "0";
+            records.Add(new ProjectRecord(
+                Path: project.FilePath,
+                Name: project.Name,
+                ProjectHash: hash,
+                AssemblyName: project.AssemblyName,
+                TargetFramework: project.TargetFramework));
         }
 
         return records;

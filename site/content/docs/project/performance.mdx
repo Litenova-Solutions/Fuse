@@ -83,11 +83,13 @@ Fuse distributes as a framework-dependent .NET global tool and as self-contained
 
 | Package | Role |
 |---------|------|
-| `Fuse` | Framework-dependent dotnet tool with `RollForward=LatestMajor` and ReadyToRun |
-| `Fuse.Runtime.win-x64` (and other RIDs) | Self-contained binary for that runtime identifier |
+| `Fuse` | Framework-dependent dotnet tool with `RollForward=LatestMajor` (portable IL; no ReadyToRun, since a framework-dependent tool has no target RID to crossgen for) |
+| `Fuse.Runtime.win-x64` (and other RIDs) | Self-contained binary for that runtime identifier, published ReadyToRun (crossgen) for a faster cold start |
 | Windows installer | Ships the self-contained `fuse.exe` from the release workflow |
 
 Roslyn structural analysis is always included; there is no trimmed or regex-only binary.
+
+The self-contained runtime binaries are published ReadyToRun (R50), so a one-shot CLI invocation (`fuse find`, `fuse context`, or the ambient-verification hooks that shell out per event) pays less JIT warmup on cold start. Measured on win-x64 (`fuse --version`, environment-dependent): ReadyToRun ~150 ms versus ~188 ms without it (best 146 vs 181 ms). Full AOT is not used (its native link is unavailable in the build environment); the long-lived daemon pays JIT once per session and is unaffected either way.
 
 ## How these are regenerated
 

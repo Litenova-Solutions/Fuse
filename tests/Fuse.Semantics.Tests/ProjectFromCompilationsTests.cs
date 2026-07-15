@@ -60,7 +60,6 @@ public sealed class ProjectFromCompilationsTests
             Assert.Contains("Renamed", namesAfterRemoval);
             Assert.DoesNotContain("Bar", namesAfterRemoval);
 
-            SqliteConnection.ClearAllPools();
         }
         finally
         {
@@ -113,7 +112,6 @@ public sealed class ProjectFromCompilationsTests
             Assert.Contains(symbols, s => s.Name == "Widget");
             Assert.Contains(symbols, s => s.Name == "Widget" && s.FilePath == "src/App/Widget.cs");
 
-            SqliteConnection.ClearAllPools();
         }
         finally
         {

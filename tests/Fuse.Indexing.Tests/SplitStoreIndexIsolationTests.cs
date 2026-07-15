@@ -140,7 +140,6 @@ public sealed class SplitStoreIndexIsolationTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
 
         if (!Directory.Exists(_repoRoot))
             return;

@@ -126,7 +126,6 @@ public sealed class WorkspaceIndexIntegrationTests : IDisposable
     public void Dispose()
     {
         var directory = Path.GetDirectoryName(_databasePath);
-        SqliteConnection.ClearAllPools();
         try
         {
             if (directory is not null && Directory.Exists(directory))

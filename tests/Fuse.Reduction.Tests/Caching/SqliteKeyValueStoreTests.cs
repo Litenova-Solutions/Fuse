@@ -261,7 +261,6 @@ public sealed class SqliteKeyValueStoreTests : IDisposable
         if (root is null || !Directory.Exists(root))
             return;
 
-        SqliteConnection.ClearAllPools();
 
         for (var attempt = 0; attempt < 3; attempt++)
         {

@@ -121,8 +121,7 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
                 ex,
                 "Corrupt index at {DatabasePath}; deleting and recreating.",
                 _connectionFactory.DatabasePath);
-            _connectionFactory.ClearPool();
-            WorkspaceIndexRecovery.DeleteDatabaseFiles(_connectionFactory.DatabasePath);
+            WorkspaceIndexRecovery.DeleteDatabaseFiles(_connectionFactory);
             Directory.CreateDirectory(Path.GetDirectoryName(_connectionFactory.DatabasePath)!);
             await InitializeCoreAsync(cancellationToken);
             return new WorkspaceIndexInitializeOutcome(true, "corrupt database recovered");

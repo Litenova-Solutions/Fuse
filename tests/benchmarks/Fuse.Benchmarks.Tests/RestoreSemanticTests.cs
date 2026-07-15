@@ -56,7 +56,6 @@ public sealed class RestoreSemanticTests
             Assert.True(result.Mode is "semantic" or "partial",
                 $"expected semantic or partial after restore, got {result.Mode}");
             Assert.True(result.SymbolCount > 0);
-            SqliteConnection.ClearAllPools();
         }
         finally
         {

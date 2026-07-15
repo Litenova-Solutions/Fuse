@@ -99,7 +99,6 @@ public sealed class SemanticIndexerTests : IAsyncLifetime
 
         Assert.NotEmpty(first);
         Assert.Equal(first, second);
-        SqliteConnection.ClearAllPools();
     }
 
     private static async Task<List<string>> SymbolIdSequenceAsync(string databasePath)
@@ -157,7 +156,6 @@ public sealed class SemanticIndexerTests : IAsyncLifetime
     {
         await _store.DisposeAsync();
         var directory = Path.GetDirectoryName(_databasePath);
-        SqliteConnection.ClearAllPools();
         try
         {
             if (directory is not null && Directory.Exists(directory))

@@ -23,6 +23,12 @@
          writes and test method names unrelated to async correctness. Suppress the family repo-wide to keep the
          zero-warning gate; the host transport code itself is written fully async. -->
     <NoWarn>$(NoWarn);VSTHRD002;VSTHRD003;VSTHRD100;VSTHRD101;VSTHRD103;VSTHRD110;VSTHRD111;VSTHRD114;VSTHRD200</NoWarn>
+    <!-- Microsoft.Build.Locator 1.11.2 added the MSBL001 check that errors when the transitive Microsoft.Build.*
+         assemblies (pulled by Microsoft.CodeAnalysis.Workspaces.MSBuild) are copied to output. Fuse never loads
+         those copies: every entry point calls MSBuildLocator.RegisterDefaults() before touching any MSBuild type,
+         so the real MSBuild is resolved from the installed SDK, not the restored package. This is the documented
+         case the opt-out is for, and it preserves the pre-1.11.2 behavior the tool already shipped with. -->
+    <DisableMSBuildAssemblyCopyCheck>true</DisableMSBuildAssemblyCopyCheck>
   </PropertyGroup>
 
   <PropertyGroup Condition="!$(MSBuildProjectName.EndsWith('.Tests'))">

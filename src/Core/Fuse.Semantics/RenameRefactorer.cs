@@ -45,8 +45,9 @@ public sealed class RenameRefactorer
         }
 
         using var workspace = MSBuildWorkspace.Create();
-        var loadFailed = false;
-        workspace.WorkspaceFailed += (_, _) => loadFailed = true;
+        // Only real load failures abstain; benign warnings (analyzer/SDK-resolver notes) are ignored. See
+        // WorkspaceLoadFailures. Refusing on every WorkspaceFailed event made rename abstain on any real solution.
+        var loadFailures = WorkspaceLoadFailures.Track(workspace);
 
         Solution solution;
         try
@@ -75,8 +76,10 @@ public sealed class RenameRefactorer
 
         if (symbol is null)
             return RenameResult.Abstain($"symbol '{symbolName}' was not found in the loaded solution");
-        if (loadFailed)
-            return RenameResult.Abstain("the workspace did not load cleanly; a solution-wide rename could be incomplete, so it is refused");
+        if (loadFailures.Count > 0)
+            return RenameResult.Abstain(
+                "the workspace did not load cleanly; a solution-wide rename could be incomplete, so it is refused. " +
+                $"First load failure: {loadFailures[0]}");
 
         Solution renamed;
         try

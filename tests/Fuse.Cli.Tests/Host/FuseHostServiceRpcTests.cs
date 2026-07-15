@@ -99,7 +99,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
         clientRpc.StartListening();
 
         var handshake = await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
-        Assert.Equal(8, handshake.ProtocolVersion);
+        Assert.Equal(10, handshake.ProtocolVersion);
         Assert.Equal(FuseHostService.ProtocolVersion, handshake.ProtocolVersion);
         Assert.False(string.IsNullOrWhiteSpace(handshake.HostVersion));
         Assert.False(string.IsNullOrWhiteSpace(handshake.SessionToken));
@@ -136,7 +136,7 @@ public sealed class FuseHostServiceRpcTests : IDisposable
 
         var handshake = await clientRpc.InvokeAsync<FuseHostHandshake>("fuse/handshake");
 
-        Assert.Equal(8, handshake.ProtocolVersion);
+        Assert.Equal(10, handshake.ProtocolVersion);
         Assert.Equal(FuseHostService.ProtocolVersion, handshake.ProtocolVersion);
         Assert.False(string.IsNullOrWhiteSpace(handshake.HostVersion));
         Assert.False(string.IsNullOrWhiteSpace(handshake.SessionToken));
@@ -509,6 +509,24 @@ public sealed class FuseHostServiceRpcTests : IDisposable
             var result = await service.CheckOverlayAsync(SessionToken(service), source, "Widget.cs", "public class Widget { }", includeAnalyzers: false);
 
             Assert.False(result.HasResident);
+            Assert.Empty(result.Diagnostics);
+        }
+        finally
+        {
+            CleanupFixture(source);
+        }
+    }
+
+    [Fact]
+    public async Task CheckCapture_WithoutACapture_ReturnsFallbackSignal()
+    {
+        var source = NewFixture(("Widget.cs", "public class Widget { }"));
+        try
+        {
+            using var service = NewService();
+            var result = await service.CheckCaptureAsync(SessionToken(service), source, "Widget.cs", "public class Widget { }");
+
+            Assert.False(result.Available);
             Assert.Empty(result.Diagnostics);
         }
         finally

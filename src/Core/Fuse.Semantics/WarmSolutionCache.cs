@@ -170,6 +170,21 @@ public sealed class WarmSolutionCache : IDisposable
             return EvictLocked(full);
     }
 
+    /// <summary>Evicts every held target under a workspace root.</summary>
+    /// <param name="root">The workspace root whose held targets should be released.</param>
+    /// <returns>The number of held workspaces disposed.</returns>
+    public int EvictUnderRoot(string root)
+    {
+        var full = Path.GetFullPath(root);
+        lock (_gate)
+        {
+            var affected = _byTarget.Keys.Where(target => IsUnderRoot(full, target)).ToList();
+            foreach (var target in affected)
+                EvictLocked(target);
+            return affected.Count;
+        }
+    }
+
     /// <summary>
     ///     Registers a watcher-covered source root. While at least one registration covers a held target, clean
     ///     cache hits skip the directory signature scan and rely on <see cref="InvalidateWatcherRoot" /> to evict

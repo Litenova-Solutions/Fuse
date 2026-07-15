@@ -228,4 +228,20 @@ public sealed class WarmSolutionCacheTests
 
         Assert.All(created, ws => Assert.True(ws.Disposed));
     }
+
+    [Fact]
+    public async Task Evict_under_root_releases_only_that_root()
+    {
+        var (loader, created) = CountingLoader();
+        using var cache = new WarmSolutionCache(cap: 10, loader: loader, signature: p => p);
+        var root = Path.Combine(Path.GetTempPath(), "fuse-warm-root", Guid.NewGuid().ToString("N"));
+        var other = Path.Combine(Path.GetTempPath(), "fuse-warm-other", Guid.NewGuid().ToString("N"));
+        await cache.OpenAsync(Path.Combine(root, "App.sln"), CancellationToken.None);
+        await cache.OpenAsync(Path.Combine(other, "Other.sln"), CancellationToken.None);
+
+        Assert.Equal(1, cache.EvictUnderRoot(root));
+        Assert.True(created[0].Disposed);
+        Assert.False(created[1].Disposed);
+        Assert.Equal(1, cache.HeldCount);
+    }
 }

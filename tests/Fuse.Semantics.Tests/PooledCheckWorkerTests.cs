@@ -124,4 +124,33 @@ public sealed class PooledCheckWorkerTests
         Assert.Contains(result.Diagnostics, d => d.Id == "CS1002");
         Assert.False(result.IsClean); // An error-severity diagnostic means not clean.
     }
+
+    [Fact]
+    public async Task Explicit_evict_all_releases_every_held_worker()
+    {
+        var (pool, created) = PoolWith(cap: 3);
+        using var _ = pool;
+        await pool.TryCheckAsync("/logs/A.complog", "A.cs", "x", CancellationToken.None);
+        await pool.TryCheckAsync("/logs/B.complog", "B.cs", "y", CancellationToken.None);
+
+        Assert.Equal(2, pool.EvictAll());
+        Assert.Equal(0, pool.HeldCount);
+        Assert.All(created, channel => Assert.True(channel.Disposed));
+    }
+
+    [Fact]
+    public async Task Root_scoped_eviction_releases_only_that_roots_workers()
+    {
+        var (pool, created) = PoolWith(cap: 3);
+        using var _ = pool;
+        var root = Path.Combine(Path.GetTempPath(), "fuse-pooled-root", Guid.NewGuid().ToString("N"));
+        var other = Path.Combine(Path.GetTempPath(), "fuse-pooled-other", Guid.NewGuid().ToString("N"));
+        await pool.TryCheckAsync("/logs/A.complog", "A.cs", "x", CancellationToken.None, root);
+        await pool.TryCheckAsync("/logs/B.complog", "B.cs", "y", CancellationToken.None, other);
+
+        Assert.Equal(1, pool.EvictOwnedBy(root));
+        Assert.True(created[0].Disposed);
+        Assert.False(created[1].Disposed);
+        Assert.Equal(1, pool.HeldCount);
+    }
 }

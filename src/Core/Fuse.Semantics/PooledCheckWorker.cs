@@ -80,9 +80,17 @@ public sealed class PooledCheckWorker : IDisposable
     /// <param name="relativeFilePath">The repo-relative path of the file being changed.</param>
     /// <param name="newContent">The proposed full new content of that file.</param>
     /// <param name="cancellationToken">A token to cancel the check.</param>
+    /// <param name="ownerRoot">
+    ///     The repository root that owns this held worker, when known. The owner is only used for root-scoped
+    ///     budget eviction; it does not affect worker reuse or the compiler verdict.
+    /// </param>
     /// <returns>The check verdict, or null to fall back to spawn-per-call.</returns>
     public async Task<CheckResult?> TryCheckAsync(
-        string complogPath, string relativeFilePath, string newContent, CancellationToken cancellationToken)
+        string complogPath,
+        string relativeFilePath,
+        string newContent,
+        CancellationToken cancellationToken,
+        string? ownerRoot = null)
     {
         if (!IsAvailable)
             return null;
@@ -91,7 +99,7 @@ public sealed class PooledCheckWorker : IDisposable
         Entry entry;
         try
         {
-            entry = await GetOrStartAsync(full, cancellationToken);
+            entry = await GetOrStartAsync(full, ownerRoot, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -129,7 +137,7 @@ public sealed class PooledCheckWorker : IDisposable
         }
     }
 
-    private async Task<Entry> GetOrStartAsync(string full, CancellationToken cancellationToken)
+    private async Task<Entry> GetOrStartAsync(string full, string? ownerRoot, CancellationToken cancellationToken)
     {
         lock (_gate)
         {
@@ -163,7 +171,7 @@ public sealed class PooledCheckWorker : IDisposable
                 return raced;
             }
 
-            var entry = new Entry(channel, _clock());
+            var entry = new Entry(channel, _clock(), ownerRoot is null ? null : Path.GetFullPath(ownerRoot));
             _byComplog[full] = entry;
             _spawnCount++;
             TouchLruLocked(full);
@@ -184,6 +192,37 @@ public sealed class PooledCheckWorker : IDisposable
         var full = Path.GetFullPath(complogPath);
         lock (_gate)
             return EvictLocked(full);
+    }
+
+    /// <summary>Stops every worker held by this pool.</summary>
+    /// <returns>The number of workers stopped.</returns>
+    public int EvictAll()
+    {
+        lock (_gate)
+        {
+            var keys = _byComplog.Keys.ToList();
+            foreach (var key in keys)
+                EvictLocked(key);
+            return keys.Count;
+        }
+    }
+
+    /// <summary>Stops every worker explicitly owned by one repository root.</summary>
+    /// <param name="root">The repository root whose workers should be released.</param>
+    /// <returns>The number of workers stopped.</returns>
+    public int EvictOwnedBy(string root)
+    {
+        var fullRoot = Path.GetFullPath(root);
+        lock (_gate)
+        {
+            var keys = _byComplog
+                .Where(pair => string.Equals(pair.Value.OwnerRoot, fullRoot, StringComparison.OrdinalIgnoreCase))
+                .Select(pair => pair.Key)
+                .ToList();
+            foreach (var key in keys)
+                EvictLocked(key);
+            return keys.Count;
+        }
     }
 
     private void TouchLruLocked(string full)
@@ -254,11 +293,12 @@ public sealed class PooledCheckWorker : IDisposable
             entry.Channel.Dispose();
     }
 
-    private sealed class Entry(ICheckWorkerChannel channel, DateTime lastAccessUtc)
+    private sealed class Entry(ICheckWorkerChannel channel, DateTime lastAccessUtc, string? ownerRoot)
     {
         public ICheckWorkerChannel Channel { get; } = channel;
         public SemaphoreSlim Lock { get; } = new(1, 1);
         public DateTime LastAccessUtc { get; set; } = lastAccessUtc;
+        public string? OwnerRoot { get; } = ownerRoot;
     }
 }
 

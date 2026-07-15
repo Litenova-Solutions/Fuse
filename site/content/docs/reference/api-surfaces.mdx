@@ -26,7 +26,7 @@ The table lists the canonical entry point per intent. A cell marked "none" means
 | Workspace status and index freshness | `fuse_workspace` (`action=status`) | `fuse diagnostics [path]` | none | Fast read of `index_meta` only; does not create `.fuse/fuse.db` on a cold workspace |
 | Build or refresh the index | `fuse_workspace` (`action=index`) | `fuse index [path]` | `fuse/index` | MCP read tools also build on first use via `fuse/openIndexed` when the daemon is active |
 | Workspace map (symbols, routes, counts) | `fuse_workspace` (`action=map`) | `fuse map [path]` | `fuse/graph` | Host graph adds dependency edges and optional scope overlay |
-| Semantic load diagnosis | `fuse_workspace` (`action=doctor`) | `fuse doctor [path]` | none | Actively loads through MSBuild; explains per-project downgrade |
+| Semantic load diagnosis | `fuse_workspace` (`action=doctor`) | `fuse doctor [path]` | `fuse/doctor` | Actively loads through the daemon-held MSBuild solution when available; explains per-project downgrade |
 | Apply a verified single-file edit | `fuse_workspace` (`action=apply`) | none | none | The one explicit server tree-write path; dry run unless `write=true` |
 | Task localization (rank candidate files) | `fuse_find` (`kind=task`) | `fuse find <query> --kind task` | `fuse/scope` (`mode=search`), `fuse/graph` (`scopeMode=search`), `fuse/openIndexed` | Deprecated alias: `fuse localize [path] --task "..."` |
 | Wiring resolution (service, request, route, config) | `fuse_find` (`kind=service\|request\|route\|config`) | `fuse find <query> --kind service` (etc.) | none | Deprecated alias: `fuse resolve [path] --service ...` (and `--request`, `--route`, `--config`, `--symbol`) |
@@ -85,6 +85,9 @@ These commands predate the `fuse_find` union. They remain for existing scripts; 
 | rpc | `fuse/diagnostics` |
 | rpc | `fuse/check` |
 | rpc | `fuse/checkOverlay` |
+| rpc | `fuse/checkCapture` |
+| rpc | `fuse/doctor` |
+| rpc | `fuse/refactor` |
 | rpc | `fuse/shutdown` |
 
 ## Related pages

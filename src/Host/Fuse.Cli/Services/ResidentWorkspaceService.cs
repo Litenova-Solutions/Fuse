@@ -21,6 +21,7 @@ public sealed class ResidentWorkspaceService : IResidentWorkspaceProvider, IDisp
     private readonly string _root;
     private readonly ResidentWorkspace _workspace;
     private readonly ResidentWorkspaceUpdater _updater = new();
+    private readonly FileHashService _hashes = new();
     private readonly object _gate = new();
     private int _revision;
 
@@ -168,13 +169,19 @@ public sealed class ResidentWorkspaceService : IResidentWorkspaceProvider, IDisp
     {
         var normalized = System.IO.Path.GetRelativePath(_root, absolutePath).Replace('\\', '/');
         var info = new FileInfo(absolutePath);
+        // The watcher projection shares the store with N6 reconciliation. Persist the same byte hash the scanner
+        // uses so reconciliation does not mistake every projected source file for a later external edit and clear
+        // the semantic graph through its syntax-only fallback.
+        var contentHash = info.Exists
+            ? _hashes.ComputeHash(File.ReadAllBytes(absolutePath))
+            : string.Empty;
         return new IndexedFileRecord(
             Path: absolutePath,
             NormalizedPath: normalized,
             Extension: ".cs",
             SizeBytes: info.Exists ? info.Length : 0,
             MtimeUtcTicks: info.Exists ? info.LastWriteTimeUtc.Ticks : 0,
-            ContentHash: string.Empty);
+            ContentHash: contentHash);
     }
 
     private bool Matches(string root) =>

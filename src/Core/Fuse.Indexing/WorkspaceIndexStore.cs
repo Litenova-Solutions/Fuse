@@ -78,6 +78,16 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     public const string SkippedFilesMetaKey = "skipped_files";
 
     /// <summary>
+    ///     The <c>index_meta</c> key under which an index pass stamps the per-project semantic-load diagnosis (R43):
+    ///     the achieved tier, the selected solution, and each project's load outcome, serialized as JSON. It is
+    ///     stamped with the index pass (so it reflects what was actually indexed), letting
+    ///     <c>fuse_workspace action=doctor</c> report the load tier and per-project reasons from the warm index in
+    ///     sub-second time instead of re-running the full MSBuild/Roslyn load; a live re-load runs only on an
+    ///     explicit refresh or when this stamp is absent.
+    /// </summary>
+    public const string LoadDiagnosisMetaKey = "load_diagnosis";
+
+    /// <summary>
     ///     The <c>index_meta</c> key under which <c>fuse index --from-capture</c> stamps the absolute path to the
     ///     bundle's portable compiler log (C2), so <c>fuse_check</c> can answer oracle-grade from the captured
     ///     compilation without building on a machine that cannot restore or build.

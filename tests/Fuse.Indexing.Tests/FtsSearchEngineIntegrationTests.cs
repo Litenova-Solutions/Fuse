@@ -43,7 +43,7 @@ public sealed class FtsSearchEngineIntegrationTests : IAsyncLifetime
 
     public Task DisposeAsync()
     {
-        SqliteConnection.ClearAllPools();
+        _factory.ClearPool();
         return Task.CompletedTask;
     }
 }

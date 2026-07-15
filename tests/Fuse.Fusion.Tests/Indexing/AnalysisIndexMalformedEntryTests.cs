@@ -70,22 +70,24 @@ public sealed class AnalysisIndexMalformedEntryTests : IDisposable
             await store.FlushAsync();
         }
 
-        await using var warmStore = new SqliteKeyValueStore(_databasePath);
-        var warmIndex = new SqliteAnalysisIndex(warmStore);
-        await builder.BuildAsync(
-            files,
-            contentProvider,
-            Extractors,
-            TypeLocators,
-            parallelism: 1,
-            cancellationToken: default,
-            index: warmIndex);
+        await using (var warmStore = new SqliteKeyValueStore(_databasePath))
+        {
+            var warmIndex = new SqliteAnalysisIndex(warmStore);
+            await builder.BuildAsync(
+                files,
+                contentProvider,
+                Extractors,
+                TypeLocators,
+                parallelism: 1,
+                cancellationToken: default,
+                index: warmIndex);
 
-        Assert.Equal(2, warmIndex.Statistics.Hits);
-        Assert.Equal(0, warmIndex.Statistics.Misses);
+            Assert.Equal(2, warmIndex.Statistics.Hits);
+            Assert.Equal(0, warmIndex.Statistics.Misses);
+        }
+
         Assert.False(SqliteTestHelpers.StoreEntryEqualsBytes(_databasePath, "analysis", analysisKey, [0xDE, 0xAD, 0xBE, 0xEF]));
 
-        SqliteConnection.ClearAllPools();
     }
 
     private SourceFile CreateFile(string relativePath)
@@ -99,7 +101,6 @@ public sealed class AnalysisIndexMalformedEntryTests : IDisposable
         if (Directory.Exists(_root))
             Directory.Delete(_root, recursive: true);
 
-        SqliteConnection.ClearAllPools();
 
         var databaseRoot = Path.GetDirectoryName(_databasePath);
         if (databaseRoot is not null && Directory.Exists(databaseRoot))

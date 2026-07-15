@@ -42,12 +42,15 @@ internal static class WorkspaceIndexRecovery
     }
 
     /// <summary>
-    ///     Deletes the database file and its WAL sidecar files, clearing the connection pool first.
+    ///     Deletes the database file and its WAL sidecar files after clearing only the owning connection pool.
     /// </summary>
-    /// <param name="databasePath">The absolute path to <c>fuse.db</c>.</param>
-    internal static void DeleteDatabaseFiles(string databasePath)
+    /// <param name="connectionFactory">The factory that owns the database connection pool.</param>
+    internal static void DeleteDatabaseFiles(WorkspaceIndexConnectionFactory connectionFactory)
     {
-        SqliteConnection.ClearAllPools();
+        ArgumentNullException.ThrowIfNull(connectionFactory);
+
+        connectionFactory.ClearPool();
+        var databasePath = connectionFactory.DatabasePath;
         foreach (var path in EnumerateDatabaseFiles(databasePath))
         {
             try
@@ -63,7 +66,7 @@ internal static class WorkspaceIndexRecovery
             }
         }
 
-        SqliteConnection.ClearAllPools();
+        connectionFactory.ClearPool();
     }
 
     private static IEnumerable<string> EnumerateDatabaseFiles(string databasePath)

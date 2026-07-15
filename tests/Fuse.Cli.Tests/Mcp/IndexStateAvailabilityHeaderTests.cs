@@ -116,7 +116,6 @@ public sealed class IndexStateAvailabilityHeaderTests : IDisposable
         AssertHeaderShape(headerFromStore, expectedState, expectedFiles!.Value);
         AvailabilityHeaderGoldenAssert.AssertMatches($"availability-header-{expectedState}", NormalizeForGolden(headerFromStore));
 
-        SqliteConnection.ClearAllPools();
     }
 
     [Fact]
@@ -158,7 +157,6 @@ public sealed class IndexStateAvailabilityHeaderTests : IDisposable
         Assert.Contains("files_indexed: 1", result);
         Assert.Contains("availability:", result);
 
-        SqliteConnection.ClearAllPools();
         try
         {
             Directory.Delete(root, recursive: true);

@@ -8,19 +8,20 @@ public sealed class SessionStoreIntegrationTests : IAsyncLifetime
 {
     private readonly string _databasePath =
         Path.Combine(Path.GetTempPath(), "fuse-session-port-tests", Guid.NewGuid().ToString("N"), "fuse.db");
+    private WorkspaceIndexConnectionFactory _factory = null!;
     private SessionStore _sessions = null!;
 
     public async Task InitializeAsync()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_databasePath)!);
-        var factory = new WorkspaceIndexConnectionFactory(_databasePath);
+        _factory = new WorkspaceIndexConnectionFactory(_databasePath);
 
-        await using var connection = await factory.OpenAsync(CancellationToken.None);
-        await new IndexSchemaMigrator(factory).PrepareDatabaseAsync(connection, CancellationToken.None);
+        await using var connection = await _factory.OpenAsync(CancellationToken.None);
+        await new IndexSchemaMigrator(_factory).PrepareDatabaseAsync(connection, CancellationToken.None);
         await IndexSchemaMigrator.MigrateAsync(connection, CancellationToken.None);
         await IndexSchemaMigrator.EnsureTablesAsync(connection, CancellationToken.None);
 
-        _sessions = new SessionStore(factory);
+        _sessions = new SessionStore(_factory);
     }
 
     [Fact]
@@ -53,7 +54,7 @@ public sealed class SessionStoreIntegrationTests : IAsyncLifetime
 
     public Task DisposeAsync()
     {
-        SqliteConnection.ClearAllPools();
+        _factory.ClearPool();
         return Task.CompletedTask;
     }
 }

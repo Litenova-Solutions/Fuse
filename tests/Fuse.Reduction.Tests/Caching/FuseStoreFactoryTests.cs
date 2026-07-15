@@ -30,7 +30,6 @@ public sealed class FuseStoreFactoryTests
         }
         finally
         {
-            SqliteConnection.ClearAllPools();
             if (Directory.Exists(repo))
                 Directory.Delete(repo, recursive: true);
         }

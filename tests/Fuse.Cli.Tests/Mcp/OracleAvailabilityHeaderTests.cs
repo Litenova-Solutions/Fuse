@@ -114,7 +114,6 @@ public sealed class OracleAvailabilityHeaderTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await _store.DisposeAsync();
-        SqliteConnection.ClearAllPools();
         var directory = Path.GetDirectoryName(_databasePath);
         try
         {

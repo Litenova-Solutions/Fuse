@@ -79,7 +79,6 @@ public sealed class ResilienceHarnessTests : IDisposable
             await seed.SetMetaAsync(WorkspaceIndexStore.ExtractionVersionMetaKey, "0", CancellationToken.None);
         }
 
-        SqliteConnection.ClearAllPools();
         await using var reopened = new WorkspaceIndexStore(_databasePath);
         Assert.True((await reopened.InitializeAsync(CancellationToken.None)).RebuiltEmptyStore);
     }
@@ -139,7 +138,6 @@ public sealed class ResilienceHarnessTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
     }
 }

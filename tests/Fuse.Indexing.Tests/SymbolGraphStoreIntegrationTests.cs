@@ -8,17 +8,18 @@ public sealed class SymbolGraphStoreIntegrationTests : IAsyncLifetime
 {
     private readonly string _databasePath =
         Path.Combine(Path.GetTempPath(), "fuse-graph-port-tests", Guid.NewGuid().ToString("N"), "fuse.db");
+    private WorkspaceIndexConnectionFactory _factory = null!;
     private SymbolGraphStore _graph = null!;
 
     public async Task InitializeAsync()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_databasePath)!);
-        var factory = new WorkspaceIndexConnectionFactory(_databasePath);
-        var fts = new FtsSearchEngine(factory);
-        _graph = new SymbolGraphStore(factory, fts);
+        _factory = new WorkspaceIndexConnectionFactory(_databasePath);
+        var fts = new FtsSearchEngine(_factory);
+        _graph = new SymbolGraphStore(_factory, fts);
 
-        await using var connection = await factory.OpenAsync(CancellationToken.None);
-        await new IndexSchemaMigrator(factory).PrepareDatabaseAsync(connection, CancellationToken.None);
+        await using var connection = await _factory.OpenAsync(CancellationToken.None);
+        await new IndexSchemaMigrator(_factory).PrepareDatabaseAsync(connection, CancellationToken.None);
         await IndexSchemaMigrator.MigrateAsync(connection, CancellationToken.None);
         await IndexSchemaMigrator.EnsureTablesAsync(connection, CancellationToken.None);
         await fts.TryCreateAsync(connection, CancellationToken.None);
@@ -62,7 +63,7 @@ public sealed class SymbolGraphStoreIntegrationTests : IAsyncLifetime
 
     public Task DisposeAsync()
     {
-        SqliteConnection.ClearAllPools();
+        _factory.ClearPool();
         return Task.CompletedTask;
     }
 }

@@ -77,6 +77,5 @@ public sealed class EagerIndexTests : IDisposable
     public void Dispose()
     {
         _provider.Dispose();
-        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
     }
 }

@@ -62,7 +62,6 @@ public sealed class HostRpcOutcomeTests : IDisposable
         }
         finally
         {
-            SqliteConnection.ClearAllPools();
             try { Directory.Delete(root, recursive: true); } catch (IOException) { }
         }
     }

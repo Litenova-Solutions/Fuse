@@ -29,7 +29,6 @@ public sealed class SplitStoreRecoveryTests : IDisposable
 
         Assert.Equal(["kv"], await ListTablesAsync(cachePath));
 
-        SqliteConnection.ClearAllPools();
         File.WriteAllText(cachePath, "not a sqlite database");
 
         await using (var store = new SqliteKeyValueStore(cachePath))
@@ -58,7 +57,6 @@ public sealed class SplitStoreRecoveryTests : IDisposable
             await store.FlushAsync();
         }
 
-        SqliteConnection.ClearAllPools();
         File.WriteAllText(cachePath, "not a sqlite database");
 
         await using (var store = new SqliteKeyValueStore(cachePath))
@@ -87,7 +85,6 @@ public sealed class SplitStoreRecoveryTests : IDisposable
         }
 
         const string corruptPayload = "not a sqlite database";
-        SqliteConnection.ClearAllPools();
         File.WriteAllText(indexPath, corruptPayload);
 
         await using (var store = new SqliteKeyValueStore(indexPath))
@@ -100,52 +97,73 @@ public sealed class SplitStoreRecoveryTests : IDisposable
 
     private static async Task SeedIndexSymbolsAsync(string indexPath, string symbolName)
     {
-        await using var connection = new SqliteConnection($"Data Source={indexPath}");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "CREATE TABLE symbols(symbol_id TEXT PRIMARY KEY, name TEXT NOT NULL);" +
-            "INSERT INTO symbols(symbol_id, name) VALUES('symbol:test', $name);";
-        command.Parameters.AddWithValue("$name", symbolName);
-        await command.ExecuteNonQueryAsync();
+        await using (var connection = new SqliteConnection($"Data Source={indexPath}"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                "CREATE TABLE symbols(symbol_id TEXT PRIMARY KEY, name TEXT NOT NULL);" +
+                "INSERT INTO symbols(symbol_id, name) VALUES('symbol:test', $name);";
+            command.Parameters.AddWithValue("$name", symbolName);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        ClearDirectPool(indexPath);
     }
 
     private static async Task<long> CountIndexSymbolsAsync(string indexPath)
     {
-        await using var connection = new SqliteConnection($"Data Source={indexPath}");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT count(*) FROM symbols;";
-        var result = await command.ExecuteScalarAsync();
+        object? result;
+        await using (var connection = new SqliteConnection($"Data Source={indexPath}"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT count(*) FROM symbols;";
+            result = await command.ExecuteScalarAsync();
+        }
+
+        ClearDirectPool(indexPath);
         return result is long value ? value : 0;
     }
 
     private static async Task<string?> ReadSymbolNameAsync(string indexPath)
     {
-        await using var connection = new SqliteConnection($"Data Source={indexPath}");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT name FROM symbols LIMIT 1;";
-        return await command.ExecuteScalarAsync() as string;
+        string? result;
+        await using (var connection = new SqliteConnection($"Data Source={indexPath}"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT name FROM symbols LIMIT 1;";
+            result = await command.ExecuteScalarAsync() as string;
+        }
+
+        ClearDirectPool(indexPath);
+        return result;
     }
 
     private static async Task<string[]> ListTablesAsync(string databasePath)
     {
-        await using var connection = new SqliteConnection($"Data Source={databasePath}");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;";
         var tables = new List<string>();
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-            tables.Add(reader.GetString(0));
+        await using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;";
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                tables.Add(reader.GetString(0));
+        }
+
+        ClearDirectPool(databasePath);
         return tables.ToArray();
     }
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
+
+        ClearDirectPool(FuseStorePaths.ResolveCacheDatabasePath(_repoRoot));
+        ClearDirectPool(FuseStorePaths.ResolveDatabasePath(_repoRoot));
 
         if (!Directory.Exists(_repoRoot))
             return;
@@ -163,4 +181,7 @@ public sealed class SplitStoreRecoveryTests : IDisposable
             }
         }
     }
+
+    private static void ClearDirectPool(string databasePath) =>
+        SqliteConnection.ClearPool(new SqliteConnection($"Data Source={databasePath}"));
 }

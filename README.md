@@ -4,6 +4,13 @@
   <img src="assets/fuse-icon.svg" alt="Fuse" width="72" height="72">
 </p>
 
+<p align="center">
+  <a href="https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml"><img src="https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://www.nuget.org/packages/Fuse"><img src="https://img.shields.io/nuget/v/Fuse.svg?label=NuGet" alt="NuGet version"></a>
+  <a href="https://www.nuget.org/packages/Fuse"><img src="https://img.shields.io/nuget/dt/Fuse.svg?label=downloads" alt="NuGet downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Litenova-Solutions/Fuse" alt="License"></a>
+</p>
+
 # Fuse
 
 Fuse is a local .NET tool with a persistent semantic index, typed-graph wiring

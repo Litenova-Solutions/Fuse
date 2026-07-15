@@ -8,6 +8,7 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ### Changed
 
+- Parallelized the per-project wiring-analyzer graph pass in the cold semantic index (R45): the pass now runs concurrently across projects (bounded by processor count) and merges positionally, so the flattened nodes and edges are byte-identical to the sequential pass. Each project's graph is independent (it binds its own compilation with no shared state), so distinct compilations parallelize rather than serialize. Measured on eShopOnWeb (10 projects): the analyzer pass dropped from ~3.4s to ~0.75s with identical output; Suite A stays 24/24.
 - Deduplicated Roslyn parsing in the semantic index pipeline (R47): on the semantic/capture path each C# file is now parsed once and the syntax tree is shared between the chunk (symbol) and route extractors, instead of each extractor re-parsing the file's content string. This removes a parse per file on the cold-index hot path with byte-identical chunk and route output (the two extractors previously parsed the same content with the same default parse options). The syntax-only tier is unchanged. No effect on the semantic graph (nodes/edges come from the analyzer pass, which is untouched).
 
 ### Added

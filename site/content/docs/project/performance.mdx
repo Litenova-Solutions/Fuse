@@ -60,7 +60,7 @@ Measured on NodaTime (`performance.json`) and eShopOnWeb (`performance-eshop.jso
 
 `fuse mcp serve` uses syntax-first cold start by default, then upgrades the semantic graph in the background. Set `FUSE_BG_UPGRADE=0`, `false`, `no`, or `off` to make the first read index synchronously. The explicit `fuse index` command is always synchronous.
 
-On the semantic path the chunk and route extraction share one parse per file with the compilation instead of re-parsing the content string (R47), so the cold-index parse count per file drops with byte-identical output - a reduction of raw work, never an increase.
+On the semantic path the chunk and route extraction share one parse per file with the compilation instead of re-parsing the content string (R47), so the cold-index parse count per file drops with byte-identical output - a reduction of raw work, never an increase. The per-project wiring-analyzer pass also runs concurrently across projects (R45): on eShopOnWeb (10 projects) it dropped from ~3.4s to ~0.75s with byte-identical nodes and edges (environment-dependent, recorded in the R45 progress log).
 
 Tier-1 build capture (`dotnet build` then rehydrate from the log) is the higher-grade cold path, not the faster one. An A/B on eShopOnWeb (10 projects, environment-dependent, recorded in the R49 progress log) cold-indexed capture-on at ~16.4s versus the tier-2 MSBuildWorkspace path at ~13.6-15.0s: the build plus rehydrate costs a few seconds more than the design-time workspace load at this scale, for identical output. Build capture stays on by default because it produces the build-exact oracle graph (the substrate for `fuse_check`, `fuse_impact`, and covering-test selection), which is its justification - not a faster cold index.
 

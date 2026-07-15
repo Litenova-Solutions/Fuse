@@ -62,6 +62,8 @@ Measured on NodaTime (`performance.json`) and eShopOnWeb (`performance-eshop.jso
 
 On the semantic path the chunk and route extraction share one parse per file with the compilation instead of re-parsing the content string (R47), so the cold-index parse count per file drops with byte-identical output - a reduction of raw work, never an increase.
 
+Tier-1 build capture (`dotnet build` then rehydrate from the log) is the higher-grade cold path, not the faster one. An A/B on eShopOnWeb (10 projects, environment-dependent, recorded in the R49 progress log) cold-indexed capture-on at ~16.4s versus the tier-2 MSBuildWorkspace path at ~13.6-15.0s: the build plus rehydrate costs a few seconds more than the design-time workspace load at this scale, for identical output. Build capture stays on by default because it produces the build-exact oracle graph (the substrate for `fuse_check`, `fuse_impact`, and covering-test selection), which is its justification - not a faster cold index.
+
 ## Warm Solution for refactor and doctor
 
 `fuse_refactor` and `fuse_workspace action=doctor`'s live load each need a design-time MSBuild workspace, and opening one is essentially their whole latency. The daemon holds the loaded Roslyn `Solution` per root and reuses it across calls (R42), so only the first call in a session pays the load. Measured on the Fuse repo through the refactor and diagnose engine (environment-dependent, recorded in the R42 progress log, not a canonical result file):

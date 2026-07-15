@@ -923,23 +923,25 @@ scoped output (review median 1,026 tokens on corpus v2), not session totals (Sui
 
 **Question:** How fast are warm reads and cold indexing?
 
-**How measured:** NodaTime checkout, 512 files, 7657 symbols, syntax index mode on main checkout.
-25 repetitions for warm paths; single cold pass. Environment-dependent; not cross-machine
-published.
+**How measured:** NodaTime checkout, 512 files, 14,760 symbols, semantic index mode on the
+product solution `src/NodaTime.slnx` (re-measured 2026-07-15 after the workspace-discovery fix;
+the earlier snapshot indexed at syntax tier because discovery had bound the 2-project
+`build/Tools.slnx`). 25 repetitions for warm paths; single cold pass. Environment-dependent; not
+cross-machine published.
 
 **Result:**
 
 | Operation | P50 | P95 |
 |-----------|----:|----:|
-| Warm localize | 23.4 ms | 25.2 ms |
-| Warm find symbol | 2.2 ms | 3.6 ms |
+| Warm localize | 15.7 ms | 22.3 ms |
+| Warm find symbol | 1.8 ms | 2.3 ms |
 | Warm resolve | 0.0 ms | 0.1 ms |
-| Warm review plan | 97.8 ms | 101.3 ms |
-| Incremental re-index (one file) | 20.9 ms | 25.4 ms |
+| Warm review plan | 106.3 ms | 131.1 ms |
+| Incremental re-index (one file) | 22.0 ms | 24.2 ms |
 
-Cold: syntax tier served in 17,840 ms; semantic-ready after further 48,329 ms (background
-upgrade path); full semantic pass 24,554 ms. Incremental re-index updates syntax rows only, not
-cross-file semantic edges.
+Cold: syntax tier served in 17,768 ms; semantic-ready after further 71,052 ms (background
+upgrade path); full semantic pass (tier-1 build capture, graph-grade) 45,859 ms. Incremental
+re-index updates syntax rows only, not cross-file semantic edges.
 
 **Resident verify path (`resident-latency.json`, NodaTime, opt-in with `FUSE_RESIDENT=1`):**
 resident warm (build plus rehydrate) 14,092 ms; RSS 162 MB; overlay check (speculative

@@ -47,12 +47,12 @@ syntax-level indexing for that project and reports the mode.
 - **Pack branch context.** `fuse_review` seeds on the git diff and returns related callers,
   handlers, and tests with provenance. On 69 recorded pull requests the median response was
   1,026 tokens at 93.4 percent precision (`review.json`).
-- **Read warm.** On the recorded NodaTime run, exact symbol lookup took 2.2 ms at the
-  median, task localization 23.4 ms, and review planning 97.8 ms (`performance.json`;
-  timings are environment-dependent).
+- **Read warm.** On the recorded NodaTime run (semantic tier, 14,760 symbols), exact
+  symbol lookup took 1.8 ms at the median, task localization 15.7 ms, and review planning
+  106.3 ms (`performance.json`; timings are environment-dependent).
 
 <p align="center">
-  <img src="assets/fuse-wiring-example.svg" alt="Fuse resolves an interface through dependency injection registration to its concrete implementation and related callers." width="820">
+  <img src="assets/fuse-typed-wiring.svg" alt="Fuse resolves an interface through dependency injection registration to its concrete implementation and related callers." width="820">
 </p>
 
 ## Use It During Daily Work

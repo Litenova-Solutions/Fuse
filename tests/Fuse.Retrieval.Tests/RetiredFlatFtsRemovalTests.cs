@@ -7,6 +7,11 @@ namespace Fuse.Retrieval.Tests;
 // fails if either identifier reappears under src/ or site/.
 public sealed class RetiredFlatFtsRemovalTests
 {
+    private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".git", ".next", ".source", "bin", "node_modules", "obj",
+    };
+
     private static readonly string[] ForbiddenTokens =
     [
         "FtsCandidateGenerator",
@@ -34,12 +39,10 @@ public sealed class RetiredFlatFtsRemovalTests
         Assert.True(Directory.Exists(directory), $"scan root not found at {directory}");
 
         var violations = new List<string>();
-        foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+        foreach (var file in EnumerateTrackedFiles(directory))
         {
             if (file.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                || file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-                || file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                || file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             var text = File.ReadAllText(file);
@@ -51,5 +54,23 @@ public sealed class RetiredFlatFtsRemovalTests
         }
 
         Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations));
+    }
+
+    private static IEnumerable<string> EnumerateTrackedFiles(string root)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            foreach (var directory in Directory.EnumerateDirectories(current))
+            {
+                if (!ExcludedDirectories.Contains(Path.GetFileName(directory)))
+                    pending.Push(directory);
+            }
+
+            foreach (var file in Directory.EnumerateFiles(current))
+                yield return file;
+        }
     }
 }

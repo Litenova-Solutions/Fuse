@@ -69,6 +69,79 @@ public sealed class WarmSolutionCacheTests
     }
 
     [Fact]
+    public async Task Watcher_attached_fresh_hit_skips_the_signature_scan_and_a_change_evicts()
+    {
+        var (loader, _) = CountingLoader();
+        var signatureCalls = 0;
+        using var cache = new WarmSolutionCache(
+            cap: 3,
+            loader: loader,
+            signature: _ =>
+            {
+                Interlocked.Increment(ref signatureCalls);
+                return "v1";
+            });
+        var root = Path.Combine(Path.GetTempPath(), "fuse-warm-cache", Guid.NewGuid().ToString("N"));
+        var target = Path.Combine(root, "App.sln");
+        using var watcher = cache.AttachWatcher(root);
+
+        var first = await cache.OpenAsync(target, CancellationToken.None);
+        var second = await cache.OpenAsync(target, CancellationToken.None);
+
+        Assert.Equal(1, signatureCalls);
+        Assert.Equal(1, cache.LoadCount);
+        Assert.Same(first.Solution, second.Solution);
+
+        cache.InvalidateWatcherRoot(root);
+        await cache.OpenAsync(target, CancellationToken.None);
+
+        Assert.Equal(2, signatureCalls);
+        Assert.Equal(2, cache.LoadCount);
+    }
+
+    [Fact]
+    public async Task Detached_watcher_restores_the_signature_freshness_fallback()
+    {
+        var (loader, _) = CountingLoader();
+        var version = "v1";
+        var signatureCalls = 0;
+        using var cache = new WarmSolutionCache(
+            cap: 3,
+            loader: loader,
+            signature: _ =>
+            {
+                Interlocked.Increment(ref signatureCalls);
+                return version;
+            });
+        var root = Path.Combine(Path.GetTempPath(), "fuse-warm-cache", Guid.NewGuid().ToString("N"));
+        var target = Path.Combine(root, "App.sln");
+
+        using (cache.AttachWatcher(root))
+        {
+            await cache.OpenAsync(target, CancellationToken.None);
+            await cache.OpenAsync(target, CancellationToken.None);
+        }
+
+        version = "v2";
+        await cache.OpenAsync(target, CancellationToken.None);
+
+        Assert.Equal(2, signatureCalls);
+        Assert.Equal(2, cache.LoadCount);
+    }
+
+    [Fact]
+    public void Watcher_invalidation_tracks_only_files_in_the_fallback_signature()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-warm-cache", Guid.NewGuid().ToString("N"));
+
+        Assert.True(WarmSolutionCache.IsTrackedSourceFile(root, Path.Combine(root, "App.cs")));
+        Assert.False(WarmSolutionCache.IsTrackedSourceFile(root, Path.Combine(root, "obj", "Generated.cs")));
+        Assert.False(WarmSolutionCache.IsTrackedSourceFile(root, Path.Combine(root, "bin", "Generated.cs")));
+        Assert.False(WarmSolutionCache.IsTrackedSourceFile(root, Path.Combine(root, "README.md")));
+        Assert.False(WarmSolutionCache.IsTrackedSourceFile(root, Path.Combine(Path.GetTempPath(), "outside", "App.cs")));
+    }
+
+    [Fact]
     public async Task Lru_evicts_the_least_recently_used_beyond_the_cap()
     {
         var (loader, created) = CountingLoader();

@@ -147,7 +147,7 @@ public sealed class IndexSelfHealTests : IDisposable
         Assert.True(state.SymbolCount > 0);
         Assert.Equal(0, state.ChunkCount);
 
-        var indexState = await FuseTools.ComputeIndexStateAsync(store, state, CancellationToken.None);
+        var indexState = await FuseTools.ComputeIndexStateAsync(store, state, _root, CancellationToken.None);
         Assert.NotEqual("ready", indexState);
         Assert.Equal("index_rebuilding", indexState);
     }
@@ -178,7 +178,7 @@ public sealed class IndexSelfHealTests : IDisposable
         Assert.True(state.ChunkCount > 0);
         Assert.True(string.IsNullOrWhiteSpace(state.Mode));
 
-        var indexState = await FuseTools.ComputeIndexStateAsync(store, state, CancellationToken.None);
+        var indexState = await FuseTools.ComputeIndexStateAsync(store, state, _root, CancellationToken.None);
         Assert.Equal("index_rebuilding", indexState);
     }
 

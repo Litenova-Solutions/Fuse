@@ -561,7 +561,17 @@ internal sealed class SymbolGraphStore
     }
 
     /// <inheritdoc cref="IWorkspaceIndexStore.DeleteFileDataAsync" />
-    public async Task DeleteFileDataAsync(string normalizedPath, CancellationToken cancellationToken)
+    public Task DeleteFileDataAsync(string normalizedPath, CancellationToken cancellationToken) =>
+        DeleteFileCoreAsync(normalizedPath, removeFileRecord: false, cancellationToken);
+
+    /// <inheritdoc cref="IWorkspaceIndexStore.DeleteFileAsync" />
+    public Task DeleteFileAsync(string normalizedPath, CancellationToken cancellationToken) =>
+        DeleteFileCoreAsync(normalizedPath, removeFileRecord: true, cancellationToken);
+
+    private async Task DeleteFileCoreAsync(
+        string normalizedPath,
+        bool removeFileRecord,
+        CancellationToken cancellationToken)
     {
         await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
@@ -579,7 +589,19 @@ internal sealed class SymbolGraphStore
         await using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = """
+            command.CommandText = removeFileRecord
+                ? """
+                DELETE FROM edges WHERE evidence_file_id = $file;
+                DELETE FROM chunks WHERE file_id = $file;
+                DELETE FROM symbols WHERE file_id = $file;
+                DELETE FROM routes WHERE file_id = $file;
+                DELETE FROM di_registrations WHERE file_id = $file;
+                DELETE FROM options_bindings WHERE file_id = $file;
+                DELETE FROM nodes WHERE file_id = $file;
+                DELETE FROM git_cochange WHERE path_a = $path OR path_b = $path;
+                DELETE FROM files WHERE file_id = $file;
+                """
+                : """
                 DELETE FROM edges WHERE evidence_file_id = $file;
                 DELETE FROM chunks WHERE file_id = $file;
                 DELETE FROM symbols WHERE file_id = $file;
@@ -589,10 +611,179 @@ internal sealed class SymbolGraphStore
                 DELETE FROM nodes WHERE file_id = $file;
                 """;
             command.Parameters.AddWithValue("$file", fileId.Value);
+            if (removeFileRecord)
+                command.Parameters.AddWithValue("$path", normalizedPath);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc cref="IWorkspaceIndexStore.ClearFileDataAsync" />
+    public async Task ClearFileDataAsync(
+        IReadOnlyCollection<string> normalizedPaths,
+        CancellationToken cancellationToken)
+    {
+        if (normalizedPaths.Count == 0)
+            return;
+
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        await CreateAndPopulatePathTableAsync(
+            connection,
+            transaction,
+            "target_fuse_files",
+            normalizedPaths,
+            cancellationToken);
+
+        var fileIds = new List<long>();
+        await using (var select = connection.CreateCommand())
+        {
+            select.Transaction = transaction;
+            select.CommandText = """
+                SELECT file_id FROM files
+                WHERE normalized_path IN (SELECT normalized_path FROM target_fuse_files);
+                """;
+            await using var reader = await select.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                fileIds.Add(reader.GetInt64(0));
+        }
+
+        foreach (var fileId in fileIds)
+            await _fts.DeleteForFileAsync(connection, transaction, fileId, cancellationToken);
+
+        await using (var delete = connection.CreateCommand())
+        {
+            delete.Transaction = transaction;
+            delete.CommandText = """
+                DELETE FROM edges WHERE evidence_file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path IN (SELECT normalized_path FROM target_fuse_files));
+                DELETE FROM chunks WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path IN (SELECT normalized_path FROM target_fuse_files));
+                DELETE FROM symbols WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path IN (SELECT normalized_path FROM target_fuse_files));
+                DELETE FROM routes WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path IN (SELECT normalized_path FROM target_fuse_files));
+                DELETE FROM di_registrations WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path IN (SELECT normalized_path FROM target_fuse_files));
+                DELETE FROM options_bindings WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path IN (SELECT normalized_path FROM target_fuse_files));
+                DELETE FROM nodes WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path IN (SELECT normalized_path FROM target_fuse_files));
+                """;
+            await delete.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc cref="IWorkspaceIndexStore.PruneFilesAsync" />
+    public async Task<int> PruneFilesAsync(
+        IReadOnlyCollection<string> normalizedPaths,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        await CreateAndPopulatePathTableAsync(
+            connection,
+            transaction,
+            "current_fuse_files",
+            normalizedPaths,
+            cancellationToken);
+
+        var stale = new List<long>();
+        await using (var select = connection.CreateCommand())
+        {
+            select.Transaction = transaction;
+            select.CommandText = """
+                SELECT file_id
+                FROM files
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM current_fuse_files current
+                    WHERE current.normalized_path = files.normalized_path);
+                """;
+            await using var reader = await select.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                stale.Add(reader.GetInt64(0));
+        }
+
+        foreach (var fileId in stale)
+            await _fts.DeleteForFileAsync(connection, transaction, fileId, cancellationToken);
+
+        if (stale.Count > 0)
+        {
+            await using var delete = connection.CreateCommand();
+            delete.Transaction = transaction;
+            delete.CommandText = """
+                DELETE FROM edges WHERE evidence_file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path NOT IN (SELECT normalized_path FROM current_fuse_files));
+                DELETE FROM chunks WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path NOT IN (SELECT normalized_path FROM current_fuse_files));
+                DELETE FROM symbols WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path NOT IN (SELECT normalized_path FROM current_fuse_files));
+                DELETE FROM routes WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path NOT IN (SELECT normalized_path FROM current_fuse_files));
+                DELETE FROM di_registrations WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path NOT IN (SELECT normalized_path FROM current_fuse_files));
+                DELETE FROM options_bindings WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path NOT IN (SELECT normalized_path FROM current_fuse_files));
+                DELETE FROM nodes WHERE file_id IN (
+                    SELECT file_id FROM files
+                    WHERE normalized_path NOT IN (SELECT normalized_path FROM current_fuse_files));
+                DELETE FROM git_cochange
+                WHERE path_a NOT IN (SELECT normalized_path FROM current_fuse_files)
+                   OR path_b NOT IN (SELECT normalized_path FROM current_fuse_files);
+                DELETE FROM files
+                WHERE normalized_path NOT IN (SELECT normalized_path FROM current_fuse_files);
+                """;
+            await delete.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return stale.Count;
+    }
+
+    private static async Task CreateAndPopulatePathTableAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string tableName,
+        IReadOnlyCollection<string> normalizedPaths,
+        CancellationToken cancellationToken)
+    {
+        await using (var create = connection.CreateCommand())
+        {
+            create.Transaction = transaction;
+            create.CommandText = $"""
+                CREATE TEMP TABLE IF NOT EXISTS {tableName}(normalized_path TEXT PRIMARY KEY);
+                DELETE FROM {tableName};
+                """;
+            await create.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText = $"INSERT OR IGNORE INTO {tableName}(normalized_path) VALUES($path);";
+        var pathParameter = insert.Parameters.Add("$path", SqliteType.Text);
+        foreach (var path in normalizedPaths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            pathParameter.Value = path;
+            await insert.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     /// <inheritdoc cref="IWorkspaceIndexStore.ListSymbolsAsync" />

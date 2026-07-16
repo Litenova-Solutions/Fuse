@@ -6,10 +6,10 @@ namespace Fuse.Collection.FileSystem;
 public static class RepositoryRootResolver
 {
     /// <summary>
-    ///     Walks upward from <paramref name="startDirectory" /> until a directory containing <c>.git</c> is found.
+    ///     Walks upward from <paramref name="startDirectory" /> until a directory containing a <c>.git</c> marker is found.
     /// </summary>
     /// <param name="startDirectory">The directory to start from (typically the fusion source directory).</param>
-    /// <returns>The repository root, or <see langword="null" /> when no <c>.git</c> directory is found.</returns>
+    /// <returns>The repository root, or <see langword="null" /> when no <c>.git</c> marker is found.</returns>
     public static string? TryFindRepositoryRoot(string startDirectory)
     {
         var current = Path.GetFullPath(startDirectory);
@@ -23,7 +23,8 @@ public static class RepositoryRootResolver
 
         while (!string.IsNullOrEmpty(current))
         {
-            if (Directory.Exists(Path.Combine(current, ".git")))
+            var marker = Path.Combine(current, ".git");
+            if (Directory.Exists(marker) || File.Exists(marker))
                 return current;
 
             var parent = Directory.GetParent(current);

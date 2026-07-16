@@ -1,3 +1,4 @@
+using Fuse.Collection;
 using Fuse.Indexing;
 using Fuse.Semantics;
 using Fuse.Workspace;
@@ -151,16 +152,39 @@ public sealed class ResidentWorkspaceService : IResidentWorkspaceProvider, IDisp
         var compilations = affected
             .Select(p => (p.ProjectFilePath, p.Compilation))
             .ToList();
+        var excludedDirectories = new HashSet<string>(
+            WorkspaceExclusions.LoadDirectoryNames(_root),
+            StringComparer.OrdinalIgnoreCase);
         var files = affected
             .SelectMany(p => p.Compilation.SyntaxTrees)
             .Select(t => t.FilePath)
-            .Where(path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) && File.Exists(path))
+            .Where(path => IsIndexableSourceFile(path, excludedDirectories))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(ToFileRecord)
             .ToList();
 
         await indexer.ProjectFromCompilationsAsync(_root, store, compilations, files, cancellationToken);
         return affected.Count;
+    }
+
+    private bool IsIndexableSourceFile(string path, IReadOnlySet<string> excludedDirectories)
+    {
+        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
+            return false;
+
+        var relative = System.IO.Path.GetRelativePath(_root, System.IO.Path.GetFullPath(path));
+        if (System.IO.Path.IsPathRooted(relative)
+            || string.Equals(relative, "..", StringComparison.Ordinal)
+            || relative.StartsWith($"..{System.IO.Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            || relative.StartsWith($"..{System.IO.Path.AltDirectorySeparatorChar}", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return !relative.Split(
+                [System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries)
+            .Any(excludedDirectories.Contains);
     }
 
     // Builds a minimal file record for a resident source file: the store needs the normalized (root-relative,

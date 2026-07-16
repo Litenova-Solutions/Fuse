@@ -126,9 +126,11 @@ public sealed class SemanticIndexer
         CancellationToken cancellationToken)
     {
         var root = Path.GetFullPath(rootDirectory);
+        await WorkspaceIndexManifest.BeginBuildAsync(root, store, cancellationToken);
         var discovery = await _discoverer.DiscoverAsync(root, cancellationToken);
         var scan = await ScanFilesAsync(root, cancellationToken);
         var files = scan.Files;
+        await store.ClearFileDataAsync(files.Select(file => file.NormalizedPath).ToArray(), cancellationToken);
 
         // Tier 1 (build capture, oracle-grade) when enabled and available: run the out-of-process worker, which
         // builds the repo and rehydrates the exact compilations, and write its graph bundle. Falls back to the
@@ -163,6 +165,8 @@ public sealed class SemanticIndexer
             WorkspaceIndexStore.ExtractionVersionMetaKey,
             WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
             cancellationToken);
+        await store.PruneFilesAsync(files.Select(file => file.NormalizedPath).ToArray(), cancellationToken);
+        await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
         await StampIntegrityAsync(store, cancellationToken); // R31: record the post-build integrity result.
         await StampSkippedFilesAsync(store, scan.Skipped, cancellationToken); // R35: record skipped files.
 
@@ -182,6 +186,8 @@ public sealed class SemanticIndexer
                 // Co-change is an optional prior; a mining or write failure must not fail the index.
             }
         }
+
+        await WorkspaceIndexManifest.CompleteAsync(root, store, files, cancellationToken);
 
         return result;
     }
@@ -333,8 +339,10 @@ public sealed class SemanticIndexer
         CancellationToken cancellationToken)
     {
         var root = Path.GetFullPath(rootDirectory);
+        await WorkspaceIndexManifest.BeginBuildAsync(root, store, cancellationToken);
         var scan = await ScanFilesAsync(root, cancellationToken);
         var files = scan.Files;
+        await store.ClearFileDataAsync(files.Select(file => file.NormalizedPath).ToArray(), cancellationToken);
         var snapshot = new RoslynWorkspaceSnapshot(
             SemanticLoadSucceeded: false,
             Projects: [],
@@ -356,7 +364,10 @@ public sealed class SemanticIndexer
             WorkspaceIndexStore.ExtractionVersionMetaKey,
             WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
             cancellationToken);
+        await store.PruneFilesAsync(files.Select(file => file.NormalizedPath).ToArray(), cancellationToken);
+        await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
         await StampSkippedFilesAsync(store, scan.Skipped, cancellationToken); // R35: surface skips from the first pass.
+        await WorkspaceIndexManifest.CompleteAsync(root, store, files, cancellationToken);
         return result;
     }
 
@@ -412,6 +423,8 @@ public sealed class SemanticIndexer
             WorkspaceIndexStore.ExtractionVersionMetaKey,
             WorkspaceIndexSchema.ExtractionContractVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
             cancellationToken);
+        await store.PruneFilesAsync(files.Select(file => file.NormalizedPath).ToArray(), cancellationToken);
+        await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
         await StampIntegrityAsync(store, cancellationToken); // R31: record the post-upgrade integrity result.
 
         // R41: only mine co-change when enabled (FUSE_COCHANGE); the default-off prior (D6) makes it wasted work.
@@ -425,6 +438,8 @@ public sealed class SemanticIndexer
             {
             }
         }
+
+        await WorkspaceIndexManifest.CompleteAsync(root, store, files, cancellationToken);
 
         return result;
     }
@@ -475,13 +490,18 @@ public sealed class SemanticIndexer
         var root = Path.GetFullPath(rootDirectory);
         var absolute = Path.Combine(root, normalizedPath.Replace('/', Path.DirectorySeparatorChar));
 
-        await store.DeleteFileDataAsync(normalizedPath, cancellationToken);
         if (!File.Exists(absolute))
+        {
+            await store.DeleteFileAsync(normalizedPath, cancellationToken);
             return 0;
+        }
+
+        await store.DeleteFileDataAsync(normalizedPath, cancellationToken);
 
         var info = new FileInfo(absolute);
-        var content = await File.ReadAllTextAsync(absolute, cancellationToken);
-        var hash = _hashService.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        var bytes = await File.ReadAllBytesAsync(absolute, cancellationToken);
+        var content = System.Text.Encoding.UTF8.GetString(bytes);
+        var hash = _hashService.ComputeHash(bytes);
         var provider = _syntaxProviders.ForExtension(info.Extension);
         await store.UpsertFilesAsync(
             [new IndexedFileRecord(normalizedPath, normalizedPath, info.Extension, info.Length, info.LastWriteTimeUtc.Ticks, hash, Language: provider?.Language)],
@@ -507,8 +527,8 @@ public sealed class SemanticIndexer
     private const int MaxReconcileFiles = 300;
 
     /// <summary>
-    ///     Reconciles the index against the current on-disk content of its known files: the N6 freshness contract.
-    ///     Files edited since the index was written are re-indexed (syntax rows) and deleted files are removed, so a
+    ///     Reconciles the index against the current complete on-disk file inventory: the N6 freshness contract.
+    ///     Added and edited files are re-indexed (syntax rows) and deleted files are removed, so a
     ///     read tool serves fresh data rather than an index frozen at first call. When the number of dirty files
     ///     exceeds a storm threshold the pass does not reconcile; it records a stale-as-of stamp instead, so a bulk
     ///     change degrades to an explicit "run a full index" signal rather than a reconcile storm.
@@ -518,9 +538,7 @@ public sealed class SemanticIndexer
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The freshness outcome (files checked, reconciled, remaining dirty, and whether it was stamped stale).</returns>
     /// <remarks>
-    ///     This detects modified and deleted known files via a content-hash comparison; it does not discover new
-    ///     files added on disk since the last full index (that needs a directory walk, which a full
-    ///     <see cref="IndexAsync" /> performs). Cross-file semantic edges are not recomputed here (see
+    ///     Cross-file semantic edges are not recomputed here (see
     ///     <see cref="ReindexFileAsync" />); the resident-workspace path recomputes the affected neighborhood.
     /// </remarks>
     public async Task<FreshnessResult> ReconcileDirtyFilesAsync(
@@ -528,48 +546,57 @@ public sealed class SemanticIndexer
     {
         var root = Path.GetFullPath(rootDirectory);
         var stored = await store.GetAllFileHashesAsync(cancellationToken);
-        if (stored.Count == 0)
-            return new FreshnessResult(0, 0, 0, Stamped: false);
+        var scan = await ScanFilesAsync(root, cancellationToken);
+        var current = scan.Files.ToDictionary(file => file.NormalizedPath, file => file.ContentHash, StringComparer.Ordinal);
 
-        var dirty = new List<string>();
-        foreach (var (normalizedPath, storedHash) in stored)
+        var changed = new List<string>();
+        foreach (var (normalizedPath, currentHash) in current)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var absolute = Path.Combine(root, normalizedPath.Replace('/', Path.DirectorySeparatorChar));
-            if (!File.Exists(absolute))
-            {
-                dirty.Add(normalizedPath); // deleted on disk
-                continue;
-            }
-
-            var currentHash = _hashService.ComputeHash(await File.ReadAllBytesAsync(absolute, cancellationToken));
-            if (!string.Equals(currentHash, storedHash, StringComparison.Ordinal))
-                dirty.Add(normalizedPath); // edited on disk
+            if (!stored.TryGetValue(normalizedPath, out var storedHash)
+                || !string.Equals(currentHash, storedHash, StringComparison.Ordinal))
+                changed.Add(normalizedPath);
         }
 
-        if (dirty.Count == 0)
+        // A stored-only path is either deleted or no longer part of the scannable inventory. Delete its row even
+        // when the file still exists under an excluded directory such as bin/ or obj/. ReindexFileAsync cannot
+        // make that distinction because its single-file contract only checks physical existence.
+        var removedOrExcluded = stored.Keys.Where(path => !current.ContainsKey(path)).ToArray();
+        var dirtyCount = changed.Count + removedOrExcluded.Length;
+
+        if (dirtyCount == 0)
         {
             await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
-            return new FreshnessResult(stored.Count, 0, 0, Stamped: false);
+            await StampSkippedFilesAsync(store, scan.Skipped, cancellationToken);
+            await WorkspaceIndexManifest.CompleteAsync(root, store, scan.Files, cancellationToken);
+            return new FreshnessResult(current.Count, 0, 0, Stamped: false);
         }
 
-        if (dirty.Count > MaxReconcileFiles)
+        if (dirtyCount > MaxReconcileFiles)
         {
             // Storm: do not reconcile one-by-one. Stamp the count so the availability header (and fuse doctor)
             // reports the answer as stale-as-of and the caller runs a full index.
-            await store.SetMetaAsync(StaleAsOfMetaKey, dirty.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken);
-            return new FreshnessResult(stored.Count, 0, dirty.Count, Stamped: true);
+            await store.SetMetaAsync(StaleAsOfMetaKey, dirtyCount.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken);
+            return new FreshnessResult(current.Count, 0, dirtyCount, Stamped: true);
         }
 
         var reconciled = 0;
-        foreach (var path in dirty)
+        foreach (var path in changed)
         {
             await ReindexFileAsync(root, path, store, cancellationToken);
             reconciled++;
         }
 
+        foreach (var path in removedOrExcluded)
+        {
+            await store.DeleteFileAsync(path, cancellationToken);
+            reconciled++;
+        }
+
         await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
-        return new FreshnessResult(stored.Count, reconciled, 0, Stamped: false);
+        await StampSkippedFilesAsync(store, scan.Skipped, cancellationToken);
+        await WorkspaceIndexManifest.CompleteAsync(root, store, scan.Files, cancellationToken);
+        return new FreshnessResult(current.Count, reconciled, 0, Stamped: false);
     }
 
     private async Task<SemanticIndexResult> IndexSemanticAsync(
@@ -822,8 +849,10 @@ public sealed class SemanticIndexer
         string? captureBundleDir = null)
     {
         var root = Path.GetFullPath(rootDirectory);
+        await WorkspaceIndexManifest.BeginBuildAsync(root, store, cancellationToken);
         var scan = await ScanFilesAsync(root, cancellationToken);
         var files = scan.Files;
+        await store.ClearFileDataAsync(files.Select(file => file.NormalizedPath).ToArray(), cancellationToken);
         var result = await IndexFromCaptureAsync(root, store, files, capture, cancellationToken);
         await store.SetMetaAsync("index_mode", result.Mode, cancellationToken);
         await store.SetMetaAsync(SemanticPendingMetaKey, "0", cancellationToken);
@@ -836,6 +865,9 @@ public sealed class SemanticIndexer
             cancellationToken);
         if (!string.IsNullOrEmpty(captureBundleDir) && Directory.Exists(captureBundleDir))
             await store.SetMetaAsync(WorkspaceIndexStore.CaptureComplogPathMetaKey, Path.GetFullPath(captureBundleDir), cancellationToken);
+        await store.PruneFilesAsync(files.Select(file => file.NormalizedPath).ToArray(), cancellationToken);
+        await store.SetMetaAsync(StaleAsOfMetaKey, "0", cancellationToken);
+        await WorkspaceIndexManifest.CompleteAsync(root, store, files, cancellationToken);
         return result;
     }
 

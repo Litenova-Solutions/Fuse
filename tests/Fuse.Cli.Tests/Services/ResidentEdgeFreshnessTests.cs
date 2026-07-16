@@ -28,6 +28,7 @@ public sealed class ResidentEdgeFreshnessTests
 
         var work = Path.Combine(Path.GetTempPath(), "fuse-edge-freshness-it", Guid.NewGuid().ToString("N"));
         CopyExcludingBuild(fixture, work);
+        Directory.CreateDirectory(Path.Combine(work, ".git"));
         var binlog = Path.Combine(work, "build.binlog");
         var databasePath = Path.Combine(work, ".fuse", "fuse.db");
         try
@@ -55,6 +56,7 @@ public sealed class ResidentEdgeFreshnessTests
             var indexer = provider.GetRequiredService<SemanticIndexer>();
             await using var store = new WorkspaceIndexStore(databasePath);
             await store.InitializeAsync(CancellationToken.None);
+            await indexer.IndexSyntaxFirstAsync(root, store, CancellationToken.None);
 
             // Seed the complete graph through the resident projection. The regression cleared this existing service
             // edge after a resident projection wrote empty content hashes, then N6 treated every projected file as

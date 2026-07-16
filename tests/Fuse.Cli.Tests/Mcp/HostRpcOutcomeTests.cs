@@ -18,7 +18,7 @@ using Xunit;
 
 namespace Fuse.Cli.Tests.Mcp;
 
-// R12: host RPC outcome assertions on the MCP side. Reconcile stamped headers surface on store-backed reads;
+// R12: host RPC outcome assertions on the MCP side. Bulk reconcile rebuilds before store-backed reads;
 // fuse_check oracle grade is delivered when MCP delegates checkOverlay to a shared daemon over the pipe.
 [Collection("FuseToolsResidentProvider")]
 public sealed class HostRpcOutcomeTests : IDisposable
@@ -28,7 +28,7 @@ public sealed class HostRpcOutcomeTests : IDisposable
     private readonly ServiceProvider _provider = new ServiceCollection().AddFuseForTests().BuildServiceProvider();
 
     [Fact]
-    public async Task Storm_reconcile_stamps_stale_as_of_in_read_header()
+    public async Task Storm_reconcile_rebuilds_before_read_header()
     {
         var indexer = _provider.GetRequiredService<SemanticIndexer>();
         var root = Path.Combine(Path.GetTempPath(), "fuse-storm-header", Guid.NewGuid().ToString("N"));
@@ -55,10 +55,10 @@ public sealed class HostRpcOutcomeTests : IDisposable
             var output = await FuseTools.FuseImpactAsync(
                 indexer, symbol: "Type0", path: root, cancellationToken: CancellationToken.None);
 
-            Assert.StartsWith("index_state: stale_as_of", output);
+            Assert.StartsWith("index_state: ready", output);
             Assert.Contains($"files_indexed: {StormFileCount}", output);
-            Assert.Contains($"{StormFileCount} known file(s) changed since index", output);
-            Assert.Contains("results may lag the working tree", output);
+            Assert.Contains("up to date", output);
+            Assert.DoesNotContain("results may lag the working tree", output);
         }
         finally
         {

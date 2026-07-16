@@ -108,6 +108,17 @@ public sealed class IndexStateAvailabilityHeaderTests : IDisposable
         await using var store = new WorkspaceIndexStore(databasePath);
         await store.InitializeAsync(CancellationToken.None);
         seed(store);
+        var hashes = await store.GetAllFileHashesAsync(CancellationToken.None);
+        var inventory = hashes
+            .Select(pair => new IndexedFileRecord(
+                pair.Key,
+                pair.Key,
+                Path.GetExtension(pair.Key),
+                0,
+                0,
+                pair.Value))
+            .ToList();
+        await WorkspaceIndexManifest.CompleteAsync(_root, store, inventory, CancellationToken.None);
 
         var headerFromStore = expectedState == "index_busy"
             ? await FuseTools.OracleAvailabilityHeaderAsync(store, _root, CancellationToken.None, indexStateOverride: "index_busy")

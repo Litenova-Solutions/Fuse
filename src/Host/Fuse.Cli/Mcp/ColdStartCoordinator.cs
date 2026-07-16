@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Fuse.Collection.FileSystem;
 
 namespace Fuse.Cli.Mcp;
 
@@ -67,7 +68,7 @@ internal sealed class ColdStartCoordinator
     /// <returns>The running (or already-running) build task.</returns>
     public Task StartBuild(string root, Func<CancellationToken, Task> build)
     {
-        var key = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)).ToLowerInvariant();
+        var key = RootKey(root);
         return _builds.GetOrAdd(key, _ => RunAndCleanupAsync(key, build));
     }
 
@@ -75,7 +76,7 @@ internal sealed class ColdStartCoordinator
     /// <param name="root">The workspace root.</param>
     /// <returns><see langword="true" /> when a build is running.</returns>
     internal bool HasInFlightBuild(string root) =>
-        _builds.ContainsKey(Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)).ToLowerInvariant());
+        _builds.ContainsKey(RootKey(root));
 
     /// <summary>
     ///     How long the in-flight cold build for a root has been running (R37 progress), or <see langword="null" />
@@ -85,7 +86,7 @@ internal sealed class ColdStartCoordinator
     /// <returns>The elapsed build time, or null.</returns>
     public TimeSpan? ElapsedFor(string root)
     {
-        var key = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)).ToLowerInvariant();
+        var key = RootKey(root);
         return _buildStartTimestamps.TryGetValue(key, out var start)
             ? Stopwatch.GetElapsedTime(start)
             : null;
@@ -104,6 +105,11 @@ internal sealed class ColdStartCoordinator
             _buildStartTimestamps.TryRemove(key, out _);
         }
     }
+
+    private static string RootKey(string root) =>
+        WorkspaceIdentityResolver.TryResolveRepositoryRoot(root, out var repositoryRoot)
+            ? WorkspaceIdentityResolver.NormalizeKey(repositoryRoot)
+            : WorkspaceIdentityResolver.NormalizeKey(root);
 }
 
 /// <summary>

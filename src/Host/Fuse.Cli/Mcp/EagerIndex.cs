@@ -1,3 +1,4 @@
+using Fuse.Collection.FileSystem;
 using Fuse.Indexing;
 using Fuse.Semantics;
 
@@ -40,7 +41,8 @@ public static class EagerIndex
         if (!IsEnabled())
             return null;
 
-        var normalizedRoot = Path.GetFullPath(root);
+        if (!WorkspaceIdentityResolver.TryResolveRepositoryRoot(root, out var normalizedRoot))
+            return null;
         return ColdStartCoordinator.Default.StartBuild(normalizedRoot, ct => WarmSafelyAsync(indexer, normalizedRoot, ct));
     }
 
@@ -52,8 +54,14 @@ public static class EagerIndex
     /// <param name="root">The workspace root to warm.</param>
     /// <param name="cancellationToken">A token to cancel the warm.</param>
     /// <returns>A task that completes when the warm build finishes.</returns>
-    public static Task WarmAsync(SemanticIndexer indexer, string root, CancellationToken cancellationToken) =>
-        ColdStartCoordinator.Default.StartBuild(Path.GetFullPath(root), ct => WarmSafelyAsync(indexer, Path.GetFullPath(root), cancellationToken));
+    public static Task WarmAsync(SemanticIndexer indexer, string root, CancellationToken cancellationToken)
+    {
+        if (!WorkspaceIdentityResolver.TryResolveRepositoryRoot(root, out var repositoryRoot))
+            throw new InvalidOperationException($"Cannot warm '{Path.GetFullPath(root)}' because it is not inside a Git repository.");
+        return ColdStartCoordinator.Default.StartBuild(
+            repositoryRoot,
+            ct => WarmSafelyAsync(indexer, repositoryRoot, cancellationToken));
+    }
 
     private static async Task WarmSafelyAsync(SemanticIndexer indexer, string normalizedRoot, CancellationToken cancellationToken)
     {
@@ -62,26 +70,43 @@ public static class EagerIndex
         Services.WarmServiceState.Record(normalizedRoot);
         try
         {
-            await IndexCoordinator.Default.OpenForWriteAsync(
-                normalizedRoot,
-                async (store, wct) =>
-                {
-                    // Only warm a cold store; a warm store is left to the watcher/reconcile path.
-                    var state = await store.GetStateAsync(wct);
-                    if (state.FileCount == 0)
-                    {
-                        await indexer.IndexSyntaxFirstAsync(normalizedRoot, store, wct);
-                        FuseTools.ScheduleSemanticUpgrade(indexer, normalizedRoot);
-                    }
-
-                    return 0;
-                },
-                cancellationToken);
+            try
+            {
+                await WarmOnceAsync(indexer, normalizedRoot, cancellationToken);
+            }
+            catch (IndexRebuildingException)
+            {
+                // Initialization has already recreated the derived store. A second pass can now populate it.
+                await WarmOnceAsync(indexer, normalizedRoot, cancellationToken);
+            }
         }
-        catch (Exception ex) when (ex is IndexBusyException or Microsoft.Data.Sqlite.SqliteException or IOException)
+        catch (Exception ex) when (
+            !cancellationToken.IsCancellationRequested
+            && ex is not OperationCanceledException)
         {
             // Degrade gracefully: eager warm-up is best-effort. If the store is contended or unavailable, the
             // first read's bounded cold-start path (R27) will build it; serving is never blocked by this.
         }
     }
+
+    private static Task<int> WarmOnceAsync(
+        SemanticIndexer indexer,
+        string normalizedRoot,
+        CancellationToken cancellationToken) =>
+        IndexCoordinator.Default.OpenForWriteAsync(
+            normalizedRoot,
+            async (store, wct) =>
+            {
+                // Warm a cold, incomplete, or wrong-root store. A valid warm store is left to the watcher and
+                // per-read inventory reconcile paths.
+                var manifest = await WorkspaceIndexManifest.ValidateAsync(normalizedRoot, store, wct);
+                if (!manifest.Ready)
+                {
+                    await indexer.IndexSyntaxFirstAsync(normalizedRoot, store, wct);
+                    FuseTools.ScheduleSemanticUpgrade(indexer, normalizedRoot);
+                }
+
+                return 0;
+            },
+            cancellationToken);
 }

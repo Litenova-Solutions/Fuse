@@ -46,6 +46,50 @@ public sealed class FreshnessReconcileTests : IAsyncLifetime
         // Fresh data: the added type is found, the deleted file's type is gone.
         Assert.True(await CountSymbolNamedAsync("Gamma") > 0);
         Assert.Equal(0, await CountSymbolNamedAsync("Beta"));
+        Assert.Equal(1, (await _store.GetStateAsync(CancellationToken.None)).FileCount);
+        Assert.True((await WorkspaceIndexManifest.ValidateAsync(_root, _store, CancellationToken.None)).Ready);
+    }
+
+    [Fact]
+    public async Task Reconcile_discovers_and_indexes_a_new_file()
+    {
+        File.WriteAllText(Path.Combine(_root, "C.cs"), "namespace Demo; public class Delta { }");
+
+        var result = await CreateIndexer().ReconcileDirtyFilesAsync(_root, _store, CancellationToken.None);
+
+        Assert.True(result.IsFresh);
+        Assert.Equal(1, result.Reconciled);
+        Assert.True(await CountSymbolNamedAsync("Delta") > 0);
+        Assert.Equal(3, (await _store.GetStateAsync(CancellationToken.None)).FileCount);
+        Assert.True((await WorkspaceIndexManifest.ValidateAsync(_root, _store, CancellationToken.None)).Ready);
+    }
+
+    [Fact]
+    public async Task Reconcile_removes_a_stored_file_that_exists_under_an_excluded_directory()
+    {
+        var excludedDirectory = Path.Combine(_root, "bin", "Release", "net10.0");
+        Directory.CreateDirectory(excludedDirectory);
+        var excludedPath = Path.Combine(excludedDirectory, "fuse.runtimeconfig.json");
+        await File.WriteAllTextAsync(excludedPath, "{}");
+        await _store.UpsertFilesAsync(
+            [new IndexedFileRecord(
+                excludedPath,
+                "bin/Release/net10.0/fuse.runtimeconfig.json",
+                ".json",
+                2,
+                File.GetLastWriteTimeUtc(excludedPath).Ticks,
+                "stale")],
+            CancellationToken.None);
+
+        var result = await CreateIndexer().ReconcileDirtyFilesAsync(_root, _store, CancellationToken.None);
+
+        Assert.True(result.IsFresh);
+        Assert.Equal(1, result.Reconciled);
+        Assert.True(File.Exists(excludedPath));
+        var hashes = await _store.GetAllFileHashesAsync(CancellationToken.None);
+        Assert.DoesNotContain("bin/Release/net10.0/fuse.runtimeconfig.json", hashes.Keys);
+        Assert.Equal(2, hashes.Count);
+        Assert.True((await WorkspaceIndexManifest.ValidateAsync(_root, _store, CancellationToken.None)).Ready);
     }
 
     [Fact]
@@ -56,6 +100,22 @@ public sealed class FreshnessReconcileTests : IAsyncLifetime
         Assert.False(result.Stamped);
         Assert.Equal(0, result.Reconciled);
         Assert.Equal("0", await _store.GetMetaAsync(SemanticIndexer.StaleAsOfMetaKey, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Full_reindex_replaces_removed_symbols_and_files()
+    {
+        Assert.True(await CountSymbolNamedAsync("M") > 0);
+        Assert.True(await CountSymbolNamedAsync("Beta") > 0);
+        File.WriteAllText(Path.Combine(_root, "A.cs"), "namespace Demo; public class Alpha { }");
+        File.Delete(Path.Combine(_root, "B.cs"));
+
+        await CreateIndexer().IndexAsync(_root, _store, CancellationToken.None);
+
+        Assert.Equal(0, await CountSymbolNamedAsync("M"));
+        Assert.Equal(0, await CountSymbolNamedAsync("Beta"));
+        Assert.Equal(1, (await _store.GetStateAsync(CancellationToken.None)).FileCount);
+        Assert.True((await WorkspaceIndexManifest.ValidateAsync(_root, _store, CancellationToken.None)).Ready);
     }
 
     [Fact]

@@ -5,6 +5,7 @@ using Fuse.Cli.Extensions;
 using Fuse.Cli.Mcp;
 using Fuse.Cli.Rpc;
 using Fuse.Cli.Services;
+using Fuse.Collection.FileSystem;
 using Fuse.Semantics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -121,13 +122,22 @@ public sealed class McpServeCommand
         // resident-grade checks to it over the pipe, so one warm compilation serves every client. Set
         // FUSE_DAEMON=0 to hold an in-process workspace instead. Falls back to in-process when the daemon
         // cannot start.
-        var daemonRoot = Path.GetFullPath(Environment.CurrentDirectory);
-        using var daemonDelegation = IsDaemonEnabled()
+        var hasWorkspaceIdentity = WorkspaceIdentityResolver.TryResolveRepositoryRoot(
+            Environment.CurrentDirectory,
+            out var daemonRoot);
+        if (!hasWorkspaceIdentity)
+        {
+            Console.Error.WriteLine(
+                $"Fuse serve: {Path.GetFullPath(Environment.CurrentDirectory)} is not inside a Git repository. "
+                + "Workspace-scoped MCP tools are disabled for this folder; fuse_reduce remains available.");
+        }
+
+        using var daemonDelegation = hasWorkspaceIdentity && IsDaemonEnabled()
             ? await TryAttachToDaemonAsync(daemonRoot, context.CancellationToken)
             : null;
 
         // Own resident workspace (S1) when not delegating to a daemon and FUSE_RESIDENT is opt-in.
-        using var residentWatcher = daemonDelegation is null && ResidentWorkspaceHosting.OptIn()
+        using var residentWatcher = hasWorkspaceIdentity && daemonDelegation is null && ResidentWorkspaceHosting.OptIn()
             ? new DebouncedFileWatcher(daemonRoot, recursive: true, cancellationToken: context.CancellationToken)
             : null;
         using var warmSolutionWatcher = residentWatcher is null
@@ -153,7 +163,7 @@ public sealed class McpServeCommand
         // bounded-building index (R27) rather than paying the full cold cost. Fire-and-forget and best-effort
         // (EagerIndex swallows build failures), so it never blocks or breaks startup. The daemon path warms in
         // fuse host instead. Opt out with FUSE_EAGER_INDEX=0.
-        if (daemonDelegation is null)
+        if (hasWorkspaceIdentity && daemonDelegation is null)
         {
             _ = Mcp.EagerIndex.Start(app.Services.GetRequiredService<Fuse.Semantics.SemanticIndexer>(), daemonRoot);
 

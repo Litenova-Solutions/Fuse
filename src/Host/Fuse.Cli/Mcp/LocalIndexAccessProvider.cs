@@ -28,7 +28,7 @@ public sealed class LocalIndexAccessProvider : IIndexAccessProvider
     public Task<SemanticIndexResult> IndexAsync(
         SemanticIndexer indexer, string path, CancellationToken cancellationToken)
     {
-        var root = Path.GetFullPath(path);
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
         return IndexCoordinator.Default.OpenForWriteAsync(
             root,
             (writeStore, ct) => indexer.IndexAsync(root, writeStore, ct),

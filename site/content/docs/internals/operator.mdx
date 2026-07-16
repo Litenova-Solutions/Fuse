@@ -9,27 +9,27 @@ This page is for operators running Fuse as an MCP server, a host, or in CI: wher
 
 All persistent index data for a workspace lives in one SQLite file named `fuse.db`. Placement depends on whether the workspace is inside a git repository:
 
-| Context | Path |
-|---------|------|
-| Inside a git repo | `{repoRoot}/.fuse/fuse.db` at the repository root, so every call scoped anywhere in the repo shares one warm index |
-| Outside a git repo | `~/.fuse/fuse.db` (override the directory with `FUSE_USER_DATA`) |
+| Context | Behavior and path |
+|---------|-------------------|
+| Inside a Git repo | `{repoRoot}/.fuse/fuse.db`. The nearest enclosing `.git` directory or file defines the canonical root, so every nested call shares one warm index, daemon, and writer lock. |
+| Outside a Git repo | Workspace-scoped MCP tools return `workspace_identity_unresolved:` and do not start a daemon or create an index. One-shot non-MCP paths retain a per-directory fallback under `~/.fuse/roots/{hash}/fuse.db` (override the base with `FUSE_USER_DATA`). |
 
-The database is created and populated on the first index build. The read commands and MCP read tools build the index on first use; `fuse index` builds it explicitly. The MCP server and the host keep the store open across calls, so a multi-call task pays the indexing cost once and reads a warm graph afterward.
+The database is created and populated on the first index build. MCP serving starts eager warming after repository identity resolves, and every indexed MCP read validates the warm manifest before answering. `fuse index` builds it explicitly. The MCP server and the host keep the store open across calls, so a multi-call task pays the indexing cost once and reads a warm graph afterward.
 
 ## Resetting the index
 
 | Action | Effect |
 |--------|--------|
 | `fuse index --force` | Rebuilds the index from scratch for the workspace |
-| Delete the store file (`{repoRoot}/.fuse/fuse.db` or `~/.fuse/fuse.db`) | Full reset; the next read tool rebuilds it |
+| Delete the store file (`{repoRoot}/.fuse/fuse.db` or `~/.fuse/roots/{hash}/fuse.db`) | Full reset; the next eligible read tool rebuilds it |
 
 The index is entirely derived data: deleting it loses nothing that cannot be rebuilt from the source.
 
 ## Freshness after an edit
 
-The read tools do not serve an index frozen at first call. When the store is already warm, opening it for a read runs a bounded freshness reconcile: it compares the current on-disk content hash of every known file against the stored hash, re-indexes files that were edited, and removes files that were deleted, before answering. So a symbol added by an edit is found on the next read, and a symbol in a deleted file is gone, with no explicit `fuse index` call.
+The read tools do not serve an index frozen at first call. When the store is already warm, opening it for a read scans the complete current inventory, re-indexes files that were added or edited, and hard-deletes files that were removed. A new file's symbol is found on the next read, and a deleted file no longer contributes to the stored file count or any derived table.
 
-The reconcile refreshes a file's own rows (symbols, chunks, full-text, routes); cross-file semantic graph edges (DI, routes, MediatR, EF) are recomputed by a full `fuse index`, not by the per-file reconcile. A bulk change (a branch switch or a large pull that dirties many files at once) is not reconciled one file at a time: above a storm threshold the reconcile records a stale-as-of stamp (the dirty-file count in the index metadata) instead, so the answer is reported as stale rather than paying a reconcile storm on every read, and running `fuse index` clears it. New files added on disk since the last full index are picked up by `fuse index`, not by the reconcile, which only tracks files it already knows.
+The reconcile refreshes a file's own rows (symbols, chunks, full-text, routes); cross-file semantic graph edges (DI, routes, MediatR, EF) are recomputed by a full index. A bulk change (a branch switch or a large pull that changes more than 300 files) is not processed one file at a time. The reconcile records a stale stamp, then the coordinator starts a full replacement automatically. No manual `fuse index` is required for recovery.
 
 ## Version control
 
@@ -42,6 +42,8 @@ The store carries a schema version. When Fuse opens a database older than the cu
 If SQLite reports a malformed `fuse.db` on open, Fuse deletes the derived index file and recreates an empty database (the same policy as `fuse-cache.db` recovery). The next index pass repopulates it from source. Corrupt recovery is serialized per repository root so concurrent MCP sessions do not race the delete. If corruption persists, check filesystem permissions on `.fuse/` and that no other process holds a stale lock on the WAL files (a leaked `fuse mcp serve` child, for example).
 
 Every rebuild lands on a store that can actually search. The rebuild re-probes FTS5, re-creates the `chunk_fts` table, and stamps the index mode, so a rebuilt index is fully functional rather than a store with indexed files but no full-text search. If a store is ever found internally inconsistent (its full-text stamp says available but the table is gone, or it has symbols but zero chunks on an FTS-capable runtime), it is not reported `ready`; it reports `index_rebuilding` and the read path repairs it. A search against a store missing `chunk_fts` returns the `index_rebuilding:` prefix and never a raw `internal_error: SQLite Error`.
+
+A completed warm index also carries its repository identity and complete inventory count and hash. Missing metadata, an interrupted `building` state, a wrong root, or stored rows that do not match the manifest triggers automatic replacement even when `files` is nonzero. This prevents a small accidental scan, such as six runtime JSON files from `bin/Release`, from being accepted as the repository index.
 
 ## Observability of degraded states
 
@@ -58,7 +60,7 @@ The pull-based header remains the source of truth for progress; MCP `notificatio
 
 | Variable | Effect |
 |----------|--------|
-| `FUSE_USER_DATA` | Directory for machine-wide Fuse data when the workspace is outside a git repository (default `~/.fuse`). The store is per-root under `{FUSE_USER_DATA}/roots/{hash}/fuse.db`; inside a git repo it stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
+| `FUSE_USER_DATA` | Base directory for machine-wide Fuse data (default `~/.fuse`). One-shot non-MCP stores are per-directory under `{FUSE_USER_DATA}/roots/{hash}/fuse.db`; workspace-scoped MCP tools refuse non-Git folders. Inside a Git repo the store stays at `{repoRoot}/.fuse/fuse.db` regardless of this variable. |
 
 When driving an agent against the Fuse MCP server (for example in the agent evaluation suite), the Claude CLI variables `MCP_TOOL_TIMEOUT` and `MCP_TIMEOUT` bound per-tool-call and startup time; these are read by the agent client, not by Fuse.
 

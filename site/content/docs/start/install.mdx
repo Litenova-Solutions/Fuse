@@ -152,7 +152,9 @@ Remove MCP entries and rules as described in
 [Connect to your AI](/docs/start/connect-your-ai#rollback), then delete
 `.fuse/` at the repository root. The directory contains derived index data only;
 the next Fuse read recreates it. Outside a Git repository, delete
-`~/.fuse/fuse.db`, or `{FUSE_USER_DATA}/fuse.db` when that variable is set.
+`~/.fuse/roots/{hash}/fuse.db`, or `{FUSE_USER_DATA}/roots/{hash}/fuse.db` when
+that variable is set. These per-directory stores belong to one-shot non-MCP paths;
+workspace-scoped MCP tools refuse folders with no Git identity.
 
 ## Next
 

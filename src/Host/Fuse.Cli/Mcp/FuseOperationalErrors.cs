@@ -15,11 +15,14 @@ internal static class FuseOperationalErrors
     /// <summary>Prefix when the index database is locked or busy (SQLite contention).</summary>
     public const string IndexBusyPrefix = "index_busy:";
 
-    /// <summary>Prefix when no index exists or the store is empty.</summary>
+    /// <summary>Prefix when no completed index exists.</summary>
     public const string IndexNotBuiltPrefix = "index_not_built:";
 
     /// <summary>Prefix when the workspace directory does not exist.</summary>
     public const string WorkspaceNotFoundPrefix = "workspace_not_found:";
+
+    /// <summary>Prefix when a workspace-scoped MCP tool cannot resolve a Git repository identity.</summary>
+    public const string WorkspaceIdentityUnresolvedPrefix = "workspace_identity_unresolved:";
 
     /// <summary>Prefix for caller input or validation failures.</summary>
     public const string ValidationErrorPrefix = "validation_error:";
@@ -67,6 +70,10 @@ internal static class FuseOperationalErrors
             case IndexBusyException ex:
                 FuseMetrics.RecordDegraded(DegradedStateKind.IndexBusy); // R37
                 return Format(IndexBusyPrefix, ex.Message);
+            case WorkspaceIdentityException ex:
+                return Format(WorkspaceIdentityUnresolvedPrefix, ex.Message);
+            case DirectoryNotFoundException ex:
+                return Format(WorkspaceNotFoundPrefix, $"directory not found: {ex.Message}");
             case FusionValidationException ex:
                 return Format(ValidationErrorPrefix, string.Join("; ", ex.Errors));
             case ArgumentException ex:

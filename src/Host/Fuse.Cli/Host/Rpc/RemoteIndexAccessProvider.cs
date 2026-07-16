@@ -42,7 +42,7 @@ public sealed class RemoteIndexAccessProvider : IIndexAccessProvider
     public async Task<WorkspaceIndexStore> OpenIndexedAsync(
         SemanticIndexer indexer, string path, CancellationToken cancellationToken)
     {
-        var root = Path.GetFullPath(path);
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
         var remote = await _openIndexed(root, _connectTimeout, cancellationToken);
         if (remote is null)
             return await LocalIndexAccessProvider.Instance.OpenIndexedAsync(indexer, path, cancellationToken);
@@ -66,7 +66,7 @@ public sealed class RemoteIndexAccessProvider : IIndexAccessProvider
     public async Task<SemanticIndexResult> IndexAsync(
         SemanticIndexer indexer, string path, CancellationToken cancellationToken)
     {
-        var root = Path.GetFullPath(path);
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
         var remote = await _index(root, _connectTimeout, cancellationToken);
         if (remote is null)
             return await LocalIndexAccessProvider.Instance.IndexAsync(indexer, path, cancellationToken);

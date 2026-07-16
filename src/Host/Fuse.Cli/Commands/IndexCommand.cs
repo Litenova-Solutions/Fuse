@@ -1,6 +1,7 @@
 using DotMake.CommandLine;
 using Fuse.Cli.Mcp;
 using Fuse.Cli.Services;
+using Fuse.Collection.FileSystem;
 using Fuse.Indexing;
 using Fuse.Reduction.Caching;
 using Fuse.Semantics;
@@ -61,7 +62,10 @@ public sealed class IndexCommand
     {
         try
         {
-            var root = System.IO.Path.GetFullPath(Path);
+            var requestedRoot = System.IO.Path.GetFullPath(Path);
+            var root = WorkspaceIdentityResolver.TryResolveRepositoryRoot(requestedRoot, out var repositoryRoot)
+                ? repositoryRoot
+                : requestedRoot;
             if (!Directory.Exists(root))
             {
                 FuseOperationalErrors.WriteCliError(_consoleUI, FuseOperationalErrors.FormatWorkspaceNotFound(root));
@@ -119,14 +123,24 @@ public sealed class IndexCommand
                 // building - the single capture.complog of a direct bundle or the per-project logs of a merged bundle.
                 result = await IndexCoordinator.Default.OpenForWriteAsync(
                     root,
-                    (store, ct) => _indexer.IndexFromCaptureGraphAsync(root, store, graph, ct, bundle),
+                    async (store, ct) =>
+                    {
+                        if (Force)
+                            await store.ResetAsync(ct);
+                        return await _indexer.IndexFromCaptureGraphAsync(root, store, graph, ct, bundle);
+                    },
                     context.CancellationToken);
             }
             else
             {
                 result = await IndexCoordinator.Default.OpenForWriteAsync(
                     root,
-                    (store, ct) => _indexer.IndexAsync(root, store, ct),
+                    async (store, ct) =>
+                    {
+                        if (Force)
+                            await store.ResetAsync(ct);
+                        return await _indexer.IndexAsync(root, store, ct);
+                    },
                     context.CancellationToken);
             }
 

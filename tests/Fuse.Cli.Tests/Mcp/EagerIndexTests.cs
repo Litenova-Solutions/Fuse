@@ -71,6 +71,25 @@ public sealed class EagerIndexTests : IDisposable
         Assert.True(state.FileCount > 0, "eager warm should have indexed the cold repo's files");
     }
 
+    [Fact]
+    public async Task WarmAsync_AfterCorruptStoreRecovery_PopulatesACompleteIndex()
+    {
+        var root = NewRoot();
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(Path.Combine(root, ".git"));
+        await File.WriteAllTextAsync(Path.Combine(root, "Widget.cs"), "namespace Shop; public class Widget { }");
+        var databasePath = FuseStorePaths.ResolveDatabasePath(root);
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        await File.WriteAllTextAsync(databasePath, "not a sqlite database");
+
+        await EagerIndex.WarmAsync(Indexer, root, CancellationToken.None);
+
+        await using var store = new WorkspaceIndexStore(databasePath);
+        Assert.Equal(WorkspaceIndexReadOpenStatus.Ready, await store.OpenForReadAsync(CancellationToken.None));
+        Assert.True((await WorkspaceIndexManifest.ValidateAsync(root, store, CancellationToken.None)).Ready);
+        Assert.Equal(1, (await store.GetStateAsync(CancellationToken.None)).FileCount);
+    }
+
     private static string NewRoot() =>
         Path.Combine(Path.GetTempPath(), "fuse-eager", Guid.NewGuid().ToString("N"));
 

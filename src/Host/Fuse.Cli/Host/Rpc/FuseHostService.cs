@@ -154,8 +154,8 @@ public sealed class FuseHostService : IDisposable
     /// <summary>
     ///     Builds or refreshes the semantic index for a repository root and returns its summary: the tier
     ///     (semantic, partial, or syntax), file/symbol/route counts, per-language breakdown, full-text-search
-    ///     availability, schema version, and the Fuse build that wrote it. A cold index is built once; a warm one
-    ///     is reported without rebuilding.
+    ///     availability, schema version, and the Fuse build that wrote it. This explicit action always refreshes
+    ///     the complete repository inventory.
     /// </summary>
     /// <param name="sessionToken">The session token from <c>fuse/handshake</c>.</param>
     /// <param name="root">The absolute repository root to index.</param>
@@ -178,20 +178,7 @@ public sealed class FuseHostService : IDisposable
             var stopwatch = Stopwatch.StartNew();
             var pass = await IndexCoordinator.Default.OpenForWriteAsync(
                 resolved,
-                async (writeStore, ct) =>
-                {
-                    var state = await writeStore.GetStateAsync(ct);
-                    if (state.FileCount == 0)
-                        return await _indexer.IndexAsync(resolved, writeStore, ct);
-                    return new SemanticIndexResult(
-                        state.Mode ?? "unknown",
-                        state.FileCount,
-                        ProjectCount: 0,
-                        state.SymbolCount,
-                        ChunkCount: 0,
-                        RouteCount: await writeStore.GetRouteCountAsync(ct),
-                        Diagnostics: []);
-                },
+                (writeStore, ct) => _indexer.IndexAsync(resolved, writeStore, ct),
                 CancellationToken.None);
             stopwatch.Stop();
             return await BuildIndexResultDtoAsync(resolved, pass, stopwatch.ElapsedMilliseconds);
@@ -752,11 +739,12 @@ public sealed class FuseHostService : IDisposable
             .ToList();
         var fuseVersion = await store.GetMetaAsync(WorkspaceIndexStore.FuseVersionMetaKey, CancellationToken.None)
                           ?? FuseBuildInfo.Current;
+        var manifest = await WorkspaceIndexManifest.ValidateAsync(resolved, store, CancellationToken.None);
 
         _logger.LogInformation("Index {Root}: [{Mode}] {Files} files, {Symbols} symbols, {Routes} routes.",
             resolved, pass.Mode, pass.FileCount, pass.SymbolCount, pass.RouteCount);
         return new IndexResultDto(
-            state.FileCount > 0 ? "Warm" : "NotIndexed",
+            manifest.Ready ? "Warm" : "NotIndexed",
             pass.FileCount,
             elapsedMs,
             pass.Mode,

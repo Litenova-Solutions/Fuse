@@ -19,6 +19,7 @@ public sealed class RemoteIndexAccessProviderTests
         var indexer = _provider.GetRequiredService<SemanticIndexer>();
         var root = Path.Combine(Path.GetTempPath(), "fuse-remote-index-fallback", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
+        Directory.CreateDirectory(Path.Combine(root, ".git"));
         await File.WriteAllTextAsync(Path.Combine(root, "A.cs"), "namespace T; public class A { }");
 
         var before = IndexCoordinator.ProcessWriteLockAcquireCount;
@@ -44,6 +45,7 @@ public sealed class RemoteIndexAccessProviderTests
         var indexer = _provider.GetRequiredService<SemanticIndexer>();
         var root = Path.Combine(Path.GetTempPath(), "fuse-remote-index-delegate", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
+        Directory.CreateDirectory(Path.Combine(root, ".git"));
         await File.WriteAllTextAsync(Path.Combine(root, "B.cs"), "namespace T; public class B { }");
 
         var databasePath = Fuse.Reduction.Caching.FuseStorePaths.ResolveDatabasePath(root);
@@ -74,11 +76,20 @@ public sealed class RemoteIndexAccessProviderTests
     public async Task Maps_index_busy_from_daemon()
     {
         var indexer = _provider.GetRequiredService<SemanticIndexer>();
+        var root = Path.Combine(Path.GetTempPath(), "fuse-remote-index-busy", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, ".git"));
         var provider = new RemoteIndexAccessProvider(
             (_, _, _) => Task.FromResult<OpenIndexedResultDto?>(
                 new OpenIndexedResultDto("index_busy", "locked", 0, null)));
 
-        await Assert.ThrowsAsync<IndexBusyException>(() =>
-            provider.OpenIndexedAsync(indexer, "/tmp/repo", CancellationToken.None));
+        try
+        {
+            await Assert.ThrowsAsync<IndexBusyException>(() =>
+                provider.OpenIndexedAsync(indexer, root, CancellationToken.None));
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { }
+        }
     }
 }

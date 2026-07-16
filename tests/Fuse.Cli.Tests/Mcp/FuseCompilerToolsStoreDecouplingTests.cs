@@ -11,9 +11,9 @@ using Xunit;
 
 namespace Fuse.Cli.Tests.Mcp;
 
-// R18: compiler-tier tools (fuse_check, fuse_test covering execution) must not block on a mandatory index open.
-// Verification and dotnet test can answer when the index is contended; repair-packet enrichment and covering
-// selection are indexed-tier and degrade with a named note or index_busy.
+// R18: compiler-tier fuse_check must not block on a mandatory index open. Repair-packet enrichment is best-effort.
+// fuse_test covering selection is indexed-tier, so it requires a validated warm index and returns a bounded
+// availability header when that index is contended.
 [Collection("FuseToolsResidentProvider")]
 public sealed class FuseCompilerToolsStoreDecouplingTests : IDisposable
 {
@@ -81,7 +81,7 @@ public sealed class FuseCompilerToolsStoreDecouplingTests : IDisposable
     }
 
     [Fact]
-    public async Task FuseTest_returns_index_busy_when_covering_selection_store_is_locked()
+    public async Task FuseTest_returns_busy_header_when_covering_selection_store_is_locked()
     {
         var indexer = _provider.GetRequiredService<SemanticIndexer>();
         var work = Path.Combine(Path.GetTempPath(), "fuse-test-store-busy", Guid.NewGuid().ToString("N"));
@@ -101,7 +101,7 @@ public sealed class FuseCompilerToolsStoreDecouplingTests : IDisposable
                 path: work,
                 cancellationToken: CancellationToken.None);
 
-            Assert.StartsWith(FuseOperationalErrors.IndexBusyPrefix, output);
+            Assert.StartsWith("index_state: index_busy", output);
         }
         finally
         {

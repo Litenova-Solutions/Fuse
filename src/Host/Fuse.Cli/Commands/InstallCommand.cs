@@ -1,5 +1,6 @@
 using DotMake.CommandLine;
 using Fuse.Cli.Services;
+using Fuse.Collection.FileSystem;
 
 namespace Fuse.Cli.Commands;
 
@@ -8,7 +9,7 @@ namespace Fuse.Cli.Commands;
 /// </summary>
 [CliCommand(
     Name = "install",
-    Description = "Register Fuse with supported MCP coding clients.",
+    Description = "Write MCP client registration for launching 'fuse mcp serve'. Does not install the Fuse binary, rules, hooks, or an index unless their separate options are used.",
     Parent = typeof(McpCommand))]
 public sealed class InstallCommand
 {
@@ -46,7 +47,7 @@ public sealed class InstallCommand
     /// <summary>
     ///     Gets or sets the registration scope: <c>project</c> (this directory) or <c>user</c> (all projects).
     /// </summary>
-    [CliOption(Description = "Registration scope: project (this directory) or user (all projects for this user).")]
+    [CliOption(Description = "Config scope: project (the enclosing Git repository) or user (the client's user config). This does not change index scope.")]
     public string Scope { get; set; } = "project";
 
     /// <summary>
@@ -60,7 +61,7 @@ public sealed class InstallCommand
     ///     documented instruction file. At project scope, also appends <c>.fuse/</c> to <c>.gitignore</c> when no
     ///     equivalent entry exists.
     /// </summary>
-    [CliOption(Required = false, Description = "Also write client-specific Fuse usage rules and, at project scope, add .fuse/ to .gitignore. Recommended.")]
+    [CliOption(Required = false, Description = "Also write client-specific Fuse instructions (AGENTS.md, CLAUDE.md, or the client's documented equivalent). Does not install a skill.")]
     public bool Rules { get; set; }
 
     /// <summary>
@@ -78,9 +79,9 @@ public sealed class InstallCommand
     /// <param name="context">The CLI invocation context.</param>
     /// <returns>A task that completes when registration finishes.</returns>
     /// <remarks>
-    ///     Project scope writes client config files in the current directory. User scope writes each client's
-    ///     documented user config, except Claude Code, which is registered through its CLI. The MCP client launches
-    ///     <c>fuse mcp serve</c> as a child process.
+    ///     Project scope writes client config files at the nearest enclosing Git root. User scope writes each
+    ///     client's documented user config, except Claude Code, which is registered through its CLI. The MCP client
+    ///     launches <c>fuse mcp serve</c> as a child process.
     /// </remarks>
     public async Task RunAsync(CliContext context)
     {
@@ -93,6 +94,12 @@ public sealed class InstallCommand
         if (!TryParseScope(Scope, out var scope))
         {
             _consoleUI.WriteError("Unknown scope. Use project or user.");
+            return;
+        }
+
+        if (WithHooks && scope == McpInstallScope.User)
+        {
+            _consoleUI.WriteError("--with-hooks is project-scoped. Run it with --scope project from inside the target Git repository.");
             return;
         }
 
@@ -112,16 +119,19 @@ public sealed class InstallCommand
         }
 
         _consoleUI.WriteResult(
-            $"Configured {configured} client{(configured == 1 ? string.Empty : "s")}. " +
-            "Your AI client will launch fuse mcp serve automatically when MCP is enabled.");
+            $"Registered {configured} MCP client{(configured == 1 ? string.Empty : "s")} at {Scope.ToLowerInvariant()} scope. " +
+            "The client can launch 'fuse mcp serve' when MCP is enabled.");
+        _consoleUI.WriteStep(
+            "Registration writes client configuration only. It does not install the Fuse binary, start a permanent service, create an index, or install an agent skill.");
+        _consoleUI.WriteStep(
+            "Workspace-scoped tools activate only when the requested folder resolves to a Git repository. Nested folders share the repository-root index; fuse_reduce remains available outside Git repositories.");
 
         if (WithHooks)
             WriteClaudeHooks();
 
         if (!Rules)
             _consoleUI.WriteStep(
-                "Tip: re-run with --rules to also bias your agent toward the fuse_* tools "
-                + "(writes a short rule into your client's instructions file).");
+                "Agent instructions were not written. Use --rules to add the managed Fuse block to AGENTS.md, CLAUDE.md, or the selected client's documented instruction file. MCP server instructions are still advertised when the client connects.");
     }
 
     // Writes (or idempotently updates) the project's .claude/settings.json with Fuse's ambient-verification hooks.
@@ -129,7 +139,11 @@ public sealed class InstallCommand
     // touched only under the explicit --with-hooks flag.
     private void WriteClaudeHooks()
     {
-        var projectRoot = Directory.GetCurrentDirectory();
+        if (!WorkspaceIdentityResolver.TryResolveRepositoryRoot(Directory.GetCurrentDirectory(), out var projectRoot))
+        {
+            _consoleUI.WriteError("Claude hooks require a Git repository identity; no hooks were written.");
+            return;
+        }
         var settingsPath = System.IO.Path.Combine(projectRoot, ".claude", "settings.json");
         var existing = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
         if (ClaudeHooksConfig.AlreadyInstalled(existing))

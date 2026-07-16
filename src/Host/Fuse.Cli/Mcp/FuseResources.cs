@@ -40,9 +40,9 @@ public sealed class FuseResources
         [Description("Relative path to the workspace directory.")] string path,
         CancellationToken cancellationToken = default)
     {
-        if (!Directory.Exists(Path.GetFullPath(path)))
-            return $"Error: Directory not found: {Path.GetFullPath(path)}";
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        if (!TryResolveRoot(path, out var root, out var error))
+            return error;
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var renderer = new WorkspaceMapRenderer(store);
         return await renderer.RenderAsync(MapDetail.All, maxRows: 200, cancellationToken);
     }
@@ -67,9 +67,9 @@ public sealed class FuseResources
         [Description("The session id whose claim ledger to read.")] string session,
         CancellationToken cancellationToken = default)
     {
-        if (!Directory.Exists(Path.GetFullPath(path)))
-            return $"Error: Directory not found: {Path.GetFullPath(path)}";
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        if (!TryResolveRoot(path, out var root, out var error))
+            return error;
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var claims = await SessionClaimLedger.LoadAsync(store, session, cancellationToken);
         if (claims.Count == 0)
             return $"session '{session}': no accumulated claims yet. Claim-emitting tools (for example fuse_impact with a session) add to the ledger.";
@@ -94,10 +94,9 @@ public sealed class FuseResources
         [Description("Relative path to the workspace directory.")] string path,
         CancellationToken cancellationToken = default)
     {
-        var root = Path.GetFullPath(path);
-        if (!Directory.Exists(root))
-            return $"Error: Directory not found: {root}";
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        if (!TryResolveRoot(path, out var root, out var error))
+            return error;
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var mode = await store.GetMetaAsync("index_mode", cancellationToken) ?? "unknown";
         var builder = new StringBuilder();
         builder.AppendLine(await FuseTools.OracleAvailabilityHeaderAsync(store, root, cancellationToken));
@@ -127,15 +126,14 @@ public sealed class FuseResources
         [Description("The session id whose diagnostics diff to read.")] string session,
         CancellationToken cancellationToken = default)
     {
-        var root = Path.GetFullPath(path);
-        if (!Directory.Exists(root))
-            return $"Error: Directory not found: {root}";
+        if (!TryResolveRoot(path, out var root, out var error))
+            return error;
 
         var current = FuseTools.ResidentWorkspaces.TryGetCurrentDiagnostics(root);
         if (current is null)
             return "no diff: no resident workspace serves this root (start the server with FUSE_RESIDENT=1); the diff never runs a build.";
 
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var baseline = await store.GetCheckSessionBaselineAsync(session, cancellationToken);
         if (baseline is null)
             return $"session '{session}': no baseline recorded yet. Call fuse_check with this session to establish one, then read the diff.";
@@ -186,9 +184,8 @@ public sealed class FuseResources
         [Description("The session id whose diagnostics to read.")] string session,
         CancellationToken cancellationToken = default)
     {
-        var root = Path.GetFullPath(path);
-        if (!Directory.Exists(root))
-            return $"Error: Directory not found: {root}";
+        if (!TryResolveRoot(path, out var root, out var error))
+            return error;
 
         var current = FuseTools.ResidentWorkspaces.TryGetCurrentDiagnostics(root);
         var builder = new StringBuilder();
@@ -200,7 +197,7 @@ public sealed class FuseResources
             return builder.ToString().TrimEnd();
         }
 
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var baseline = await store.GetCheckSessionBaselineAsync(session, cancellationToken);
         if (baseline is null)
             return $"session '{session}': no live resident workspace and no recorded baseline. Start the server with FUSE_RESIDENT=1, or call fuse_check with this session first.";
@@ -232,10 +229,9 @@ public sealed class FuseResources
         [Description("The task or query to localize.")] string query,
         CancellationToken cancellationToken = default)
     {
-        var root = Path.GetFullPath(path);
-        if (!Directory.Exists(root))
-            return $"Error: Directory not found: {root}";
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        if (!TryResolveRoot(path, out var root, out var error))
+            return error;
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var engine = new SemanticRetrievalEngine(store, changeSource);
         var result = await engine.LocalizeAsync(new LocalizationRequest(root, Query: query), cancellationToken);
         if (result.Candidates.Count == 0)
@@ -266,10 +262,9 @@ public sealed class FuseResources
         [Description("A symbol, service, request, or config-section seed.")] string seed,
         CancellationToken cancellationToken = default)
     {
-        var root = Path.GetFullPath(path);
-        if (!Directory.Exists(root))
-            return $"Error: Directory not found: {root}";
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        if (!TryResolveRoot(path, out var root, out var error))
+            return error;
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var engine = new SemanticRetrievalEngine(store);
         var plan = await engine.PlanContextAsync(
             new ContextRequest(root, [new ContextSeed(ContextSeedKind.Symbol, seed)]), cancellationToken);
@@ -301,10 +296,9 @@ public sealed class FuseResources
         [Description("Git ref to diff against (branch, commit, HEAD~N).")] string since,
         CancellationToken cancellationToken = default)
     {
-        var root = Path.GetFullPath(path);
-        if (!Directory.Exists(root))
-            return $"Error: Directory not found: {root}";
-        await using var store = await OpenIndexedAsync(indexer, path, cancellationToken);
+        if (!TryResolveRoot(path, out var root, out var error))
+            return error;
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var engine = new SemanticRetrievalEngine(store, changeSource);
         var plan = await engine.ReviewAsync(new ReviewRequest(root, since), cancellationToken);
         var renderer = new SemanticContextRenderer(reductionPipeline, new SourceContentProvider(new PhysicalFileSystem()));
@@ -314,4 +308,20 @@ public sealed class FuseResources
 
     private static Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken) =>
         FuseTools.IndexAccess.OpenIndexedAsync(indexer, path, cancellationToken);
+
+    private static bool TryResolveRoot(string path, out string root, out string error)
+    {
+        try
+        {
+            root = WorkspacePathResolver.ResolveRepositoryRoot(path);
+            error = string.Empty;
+            return true;
+        }
+        catch (Exception ex) when (ex is WorkspaceIdentityException or DirectoryNotFoundException)
+        {
+            root = string.Empty;
+            error = FuseOperationalErrors.FromException(ex);
+            return false;
+        }
+    }
 }

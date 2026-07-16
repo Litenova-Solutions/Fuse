@@ -44,6 +44,38 @@ public sealed class IndexCoordinatorTests
     }
 
     [Fact]
+    public async Task ExecuteWriteAsync_serializes_repository_root_and_nested_path_as_one_identity()
+    {
+        var root = CreateTempRoot();
+        var nested = Path.Combine(root, "tests", "bin", "Release");
+        Directory.CreateDirectory(nested);
+        var coordinator = new IndexCoordinator();
+        var order = new List<int>();
+        var firstStarted = new TaskCompletionSource();
+
+        var first = coordinator.ExecuteWriteAsync(nested, async (store, ct) =>
+        {
+            await store.InitializeAsync(ct);
+            order.Add(1);
+            firstStarted.SetResult();
+            await Task.Delay(200, ct);
+            return 0;
+        }, CancellationToken.None);
+
+        await firstStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var second = coordinator.ExecuteWriteAsync(root, (_, _) =>
+        {
+            order.Add(2);
+            return Task.FromResult(0);
+        }, CancellationToken.None);
+
+        await Task.WhenAll(first, second);
+        Assert.Equal([1, 2], order);
+        Assert.True(File.Exists(FuseStorePaths.ResolveDatabasePath(root)));
+        Assert.Equal(FuseStorePaths.ResolveDatabasePath(root), FuseStorePaths.ResolveDatabasePath(nested));
+    }
+
+    [Fact]
     public async Task ExecuteWriteAsync_returns_index_busy_when_cross_process_mutex_held()
     {
         var root = CreateTempRoot();
@@ -59,6 +91,19 @@ public sealed class IndexCoordinatorTests
                     return 0;
                 },
                 CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ExecuteWriteAsync_nested_path_uses_repository_root_mutex()
+    {
+        var root = CreateTempRoot();
+        var nested = Path.Combine(root, "src", "Nested");
+        Directory.CreateDirectory(nested);
+        using var foreignLock = AcquireWriterMutex(root);
+        var coordinator = new IndexCoordinator();
+
+        await Assert.ThrowsAsync<IndexBusyException>(() =>
+            coordinator.ExecuteWriteAsync(nested, (_, _) => Task.FromResult(0), CancellationToken.None));
     }
 
     [Fact]

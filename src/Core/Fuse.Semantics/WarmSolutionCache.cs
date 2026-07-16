@@ -1,4 +1,3 @@
-using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 
@@ -34,8 +33,6 @@ public sealed class WarmSolutionCache : IDisposable
     {
         "bin", "obj", ".git", ".vs", ".fuse", ".idea", "node_modules", ".corpus", "packages", "TestResults", ".vscode",
     };
-
-    private static readonly object LocatorGate = new();
 
     private readonly object _gate = new();
     private readonly SemaphoreSlim _loadGate = new(1, 1);
@@ -430,13 +427,7 @@ public sealed class WarmSolutionCache : IDisposable
     }
 
     private static void EnsureLocatorRegistered()
-    {
-        lock (LocatorGate)
-        {
-            if (!MSBuildLocator.IsRegistered)
-                MSBuildLocator.RegisterDefaults();
-        }
-    }
+        => MsBuildLocatorRegistration.EnsureRegistered();
 
     private static int ReadCapFromEnvironment()
     {

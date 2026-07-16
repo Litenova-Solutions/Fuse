@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Reflection;
-using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -24,7 +23,6 @@ namespace Fuse.Semantics;
 public sealed class CodeFixApplier
 {
     private const int MaxFixes = 100;
-    private static readonly object LocatorGate = new();
 
     private readonly WarmSolutionCache _cache;
 
@@ -52,14 +50,8 @@ public sealed class CodeFixApplier
         if (string.IsNullOrWhiteSpace(diagnosticId) || string.IsNullOrWhiteSpace(file))
             return CodeFixResult.Abstain("provide a diagnostic id and a file to fix");
 
-        lock (LocatorGate)
-        {
-            if (!MSBuildLocator.IsRegistered)
-            {
-                try { MSBuildLocator.RegisterDefaults(); }
-                catch (Exception ex) { return CodeFixResult.Abstain($"no MSBuild/SDK found ({ex.Message}); cannot apply the fix"); }
-            }
-        }
+        try { MsBuildLocatorRegistration.EnsureRegistered(); }
+        catch (Exception ex) { return CodeFixResult.Abstain($"no MSBuild/SDK found ({ex.Message}); cannot apply the fix"); }
 
         CachedSolution loaded;
         try

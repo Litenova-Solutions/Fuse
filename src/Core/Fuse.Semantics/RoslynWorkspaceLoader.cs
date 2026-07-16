@@ -1,4 +1,3 @@
-using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
@@ -10,17 +9,14 @@ namespace Fuse.Semantics;
 ///     analysis. Falls back cleanly to syntax-only when MSBuild is unavailable or loading fails.
 /// </summary>
 /// <remarks>
-///     <see cref="MSBuildLocator" /> is registered exactly once per process, guarded by a lock; registration
-///     must happen before any MSBuild type is used. Loading depends on a resolvable SDK at runtime, so a
+///     MSBuild is registered exactly once per process through a shared gate; registration must happen before
+///     any MSBuild type is used. Loading depends on a resolvable SDK at runtime, so a
 ///     self-contained publish without an SDK (or an unrestored project) yields
 ///     <see cref="RoslynWorkspaceSnapshot.SemanticLoadSucceeded" /> false with a diagnostic rather than
 ///     throwing; the caller then indexes at the syntax level.
 /// </remarks>
 public sealed class RoslynWorkspaceLoader
 {
-    private static readonly Lock LocatorLock = new();
-    private static bool _locatorRegistered;
-
     private readonly ILogger<RoslynWorkspaceLoader>? _logger;
 
     /// <summary>
@@ -182,31 +178,23 @@ public sealed class RoslynWorkspaceLoader
         return (loadedProjects, projectReports);
     }
 
-    // Registers MSBuildLocator once per process. Returns false with a diagnostic when no SDK/MSBuild is
+    // Registers MSBuild once per process. Returns false with a diagnostic when no SDK/MSBuild is
     // resolvable (for example a self-contained publish without an SDK), so the caller falls back to syntax mode.
     private bool TryRegisterLocator(out DiagnosticRecord? diagnostic)
     {
         diagnostic = null;
-        lock (LocatorLock)
+        try
         {
-            if (_locatorRegistered)
-                return true;
-
-            try
-            {
-                if (!MSBuildLocator.IsRegistered)
-                    MSBuildLocator.RegisterDefaults();
-                _locatorRegistered = true;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "MSBuild SDK not found; semantic loading unavailable.");
-                diagnostic = new DiagnosticRecord(
-                    DiagnosticSeverity.Error, "msbuild-unavailable",
-                    $"No MSBuild/SDK found ({ex.Message}); indexing at the syntax level.");
-                return false;
-            }
+            MsBuildLocatorRegistration.EnsureRegistered();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "MSBuild SDK not found; semantic loading unavailable.");
+            diagnostic = new DiagnosticRecord(
+                DiagnosticSeverity.Error, "msbuild-unavailable",
+                $"No MSBuild/SDK found ({ex.Message}); indexing at the syntax level.");
+            return false;
         }
     }
 }

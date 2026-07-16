@@ -1,4 +1,3 @@
-using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,8 +14,6 @@ namespace Fuse.Semantics;
 /// </summary>
 public sealed class TypeRefactorer
 {
-    private static readonly object LocatorGate = new();
-
     private readonly WarmSolutionCache _cache;
 
     /// <summary>
@@ -271,14 +268,8 @@ public sealed class TypeRefactorer
     private async Task<(Solution? Solution, string? Reason)> LoadSolutionAsync(
         string solutionOrProjectPath, CancellationToken cancellationToken)
     {
-        lock (LocatorGate)
-        {
-            if (!MSBuildLocator.IsRegistered)
-            {
-                try { MSBuildLocator.RegisterDefaults(); }
-                catch (Exception ex) { return (null, $"no MSBuild/SDK found ({ex.Message}); cannot refactor"); }
-            }
-        }
+        try { MsBuildLocatorRegistration.EnsureRegistered(); }
+        catch (Exception ex) { return (null, $"no MSBuild/SDK found ({ex.Message}); cannot refactor"); }
 
         CachedSolution loaded;
         try

@@ -1,4 +1,3 @@
-using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Rename;
 
@@ -18,8 +17,6 @@ namespace Fuse.Semantics;
 /// </remarks>
 public sealed class RenameRefactorer
 {
-    private static readonly object LocatorGate = new();
-
     private readonly WarmSolutionCache _cache;
 
     /// <summary>
@@ -46,14 +43,8 @@ public sealed class RenameRefactorer
         if (string.IsNullOrWhiteSpace(symbolName) || string.IsNullOrWhiteSpace(newName))
             return RenameResult.Abstain("provide a symbol name and a new name");
 
-        lock (LocatorGate)
-        {
-            if (!MSBuildLocator.IsRegistered)
-            {
-                try { MSBuildLocator.RegisterDefaults(); }
-                catch (Exception ex) { return RenameResult.Abstain($"no MSBuild/SDK found ({ex.Message}); cannot rename"); }
-            }
-        }
+        try { MsBuildLocatorRegistration.EnsureRegistered(); }
+        catch (Exception ex) { return RenameResult.Abstain($"no MSBuild/SDK found ({ex.Message}); cannot rename"); }
 
         // Load through the warm-solution cache (R42): a held, still-fresh solution is reused; otherwise a fresh
         // MSBuildWorkspace is opened and cached. Only real load failures abstain; benign warnings (analyzer/

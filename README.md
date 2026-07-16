@@ -26,6 +26,10 @@ dotnet tool install -g Fuse
 fuse mcp install --rules
 ```
 
+The installer supports Claude Code, Cursor, GitHub Copilot, OpenCode, Kilo Code, Codex,
+and Grok Build. Use `--client <name>` to configure one client; the default `all` configures
+all seven for the selected scope.
+
 Reload your MCP client, then ask:
 
 ```text

@@ -23,10 +23,10 @@ export const metadata: Metadata = {
     siteName: 'Fuse',
     images: [
       {
-        url: '/fuse-social-card.png',
-        width: 1280,
-        height: 640,
-        alt: 'Fuse indexes a .NET solution and checks agent edits through the compiler',
+        url: '/fuse-social-card-v2.png',
+        width: 1200,
+        height: 628,
+        alt: 'Fuse is a free and open source CLI and MCP server built to speed up AI coding agents in .NET codebases',
       },
     ],
   },
@@ -35,7 +35,12 @@ export const metadata: Metadata = {
     title: 'Fuse - local .NET index and compiler checks for coding agents',
     description:
       'Persistent .NET discovery, reduced task-scoped source, typed-graph wiring resolution, and proposed-file compiler checks.',
-    images: ['/fuse-social-card.png'],
+    images: [
+      {
+        url: '/fuse-social-card-v2.png',
+        alt: 'Fuse is a free and open source CLI and MCP server built to speed up AI coding agents in .NET codebases',
+      },
+    ],
   },
 };
 

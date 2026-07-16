@@ -15,7 +15,14 @@ export const metadata: Metadata = {
     title: 'Fuse Blog',
     description: 'Notes from the Fuse team on method, measurement, and releases.',
     siteName: 'Fuse',
-    images: [{ url: '/fuse-social-card.png', width: 1280, height: 640, alt: 'Fuse' }],
+    images: [
+      {
+        url: '/fuse-social-card-v2.png',
+        width: 1200,
+        height: 628,
+        alt: 'Fuse is a free and open source CLI and MCP server built to speed up AI coding agents in .NET codebases',
+      },
+    ],
   },
 };
 

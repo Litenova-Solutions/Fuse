@@ -13,4 +13,16 @@ public enum McpInstallClient
 
     /// <summary>GitHub Copilot in VS Code.</summary>
     Copilot,
+
+    /// <summary>OpenCode.</summary>
+    OpenCode,
+
+    /// <summary>Kilo Code.</summary>
+    Kilo,
+
+    /// <summary>OpenAI Codex.</summary>
+    Codex,
+
+    /// <summary>Grok Build.</summary>
+    Grok,
 }

@@ -33,13 +33,14 @@ public sealed class FusePrompts
         Loop (stop at the first step that resolves it):
         1. fuse_find kind=text (or kind=symbol) to locate the exact site the diagnostic names.
         2. fuse_context on that seed to read the reduced source around it.
-        3. Propose the single-file edit, then fuse_check with the proposed content - it returns the
+        3. Propose the standalone single-file edit, then fuse_check with the complete proposed content - it returns the
            diagnostics the edit would produce at oracle or build grade, and a repair packet on an
            unambiguous API-shape error. Iterate on the edit until fuse_check is clean.
         4. fuse_impact on any symbol whose signature you changed, to see the blast radius.
-        5. fuse_review before you finish, to confirm the change is scoped and nothing else regressed.
+        5. Apply the edit with normal editing tools, run the repository's required gates, then use fuse_review
+           to inspect the final scope and impact.
 
-        Do not hand-apply until fuse_check is green. Fuse verifies; it does not commit for you.
+        fuse_review does not prove compiler or test success. Fuse does not commit for you.
         """;
 
     /// <summary>
@@ -61,10 +62,12 @@ public sealed class FusePrompts
         1. fuse_find kind=task with the issue text to rank the candidate files (no bodies). If it refuses as
            low-signal, name a concrete anchor (a symbol, route, service, or config) and use the matching kind.
         2. fuse_context on the chosen seeds to read the reduced source you will change.
-        3. For each file you edit: propose the content, fuse_check it, iterate until clean.
+        3. Use fuse_check for a standalone single-file proposal. It cannot verify a coordinated multi-file overlay;
+           use fuse_refactor for a supported solution-wide operation or edit normally and run the repository gates.
         4. Before changing any public signature: fuse_impact on the symbol, to see callers and implementers.
         5. fuse_test on the symbols you touched, to run just their covering tests.
-        6. fuse_review{(string.IsNullOrWhiteSpace(since) ? "" : $" changedSince={since}")} before done, for the diff-first impact and packed context.
+        6. Run the repository's required build, test, format, or lint gates.
+        7. fuse_review{(string.IsNullOrWhiteSpace(since) ? "" : $" changedSince={since}")} before done, for the diff-first impact and packed context.
         """;
 
     /// <summary>
@@ -104,8 +107,9 @@ public sealed class FusePrompts
         1. fuse_impact on {symbol} - the callers, implementers, and referencing types the rename will touch.
         2. fuse_refactor operation=rename - it drives the rename through Roslyn (so an unrelated same-named symbol
            is not renamed), recompiles, and returns the staged diff only when no new diagnostic is introduced.
-        3. Review the staged diff. fuse_workspace action=apply write=true to write it (the one explicit tree-write).
-        4. fuse_review before done.
+        3. Review and apply the staged multi-file diff with normal editing tools. fuse_workspace action=apply accepts
+           complete content for one file; it does not apply a multi-file patch.
+        4. Run the repository's required gates, then use fuse_review to inspect the final scope and impact.
         """;
 
     /// <summary>
@@ -124,8 +128,10 @@ public sealed class FusePrompts
         Loop:
         1. fuse_find kind=route with an existing route under {routePrefix}, to resolve the action and its neighborhood.
         2. fuse_context on the controller or endpoint group, to read the surrounding pattern (routing, DI, options).
-        3. Add the handler, then fuse_check the file until clean.
+        3. If the endpoint is a standalone single-file edit, fuse_check the complete proposed file until clean.
+           For coordinated edits, write the files normally and run the repository's required gates.
         4. fuse_find kind=service or kind=request to confirm the new handler's dependencies resolve in the graph.
-        5. fuse_test the handler's covering tests, then fuse_review before done.
+        5. fuse_test the handler's covering tests, run the repository's required gates, then use fuse_review
+           to inspect the final scope and impact.
         """;
 }

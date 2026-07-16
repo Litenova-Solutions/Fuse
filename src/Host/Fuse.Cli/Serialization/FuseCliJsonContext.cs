@@ -17,6 +17,8 @@ namespace Fuse.Cli.Serialization;
 [JsonSerializable(typeof(ClaudeMcpConfig))]
 [JsonSerializable(typeof(CursorMcpConfig))]
 [JsonSerializable(typeof(CopilotMcpConfig))]
+[JsonSerializable(typeof(LocalArrayMcpConfig))]
+[JsonSerializable(typeof(LocalArrayMcpServer))]
 [JsonSerializable(typeof(RaceCandidateInput[]))]
 [JsonSerializable(typeof(DaemonDescriptor))]
 [JsonSerializable(typeof(WarmServiceRecent))]

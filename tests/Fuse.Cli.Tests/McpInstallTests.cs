@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Fuse.Cli.Commands;
 using Fuse.Cli.Configuration.McpInstall;
+using Fuse.Cli.Mcp;
 using Fuse.Cli.Serialization;
 using Fuse.Cli.Services;
 
@@ -51,6 +53,45 @@ public sealed class McpInstallTests
         Assert.NotNull(copilot);
         Assert.Equal("/usr/local/bin/fuse", copilot!.Servers["fuse"].Command);
         Assert.Equal("stdio", copilot.Servers["fuse"].Type);
+    }
+
+    [Fact]
+    public async Task InstallAsync_ProjectScope_WritesOpenCodeKiloCodexAndGrokConfigs()
+    {
+        var root = CreateTempDirectory();
+        var service = new McpInstallService();
+
+        var configured = await service.InstallAsync(
+            [McpInstallClient.OpenCode, McpInstallClient.Kilo, McpInstallClient.Codex, McpInstallClient.Grok],
+            McpInstallScope.Project,
+            root,
+            "C:\\Tools\\fuse.exe",
+            writeRules: false,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        Assert.Equal(4, configured);
+
+        foreach (var client in new[] { McpInstallClient.OpenCode, McpInstallClient.Kilo })
+        {
+            var path = McpInstallService.GetConfigPath(client, McpInstallScope.Project, root);
+            using var config = JsonDocument.Parse(await File.ReadAllTextAsync(path));
+            var fuse = config.RootElement.GetProperty("mcp").GetProperty("fuse");
+            Assert.Equal("local", fuse.GetProperty("type").GetString());
+            Assert.True(fuse.GetProperty("enabled").GetBoolean());
+            Assert.Equal(
+                ["C:\\Tools\\fuse.exe", "mcp", "serve"],
+                fuse.GetProperty("command").EnumerateArray().Select(item => item.GetString()!).ToArray());
+        }
+
+        foreach (var client in new[] { McpInstallClient.Codex, McpInstallClient.Grok })
+        {
+            var path = McpInstallService.GetConfigPath(client, McpInstallScope.Project, root);
+            var config = await File.ReadAllTextAsync(path);
+            Assert.Contains("[mcp_servers.fuse]", config);
+            Assert.Contains("command = \"C:\\\\Tools\\\\fuse.exe\"", config);
+            Assert.Contains("args = [\"mcp\", \"serve\"]", config);
+        }
     }
 
     [Fact]
@@ -107,6 +148,19 @@ public sealed class McpInstallTests
         Assert.EndsWith(Path.Combine("Code", "User", "mcp.json"), copilotUser);
         Assert.DoesNotContain(Path.Combine(".vscode", "mcp.json"), copilotUser);
         Assert.StartsWith(home.Root, copilotUser, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Equal(
+            Path.Combine(home.Root, ".config", "opencode", "opencode.json"),
+            McpInstallService.GetConfigPath(McpInstallClient.OpenCode, McpInstallScope.User, projectRoot));
+        Assert.Equal(
+            Path.Combine(home.Root, ".config", "kilo", "kilo.jsonc"),
+            McpInstallService.GetConfigPath(McpInstallClient.Kilo, McpInstallScope.User, projectRoot));
+        Assert.Equal(
+            Path.Combine(home.Root, ".codex", "config.toml"),
+            McpInstallService.GetConfigPath(McpInstallClient.Codex, McpInstallScope.User, projectRoot));
+        Assert.Equal(
+            Path.Combine(home.Root, ".grok", "config.toml"),
+            McpInstallService.GetConfigPath(McpInstallClient.Grok, McpInstallScope.User, projectRoot));
     }
 
     [Fact]
@@ -158,6 +212,31 @@ public sealed class McpInstallTests
         // User-scope writes stay under the redirected home, not the project directory.
         Assert.False(File.Exists(Path.Combine(projectRoot, ".cursor", "mcp.json")));
         Assert.False(File.Exists(Path.Combine(projectRoot, ".vscode", "mcp.json")));
+    }
+
+    [Fact]
+    public async Task InstallAsync_UserScope_WritesNewClientConfigs()
+    {
+        using var home = new TempHomeScope();
+        var projectRoot = CreateTempDirectory();
+        var service = new McpInstallService();
+
+        var configured = await service.InstallAsync(
+            [McpInstallClient.OpenCode, McpInstallClient.Kilo, McpInstallClient.Codex, McpInstallClient.Grok],
+            McpInstallScope.User,
+            projectRoot,
+            "fuse",
+            writeRules: false,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        Assert.Equal(4, configured);
+        Assert.All(
+            new[] { McpInstallClient.OpenCode, McpInstallClient.Kilo, McpInstallClient.Codex, McpInstallClient.Grok },
+            client => Assert.True(File.Exists(
+                McpInstallService.GetConfigPath(client, McpInstallScope.User, projectRoot))));
+        Assert.False(File.Exists(Path.Combine(projectRoot, "opencode.json")));
+        Assert.False(File.Exists(Path.Combine(projectRoot, ".codex", "config.toml")));
     }
 
     [Theory]
@@ -250,7 +329,7 @@ public sealed class McpInstallTests
             McpInstallScope.User,
             projectRoot,
             "fuse",
-            writeRules: false,
+            writeRules: true,
             console,
             CancellationToken.None);
 
@@ -258,6 +337,7 @@ public sealed class McpInstallTests
         Assert.Contains("Claude Code CLI not found on PATH", Assert.Single(console.Errors));
         Assert.False(File.Exists(Path.Combine(projectRoot, ".mcp.json")));
         Assert.False(File.Exists(Path.Combine(home.Root, ".claude.json")));
+        Assert.False(File.Exists(Path.Combine(home.Root, ".claude", "CLAUDE.md")));
     }
 
     [Theory]
@@ -360,6 +440,93 @@ public sealed class McpInstallTests
         Assert.Equal("token", rootElement.GetProperty("inputs")[0].GetProperty("id").GetString());
     }
 
+    [Theory]
+    [InlineData(McpInstallClient.OpenCode)]
+    [InlineData(McpInstallClient.Kilo)]
+    public async Task InstallAsync_LocalArrayConfig_PreservesRemoteServersAndTopLevelFields(McpInstallClient client)
+    {
+        var root = CreateTempDirectory();
+        var path = McpInstallService.GetConfigPath(client, McpInstallScope.Project, root);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllTextAsync(
+            path,
+            """
+            {
+              "$schema": "https://example.test/schema.json",
+              "mcp": {
+                "remote": {
+                  "type": "remote",
+                  "url": "https://example.test/mcp",
+                  "enabled": false
+                }
+              }
+            }
+            """);
+
+        var configured = await new McpInstallService().InstallAsync(
+            [client],
+            McpInstallScope.Project,
+            root,
+            "fuse",
+            writeRules: false,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        Assert.Equal(1, configured);
+        using var written = JsonDocument.Parse(await File.ReadAllTextAsync(path));
+        Assert.Equal("https://example.test/schema.json", written.RootElement.GetProperty("$schema").GetString());
+        var remote = written.RootElement.GetProperty("mcp").GetProperty("remote");
+        Assert.Equal("remote", remote.GetProperty("type").GetString());
+        Assert.Equal("https://example.test/mcp", remote.GetProperty("url").GetString());
+        Assert.False(remote.TryGetProperty("command", out _));
+        Assert.True(written.RootElement.GetProperty("mcp").TryGetProperty("fuse", out _));
+    }
+
+    [Theory]
+    [InlineData(McpInstallClient.Codex)]
+    [InlineData(McpInstallClient.Grok)]
+    public async Task InstallAsync_TomlConfig_ReplacesFuseTableAndPreservesOtherTables(McpInstallClient client)
+    {
+        var root = CreateTempDirectory();
+        var path = McpInstallService.GetConfigPath(client, McpInstallScope.Project, root);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllTextAsync(
+            path,
+            """
+            [models]
+            default = "existing"
+
+            [mcp_servers.fuse]
+            command = "old-fuse"
+            args = ["old"]
+
+            [mcp_servers.other]
+            command = "other-tool"
+            args = ["run"]
+            """);
+
+        var service = new McpInstallService();
+        for (var i = 0; i < 2; i++)
+            await service.InstallAsync(
+                [client],
+                McpInstallScope.Project,
+                root,
+                "new-fuse",
+                writeRules: false,
+                new RecordingConsoleUI(),
+                CancellationToken.None);
+
+        var written = await File.ReadAllTextAsync(path);
+        Assert.Contains("[models]", written);
+        Assert.Contains("default = \"existing\"", written);
+        Assert.Contains("[mcp_servers.other]", written);
+        Assert.Contains("command = \"other-tool\"", written);
+        Assert.Contains("command = \"new-fuse\"", written);
+        Assert.DoesNotContain("old-fuse", written);
+        Assert.Equal(1, written.Split("[mcp_servers.fuse]").Length - 1);
+        Assert.Equal(1, written.Split("# fuse:begin").Length - 1);
+    }
+
     [Fact]
     public void GetConfigPath_ProjectScope_UsesProjectDirectory()
     {
@@ -371,6 +538,36 @@ public sealed class McpInstallTests
         Assert.Equal(
             Path.Combine(projectRoot, ".cursor", "mcp.json"),
             McpInstallService.GetConfigPath(McpInstallClient.Cursor, McpInstallScope.Project, projectRoot));
+        Assert.Equal(
+            Path.Combine(projectRoot, "opencode.json"),
+            McpInstallService.GetConfigPath(McpInstallClient.OpenCode, McpInstallScope.Project, projectRoot));
+        Assert.Equal(
+            Path.Combine(projectRoot, ".kilo", "kilo.jsonc"),
+            McpInstallService.GetConfigPath(McpInstallClient.Kilo, McpInstallScope.Project, projectRoot));
+        Assert.Equal(
+            Path.Combine(projectRoot, ".codex", "config.toml"),
+            McpInstallService.GetConfigPath(McpInstallClient.Codex, McpInstallScope.Project, projectRoot));
+        Assert.Equal(
+            Path.Combine(projectRoot, ".grok", "config.toml"),
+            McpInstallService.GetConfigPath(McpInstallClient.Grok, McpInstallScope.Project, projectRoot));
+    }
+
+    [Fact]
+    public void GetConfigPath_PrefersExistingSupportedJsonConfigNames()
+    {
+        var openCodeRoot = CreateTempDirectory();
+        var openCodeJsonc = Path.Combine(openCodeRoot, "opencode.jsonc");
+        File.WriteAllText(openCodeJsonc, "{}");
+        Assert.Equal(
+            openCodeJsonc,
+            McpInstallService.GetConfigPath(McpInstallClient.OpenCode, McpInstallScope.Project, openCodeRoot));
+
+        var kiloRoot = CreateTempDirectory();
+        var kiloJson = Path.Combine(kiloRoot, "kilo.json");
+        File.WriteAllText(kiloJson, "{}");
+        Assert.Equal(
+            kiloJson,
+            McpInstallService.GetConfigPath(McpInstallClient.Kilo, McpInstallScope.Project, kiloRoot));
     }
 
     [Fact]
@@ -387,7 +584,15 @@ public sealed class McpInstallTests
         var service = new McpInstallService();
 
         await service.InstallAsync(
-            [McpInstallClient.Claude, McpInstallClient.Cursor, McpInstallClient.Copilot],
+            [
+                McpInstallClient.Claude,
+                McpInstallClient.Cursor,
+                McpInstallClient.Copilot,
+                McpInstallClient.OpenCode,
+                McpInstallClient.Kilo,
+                McpInstallClient.Codex,
+                McpInstallClient.Grok,
+            ],
             McpInstallScope.Project,
             root,
             "fuse",
@@ -396,15 +601,19 @@ public sealed class McpInstallTests
             CancellationToken.None);
 
         var claude = await File.ReadAllTextAsync(Path.Combine(root, "CLAUDE.md"));
-        Assert.Contains("fuse_find", claude);
+        AssertProperAgentGuidance(claude);
         Assert.Contains("<!-- fuse:begin", claude);
 
         var cursor = await File.ReadAllTextAsync(Path.Combine(root, ".cursor", "rules", "fuse.mdc"));
         Assert.Contains("alwaysApply: true", cursor);
-        Assert.Contains("fuse_workspace", cursor);
+        AssertProperAgentGuidance(cursor);
 
         var copilot = await File.ReadAllTextAsync(Path.Combine(root, ".github", "copilot-instructions.md"));
-        Assert.Contains("fuse_review", copilot);
+        AssertProperAgentGuidance(copilot);
+
+        var agents = await File.ReadAllTextAsync(Path.Combine(root, "AGENTS.md"));
+        AssertProperAgentGuidance(agents);
+        Assert.Equal(1, agents.Split("<!-- fuse:begin").Length - 1);
 
         var gitIgnore = await File.ReadAllTextAsync(Path.Combine(root, ".gitignore"));
         Assert.Contains(".fuse/", gitIgnore);
@@ -497,6 +706,46 @@ public sealed class McpInstallTests
     }
 
     [Fact]
+    public async Task InstallAsync_WriteRules_UserScope_UsesDocumentedGlobalFiles()
+    {
+        using var home = new TempHomeScope();
+        var root = CreateTempDirectory();
+        var console = new RecordingConsoleUI();
+
+        await new McpInstallService().InstallAsync(
+            [McpInstallClient.OpenCode, McpInstallClient.Kilo, McpInstallClient.Codex, McpInstallClient.Grok],
+            McpInstallScope.User,
+            root,
+            "fuse",
+            writeRules: true,
+            console,
+            CancellationToken.None);
+
+        var rulePaths = new[]
+        {
+            Path.Combine(home.Root, ".config", "opencode", "AGENTS.md"),
+            Path.Combine(home.Root, ".config", "kilo", "AGENTS.md"),
+            Path.Combine(home.Root, ".codex", "AGENTS.md"),
+        };
+        foreach (var path in rulePaths)
+            AssertProperAgentGuidance(await File.ReadAllTextAsync(path));
+
+        Assert.False(File.Exists(Path.Combine(home.Root, ".grok", "AGENTS.md")));
+        Assert.Contains(
+            console.Steps,
+            message => message.Contains("no documented user-global AGENTS.md", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AgentGuidance_UsesTaskSpecificRoutingAndStatesVerificationLimits()
+    {
+        AssertProperAgentGuidance(FuseAgentGuidance.RuleBody);
+        AssertProperAgentGuidance(FuseAgentGuidance.ServerInstructions);
+        Assert.Contains("fuse_workspace action=apply", FuseAgentGuidance.ServerInstructions);
+        Assert.Contains("does not apply a multi-file patch", FuseAgentGuidance.ServerInstructions);
+    }
+
+    [Fact]
     public void Install_DoesNotRequireCommandOption()
     {
         // Regression: the optional --command option was inferred as required by the command framework, so
@@ -507,6 +756,41 @@ public sealed class McpInstallTests
         Assert.DoesNotContain(
             result.ParseResult.Errors,
             error => error.Message.Contains("command", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("opencode")]
+    [InlineData("kilo")]
+    [InlineData("codex")]
+    [InlineData("grok")]
+    public void Install_AcceptsNewClientNames(string client)
+    {
+        var parsed = InstallCommand.TryParseClient(client, out var clients);
+
+        Assert.True(parsed);
+        Assert.Single(clients);
+    }
+
+    [Fact]
+    public void Install_AllIncludesEverySupportedClient()
+    {
+        var parsed = InstallCommand.TryParseClient("all", out var clients);
+
+        Assert.True(parsed);
+        Assert.Equal(Enum.GetValues<McpInstallClient>(), clients);
+    }
+
+    private static void AssertProperAgentGuidance(string content)
+    {
+        Assert.Contains("For a pull request or branch review with a Git base, start with `fuse_review`", content);
+        Assert.Contains("`fuse_find kind=task`", content);
+        Assert.Contains("`fuse_find kind=symbol|path|text`", content);
+        Assert.Contains("It cannot verify a coordinated multi-file overlay", content);
+        Assert.Contains("does not replace required build, test, format, or lint commands", content);
+        Assert.Contains("An `upgrade_pending` syntax index remains usable", content);
+        Assert.DoesNotContain("Start with `fuse_workspace`", content);
+        Assert.DoesNotContain("an `index_state:` other than `ready`", content);
+        Assert.DoesNotContain("Use built-in grep and file reads for exact string or symbol lookups", content);
     }
 
     private static string CreateTempDirectory()
@@ -520,6 +804,8 @@ public sealed class McpInstallTests
     {
         public List<string> Errors { get; } = [];
 
+        public List<string> Steps { get; } = [];
+
         public void WriteSuccess(string message)
         {
         }
@@ -528,6 +814,7 @@ public sealed class McpInstallTests
 
         public void WriteStep(string message)
         {
+            Steps.Add(message);
         }
 
         public void WriteResult(string message)

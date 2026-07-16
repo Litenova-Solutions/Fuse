@@ -13,6 +13,8 @@ The repository CHANGELOG.md file documents every notable change by version, incl
 
 ## Most Recent Notable Changes
 
+**4.3.0** (2026-07-16): Workspace-scoped MCP operations now resolve to the nearest Git repository root, refuse folders outside a repository, and validate warm indexes against a complete inventory before serving reads. The release also separates Fuse executable installation from MCP registration, generated agent guidance, and Claude Code hooks.
+
 **4.2.1** (2026-07-16): `fuse mcp install` adds native project and user configuration for OpenCode, Kilo Code, Codex, and Grok Build, bringing the supported client set to seven. `--rules` now installs task-specific guidance from the same source as the MCP server instructions, writes rules only after successful registration, and describes the boundaries of checks, refactors, focused tests, and reviews. The README and documentation site now lead with persistent .NET discovery and compiler verification, with a new supporting article and refreshed social cards.
 
 **4.2.0** (2026-07-14): MCP serving defaults to one shared daemon per repository with eager warm-on-start indexing, live incremental updates, and a bounded syntax-first cold path. Repeated compiler operations can reuse a held Roslyn solution or pooled build-capture worker. The release also adds the semantic-language provider seam, focused index-store components, one shared scoping model, a unified API-surface reference, and explicit degraded-state reporting. Existing indexes rebuild when the new extraction contract requires it; older capture bundles must be re-captured.

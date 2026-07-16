@@ -4,6 +4,8 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-07-16
+
 ### Added
 
 - Every MCP tool except `fuse_reduce` now exposes `workspace_identity_unresolved:` when the requested folder is not inside a Git repository. `fuse_reduce` remains available because it does not use the workspace index.

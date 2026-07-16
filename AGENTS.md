@@ -168,3 +168,20 @@ Use regular comments for non-obvious `private` or `internal` logic: heuristics, 
 | Options and DTO records | Summary when the name alone is ambiguous | Rarely needed |
 
 Full contribution workflow: [fuse.codes/docs/project/contributing](https://fuse.codes/docs/project/contributing). Pipeline context: [fuse.codes/docs/internals/pipeline](https://fuse.codes/docs/internals/pipeline). Documentation source lives in `site/content/docs`.
+
+<!-- fuse:begin (managed by `fuse mcp install --rules`; edit outside these markers) -->
+## Fuse usage
+
+Use Fuse in .NET repositories when a task needs cross-file context, framework wiring, change impact, or compiler-backed checking. Use native file reads and search for a known file, an exact literal in a small scope, and non-.NET semantic work.
+
+- For a pull request or branch review with a Git base, start with `fuse_review`.
+- For a named service, request, route, or config section, use the matching `fuse_find` kind, then use `fuse_context` for source bodies.
+- For an open-ended task in a large or unfamiliar repository, use `fuse_find kind=task`. Use `fuse_workspace action=map` only when you need repository orientation.
+- For exact symbol identity, paths, or indexed text, use `fuse_find kind=symbol|path|text`. Use `kind=signatures|neighbors` for signatures and relationships.
+- Before changing a signature, call `fuse_impact`.
+- Before writing a standalone single-file edit, call `fuse_check` with the complete proposed content. It cannot verify a coordinated multi-file overlay.
+- Use `fuse_refactor` for its supported solution-wide operations. Review and apply the returned diff with normal editing tools, then run the repository's required gates.
+- Use `fuse_test` for focused covering tests. Its selection is a lower bound and does not replace required build, test, format, or lint commands.
+- Use `fuse_review` before handoff to inspect scope and impact. Do not treat it as compiler or test proof.
+- Respect verification grades and abstentions. When the index is unavailable, use native search and retry. An `upgrade_pending` syntax index remains usable.
+<!-- fuse:end -->

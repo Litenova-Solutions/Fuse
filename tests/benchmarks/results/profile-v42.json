@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "fuseVersion": "4.2.0",
+  "fuseVersion": "4.2.1",
   "suite": "profile-v42",
   "description": "R8 index hot-path profile: warm localize, symbol lookup, review planning, and single-file reconcile.",
   "generated": "2026-07-14T12:35:26.5839112Z",

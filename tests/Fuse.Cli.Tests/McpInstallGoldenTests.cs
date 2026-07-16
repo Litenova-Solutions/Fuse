@@ -36,7 +36,7 @@ public sealed class McpInstallGoldenTests
         var fuse = document.RootElement.GetProperty(serversProperty).GetProperty("fuse");
 
         Assert.Equal("fuse", fuse.GetProperty("command").GetString());
-        Assert.Equal(["mcp", "serve"], fuse.GetProperty("args").EnumerateArray().Select(e => e.GetString()).ToArray());
+        Assert.Equal(["mcp", "serve"], fuse.GetProperty("args").EnumerateArray().Select(e => e.GetString()!).ToArray());
         Assert.False(fuse.TryGetProperty("env", out _));
         Assert.DoesNotContain("\"env\"", golden, StringComparison.Ordinal);
     }
@@ -62,8 +62,58 @@ public sealed class McpInstallGoldenTests
 
         Assert.Equal("fuse", fuse.GetProperty("command").GetString());
         Assert.Equal("stdio", fuse.GetProperty("type").GetString());
-        Assert.Equal(["mcp", "serve"], fuse.GetProperty("args").EnumerateArray().Select(e => e.GetString()).ToArray());
+        Assert.Equal(["mcp", "serve"], fuse.GetProperty("args").EnumerateArray().Select(e => e.GetString()!).ToArray());
         Assert.False(fuse.TryGetProperty("env", out _));
+    }
+
+    [Theory]
+    [InlineData(McpInstallClient.OpenCode)]
+    [InlineData(McpInstallClient.Kilo)]
+    public async Task InstallAsync_CommandArrayConfigHasNoEnvBlock(McpInstallClient client)
+    {
+        var root = CreateTempDirectory();
+        await new McpInstallService().InstallAsync(
+            [client],
+            McpInstallScope.Project,
+            root,
+            "fuse",
+            writeRules: false,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        var path = McpInstallService.GetConfigPath(client, McpInstallScope.Project, root);
+        var golden = await File.ReadAllTextAsync(path);
+        using var document = JsonDocument.Parse(golden);
+        var fuse = document.RootElement.GetProperty("mcp").GetProperty("fuse");
+
+        Assert.Equal(
+            ["fuse", "mcp", "serve"],
+            fuse.GetProperty("command").EnumerateArray().Select(item => item.GetString()!).ToArray());
+        Assert.False(fuse.TryGetProperty("env", out _));
+    }
+
+    [Theory]
+    [InlineData(McpInstallClient.Codex)]
+    [InlineData(McpInstallClient.Grok)]
+    public async Task InstallAsync_TomlConfigHasNoEnvBlock(McpInstallClient client)
+    {
+        var root = CreateTempDirectory();
+        await new McpInstallService().InstallAsync(
+            [client],
+            McpInstallScope.Project,
+            root,
+            "fuse",
+            writeRules: false,
+            new RecordingConsoleUI(),
+            CancellationToken.None);
+
+        var path = McpInstallService.GetConfigPath(client, McpInstallScope.Project, root);
+        var golden = await File.ReadAllTextAsync(path);
+
+        Assert.Contains("[mcp_servers.fuse]", golden);
+        Assert.Contains("command = \"fuse\"", golden);
+        Assert.Contains("args = [\"mcp\", \"serve\"]", golden);
+        Assert.DoesNotContain("env", golden, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string CreateTempDirectory()

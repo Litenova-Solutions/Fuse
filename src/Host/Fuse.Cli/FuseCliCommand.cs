@@ -38,8 +38,8 @@ public class FuseCliCommand
 
             Install and connect:
               dotnet tool install -g Fuse                 Install the global tool.
-              fuse mcp install --client cursor --rules    Connect Cursor for this project.
-              fuse mcp install --client all --rules       Connect all supported agents.
+              fuse mcp install --client codex --rules     Connect Codex for this project.
+              fuse mcp install --client all --rules       Connect all supported clients.
 
             Agent outcomes:
               fuse_check       Typecheck a proposed edit: oracle, local build, or abstain.

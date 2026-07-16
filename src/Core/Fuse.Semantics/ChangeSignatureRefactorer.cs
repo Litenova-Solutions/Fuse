@@ -1,4 +1,3 @@
-using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -25,8 +24,6 @@ namespace Fuse.Semantics;
 /// </remarks>
 public sealed class ChangeSignatureRefactorer
 {
-    private static readonly object LocatorGate = new();
-
     private readonly WarmSolutionCache _cache;
 
     /// <summary>
@@ -80,14 +77,8 @@ public sealed class ChangeSignatureRefactorer
     private async Task<(Solution? Solution, string? Reason)> LoadSolutionAsync(
         string solutionOrProjectPath, CancellationToken cancellationToken)
     {
-        lock (LocatorGate)
-        {
-            if (!MSBuildLocator.IsRegistered)
-            {
-                try { MSBuildLocator.RegisterDefaults(); }
-                catch (Exception ex) { return (null, $"no MSBuild/SDK found ({ex.Message}); cannot change the signature"); }
-            }
-        }
+        try { MsBuildLocatorRegistration.EnsureRegistered(); }
+        catch (Exception ex) { return (null, $"no MSBuild/SDK found ({ex.Message}); cannot change the signature"); }
 
         CachedSolution loaded;
         try

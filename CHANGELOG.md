@@ -4,6 +4,20 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+## [4.2.1] - 2026-07-16
+
+### Added
+
+- `fuse mcp install` now writes native project and user configuration for OpenCode, Kilo Code, Codex, and Grok Build, alongside Claude Code, Cursor, and GitHub Copilot. OpenCode and Kilo Code use their `mcp` JSON command-array shape; Codex and Grok Build use `mcp_servers.fuse` TOML tables. The installer also writes documented `AGENTS.md` locations when `--rules` is set.
+- The documentation site adds a persistent .NET discovery article and new social cards for the project overview and benchmark results.
+
+### Changed
+
+- `fuse mcp install --rules` now writes task-specific Fuse guidance instead of telling every agent to start with `fuse_workspace action=map`. The rules route Git reviews to `fuse_review`, exact indexed lookup to `fuse_find`, open-ended work to `fuse_find kind=task`, and state the single-file boundary of `fuse_check`, the staged multi-file behavior of `fuse_refactor`, the limits of focused tests and review, and the usable `upgrade_pending` index state. MCP server instructions and generated client rules now share one source.
+- Installer rules are written only for clients whose MCP registration succeeded. A failed Claude Code user registration no longer writes a global rule or project `.gitignore` entry.
+- Built-in MCP playbooks no longer describe `fuse_review` as regression proof or direct agents to apply a multi-file refactor through the single-file `fuse_workspace action=apply` operation.
+- The README, landing page, getting-started guides, product overview, roadmap, and announcement article now describe Fuse as a persistent .NET discovery and compiler-verification layer for coding agents. Project status badges and refreshed blog-card metadata make the current release and supporting evidence easier to locate.
+
 ## [4.2.0] - 2026-07-14
 
 ### Changed

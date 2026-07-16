@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Fuse.Cli;
 using Fuse.Cli.Configuration.McpInstall;
+using Fuse.Cli.Mcp;
 using Fuse.Cli.Serialization;
 
 namespace Fuse.Cli.Services;
@@ -31,9 +32,8 @@ public sealed class McpInstallService
     /// <param name="projectDirectory">The project root for project scope; defaults to the current directory.</param>
     /// <param name="fuseCommand">The executable the client should launch; defaults to the running binary or <c>fuse</c>.</param>
     /// <param name="writeRules">
-    ///     When <see langword="true" />, also writes a rule biasing the agent toward the <c>fuse_*</c> tools into
-    ///     each client's instruction file. Rule files are project-scoped; under user scope only Claude has a
-    ///     global equivalent and the others are skipped with a note. At project scope, also appends
+    ///     When <see langword="true" />, also writes task-routing guidance for the <c>fuse_*</c> tools into each
+    ///     configured client's instruction file when that client has a documented file. At project scope, also appends
     ///     <c>.fuse/</c> to <c>.gitignore</c> when no equivalent entry exists.
     /// </param>
     /// <param name="consoleUI">The console UI for status output.</param>
@@ -58,7 +58,7 @@ public sealed class McpInstallService
             ? Directory.GetCurrentDirectory()
             : Path.GetFullPath(projectDirectory);
 
-        var configured = 0;
+        var configuredClients = new List<McpInstallClient>(clients.Count);
         foreach (var client in clients)
         {
             var success = client switch
@@ -68,19 +68,23 @@ public sealed class McpInstallService
                     : WriteClaudeProjectConfig(projectRoot, command, consoleUI),
                 McpInstallClient.Cursor => WriteCursorConfig(scope, projectRoot, command, consoleUI),
                 McpInstallClient.Copilot => WriteCopilotConfig(scope, projectRoot, command, consoleUI),
+                McpInstallClient.OpenCode => WriteLocalArrayConfig(client, scope, projectRoot, command, consoleUI),
+                McpInstallClient.Kilo => WriteLocalArrayConfig(client, scope, projectRoot, command, consoleUI),
+                McpInstallClient.Codex => WriteTomlConfig(client, scope, projectRoot, command, consoleUI),
+                McpInstallClient.Grok => WriteTomlConfig(client, scope, projectRoot, command, consoleUI),
                 _ => false,
             };
 
             if (success)
-                configured++;
+                configuredClients.Add(client);
         }
 
         if (writeRules)
         {
-            foreach (var client in clients)
+            foreach (var client in configuredClients)
                 WriteClientRule(client, scope, projectRoot, consoleUI);
 
-            if (scope == McpInstallScope.Project)
+            if (scope == McpInstallScope.Project && configuredClients.Count > 0)
             {
                 GitIgnoreHelper.TryEnsureFuseEntry(
                     projectRoot,
@@ -89,7 +93,7 @@ public sealed class McpInstallService
             }
         }
 
-        return configured;
+        return configuredClients.Count;
     }
 
     /// <summary>
@@ -120,7 +124,7 @@ public sealed class McpInstallService
 
         command = fuseCommand.Trim();
 
-        if (command.AsSpan().ContainsAny("\r\n\0".AsSpan()))
+        if (command.Any(char.IsControl))
         {
             errorMessage = "Invalid --command: control characters and newlines are not allowed.";
             return false;
@@ -177,6 +181,42 @@ public sealed class McpInstallService
         config.Servers[ServerName] = CreateCopilotServer(fuseCommand);
         WriteCopilotConfigFile(path, config);
         consoleUI.WriteSuccess($"Registered Fuse with GitHub Copilot ({DescribeScope(scope)}): {path}");
+        return true;
+    }
+
+    private static bool WriteLocalArrayConfig(
+        McpInstallClient client,
+        McpInstallScope scope,
+        string projectRoot,
+        string fuseCommand,
+        IConsoleUI consoleUI)
+    {
+        var path = GetConfigPath(client, scope, projectRoot);
+        var config = LoadOrCreateLocalArrayConfig(path);
+        config.Mcp ??= new Dictionary<string, JsonElement>();
+        config.Mcp[ServerName] = JsonSerializer.SerializeToElement(
+            new LocalArrayMcpServer
+            {
+                Command = [fuseCommand, .. ServeArguments],
+            },
+            FuseCliJsonContext.Default.LocalArrayMcpServer);
+        WriteJson(path, JsonSerializer.Serialize(config, FuseCliJsonContext.Default.LocalArrayMcpConfig));
+        consoleUI.WriteSuccess(
+            $"Registered Fuse with {DescribeClient(client)} ({DescribeScope(scope)}): {path}");
+        return true;
+    }
+
+    private static bool WriteTomlConfig(
+        McpInstallClient client,
+        McpInstallScope scope,
+        string projectRoot,
+        string fuseCommand,
+        IConsoleUI consoleUI)
+    {
+        var path = GetConfigPath(client, scope, projectRoot);
+        UpsertTomlServer(path, fuseCommand);
+        consoleUI.WriteSuccess(
+            $"Registered Fuse with {DescribeClient(client)} ({DescribeScope(scope)}): {path}");
         return true;
     }
 
@@ -268,6 +308,16 @@ public sealed class McpInstallService
         return JsonSerializer.Deserialize(json, FuseCliJsonContext.Default.CopilotMcpConfig) ?? new CopilotMcpConfig();
     }
 
+    private static LocalArrayMcpConfig LoadOrCreateLocalArrayConfig(string path)
+    {
+        if (!File.Exists(path))
+            return new LocalArrayMcpConfig();
+
+        var json = File.ReadAllText(path);
+        return JsonSerializer.Deserialize(json, FuseCliJsonContext.Default.LocalArrayMcpConfig)
+               ?? new LocalArrayMcpConfig();
+    }
+
     private static void WriteClaudeConfig(string path, ClaudeMcpConfig config) =>
         WriteJson(path, JsonSerializer.Serialize(config, FuseCliJsonContext.Default.ClaudeMcpConfig));
 
@@ -282,6 +332,84 @@ public sealed class McpInstallService
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, json + Environment.NewLine);
     }
+
+    private const string TomlBeginMarker = "# fuse:begin (managed by fuse mcp install)";
+    private const string TomlEndMarker = "# fuse:end";
+
+    private static void UpsertTomlServer(string path, string fuseCommand)
+    {
+        var block = string.Join(
+            "\n",
+            TomlBeginMarker,
+            "[mcp_servers.fuse]",
+            $"command = \"{EscapeTomlBasicString(fuseCommand)}\"",
+            "args = [\"mcp\", \"serve\"]",
+            TomlEndMarker);
+
+        var existing = File.Exists(path)
+            ? File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal)
+            : string.Empty;
+        string content;
+
+        var managedBegin = existing.IndexOf(TomlBeginMarker, StringComparison.Ordinal);
+        var managedEnd = existing.IndexOf(TomlEndMarker, StringComparison.Ordinal);
+        if (managedBegin >= 0 && managedEnd > managedBegin)
+        {
+            content = existing[..managedBegin] + block + existing[(managedEnd + TomlEndMarker.Length)..];
+        }
+        else
+        {
+            var lines = existing.Split('\n').ToList();
+            var tableStart = lines.FindIndex(IsFuseTomlRootHeader);
+            if (tableStart >= 0)
+            {
+                var tableEnd = tableStart + 1;
+                while (tableEnd < lines.Count)
+                {
+                    if (IsTomlTableHeader(lines[tableEnd]) && !IsFuseTomlNestedHeader(lines[tableEnd]))
+                        break;
+
+                    tableEnd++;
+                }
+
+                lines.RemoveRange(tableStart, tableEnd - tableStart);
+                lines.Insert(tableStart, block);
+                content = string.Join("\n", lines);
+            }
+            else
+            {
+                var trimmed = existing.TrimEnd('\n');
+                content = trimmed.Length == 0 ? block : trimmed + "\n\n" + block;
+            }
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content.TrimEnd('\n') + "\n");
+    }
+
+    private static bool IsFuseTomlRootHeader(string line)
+    {
+        var header = line.Trim();
+        return header is "[mcp_servers.fuse]" or "[mcp_servers.\"fuse\"]";
+    }
+
+    private static bool IsFuseTomlNestedHeader(string line)
+    {
+        var header = line.Trim();
+        return header.StartsWith("[mcp_servers.fuse.", StringComparison.Ordinal)
+               || header.StartsWith("[mcp_servers.\"fuse\".", StringComparison.Ordinal);
+    }
+
+    private static bool IsTomlTableHeader(string line)
+    {
+        var value = line.Trim();
+        return value.StartsWith("[", StringComparison.Ordinal) && value.EndsWith("]", StringComparison.Ordinal);
+    }
+
+    private static string EscapeTomlBasicString(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("\"", "\\\"", StringComparison.Ordinal)
+        .Replace("\t", "\\t", StringComparison.Ordinal);
 
     private static ClaudeMcpServer CreateClaudeServer(string fuseCommand) =>
         new()
@@ -327,6 +455,10 @@ public sealed class McpInstallService
                 McpInstallClient.Cursor => Path.Combine(userRoot, ".cursor", "mcp.json"),
                 // VS Code reads user-level MCP config from the profile directory, not ~/.vscode.
                 McpInstallClient.Copilot => Path.Combine(GetVsCodeUserConfigDirectory(), "mcp.json"),
+                McpInstallClient.OpenCode => GetOpenCodeConfigPath(scope, projectRoot),
+                McpInstallClient.Kilo => GetKiloConfigPath(scope, projectRoot),
+                McpInstallClient.Codex => Path.Combine(GetClientHomeDirectory("CODEX_HOME", ".codex"), "config.toml"),
+                McpInstallClient.Grok => Path.Combine(GetClientHomeDirectory("GROK_HOME", ".grok"), "config.toml"),
                 _ => throw new ArgumentOutOfRangeException(nameof(client), client, null),
             };
         }
@@ -336,6 +468,10 @@ public sealed class McpInstallService
             McpInstallClient.Claude => Path.Combine(projectRoot, ".mcp.json"),
             McpInstallClient.Cursor => Path.Combine(projectRoot, ".cursor", "mcp.json"),
             McpInstallClient.Copilot => Path.Combine(projectRoot, ".vscode", "mcp.json"),
+            McpInstallClient.OpenCode => GetOpenCodeConfigPath(scope, projectRoot),
+            McpInstallClient.Kilo => GetKiloConfigPath(scope, projectRoot),
+            McpInstallClient.Codex => Path.Combine(projectRoot, ".codex", "config.toml"),
+            McpInstallClient.Grok => Path.Combine(projectRoot, ".grok", "config.toml"),
             _ => throw new ArgumentOutOfRangeException(nameof(client), client, null),
         };
     }
@@ -343,32 +479,64 @@ public sealed class McpInstallService
     private static string DescribeScope(McpInstallScope scope) =>
         scope == McpInstallScope.User ? "user scope, all projects" : "project";
 
-    // Idempotency markers for the managed rule block in freeform instruction files (CLAUDE.md, copilot-
-    // instructions.md). A re-run replaces the region between them; a future remove can excise it cleanly.
+    private static string GetOpenCodeConfigPath(McpInstallScope scope, string projectRoot)
+    {
+        var directory = scope == McpInstallScope.User
+            ? Path.Combine(GetConfigHomeDirectory(), "opencode")
+            : projectRoot;
+        return FirstExistingPath(
+            Path.Combine(directory, "opencode.json"),
+            Path.Combine(directory, "opencode.jsonc"));
+    }
+
+    private static string GetKiloConfigPath(McpInstallScope scope, string projectRoot)
+    {
+        if (scope == McpInstallScope.User)
+        {
+            var directory = Path.Combine(GetConfigHomeDirectory(), "kilo");
+            return FirstExistingPath(
+                Path.Combine(directory, "kilo.jsonc"),
+                Path.Combine(directory, "kilo.json"),
+                Path.Combine(directory, "config.json"));
+        }
+
+        return FirstExistingPath(
+            Path.Combine(projectRoot, ".kilo", "kilo.jsonc"),
+            Path.Combine(projectRoot, ".kilo", "kilo.json"),
+            Path.Combine(projectRoot, "kilo.jsonc"),
+            Path.Combine(projectRoot, "kilo.json"));
+    }
+
+    private static string FirstExistingPath(string defaultPath, params string[] alternatives)
+    {
+        if (File.Exists(defaultPath))
+            return defaultPath;
+
+        return alternatives.FirstOrDefault(File.Exists) ?? defaultPath;
+    }
+
+    private static string DescribeClient(McpInstallClient client) => client switch
+    {
+        McpInstallClient.Claude => "Claude Code",
+        McpInstallClient.Cursor => "Cursor",
+        McpInstallClient.Copilot => "GitHub Copilot",
+        McpInstallClient.OpenCode => "OpenCode",
+        McpInstallClient.Kilo => "Kilo Code",
+        McpInstallClient.Codex => "Codex",
+        McpInstallClient.Grok => "Grok Build",
+        _ => client.ToString(),
+    };
+
+    // Idempotency markers for the managed rule block in freeform instruction files. A re-run replaces the region
+    // between them; a future remove can excise it cleanly.
     private const string RuleBeginMarker = "<!-- fuse:begin (managed by `fuse mcp install --rules`; edit outside these markers) -->";
     private const string RuleEndMarker = "<!-- fuse:end -->";
-
-    // Deliberately conservative: Fuse for surveying and context-gathering, grep for exact lookups. A blanket
-    // "always prefer Fuse" would be wrong in non-.NET repos where the regex tier is weaker than native search.
-    private static readonly string RuleBody = string.Join(
-        "\n",
-        "## Fuse: codebase context",
-        "",
-        "This repo has the Fuse MCP server. For gathering codebase context and verifying edits, prefer the `fuse_*` tools over reading files one by one or grepping broadly:",
-        "",
-        "- Start with `fuse_workspace` (action=map) to survey structure, symbols, routes, and counts.",
-        "- Use `fuse_find` with kind=task to find where a feature lives, or kind=service|request|route|config to resolve wiring; then `fuse_context` to read the selected seeds.",
-        "- Use `fuse_review` to scope a pull request or diff review.",
-        "- The verified-edit loop: after an edit run `fuse_check`; before a signature change run `fuse_impact`; before done run `fuse_review`.",
-        "- If Fuse reports the index is warming or rebuilding (`index_rebuilding:`, `index_busy:`, or an `index_state:` other than `ready`), use your native search for that step and retry the `fuse_*` tool once it reports ready. Fuse is at its best on a warm index.",
-        "",
-        "Use built-in grep and file reads for exact string or symbol lookups, where they are the better tool.");
 
     /// <summary>
     ///     Writes the Fuse usage rule into the given client's instruction file, scope permitting.
     /// </summary>
     /// <param name="client">The MCP client whose instruction file to update.</param>
-    /// <param name="scope">Project scope writes repo files; user scope writes only Claude's global memory.</param>
+    /// <param name="scope">Project scope writes repository files; user scope writes documented global instruction files.</param>
     /// <param name="projectRoot">The project root for project-scoped rule files.</param>
     /// <param name="consoleUI">The console UI for status output.</param>
     /// <returns><see langword="true" /> when a rule file was written; <see langword="false" /> when skipped.</returns>
@@ -384,7 +552,7 @@ public sealed class McpInstallService
                 var claudePath = scope == McpInstallScope.User
                     ? Path.Combine(GetUserProfileDirectory(), ".claude", "CLAUDE.md")
                     : Path.Combine(projectRoot, "CLAUDE.md");
-                UpsertMarkedBlock(claudePath, RuleBody);
+                UpsertMarkedBlock(claudePath, FuseAgentGuidance.RuleBody);
                 consoleUI.WriteSuccess($"Wrote Fuse rule for Claude Code: {claudePath}");
                 return true;
 
@@ -408,13 +576,54 @@ public sealed class McpInstallService
                 }
 
                 var copilotPath = Path.Combine(projectRoot, ".github", "copilot-instructions.md");
-                UpsertMarkedBlock(copilotPath, RuleBody);
+                UpsertMarkedBlock(copilotPath, FuseAgentGuidance.RuleBody);
                 consoleUI.WriteSuccess($"Wrote Fuse rule for GitHub Copilot: {copilotPath}");
                 return true;
+
+            case McpInstallClient.OpenCode:
+                return WriteAgentsRule(
+                    client,
+                    scope == McpInstallScope.User
+                        ? Path.Combine(GetConfigHomeDirectory(), "opencode", "AGENTS.md")
+                        : Path.Combine(projectRoot, "AGENTS.md"),
+                    consoleUI);
+
+            case McpInstallClient.Kilo:
+                return WriteAgentsRule(
+                    client,
+                    scope == McpInstallScope.User
+                        ? Path.Combine(GetConfigHomeDirectory(), "kilo", "AGENTS.md")
+                        : Path.Combine(projectRoot, "AGENTS.md"),
+                    consoleUI);
+
+            case McpInstallClient.Codex:
+                return WriteAgentsRule(
+                    client,
+                    scope == McpInstallScope.User
+                        ? Path.Combine(GetClientHomeDirectory("CODEX_HOME", ".codex"), "AGENTS.md")
+                        : Path.Combine(projectRoot, "AGENTS.md"),
+                    consoleUI);
+
+            case McpInstallClient.Grok:
+                if (scope == McpInstallScope.User)
+                {
+                    consoleUI.WriteStep(
+                        "Grok Build has no documented user-global AGENTS.md file; skipped the rule. Use project scope for the Grok Build rule.");
+                    return false;
+                }
+
+                return WriteAgentsRule(client, Path.Combine(projectRoot, "AGENTS.md"), consoleUI);
 
             default:
                 return false;
         }
+    }
+
+    private static bool WriteAgentsRule(McpInstallClient client, string path, IConsoleUI consoleUI)
+    {
+        UpsertMarkedBlock(path, FuseAgentGuidance.RuleBody);
+        consoleUI.WriteSuccess($"Wrote Fuse rule for {DescribeClient(client)}: {path}");
+        return true;
     }
 
     /// <summary>
@@ -467,7 +676,7 @@ public sealed class McpInstallService
             "alwaysApply: true",
             "---",
             "",
-            RuleBody) + "\n";
+            FuseAgentGuidance.RuleBody) + "\n";
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, content);
@@ -484,6 +693,30 @@ public sealed class McpInstallService
             return Path.GetFullPath(overridePath);
 
         return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    }
+
+    private static string GetConfigHomeDirectory()
+    {
+        var profileOverride = Environment.GetEnvironmentVariable(UserProfileOverrideEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(profileOverride))
+            return Path.Combine(Path.GetFullPath(profileOverride), ".config");
+
+        var xdgConfig = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+        return string.IsNullOrWhiteSpace(xdgConfig)
+            ? Path.Combine(GetUserProfileDirectory(), ".config")
+            : Path.GetFullPath(xdgConfig);
+    }
+
+    private static string GetClientHomeDirectory(string environmentVariable, string defaultDirectory)
+    {
+        var profileOverride = Environment.GetEnvironmentVariable(UserProfileOverrideEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(profileOverride))
+            return Path.Combine(Path.GetFullPath(profileOverride), defaultDirectory);
+
+        var configuredHome = Environment.GetEnvironmentVariable(environmentVariable);
+        return string.IsNullOrWhiteSpace(configuredHome)
+            ? Path.Combine(GetUserProfileDirectory(), defaultDirectory)
+            : Path.GetFullPath(configuredHome);
     }
 
     /// <summary>

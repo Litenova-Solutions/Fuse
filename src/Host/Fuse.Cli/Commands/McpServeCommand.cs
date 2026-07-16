@@ -76,31 +76,7 @@ public sealed class McpServeCommand
                         ?? typeof(McpServeCommand).Assembly.GetName().Version?.ToString(3)
                         ?? "0.0.0"
                 };
-                options.ServerInstructions =
-                    "Fuse connects AI coding agents to the local .NET compiler and typed .NET wiring graph. " +
-                    "It verifies proposed edits, computes change impact, runs covering tests, and stages " +
-                    "compiler-verified refactors. Persistent indexed context supports these outcomes.\n\n" +
-                    "THE LOOP: after an edit, fuse_check; before a signature change, fuse_impact; before done, fuse_review.\n\n" +
-                    "VERIFICATION: fuse_check tries oracle-grade compiler state first. Without oracle state, it runs " +
-                    "a scoped local dotnet build and returns build grade. It abstains only when neither path can run. " +
-                    "The default server is store-backed and delegates resident-grade checks to a shared fuse host " +
-                    "daemon per repository (set FUSE_DAEMON=0 to serve in-process). FUSE_RESIDENT=1 enables an " +
-                    "opt-in in-process warm compilation path when the daemon is off; do not assume that speed on " +
-                    "the default path.\n\n" +
-                    "Use fuse_review for PR/change work when a git base exists.\n" +
-                    "Use fuse_find with kind=service|request|route|config for typed .NET wiring, or kind=task for an open-ended task.\n" +
-                    "Use fuse_context only after fuse_find unless the user asks for one-shot context.\n" +
-                    "Use fuse_find with kind=symbol|path|text for exact lookup.\n\n" +
-                    "TOOLS:\n" +
-                    "- fuse_check: Typecheck a proposed single-file edit without writing it; oracle, then scoped local build, then abstain.\n" +
-                    "- fuse_impact: Compute callers, implementers, referencers, and package-upgrade breaks before editing.\n" +
-                    "- fuse_test: Run the covering tests for a symbol at build grade, scoped by filter.\n" +
-                    "- fuse_review: Pack a diff's semantic impact and relevant context.\n" +
-                    "- fuse_refactor: Stage compiler-executed, verify-gated refactors as diffs.\n" +
-                    "- fuse_find: Find exact symbols and paths, typed wiring, signatures, neighbors, or task candidates. No bodies.\n" +
-                    "- fuse_context: Emit scoped, reduced source with provenance for selected seeds.\n" +
-                    "- fuse_workspace: Report status or manage the persistent index; apply is the only tree-write action and is dry-run unless write=true.\n" +
-                    "- fuse_reduce: Compact known files or raw content.";
+                options.ServerInstructions = FuseAgentGuidance.ServerInstructions;
             });
 
         // F-017: opt-in System.Diagnostics.Metrics for tool duration, index mode, and reconcile-stamped events.

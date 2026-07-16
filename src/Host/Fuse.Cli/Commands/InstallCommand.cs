@@ -4,11 +4,11 @@ using Fuse.Cli.Services;
 namespace Fuse.Cli.Commands;
 
 /// <summary>
-///     Registers Fuse as an MCP server with MCP clients (Cursor, Claude Code, and Copilot via the installer; others via manual config).
+///     Registers Fuse as an MCP server with supported AI coding clients.
 /// </summary>
 [CliCommand(
     Name = "install",
-    Description = "Register Fuse with MCP clients (Cursor, Claude Code, Copilot, and others).",
+    Description = "Register Fuse with supported MCP coding clients.",
     Parent = typeof(McpCommand))]
 public sealed class InstallCommand
 {
@@ -38,9 +38,9 @@ public sealed class InstallCommand
     }
 
     /// <summary>
-    ///     Gets or sets the AI client to configure: <c>claude</c>, <c>cursor</c>, <c>copilot</c>, or <c>all</c>.
+    ///     Gets or sets the AI client to configure, or <c>all</c> for every supported client.
     /// </summary>
-    [CliOption(Description = "AI client to configure: claude, cursor, copilot, or all (default: all).")]
+    [CliOption(Description = "AI client: claude, cursor, copilot, opencode, kilo, codex, grok, or all (default: all).")]
     public string Client { get; set; } = "all";
 
     /// <summary>
@@ -57,11 +57,10 @@ public sealed class InstallCommand
 
     /// <summary>
     ///     When set, also writes a short rule biasing the agent toward the <c>fuse_*</c> tools into each client's
-    ///     instruction file (Claude <c>CLAUDE.md</c>, Cursor <c>.cursor/rules/fuse.mdc</c>, Copilot
-    ///     <c>.github/copilot-instructions.md</c>). At project scope, also appends <c>.fuse/</c> to
-    ///     <c>.gitignore</c> when no equivalent entry exists.
+    ///     documented instruction file. At project scope, also appends <c>.fuse/</c> to <c>.gitignore</c> when no
+    ///     equivalent entry exists.
     /// </summary>
-    [CliOption(Required = false, Description = "Also write agent rules (CLAUDE.md, .cursor/rules/fuse.mdc, .github/copilot-instructions.md) and, at project scope, add .fuse/ to .gitignore. Recommended.")]
+    [CliOption(Required = false, Description = "Also write client-specific Fuse usage rules and, at project scope, add .fuse/ to .gitignore. Recommended.")]
     public bool Rules { get; set; }
 
     /// <summary>
@@ -79,15 +78,15 @@ public sealed class InstallCommand
     /// <param name="context">The CLI invocation context.</param>
     /// <returns>A task that completes when registration finishes.</returns>
     /// <remarks>
-    ///     Project scope writes JSON config files in the current directory. User scope writes user-global config
-    ///     files for Cursor and Copilot, and invokes the Claude Code CLI for Claude. The MCP client launches
-    ///     <c>fuse mcp serve</c> as a child process; you do not run it manually.
+    ///     Project scope writes client config files in the current directory. User scope writes each client's
+    ///     documented user config, except Claude Code, which is registered through its CLI. The MCP client launches
+    ///     <c>fuse mcp serve</c> as a child process.
     /// </remarks>
     public async Task RunAsync(CliContext context)
     {
         if (!TryParseClient(Client, out var clients))
         {
-            _consoleUI.WriteError("Unknown client. Use claude, cursor, copilot, or all.");
+            _consoleUI.WriteError("Unknown client. Use claude, cursor, copilot, opencode, kilo, codex, grok, or all.");
             return;
         }
 
@@ -147,14 +146,27 @@ public sealed class InstallCommand
         _consoleUI.WriteStep("Remove them by deleting the two fuse hook entries from that file's \"hooks\" section.");
     }
 
-    private static bool TryParseClient(string value, out IReadOnlyList<McpInstallClient> clients)
+    internal static bool TryParseClient(string value, out IReadOnlyList<McpInstallClient> clients)
     {
         clients = value.Trim().ToLowerInvariant() switch
         {
             "claude" => [McpInstallClient.Claude],
             "cursor" => [McpInstallClient.Cursor],
             "copilot" => [McpInstallClient.Copilot],
-            "all" => [McpInstallClient.Claude, McpInstallClient.Cursor, McpInstallClient.Copilot],
+            "opencode" => [McpInstallClient.OpenCode],
+            "kilo" or "kilocode" or "kilo-code" => [McpInstallClient.Kilo],
+            "codex" => [McpInstallClient.Codex],
+            "grok" or "grokbuild" or "grok-build" => [McpInstallClient.Grok],
+            "all" =>
+            [
+                McpInstallClient.Claude,
+                McpInstallClient.Cursor,
+                McpInstallClient.Copilot,
+                McpInstallClient.OpenCode,
+                McpInstallClient.Kilo,
+                McpInstallClient.Codex,
+                McpInstallClient.Grok,
+            ],
             _ => [],
         };
 

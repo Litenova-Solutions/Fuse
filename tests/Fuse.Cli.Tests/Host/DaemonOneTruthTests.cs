@@ -44,6 +44,7 @@ public sealed class DaemonOneTruthTests
 
         var work = Path.Combine(Path.GetTempPath(), "fuse-onetruth-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
+        Directory.CreateDirectory(Path.Combine(work, ".git"));
         await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
@@ -115,6 +116,7 @@ public sealed class DaemonOneTruthTests
 
         var work = Path.Combine(Path.GetTempPath(), "fuse-index-onetruth-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
+        Directory.CreateDirectory(Path.Combine(work, ".git"));
         await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>

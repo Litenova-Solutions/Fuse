@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Install the local Fuse service, verify version 4.2.1, and remove it cleanly.
+description: Install the local Fuse service, verify version 4.3.0, and remove it cleanly.
 ---
 
 Fuse runs on your machine beside the repository. Indexing, retrieval, reduction,
@@ -22,7 +22,7 @@ Verify it:
 fuse --version
 ```
 
-The current release prints `4.2.1`.
+The current release prints `4.3.0`.
 
 Update later with `fuse update` (see [Staying up to date](#staying-up-to-date)).
 
@@ -152,7 +152,9 @@ Remove MCP entries and rules as described in
 [Connect to your AI](/docs/start/connect-your-ai#rollback), then delete
 `.fuse/` at the repository root. The directory contains derived index data only;
 the next Fuse read recreates it. Outside a Git repository, delete
-`~/.fuse/fuse.db`, or `{FUSE_USER_DATA}/fuse.db` when that variable is set.
+`~/.fuse/roots/{hash}/fuse.db`, or `{FUSE_USER_DATA}/roots/{hash}/fuse.db` when
+that variable is set. These per-directory stores belong to one-shot non-MCP paths;
+workspace-scoped MCP tools refuse folders with no Git identity.
 
 ## Next
 

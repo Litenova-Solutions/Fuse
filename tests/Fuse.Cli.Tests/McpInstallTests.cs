@@ -658,6 +658,86 @@ public sealed class McpInstallTests
     }
 
     [Fact]
+    public async Task InstallAsync_ProjectScope_RefusesFolderWithoutGitIdentity()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fuse-install-no-identity", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var console = new RecordingConsoleUI();
+
+        try
+        {
+            var configured = await new McpInstallService().InstallAsync(
+                [McpInstallClient.Cursor],
+                McpInstallScope.Project,
+                root,
+                "fuse",
+                writeRules: true,
+                console,
+                CancellationToken.None);
+
+            Assert.Equal(0, configured);
+            Assert.Contains(console.Errors, error => error.Contains("Git repository identity", StringComparison.Ordinal));
+            Assert.False(File.Exists(Path.Combine(root, ".cursor", "mcp.json")));
+            Assert.False(File.Exists(Path.Combine(root, "AGENTS.md")));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task InstallAsync_ProjectScope_FromNestedFolderWritesAtRepositoryRoot()
+    {
+        var root = CreateTempDirectory();
+        var nested = Path.Combine(root, "src", "Feature");
+        Directory.CreateDirectory(nested);
+        var console = new RecordingConsoleUI();
+
+        var configured = await new McpInstallService().InstallAsync(
+            [McpInstallClient.Cursor],
+            McpInstallScope.Project,
+            nested,
+            "fuse",
+            writeRules: true,
+            console,
+            CancellationToken.None);
+
+        Assert.Equal(1, configured);
+        Assert.True(File.Exists(Path.Combine(root, ".cursor", "mcp.json")));
+        Assert.True(File.Exists(Path.Combine(root, ".cursor", "rules", "fuse.mdc")));
+        Assert.False(File.Exists(Path.Combine(nested, ".cursor", "mcp.json")));
+        Assert.Contains(console.Steps, step => step.Contains("repository root", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task InstallAsync_UserScope_DoesNotRequireRepositoryIdentity()
+    {
+        using var home = new TempHomeScope();
+        var root = Path.Combine(Path.GetTempPath(), "fuse-install-user-no-identity", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var configured = await new McpInstallService().InstallAsync(
+                [McpInstallClient.Cursor],
+                McpInstallScope.User,
+                root,
+                "fuse",
+                writeRules: false,
+                new RecordingConsoleUI(),
+                CancellationToken.None);
+
+            Assert.Equal(1, configured);
+            Assert.True(File.Exists(Path.Combine(home.Root, ".cursor", "mcp.json")));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task InstallAsync_WriteRules_IsIdempotentAndPreservesSurroundingContent()
     {
         var root = CreateTempDirectory();
@@ -788,6 +868,8 @@ public sealed class McpInstallTests
         Assert.Contains("It cannot verify a coordinated multi-file overlay", content);
         Assert.Contains("does not replace required build, test, format, or lint commands", content);
         Assert.Contains("An `upgrade_pending` syntax index remains usable", content);
+        Assert.Contains("`workspace_identity_unresolved`", content);
+        Assert.Contains("`fuse_reduce` remains available", content);
         Assert.DoesNotContain("Start with `fuse_workspace`", content);
         Assert.DoesNotContain("an `index_state:` other than `ready`", content);
         Assert.DoesNotContain("Use built-in grep and file reads for exact string or symbol lookups", content);
@@ -797,6 +879,7 @@ public sealed class McpInstallTests
     {
         var path = Path.Combine(Path.GetTempPath(), "fuse-install-test", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
+        Directory.CreateDirectory(Path.Combine(path, ".git"));
         return path;
     }
 

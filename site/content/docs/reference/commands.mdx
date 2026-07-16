@@ -9,7 +9,7 @@ This page is for engineers choosing a command and for maintainers who need the e
 
 ## Purpose and scope
 
-The index lives in `.fuse/fuse.db` inside a repository, or under `FUSE_USER_DATA` outside one. Run `fuse index [path]` before one-shot CLI read commands. MCP read tools build the index on first use, except `fuse_workspace action=status` and the `fuse diagnostics` CLI command, which read `index_meta` only and return `not_indexed` without creating a database on a cold workspace. Running `fuse` with no command prints connection and workflow guidance.
+The index lives in `.fuse/fuse.db` inside a repository, or under `FUSE_USER_DATA` for supported one-shot non-Git CLI paths. Run `fuse index [path]` before one-shot CLI read commands. Every MCP tool except `fuse_reduce` resolves a Git repository identity; indexed reads open a validated warm index and build it on first use. Outside Git, workspace-scoped MCP tools return `workspace_identity_unresolved:` without starting a daemon or writing an index. Running `fuse` with no command prints connection and workflow guidance.
 
 ## Operational error prefixes
 
@@ -20,6 +20,7 @@ CLI commands that open the store (`fuse find`, `fuse index`, `fuse diagnostics`)
 | `index_busy:` | Index database locked or busy |
 | `index_not_built:` | No index; run `fuse index` first |
 | `workspace_not_found:` | Workspace directory does not exist |
+| `workspace_identity_unresolved:` | Workspace-scoped MCP path is not inside a Git repository; use native file tools or `fuse_reduce` |
 | `validation_error:` | Invalid or incomplete arguments |
 | `internal_error:` | Unexpected failure |
 
@@ -45,7 +46,7 @@ CLI commands that open the store (`fuse find`, `fuse index`, `fuse diagnostics`)
 | `fuse capture [path]` | Create a portable build-capture bundle | no | no |
 | `fuse verify [path] --ci-parity` | Report or run locally reproducible CI steps | no | no |
 | `fuse init` | Write a configuration file | no | no |
-| `fuse mcp install` | Register Fuse with an MCP client | no | no |
+| `fuse mcp install` | Write MCP client registration for launching `fuse mcp serve`; optional `--rules` and `--with-hooks` write separate artifacts | no | no |
 | `fuse mcp serve` | Run the MCP server | n/a | first-use |
 | `fuse host` | Run the long-lived host service | n/a | yes |
 | `fuse update` | Update the global Fuse tool after stopping a narrow peer set | no | no |
@@ -65,7 +66,7 @@ before updating.
 
 ```text
 fuse update
-fuse update --to-version 4.2.1
+fuse update --to-version 4.3.0
 fuse update --force-kill-peers
 ```
 
@@ -75,7 +76,7 @@ re-handshakes with the new tool surface.
 
 ## fuse index
 
-Build or refresh the persistent semantic index for a workspace. Loads the workspace through MSBuild/Roslyn when possible and falls back to syntax-level indexing otherwise.
+Build or refresh the persistent semantic index for a workspace. A path inside Git resolves to the repository root. The command loads the workspace through MSBuild/Roslyn when possible and falls back to syntax-level indexing otherwise. A normal refresh reconciles the complete inventory and prunes stale files; `--force` first discards all derived tables.
 
 ```text
 fuse index ./src
@@ -181,7 +182,7 @@ Accepts `--path` and `--kind` (`symbol`, `path`, `text`, `all`).
 
 ## fuse diagnostics
 
-Report the index state: schema version, mode, status, record counts, `index_state`, and the store location. Uses the same fast read-only path as `fuse_workspace action=status`: when `.fuse/fuse.db` is absent it reports `not_indexed` without creating the database.
+Report the index state: schema version, mode, status, record counts, `index_state`, and the store location. This command is deliberately read-only: when `.fuse/fuse.db` is absent it reports `not_indexed` without creating the database. In contrast, MCP `fuse_workspace action=status` validates or warms the repository index before reporting status.
 
 ```text
 fuse diagnostics ./src
@@ -213,4 +214,4 @@ fuse reduce --files src/OrderService.cs --level skeleton
 
 ## fuse init, fuse mcp, fuse host
 
-`fuse init` writes a configuration file. `fuse mcp install` registers Fuse with an MCP client and `fuse mcp serve` runs the server (see [Tools reference](/docs/reference/mcp-tools)). `fuse host` runs the long-lived host service.
+`fuse init` writes a configuration file. `fuse mcp install` writes the selected client's MCP registration only. `--rules` also writes `AGENTS.md`, `CLAUDE.md`, or the client's documented instruction file; it does not install a skill. `--with-hooks` writes project-scoped Claude Code hooks and is refused with user scope. `fuse mcp serve` runs the stdio server (see [Connect your coding agent](/docs/start/connect-your-ai)). `fuse host` runs the long-lived repository host and refuses a path with no Git identity.

@@ -4,6 +4,7 @@ using Fuse.Cli;
 using Fuse.Cli.Configuration.McpInstall;
 using Fuse.Cli.Mcp;
 using Fuse.Cli.Serialization;
+using Fuse.Collection.FileSystem;
 
 namespace Fuse.Cli.Services;
 
@@ -29,7 +30,7 @@ public sealed class McpInstallService
     /// </summary>
     /// <param name="clients">The clients to configure.</param>
     /// <param name="scope">Project-local files or user-global registration.</param>
-    /// <param name="projectDirectory">The project root for project scope; defaults to the current directory.</param>
+    /// <param name="projectDirectory">A path inside the project repository; defaults to the current directory.</param>
     /// <param name="fuseCommand">The executable the client should launch; defaults to the running binary or <c>fuse</c>.</param>
     /// <param name="writeRules">
     ///     When <see langword="true" />, also writes task-routing guidance for the <c>fuse_*</c> tools into each
@@ -54,9 +55,28 @@ public sealed class McpInstallService
             return 0;
         }
 
-        var projectRoot = string.IsNullOrWhiteSpace(projectDirectory)
+        var requestedProjectRoot = string.IsNullOrWhiteSpace(projectDirectory)
             ? Directory.GetCurrentDirectory()
             : Path.GetFullPath(projectDirectory);
+        var projectRoot = requestedProjectRoot;
+        if (scope == McpInstallScope.Project)
+        {
+            if (!WorkspaceIdentityResolver.TryResolveRepositoryRoot(requestedProjectRoot, out projectRoot))
+            {
+                consoleUI.WriteError(
+                    $"Project-scope MCP registration requires a Git repository identity. "
+                    + $"'{Path.GetFullPath(requestedProjectRoot)}' is not inside a Git repository; no files were written.");
+                return 0;
+            }
+
+            if (!string.Equals(
+                    Path.TrimEndingDirectorySeparator(Path.GetFullPath(requestedProjectRoot)),
+                    projectRoot,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                consoleUI.WriteStep($"Resolved project scope to repository root: {projectRoot}");
+            }
+        }
 
         var configuredClients = new List<McpInstallClient>(clients.Count);
         foreach (var client in clients)

@@ -5,13 +5,14 @@ namespace Fuse.Cli.Tests.Mcp;
 
 // U1 / Decision D2: fuse_workspace action=apply is the server's one explicit tree-write path. It must be a dry run
 // unless write=true, must actually write when asked, and must refuse a path that escapes the workspace root. The
-// apply action does not use the indexer, so these tests drive FuseWorkspaceAsync directly over a temp directory.
+// Apply does not use the indexer, but every loop tool still requires a repository identity.
 public sealed class WorkspaceApplyTests
 {
     private static string TempRoot()
     {
         var dir = Path.Combine(Path.GetTempPath(), "fuse-apply-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
+        Directory.CreateDirectory(Path.Combine(dir, ".git"));
         return dir;
     }
 

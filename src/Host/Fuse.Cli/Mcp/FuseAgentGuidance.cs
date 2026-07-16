@@ -12,6 +12,8 @@ internal static class FuseAgentGuidance
         "\n",
         "## Fuse usage",
         "",
+        "Use Fuse MCP tools only when the requested folder resolves to a Git repository, except for `fuse_reduce`. Fuse resolves nested folders to the nearest repository root, and every nested path shares that root's warm index. On `workspace_identity_unresolved`, use native file tools and do not retry Fuse MCP tools for that folder. `fuse_reduce` remains available for known files or raw content outside Git repositories.",
+        "",
         "Use Fuse in .NET repositories when a task needs cross-file context, framework wiring, change impact, or compiler-backed checking. Use native file reads and search for a known file, an exact literal in a small scope, and non-.NET semantic work.",
         "",
         "- For a pull request or branch review with a Git base, start with `fuse_review`.",
@@ -23,7 +25,7 @@ internal static class FuseAgentGuidance
         "- Use `fuse_refactor` for its supported solution-wide operations. Review and apply the returned diff with normal editing tools, then run the repository's required gates.",
         "- Use `fuse_test` for focused covering tests. Its selection is a lower bound and does not replace required build, test, format, or lint commands.",
         "- Use `fuse_review` before handoff to inspect scope and impact. Do not treat it as compiler or test proof.",
-        "- Respect verification grades and abstentions. When the index is unavailable, use native search and retry. An `upgrade_pending` syntax index remains usable.");
+        "- Respect verification grades and abstentions. A missing or incomplete index warms automatically. While `index_state` reports a build or contention state, use native search and retry. An `upgrade_pending` syntax index remains usable.");
 
     /// <summary>
     ///     Gets the MCP initialization instructions advertised to every connected client.
@@ -35,6 +37,7 @@ internal static class FuseAgentGuidance
         RuleBody,
         "",
         "Tool constraints:",
+        "- Every tool except `fuse_reduce` requires a Git repository identity. A nested path resolves to the nearest repository root. An unresolved folder is refused before Fuse starts a daemon or writes an index.",
         "- `fuse_check` checks one complete proposed file without writing it. It reports oracle grade, build grade, or an abstention.",
         "- `fuse_refactor` returns a staged solution-wide diff and never writes the working tree.",
         "- `fuse_workspace action=apply` accepts complete content for one file. It does not apply a multi-file patch.",

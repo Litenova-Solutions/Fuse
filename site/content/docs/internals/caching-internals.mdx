@@ -15,14 +15,16 @@ The store trades disk for compute. File records carry a content hash, so an edit
 
 All semantic index data lives in a single SQLite database file named `fuse.db`. Placement depends on whether the workspace is inside a git repository:
 
-| Context | Path |
-|---------|------|
-| Inside a git repo | `{repoRoot}/.fuse/fuse.db` at the directory that contains `.git`, not under the scoped subdirectory or process working directory |
-| Outside a git repo | `~/.fuse/roots/{hash}/fuse.db`, where `{hash}` is a stable hash of the normalized absolute directory (override the base with the `FUSE_USER_DATA` environment variable) |
+| Context | Indexed MCP behavior | Path |
+|---------|----------------------|------|
+| Inside a Git repo | Enabled. The nearest enclosing `.git` directory or file defines the canonical identity. | `{repoRoot}/.fuse/fuse.db`, never under the requested nested directory |
+| Outside a Git repo | Refused with `workspace_identity_unresolved:` before a daemon or index starts. `fuse_reduce` remains available. | One-shot non-MCP paths retain the per-directory fallback at `~/.fuse/roots/{hash}/fuse.db` (override the base with `FUSE_USER_DATA`). |
 
 Derived cache data (reduction output and per-run analysis index) lives in a sibling file `fuse-cache.db` in the same directory as the index (`{repoRoot}/.fuse/fuse-cache.db` in a repo, or `~/.fuse/roots/{hash}/fuse-cache.db` outside one). Corruption recovery on the cache file recreates only that database; it never deletes `fuse.db`.
 
-Each non-git directory gets its own per-root store (R34), so two unrelated non-git workspaces never share a store and pollute each other's results. The per-root stores under `~/.fuse/roots/` are derived data: an abandoned one is safe to delete (the next index of that directory rebuilds it), so cleaning up `~/.fuse/roots/` reclaims space for directories you no longer index. The pre-4.2 single shared `~/.fuse/fuse.db` fallback is abandoned, not migrated; delete it if it lingers.
+Each non-Git directory gets its own per-root store for non-MCP callers (R34), so two unrelated directories never share data. Workspace-scoped MCP tools deliberately do not use this fallback because there is no repository identity for the daemon, lock, and query root to share. The per-root stores under `~/.fuse/roots/` are derived data and can be deleted. The pre-4.2 single shared `~/.fuse/fuse.db` fallback is abandoned, not migrated; delete it if it lingers.
+
+Repository identity is resolved before storage, locking, daemon attachment, or querying. Fuse walks upward from the requested directory to the nearest `.git` marker. A `.git` file is valid because linked worktrees use that form. The normalized root is the shared key for the daemon endpoint, cold-build coordinator, writer mutex, and database path. For example, a request from `repo/tests/App.Tests/bin/Release/net10.0` resolves to `repo`; it cannot scan that output folder while writing `repo/.fuse/fuse.db`.
 
 ## Store modules (R9)
 
@@ -78,7 +80,9 @@ flowchart LR
 
 ## Content hashing and incremental update
 
-Each file row stores an XXHash64 of its content. When the indexer revisits a workspace, a file whose hash is unchanged is left as is; a file whose hash changed has its prior rows cleared (symbols, chunks, nodes, edges, and FTS entries for that file) and re-extracted. Because the file row is the foreign-key parent, clearing and re-inserting a single file's derived rows keeps the graph consistent without a full rebuild. A removed file's rows are deleted. This is what makes a warm re-index cost a function of the changed files rather than the whole tree.
+Each file row stores an XXHash64 of its content. A warm reconcile scans the complete current inventory. An unchanged hash is left as is; an added or edited file is extracted; a removed file is hard-deleted from `files`, its derived tables, FTS, and co-change rows. The directory scan discovers additions without an explicit full index, while extraction remains proportional to the files whose content changed.
+
+Every completed build publishes a `WorkspaceIndexManifest` in `index_meta`. It contains the normalized repository root, a `ready` build state, the complete file count, an inventory hash over each normalized path and content hash, and a completion timestamp. The build writes `building` before changing derived rows and writes `ready` last. A process interruption therefore cannot turn a partial write into a warm index.
 
 ## Symbol and chunk identity
 
@@ -88,7 +92,7 @@ Symbols carry a stable id so the same declaration keeps its identity across re-i
 
 Writes within an index batch run in one transaction; reads use pooled connections and a per-connection busy timeout. Across processes, safety comes from WAL mode and content-addressed rows: because a row is derived from a content hash, a concurrent rebuild can only recompute the same bytes, never produce a conflicting answer. The MCP server and the host hold one store open across calls so the warm graph is shared by every call in the session.
 
-The `IndexCoordinator` (MCP host and CLI) enforces single-writer discipline per workspace root: an in-process queue serializes write paths (`InitializeAsync`, `fuse index`, background semantic upgrade), and a per-root named mutex (`fuse-index-writer-{hash}`) arbitrates cross-process contention. A second process that cannot acquire the writer mutex receives `index_busy:` instead of blocking on SQLite or surfacing an opaque exception. Foreground read tools use `OpenForReadAsync` and do not take the writer mutex, so warm reads can proceed while a background upgrade commits in chunks (per project and per 50 files).
+The `IndexCoordinator` (MCP host and CLI) enforces single-writer discipline per canonical repository root: an in-process queue serializes write paths (`InitializeAsync`, `fuse index`, background semantic upgrade), and a per-root named mutex (`fuse-index-writer-{hash}`) arbitrates cross-process contention. Root and nested paths resolve to the same queue and mutex. A second process that cannot acquire the writer mutex receives `index_busy:` instead of blocking on SQLite or surfacing an opaque exception. Foreground read tools use `OpenForReadAsync` and do not take the writer mutex, so warm reads can proceed while a background upgrade commits in chunks (per project and per 50 files).
 
 Warm foreground reads use a read-only open path (`OpenForReadAsync`): when `fuse.db` already exists at the current schema version, the store verifies the on-disk version and reads FTS availability from `index_meta` without writing metadata. That avoids turning every read into a meta write (which contended with background semantic upgrades under WAL). Write initialization (`InitializeAsync`) runs on first create, schema migration, incompatible-version rebuild, and explicit `fuse index`; it applies migrations, probes FTS5, and stamps `index_meta` once. A background upgrade writer and multiple concurrent read opens can therefore share the same populated database without the read path acquiring a write lock for meta updates.
 
@@ -111,6 +115,8 @@ A version or schema mismatch (and corruption) rebuilds the store's derived data 
 ### Index invariants (self-verifying)
 
 A store that is internally inconsistent is never reported `ready`. On open and on every status read, cheap state-based invariants are checked (`IndexIntegrity`): the schema version is set, the index mode is set (never `unknown`), and chunks exist when symbols exist on an FTS-available runtime (otherwise search over indexed source would be empty). A store failing any invariant reports `index_rebuilding` and is repaired via the rebuild path, rather than served empty as `ready` (the dogfood's 0-chunk, mode=`unknown` store is the canonical case). A full index pass records the result under `index_integrity` in `index_meta`, and `fuse_workspace action=status`/`doctor` surface the live integrity line.
+
+The manifest adds workspace and inventory invariants. A populated database with no manifest, a `building` marker, a root mismatch, a count mismatch, or an inventory-hash mismatch is not warm. The first indexed read starts a syntax-first replacement and returns the bounded build state when it exceeds the cold-read deadline. This covers an index containing a handful of output artifacts: a nonzero `files` count can no longer suppress repository indexing.
 
 FTS availability is a single source of truth. Both `OpenForReadAsync` and `GetStateAsync` reconcile the stored `fts_available` stamp against the actual presence of the `chunk_fts` table, so the availability line and the status body never disagree. A store whose stamp says available but whose table is missing does not open ready: it forces a rebuild. A search issued against a store missing `chunk_fts` raises `SearchIndexUnavailableException`, which the operational-error boundary maps to `index_rebuilding:` and never to a raw `internal_error`. A store with indexed symbols but zero chunks on an FTS-available runtime is internally inconsistent and is never reported `ready`; it reports `index_rebuilding` so the read path repairs it.
 

@@ -3,7 +3,7 @@ title: Connect your coding agent
 description: Register Fuse with any MCP-compatible coding agent and confirm a compiler-backed result from the current .NET project.
 ---
 
-Connect Fuse from the current .NET project. `fuse mcp install` writes configuration for
+Run the command from inside a Git repository. `fuse mcp install` writes configuration for
 Claude Code, Cursor, GitHub Copilot, OpenCode, Kilo Code, Codex, and Grok Build. Other MCP
 clients use the same stdio server with manual registration. No environment block is
 required: shared daemon, background upgrade, build capture, and session auto-update
@@ -17,6 +17,27 @@ Model Context Protocol (MCP) is the connection format that lets a coding agent l
 Fuse and call its local tools. You do not keep `fuse mcp serve` running in a terminal.
 The agent starts it when needed.
 
+## What Install Means
+
+`fuse mcp install` means MCP client registration. It does not install the `fuse` .NET
+tool, start a permanent process, create `.fuse/fuse.db`, or install an agent skill or
+plugin. Install the executable first from the [Install page](/docs/start/install).
+
+The command's options control separate artifacts:
+
+| Command | Writes | Does not write |
+|---------|--------|----------------|
+| `fuse mcp install` | The selected client's MCP server entry for `fuse mcp serve` | Agent rule files, hooks, skills, or an index |
+| `fuse mcp install --rules` | MCP registration plus the client's documented instruction file, such as `AGENTS.md` or `CLAUDE.md`; project scope also adds `.fuse/` to `.gitignore` | A skill or hook |
+| `fuse mcp install --with-hooks` | MCP registration plus project-scoped Claude Code hooks in `.claude/settings.json` | Agent rules unless `--rules` is also set |
+| `fuse mcp install --rules --with-hooks` | MCP registration, agent instructions, and Claude Code hooks | A skill or an index |
+
+The MCP server always advertises its built-in server instructions during connection.
+`--rules` is separate: it persists the same task-routing guidance where the selected
+client reads repository or user instructions. For Codex, OpenCode, and Kilo Code this is
+an `AGENTS.md` file. For Claude Code it is `CLAUDE.md`. These are instruction files, not
+skills.
+
 Reload the agent, then ask it to check the connection:
 
 ```text
@@ -27,7 +48,7 @@ analysis mode, and freshness exactly as Fuse reports them.
 A response containing the current repository path confirms activation. A list of
 available tools does not.
 
-## Choose the Registration Scope
+## Registration Scope and Workspace Scope
 
 The opening command registers all seven supported clients for the current project when you
 use the default `--client all`. To register Fuse for every project on this machine:
@@ -35,6 +56,20 @@ use the default `--client all`. To register Fuse for every project on this machi
 ```bash
 fuse mcp install --rules --scope user
 ```
+
+Registration scope controls where the MCP client entry and optional rules are written.
+It does not control what Fuse indexes:
+
+| Scope | Registration behavior | Runtime behavior |
+|-------|-----------------------|------------------|
+| `project` | Writes at the nearest enclosing Git repository root. Running from `repo/src/Feature` still writes at `repo`. Refuses a folder with no Git identity. | The client exposes Fuse for that repository. Calls from any nested folder use the repository identity and its root index. |
+| `user` | Writes the client's user configuration, so the client can expose Fuse in every project. This command can run outside Git. | Every operation except `fuse_reduce` still needs a Git repository identity. A non-Git folder returns `workspace_identity_unresolved:` and no daemon or index starts. |
+
+Workspace identity is the nearest enclosing directory containing either a `.git`
+directory or a `.git` file. The file form covers Git worktrees. The normalized repository
+root keys the daemon endpoint, writer lock, and `.fuse/fuse.db`; a nested output folder
+cannot create a second index over the repository database. `fuse_reduce` is the exception:
+it accepts known files or raw content without a workspace index.
 
 To register one client:
 
@@ -53,6 +88,7 @@ The available flags are:
 - `--client claude|cursor|copilot|opencode|kilo|codex|grok|all`, default `all`
 - `--scope project|user`, default `project`
 - `--rules`, which writes the recommended agent instructions and, at project scope, adds `.fuse/` to `.gitignore`
+- `--with-hooks`, which writes project-scoped Claude Code verification hooks; combine it with `--rules` when both are wanted
 - `--command`, which changes the executable the client launches
 
 ## What Project Setup Writes
@@ -89,9 +125,10 @@ Cursor and Copilot do not have a user-global rule file. Grok Build documents rep
 `AGENTS.md` discovery but no user-global `AGENTS.md`. `--rules --scope user` skips those
 three rules with a note.
 
-The optional `--with-hooks` flag also merges two Claude Code hooks into
+The optional project-scoped `--with-hooks` flag also merges two Claude Code hooks into
 `.claude/settings.json`: a post-edit `fuse check --delta --fast` hook and a stop-time
-`fuse gate` hook.
+`fuse gate` hook. User scope with `--with-hooks` is refused because the hook commands are
+bound to one repository and its daemon identity.
 
 ## Get the First Compiler-Backed Result
 
@@ -106,7 +143,14 @@ Fuse labels the compiler path used for each check. This label is the verificatio
 oracle grade uses a build-captured compilation, while build grade runs a scoped real
 `dotnet build`. If neither path can answer, Fuse abstains and states what is missing.
 
-The shared daemon starts warming `.fuse/fuse.db` when the MCP server starts. Run
+After a client launches the server from a Git repository, the shared daemon starts warming
+`.fuse/fuse.db`. Every indexed read first requires a valid warm-index manifest containing
+the normalized repository root and the complete file-inventory count and hash. A database
+with rows but no manifest, an interrupted build marker, a wrong root, or an inconsistent
+inventory rebuilds automatically. Added files are discovered during read-time reconcile,
+and removed files are deleted from the `files` table and its derived rows.
+
+Run
 `fuse index` (or ask the agent to call `fuse_workspace` with `action=index`) only when you
 want to wait for a complete semantic index before the first task. Otherwise a cold read
 uses a bounded syntax-first pass and reports when the semantic upgrade is still running.
@@ -254,7 +298,7 @@ entries from `.claude/settings.json` under `hooks`.
 
 Stop or reload the coding agent, then delete `.fuse/` at the repository root to remove
 the derived index. Deleting `.fuse/` does not change source files. A later Fuse read
-rebuilds it.
+rebuilds it after the repository identity resolves.
 
 ## Next
 

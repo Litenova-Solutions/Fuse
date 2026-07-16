@@ -120,6 +120,7 @@ public sealed class McpInstallGoldenTests
     {
         var path = Path.Combine(Path.GetTempPath(), "fuse-install-golden", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
+        Directory.CreateDirectory(Path.Combine(path, ".git"));
         return path;
     }
 

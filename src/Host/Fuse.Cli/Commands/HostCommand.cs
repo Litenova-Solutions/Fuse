@@ -5,6 +5,7 @@ using DotMake.CommandLine;
 using Fuse.Cli.Extensions;
 using Fuse.Cli.Rpc;
 using Fuse.Cli.Services;
+using Fuse.Collection.FileSystem;
 using Fuse.Semantics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -42,7 +43,13 @@ public sealed class HostCommand
     /// <returns>A task that completes when the host stops serving.</returns>
     public async Task RunAsync(CliContext context)
     {
-        var root = Path.GetFullPath(Directory);
+        if (!WorkspaceIdentityResolver.TryResolveRepositoryRoot(Directory, out var root))
+        {
+            await Console.Error.WriteLineAsync(
+                $"workspace_identity_unresolved: '{Path.GetFullPath(Directory)}' is not inside a Git repository; fuse host was not started.");
+            Environment.ExitCode = 1;
+            return;
+        }
 
         // Single-instance per root (G5): exactly one daemon serves a root, so the warm compilation is a shared
         // asset instead of a per-process cost. If another daemon already owns the lock (for example two clients
@@ -111,7 +118,9 @@ public sealed class HostCommand
                 root,
                 async (store, c) =>
                 {
-                    await liveIndexer.ReconcileDirtyFilesAsync(root, store, c);
+                    var freshness = await liveIndexer.ReconcileDirtyFilesAsync(root, store, c);
+                    if (freshness.Stamped)
+                        await liveIndexer.IndexAsync(root, store, c);
                     return 0;
                 },
                 ct),

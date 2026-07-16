@@ -15,7 +15,7 @@ using Xunit;
 namespace Fuse.Cli.Tests.Mcp;
 
 /// <summary>
-///     R16: fast <c>fuse_workspace action=status</c> reads index_meta only and never auto-indexes a cold workspace.
+///     Status validates or warms the index before reporting it; diagnostics retains the cold read-only path.
 /// </summary>
 [Collection("FuseToolsResidentProvider")]
 public sealed class FastWorkspaceStatusTests : IAsyncLifetime, IDisposable
@@ -32,16 +32,16 @@ public sealed class FastWorkspaceStatusTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task Status_on_cold_repo_does_not_create_fuse_db()
+    public async Task Status_on_cold_repo_creates_valid_warm_index()
     {
         var databasePath = Fuse.Reduction.Caching.FuseStorePaths.ResolveDatabasePath(_root);
         Assert.False(File.Exists(databasePath));
 
         var status = await FuseTools.FuseWorkspaceAsync(Indexer, action: "status", path: _root);
 
-        Assert.False(File.Exists(databasePath));
-        Assert.Contains("index_state: not_indexed", status);
-        Assert.Contains("index mode: not_indexed", status);
+        Assert.True(File.Exists(databasePath));
+        Assert.Contains("index_state: ready", status);
+        Assert.Contains("index mode: syntax", status);
         Assert.Contains("files indexed: 0", status);
     }
 
@@ -50,14 +50,19 @@ public sealed class FastWorkspaceStatusTests : IAsyncLifetime, IDisposable
     {
         var databasePath = Fuse.Reduction.Caching.FuseStorePaths.ResolveDatabasePath(_root);
         Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var sourcePath = Path.Combine(_root, "App.cs");
+        await File.WriteAllTextAsync(sourcePath, "public class App { }");
+        var hash = new FileHashService().ComputeHash(await File.ReadAllBytesAsync(sourcePath));
+        var file = new IndexedFileRecord("App.cs", "App.cs", ".cs", new FileInfo(sourcePath).Length, File.GetLastWriteTimeUtc(sourcePath).Ticks, hash, Language: "csharp");
         await using (var seed = new WorkspaceIndexStore(databasePath))
         {
             await seed.InitializeAsync(CancellationToken.None);
             await seed.SetMetaAsync("index_mode", "syntax", CancellationToken.None);
             await seed.SetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, "1", CancellationToken.None);
             await seed.UpsertFilesAsync(
-                [new IndexedFileRecord("App.cs", "App.cs", ".cs", 10, DateTime.UtcNow.Ticks, "hash", Language: "csharp")],
+                [file],
                 CancellationToken.None);
+            await WorkspaceIndexManifest.CompleteAsync(_root, seed, [file], CancellationToken.None);
         }
 
         var stopwatch = Stopwatch.StartNew();
@@ -71,15 +76,15 @@ public sealed class FastWorkspaceStatusTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task Doctor_prepends_fast_summary_header_without_indexing_cold_repo()
+    public async Task Doctor_warms_cold_repo_before_reporting_diagnosis()
     {
         var databasePath = Fuse.Reduction.Caching.FuseStorePaths.ResolveDatabasePath(_root);
         Assert.False(File.Exists(databasePath));
 
         var doctor = await FuseTools.FuseWorkspaceAsync(Indexer, action: "doctor", path: _root);
 
-        Assert.False(File.Exists(databasePath));
-        Assert.StartsWith("index_state: not_indexed", doctor);
+        Assert.True(File.Exists(databasePath));
+        Assert.StartsWith("index_state: ready", doctor);
         Assert.Contains("load tier:", doctor);
     }
 

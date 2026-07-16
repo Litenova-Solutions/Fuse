@@ -45,7 +45,7 @@ The table below states the client-visible outcomes the host and MCP contract tes
 | `fuse/handshake` | `protocolVersion` does not match `FuseHostService.ProtocolVersion` | Hook and daemon clients treat the host as absent (`IsServingAsync` is false; `TryCheckDeltaAsync`, `TryCheckOverlayAsync`, `TryDoctorAsync`, `TryRefactorAsync`, and `TryCaptureCheckAsync` return null). With `FUSE_HOOK_VERBOSE=1`, stderr logs `protocol_mismatch` on `fuse/handshake`. |
 | Root-bound RPC (`fuse/index`, `fuse/graph`, `fuse/scope`, `fuse/explain`, `fuse/diagnostics`, `fuse/check`, `fuse/checkOverlay`, `fuse/checkCapture`, `fuse/doctor`, `fuse/refactor`) | `root` does not match the daemon's served root | JSON-RPC `InvalidParams`; message contains `served root`. |
 | `fuse/checkOverlay` over the pipe, consumed by MCP through `RemoteResidentWorkspaceProvider` | A resident workspace serves the root | `fuse_check` stamps `verification grade: oracle` and returns the daemon-held diagnostics (no `dotnet build`). |
-| Store-backed MCP read after a storm reconcile (for example `fuse_impact`) | More than 300 known files are dirty at open | The leading availability header reads `index_state: stale_as_of`, names `files_indexed`, and reports `N known file(s) changed since index, results may lag the working tree`. |
+| Store-backed MCP read after a storm reconcile (for example `fuse_impact`) | More than 300 inventory entries changed at open | The coordinator runs one authoritative replacement before the read answers. The leading availability header reads `index_state: ready`, names `files_indexed`, and reports the workspace as up to date. |
 
 Per-method served-root rejection is covered separately in the host contract suite; the row above is the single wire-level outcome assertion.
 

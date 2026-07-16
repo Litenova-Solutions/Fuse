@@ -1,3 +1,5 @@
+using Fuse.Collection.FileSystem;
+
 namespace Fuse.Cli.Mcp;
 
 /// <summary>
@@ -12,6 +14,26 @@ internal static class WorkspacePathResolver
     /// <param name="path">An absolute or relative path to the workspace directory.</param>
     /// <returns>The full path of the workspace root.</returns>
     internal static string ResolveRoot(string path) => Path.GetFullPath(path);
+
+    /// <summary>
+    ///     Resolves a workspace-scoped MCP operation to its canonical Git repository root.
+    /// </summary>
+    /// <param name="path">An absolute or relative path inside the repository.</param>
+    /// <returns>The canonical repository root.</returns>
+    /// <exception cref="WorkspaceIdentityException">The path does not resolve to a Git repository.</exception>
+    internal static string ResolveRepositoryRoot(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (!Directory.Exists(fullPath))
+            throw new DirectoryNotFoundException(fullPath);
+        if (!WorkspaceIdentityResolver.TryResolveRepositoryRoot(fullPath, out var repositoryRoot))
+        {
+            throw new WorkspaceIdentityException(
+                $"'{fullPath}' is not inside a Git repository. Workspace-scoped Fuse MCP tools are disabled for this folder; use native file tools or fuse_reduce.");
+        }
+
+        return repositoryRoot;
+    }
 
     /// <summary>
     ///     Resolves <paramref name="relativeOrAbsolute" /> under <paramref name="root" /> and refuses paths that
@@ -83,5 +105,16 @@ internal static class WorkspacePathResolver
             : fullRoot + Path.DirectorySeparatorChar;
         return absolutePath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)
                || string.Equals(absolutePath, fullRoot, StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+/// <summary>Raised when a workspace-scoped MCP operation cannot resolve a repository identity.</summary>
+internal sealed class WorkspaceIdentityException : Exception
+{
+    /// <summary>Initializes an identity-resolution failure with an actionable message.</summary>
+    /// <param name="message">The resolution failure.</param>
+    internal WorkspaceIdentityException(string message)
+        : base(message)
+    {
     }
 }

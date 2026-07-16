@@ -4,6 +4,23 @@ All notable changes to Fuse are documented here. The format is based on Keep a C
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-07-16
+
+### Added
+
+- Every MCP tool except `fuse_reduce` now exposes `workspace_identity_unresolved:` when the requested folder is not inside a Git repository. `fuse_reduce` remains available because it does not use the workspace index.
+- Warm indexes now carry a repository identity and complete file-inventory manifest in `index_meta`, including a build-state marker, file count, inventory hash, and completion time.
+
+### Changed
+
+- The nearest enclosing `.git` directory or file is now the canonical identity for MCP tools, daemon endpoints, cold-build coordination, writer locks, project-scoped MCP installation, scanning, and queries. Calls from nested folders therefore share one repository-root index. `fuse host`, eager warming, and workspace-scoped MCP operations do not start for unresolved folders.
+- `fuse mcp install` output and documentation now separate MCP registration, `--rules` instruction files, `--with-hooks` Claude Code hooks, and the Fuse executable. Project scope resolves to the enclosing Git root and refuses an unresolved folder; user scope controls client availability but does not bypass runtime workspace identity.
+- Warm reconciliation now scans the complete inventory, indexes added files, hard-deletes removed file rows and their FTS/co-change data, and automatically replaces the index after a change storm. `fuse_test` now validates or warms the index before covering-test selection and returns the bounded availability header during a build or contention. An explicit `fuse_workspace action=index` refreshes a non-empty daemon-owned index. `fuse index --force` now discards the derived tables before rebuilding.
+
+### Fixed
+
+- A non-empty partial database can no longer suppress repository indexing. A missing, interrupted, wrong-root, count-mismatched, or hash-mismatched manifest triggers an automatic rebuild, covering the case where indexing a nested `bin/Release` folder left only runtime JSON files in the repository database.
+
 ## [4.2.1] - 2026-07-16
 
 ### Added

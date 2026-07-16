@@ -24,6 +24,12 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// </returns>
     Task<WorkspaceIndexInitializeOutcome> InitializeAsync(CancellationToken cancellationToken);
 
+    /// <summary>Discards every Fuse-owned index table and recreates an empty current schema.</summary>
+    /// <param name="cancellationToken">A token to cancel the reset.</param>
+    /// <returns>A task that completes when the empty searchable schema is ready.</returns>
+    /// <remarks>This is the destructive derived-data path behind an explicit <c>fuse index --force</c>.</remarks>
+    Task ResetAsync(CancellationToken cancellationToken);
+
     /// <summary>
     ///     Read-only warm open: verifies the on-disk schema version and Fuse build stamp without running
     ///     migrations or writing <c>index_meta</c>. Returns <see cref="WorkspaceIndexReadOpenStatus.Ready" />
@@ -159,6 +165,26 @@ public interface IWorkspaceIndexStore : IAsyncDisposable
     /// <returns>A task that completes when the delete is committed.</returns>
     /// <remarks>Used by incremental re-index: clear a changed file's data, then re-upsert it.</remarks>
     Task DeleteFileDataAsync(string normalizedPath, CancellationToken cancellationToken);
+
+    /// <summary>Clears derived rows for a complete batch of files while retaining their parent file records.</summary>
+    /// <param name="normalizedPaths">The normalized paths whose derived rows must be replaced.</param>
+    /// <param name="cancellationToken">A token to cancel the delete.</param>
+    /// <returns>A task that completes when the batch is committed.</returns>
+    /// <remarks>Full index passes use this before upserting their authoritative extraction result.</remarks>
+    Task ClearFileDataAsync(IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken);
+
+    /// <summary>Deletes a file record and all of its derived index data.</summary>
+    /// <param name="normalizedPath">The normalized path of the file to remove.</param>
+    /// <param name="cancellationToken">A token to cancel the delete.</param>
+    /// <returns>A task that completes when the delete is committed.</returns>
+    /// <remarks>Used when a file no longer belongs to the current workspace inventory.</remarks>
+    Task DeleteFileAsync(string normalizedPath, CancellationToken cancellationToken);
+
+    /// <summary>Removes every stored file that is absent from the supplied workspace inventory.</summary>
+    /// <param name="normalizedPaths">The complete set of normalized paths in the current inventory.</param>
+    /// <param name="cancellationToken">A token to cancel the prune.</param>
+    /// <returns>The number of stale file records removed.</returns>
+    Task<int> PruneFilesAsync(IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken);
 
     /// <summary>
     ///     Runs a full-text search over indexed chunks, ranked by relevance.

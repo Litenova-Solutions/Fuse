@@ -109,6 +109,22 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
             _connectionFactory.DatabasePath,
             () => InitializeSerializedAsync(cancellationToken));
 
+    /// <inheritdoc />
+    public async Task ResetAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.OpenAsync(cancellationToken);
+        await _schema.PrepareDatabaseAsync(connection, cancellationToken);
+        await IndexSchemaMigrator.RebuildAsync(connection, cancellationToken);
+        var ftsAvailable = await _fts.TryCreateAsync(connection, cancellationToken);
+        await IndexSchemaMigrator.WriteMetaAsync(
+            connection,
+            IndexAvailability.FtsAvailableMetaKey,
+            IndexAvailability.ToFtsMetaValue(ftsAvailable),
+            cancellationToken);
+        await StampExtractionVersionAsync(connection, cancellationToken);
+        MarkInitialized(WorkspaceIndexSchema.TargetVersion, ftsAvailable);
+    }
+
     private async Task<WorkspaceIndexInitializeOutcome> InitializeSerializedAsync(CancellationToken cancellationToken)
     {
         try
@@ -388,6 +404,18 @@ public sealed class WorkspaceIndexStore : IWorkspaceIndexStore
     /// <inheritdoc />
     public Task DeleteFileDataAsync(string normalizedPath, CancellationToken cancellationToken) =>
         _graph.DeleteFileDataAsync(normalizedPath, cancellationToken);
+
+    /// <inheritdoc />
+    public Task ClearFileDataAsync(IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken) =>
+        _graph.ClearFileDataAsync(normalizedPaths, cancellationToken);
+
+    /// <inheritdoc />
+    public Task DeleteFileAsync(string normalizedPath, CancellationToken cancellationToken) =>
+        _graph.DeleteFileAsync(normalizedPath, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<int> PruneFilesAsync(IReadOnlyCollection<string> normalizedPaths, CancellationToken cancellationToken) =>
+        _graph.PruneFilesAsync(normalizedPaths, cancellationToken);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<SearchHit>> SearchAsync(SearchQuery query, CancellationToken cancellationToken) =>

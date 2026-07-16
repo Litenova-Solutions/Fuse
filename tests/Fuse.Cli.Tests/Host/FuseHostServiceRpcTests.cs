@@ -210,6 +210,25 @@ public sealed class FuseHostServiceRpcTests : IDisposable
     }
 
     [Fact]
+    public async Task Index_EmptyRepositoryReportsWarmCompletedManifest()
+    {
+        var source = NewFixture();
+
+        try
+        {
+            var service = NewService();
+            var result = await service.IndexAsync(SessionToken(service), source);
+
+            Assert.Equal("Warm", result.IndexState);
+            Assert.Equal(0, result.FileCount);
+        }
+        finally
+        {
+            CleanupFixture(source);
+        }
+    }
+
+    [Fact]
     public async Task Index_MissingDirectory_ReportsNotIndexed()
     {
         var missing = Path.Combine(Path.GetTempPath(), "fuse-host-missing", Guid.NewGuid().ToString("N"));

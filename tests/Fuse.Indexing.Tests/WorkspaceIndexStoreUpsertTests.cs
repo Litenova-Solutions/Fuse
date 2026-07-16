@@ -137,6 +137,38 @@ public sealed class WorkspaceIndexStoreUpsertTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task DeleteFileRemovesFileRecordAndFullTextRows()
+    {
+        await SeedOrderServiceFileAsync();
+
+        await _store.DeleteFileAsync("src/OrderService.cs", CancellationToken.None);
+
+        Assert.Equal(0, await CountAsync("files"));
+        Assert.Equal(0, await CountAsync("symbols"));
+        Assert.Equal(0, await CountAsync("chunks"));
+        Assert.Empty(await _store.SearchAsync(new SearchQuery("OrderService", 10), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task PruneFilesRemovesRowsOutsideCompleteInventory()
+    {
+        await SeedOrderServiceFileAsync();
+        await _store.UpsertFilesAsync(
+            [new IndexedFileRecord("src/Old.cs", "src/Old.cs", ".cs", 20, 2, "old")],
+            CancellationToken.None);
+        await _store.UpsertCoChangesAsync(
+            [new CoChangeRecord("src/Old.cs", "src/OrderService.cs", 2, 0.4, 0.5, null)],
+            CancellationToken.None);
+
+        var removed = await _store.PruneFilesAsync(["src/OrderService.cs"], CancellationToken.None);
+
+        Assert.Equal(1, removed);
+        Assert.Equal(1, await CountAsync("files"));
+        Assert.Equal(0, await ScalarAsync("SELECT count(*) FROM files WHERE normalized_path = 'src/Old.cs';"));
+        Assert.Empty(await _store.GetCoChangesForAsync(["src/OrderService.cs"], CancellationToken.None));
+    }
+
+    [Fact]
     public async Task ReindexChangedFileReplacesSymbols()
     {
         await SeedOrderServiceFileAsync();
@@ -154,6 +186,21 @@ public sealed class WorkspaceIndexStoreUpsertTests : IAsyncLifetime
 
         Assert.Equal(2, await CountAsync("symbols"));
         Assert.Equal("hash3", await TextScalarAsync("SELECT content_hash FROM files WHERE normalized_path = 'src/OrderService.cs';"));
+    }
+
+    [Fact]
+    public async Task ResetDiscardsAllDerivedRowsAndRecreatesSearchSchema()
+    {
+        await SeedOrderServiceFileAsync();
+        await _store.SetMetaAsync("marker", "old", CancellationToken.None);
+
+        await _store.ResetAsync(CancellationToken.None);
+
+        var state = await _store.GetStateAsync(CancellationToken.None);
+        Assert.Equal(0, state.FileCount);
+        Assert.Equal(0, state.SymbolCount);
+        Assert.Null(await _store.GetMetaAsync("marker", CancellationToken.None));
+        Assert.Empty(await _store.SearchAsync(new SearchQuery("OrderService", 10), CancellationToken.None));
     }
 
     private async Task SeedOrderServiceFileAsync()

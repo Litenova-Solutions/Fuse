@@ -32,6 +32,7 @@ public sealed class FuseCheckResidentRoutingTests : IDisposable
         var indexer = _provider.GetRequiredService<SemanticIndexer>();
         var work = Path.Combine(Path.GetTempPath(), "fuse-check-resident-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
+        Directory.CreateDirectory(Path.Combine(work, ".git"));
         try
         {
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """
@@ -70,6 +71,7 @@ public sealed class FuseCheckResidentRoutingTests : IDisposable
         var indexer = _provider.GetRequiredService<SemanticIndexer>();
         var work = Path.Combine(Path.GetTempPath(), "fuse-check-resident-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
+        Directory.CreateDirectory(Path.Combine(work, ".git"));
         try
         {
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.csproj"), """

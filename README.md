@@ -19,7 +19,7 @@ coding agents. It indexes a solution through MSBuild and Roslyn, stores the resu
 in `.fuse/fuse.db`, and reuses it across agent turns instead of rediscovering the
 same structure through repeated file reads and text searches.
 
-From a .NET project directory:
+From a .NET project inside a Git repository:
 
 ```bash
 dotnet tool install -g Fuse
@@ -28,7 +28,11 @@ fuse mcp install --rules
 
 The installer supports Claude Code, Cursor, GitHub Copilot, OpenCode, Kilo Code, Codex,
 and Grok Build. Use `--client <name>` to configure one client; the default `all` configures
-all seven for the selected scope.
+all seven for the selected scope. `fuse mcp install` writes MCP client registration only.
+`--rules` also writes the client's documented instruction file, such as `AGENTS.md` or
+`CLAUDE.md`; it does not install a skill. `--with-hooks` separately writes project-scoped
+Claude Code hooks. See [Connect your coding agent](https://fuse.codes/docs/start/connect-your-ai)
+for the exact file and scope matrix.
 
 Reload your MCP client, then ask:
 
@@ -42,6 +46,14 @@ the background. A cold read waits for a bounded syntax-first pass and reports wh
 semantic graph is still upgrading. Run `fuse index` when you want a synchronous full
 index before connecting the agent. `fuse mcp install --rules` also adds `.fuse/` to
 `.gitignore` at project scope.
+
+Every MCP operation except `fuse_reduce` requires a Git repository identity. Fuse walks upward to the nearest
+`.git` directory or file, so a call from a nested source or output folder uses the same
+repository-root daemon, lock, and index. A non-Git folder returns
+`workspace_identity_unresolved:` without starting a daemon or writing an index;
+`fuse_reduce` remains available. Each warm index records its repository root and complete
+file inventory. A missing or incomplete manifest rebuilds automatically even when the
+database already contains file rows.
 
 <p align="center">
   <img src="assets/demo/fuse-check-demo.gif" alt="An agent proposes an edit with an invalid OrderOptions member. fuse_check returns CS1061 and a repair packet, then verifies the corrected proposal." width="820">

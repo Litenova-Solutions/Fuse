@@ -38,11 +38,11 @@ public sealed partial class FuseTools
         [Description("Absolute or relative path to the workspace directory.")] string path = ".",
         CancellationToken cancellationToken = default)
     {
-        var root = Path.GetFullPath(path);
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
         if (!Directory.Exists(root))
             return FuseOperationalErrors.FormatWorkspaceNotFound(root);
 
-        var result = await IndexAccess.IndexAsync(indexer, path, cancellationToken);
+        var result = await IndexAccess.IndexAsync(indexer, root, cancellationToken);
         FuseMetrics.RecordIndexMode(root, result.Mode);
         return $"Indexed [{result.Mode}] {result.FileCount} files, {result.ProjectCount} projects, " +
                $"{result.SymbolCount} symbols, {result.ChunkCount} chunks, {result.RouteCount} routes.";
@@ -114,19 +114,20 @@ public sealed partial class FuseTools
         bool refresh,
         CancellationToken cancellationToken)
     {
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
         switch (action.Trim().ToLowerInvariant())
         {
             case "index":
-                return await FuseIndexAsync(indexer, path, cancellationToken);
+                return await FuseIndexAsync(indexer, root, cancellationToken);
             case "map":
-                return await FuseMapAsync(indexer, path, detail, maxRows, cancellationToken);
+                return await FuseMapAsync(indexer, root, detail, maxRows, cancellationToken);
             case "doctor":
-                return await WorkspaceDoctorAsync(indexer, path, refresh, cancellationToken);
+                return await WorkspaceDoctorAsync(indexer, root, refresh, cancellationToken);
             case "apply":
-                return await WorkspaceApplyAsync(path, file, content, write, expectedHash, cancellationToken);
+                return await WorkspaceApplyAsync(root, file, content, write, expectedHash, cancellationToken);
             case "status":
             case "":
-                return await WorkspaceStatusAsync(path, cancellationToken);
+                return await WorkspaceStatusAsync(indexer, root, cancellationToken);
             default:
                 return FuseOperationalErrors.Format(
                     FuseOperationalErrors.ValidationErrorPrefix,
@@ -148,7 +149,7 @@ public sealed partial class FuseTools
                 FuseOperationalErrors.ValidationErrorPrefix,
                 "apply needs a file (the repo-relative path to write) and content.");
 
-        var root = Path.GetFullPath(path);
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
         if (!Directory.Exists(root))
             return FuseOperationalErrors.FormatWorkspaceNotFound(root);
 
@@ -219,19 +220,15 @@ public sealed partial class FuseTools
         }
     }
 
-    // The status action (R16): read-only fast path over index_meta when fuse.db exists; never auto-indexes on a
-    // clean workspace. action=index remains the explicit build path.
-    private static async Task<string> WorkspaceStatusAsync(string path, CancellationToken cancellationToken)
+    // The status action opens the validated warm index first. A missing, incomplete, or wrong-root manifest starts
+    // the same automatic syntax-first build as every other indexed read.
+    private static async Task<string> WorkspaceStatusAsync(
+        SemanticIndexer indexer,
+        string path,
+        CancellationToken cancellationToken)
     {
-        var root = Path.GetFullPath(path);
-        if (!Directory.Exists(root))
-            return FuseOperationalErrors.FormatWorkspaceNotFound(root);
-
-        var databasePath = FuseStorePaths.ResolveDatabasePath(root);
-        if (!File.Exists(databasePath))
-            return await BuildFastStatusOutputAsync(root, store: null, state: null, cancellationToken);
-
-        await using var store = new WorkspaceIndexStore(databasePath);
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
+        await using var store = await OpenIndexedAsync(indexer, root, cancellationToken);
         var state = await store.GetStateAsync(cancellationToken);
         return await BuildFastStatusOutputAsync(root, store, state, cancellationToken);
     }
@@ -242,9 +239,8 @@ public sealed partial class FuseTools
     // requested or no stamp is present.
     private static async Task<string> WorkspaceDoctorAsync(SemanticIndexer indexer, string path, bool refresh, CancellationToken cancellationToken)
     {
-        var root = Path.GetFullPath(path);
-        if (!Directory.Exists(root))
-            return FuseOperationalErrors.FormatWorkspaceNotFound(root);
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
+        await using var warmStore = await OpenIndexedAsync(indexer, root, cancellationToken);
 
         var builder = new StringBuilder();
         builder.AppendLine(await BuildFastDoctorSummaryHeaderAsync(root, cancellationToken));
@@ -390,7 +386,7 @@ public sealed partial class FuseTools
                 return await FuseNeighborsAsync(indexer, path, symbol: query, cancellationToken: cancellationToken);
             case "task":
                 {
-                    var taskRoot = Path.GetFullPath(path);
+                    var taskRoot = WorkspacePathResolver.ResolveRepositoryRoot(path);
                     await using var taskStore = await OpenIndexedAsync(indexer, path, cancellationToken);
                     if (!taskStore.FullTextSearchAvailable)
                     {
@@ -414,7 +410,7 @@ public sealed partial class FuseTools
         catch (IndexBlockedReadException) when (LexicalFallback.IsEnabled())
         {
             FuseMetrics.RecordDegraded(DegradedStateKind.LexicalFallback);
-            return await LexicalFallback.SearchAsync(Path.GetFullPath(path), query, 50, cancellationToken);
+            return await LexicalFallback.SearchAsync(WorkspacePathResolver.ResolveRepositoryRoot(path), query, 50, cancellationToken);
         }
 
         await using (store)
@@ -523,12 +519,12 @@ public sealed partial class FuseTools
     // in-process caller the index is built synchronously, so no background task outlives the call.
     private static async Task<WorkspaceIndexStore> OpenIndexedAsync(SemanticIndexer indexer, string path, CancellationToken cancellationToken)
     {
-        var root = Path.GetFullPath(path);
+        var root = WorkspacePathResolver.ResolveRepositoryRoot(path);
         try
         {
             var store = await IndexAccess.OpenIndexedAsync(
                 indexer,
-                path,
+                root,
                 cancellationToken);
             await RecordIndexModeAsync(store, root, cancellationToken);
             return store;
@@ -602,7 +598,7 @@ public sealed partial class FuseTools
     {
         var state = await store.GetStateAsync(cancellationToken);
         var indexState = indexStateOverride
-            ?? (state.FileCount == 0 ? "not_indexed" : await ComputeIndexStateAsync(store, state, cancellationToken));
+            ?? await ComputeIndexStateAsync(store, state, root, cancellationToken);
         return await FormatAvailabilityHeaderAsync(store, root, indexState, state.FileCount, cancellationToken);
     }
 
@@ -619,7 +615,9 @@ public sealed partial class FuseTools
 
         try
         {
-            await using var store = new WorkspaceIndexStore(databasePath);
+            await using var store = new WorkspaceIndexStore(
+                databasePath,
+                busyTimeoutMilliseconds: IndexCoordinator.ReadBusyTimeoutMilliseconds);
             if (await store.OpenForReadAsync(cancellationToken) is WorkspaceIndexReadOpenStatus.Ready)
             {
                 var state = await store.GetStateAsync(cancellationToken);
@@ -651,7 +649,9 @@ public sealed partial class FuseTools
 
         try
         {
-            await using var store = new WorkspaceIndexStore(databasePath);
+            await using var store = new WorkspaceIndexStore(
+                databasePath,
+                busyTimeoutMilliseconds: IndexCoordinator.ReadBusyTimeoutMilliseconds);
             if (await store.OpenForReadAsync(cancellationToken) is WorkspaceIndexReadOpenStatus.Ready)
             {
                 var state = await store.GetStateAsync(cancellationToken);
@@ -774,7 +774,7 @@ public sealed partial class FuseTools
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
-        if (store is null || state is null || state.FileCount == 0)
+        if (store is null || state is null)
         {
             builder.AppendLine(await FormatNotIndexedAvailabilityHeaderAsync(root, cancellationToken));
             builder.AppendLine($"workspace: {root}");
@@ -807,18 +807,15 @@ public sealed partial class FuseTools
             return await FormatNotIndexedAvailabilityHeaderAsync(root, cancellationToken);
 
         await using var store = new WorkspaceIndexStore(databasePath);
-        var state = await store.GetStateAsync(cancellationToken);
-        if (state.FileCount == 0)
-            return await FormatNotIndexedAvailabilityHeaderAsync(root, cancellationToken);
-
         return await OracleAvailabilityHeaderAsync(store, root, cancellationToken);
     }
 
     internal static async Task<string> ComputeIndexStateAsync(
-        WorkspaceIndexStore store, WorkspaceIndexState state, CancellationToken cancellationToken)
+        WorkspaceIndexStore store, WorkspaceIndexState state, string root, CancellationToken cancellationToken)
     {
-        if (state.FileCount == 0)
-            return "not_indexed";
+        var manifest = await WorkspaceIndexManifest.ValidateAsync(root, store, cancellationToken);
+        if (!manifest.Ready)
+            return state.FileCount == 0 ? "not_indexed" : "index_rebuilding";
 
         var pending = await store.GetMetaAsync(SemanticIndexer.SemanticPendingMetaKey, cancellationToken);
         if (pending == "1")

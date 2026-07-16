@@ -32,6 +32,7 @@ public sealed class FuseFindSignaturesResidentTests : IDisposable
         var changeSource = _provider.GetRequiredService<IChangeSource>();
         var work = Path.Combine(Path.GetTempPath(), "fuse-find-sig-resident-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
+        Directory.CreateDirectory(Path.Combine(work, ".git"));
         try
         {
             // A minimal source file so the store index builds; the resident answer supersedes it for the query.
@@ -66,6 +67,7 @@ public sealed class FuseFindSignaturesResidentTests : IDisposable
         var changeSource = _provider.GetRequiredService<IChangeSource>();
         var work = Path.Combine(Path.GetTempPath(), "fuse-find-sig-resident-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
+        Directory.CreateDirectory(Path.Combine(work, ".git"));
         try
         {
             await File.WriteAllTextAsync(Path.Combine(work, "Widget.cs"),

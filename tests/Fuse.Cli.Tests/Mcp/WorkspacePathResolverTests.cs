@@ -12,6 +12,7 @@ public sealed class WorkspacePathResolverTests
     {
         var dir = Path.Combine(Path.GetTempPath(), "fuse-path-resolver-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
+        Directory.CreateDirectory(Path.Combine(dir, ".git"));
         return dir;
     }
 

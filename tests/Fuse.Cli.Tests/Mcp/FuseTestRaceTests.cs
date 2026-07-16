@@ -152,6 +152,7 @@ public sealed class FuseTestRaceTests : IDisposable
     {
         var work = Path.Combine(Path.GetTempPath(), "fuse-race-mcp-it", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
+        Directory.CreateDirectory(Path.Combine(work, ".git"));
         File.WriteAllText(Path.Combine(work, "Widget.csproj"),
             "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>");
         File.WriteAllText(Path.Combine(work, "Widget.cs"),

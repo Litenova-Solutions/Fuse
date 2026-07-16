@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Fuse.Cli;
+using Fuse.Collection.FileSystem;
 using Fuse.Indexing;
 using Fuse.Reduction.Caching;
 using Fuse.Semantics;
@@ -28,9 +29,9 @@ public sealed class IndexCoordinator
     /// <summary>
     ///     The busy timeout for a read tool's store access and its per-read reconcile (R18/R20): short so a
     ///     contended store surfaces the <c>index_busy</c> availability header within a couple of seconds rather than
-    ///     hanging on the full write-path timeout. Cold index builds keep the default long timeout.
+    ///     hanging on the full write-path timeout. A build started by a foreground read uses the same bound.
     /// </summary>
-    private const int ReadBusyTimeoutMilliseconds = 1000;
+    internal const int ReadBusyTimeoutMilliseconds = 1000;
 
     /// <summary>
     ///     Opens the store for a read tool: warm read-only open when possible, otherwise a single write
@@ -53,7 +54,7 @@ public sealed class IndexCoordinator
         Func<string, bool> residentWorkspaceActive,
         CancellationToken cancellationToken)
     {
-        var root = Path.GetFullPath(path);
+        var root = CanonicalRoot(path);
         var databasePath = FuseStorePaths.ResolveDatabasePath(root);
         var store = new WorkspaceIndexStore(databasePath, busyTimeoutMilliseconds: ReadBusyTimeoutMilliseconds);
         var readStatus = await store.OpenForReadAsync(cancellationToken);
@@ -67,43 +68,23 @@ public sealed class IndexCoordinator
                     await InitializeOrThrowAsync(writeStore, ct);
                     return 0;
                 },
-                cancellationToken);
+                cancellationToken,
+                ReadBusyTimeoutMilliseconds);
             store = new WorkspaceIndexStore(databasePath, busyTimeoutMilliseconds: ReadBusyTimeoutMilliseconds);
             readStatus = await store.OpenForReadAsync(cancellationToken);
             if (readStatus is not WorkspaceIndexReadOpenStatus.Ready)
                 throw new InvalidOperationException("write initialization did not produce a readable store.");
         }
 
-        var state = await store.GetStateAsync(cancellationToken);
-        if (state.FileCount == 0)
+        var manifest = await WorkspaceIndexManifest.ValidateAsync(root, store, cancellationToken);
+        if (!manifest.Ready)
         {
-            if (backgroundSemanticUpgradeEnabled)
-            {
-                // R27: bound the cold read. Run the syntax-first build in the background (deduped per root) and wait
-                // only up to the cold-read deadline; if it does not finish, signal building_syntax so the read
-                // returns a bounded header instead of blocking for the whole build, and the next read serves warm.
-                var built = await ColdStartCoordinator.Default.BuildWithDeadlineAsync(
-                    root,
-                    async _ =>
-                    {
-                        await ExecuteWriteAsync(
-                            root,
-                            (writeStore, wct) => indexer.IndexSyntaxFirstAsync(root, writeStore, wct),
-                            CancellationToken.None);
-                        scheduleSemanticUpgrade(indexer, root);
-                    },
-                    ColdStartCoordinator.DeadlineMilliseconds(),
-                    cancellationToken);
-                if (!built)
-                    throw new ColdStartInProgressException(root);
-            }
-            else
-            {
-                await ExecuteWriteAsync(
-                    root,
-                    (writeStore, ct) => indexer.IndexAsync(root, writeStore, ct),
-                    cancellationToken);
-            }
+            await BuildIndexAsync(
+                indexer,
+                root,
+                backgroundSemanticUpgradeEnabled,
+                scheduleSemanticUpgrade,
+                cancellationToken);
         }
         else if (!residentWorkspaceActive(root))
         {
@@ -115,7 +96,15 @@ public sealed class IndexCoordinator
                 cancellationToken,
                 ReadBusyTimeoutMilliseconds);
             if (freshness.Stamped)
+            {
                 FuseMetrics.RecordReconcileStamped(root);
+                await BuildIndexAsync(
+                    indexer,
+                    root,
+                    backgroundSemanticUpgradeEnabled,
+                    scheduleSemanticUpgrade,
+                    cancellationToken);
+            }
         }
 
         var readStore = new WorkspaceIndexStore(databasePath, busyTimeoutMilliseconds: ReadBusyTimeoutMilliseconds);
@@ -133,8 +122,8 @@ public sealed class IndexCoordinator
     /// <returns>A readable store, or throws when the database is missing or contention blocks initialization.</returns>
     public async Task<WorkspaceIndexStore> OpenForReadOnlyAsync(string root, CancellationToken cancellationToken)
     {
-        var normalizedRoot = NormalizeRoot(root);
-        var databasePath = FuseStorePaths.ResolveDatabasePath(normalizedRoot);
+        var canonicalRoot = CanonicalRoot(root);
+        var databasePath = FuseStorePaths.ResolveDatabasePath(canonicalRoot);
         if (!File.Exists(databasePath))
             throw new FileNotFoundException(FuseOperationalErrors.FormatIndexNotBuilt(databasePath));
 
@@ -144,13 +133,14 @@ public sealed class IndexCoordinator
             return store;
 
         await ExecuteWriteAsync(
-            normalizedRoot,
+            canonicalRoot,
             async (writeStore, ct) =>
             {
                 await InitializeOrThrowAsync(writeStore, ct);
                 return 0;
             },
-            cancellationToken);
+            cancellationToken,
+            ReadBusyTimeoutMilliseconds);
 
         store = new WorkspaceIndexStore(databasePath, busyTimeoutMilliseconds: ReadBusyTimeoutMilliseconds);
         status = await store.OpenForReadAsync(cancellationToken);
@@ -213,6 +203,7 @@ public sealed class IndexCoordinator
     /// <param name="root">The absolute workspace root.</param>
     /// <param name="work">The work to run with a store handle.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
+    /// <param name="busyTimeoutMilliseconds">The SQLite busy timeout for the store used by the write.</param>
     /// <returns>The work result.</returns>
     public async Task<T> ExecuteWriteAsync<T>(
         string root,
@@ -220,7 +211,8 @@ public sealed class IndexCoordinator
         CancellationToken cancellationToken,
         int busyTimeoutMilliseconds = WorkspaceIndexConnectionFactory.DefaultBusyTimeoutMilliseconds)
     {
-        var normalizedRoot = NormalizeRoot(root);
+        var canonicalRoot = CanonicalRoot(root);
+        var normalizedRoot = WorkspaceIdentityResolver.NormalizeKey(canonicalRoot);
         var gate = Gates.GetOrAdd(normalizedRoot, _ => new RootGate());
         await gate.WriteSemaphore.WaitAsync(cancellationToken);
         try
@@ -230,7 +222,7 @@ public sealed class IndexCoordinator
                 throw new IndexBusyException();
 
             ProcessWriteLockAcquireCount++;
-            var databasePath = FuseStorePaths.ResolveDatabasePath(normalizedRoot);
+            var databasePath = FuseStorePaths.ResolveDatabasePath(canonicalRoot);
             var store = new WorkspaceIndexStore(databasePath, busyTimeoutMilliseconds: busyTimeoutMilliseconds);
             return await work(store, cancellationToken);
         }
@@ -247,8 +239,44 @@ public sealed class IndexCoordinator
             throw new IndexRebuildingException(outcome.Detail ?? "rebuilding from source");
     }
 
-    private static string NormalizeRoot(string root) =>
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)).ToLowerInvariant();
+    private async Task BuildIndexAsync(
+        SemanticIndexer indexer,
+        string root,
+        bool backgroundSemanticUpgradeEnabled,
+        Action<SemanticIndexer, string> scheduleSemanticUpgrade,
+        CancellationToken cancellationToken)
+    {
+        if (backgroundSemanticUpgradeEnabled)
+        {
+            var built = await ColdStartCoordinator.Default.BuildWithDeadlineAsync(
+                root,
+                async _ =>
+                {
+                    await ExecuteWriteAsync(
+                        root,
+                        (writeStore, wct) => indexer.IndexSyntaxFirstAsync(root, writeStore, wct),
+                        CancellationToken.None,
+                        ReadBusyTimeoutMilliseconds);
+                    scheduleSemanticUpgrade(indexer, root);
+                },
+                ColdStartCoordinator.DeadlineMilliseconds(),
+                cancellationToken);
+            if (!built)
+                throw new ColdStartInProgressException(root);
+            return;
+        }
+
+        await ExecuteWriteAsync(
+            root,
+            (writeStore, ct) => indexer.IndexAsync(root, writeStore, ct),
+            cancellationToken,
+            ReadBusyTimeoutMilliseconds);
+    }
+
+    private static string CanonicalRoot(string root) =>
+        WorkspaceIdentityResolver.TryResolveRepositoryRoot(root, out var repositoryRoot)
+            ? repositoryRoot
+            : Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
 
     private sealed class RootGate
     {

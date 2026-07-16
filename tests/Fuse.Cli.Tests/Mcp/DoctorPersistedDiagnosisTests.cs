@@ -20,6 +20,7 @@ public sealed class DoctorPersistedDiagnosisTests : IDisposable
     private async Task SeedPersistedDiagnosisAsync()
     {
         Directory.CreateDirectory(_root);
+        _root.AsIsolatedRepo();
         var persisted = new PersistedLoadDiagnosis(
             "oracle-grade (all projects loaded clean)",
             ProjectsLoaded: 1,
@@ -34,6 +35,8 @@ public sealed class DoctorPersistedDiagnosisTests : IDisposable
         await using var store = new WorkspaceIndexStore(dbPath);
         await store.InitializeAsync(CancellationToken.None);
         await store.SetMetaAsync(WorkspaceIndexStore.LoadDiagnosisMetaKey, json, CancellationToken.None);
+        await store.SetMetaAsync("index_mode", "syntax", CancellationToken.None);
+        await WorkspaceIndexManifest.CompleteAsync(_root, store, [], CancellationToken.None);
     }
 
     [Fact]

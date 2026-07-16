@@ -9,7 +9,9 @@ This page is for engineers writing agent instructions and for experts who need t
 
 ## Purpose and scope
 
-Read tools build the persistent index on first use, so an explicit `fuse_workspace action=index` call is optional. The exception is `fuse_workspace action=status` (and `fuse diagnostics` on the CLI): both read `index_meta` only, report `index_state`, and return `not_indexed` on a cold workspace without creating `.fuse/fuse.db`. The index lives in a single SQLite file at `.fuse/fuse.db` inside the workspace. Tools return their result in the tool response; the only writes are the index (`fuse_workspace action=index`) and the one explicit tree-write path (`fuse_workspace action=apply`, a dry run unless `write=true`). Token budgets are honored by the plan, and secret redaction runs before any source reaches the payload.
+Indexed reads, including `fuse_workspace action=status`, validate or build the persistent index on first use, so an explicit `fuse_workspace action=index` call is optional. The CLI-only `fuse diagnostics` command remains read-only and reports `not_indexed` without creating `.fuse/fuse.db`. The index lives in one SQLite file at the repository root: `.fuse/fuse.db`. Automatic index and reconcile writes modify derived data only. The sole MCP path that writes the working tree is `fuse_workspace action=apply`, which is a dry run unless `write=true`. Token budgets are honored by the plan, and secret redaction runs before any source reaches the payload.
+
+Every operation except `fuse_reduce` requires a Git repository identity. Fuse walks upward from `path` to the nearest `.git` directory or file, then uses that repository root for scanning, the daemon, locks, and the database. A folder outside Git returns `workspace_identity_unresolved:` before any workspace operation starts. `fuse_reduce` remains available because it does not use the workspace index.
 
 Choosing a tool:
 
@@ -20,22 +22,23 @@ Choosing a tool:
 
 ## Tool tiers
 
-Each MCP tool belongs to one of three tiers. The tier names what must be available before the tool can answer,
+Each MCP operation belongs to one of four tiers. The tier names what must be available before the operation can answer,
 not how fast it is.
 
 | Tier | Tools | Needs `.fuse/fuse.db` |
 |------|-------|------------------------|
 | **offline** | `fuse_reduce` | No |
-| **compiler** | `fuse_check`, `fuse_refactor`, `fuse_test` (build-grade verify, candidate racing, and `dotnet test` execution) | No for verification or test execution; the index is optional enrichment only |
-| **indexed** | `fuse_workspace` (`index`, `map`, `doctor`, `apply`), `fuse_find`, `fuse_context`, `fuse_impact`, `fuse_review`, `fuse_test` (covering-test selection) | Yes (built on first use for read tools, or warm read when already present) |
+| **repository** | `fuse_workspace action=apply`; `fuse_impact` package-upgrade mode | No, but a Git repository identity is required |
+| **compiler** | `fuse_check`, `fuse_refactor`, `fuse_test` candidate racing | No for compiler verification; the index is optional enrichment only |
+| **indexed** | `fuse_workspace` (`status`, `index`, `map`, `doctor`), `fuse_find`, `fuse_context`, `fuse_impact` symbol mode, `fuse_review`, `fuse_test` covering-test selection | Yes (built on first use for read tools, or warm read when already present) |
 
-`fuse_workspace action=status` and `fuse diagnostics` read `index_meta` only and never start a build.
+`fuse_workspace action=status` validates or warms the index. `fuse diagnostics` is the no-write CLI inspection path.
 
 Compiler-tier tools discover projects and run the toolchain first. `fuse_check` verifies a proposed edit before
 opening the index; repair packets are attached afterward when the store is available, with a named omission note
 when it is not. `fuse_refactor` loads the solution through Roslyn without the store. `fuse_test` selects covering
-tests from persisted `tests` edges (indexed-tier); when the store is contended it returns `index_busy:` rather than
-blocking the subsequent `dotnet test` path on index build.
+tests from persisted `tests` edges (indexed-tier); it validates or warms the index first and returns the bounded
+availability header when a build or contention prevents selection.
 
 Indexed-tier read tools use a warm read-only open when the database already exists. They acquire the writer lock only
 when the index must be created, reconciled, or upgraded.
@@ -47,8 +50,9 @@ MCP tools return errors as a single prefixed string rather than throwing. Match 
 | Prefix | Meaning | Agent retry guidance |
 |--------|---------|----------------------|
 | `index_busy:` | The index writer lock or SQLite database is busy on an explicit write path (`action=index`) or a tool that does not use the read header contract. | Retry after a short pause, or run `fuse host` so one shared daemon serves the root. |
-| `index_not_built:` | No index exists at `.fuse/fuse.db` (or it is empty). | Run `fuse_workspace action=index` (or `fuse index`) before indexed reads. |
+| `index_not_built:` | No completed index exists at `.fuse/fuse.db`. | Indexed MCP reads normally build it automatically. Retry the same call, or run `fuse_workspace action=index` when the client cannot keep the server alive long enough to finish. |
 | `workspace_not_found:` | The `path` directory does not exist. | Fix the workspace path. |
+| `workspace_identity_unresolved:` | The requested folder is not inside a Git repository, so Fuse has no canonical root for workspace-scoped tools, its daemon, lock, and index. | Use native file tools for that folder. `fuse_reduce` remains available for known files or raw content. |
 | `validation_error:` | The tool arguments are invalid or incomplete. | Correct the parameters and call again. |
 | `index_rebuilding:` | The store's derived data was rebuilt (version or schema mismatch, corruption, or a missing/inconsistent full-text index) and is being repopulated from source. A search against a store missing its `chunk_fts` table maps here, never to `internal_error`. | Retry after a few seconds; the next pass serves a working, searchable index. |
 | `internal_error:` | An unexpected failure (including cancellation). | Retry once; if it persists, run `fuse_workspace action=doctor` and check daemon or disk health. |
@@ -69,22 +73,22 @@ availability: index mode semantic; full-text search available; tier-1 build capt
 
 | Value | Meaning |
 |-------|---------|
-| `not_indexed` | No `.fuse/fuse.db` or zero indexed files. |
+| `not_indexed` | No completed index is available. MCP status normally warms first; CLI `fuse diagnostics` can report this without writing. A completed empty repository is `ready` with zero files. |
 | `building_syntax` | Syntax-first cold start: the syntax tier is live and a semantic upgrade is pending. |
 | `upgrade_pending` | The index exists at syntax or partial tier and a background semantic or tier-1 upgrade is running. |
 | `ready` | The index is current for reads at its loaded tier. |
 | `index_busy` | The writer lock or SQLite blocked this read; retry shortly. |
 | `index_rebuilding` | The store failed an integrity check (missing or inconsistent full-text index, or symbols with zero chunks) and is being rebuilt; it is never reported `ready` in this state. |
-| `stale_as_of` | A bulk change outran per-read reconcile; results may lag the working tree. |
+| `stale_as_of` | A bulk change outran per-file reconcile and a full replacement is pending. The indexed read coordinator starts that replacement automatically. |
 
-`files_indexed` is omitted only when the store cannot be read (for example an exclusive SQLite lock). `fuse_workspace action=status` and `fuse diagnostics` report the same `index_state` values on the fast read-only path without starting a build on a cold workspace.
+`files_indexed` is omitted only when the store cannot be read (for example an exclusive SQLite lock). `fuse_workspace action=status` warms or validates first; `fuse diagnostics` reports the stored state without starting a build.
 
 ## fuse_workspace
 
 Workspace status and lifecycle: the loop's first stop and the one explicit tree-write path. Select the operation with `action`.
 
 - **`doctor`**: the semantic load tier, the selected solution (R24), per-project load reasons, the index integrity result (R31), the files skipped during indexing (R35: too large, unreadable), and the running `fuse host` daemons with their served roots and versions (R28).
-- **`status`** (default): the index mode, verification grade, freshness, and `index_state` (`not_indexed`, `building_syntax`, `upgrade_pending`, `ready`, `index_busy`, `stale_as_of`), plus `files_indexed` when known. This is a read-only fast path: it reads `index_meta` when `.fuse/fuse.db` exists and never starts a build on a cold workspace.
+- **`status`** (default): validates or warms the repository index, then reports the index mode, verification grade, freshness, and `index_state` (`building_syntax`, `upgrade_pending`, `ready`, `index_busy`, `stale_as_of`), plus `files_indexed` when known.
 - **`index`**: build or refresh the persistent semantic index. The index mode is `semantic` when the workspace loads through MSBuild/Roslyn, `partial` when some projects fall back, and `syntax` when no project loads.
 - **`map`**: the workspace map of indexed symbols, routes, and counts.
 - **`doctor`**: the per-project semantic-load diagnosis (why a project loaded at the tier it did). The diagnosis is served from the stamp written into the index at index time (R43), so doctor is sub-second and reflects what was actually indexed - it does not re-run the full MSBuild/Roslyn load (measured tens of seconds on a large repo). The summary header uses the same fast `index_meta` read as `status`. Pass `refresh=true` to force a live MSBuild load instead (or when no stamp is present yet, doctor falls back to a live load automatically). The output names its source (`diagnosis source: warm index` or `diagnosis source: live MSBuild load`).

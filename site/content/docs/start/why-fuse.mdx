@@ -1,10 +1,14 @@
 ---
 title: Why use Fuse
-description: How a warm local index, graph-backed wiring lookup, and graded compiler checks extend an existing .NET agent workflow.
+description: How persistent .NET discovery, reduced task-scoped source, graph-backed wiring, and graded compiler checks fit an agent workflow.
 ---
 
-Before your coding agent changes `OrderService.cs`, resolve the wiring it touches and have
-the compiler check the proposed file:
+Coding agents can inspect a .NET solution through file reads, grep, regex, and language
+tools. That works, but repeated discovery can reopen the same files and reconstruct the
+same symbol and project relationships across turns. Fuse persists that structure and
+returns a reduced payload for the selected scope.
+
+Install and connect from a .NET project directory:
 
 ```bash
 dotnet tool install -g Fuse
@@ -17,11 +21,30 @@ Then reload the agent and ask:
 Use fuse_check on the proposed OrderService.cs content before writing it.
 ```
 
-Fuse adds a warm local index, graph-backed wiring lookup, and compiler checks to the
-editor and agent workflow you already use. It does not replace file editing, exact text
-search, or `dotnet build`.
+Fuse adds a warm local index, graph-backed wiring lookup, reduced task-scoped source, and
+compiler checks to the editor and agent workflow you already use. Exact text search,
+normal builds, and the coding client's own index remain useful alongside it.
 
-## Check the Proposal, Not Just the Saved Files
+## Persistent Discovery Across Turns
+
+When the MCP server starts, the shared daemon begins warming `.fuse/fuse.db` before the
+first tool call. On the recorded NodaTime run (semantic tier, 14,760 symbols), exact symbol
+lookup took 1.8 ms at the median, task localization 15.7 ms, and review planning 106.3 ms
+(`performance.json`). Timings depend on the repository and machine.
+
+Syntax mode provides file and symbol retrieval. Semantic mode adds DI, handler, route,
+options, and call edges when the project loads through MSBuild and Roslyn. Fuse reports the
+mode with the answer.
+
+## Reduced Task-Scoped Source
+
+`fuse_context` emits selected source under a token budget and records why each file was
+included. Sessions can skip unchanged context on later turns. Across four recorded
+repositories, skeleton reduction removed 38 to 44 percent of tokens while retaining every
+measured public and protected type name and 96.3 to 99.4 percent of measured method names
+(`reduce.json`). This measures declaration-name retention, not the complete public API.
+
+## Proposed-File Compiler Checks
 
 `dotnet build` checks the files currently on disk. `fuse_check` checks one proposed file
 before the agent writes it. It returns compiler diagnostics and, for supported API-shape
@@ -37,14 +60,7 @@ The result also states which compiler path answered. Fuse calls this the
 Faster repeated checks are available behind `FUSE_RESIDENT=1`. That mode is opt-in.
 The [benchmarks](/docs/project/benchmarks) record its measured latency and environment.
 
-## Index Once, Query Warm
-
-Fuse builds `.fuse/fuse.db` on first use and reuses it across calls. On the recorded
-NodaTime run (semantic tier, 14,760 symbols), exact symbol lookup took 1.8 ms at the median
-and task localization 15.7 ms (`performance.json`). Syntax mode serves quickly; semantic
-mode adds DI, handler, route, and call edges when the project loads through the compiler.
-
-## Follow .NET Wiring, Not Just Matching Names
+## Typed .NET Wiring
 
 Text search can find `IBasketService`. It cannot establish which implementation a
 particular dependency injection registration supplies. Fuse uses Roslyn and
@@ -63,7 +79,7 @@ Reflection, runtime dispatch, and projects that cannot load through the compiler
 connections. Fuse reports the workspace's analysis mode so a syntax-only lookup is not
 presented as a compiler-backed result.
 
-## Start Branch Review from Git
+## Git-Seeded Branch Review
 
 Git already knows which files changed. `fuse_review` keeps those files and adds focused
 context from callers, implementations, handlers, configuration consumers, and tests.
@@ -76,17 +92,35 @@ fuse review ./src --changed-since origin/main --max-tokens 25000
 `max-tokens` limits the focused context returned. It does not make the review a complete
 substitute for reading the pull request.
 
-## Keep Source and Writes Local
+## Related Code-Intelligence Tools
 
-Fuse runs as a local .NET process. It requires no hosted Fuse model and downloads no
-embedding model. Source and the derived `.fuse/fuse.db` index remain on the machine.
-Your coding agent still applies its own data policy to tool results.
+Repository indexes, code graphs, and language-server tools are an existing category.
+[CodeGraphContext](https://github.com/CodeGraphContext/CodeGraphContext) provides a local
+multi-language graph, [Serena](https://github.com/oraios/serena) exposes
+language-server-backed symbol operations, and
+[Sourcegraph](https://sourcegraph.com/code-search) covers multi-repository search and code
+intelligence. Fuse concentrates on local .NET work through MSBuild and Roslyn: framework
+wiring, reduced scoped context, compiler-backed proposed-file checks, change impact, and
+covering-test selection. It can run alongside a coding client's built-in index.
+
+The [peer comparison](/docs/project/benchmarks#peer-comparison-fuse-versus-codegraph-coa-codesearch-and-serena)
+is a bounded, dated experiment with unequal sample sizes for the model-driven arms. It is
+not a general ranking of code-intelligence tools.
+
+## Local and Offline Analysis
+
+Fuse runs as a local .NET process. Indexing, retrieval, reduction, and captured-compiler
+checks can work offline and require no model. Source and the derived `.fuse/fuse.db` index
+remain on the machine. Your coding agent still applies its own data policy to tool results.
+
+The optional daily update check can contact NuGet. A build-grade operation can use the
+package feeds already configured for the repository.
 
 Checks, reads, indexing, and review do not write source files. The explicit write path is
 `fuse_workspace` with `action=apply`, and it remains a dry run unless the caller requests
 a write.
 
-## Read the Measurements in Scope
+## Measurement Limits
 
 The recorded checks cover 1,000 compiler-labeled edits in the OrderingApp test app, not
 every possible .NET edit. The wiring result covers 24 expected links in that app. The

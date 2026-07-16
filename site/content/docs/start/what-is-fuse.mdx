@@ -1,11 +1,14 @@
 ---
 title: What is Fuse
-description: Local .NET semantic index, typed-graph wiring resolution, and pre-write compiler verification for coding agents.
+description: Persistent MSBuild and Roslyn indexing, reduced task-scoped source, .NET wiring resolution, and proposed-file compiler checks.
 ---
 
-Fuse indexes your .NET solution locally, resolves application wiring from a typed graph, and
-lets your coding agent typecheck a proposed file before it changes on disk. Install and
-connect from a .NET project directory:
+Fuse is a local .NET tool with a persistent semantic index, typed-graph wiring resolution,
+reduced task-scoped source, and pre-write compiler verification for coding agents. It
+indexes a solution through MSBuild and Roslyn, stores the result in `.fuse/fuse.db`, and
+reuses it across agent turns.
+
+Install and connect from a .NET project directory:
 
 ```bash
 dotnet tool install -g Fuse
@@ -18,9 +21,10 @@ Reload your MCP client, then ask:
 Before changing OrderService.cs, check the proposed file with fuse_check.
 ```
 
-Fuse works with the coding agent you already use. It runs on your machine, keeps a warm
-index at `.fuse/fuse.db`, and gives that agent graph-backed wiring lookup plus
-compiler-backed edit checks.
+Coding agents can inspect a solution through file reads, grep, and regex. On a large
+repository, those operations can rediscover the same symbols, references, registrations,
+and project structure across several turns. Fuse moves that discovery into a persistent
+local index and emits reduced source for the selected scope.
 
 ## What It Adds to Daily Work
 
@@ -31,6 +35,8 @@ compiler-backed edit checks.
   route, or configuration section to the code that handles it.
 - **Review a branch.** `fuse_review` starts from the git diff and gathers focused context
   from related files.
+- **Return reduced source.** `fuse_context` emits the selected files under a token budget
+  and records why each file was included.
 - **Stage a refactor.** `fuse_refactor` returns a diff only when the compiler finds no new
   diagnostic.
 
@@ -95,11 +101,12 @@ fuse_find(path="C:/Projects/MyApp/src", kind="task", query="where is the discoun
 fuse_context(path="C:/Projects/MyApp/src", files=["src/Checkout/DiscountPolicy.cs"], maxTokens=25000)
 ```
 
-## Local by Default
+## Local and Offline Analysis
 
 Fuse reads source, compiler state, and Git metadata on your machine. Its derived index
-lives at `.fuse/fuse.db`. Fuse requires no hosted model, sends no source to a Fuse service,
-and downloads no embedding model.
+lives at `.fuse/fuse.db`. Indexing, retrieval, reduction, and captured-compiler checks can
+work offline and require no model. The optional daily update check can contact NuGet, and a
+build-grade check can use the package feeds configured for the repository.
 
 Read, check, impact, refactor, and review operations do not write the working tree.
 `fuse_workspace` with `action=apply` is the explicit write path, and it is a dry run unless

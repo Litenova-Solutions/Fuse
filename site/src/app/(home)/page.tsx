@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { HeroInstallCommands } from '@/components/hero-install';
-import { githubUrl } from '@/lib/shared';
 
 const siteUrl = 'https://fuse.codes';
 
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
     absolute: 'Fuse - local .NET index and compiler checks for coding agents',
   },
   description:
-    'Fuse indexes your .NET solution locally, resolves DI and routes from a typed graph, packs branch context, and typechecks proposed edits through the compiler.',
+    'Fuse reuses a persistent MSBuild and Roslyn index, returns reduced task-scoped source, resolves .NET wiring, and checks proposed C# files against compiler state.',
   alternates: {
     canonical: siteUrl,
   },
@@ -20,14 +19,14 @@ export const metadata: Metadata = {
     url: siteUrl,
     title: 'Fuse - local .NET index and compiler checks for coding agents',
     description:
-      'Persistent semantic index, typed-graph wiring resolution, and pre-write compiler verification for .NET agent workflows.',
+      'Persistent .NET discovery, reduced task-scoped source, typed-graph wiring resolution, and proposed-file compiler checks.',
     siteName: 'Fuse',
     images: [
       {
-        url: '/fuse-social-card.png',
-        width: 1280,
-        height: 640,
-        alt: 'Fuse indexes a .NET solution and checks agent edits through the compiler',
+        url: '/fuse-social-card-v2.png',
+        width: 1200,
+        height: 628,
+        alt: 'Fuse is a free and open source CLI and MCP server built to speed up AI coding agents in .NET codebases',
       },
     ],
   },
@@ -35,8 +34,13 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Fuse - local .NET index and compiler checks for coding agents',
     description:
-      'Persistent semantic index, typed-graph wiring resolution, and pre-write compiler verification for .NET agent workflows.',
-    images: ['/fuse-social-card.png'],
+      'Persistent .NET discovery, reduced task-scoped source, typed-graph wiring resolution, and proposed-file compiler checks.',
+    images: [
+      {
+        url: '/fuse-social-card-v2.png',
+        alt: 'Fuse is a free and open source CLI and MCP server built to speed up AI coding agents in .NET codebases',
+      },
+    ],
   },
 };
 
@@ -47,7 +51,7 @@ const softwareApplicationJsonLd = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Windows, Linux, macOS',
   description:
-    'A local .NET tool that indexes a solution, resolves application wiring from a typed graph, and lets coding agents verify proposed edits before writing them.',
+    'A local .NET tool that reuses a persistent solution index, returns reduced task-scoped source, resolves application wiring, and checks proposed C# files against compiler state.',
   url: siteUrl,
   downloadUrl: 'https://www.nuget.org/packages/Fuse',
   license: 'https://www.apache.org/licenses/LICENSE-2.0',
@@ -75,9 +79,9 @@ export default function HomePage() {
             Persistent semantic index and compiler verification for .NET agents
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-fd-muted-foreground">
-            Fuse builds a warm semantic index in <code className="font-mono text-fd-foreground">.fuse/fuse.db</code>,
-            resolves DI, routes, and callers from a typed graph, and typechecks proposed edits through
-            the compiler before write.
+            Fuse indexes a solution through MSBuild and Roslyn, reuses that work across agent turns,
+            resolves .NET wiring from a typed graph, returns reduced source for a selected scope, and
+            checks proposed C# files against compiler state.
           </p>
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -93,29 +97,29 @@ export default function HomePage() {
 
           <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <HeroHighlight
-              value="24 / 24"
-              title="Wiring edges resolved"
-              detail="DI, MediatR, and route wiring on the OrderingApp fixture with recall and precision 1.0."
+              value="1.8 ms"
+              title="Exact symbol lookup"
+              detail="Median on the recorded NodaTime semantic index with 14,760 symbols; timings depend on the machine."
             />
             <HeroHighlight
-              value="0 / 1,000"
-              title="False greens on labeled edits"
-              detail="Compiler-generated breaking and neutral single-file edits; fuse_check matched the compiler on every case."
+              value="15.7 ms"
+              title="Task localization"
+              detail="Median warm lookup on the same NodaTime run; open-ended recall is reported separately on the benchmarks page."
             />
             <HeroHighlight
-              value="89%"
-              title="pass@1 on scored rollouts"
-              detail="Agent loop on 59 verified tasks: 89% true pass@1 versus 82% for native file tools, with overlapping CIs."
+              value="38-44%"
+              title="Skeleton token reduction"
+              detail="Recorded across four repositories while retaining every measured public and protected type name."
             />
             <HeroHighlight
-              value="93.4%"
-              title="Review precision"
-              detail="Changed-file recall 100% on 69 PRs at a median 1,026 returned tokens; grep baseline was 8% precision."
+              value="0"
+              title="False-green checks"
+              detail="Zero false green and zero false red across 1,000 compiler-labeled mutation edits on the recorded OrderingApp set."
             />
           </div>
 
           <p className="mx-auto mt-10 max-w-2xl text-xs text-fd-muted-foreground">
-            Any MCP client, including Cursor, Claude Code, and Copilot. Apache 2.0. Source and index stay local.
+            Any MCP client, including Cursor, Claude Code, and Copilot. Apache 2.0. Analysis runs locally and can work offline.
           </p>
         </div>
       </section>
@@ -123,29 +127,30 @@ export default function HomePage() {
       <section className="border-b border-fd-border bg-fd-card/40">
         <div className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="max-w-2xl">
-            <p className="text-sm font-medium text-[var(--brand)]">Built once, queried warm</p>
+            <p className="text-sm font-medium text-[var(--brand)]">Persistent discovery</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-              A persistent index, not a fresh file read every turn
+              One index reused across agent turns
             </h2>
             <p className="mt-4 text-lg text-fd-muted-foreground">
-              Fuse extracts the best available view of the workspace through MSBuild and Roslyn,
-              stores it in SQLite, and reuses it across calls. Syntax mode serves quickly; semantic
-              mode adds DI registrations, handlers, routes, and call edges when the project loads.
+              File reads, grep, and regex can reconstruct the same symbols, references, and project
+              structure several times during a task. Fuse stores that discovery in SQLite and updates
+              changed files incrementally. Syntax mode provides symbols and source chunks; semantic
+              mode adds DI registrations, handlers, routes, options, and call edges.
             </p>
           </div>
 
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             <WarmIndexCard
-              title="Index once"
-              body="The first pass builds .fuse/fuse.db. Later calls read the warm store. Single-file edits re-index incrementally without reparsing the whole tree."
+              title="Index the solution"
+              body="The shared daemon starts warming .fuse/fuse.db when the repository is served. Later calls reuse the store, and changed files re-index incrementally."
             />
             <WarmIndexCard
-              title="Walk the graph"
-              body="Resolve a service interface to its registered implementation, a route to its action, or a request to its handler. Text search finds names; Fuse follows the edges that run at runtime."
+              title="Resolve .NET wiring"
+              body="Resolve a service interface to its registered implementation, a route to its action, or a request to its handler through recorded framework relationships."
             />
             <WarmIndexCard
-              title="Answer in milliseconds"
-              body="On the recorded NodaTime run, exact symbol lookup took 2.2 ms at the median, task localization 42 ms, and review planning 117 ms. Timings depend on the machine and repository."
+              title="Return reduced source"
+              body="Select source from indexed anchors, reduce it under a token budget, and include provenance so the agent receives the code needed for the current scope."
             />
           </div>
 
@@ -169,14 +174,14 @@ export default function HomePage() {
       <section className="border-b border-fd-border">
         <div className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="max-w-2xl">
-            <p className="text-sm font-medium text-[var(--brand)]">One local feedback loop</p>
+            <p className="text-sm font-medium text-[var(--brand)]">Indexed discovery and compiler checks</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-              Survey, read, propose, verify, test, review
+              A local task path for reading and changing .NET code
             </h2>
             <p className="mt-4 text-lg text-fd-muted-foreground">
-              Fuse runs beside your editor on the solution already on disk. Your coding agent keeps
-              control of the task; Fuse supplies targeted answers from the warm index instead of
-              serial file reads.
+              Fuse runs beside your editor on the solution already on disk. The coding agent remains
+              responsible for the change. Fuse supplies indexed answers, reduced source, and graded
+              compiler results at the points where they are useful.
             </p>
           </div>
 
@@ -223,7 +228,7 @@ export default function HomePage() {
             number="01"
             title="Check a proposed change"
             body="Typecheck a single-file edit before it is written. If the compiler rejects it, the agent gets the errors and can revise the proposal."
-            example="Example: catch a missing constructor argument before Program.cs changes."
+            example="Example: report a missing constructor argument before Program.cs changes."
           />
           <TaskCard
             number="02"
@@ -267,6 +272,35 @@ export default function HomePage() {
           </Link>{' '}
           for command shapes, limits, and result fields.
         </p>
+      </section>
+
+      <section className="border-y border-fd-border bg-fd-card/40">
+        <div className="mx-auto w-full max-w-6xl px-6 py-20">
+          <div className="max-w-3xl">
+            <p className="text-sm font-medium text-[var(--brand)]">Related tools</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+              Code indexes and graphs are an existing category
+            </h2>
+            <p className="mt-4 text-fd-muted-foreground">
+              <Link className="font-medium text-fd-foreground underline underline-offset-4" href="https://github.com/CodeGraphContext/CodeGraphContext">CodeGraphContext</Link>{' '}
+              builds a local multi-language code graph,{' '}
+              <Link className="font-medium text-fd-foreground underline underline-offset-4" href="https://github.com/oraios/serena">Serena</Link>{' '}
+              exposes language-server-backed symbol operations, and{' '}
+              <Link className="font-medium text-fd-foreground underline underline-offset-4" href="https://sourcegraph.com/code-search">Sourcegraph</Link>{' '}
+              provides code search and navigation across repositories. Fuse concentrates on local
+              .NET work through MSBuild and Roslyn: framework wiring, reduced scoped source,
+              proposed-file compiler checks, change impact, and covering-test selection. It can run
+              alongside a coding client&apos;s built-in index or another search tool.
+            </p>
+            <p className="mt-4 text-sm text-fd-muted-foreground">
+              The{' '}
+              <Link className="font-medium text-fd-foreground underline underline-offset-4" href="/docs/project/benchmarks#peer-comparison-fuse-versus-codegraph-coa-codesearch-and-serena">
+                bounded peer comparison
+              </Link>{' '}
+              records its sample sizes and limits. It is not a general ranking of these tools.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="border-y border-fd-border bg-fd-card/40">
@@ -355,14 +389,16 @@ export default function HomePage() {
       <section className="border-y border-fd-border bg-fd-card/40">
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-20 lg:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-[var(--brand)]">How it stays fast and honest</p>
+            <p className="text-sm font-medium text-[var(--brand)]">Runtime and verification behavior</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-              Warm reads, graded checks, clear abstention
+              Local analysis with graded compiler results
             </h2>
             <p className="mt-4 text-fd-muted-foreground">
               Fuse is a .NET 10 global tool. Any MCP-compatible agent connects through the
-              protocol, including Cursor, Claude Code, Copilot, and others. Source and the derived index stay on your machine; read and check
-              operations do not change working files unless you call the explicit apply path.
+              protocol, including Cursor, Claude Code, Copilot, and others. Source and the derived
+              index stay on your machine. Analysis can work offline; the optional update check and
+              repository package feeds are the network-dependent exceptions. Read and check operations
+              do not change working files unless you call the explicit apply path.
             </p>
             <p className="mt-4 text-fd-muted-foreground">
               Skeleton reduction removed 38 to 44 percent of tokens on four recorded repositories

@@ -138,7 +138,7 @@ Write for senior .NET developers and agent authors, not a non-technical buyer.
 - Lead with capability and measured scope, then example. Cite the result file or suite when quoting a number. State abstention, index mode, and corpus limits in the same breath as a headline figure.
 - Honest negatives belong in consumer copy: Fuse does not halve `dotnet build` counts on the recorded loop run; open-ended localize recall is 37.7 percent on the corpus; benchmark SVGs and mermaid diagrams must render on the site, not only exist in `site/public`.
 - Diagrams: use mermaid in MDX for flowcharts; use `<Diagram src="/fuse-....svg" alt="..." />` or markdown images for static figures in `site/public`. Do not leave figures only in `assets/` if the docs page should show them.
-- Do not present Fuse as limited to three agents. Any MCP-compatible client can run `fuse mcp serve`; name Cursor, Claude Code, and Copilot as common examples when `fuse mcp install` auto-writes their config.
+- Do not present Fuse as limited to the installer's client list. Any MCP-compatible client can run `fuse mcp serve`; `fuse mcp install` auto-writes config for Claude Code, Cursor, GitHub Copilot, OpenCode, Kilo Code, Codex, and Grok Build.
 
 ## Code Documentation Standard
 

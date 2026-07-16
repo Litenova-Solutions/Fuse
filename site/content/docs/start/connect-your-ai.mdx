@@ -4,9 +4,10 @@ description: Register Fuse with any MCP-compatible coding agent and confirm a co
 ---
 
 Connect Fuse from the current .NET project. `fuse mcp install` writes configuration for
-Cursor, Claude Code, and Copilot; any other MCP client uses the same stdio server with
-manual registration. No environment block is required: shared daemon, background upgrade,
-build capture, and session auto-update default on inside `fuse mcp serve`.
+Claude Code, Cursor, GitHub Copilot, OpenCode, Kilo Code, Codex, and Grok Build. Other MCP
+clients use the same stdio server with manual registration. No environment block is
+required: shared daemon, background upgrade, build capture, and session auto-update
+default on inside `fuse mcp serve`.
 
 ```bash
 fuse mcp install --rules
@@ -28,8 +29,8 @@ available tools does not.
 
 ## Choose the Registration Scope
 
-The opening command registers Cursor, Claude Code, and Copilot for the current project
-when you use the default `--client all`. To register Fuse for every project on this machine:
+The opening command registers all seven supported clients for the current project when you
+use the default `--client all`. To register Fuse for every project on this machine:
 
 ```bash
 fuse mcp install --rules --scope user
@@ -41,11 +42,15 @@ To register one client:
 fuse mcp install --client cursor --rules
 fuse mcp install --client claude --rules
 fuse mcp install --client copilot --rules
+fuse mcp install --client opencode --rules
+fuse mcp install --client kilo --rules
+fuse mcp install --client codex --rules
+fuse mcp install --client grok --rules
 ```
 
 The available flags are:
 
-- `--client claude|cursor|copilot|all`, default `all`
+- `--client claude|cursor|copilot|opencode|kilo|codex|grok|all`, default `all`
 - `--scope project|user`, default `project`
 - `--rules`, which writes the recommended agent instructions and, at project scope, adds `.fuse/` to `.gitignore`
 - `--command`, which changes the executable the client launches
@@ -56,11 +61,15 @@ The available flags are:
 - Cursor: `.cursor/mcp.json`, plus `.cursor/rules/fuse.mdc` when `--rules` is set.
 - GitHub Copilot: `.vscode/mcp.json`, plus a Fuse-managed block in
   `.github/copilot-instructions.md` when `--rules` is set.
+- OpenCode: `opencode.json`, plus a Fuse-managed block in `AGENTS.md` when `--rules` is set.
+- Kilo Code: `.kilo/kilo.jsonc`, plus a Fuse-managed block in `AGENTS.md` when `--rules` is set.
+- Codex: `.codex/config.toml`, plus a Fuse-managed block in `AGENTS.md` when `--rules` is set.
+- Grok Build: `.grok/config.toml`, plus a Fuse-managed block in `AGENTS.md` when `--rules` is set.
 - `.gitignore`: appends `.fuse/` at project scope when `--rules` is set (skipped when an equivalent entry already exists).
 
-Existing JSON and instruction files are merged rather than replaced. Re-running the
-command updates Fuse-managed entries in place. Project files can be committed so the team
-receives the same setup.
+Existing config keys and instruction text are retained. Re-running the command updates the
+Fuse server entry and marker-delimited rule in place. Project files can be committed so the
+team receives the same setup.
 
 At user scope, Claude registration uses `claude mcp add` and writes its rule to
 `~/.claude/CLAUDE.md`. Cursor writes `~/.cursor/mcp.json`. Copilot writes the VS Code user
@@ -70,8 +79,15 @@ At user scope, Claude registration uses `claude mcp add` and writes its rule to
 - macOS: `~/Library/Application Support/Code/User`
 - Linux: `~/.config/Code/User`
 
-Cursor and Copilot do not have a user-global rule file, so `--rules --scope user` skips
-those two rules with a note.
+OpenCode writes `~/.config/opencode/opencode.json` and
+`~/.config/opencode/AGENTS.md`. Kilo Code writes `~/.config/kilo/kilo.jsonc` and
+`~/.config/kilo/AGENTS.md`. Codex writes `~/.codex/config.toml` and
+`~/.codex/AGENTS.md`, or the equivalent files under `CODEX_HOME`. Grok Build writes
+`~/.grok/config.toml`, or `$GROK_HOME/config.toml` when that variable is set.
+
+Cursor and Copilot do not have a user-global rule file. Grok Build documents repository
+`AGENTS.md` discovery but no user-global `AGENTS.md`. `--rules --scope user` skips those
+three rules with a note.
 
 The optional `--with-hooks` flag also merges two Claude Code hooks into
 `.claude/settings.json`: a post-edit `fuse check --delta --fast` hook and a stop-time
@@ -90,18 +106,19 @@ Fuse labels the compiler path used for each check. This label is the verificatio
 oracle grade uses a build-captured compilation, while build grade runs a scoped real
 `dotnet build`. If neither path can answer, Fuse abstains and states what is missing.
 
-Index the repository once after connecting, so the agent's first turn reads a warm index:
-run `fuse index` (or ask the agent to call `fuse_workspace` with `action=index`). You do
-this once; Fuse then re-indexes changed files automatically on the next read. If you skip
-it, the first MCP tool call builds `.fuse/fuse.db` automatically, which can take a few
-seconds to tens of seconds on a large repository. Fuse reports `partial` or `syntax`
-analysis when MSBuild cannot load every project.
+The shared daemon starts warming `.fuse/fuse.db` when the MCP server starts. Run
+`fuse index` (or ask the agent to call `fuse_workspace` with `action=index`) only when you
+want to wait for a complete semantic index before the first task. Otherwise a cold read
+uses a bounded syntax-first pass and reports when the semantic upgrade is still running.
+Fuse then re-indexes changed files through the live watcher and read-time backstop. It
+reports `partial` or `syntax` analysis when MSBuild cannot load every project.
 
 ## Local Process and Network Behavior
 
 The client launches `fuse mcp serve` as a child process and communicates over standard
 input and output. Fuse does not listen on a TCP port. Source files and the derived index
-remain on your machine, and Fuse does not send source to a hosted Fuse service.
+remain on your machine. Indexing, retrieval, reduction, and captured-compiler checks can
+work offline.
 
 Your coding agent still applies its own data policy to prompts and tool results. Fuse can
 contact NuGet for a daily update check; set `FUSE_UPDATE_CHECK=0` in the server environment
@@ -117,6 +134,7 @@ in the client `env` block or your shell:
 |----------|---------------|--------|
 | `FUSE_DAEMON` | `0` | Serve in-process instead of delegating to a shared `fuse host` per repository |
 | `FUSE_AUTO_UPDATE` | `0` | Do not launch a background updater between MCP sessions |
+| `FUSE_EAGER_INDEX` | `0` | Do not start warming the repository when the daemon or MCP server starts |
 | `FUSE_BG_UPGRADE` | `0` | Block the first read on a full synchronous index instead of syntax-first serving |
 | `FUSE_BUILD_CAPTURE` | `0` | Skip tier-1 build capture (oracle-grade checks need a local build instead) |
 | `FUSE_UPDATE_CHECK` | `0` | Disable the NuGet update notice on stderr |
@@ -143,7 +161,7 @@ and some require `type: stdio`.
 Windsurf, Cline, Zed, and custom agents follow this pattern once you locate the client's
 MCP configuration file. Reload the client after editing.
 
-## Manual registration (Cursor, Claude Code, Copilot)
+## Manual registration
 
 Use these files if you prefer to edit the client configuration yourself instead of running
 `fuse mcp install`.
@@ -197,6 +215,28 @@ GitHub Copilot in VS Code, `.vscode/mcp.json`:
 }
 ```
 
+OpenCode in `opencode.json`, or Kilo Code in `.kilo/kilo.jsonc`:
+
+```json
+{
+  "mcp": {
+    "fuse": {
+      "type": "local",
+      "command": ["fuse", "mcp", "serve"],
+      "enabled": true
+    }
+  }
+}
+```
+
+Codex in `.codex/config.toml`, or Grok Build in `.grok/config.toml`:
+
+```toml
+[mcp_servers.fuse]
+command = "fuse"
+args = ["mcp", "serve"]
+```
+
 ## Roll Back the Setup
 
 There is no `fuse mcp uninstall` command. Remove only the `fuse` entry from each client
@@ -206,10 +246,11 @@ configuration file listed above, preserving other entries. For Claude user scope
 claude mcp remove fuse --scope user
 ```
 
-Delete `.cursor/rules/fuse.mdc`. In `CLAUDE.md`,
-`.github/copilot-instructions.md`, or `~/.claude/CLAUDE.md`, delete the block from
-`<!-- fuse:begin ... -->` through `<!-- fuse:end -->`. If you installed hooks, delete the
-two Fuse entries from `.claude/settings.json` under `hooks`.
+Delete `.cursor/rules/fuse.mdc`. In any managed `CLAUDE.md`, `AGENTS.md`, or
+`copilot-instructions.md`, delete the block from `<!-- fuse:begin ... -->` through
+`<!-- fuse:end -->`. In Codex or Grok Build TOML, delete the block from
+`# fuse:begin ...` through `# fuse:end`. If you installed hooks, delete the two Fuse
+entries from `.claude/settings.json` under `hooks`.
 
 Stop or reload the coding agent, then delete `.fuse/` at the repository root to remove
 the derived index. Deleting `.fuse/` does not change source files. A later Fuse read

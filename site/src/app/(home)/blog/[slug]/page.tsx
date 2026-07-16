@@ -82,13 +82,13 @@ export async function generateMetadata(props: PageProps<'/blog/[slug]'>): Promis
       siteName: 'Fuse',
       publishedTime: page.data.date,
       authors: page.data.author ? [page.data.author] : ['Fuse'],
-      images: [{ url: '/fuse-social-card.png', width: 1280, height: 640, alt: page.data.title }],
+      images: [{ url: '/fuse-social-card-v2.png', width: 1200, height: 628, alt: page.data.title }],
     },
     twitter: {
       card: 'summary_large_image',
       title: page.data.title,
       description: page.data.description,
-      images: ['/fuse-social-card.png'],
+      images: [{ url: '/fuse-social-card-v2.png', alt: page.data.title }],
     },
   };
 }

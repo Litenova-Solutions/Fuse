@@ -2,4 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/Fuse/Fuse.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fuse.Tests/Fuse.Tests.csproj" />
+  </Folder>
+  <Folder Name="/evals/">
+    <Project Path="evals/Fuse.Evals/Fuse.Evals.csproj" />
+  </Folder>
 </Solution>

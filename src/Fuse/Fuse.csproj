@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>fuse</AssemblyName>
+    <RootNamespace>Fuse</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>fuse</ToolCommandName>
+    <PackageId>Fuse</PackageId>
+    <Description>Instant C# compiler feedback and affected-test runs for AI coding agents, delivered through agent hooks and a small MCP server.</Description>
+    <PackageTags>dotnet-tool;ai-agent;roslyn;claude-code;hooks;mcp;csharp</PackageTags>
+    <PackageProjectUrl>https://github.com/Litenova-Solutions/Fuse</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Build.Locator" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" />
+    <PackageReference Include="ModelContextProtocol.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <InternalsVisibleTo Include="Fuse.Tests" />
+    <InternalsVisibleTo Include="Fuse.Evals" />
+  </ItemGroup>
+
+</Project>

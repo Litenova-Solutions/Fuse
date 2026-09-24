@@ -6,6 +6,20 @@ Hosts that cannot run hooks or shell commands (IDE chat panels, Visual Studio, J
 
 This plan comes from a read-only investigation on 2026-09-24: four audits of the repository at `ba75d7c` and a web survey of the agent-harness landscape. Nothing was built, run or benchmarked. Line references point at v4.4.0 source.
 
+## Implementation notes
+
+The implementation on the `v5` branch follows this plan with these differences, each decided during the build:
+
+- **Reach of a declaration change.** Section 4.5 step 3 is implemented with Roslyn's `SymbolFinder` against the HEAD baseline (references, implementations, overrides, derived types), not with a name search. A name search made a change to a common name such as `Format` bind whole projects on NodaTime (4.7 s per edit); symbol references cut that to about 1.3 s with no missed error in the correctness eval.
+- **State location.** Logs, shadow test output and test results live in the user's local application data (`fuse/repos/<id>`), not in `obj/fuse`, so Fuse writes nothing inside the repository except the hook settings `fuse init` creates.
+- **No binlog in `fuse build`.** It costs build time on every run and nothing reads it.
+- **Engine binaries.** The engine runs from a per-build copy of the tool in local application data, because an engine running from the tool directory locks it and breaks `dotnet tool update`.
+- **Background preload.** After a check, the engine loads the dependents of projects with uncommitted changes in the background, outside the request lock, so the first declaration change does not pay for loading them.
+- **Stop gate.** The stop hook blocks once per stop attempt (it honors `stop_hook_active` and Cursor's `loop_count`), so an agent that cannot fix an error is not trapped in a loop.
+- **MCP.** Kept as three tools for hosts without hooks, as section 2 D1 records.
+
+Measured results are in the README and `evals/results`.
+
 ## 1. What the evidence says to build
 
 ### 1.1 What v4 proved and disproved

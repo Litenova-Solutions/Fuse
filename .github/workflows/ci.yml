@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, v5]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test, format (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Git identity for fixture repositories
+        run: |
+          git config --global user.email "ci@fuse.invalid"
+          git config --global user.name "Fuse CI"
+
+      - name: Build
+        run: dotnet build Fuse.slnx -c Release
+
+      - name: Test
+        run: dotnet test --solution Fuse.slnx -c Release --no-build
+
+      - name: Format
+        run: dotnet format Fuse.slnx --verify-no-changes
+
+      - name: Pack
+        run: dotnet pack src/Fuse/Fuse.csproj -c Release --no-build -o artifacts
+
+      - name: Install and run the packed tool
+        shell: bash
+        run: |
+          dotnet tool install --tool-path tools Fuse --add-source artifacts
+          ./tools/fuse --version

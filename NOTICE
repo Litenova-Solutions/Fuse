@@ -1,0 +1,8 @@
+Fuse
+Copyright 2026 Litenova Solutions
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product depends on third-party components distributed under their own
+licenses (Roslyn and MSBuild under MIT, the Model Context Protocol C# SDK under
+MIT). The NuGet dependency graph records each component's license expression.

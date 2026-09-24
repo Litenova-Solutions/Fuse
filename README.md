@@ -1,184 +1,114 @@
-<!-- mcp-name: io.github.Litenova-Solutions/fuse -->
-
-<p align="center">
-  <img src="assets/fuse-icon.svg" alt="Fuse" width="72" height="72">
-</p>
-
-<p align="center">
-  <a href="https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml"><img src="https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="https://www.nuget.org/packages/Fuse"><img src="https://img.shields.io/nuget/v/Fuse.svg?label=NuGet" alt="NuGet version"></a>
-  <a href="https://www.nuget.org/packages/Fuse"><img src="https://img.shields.io/nuget/dt/Fuse.svg?label=downloads" alt="NuGet downloads"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Litenova-Solutions/Fuse" alt="License"></a>
-</p>
-
 # Fuse
 
-Fuse is a local .NET tool with a persistent syntax index, typed-graph wiring
-resolution on demand, reduced task-scoped source, and pre-write compiler verification
-for coding agents. It stores repository facts in `.fuse/fuse.db` and reuses them across
-agent turns instead of rediscovering the same structure through repeated file reads and
-text searches.
-
-From a .NET project inside a Git repository:
+Fuse keeps a warm Roslyn compilation of your .NET repository and plugs it into coding agents through hooks. After every edit, the agent sees the compiler errors that edit introduced, including breaks in projects that depend on the edited one, usually well under a second after the first load. When the agent runs `dotnet test`, Fuse runs only the tests your changes can affect, and prints only what failed.
 
 ```bash
 dotnet tool install -g Fuse
-fuse mcp install
+cd your-repo
+fuse init
 ```
 
-The installer supports Claude Code, Cursor, GitHub Copilot, OpenCode, Kilo Code, Codex,
-and Grok Build. Use `--client <name>` to configure one client; the default `all` configures
-all seven for the selected scope. `fuse mcp install` writes MCP registration and a short,
-versioned managed block in the client's documented instruction file, such as `AGENTS.md` or
-`CLAUDE.md`. Pass `--no-rules` to register MCP without the managed block. `--with-hooks`
-separately writes project-scoped Claude Code hooks. Run `fuse mcp doctor` after installation
-to inspect registration, managed guidance, daemon reachability, and index state. See [Connect
-your coding agent](https://fuse.codes/docs/start/connect-your-ai)
-for the exact file and scope matrix.
+That is the whole setup. The agent does not need instructions, a skill file or a tool to remember: the hooks run on their own.
 
-Reload your MCP client, then ask:
+## What the agent sees
+
+After an edit that renames `Calc.Add` to `Calc.Plus`, the post-edit hook wakes the agent with:
 
 ```text
-Resolve IOrderService to its implementation, then check the proposed OrderService.cs edit
-with fuse_check before writing it.
+App/Program.cs(2,28): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
+Lib.Tests/UnitTest1.cs(4,65): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
+fuse: 2 new error(s) in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked
 ```
 
-When the MCP server starts, its shared local daemon owns one index job for the repository.
-A cold read starts a syntax index and reports its job state. Run `fuse index` to render
-progress in a terminal, `fuse index --semantic` for explicit compiler analysis, and
-`fuse index status` or `fuse index cancel` to control the job. The installer adds `.fuse/`
-to `.gitignore` at project scope.
+After an edit that introduces no error, it sees nothing.
 
-Every MCP operation except `fuse_reduce` requires a Git repository identity. Fuse walks upward to the nearest
-`.git` directory or file, so a call from a nested source or output folder uses the same
-repository-root daemon, lock, and index. A non-Git folder returns
-`workspace_identity_unresolved:` without starting a daemon or writing an index;
-`fuse_reduce` remains available. Each warm index records its repository root and complete
-file inventory. A missing or incomplete manifest rebuilds automatically even when the
-database already contains file rows.
+When the agent runs `dotnet test`, the command is rewritten to `fuse test`:
 
-<p align="center">
-  <img src="assets/demo/fuse-check-demo.gif" alt="An agent proposes an edit with an invalid OrderOptions member. fuse_check returns CS1061 and a repair packet, then verifies the corrected proposal." width="820">
-</p>
+```text
+FAILED Lib.Tests.CalcTests.Multiplies
+  Assert.Equal() Failure: Values differ
+  Expected: 6
+  Actual:   7
+  at Lib.Tests.CalcTests.Multiplies() in Lib.Tests/UnitTest1.cs:line 5
+fuse: 1 failed, 0 passed in 5.5 s; ran 1 test(s) affected by your changes out of 2; fuse test --all runs everything; fast path
+```
 
-Analysis runs locally and can work offline. Fuse walks a typed graph of DI registrations,
-handlers, routes, and callers, emits reduced source for a selected scope, and lets a coding
-agent typecheck proposed single-file content before writing it. No model is required. The
-optional update check can contact NuGet, and build-grade operations can use the package
-feeds configured for the repository.
+When the agent tries to finish while its changes leave errors that were not there at the last commit, the stop hook sends it back once with the list.
 
-## Persistent Discovery and Reduced Context
+## Commands
 
-Coding agents can inspect a repository through file reads, grep, and regex. On a large
-solution, those operations can rediscover the same symbols, references, registrations, and
-project structure across several turns. Fuse performs that discovery through MSBuild and
-Roslyn, persists the result, and incrementally re-indexes files as they change.
+| Command | What it does |
+|---|---|
+| `fuse init` | Registers the hooks with every agent harness the repository uses |
+| `fuse check [files...]` | Errors the working tree has that HEAD did not, in the changed files and everything that depends on them |
+| `fuse test` | Runs the tests affected by the working-tree changes and prints failures |
+| `fuse test [dotnet test args]` | Runs exactly what `dotnet test` would, printing failures |
+| `fuse test --all` | Runs every test, printing failures |
+| `fuse build [dotnet build args]` | The real `dotnet build`, printing only errors |
+| `fuse mcp` | Stdio MCP server with `fuse_check`, `fuse_test` and `fuse_build` |
 
-When a project loads semantically, the graph records DI registrations, request handlers,
-routes, options bindings, and call edges. When it does not, Fuse falls back to syntax-level
-indexing for that project and reports the mode.
+Exit codes: 0 clean, 1 errors or failed tests, 2 Fuse could not answer (the message says why and what to run).
 
-- **Resolve wiring.** `fuse_find` traces a service, request, route, or configuration
-  section to the code that handles it. Text search finds `IOrderService`; Fuse follows the
-  registration to the implementation that runs.
-- **Pack branch context.** `fuse_review` seeds on the git diff and returns related callers,
-  handlers, and tests with provenance. On 69 recorded pull requests the median response was
-  1,026 tokens at 93.4 percent precision (`review.json`).
-- **Return less source.** `fuse_context` reduces the selected files under a token budget
-  and records why each file was included. Across four recorded repositories, skeleton
-  reduction removed 38 to 44 percent of tokens while retaining every measured public and
-  protected type name (`reduce.json`).
-- **Read warm.** On the recorded NodaTime run (semantic tier, 14,760 symbols), exact
-  symbol lookup took 1.8 ms at the median, task localization 15.7 ms, and review planning
-  106.3 ms (`performance.json`; timings are environment-dependent).
+There is no configuration file and there are no environment variables. Fuse finds every `.csproj` in the repository (skipping git-ignored ones) and needs the projects to be restored.
 
-<p align="center">
-  <img src="assets/fuse-typed-wiring.svg" alt="Fuse resolves an interface through dependency injection registration to its concrete implementation and related callers." width="820">
-</p>
+## Harnesses
 
-## Compiler Checks and Change Verification
+`fuse init` looks for each harness's folder and writes its hooks there. With none found, it sets up Claude Code.
 
-- `fuse_check` checks the proposed content of one file and returns compiler diagnostics
-  without changing the working tree. Oracle grade reuses compiler state captured from the
-  real build. Build grade runs a scoped `dotnet build` for the owning project when captured
-  state is unavailable. Supported API-shape errors can include a repair packet; in the
-  recorded run, the top suggestion repaired 20 of 20 near-miss member and type errors
-  (`diagbench.json`).
-- Before changing a public method, `fuse_impact` finds callers, implementations, and
-  referencing types. Given a package id and two versions, it returns the break set for
-  that NuGet upgrade.
-- When a signature must change, `fuse_refactor` stages the refactor as a diff and
-  returns it only when the compiler reports no new diagnostic.
-- After an edit, `fuse_test` selects and runs the test types that reach the changed
-  symbol, grouped by owning project, instead of starting with the whole suite.
+| Harness | Detected by | Hooks written |
+|---|---|---|
+| Claude Code | `.claude/` or `CLAUDE.md` | `.claude/settings.json`: post-edit check (in the background, wakes the agent only on new errors), `dotnet build`/`dotnet test` rewrite, stop gate |
+| Cursor | `.cursor/` | `.cursor/hooks.json`: post-edit check, stop follow-up |
+| Gemini CLI | `.gemini/` or `GEMINI.md` | `.gemini/settings.json`: post-edit check, `dotnet` rewrite, stop gate |
+| Codex | `.codex/` | `.codex/hooks.json`: post-`apply_patch` check, `dotnet` rewrite, stop gate |
+| GitHub Copilot CLI | `.github/copilot-instructions.md` or `.github/hooks/` | `.github/hooks/fuse.json`: post-edit check, stop gate |
+| VS Code agent mode | `.vscode/` | `.vscode/mcp.json`: the MCP server (VS Code's own agent has no hooks) |
 
-Every answer names how it was produced. Fuse calls this the **verification grade**:
-oracle grade checks against the compilation captured from the real build, build grade
-runs a scoped `dotnet build`, and when neither compiler path can answer, Fuse abstains
-and names the missing prerequisite instead of guessing.
+Re-running `fuse init` replaces Fuse's entries and leaves everything else in those files alone. If your Claude Code settings already allow `dotnet build` or `dotnet test` without asking, `init` adds the same allowance for `fuse build` and `fuse test`.
 
-## What the Recorded Results Cover
+Any other MCP host can run `fuse mcp` from the repository directory.
 
-Every result below comes from `tests/benchmarks/results` and has a reproduction command
-on the [benchmarks page](https://fuse.codes/docs/project/benchmarks).
+## How it works
 
-- Across 1,000 compiler-labeled edits in the recorded OrderingApp test app (500 breaking,
-  500 neutral), `fuse_check` reported zero broken edits as clean and rejected zero valid
-  edits (`checkgate.json`).
-- In the same app, Fuse matched all 24 expected .NET wiring links with no extra matches
-  (`semantics.json`).
-- Across 69 real pull requests, branch review retained every git-changed file by
-  construction at 93.4 percent precision with a median size of 1,026 tokens (`review.json`).
-- In the reduced-scope agent-loop run, the Fuse arm's edits passed the project's own
-  tests on the first attempt in 89 percent of scored rollouts versus 82 percent for
-  native tools, with overlapping confidence intervals. The Fuse arm declared success on a
-  failing edit 8 times versus 9 for native. Build and test calls were essentially equal at
-  3.1 versus 3.2 (`loop.json`).
-- Across four recorded repositories, skeleton reduction removed 38 to 44 percent of
-  tokens while keeping every public and protected type name and 96.3 to 99.4 percent of
-  method names (`reduce.json`).
+One `fuse engine` process runs per repository. The first command or hook starts it; it exits after 30 minutes without a request. It evaluates every project with MSBuild (no build), and loads a project's compilation through Roslyn's `MSBuildWorkspace` only when a change touches it, so a session that edits one project never pays for the rest of the repository.
 
-The opt-in resident workspace answered repeated `fuse_check` calls in 31.2 ms at the
-median on the recorded NodaTime run (`resident-latency.json`). That path is faster than a
-full build for speculative checks; it does not replace normal builds or tests before merge.
+**Checking.** Fuse compares each changed file's errors in the working tree with the same file at HEAD, so errors that were already there are never reported as yours. It then compares the file's declarations with HEAD. A body-only edit ends the check. A changed declaration re-checks the files in the owning project and its dependents that mention a changed name; a change that can reach code without naming it (a base type, an operator, a global using) re-checks every file there. Analyzers run only when the project configures one of their diagnostics as an error. Warnings are not reported.
 
-These measurements have defined limits. Read the
-[full methods and results](https://fuse.codes/docs/project/benchmarks) before comparing
-tools or applying the figures to another repository.
+**Testing.** Fuse walks references backwards from every changed member (through callers, overrides and interface implementations) until it reaches test methods. Code a framework calls (controller actions, request handlers, hosted services, top-level statements) has no caller in source, so reaching it selects every test project that depends on it. When the test projects already have build output and nothing but C# sources changed since, Fuse emits the changed assemblies from memory into a copy of that output and runs the tests there without MSBuild. Otherwise it runs `dotnet test` normally.
 
-## Local and Write-Safe
+**Staying current.** A file watcher and a content comparison against HEAD track what changed. Project files, props, targets, `global.json` and `.editorconfig` changes trigger re-evaluation. A branch switch or commit resets the baseline.
 
-Fuse reads source, compiler state, git metadata, and its local `.fuse/fuse.db` index.
-Read, check, impact, refactor, and review operations do not write the working tree.
-`fuse_workspace` with `action=apply` is the one explicit tree-write path, and it is a dry
-run unless `write=true`.
+## Measured
 
-Compiler-backed wiring analysis is .NET-only. Other languages receive syntax-level search
-and reduction.
+From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine (results in `evals/results`):
 
-## Related Code-Intelligence Tools
+| Eval | Fixture (5 projects) | NodaTime (17 projects) |
+|---|---|---|
+| Correctness: mutations compared with a real `dotnet build` | 30 cases, 0 missed errors, 0 extra errors | 20 cases, 0 missed errors, 0 extra errors |
+| Warm check after a body edit, P50 / P95 | 157 / 204 ms | 532 / 704 ms |
+| Warm check after a signature edit, P50 / P95 | 200 / 2,369 ms | 1,456 / 7,363 ms |
+| Check on an unchanged tree (client and engine overhead), P50 | 140 ms | 139 ms |
+| Engine memory | 218 MB | 801 MB |
+| Test selection: failing tests missed | 0 of 10 cases | not measured yet |
 
-Repository indexes, code graphs, and language-server tools already exist.
-[CodeGraphContext](https://github.com/CodeGraphContext/CodeGraphContext) provides a local
-multi-language graph, [Serena](https://github.com/oraios/serena) exposes
-language-server-backed symbol tools, and [Sourcegraph](https://sourcegraph.com/code-search)
-covers multi-repository search and code intelligence. Fuse concentrates on local .NET work
-through MSBuild and Roslyn: framework wiring, reduced scoped context, compiler-backed
-proposed-file checks, change impact, and covering-test selection. It can run alongside the
-index or search built into a coding client.
+The signature-edit P95 includes the first such edit, which loads every dependent project; later signature edits on NodaTime took 1.1 to 1.4 s. NodaTime builds with `TreatWarningsAsErrors`, so its body edits also run every analyzer that can report a warning. On the small fixture, `fuse test` ran 15 percent of the tests but took as long as a full `dotnet test` (median 4.0 s each), because test host startup dominates there.
 
-The [peer comparison](https://fuse.codes/docs/project/benchmarks#peer-comparison-fuse-versus-codegraph-coa-codesearch-and-serena)
-records a bounded, dated experiment and its sampling limits. It is not a general ranking of
-code-intelligence tools.
+## Limits
 
-## Start Here
+- Fuse compiles what MSBuild's design-time evaluation describes. Custom targets that change compilation inputs at build time, source generators that read files outside the project's additional files, and IL weaving are invisible to `fuse check`. `fuse build` is the ground truth.
+- Compilation-end analyzers are not run by `fuse check`.
+- Test selection is static. Tests that reach code only through reflection or assembly scanning are selected when the walk reaches framework-invoked code, not otherwise.
+- Test projects on Microsoft.Testing.Platform (opted in through `global.json`) run whole, without selection or the fast path.
+- The fast test path uses resources and content files from the last real build. When any of them changed, Fuse builds with MSBuild instead.
+- C# only.
 
-- [Quickstart](https://fuse.codes/docs/start/quickstart)
-- [Connect your coding agent](https://fuse.codes/docs/start/connect-your-ai)
-- [How Fuse works](https://fuse.codes/docs/concepts/how-fuse-works)
-- [Tool reference](https://fuse.codes/docs/reference/mcp-tools)
-- [Install options](https://fuse.codes/docs/start/install)
-- [Contributing](https://fuse.codes/docs/project/contributing)
+## Troubleshooting
 
-Apache 2.0. Copyright (c) 2026 Litenova Solutions. See [LICENSE](LICENSE) and
-[NOTICE](NOTICE).
+- **`restore needed`**: run `dotnet restore`. Fuse never restores on its own.
+- **The engine log** is `engine.log`, and hook failures go to `hook.log`, in `%LOCALAPPDATA%use
+epos\<id>` (Windows) `~/.local/share/fuse/repos/<id>` (Linux) or `~/Library/Application Support/fuse/repos/<id>` (macOS). Fuse writes nothing inside the repository except the hook settings `fuse init` creates.
+- **Stopping the engine**: it exits on its own after 30 idle minutes; killing the `fuse` process is safe.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

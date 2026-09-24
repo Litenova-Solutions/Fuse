@@ -18,8 +18,15 @@ internal sealed class RepoRoot
     /// <summary>Name of the engine's pipe for this root. Case-insensitive on Windows, where paths are.</summary>
     public string PipeName => "fuse-" + Hash(OperatingSystem.IsWindows() ? Path.ToUpperInvariant() : Path);
 
-    /// <summary>Directory for Fuse's own files (log, shadow test output). Inside <c>obj</c>, which .NET repositories ignore.</summary>
-    public string StateDirectory => System.IO.Path.Combine(Path, "obj", "fuse");
+    /// <summary>
+    ///     Directory for Fuse's own files for this repository (engine log, hook log, shadow test output, test results).
+    ///     It lives in the user's local application data, so Fuse never writes inside the repository.
+    /// </summary>
+    public string StateDirectory => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create),
+        "fuse",
+        "repos",
+        PipeName["fuse-".Length..]);
 
     /// <summary>Finds the repository containing <paramref name="start"/>, or null when there is none.</summary>
     public static RepoRoot? Find(string start)

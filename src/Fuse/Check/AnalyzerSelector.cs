@@ -41,50 +41,80 @@ internal sealed class AnalyzerSelector
         public CompilationWithAnalyzers? Value { get; } = value;
     }
 
-    /// <summary>The ids and categories that any editorconfig or globalconfig section raises to error.</summary>
+    /// <summary>
+    ///     How a compilation's configuration sets severities. Editorconfig and globalconfig
+    ///     <c>dotnet_diagnostic.ID.severity</c> entries are not visible through <see cref="AnalyzerConfigOptions"/>; the
+    ///     compiler exposes them through <see cref="SyntaxTreeOptionsProvider"/>, per tree and globally. Trees that share
+    ///     an options set share their severities, so one tree per distinct set is enough to consult.
+    /// </summary>
     private sealed class ErrorConfig
     {
-        private readonly HashSet<string> _ids = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _categories = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<SyntaxTree> _representatives = [];
+        private SyntaxTreeOptionsProvider? _provider;
         private bool _bulk;
 
         public static ErrorConfig Read(Project project, Compilation compilation)
         {
-            var result = new ErrorConfig();
+            var result = new ErrorConfig { _provider = compilation.Options.SyntaxTreeOptionsProvider };
             var provider = project.AnalyzerOptions.AnalyzerConfigOptionsProvider;
             var seen = new HashSet<AnalyzerConfigOptions>(ReferenceEqualityComparer.Instance);
-            foreach (var options in compilation.SyntaxTrees.Select(provider.GetOptions).Append(provider.GlobalOptions))
+            foreach (var tree in compilation.SyntaxTrees)
             {
-                if (!seen.Add(options))
-                    continue;
-                foreach (var key in options.Keys)
+                var options = provider.GetOptions(tree);
+                if (seen.Add(options))
                 {
-                    if (!options.TryGetValue(key, out var value) || !value.Trim().StartsWith("error", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    if (key.StartsWith("dotnet_diagnostic.", StringComparison.OrdinalIgnoreCase) && key.EndsWith(".severity", StringComparison.OrdinalIgnoreCase))
-                        result._ids.Add(key["dotnet_diagnostic.".Length..^".severity".Length]);
-                    else if (key.StartsWith("dotnet_analyzer_diagnostic.category-", StringComparison.OrdinalIgnoreCase) && key.EndsWith(".severity", StringComparison.OrdinalIgnoreCase))
-                        result._categories.Add(key["dotnet_analyzer_diagnostic.category-".Length..^".severity".Length]);
-                    else if (key.Equals("dotnet_analyzer_diagnostic.severity", StringComparison.OrdinalIgnoreCase))
-                        result._bulk = true;
+                    result._representatives.Add(tree);
+                    result.ReadBulk(options);
                 }
             }
 
+            result.ReadBulk(provider.GlobalOptions);
             return result;
         }
 
+        private void ReadBulk(AnalyzerConfigOptions options)
+        {
+            foreach (var key in options.Keys)
+            {
+                if (!options.TryGetValue(key, out var value) || !IsError(value))
+                    continue;
+                if (key.StartsWith("dotnet_analyzer_diagnostic.category-", StringComparison.OrdinalIgnoreCase) && key.EndsWith(".severity", StringComparison.OrdinalIgnoreCase))
+                    _categories.Add(key["dotnet_analyzer_diagnostic.category-".Length..^".severity".Length]);
+                else if (key.Equals("dotnet_analyzer_diagnostic.severity", StringComparison.OrdinalIgnoreCase))
+                    _bulk = true;
+            }
+        }
+
+        private static bool IsError(string value) => value.Trim().StartsWith("error", StringComparison.OrdinalIgnoreCase);
+
         public bool CanBeError(DiagnosticDescriptor descriptor, CompilationOptions options)
         {
-            if (_ids.Contains(descriptor.Id) || _categories.Contains(descriptor.Category) || _bulk)
+            if (_categories.Contains(descriptor.Category) || _bulk)
                 return true;
-            if (options.SpecificDiagnosticOptions.TryGetValue(descriptor.Id, out var specific))
+
+            // A file-level setting wins over every project-level one, so a file that raises the id to error decides.
+            // If every file sets the id to something lower, no file can report it as an error.
+            var everyFileLower = _representatives.Count > 0;
+            foreach (var tree in _representatives)
             {
-                if (specific == ReportDiagnostic.Error)
-                    return true;
-                if (specific is ReportDiagnostic.Suppress or ReportDiagnostic.Hidden or ReportDiagnostic.Info)
-                    return false;
+                if (_provider is not null && _provider.TryGetDiagnosticValue(tree, descriptor.Id, CancellationToken.None, out var perTree))
+                {
+                    if (perTree == ReportDiagnostic.Error || (perTree == ReportDiagnostic.Warn && options.GeneralDiagnosticOption == ReportDiagnostic.Error))
+                        return true;
+                }
+                else
+                {
+                    everyFileLower = false;
+                }
             }
 
+            if (everyFileLower)
+                return false;
+            if (_provider is not null && _provider.TryGetGlobalDiagnosticValue(descriptor.Id, CancellationToken.None, out var global))
+                return global == ReportDiagnostic.Error || (global == ReportDiagnostic.Warn && options.GeneralDiagnosticOption == ReportDiagnostic.Error);
+            if (options.SpecificDiagnosticOptions.TryGetValue(descriptor.Id, out var specific))
+                return specific == ReportDiagnostic.Error || (specific == ReportDiagnostic.Warn && options.GeneralDiagnosticOption == ReportDiagnostic.Error);
             if (!descriptor.IsEnabledByDefault)
                 return false;
             return descriptor.DefaultSeverity == DiagnosticSeverity.Error

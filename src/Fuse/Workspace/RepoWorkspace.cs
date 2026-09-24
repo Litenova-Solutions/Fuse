@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using Fuse.Graph;
 using Fuse.Protocol;
@@ -23,7 +24,9 @@ internal sealed class RepoWorkspace : IDisposable
 {
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
-    private readonly HashSet<string> _loaded = new(ChangeTracker.PathComparer);
+    private readonly ConcurrentDictionary<string, byte> _loaded = new(ChangeTracker.PathComparer);
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
+    private volatile bool _rebuildPending;
     private readonly HashSet<string> _touched = new(ChangeTracker.PathComparer);
     private readonly Dictionary<string, string> _loadFailures = new(ChangeTracker.PathComparer);
     private MSBuildWorkspace? _loader;
@@ -50,6 +53,9 @@ internal sealed class RepoWorkspace : IDisposable
 
     public RepoRoot Root => _root;
 
+    /// <summary>Writes a line to the engine log.</summary>
+    public void Log(string message) => _log(message);
+
     /// <summary>Evaluates the project graph and starts tracking changes. Compiles nothing.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
@@ -66,12 +72,12 @@ internal sealed class RepoWorkspace : IDisposable
         if (batch.ProjectFilesChanged || batch.Storm)
         {
             _log($"reloading: project files changed={batch.ProjectFilesChanged} storm={batch.Storm} headMoved={batch.HeadMoved} trigger={batch.Trigger}");
-            var reopen = _loaded.ToList();
+            var reopen = _loaded.Keys.ToList();
             _touched.UnionWith(batch.SourcePaths);
             if (batch.ProjectFilesChanged)
                 await EvaluateAsync(cancellationToken).ConfigureAwait(false);
             else
-                ResetLoader();
+                await ResetLoaderAsync(cancellationToken).ConfigureAwait(false);
             // Reopen what was open, so the next check does not pay for a cold load it did not ask for.
             var nodes = reopen.Select(Graph.Find).OfType<ProjectNode>().ToList();
             if (nodes.Count > 0)
@@ -79,11 +85,14 @@ internal sealed class RepoWorkspace : IDisposable
             return;
         }
 
-        if (batch.HeadMoved)
+        if (batch.HeadMoved || _rebuildPending)
         {
+            // HEAD moved, or a background load added projects: derive both views from the loader again.
             _touched.UnionWith(batch.SourcePaths);
+            _rebuildPending = false;
             await RebuildAsync(cancellationToken).ConfigureAwait(false);
-            return;
+            if (batch.HeadMoved)
+                return;
         }
 
         var sourcePaths = new HashSet<string>(batch.SourcePaths, ChangeTracker.PathComparer);
@@ -115,50 +124,80 @@ internal sealed class RepoWorkspace : IDisposable
         }
     }
 
-    /// <summary>Loads <paramref name="projects"/> and everything they reference.</summary>
+    /// <summary>Loads <paramref name="projects"/> and everything they reference, and makes them part of both views.</summary>
     /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
     public async Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
     {
-        var missing = projects.Where(p => !_loaded.Contains(p.Path)).DistinctBy(p => p.Path).ToList();
-        if (missing.Count == 0)
-            return;
+        var missing = projects.Where(p => !_loaded.ContainsKey(p.Path)).DistinctBy(p => p.Path).ToList();
+        if (missing.Count > 0)
+            await LoadAsync(missing, cancellationToken).ConfigureAwait(false);
+        if (missing.Count > 0 || _rebuildPending)
+        {
+            _rebuildPending = false;
+            await RebuildAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
 
+    /// <summary>
+    ///     Loads <paramref name="project"/> into the loader without touching <see cref="Current"/> or
+    ///     <see cref="Baseline"/>, so it can run while requests are served; the next request folds it into both views.
+    /// </summary>
+    /// <exception cref="FuseException">The project has not been restored or failed to load.</exception>
+    public async Task PreloadAsync(ProjectNode project, CancellationToken cancellationToken)
+    {
+        if (_loaded.ContainsKey(project.Path))
+            return;
+        await LoadAsync([project], cancellationToken).ConfigureAwait(false);
+        _rebuildPending = true;
+    }
+
+    private async Task LoadAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
+    {
         var unrestored = missing.SelectMany(Graph.ClosureOf).Where(p => !File.Exists(p.AssetsFile)).Select(p => _root.Relative(p.Path)).Distinct().ToList();
         if (unrestored.Count > 0)
             throw new FuseException(ErrorCode.RestoreNeeded, $"restore needed: run `dotnet restore` ({string.Join(", ", unrestored.Take(3))}{(unrestored.Count > 3 ? ", ..." : "")} not restored)");
 
-        var loader = _loader ??= CreateLoader();
-        foreach (var project in missing)
+        await _loadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            if (_loaded.Contains(project.Path))
-                continue;
-            var started = Environment.TickCount64;
-            try
+            var loader = _loader ??= CreateLoader();
+            foreach (var project in missing)
             {
-                await loader.OpenProjectAsync(project.Path, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) when (e is InvalidOperationException or IOException or ArgumentException)
-            {
-                throw new FuseException(ErrorCode.LoadFailed, $"could not load {_root.Relative(project.Path)}: {e.Message}");
+                if (_loaded.ContainsKey(project.Path))
+                    continue;
+                var started = Environment.TickCount64;
+                try
+                {
+                    await loader.OpenProjectAsync(project.Path, cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is InvalidOperationException or IOException or ArgumentException)
+                {
+                    throw new FuseException(ErrorCode.LoadFailed, $"could not load {_root.Relative(project.Path)}: {e.Message}");
+                }
+
+                foreach (var loadedProject in loader.CurrentSolution.Projects)
+                {
+                    if (loadedProject.FilePath is not null)
+                        _loaded[loadedProject.FilePath] = 0;
+                }
+
+                _log($"loaded {project.Name} in {Environment.TickCount64 - started} ms ({loader.CurrentSolution.ProjectIds.Count} projects open)");
             }
 
-            foreach (var loadedProject in loader.CurrentSolution.Projects)
+            foreach (var project in missing)
             {
-                if (loadedProject.FilePath is not null)
-                    _loaded.Add(loadedProject.FilePath);
+                if (_loadFailures.TryGetValue(project.Path, out var failure) && !loader.CurrentSolution.Projects.Any(p => ChangeTracker.PathComparer.Equals(p.FilePath, project.Path)))
+                    throw new FuseException(ErrorCode.LoadFailed, $"could not load {_root.Relative(project.Path)}: {failure}");
             }
-
-            _log($"loaded {project.Name} in {Environment.TickCount64 - started} ms ({loader.CurrentSolution.ProjectIds.Count} projects open)");
         }
-
-        foreach (var project in missing)
+        finally
         {
-            if (_loadFailures.TryGetValue(project.Path, out var failure) && !loader.CurrentSolution.Projects.Any(p => ChangeTracker.PathComparer.Equals(p.FilePath, project.Path)))
-                throw new FuseException(ErrorCode.LoadFailed, $"could not load {_root.Relative(project.Path)}: {failure}");
+            _loadLock.Release();
         }
-
-        await RebuildAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>True when <paramref name="node"/> is loaded.</summary>
+    public bool IsLoaded(ProjectNode node) => _loaded.ContainsKey(node.Path);
 
     /// <summary>The loaded Roslyn projects (one per target framework) built from <paramref name="node"/>.</summary>
     public static IEnumerable<Project> ProjectsFor(Solution solution, ProjectNode node) =>
@@ -178,18 +217,28 @@ internal sealed class RepoWorkspace : IDisposable
         _log($"evaluated {Graph.Projects.Count} projects in {Environment.TickCount64 - started} ms ({Graph.Failures.Count} failed)");
         foreach (var failure in Graph.Failures)
             _log($"evaluation failed: {failure}");
-        ResetLoader();
+        await ResetLoaderAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private void ResetLoader()
+    private async Task ResetLoaderAsync(CancellationToken cancellationToken)
     {
-        _loader?.Dispose();
-        _loader = null;
-        _loaded.Clear();
-        _loadFailures.Clear();
-        Current = new AdhocWorkspace().CurrentSolution;
-        Baseline = Current;
-        BaselineGeneration++;
+        // Wait out a background load, so the loader is never disposed under it.
+        await _loadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _loader?.Dispose();
+            _loader = null;
+            _loaded.Clear();
+            _loadFailures.Clear();
+            _rebuildPending = false;
+            Current = new AdhocWorkspace().CurrentSolution;
+            Baseline = Current;
+            BaselineGeneration++;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
     }
 
     private MSBuildWorkspace CreateLoader()

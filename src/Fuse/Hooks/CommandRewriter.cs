@@ -13,6 +13,6 @@ internal static partial class CommandRewriter
     }
 
     // A command segment starts at the beginning, or after &&, ||, ;, | or a newline, optionally followed by whitespace.
-    [GeneratedRegex(@"(?<lead>(?:^|&&|\|\||[;|\n])\s*)dotnet(?:\.exe)?\s+(?<verb>build|test)(?=\s|$)", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<lead>(?:^|&&|\|\||[;|\n])\s*)dotnet(?:\.exe)?\s+(?<verb>build|test)(?=[\s;&|)]|$)", RegexOptions.CultureInvariant)]
     private static partial Regex Segment();
 }

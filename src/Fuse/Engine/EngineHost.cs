@@ -1,3 +1,4 @@
+using Fuse.Graph;
 using Fuse.Check;
 using Fuse.Protocol;
 using Fuse.Repo;
@@ -15,7 +16,10 @@ internal sealed class EngineHost : IDisposable
     private readonly Checker _checker;
     private readonly TestPlanner _planner;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly HashSet<string> _preloadFailed = new(StringComparer.OrdinalIgnoreCase);
     private Task? _initialization;
+    private Task _preload = Task.CompletedTask;
+    private CancellationToken _shutdown;
 
     public EngineHost(RepoRoot root, EngineLog log)
     {
@@ -27,7 +31,11 @@ internal sealed class EngineHost : IDisposable
     }
 
     /// <summary>Evaluates projects, then preloads the projects that already have uncommitted changes.</summary>
-    public Task InitializeAsync(CancellationToken cancellationToken) => _initialization ??= InitializeCoreAsync(cancellationToken);
+    public Task InitializeAsync(CancellationToken cancellationToken)
+    {
+        _shutdown = cancellationToken;
+        return _initialization ??= InitializeCoreAsync(cancellationToken);
+    }
 
     private async Task InitializeCoreAsync(CancellationToken cancellationToken)
     {
@@ -52,6 +60,8 @@ internal sealed class EngineHost : IDisposable
         {
             _gate.Release();
         }
+
+        SchedulePreload();
     }
 
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
@@ -95,12 +105,69 @@ internal sealed class EngineHost : IDisposable
         catch (Exception e) when (e is not OperationCanceledException)
         {
             _log.Write($"{request.Kind} failed: {e}");
-            return EngineResponse.Fail(ErrorCode.Internal, $"internal error: {e.Message} (details in {_root.Relative(_log.FilePath)})");
+            return EngineResponse.Fail(ErrorCode.Internal, $"internal error: {e.Message} (details in {_log.FilePath})");
         }
         finally
         {
             _log.Write($"{request.Kind} {(request.Files is null ? "all" : string.Join(",", request.Files.Select(Path.GetFileName)))} took {Environment.TickCount64 - started} ms");
             _gate.Release();
+            SchedulePreload();
+        }
+    }
+
+    /// <summary>
+    ///     Loads, in the background and one at a time, the projects that depend on projects with uncommitted changes.
+    ///     A declaration change has to bind those dependents, and loading them is the slow part of a first check
+    ///     (seconds per project); doing it while the agent is busy elsewhere keeps later checks fast. Requests take
+    ///     precedence: the gate is released between projects.
+    /// </summary>
+    private void SchedulePreload()
+    {
+        if (!_preload.IsCompleted || _shutdown.IsCancellationRequested)
+            return;
+        _preload = Task.Run(PreloadAsync);
+    }
+
+    private async Task PreloadAsync()
+    {
+        while (!_shutdown.IsCancellationRequested)
+        {
+            ProjectNode? next;
+            // The gate only protects choosing the next project; the load itself runs outside it, so requests keep flowing.
+            await _gate.WaitAsync(_shutdown).ConfigureAwait(false);
+            try
+            {
+                var graph = _workspace.Graph;
+                next = _workspace.Tracker.Changed
+                    .SelectMany(graph.OwnersOf)
+                    .SelectMany(graph.DependentsOf)
+                    .FirstOrDefault(p => !_workspace.IsLoaded(p) && !_preloadFailed.Contains(p.Path));
+            }
+            finally
+            {
+                _gate.Release();
+            }
+
+            if (next is null)
+                return;
+            try
+            {
+                await _workspace.PreloadAsync(next, _shutdown).ConfigureAwait(false);
+            }
+            catch (FuseException e)
+            {
+                _preloadFailed.Add(next.Path);
+                _log.Write($"preload of {next.Name} skipped: {e.Message}");
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception e)
+            {
+                _log.Write($"preload failed: {e}");
+                return;
+            }
         }
     }
 

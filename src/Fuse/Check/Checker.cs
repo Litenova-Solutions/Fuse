@@ -35,11 +35,13 @@ internal sealed class Checker
 
     private readonly RepoWorkspace _workspace;
     private readonly DiagnosticCollector _collector;
+    private readonly ChangeReach _reach;
 
     public Checker(RepoWorkspace workspace)
     {
         _workspace = workspace;
         _collector = new DiagnosticCollector(workspace.Root);
+        _reach = new ChangeReach(workspace);
     }
 
     /// <summary>Runs a check.</summary>
@@ -64,25 +66,20 @@ internal sealed class Checker
         await _workspace.EnsureLoadedAsync(owners, cancellationToken).ConfigureAwait(false);
 
         var introduced = new List<Diagnostic>();
-        foreach (var path in targets)
-            introduced.AddRange(await IntroducedInFileAsync(path, cancellationToken).ConfigureAwait(false));
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        introduced.AddRange(await IntroducedInFilesAsync(targets, cancellationToken).ConfigureAwait(false));
+        var targetsMs = timer.ElapsedMilliseconds;
         var filesChecked = targets.Count;
 
-        // Which declarations changed, and which owning projects they live in.
-        var broad = false;
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        var surfaceProjects = new List<ProjectNode>();
+        // Which owning projects have declaration changes (syntax only), then what those changes can reach.
+        var surfaceTargets = new List<string>();
         foreach (var path in targets)
         {
-            var (fileBroad, fileNames) = await SurfaceChangeAsync(path, cancellationToken).ConfigureAwait(false);
-            if (!fileBroad && fileNames.Count == 0)
-                continue;
-            broad |= fileBroad;
-            names.UnionWith(fileNames);
-            surfaceProjects.AddRange(graph.OwnersOf(path));
+            if (await _reach.HasSurfaceChangeAsync(path, cancellationToken).ConfigureAwait(false))
+                surfaceTargets.Add(path);
         }
 
-        surfaceProjects = surfaceProjects.DistinctBy(p => p.Path).ToList();
+        var surfaceProjects = surfaceTargets.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
         var dependents = new List<ProjectNode>();
         var wholeProjects = false;
         if (surfaceProjects.Count > 0)
@@ -92,20 +89,24 @@ internal sealed class Checker
                 .ToList();
             await _workspace.EnsureLoadedAsync(dependents, cancellationToken).ConfigureAwait(false);
 
-            var reach = surfaceProjects.Concat(dependents).ToList();
+            var reachNodes = surfaceProjects.Concat(dependents).ToList();
+            var reach = reachNodes.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)).ToList();
             var targetSet = new HashSet<string>(targets, ChangeTracker.PathComparer);
-            var candidates = await CandidatesAsync(reach, targetSet, broad ? null : names, cancellationToken).ConfigureAwait(false);
+            var reachedFiles = await _reach.FilesAsync(surfaceTargets, reach, cancellationToken).ConfigureAwait(false);
+            var candidates = reachedFiles is null
+                ? reach.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Distinct(ChangeTracker.PathComparer).ToList()
+                : reachedFiles.ToList();
+            candidates.RemoveAll(targetSet.Contains);
             if (candidates.Count > WholeProjectThreshold)
             {
                 wholeProjects = true;
-                foreach (var node in reach)
+                foreach (var node in reachNodes)
                     introduced.AddRange(await IntroducedInProjectAsync(node, cancellationToken).ConfigureAwait(false));
-                filesChecked = _workspace.Current.Projects.Where(p => reach.Any(r => ChangeTracker.PathComparer.Equals(r.Path, p.FilePath))).Sum(p => p.DocumentIds.Count);
+                filesChecked = reach.Sum(p => p.DocumentIds.Count);
             }
             else
             {
-                foreach (var path in candidates)
-                    introduced.AddRange(await IntroducedInFileAsync(path, cancellationToken).ConfigureAwait(false));
+                introduced.AddRange(await IntroducedInFilesAsync(candidates, cancellationToken).ConfigureAwait(false));
                 filesChecked += candidates.Count;
             }
         }
@@ -118,6 +119,7 @@ internal sealed class Checker
             .OfType<string>()
             .Distinct()
             .ToArray();
+        _workspace.Log($"check: {targets.Count} target(s) in {targetsMs} ms, {surfaceTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}");
         return new CheckReport(
             [.. ordered.Take(MaxReported)],
             filesChecked,
@@ -125,6 +127,21 @@ internal sealed class Checker
             [.. surfaceProjects.Select(p => p.Name)],
             dependents.Count,
             wholeProjects);
+    }
+
+    /// <summary>Binds files in parallel; semantic models of different documents bind independently.</summary>
+    private async Task<List<Diagnostic>> IntroducedInFilesAsync(IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
+    {
+        var results = new System.Collections.Concurrent.ConcurrentBag<Diagnostic>();
+        await Parallel.ForEachAsync(
+            paths,
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (path, ct) =>
+            {
+                foreach (var diagnostic in await IntroducedInFileAsync(path, ct).ConfigureAwait(false))
+                    results.Add(diagnostic);
+            }).ConfigureAwait(false);
+        return [.. results];
     }
 
     private async Task<IEnumerable<Diagnostic>> IntroducedInFileAsync(string path, CancellationToken cancellationToken)
@@ -151,88 +168,6 @@ internal sealed class Checker
                 ? []
                 : await _collector.ForBaselineProjectAsync(baselineProject, _workspace.BaselineGeneration, cancellationToken).ConfigureAwait(false);
             result.AddRange(DiagnosticDelta.Introduced(current, baseline));
-        }
-
-        return result;
-    }
-
-    /// <summary>Compares the file's declarations at HEAD and now.</summary>
-    private async Task<(bool Broad, HashSet<string> Names)> SurfaceChangeAsync(string path, CancellationToken cancellationToken)
-    {
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            // A Razor component is used by its file name; a change to its parameters reaches files that name it.
-            var component = Path.GetFileNameWithoutExtension(path);
-            var razorHead = _workspace.HeadText(path);
-            var razorNow = File.Exists(path) ? RepoWorkspace.Decode(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)) : null;
-            return razorHead is not null && razorNow is not null && razorHead.ContentEquals(razorNow)
-                ? (false, [])
-                : (false, [component]);
-        }
-
-        var head = _workspace.HeadText(path);
-        SourceText? now = null;
-        if (File.Exists(path))
-        {
-            var documentId = _workspace.Current.GetDocumentIdsWithFilePath(path).FirstOrDefault();
-            now = documentId is not null && _workspace.Current.GetDocument(documentId) is { } document
-                ? await document.GetTextAsync(cancellationToken).ConfigureAwait(false)
-                : RepoWorkspace.Decode(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false));
-        }
-
-        if (head is not null && now is not null && head.ContentEquals(now))
-            return (false, []);
-        var before = head is null ? [] : SurfaceMap.Compute(await ParseAsync(head, cancellationToken).ConfigureAwait(false));
-        var after = now is null ? [] : SurfaceMap.Compute(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
-        return SurfaceMap.Diff(before, after);
-    }
-
-    private static Task<SyntaxNode> ParseAsync(SourceText text, CancellationToken cancellationToken) =>
-        CSharpSyntaxTree.ParseText(text, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview), cancellationToken: cancellationToken)
-            .GetRootAsync(cancellationToken);
-
-    /// <summary>Files in <paramref name="reach"/> that could observe the change: every file for a broad change, or files mentioning a changed name.</summary>
-    private async Task<List<string>> CandidatesAsync(IReadOnlyList<ProjectNode> reach, HashSet<string> exclude, HashSet<string>? names, CancellationToken cancellationToken)
-    {
-        var result = new List<string>();
-        var seen = new HashSet<string>(ChangeTracker.PathComparer);
-        foreach (var node in reach)
-        {
-            foreach (var project in RepoWorkspace.ProjectsFor(_workspace.Current, node))
-            {
-                foreach (var document in project.Documents)
-                {
-                    var path = document.FilePath;
-                    if (path is null || exclude.Contains(path) || !seen.Add(path))
-                        continue;
-                    if (names is not null)
-                    {
-                        var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
-                        var content = text.ToString();
-                        if (!names.Any(n => content.Contains(n, StringComparison.Ordinal)))
-                            continue;
-                    }
-
-                    result.Add(path);
-                    if (result.Count > WholeProjectThreshold)
-                        return result;
-                }
-
-                foreach (var additional in project.AdditionalDocuments)
-                {
-                    var path = additional.FilePath;
-                    if (path is null || !ChangeTracker.IsSource(path) || exclude.Contains(path) || !seen.Add(path))
-                        continue;
-                    if (names is not null)
-                    {
-                        var content = (await additional.GetTextAsync(cancellationToken).ConfigureAwait(false)).ToString();
-                        if (!names.Any(n => content.Contains(n, StringComparison.Ordinal)))
-                            continue;
-                    }
-
-                    result.Add(path);
-                }
-            }
         }
 
         return result;

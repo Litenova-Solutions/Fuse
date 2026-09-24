@@ -13,7 +13,7 @@ namespace Fuse.Hooks;
 /// </summary>
 /// <remarks>
 ///     A hook must never break the agent's session, so every failure inside Fuse ends with exit code 0 and no
-///     output (logged to <c>obj/fuse/hook.log</c>). Only a real finding (new errors) produces output.
+///     output (logged to <c>hook.log</c> in <see cref="RepoRoot.StateDirectory"/>). Only a real finding (new errors) produces output.
 /// </remarks>
 internal static class HookCommand
 {

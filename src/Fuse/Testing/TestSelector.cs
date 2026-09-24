@@ -176,7 +176,7 @@ internal sealed class TestSelector
                 return;
             }
 
-            if (enclosing is IMethodSymbol { IsImplicitlyDeclared: true } or IMethodSymbol { Name: "Main", IsStatic: true })
+            if (enclosing is IMethodSymbol method && IsEntryPoint(method))
             {
                 SelectDependentsWhole(node, "the change reaches the application's entry point");
                 return;
@@ -318,7 +318,7 @@ internal sealed class TestSelector
         /// </summary>
         private static bool IsFrameworkInvoked(ISymbol symbol)
         {
-            if (symbol is IMethodSymbol { IsImplicitlyDeclared: true } or IMethodSymbol { Name: "Main", IsStatic: true })
+            if (symbol is IMethodSymbol method && IsEntryPoint(method))
                 return true;
             if (symbol.DeclaredAccessibility is Accessibility.Private)
                 return false;
@@ -340,6 +340,10 @@ internal sealed class TestSelector
             var attributed = symbol.GetAttributes().Concat(symbol.ContainingType?.GetAttributes() ?? []);
             return attributed.Any(a => a.AttributeClass is { } c && !IsInertAttribute(c));
         }
+
+        /// <summary>A <c>Main</c> method, or the method the compiler synthesizes for top-level statements (<c>&lt;Main&gt;$</c>).</summary>
+        private static bool IsEntryPoint(IMethodSymbol method) =>
+            method.IsStatic && method.Name is "Main" or WellKnownMemberNames.TopLevelStatementsEntryPointMethodName;
 
         private static bool IsInertAttribute(INamedTypeSymbol attribute) =>
             attribute.ContainingNamespace?.ToDisplayString() is "System.Runtime.CompilerServices" or "System.Diagnostics" or "System.Diagnostics.CodeAnalysis"

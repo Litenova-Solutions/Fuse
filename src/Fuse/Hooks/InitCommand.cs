@@ -12,12 +12,15 @@ internal static class InitCommand
 {
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
-    public static int Run()
+    public static int Run() => Run(Environment.CurrentDirectory, Console.Out, Console.Error);
+
+    /// <summary>Installs hooks for the repository containing <paramref name="startDirectory"/>.</summary>
+    internal static int Run(string startDirectory, TextWriter output, TextWriter error)
     {
-        var root = RepoRoot.Find(Environment.CurrentDirectory);
+        var root = RepoRoot.Find(startDirectory);
         if (root is null)
         {
-            Console.Error.WriteLine("fuse: not inside a git repository; run fuse init from your repository");
+            error.WriteLine("fuse: not inside a git repository; run fuse init from your repository");
             return 2;
         }
 
@@ -47,8 +50,8 @@ internal static class InitCommand
             written.Add(WriteVsCode(root));
 
         foreach (var file in written)
-            Console.WriteLine($"wrote {file}");
-        Console.WriteLine("fuse: hooks installed; your agent now gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output");
+            output.WriteLine($"wrote {file}");
+        output.WriteLine("fuse: hooks installed; your agent now gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output");
         return 0;
     }
 

@@ -34,7 +34,7 @@ internal static class EngineClient
                 {
                     if (attempt < 1)
                         continue;
-                    return EngineResponse.Fail(ErrorCode.Internal, $"the fuse engine closed the connection (see {root.Relative(Path.Combine(root.StateDirectory, "engine.log"))})");
+                    return EngineResponse.Fail(ErrorCode.Internal, $"the fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
                 }
 
                 if (response.Status == ResponseStatus.Restart && attempt < 2)
@@ -86,7 +86,7 @@ internal static class EngineClient
             }
             else if (Environment.TickCount64 - begin > StartTimeout.TotalMilliseconds)
             {
-                throw new IOException($"the fuse engine did not start within {StartTimeout.TotalSeconds:0} s (see {root.Relative(Path.Combine(root.StateDirectory, "engine.log"))})");
+                throw new IOException($"the fuse engine did not start within {StartTimeout.TotalSeconds:0} s (see {Path.Combine(root.StateDirectory, "engine.log")})");
             }
         }
     }

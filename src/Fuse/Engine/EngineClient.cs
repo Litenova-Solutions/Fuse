@@ -25,11 +25,23 @@ internal static class EngineClient
         {
             for (var attempt = 0; ; attempt++)
             {
-                await using var pipe = await ConnectAsync(root, deadline.Token).ConfigureAwait(false);
-                var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
-                await pipe.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
-                await pipe.FlushAsync(deadline.Token).ConfigureAwait(false);
-                var line = await EngineServer.ReadLineAsync(pipe, deadline.Token).ConfigureAwait(false);
+                string? line;
+                try
+                {
+                    await using var pipe = await ConnectAsync(root, deadline.Token).ConfigureAwait(false);
+                    var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
+                    await pipe.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
+                    await pipe.FlushAsync(deadline.Token).ConfigureAwait(false);
+                    line = await EngineServer.ReadLineAsync(pipe, deadline.Token).ConfigureAwait(false);
+                }
+                catch (IOException) when (attempt < 4)
+                {
+                    // On Linux and macOS each pipe server instance accepts one connection and closes its socket, so a
+                    // connection that arrives in between is reset. Every request is safe to send again.
+                    await Task.Delay(50 * (attempt + 1), deadline.Token).ConfigureAwait(false);
+                    continue;
+                }
+
                 var response = line is null ? null : ProtocolJson.ReadResponse(line);
                 if (response is null)
                 {

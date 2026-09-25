@@ -44,14 +44,25 @@ internal static class FuseProcess
     /// <summary>Sends one raw request, bypassing the client's version stamping and engine start.</summary>
     public static async Task<EngineResponse?> SendRawAsync(RepoRoot root, EngineRequest request)
     {
-        await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-        await pipe.ConnectAsync(2000);
-        var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
-        await pipe.WriteAsync(bytes);
-        await pipe.FlushAsync();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var line = await EngineServer.ReadLineAsync(pipe, timeout.Token);
-        return line is null ? null : ProtocolJson.ReadResponse(line);
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                await pipe.ConnectAsync(2000);
+                var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
+                await pipe.WriteAsync(bytes);
+                await pipe.FlushAsync();
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var line = await EngineServer.ReadLineAsync(pipe, timeout.Token);
+                return line is null ? null : ProtocolJson.ReadResponse(line);
+            }
+            catch (IOException) when (attempt < 4)
+            {
+                // A connection that arrives while a Unix pipe server instance is being replaced is reset; retry as the client does.
+                await Task.Delay(100);
+            }
+        }
     }
 
     public static bool EngineRunning(RepoRoot root)

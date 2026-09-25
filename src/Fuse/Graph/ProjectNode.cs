@@ -23,6 +23,9 @@ internal sealed class ProjectNode
 
     public required bool IsTest { get; init; }
 
+    /// <summary>True for an application (console, web, worker) rather than a library: a framework, not source code, calls into it.</summary>
+    public required bool IsExecutable { get; init; }
+
     /// <summary>True when the tests run on Microsoft.Testing.Platform rather than VSTest.</summary>
     public required bool IsTestingPlatform { get; init; }
 

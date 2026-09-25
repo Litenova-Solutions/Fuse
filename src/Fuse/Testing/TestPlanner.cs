@@ -41,7 +41,9 @@ internal sealed class TestPlanner
         if (changed.Count == 0)
             return new TestPlan([], 0, total, "no C# changes since HEAD, so no test is affected (fuse test --all runs everything)");
 
+        var timer = System.Diagnostics.Stopwatch.StartNew();
         var selection = await _selector.SelectAsync(changed, cancellationToken).ConfigureAwait(false);
+        _workspace.Log($"test plan: selection in {timer.ElapsedMilliseconds} ms: {string.Join("; ", selection.Select(s => $"{Path.GetFileNameWithoutExtension(s.Key)} {(s.Value.All ? "all" : s.Value.Patterns.Count + " pattern(s)")}"))}");
         var runs = new List<TestRun>();
         var selected = 0;
         var reasons = new HashSet<string>(StringComparer.Ordinal);
@@ -72,7 +74,7 @@ internal sealed class TestPlanner
             var shadows = new List<string>();
             foreach (var variant in variants)
             {
-                var shadow = await emitter.TryPrepareAsync(variant, _ => { }, cancellationToken).ConfigureAwait(false);
+                var shadow = await emitter.TryPrepareAsync(variant, _workspace.Log, cancellationToken).ConfigureAwait(false);
                 if (shadow is null)
                 {
                     shadows.Clear();
@@ -82,6 +84,7 @@ internal sealed class TestPlanner
                 shadows.Add(shadow);
             }
 
+            _workspace.Log($"test plan: {node.Name} [{string.Join(", ", variants.Select(v => v.Name))}] {(shadows.Count == 0 ? "builds with MSBuild" : $"runs from {string.Join(", ", shadows)}")} after {timer.ElapsedMilliseconds} ms");
             if (shadows.Count == 0)
                 runs.Add(new TestRun(node.Path, node.Name, null, filter, false));
             else

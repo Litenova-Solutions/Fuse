@@ -29,9 +29,16 @@ namespace Fuse.Testing;
 /// </remarks>
 internal sealed class TestSelector
 {
-    private const int MaxSymbols = 3000;
+    // The precise walk issues one reference search per symbol, which costs up to a second on a large solution.
+    // Past this budget the selector switches to the class-level type graph, which answers in milliseconds.
+    private const int MaxSymbols = 300;
+    private static readonly TimeSpan WalkBudget = TimeSpan.FromSeconds(8);
+
+    // Above this many reachable test classes, refining to methods rarely saves enough test time to pay for the walk.
+    private const int RefineThreshold = 40;
 
     private readonly RepoWorkspace _workspace;
+    private readonly Dictionary<DocumentId, (VersionStamp Version, TypeGraph.FileFacts Facts)> _factsCache = [];
 
     public TestSelector(RepoWorkspace workspace) => _workspace = workspace;
 
@@ -50,6 +57,7 @@ internal sealed class TestSelector
         var coneProjects = cone.SelectMany(n => RepoWorkspace.ProjectsFor(solution, n)).ToList();
         var coneDocuments = coneProjects.SelectMany(p => p.Documents).ToImmutableHashSet();
         var walk = new Walk(this, solution, coneProjects, coneDocuments, result);
+        var seeds = new List<(Document Document, SyntaxNode Node)>();
 
         foreach (var path in changedFiles)
         {
@@ -61,11 +69,71 @@ internal sealed class TestSelector
                 continue;
             }
 
-            await walk.SeedAsync(path, cancellationToken).ConfigureAwait(false);
+            seeds.AddRange(await walk.SeedAsync(path, cancellationToken).ConfigureAwait(false));
         }
 
-        await walk.RunAsync(cancellationToken).ConfigureAwait(false);
-        return result;
+        // The class-level answer from the type graph costs milliseconds. The member-level walk only refines it, and
+        // it costs a reference search per symbol, so it runs only when the class-level answer is small enough for
+        // the refinement to matter and the walk to finish.
+        var classLevel = new Dictionary<string, ProjectSelection>(ChangeTracker.PathComparer);
+        foreach (var (path, selection) in result.Where(r => r.Value.All))
+            classLevel[path] = selection;
+        await SelectByTypeGraphAsync(coneProjects, seeds, classLevel, cancellationToken).ConfigureAwait(false);
+        var classes = classLevel.Values.Where(s => !s.All).Sum(s => s.Patterns.Count);
+        if (classes > RefineThreshold)
+        {
+            _workspace.Log($"test selection: {classes} test classes reachable; selecting at class level");
+            return classLevel;
+        }
+
+        if (await walk.RunAsync(cancellationToken).ConfigureAwait(false))
+            return result;
+        _workspace.Log("test selection: reference walk over budget; selecting at class level");
+        return classLevel;
+    }
+
+    private async Task SelectByTypeGraphAsync(
+        List<Project> cone,
+        List<(Document Document, SyntaxNode Node)> seeds,
+        Dictionary<string, ProjectSelection> result,
+        CancellationToken cancellationToken)
+    {
+        var typeGraph = await TypeGraph.BuildAsync(cone, NodeOf, _factsCache, cancellationToken).ConfigureAwait(false);
+        var start = seeds
+            .Select(s => new TypeGraph.TypeKey(s.Document.Project.Id, TypeGraph.DeclaringName(s.Node, s.Document.FilePath ?? s.Document.Name)))
+            .Where(typeGraph.Types.ContainsKey)
+            .ToList();
+        foreach (var key in typeGraph.ReverseClosure(start))
+        {
+            var entry = typeGraph.Types[key];
+            if (entry.Node is null)
+                continue;
+            if (entry.Node.IsTest)
+            {
+                if (!result.TryGetValue(entry.Node.Path, out var selection))
+                    result[entry.Node.Path] = selection = new ProjectSelection();
+                if (key.Name.StartsWith("file:", StringComparison.Ordinal))
+                {
+                    selection.All = true;
+                    selection.AllReason = "a test file without classes changed";
+                }
+
+                if (!selection.All)
+                    selection.Patterns.Add(entry.TestName + ".");
+            }
+            else if (entry.Node.IsExecutable)
+            {
+                // An application's code is reached through its host (HTTP, a mediator, DI), not by name from tests.
+                foreach (var dependent in _workspace.Graph.DependentsOf(entry.Node).Where(d => d.IsTest))
+                {
+                    if (!result.TryGetValue(dependent.Path, out var selection))
+                        result[dependent.Path] = selection = new ProjectSelection();
+                    selection.All = true;
+                    selection.AllReason = $"the change reaches {entry.Node.Name}, which runs behind a host";
+                    selection.Patterns.Clear();
+                }
+            }
+        }
     }
 
     private ProjectNode? NodeOf(Project project) => project.FilePath is null ? null : _workspace.Graph.Find(project.FilePath);
@@ -74,10 +142,10 @@ internal sealed class TestSelector
     {
         private readonly HashSet<ISymbol> _visited = new(SymbolEqualityComparer.Default);
         private readonly Queue<ISymbol> _queue = new();
-        private bool _exhausted;
-
-        public async Task SeedAsync(string path, CancellationToken cancellationToken)
+        /// <summary>Seeds the walk with the declarations that changed in <paramref name="path"/> and returns them, for the type-graph fallback.</summary>
+        public async Task<List<(Document Document, SyntaxNode Node)>> SeedAsync(string path, CancellationToken cancellationToken)
         {
+            var seeds = new List<(Document, SyntaxNode)>();
             var headText = owner._workspace.HeadText(path);
             foreach (var id in solution.GetDocumentIdsWithFilePath(path))
             {
@@ -94,6 +162,7 @@ internal sealed class TestSelector
                 var node = owner.NodeOf(document.Project);
                 foreach (var changed in ChangedDeclarations.Find(before, root))
                 {
+                    seeds.Add((document, changed));
                     if (changed is CompilationUnitSyntax)
                     {
                         // Top-level statements are the host's entry point.
@@ -111,17 +180,18 @@ internal sealed class TestSelector
                     }
                 }
             }
+
+            return seeds;
         }
 
-        public async Task RunAsync(CancellationToken cancellationToken)
+        /// <summary>Runs the walk. Returns false when it ran out of budget before finishing.</summary>
+        public async Task<bool> RunAsync(CancellationToken cancellationToken)
         {
+            var timer = System.Diagnostics.Stopwatch.StartNew();
             while (_queue.Count > 0)
             {
-                if (_visited.Count > MaxSymbols)
-                {
-                    _exhausted = true;
-                    break;
-                }
+                if (_visited.Count > MaxSymbols || timer.Elapsed > WalkBudget)
+                    return false;
 
                 var symbol = _queue.Dequeue();
                 var referenced = false;
@@ -137,22 +207,23 @@ internal sealed class TestSelector
                     }
                 }
 
-                if (!referenced && IsFrameworkInvoked(symbol))
+                if (referenced)
+                    continue;
+                var project = solution.GetProject(symbol.ContainingAssembly is null ? null : FindProjectId(symbol));
+                var node = project is null ? null : owner.NodeOf(project);
+                if (node is null)
+                    continue;
+                if ((symbol is IMethodSymbol entry && IsEntryPoint(entry)) || (node.IsExecutable && IsFrameworkInvoked(symbol)))
+                    SelectDependentsWhole(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is invoked by a framework");
+                else if (IsFrameworkInvoked(symbol) && symbol.ContainingType is { } containing)
                 {
-                    var project = solution.GetProject(symbol.ContainingAssembly is null ? null : FindProjectId(symbol));
-                    if (project is not null && owner.NodeOf(project) is { } node)
-                        SelectDependentsWhole(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is invoked by a framework");
+                    // A library member called through an external interface or base class (Equals, CompareTo,
+                    // ToString): tests reach it through its type.
+                    Enqueue(containing);
                 }
             }
 
-            if (_exhausted)
-            {
-                foreach (var project in cone)
-                {
-                    if (owner.NodeOf(project) is { IsTest: true } node)
-                        SelectWhole(node, "the change reaches too much code to trace");
-                }
-            }
+            return true;
         }
 
         private ProjectId? FindProjectId(ISymbol symbol) =>

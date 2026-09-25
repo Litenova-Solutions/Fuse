@@ -217,6 +217,7 @@ internal sealed class RepoWorkspace : IDisposable
         _log($"evaluated {Graph.Projects.Count} projects in {Environment.TickCount64 - started} ms ({Graph.Failures.Count} failed)");
         foreach (var failure in Graph.Failures)
             _log($"evaluation failed: {failure}");
+        _log("projects: " + string.Join(", ", Graph.Projects.Select(p => $"{p.Name} ({p.Sources.Count} sources{(p.IsTest ? ", tests" : "")}{(p.IsExecutable ? ", app" : "")})")));
         await ResetLoaderAsync(cancellationToken).ConfigureAwait(false);
     }
 

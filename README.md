@@ -74,7 +74,7 @@ One `fuse engine` process runs per repository. The first command or hook starts 
 
 **Checking.** Fuse compares each changed file's errors in the working tree with the same file at HEAD, so errors that were already there are never reported as yours. It then compares the file's declarations with HEAD. A body-only edit ends the check. A changed declaration re-checks the files in the owning project and its dependents that mention a changed name; a change that can reach code without naming it (a base type, an operator, a global using) re-checks every file there. Analyzers run only when the project configures one of their diagnostics as an error. Warnings are not reported.
 
-**Testing.** Fuse walks references backwards from every changed member (through callers, overrides and interface implementations) until it reaches test methods. Code a framework calls (controller actions, request handlers, hosted services, top-level statements) has no caller in source, so reaching it selects every test project that depends on it. When the test projects already have build output and nothing but C# sources changed since, Fuse emits the changed assemblies from memory into a copy of that output and runs the tests there without MSBuild. Otherwise it runs `dotnet test` normally.
+**Testing.** Fuse first builds a type dependency graph from syntax (which types name which) and walks it backwards from the changed types to the test classes that can reach them. When that set is small, it refines it to test methods by walking Roslyn references backwards from every changed member (through callers, overrides and interface implementations). Application code (controllers, request handlers, hosted services, top-level statements) is reached through a host, not by name, so reaching it selects every test project that depends on the application. When the test projects already have build output and nothing but C# sources changed since, Fuse emits the changed assemblies from memory into a copy of that output and runs the tests there without MSBuild. Otherwise it runs `dotnet test` normally.
 
 **Staying current.** A file watcher and a content comparison against HEAD track what changed. Project files, props, targets, `global.json` and `.editorconfig` changes trigger re-evaluation. A branch switch or commit resets the baseline.
 
@@ -82,16 +82,18 @@ One `fuse engine` process runs per repository. The first command or hook starts 
 
 From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine (results in `evals/results`):
 
-| Eval | Fixture (5 projects) | NodaTime (17 projects) |
+| Eval | Fixture (5 projects) | NodaTime (17 projects, 42,681 tests) |
 |---|---|---|
 | Correctness: mutations compared with a real `dotnet build` | 30 cases, 0 missed errors, 0 extra errors | 20 cases, 0 missed errors, 0 extra errors |
-| Warm check after a body edit, P50 / P95 | 157 / 204 ms | 532 / 704 ms |
-| Warm check after a signature edit, P50 / P95 | 200 / 2,369 ms | 1,456 / 7,363 ms |
-| Check on an unchanged tree (client and engine overhead), P50 | 140 ms | 139 ms |
-| Engine memory | 218 MB | 801 MB |
-| Test selection: failing tests missed | 0 of 10 cases | not measured yet |
+| Warm check after a body edit, P50 / P95 | 168 / 216 ms | 558 / 803 ms |
+| Warm check after a signature edit, P50 / P95 | 198 / 2,460 ms | 1,640 / 7,980 ms |
+| Check on an unchanged tree (client and engine overhead), P50 | 153 ms | 150 ms |
+| Engine memory | 218 MB | 791 MB |
+| Test selection: failing tests missed | 0 in 10 cases | 0 in 5 cases |
+| Share of tests run by `fuse test` | 15 percent | 22 percent |
+| `fuse test` median time vs full `dotnet test` | 1.3 s vs 4.2 s | 16.9 s vs 38.8 s |
 
-The signature-edit P95 includes the first such edit, which loads every dependent project; later signature edits on NodaTime took 1.1 to 1.4 s. NodaTime builds with `TreatWarningsAsErrors`, so its body edits also run every analyzer that can report a warning. On the small fixture, `fuse test` ran 15 percent of the tests but took as long as a full `dotnet test` (median 4.0 s each), because test host startup dominates there.
+The signature-edit P95 includes the first such edit after start, which loads every dependent project; later signature edits on NodaTime take about 1.1 to 1.6 s. NodaTime builds with `TreatWarningsAsErrors`, so each body edit also runs the analyzers that can report a warning. In a library as interconnected as NodaTime, changes to core types reach many test classes, so selection there works at class level.
 
 ## Limits
 

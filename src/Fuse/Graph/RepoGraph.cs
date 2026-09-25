@@ -144,9 +144,19 @@ internal sealed class RepoGraph
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var project = collection.LoadProject(path);
-                projects.Add(ToNode(root, project));
-                collection.UnloadProject(project);
+                var outer = collection.LoadProject(path);
+                var evaluations = new List<Project> { outer };
+                // A multi-targeted project's outer evaluation defines no Compile items and may condition references on
+                // the target framework, so each framework's inner evaluation is read too and the results are unioned.
+                if (string.IsNullOrEmpty(outer.GetPropertyValue("TargetFramework")))
+                {
+                    foreach (var framework in outer.GetPropertyValue("TargetFrameworks").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                        evaluations.Add(collection.LoadProject(path, new Dictionary<string, string> { ["TargetFramework"] = framework }, toolsVersion: null));
+                }
+
+                projects.Add(ToNode(root, evaluations));
+                foreach (var evaluation in evaluations)
+                    collection.UnloadProject(evaluation);
             }
             catch (InvalidProjectFileException e)
             {
@@ -157,39 +167,49 @@ internal sealed class RepoGraph
         return new RepoGraph(projects, failures);
     }
 
-    private static ProjectNode ToNode(RepoRoot root, Project project)
+    private static ProjectNode ToNode(RepoRoot root, List<Project> evaluations)
     {
+        var project = evaluations[0];
         var dir = project.DirectoryPath;
         string Full(string include) => System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, include));
 
         var sources = new HashSet<string>(ChangeTracker.PathComparer);
-        foreach (var item in project.GetItems("Compile"))
-            sources.Add(Full(item.EvaluatedInclude));
-        foreach (var itemType in new[] { "Content", "None", "RazorComponent", "AdditionalFiles" })
+        var references = new HashSet<string>(ChangeTracker.PathComparer);
+        var packages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var inputs = new HashSet<string>(ChangeTracker.PathComparer) { project.FullPath };
+        var isTestProperty = false;
+        var isTestingPlatformApplication = false;
+        foreach (var evaluation in evaluations)
         {
-            foreach (var item in project.GetItems(itemType))
+            foreach (var item in evaluation.GetItems("Compile"))
+                sources.Add(Full(item.EvaluatedInclude));
+            foreach (var itemType in new[] { "Content", "None", "RazorComponent", "AdditionalFiles" })
             {
-                if (ChangeTracker.IsSource(item.EvaluatedInclude))
-                    sources.Add(Full(item.EvaluatedInclude));
+                foreach (var item in evaluation.GetItems(itemType))
+                {
+                    if (ChangeTracker.IsSource(item.EvaluatedInclude))
+                        sources.Add(Full(item.EvaluatedInclude));
+                }
+            }
+
+            references.UnionWith(evaluation.GetItems("ProjectReference").Select(i => Full(i.EvaluatedInclude)));
+            packages.UnionWith(evaluation.GetItems("PackageReference").Select(i => i.EvaluatedInclude));
+            isTestProperty |= evaluation.GetPropertyValue("IsTestProject").Equals("true", StringComparison.OrdinalIgnoreCase);
+            isTestingPlatformApplication |= evaluation.GetPropertyValue("IsTestingPlatformApplication").Equals("true", StringComparison.OrdinalIgnoreCase)
+                                            && !evaluation.GetPropertyValue("UseMicrosoftTestingPlatformRunner").Equals("false", StringComparison.OrdinalIgnoreCase);
+            foreach (var import in evaluation.Imports)
+            {
+                var importPath = import.ImportedProject.FullPath;
+                if (importPath.StartsWith(root.Path, StringComparison.OrdinalIgnoreCase)
+                    && !importPath.Contains($"{System.IO.Path.DirectorySeparatorChar}obj{System.IO.Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+                    inputs.Add(importPath);
             }
         }
 
-        var references = project.GetItems("ProjectReference").Select(i => Full(i.EvaluatedInclude)).Distinct(ChangeTracker.PathComparer).ToList();
-        var packages = project.GetItems("PackageReference").Select(i => i.EvaluatedInclude).ToList();
-        var isTest = project.GetPropertyValue("IsTestProject").Equals("true", StringComparison.OrdinalIgnoreCase)
-                     || packages.Any(p => TestFrameworkPackages.Contains(p, StringComparer.OrdinalIgnoreCase));
-        var isTestingPlatform = project.GetPropertyValue("IsTestingPlatformApplication").Equals("true", StringComparison.OrdinalIgnoreCase)
-                                && !project.GetPropertyValue("UseMicrosoftTestingPlatformRunner").Equals("false", StringComparison.OrdinalIgnoreCase)
-                                && GlobalJsonUsesTestingPlatform(root);
-
-        var inputs = new HashSet<string>(ChangeTracker.PathComparer) { project.FullPath };
-        foreach (var import in project.Imports)
-        {
-            var importPath = import.ImportedProject.FullPath;
-            if (importPath.StartsWith(root.Path, StringComparison.OrdinalIgnoreCase)
-                && !importPath.Contains($"{System.IO.Path.DirectorySeparatorChar}obj{System.IO.Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
-                inputs.Add(importPath);
-        }
+        var isTest = isTestProperty || packages.Any(p => TestFrameworkPackages.Contains(p, StringComparer.OrdinalIgnoreCase));
+        var isTestingPlatform = isTestingPlatformApplication && GlobalJsonUsesTestingPlatform(root);
+        var outputType = evaluations.Select(e => e.GetPropertyValue("OutputType")).FirstOrDefault(o => o.Length > 0) ?? "";
+        var isWeb = evaluations.Any(e => e.GetPropertyValue("UsingMicrosoftNETSdkWeb").Equals("true", StringComparison.OrdinalIgnoreCase));
 
         var assets = project.GetPropertyValue("ProjectAssetsFile");
         return new ProjectNode
@@ -197,12 +217,13 @@ internal sealed class RepoGraph
             Path = project.FullPath,
             Name = System.IO.Path.GetFileNameWithoutExtension(project.FullPath),
             Directory = dir.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar),
-            References = references,
+            References = [.. references],
             Sources = sources,
             EvaluationInputs = inputs,
             AssetsFile = string.IsNullOrEmpty(assets) ? System.IO.Path.Combine(dir, "obj", "project.assets.json") : Full(assets),
             IsTest = isTest,
             IsTestingPlatform = isTestingPlatform,
+            IsExecutable = !isTest && (outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb),
         };
     }
 

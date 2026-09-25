@@ -13,6 +13,7 @@ namespace Fuse.Cli;
 internal static class TestOperation
 {
     private const int MaxFailuresShown = 10;
+    private const int MaxNamesShown = 100;
 
     public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken)
     {
@@ -30,57 +31,70 @@ internal static class TestOperation
         if (plan.Runs.Length == 0)
             return new OperationResult(0, $"fuse: {plan.Scope}");
 
-        var total = TestOutcome.Empty;
+        // Shadow runs touch no build output, so they run in parallel. MSBuild runs share obj and bin folders across
+        // projects, so they run one after another.
+        var groups = plan.Runs.GroupBy(r => r.Project, StringComparer.OrdinalIgnoreCase).ToList();
+        var fastGroups = groups.Where(g => g.All(r => r.ShadowAssembly is not null && !r.TestingPlatform)).ToList();
+        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<string, TestOutcome>(StringComparer.OrdinalIgnoreCase);
+        await Parallel.ForEachAsync(
+            fastGroups,
+            new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
+            async (group, ct) =>
+            {
+                // One process per target framework, in parallel.
+                var results = await Task.WhenAll(group.Select(run => RunDotnetTestAsync(
+                    root, root.Path, [run.ShadowAssembly!, .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], ct, assembly: true))).ConfigureAwait(false);
+                // A shadow that could not run (a host or adapter problem) sends the whole project through MSBuild below.
+                if (results.Any(r => r.Outcome is null))
+                    return;
+                outcomes[group.Key] = results.Aggregate(TestOutcome.Empty, (sum, r) => sum.Add(r.Outcome!));
+            }).ConfigureAwait(false);
+
+        var aggregate = TestOutcome.Empty;
         OperationResult? failure = null;
-        var fast = 0;
-        foreach (var run in plan.Runs)
+        foreach (var group in groups)
         {
-            var (outcome, buildFailure, raw) = await RunPlannedAsync(root, run, cancellationToken).ConfigureAwait(false);
-            if (run.ShadowAssembly is not null && outcome is not null)
-                fast++;
+            if (outcomes.TryGetValue(group.Key, out var fastOutcome))
+            {
+                aggregate = aggregate.Add(fastOutcome);
+                continue;
+            }
+
+            var run = group.First();
+            var (outcome, buildFailure, raw) = run.TestingPlatform
+                ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore"], cancellationToken, testingPlatform: true).ConfigureAwait(false)
+                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], cancellationToken).ConfigureAwait(false);
             if (outcome is null)
             {
                 failure ??= Render(null, buildFailure, raw, root, plan.Scope, Seconds(started));
                 continue;
             }
 
-            total = total.Add(outcome);
+            aggregate = aggregate.Add(outcome);
         }
 
-        if (failure is not null && total.Total == 0)
+        if (failure is not null && aggregate.Total == 0)
             return failure;
-        var mode = fast == plan.Runs.Length ? "fast path" : fast > 0 ? "partly fast path" : "built with MSBuild";
-        return Render(total, null, null, root, $"{plan.Scope}; {mode}", Seconds(started));
+        var fast = outcomes.Count;
+        var mode = fast == groups.Count ? "fast path" : fast > 0 ? $"fast path for {fast} of {groups.Count} project(s)" : "built with MSBuild";
+        return Render(aggregate, null, null, root, $"{plan.Scope}; {mode}", Seconds(started));
     }
 
     private static double Seconds(long started) => (Environment.TickCount64 - started) / 1000.0;
 
-    private static async Task<(TestOutcome? Outcome, ProcessResult? BuildFailure, string? Raw)> RunPlannedAsync(RepoRoot root, TestRun run, CancellationToken cancellationToken)
-    {
-        if (run.TestingPlatform)
-            return await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore"], cancellationToken, testingPlatform: true).ConfigureAwait(false);
-
-        var filter = run.Filter is null ? [] : new[] { "--filter", run.Filter };
-        if (run.ShadowAssembly is not null)
-        {
-            var fast = await RunDotnetTestAsync(root, root.Path, [run.ShadowAssembly, .. filter], cancellationToken).ConfigureAwait(false);
-            if (fast.Outcome is not null)
-                return fast;
-            // The shadow could not run (a host or adapter problem); a normal build and run is always correct.
-        }
-
-        return await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. filter], cancellationToken).ConfigureAwait(false);
-    }
-
+    /// <summary>Runs <c>dotnet test</c> and reads its TRX results.</summary>
+    /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
     private static async Task<(TestOutcome? Outcome, ProcessResult? BuildFailure, string? Raw)> RunDotnetTestAsync(
-        RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false)
+        RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
         try
         {
             string[] reporting = testingPlatform
                 ? []
-                : ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results, "-nologo", "-tl:off"];
+                : assembly
+                    ? ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results]
+                    : ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results, "-nologo", "-tl:off"];
             var result = await ProcessRunner.RunAsync("dotnet", ["test", .. arguments, .. reporting], workingDirectory, cancellationToken).ConfigureAwait(false);
             var outcome = TrxReader.ReadDirectory(results, root.Path);
             if (outcome is null && testingPlatform)
@@ -127,7 +141,15 @@ internal static class TestOperation
         }
 
         if (outcome.Failures.Count > MaxFailuresShown)
-            text.Append($"... {outcome.Failures.Count - MaxFailuresShown} more failure(s)\n");
+        {
+            // Names only past the first few, so the agent still sees every failing test.
+            var rest = outcome.Failures.Skip(MaxFailuresShown).Select(f => f.Name).Distinct().ToList();
+            text.Append($"also failed ({outcome.Failures.Count - MaxFailuresShown}):\n");
+            foreach (var name in rest.Take(MaxNamesShown))
+                text.Append("  ").Append(name).Append('\n');
+            if (rest.Count > MaxNamesShown)
+                text.Append($"  ... and {rest.Count - MaxNamesShown} more\n");
+        }
         var skipped = outcome.Skipped > 0 ? $", {outcome.Skipped} skipped" : "";
         text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {scope}");
         return new OperationResult(outcome.Failed > 0 ? 1 : 0, text.ToString());

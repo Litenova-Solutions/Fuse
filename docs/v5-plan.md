@@ -17,6 +17,9 @@ The implementation on the `v5` branch follows this plan with these differences, 
 - **Background preload.** After a check, the engine loads the dependents of projects with uncommitted changes in the background, outside the request lock, so the first declaration change does not pay for loading them.
 - **Stop gate.** The stop hook blocks once per stop attempt (it honors `stop_hook_active` and Cursor's `loop_count`), so an agent that cannot fix an error is not trapped in a loop.
 - **MCP.** Kept as three tools for hosts without hooks, as section 2 D1 records.
+- **Test selection.** Section 4.6's reference walk alone took 125 to 600 s on NodaTime: one `SymbolFinder` query per reached symbol over thousands of files. Selection now starts from a syntax-only type graph (milliseconds) and runs the member-level walk, with an 8 s budget, only when fewer than 40 test classes are reachable. The whole-project fallback applies to application projects and entry points; library members called through an external interface are reached through their type.
+- **Multi-targeted projects.** MSBuild's outer evaluation of a multi-targeted project has no `Compile` items, so each target framework's inner evaluation is read and unioned.
+- **Test runs.** Shadow runs execute in parallel, one process per target framework; runs through MSBuild stay sequential because they share build output.
 
 Measured results are in the README and `evals/results`.
 

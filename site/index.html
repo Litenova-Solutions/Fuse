@@ -4,161 +4,120 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fuse</title>
-<meta name="description" content="Fuse keeps a warm Roslyn compilation of your .NET repository and tells your coding agent, after every edit, which errors it introduced and which tests it broke.">
-<meta property="og:title" content="Fuse">
-<meta property="og:description" content="Compiler errors after every edit and affected-test runs for coding agents on .NET.">
+<meta name="description" content="Fuse tells your AI coding agent the moment an edit breaks the build, and runs only the tests that change can affect. For C# and .NET.">
+<meta property="og:title" content="Fuse: Compiler Feedback for AI Coding Agents">
+<meta property="og:description" content="Know the moment an edit breaks the build. Run only the tests that matter. For C# and .NET.">
 <meta property="og:image" content="https://fuse.codes/benefits.svg">
 <link rel="icon" href="fuse-icon.svg" type="image/svg+xml">
-<style>
-:root {
-  color-scheme: light;
-  --bg: #fcfcfb;
-  --surface: #f2f1ee;
-  --text: #0b0b0b;
-  --muted: #52514e;
-  --line: #e2e1dc;
-  --accent: #2a78d6;
-  --code-bg: #16161a;
-  --code-text: #e8e8e3;
-  --code-muted: #9a9993;
-  --error: #ff7b72;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #111110;
-    --surface: #1a1a19;
-    --text: #f5f5f2;
-    --muted: #b8b7ae;
-    --line: #2c2c2a;
-    --accent: #5a9bea;
-    --code-bg: #0b0b0c;
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #111110;
-  --surface: #1a1a19;
-  --text: #f5f5f2;
-  --muted: #b8b7ae;
-  --line: #2c2c2a;
-  --accent: #5a9bea;
-  --code-bg: #0b0b0c;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 17px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-main { max-width: 760px; margin: 0 auto; padding: 0 16px 64px; }
-header { display: flex; align-items: center; gap: 10px; padding: 20px 0; }
-header img { width: 28px; height: 28px; }
-header strong { font-size: 18px; }
-header nav { margin-left: auto; display: flex; gap: 18px; font-size: 15px; }
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
-h1 { font-size: clamp(30px, 6vw, 44px); line-height: 1.15; margin: 40px 0 16px; letter-spacing: -0.02em; }
-h2 { font-size: 22px; margin: 56px 0 12px; }
-p { margin: 0 0 14px; }
-.lead { font-size: 19px; color: var(--muted); }
-pre {
-  background: var(--code-bg);
-  color: var(--code-text);
-  padding: 16px 18px;
-  border-radius: 10px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font: 14px/1.55 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-  margin: 0 0 16px;
-}
-code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 0.92em; }
-p code, li code, td code { background: var(--surface); padding: 1px 5px; border-radius: 4px; }
-.dim { color: var(--code-muted); }
-.err { color: var(--error); }
-ul { padding-left: 20px; margin: 0 0 14px; }
-li { margin-bottom: 6px; }
-figure { margin: 0 0 12px; }
-figure img { width: 100%; height: auto; display: block; }
-figcaption { font-size: 14px; color: var(--muted); margin-top: 6px; }
-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 0 0 14px; }
-th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-weight: 600; color: var(--muted); }
-td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
-<header>
-  <img src="fuse-icon.svg" alt="">
-  <strong>Fuse</strong>
-  <nav>
-    <a href="#measured">Measured</a>
-    <a href="#how">How it works</a>
+<div class="wrap">
+  <header class="site-header">
+    <a class="brand" href="/"><img src="fuse-icon.svg" alt="">Fuse</a>
+    <nav>
+      <a class="optional" href="how-it-works">How It Works</a>
+      <a class="optional" href="results">Results</a>
+      <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <span class="pill">For C# and .NET</span>
+      <h1>Compiler Feedback for AI Coding Agents</h1>
+      <p class="claim">Fuse tells your agent the moment an edit breaks the build, and runs only the tests that change can affect.</p>
+      <div class="install">
+        <span class="cmd"><span class="dim">$ </span><span id="cmd">dotnet tool install -g Fuse</span></span>
+        <button type="button" id="copy">Copy</button>
+      </div>
+      <p class="then">Then run <code>fuse init</code> in your repository. That's the whole setup.</p>
+    </section>
+
+    <div class="term" role="img" aria-label="An agent renames a method, Fuse reports the two call sites it broke, the agent fixes them, and Fuse stays silent.">
+      <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="who">agent</span>  <span class="dim">renames Calc.Add to Calc.Plus</span>
+<span class="who">fuse</span>   <span class="err">2 new errors:</span> 'Calc' has no 'Add'
+         App/Program.cs(2,28)
+         Lib.Tests/UnitTest1.cs(4,65)
+<span class="who">agent</span>  <span class="dim">updates both call sites</span>
+<span class="who">fuse</span>   <span class="ok">nothing new is broken</span></pre>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>What Your Agent Gets</h2>
+      </div>
+      <div class="features">
+        <div>
+          <h3>Errors After Every Edit</h3>
+          <p>New compiler errors, including breaks in other projects, right after the edit that caused them.</p>
+        </div>
+        <div>
+          <h3>Only the Tests That Matter</h3>
+          <p><code>dotnet test</code> runs just the tests the change can reach, and prints only failures.</p>
+        </div>
+        <div>
+          <h3>Silence When All Is Well</h3>
+          <p>A clean edit produces no output, so the agent's context stays small.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Faster Than a Build</h2>
+        <p>Measured against the real <code>dotnet build</code> and <code>dotnet test</code>, with no errors or failing tests missed.</p>
+      </div>
+      <div class="bars" role="img" aria-label="Fuse time as a share of the dotnet command: checking an edit takes 15 percent of dotnet build on the fixture and 38 percent on NodaTime; running the affected tests takes 32 percent of dotnet test on the fixture and 71 percent on NodaTime.">
+        <p class="bars-group">Check an edit, vs <code>dotnet build</code></p>
+        <div class="bar-row"><span class="bar-label">Fixture</span><span class="bar-track"><span class="bar-fill" style="width:15%"></span></span><span class="bar-value">0.17 s <span>vs 1.16 s</span></span></div>
+        <div class="bar-row"><span class="bar-label">NodaTime</span><span class="bar-track"><span class="bar-fill" style="width:38%"></span></span><span class="bar-value">0.59 s <span>vs 1.54 s</span></span></div>
+        <p class="bars-group">Run the affected tests, vs <code>dotnet test</code></p>
+        <div class="bar-row"><span class="bar-label">Fixture</span><span class="bar-track"><span class="bar-fill" style="width:32%"></span></span><span class="bar-value">1.41 s <span>vs 4.46 s</span></span></div>
+        <div class="bar-row"><span class="bar-label">NodaTime</span><span class="bar-track"><span class="bar-fill" style="width:71%"></span></span><span class="bar-value">35.5 s <span>vs 50.0 s</span></span></div>
+        <p class="bars-note">Bar length is Fuse's median time as a share of the dotnet command. The full track is dotnet.</p>
+      </div>
+      <p class="more"><a href="results">See how it was measured</a></p>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Works With Your Agent</h2>
+        <p><code>fuse init</code> sets up the agents it finds in your repository.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">Claude Code</span>
+        <span class="chip">Cursor</span>
+        <span class="chip">OpenCode</span>
+        <span class="chip">Codex</span>
+        <span class="chip">Gemini CLI</span>
+        <span class="chip">GitHub Copilot CLI</span>
+        <span class="chip">VS Code <small>MCP</small></span>
+        <span class="chip">Any MCP Host</span>
+      </div>
+      <p class="more"><a href="how-it-works">How it works under the hood</a></p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>Fuse &middot; Apache-2.0</span>
+    <span class="spacer"></span>
+    <a href="how-it-works">How It Works</a>
+    <a href="results">Results</a>
     <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
-  </nav>
-</header>
-
-<h1>Compiler errors after every edit, for coding agents on .NET</h1>
-<p class="lead">Fuse keeps a warm Roslyn compilation of your repository. After each edit, your agent learns which errors that edit introduced, including breaks in projects that depend on it. When it runs <code>dotnet test</code>, only the tests the change can reach run.</p>
-
-<pre><span class="dim">$</span> dotnet tool install -g Fuse
-<span class="dim">$</span> cd your-repo
-<span class="dim">$</span> fuse init</pre>
-<p>That is the setup. Fuse works through your agent's hooks, so the agent needs no instructions and no tool to remember.</p>
-
-<h2>What the agent sees</h2>
-<p>An edit renames <code>Calc.Add</code> to <code>Calc.Plus</code> in a library. Before the agent moves on, the post-edit hook reports:</p>
-<pre><span class="err">App/Program.cs(2,28): error CS1061:</span> 'Calc' does not contain a definition for 'Add'
-<span class="err">Lib.Tests/UnitTest1.cs(4,65): error CS1061:</span> 'Calc' does not contain a definition for 'Add'
-<span class="dim">fuse: 2 new error(s) in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked</span></pre>
-<p>An edit that introduces no error produces no output. Errors that were already there at the last commit are never reported.</p>
-<p>When the agent runs <code>dotnet test</code>, Fuse runs the affected tests from freshly compiled assemblies and prints only failures:</p>
-<pre><span class="err">FAILED Lib.Tests.CalcTests.Multiplies</span>
-  Assert.Equal() Failure: Values differ
-  Expected: 6
-  Actual:   7
-<span class="dim">fuse: 1 failed, 0 passed in 1.3 s; ran 1 test(s) affected by your changes out of 2</span></pre>
-
-<h2 id="measured">Measured</h2>
-<figure>
-  <img src="benefits.svg" alt="Bar chart of Fuse's time as a share of the dotnet command it replaces. The numbers are in the table below.">
-  <figcaption>Median over the eval cases in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/results">evals/results</a>, one Windows machine.</figcaption>
-</figure>
-<table>
-  <thead><tr><th>Repository</th><th>Check an edit</th><th>Run the affected tests</th><th>Missed</th></tr></thead>
-  <tbody>
-    <tr><td>Fixture, 5 projects</td><td class="num">0.17 s vs 1.16 s <code>dotnet build</code></td><td class="num">1.41 s vs 4.46 s <code>dotnet test</code></td><td class="num">0 errors, 0 failing tests</td></tr>
-    <tr><td>NodaTime, 17 projects, 42,681 tests</td><td class="num">0.59 s vs 1.54 s <code>dotnet build</code></td><td class="num">35.5 s vs 50.0 s <code>dotnet test</code></td><td class="num">0 errors, 0 failing tests</td></tr>
-  </tbody>
-</table>
-<p>"Missed" compares Fuse with real <code>dotnet build</code> and <code>dotnet test</code> runs over generated mutations: 30 and 20 edits that break or keep the build, and 10 and 5 behavior changes. No error Fuse reported contradicts the build; errors in projects the build skipped after an earlier failure cannot be compared and are counted separately in the results.</p>
-
-<h2 id="how">How it works</h2>
-<ul>
-  <li><strong>One engine per repository.</strong> The first hook or command starts it; it exits after 30 idle minutes. It evaluates every project with MSBuild and compiles a project only when a change touches it.</li>
-  <li><strong>Checks compare with HEAD.</strong> Each changed file is bound in the working tree and at the last commit, and only the difference is reported. A changed declaration re-checks the files that use it, found with Roslyn's symbol search, in every dependent project.</li>
-  <li><strong>Tests follow the code.</strong> Fuse walks from the changed code to the tests that can reach it, and runs them from a copy of the last build with the changed assemblies emitted in memory, skipping MSBuild when that is safe.</li>
-  <li><strong>Nothing to configure.</strong> No settings file, no environment variables, nothing written inside the repository except the hook settings <code>fuse init</code> creates.</li>
-</ul>
-
-<h2>Works with</h2>
-<p>Claude Code, Cursor, Gemini CLI, Codex and GitHub Copilot CLI through their hooks, which <code>fuse init</code> registers. VS Code agent mode and any other MCP host use <code>fuse mcp</code>, which serves <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code>. The Claude Code integration has been run end to end; the other hook adapters follow each harness's documented format.</p>
-
-<h2>Limits</h2>
-<ul>
-  <li>C# only. Fuse needs the .NET 10 SDK and restored projects.</li>
-  <li>Build steps outside the compiler (custom targets that change inputs, IL weaving) are invisible to a check. <code>fuse build</code> runs the real build.</li>
-  <li>Test selection is static: tests that reach code only through reflection are selected when the walk reaches an application's host, not otherwise.</li>
-</ul>
-
-<footer>
-  <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a> &middot;
-  <a href="https://www.nuget.org/packages/Fuse">NuGet</a> &middot;
-  Apache-2.0
-</footer>
-</main>
+    <a href="https://www.nuget.org/packages/Fuse">NuGet</a>
+  </footer>
+</div>
+<script>
+document.getElementById("copy").addEventListener("click", function () {
+  var button = this;
+  if (!navigator.clipboard) return;
+  navigator.clipboard.writeText(document.getElementById("cmd").textContent).then(function () {
+    button.textContent = "Copied";
+    setTimeout(function () { button.textContent = "Copy"; }, 1600);
+  }, function () {});
+});
+</script>
 </body>
 </html>

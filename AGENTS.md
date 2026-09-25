@@ -18,7 +18,7 @@ Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a reposit
   - `Mcp/`: the MCP server.
 - `tests/Fuse.Tests`: unit, engine and process tests over generated fixture repositories.
 - `evals/Fuse.Evals`: the correctness, selection and latency evals, and the chart renderer; results in `evals/results`.
-- `site/`: the website at fuse.codes, one static page (`index.html`), the icon, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`. Vercel deploys it from `main` with `site` as the project root and no build step.
+- `site/`: the website at fuse.codes, three static pages (`index.html`, `how-it-works.html`, `results.html`) sharing `style.css`, the icon, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`. Vercel deploys it from `main` with `site` as the project root and no build step.
 
 ## Build, test, format
 

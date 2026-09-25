@@ -119,6 +119,10 @@ internal static class EngineServer
 
                     if (!request_.IsCancellationRequested)
                         await WriteAsync(pipe, response, request_.Token).ConfigureAwait(false);
+
+                    // Let the client read the answer and close its end first: on Unix, where the pipe is a socket,
+                    // cancelling the pending read can reset the connection before the client has read the answer.
+                    await Task.WhenAny(disconnect, Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None)).ConfigureAwait(false);
                     if (request.Kind == RequestKind.Shutdown)
                         await shutdown.CancelAsync().ConfigureAwait(false);
                     await request_.CancelAsync().ConfigureAwait(false);

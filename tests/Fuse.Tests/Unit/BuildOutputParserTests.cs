@@ -13,15 +13,19 @@ public class BuildOutputParserTests
     [Fact]
     public void Extracts_errors_without_project_tags_and_duplicates()
     {
-        const string output = """
-            C:\repo\src\A.cs(12,5): error CS1061: 'X' does not contain a definition for 'Y' [C:\repo\src\A.csproj::TargetFramework=net8.0]
-            C:\repo\src\A.cs(12,5): error CS1061: 'X' does not contain a definition for 'Y' [C:\repo\src\A.csproj::TargetFramework=net10.0]
-            C:\repo\src\B.cs(1,1): warning CS0168: The variable 'e' is declared but never used [C:\repo\src\A.csproj]
-            C:\repo\src\A.csproj : error NU1101: Unable to find package Nope. [C:\repo\src\A.csproj]
+        var root = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
+        var a = Path.Combine(root, "src", "A.cs");
+        var b = Path.Combine(root, "src", "B.cs");
+        var project = Path.Combine(root, "src", "A.csproj");
+        var output = $"""
+            {a}(12,5): error CS1061: 'X' does not contain a definition for 'Y' [{project}::TargetFramework=net8.0]
+            {a}(12,5): error CS1061: 'X' does not contain a definition for 'Y' [{project}::TargetFramework=net10.0]
+            {b}(1,1): warning CS0168: The variable 'e' is declared but never used [{project}]
+            {project} : error NU1101: Unable to find package Nope. [{project}]
             MSBUILD : error MSB1009: Project file does not exist.
             Build FAILED.
             """;
-        var errors = BuildOutputParser.Errors(output, @"C:\repo");
+        var errors = BuildOutputParser.Errors(output, root);
         Assert.Equal(
             [
                 "src/A.cs(12,5): error CS1061: 'X' does not contain a definition for 'Y'",

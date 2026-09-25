@@ -10,51 +10,49 @@ namespace Fuse.Tests.Unit;
 
 public class HookPayloadTests
 {
+    private static readonly string Repo = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
+
+    private static string At(params string[] parts) => Path.GetFullPath(Path.Combine([Repo, .. parts]));
+
+    private static HookPayload Parse(object payload) => HookPayload.Parse(System.Text.Json.JsonSerializer.Serialize(payload));
+
     [Fact]
     public void Claude_edit_payload()
     {
-        var payload = HookPayload.Parse("""{"hook_event_name":"PostToolUse","tool_name":"Edit","cwd":"C:\\repo","tool_input":{"file_path":"C:\\repo\\src\\A.cs","old_string":"a","new_string":"b"}}""");
-        Assert.Equal([Path.GetFullPath(@"C:\repo\src\A.cs")], payload.EditedFiles());
+        var payload = Parse(new { hook_event_name = "PostToolUse", tool_name = "Edit", cwd = Repo, tool_input = new { file_path = At("src", "A.cs"), old_string = "a", new_string = "b" } });
+        Assert.Equal([At("src", "A.cs")], payload.EditedFiles());
         Assert.False(payload.FromCursor);
     }
 
     [Fact]
     public void Cursor_payload_is_recognized()
     {
-        var payload = HookPayload.Parse("""{"hook_event_name":"postToolUse","cursor_version":"2.0","workspace_roots":["C:\\repo"],"tool_input":{"file_path":"src/A.cs"}}""");
+        var payload = Parse(new { hook_event_name = "postToolUse", cursor_version = "2.0", workspace_roots = new[] { Repo }, tool_input = new { file_path = "src/A.cs" } });
         Assert.True(payload.FromCursor);
-        Assert.Equal([Path.GetFullPath(@"C:\repo\src\A.cs")], payload.EditedFiles());
+        Assert.Equal([At("src", "A.cs")], payload.EditedFiles());
     }
 
     [Fact]
     public void Gemini_payload()
     {
-        var payload = HookPayload.Parse("""{"hook_event_name":"AfterTool","cwd":"C:\\repo","tool_name":"replace","tool_input":{"file_path":"C:\\repo\\B.cs"}}""");
-        Assert.Equal([Path.GetFullPath(@"C:\repo\B.cs")], payload.EditedFiles());
+        var payload = Parse(new { hook_event_name = "AfterTool", cwd = Repo, tool_name = "replace", tool_input = new { file_path = At("B.cs") } });
+        Assert.Equal([At("B.cs")], payload.EditedFiles());
     }
 
     [Fact]
     public void Codex_apply_patch_payload()
     {
         var patch = "*** Begin Patch\n*** Update File: src/A.cs\n@@\n-a\n+b\n*** Add File: src/New.cs\n+x\n*** Delete File: old/Gone.cs\n*** End Patch";
-        var json = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object>
-        {
-            ["hook_event_name"] = "PostToolUse",
-            ["cwd"] = @"C:\repo",
-            ["tool_name"] = "apply_patch",
-            ["tool_input"] = new Dictionary<string, string> { ["command"] = patch },
-        });
-        var payload = HookPayload.Parse(json);
-        Assert.Equal(
-            [Path.GetFullPath(@"C:\repo\src\A.cs"), Path.GetFullPath(@"C:\repo\src\New.cs"), Path.GetFullPath(@"C:\repo\old\Gone.cs")],
-            payload.EditedFiles());
+        var payload = Parse(new { hook_event_name = "PostToolUse", cwd = Repo, tool_name = "apply_patch", tool_input = new { command = patch } });
+        Assert.Equal([At("src", "A.cs"), At("src", "New.cs"), At("old", "Gone.cs")], payload.EditedFiles());
     }
 
     [Fact]
     public void Copilot_payload_with_string_arguments()
     {
-        var payload = HookPayload.Parse("""{"sessionId":"s","cwd":"C:\\repo","toolName":"edit","toolArgs":"{\"path\":\"C:\\\\repo\\\\C.cs\"}"}""");
-        Assert.Equal([Path.GetFullPath(@"C:\repo\C.cs")], payload.EditedFiles());
+        var arguments = System.Text.Json.JsonSerializer.Serialize(new { path = At("C.cs") });
+        var payload = Parse(new { sessionId = "s", cwd = Repo, toolName = "edit", toolArgs = arguments });
+        Assert.Equal([At("C.cs")], payload.EditedFiles());
     }
 
     [Fact]

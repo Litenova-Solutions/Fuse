@@ -8,7 +8,7 @@ namespace Fuse.Testing;
 internal static class ChangedDeclarations
 {
     /// <summary>
-    ///     Returns nodes in <paramref name="after"/> for every member whose text changed or that was added, every type
+    ///     Returns nodes in <paramref name="after"/> for every added or changed member, every type
     ///     whose header changed or that lost a member, and every top-level statement block that changed. When file-level
     ///     code (usings, attributes) changed, every type in the file is returned.
     /// </summary>
@@ -37,11 +37,11 @@ internal static class ChangedDeclarations
                 result.Add(node);
         }
 
-        foreach (var (key, old) in oldMembers)
+        foreach (var key in oldMembers.Keys)
         {
             if (newMembers.ContainsKey(key))
                 continue;
-            // A removed member: whatever used it now binds differently, and it was reached through its type.
+            // A member gone from the working tree: its users bind differently, and they reach it through its type.
             var typeKey = key[..Math.Max(0, key.LastIndexOf('|'))];
             if (newMembers.TryGetValue(typeKey, out var type))
                 result.Add(type);
@@ -69,7 +69,11 @@ internal static class ChangedDeclarations
         where T : SyntaxNode =>
         a.Count == b.Count && a.Zip(b).All(p => SyntaxFactory.AreEquivalent(p.First, p.Second, topLevel: false));
 
-    /// <summary>Keys every member and type. Types are keyed by their header only, so a changed member does not mark its type changed.</summary>
+    /// <summary>
+    ///     Keys the members and types of one file. Types are compared by their header only, so a changed member does not
+    ///     mark its type changed. When one file declares the same type more than once (partial declarations), the
+    ///     first declaration is indexed.
+    /// </summary>
     private static Dictionary<string, SyntaxNode> Index(SyntaxNode root)
     {
         var result = new Dictionary<string, SyntaxNode>(StringComparer.Ordinal);

@@ -19,7 +19,7 @@ internal static class McpCommand
         {
             Name = "fuse_check",
             Title = "Check C# changes",
-            Description = "Compiler and analyzer errors that the working-tree changes introduced since the last commit, in the edited files and in every project that depends on them. Run after editing C# files. Much faster than dotnet build on a warm repository.",
+            Description = "Compiler and analyzer errors that the working-tree changes introduced since the last commit, in the edited files and in the files of dependent projects that use changed declarations. Run after editing C# files. Much faster than dotnet build on a warm repository.",
             InputSchema = Schema("""{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to scope the check to. Omit to check every change since the last commit."}}}"""),
             Annotations = new ToolAnnotations { ReadOnlyHint = true, IdempotentHint = true, OpenWorldHint = false },
         },
@@ -35,7 +35,7 @@ internal static class McpCommand
         {
             Name = "fuse_build",
             Title = "Build",
-            Description = "Runs dotnet build and reports only errors.",
+            Description = "Runs dotnet build and reports its errors.",
             InputSchema = Schema("""{"type":"object","properties":{"target":{"type":"string","description":"Project or solution to build. Omit to build what dotnet build picks in the repository root."}}}"""),
             Annotations = new ToolAnnotations { ReadOnlyHint = false, DestructiveHint = false, OpenWorldHint = false },
         },

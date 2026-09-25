@@ -8,16 +8,10 @@ namespace Fuse.Tests.Fixtures;
 /// <summary>Runs the engine's workspace, checker and test planner in the test process, over a fixture repository.</summary>
 internal sealed class EngineHarness : IAsyncDisposable
 {
-    private readonly List<string> _log = [];
-
     private EngineHarness(FixtureRepo repo)
     {
         Repo = repo;
-        Workspace = new RepoWorkspace(repo.Root, m =>
-        {
-            lock (_log)
-                _log.Add(m);
-        });
+        Workspace = new RepoWorkspace(repo.Root, _ => { });
         Checker = new Checker(Workspace);
         Planner = new TestPlanner(Workspace);
         Selector = new TestSelector(Workspace);
@@ -32,15 +26,6 @@ internal sealed class EngineHarness : IAsyncDisposable
     public TestPlanner Planner { get; }
 
     public TestSelector Selector { get; }
-
-    public IReadOnlyList<string> Log
-    {
-        get
-        {
-            lock (_log)
-                return [.. _log];
-        }
-    }
 
     public static async Task<EngineHarness> StartAsync(FixtureRepo? repo = null)
     {

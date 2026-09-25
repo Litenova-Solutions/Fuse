@@ -67,7 +67,7 @@ public class CheckerTests
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var report = await engine.CheckAsync("Lib/Greeting.cs");
         var paths = report.Introduced.Select(d => d.Path).Distinct().Order(StringComparer.Ordinal).ToList();
-        // Greeter no longer implements the interface, and both callers pass too few arguments.
+        // Greeter's method does not match the interface, and both callers pass too few arguments.
         Assert.Equal(["App/Program.cs", "Lib.Tests/GreeterTests.cs", "Lib/Greeting.cs"], paths);
     }
 
@@ -207,7 +207,7 @@ public class CheckerTests
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         Assert.NotEmpty((await engine.CheckAsync("Lib/Calc.cs")).Introduced);
 
-        // Committing the rename moves HEAD: the callers' errors are now pre-existing, not introduced.
+        // Committing the rename moves HEAD: the callers' errors are in the baseline, so they are not introduced.
         engine.Repo.Commit("rename");
         var report = await engine.CheckAllAsync();
         Assert.Empty(report.Introduced);

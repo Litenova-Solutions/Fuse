@@ -2,6 +2,7 @@ using System.IO.Pipes;
 using System.Text;
 using Fuse.Protocol;
 using Fuse.Repo;
+using Fuse.Workspace;
 
 namespace Fuse.Engine;
 
@@ -51,6 +52,10 @@ internal static class EngineClient
         {
             return EngineResponse.Fail(ErrorCode.Timeout, $"the fuse engine did not answer within {timeout.TotalSeconds:0} s");
         }
+        catch (FuseException e)
+        {
+            return EngineResponse.Fail(e.Code, e.Message);
+        }
         catch (IOException e)
         {
             return EngineResponse.Fail(ErrorCode.Internal, $"could not talk to the fuse engine: {e.Message}");
@@ -61,37 +66,61 @@ internal static class EngineClient
         }
     }
 
+    /// <summary>True when an engine's pipe exists, checked without connecting (a connection attempt waits for a timeout).</summary>
+    private static bool PipeExists(string name)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+                return Directory.EnumerateFiles(@"\\.\pipe\", name).Any();
+            // .NET implements named pipes on Unix as domain sockets in the temp directory.
+            return File.Exists(Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + name));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return true; // Cannot tell; try to connect.
+        }
+    }
+
     private static async Task<NamedPipeClientStream> ConnectAsync(RepoRoot root, CancellationToken cancellationToken)
     {
-        var started = false;
         var begin = Environment.TickCount64;
+        long lastStart = 0;
+        if (!PipeExists(root.PipeName))
+        {
+            // No engine yet. Start one only where there is C# to compile, so hooks cost almost nothing elsewhere.
+            if (!await RepoProbe.HasCSharpProjectsAsync(root, cancellationToken).ConfigureAwait(false))
+                throw new FuseException(ErrorCode.NoProjects, "no C# projects (.csproj) in this repository, so there is nothing to check");
+            EngineLauncher.Start(root.Path);
+            lastStart = Environment.TickCount64;
+        }
+
         while (true)
         {
-            var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-            try
+            if (PipeExists(root.PipeName))
             {
-                await pipe.ConnectAsync(started ? 250 : 100, cancellationToken).ConfigureAwait(false);
-                return pipe;
+                var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                try
+                {
+                    await pipe.ConnectAsync(250, cancellationToken).ConfigureAwait(false);
+                    return pipe;
+                }
+                catch (Exception e) when (e is TimeoutException or IOException)
+                {
+                    await pipe.DisposeAsync().ConfigureAwait(false);
+                }
             }
-            catch (TimeoutException)
+            else if (Environment.TickCount64 - lastStart > 1500)
             {
-                await pipe.DisposeAsync().ConfigureAwait(false);
-            }
-            catch (IOException)
-            {
-                await pipe.DisposeAsync().ConfigureAwait(false);
-                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                // No pipe: the engine is not running, or a starting engine lost the root's mutex to one that was
+                // exiting. Starting again is harmless: a redundant engine exits at once.
+                EngineLauncher.Start(root.Path);
+                lastStart = Environment.TickCount64;
             }
 
-            if (!started)
-            {
-                EngineLauncher.Start(root.Path);
-                started = true;
-            }
-            else if (Environment.TickCount64 - begin > StartTimeout.TotalMilliseconds)
-            {
+            if (Environment.TickCount64 - begin > StartTimeout.TotalMilliseconds)
                 throw new IOException($"the fuse engine did not start within {StartTimeout.TotalSeconds:0} s (see {Path.Combine(root.StateDirectory, "engine.log")})");
-            }
+            await Task.Delay(40, cancellationToken).ConfigureAwait(false);
         }
     }
 }

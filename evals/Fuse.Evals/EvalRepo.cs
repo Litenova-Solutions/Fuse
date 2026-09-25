@@ -7,12 +7,11 @@ namespace Fuse.Evals;
 /// <summary>A git repository under evaluation: how to build it, how to run fuse in it, and how to put it back to HEAD.</summary>
 internal sealed partial class EvalRepo
 {
-    public EvalRepo(string root, string fuse, string buildTarget, IReadOnlyList<string> testTargets)
+    public EvalRepo(string root, string fuse, string buildTarget)
     {
         Root = Path.GetFullPath(root);
         Fuse = fuse;
         BuildTarget = buildTarget;
-        TestTargets = testTargets;
     }
 
     public string Root { get; }
@@ -22,9 +21,6 @@ internal sealed partial class EvalRepo
 
     /// <summary>Solution or project the truth build compiles.</summary>
     public string BuildTarget { get; }
-
-    /// <summary>Test projects the truth test run executes.</summary>
-    public IReadOnlyList<string> TestTargets { get; }
 
     public string Name => Path.GetFileName(Root);
 

@@ -31,7 +31,7 @@ internal sealed class TestCounter
         return result;
     }
 
-    /// <summary>How many of <paramref name="tests"/> a selection runs.</summary>
+    /// <summary>How many of <paramref name="tests"/> a selection matches, estimated from test methods declared in source.</summary>
     public static int Count(IReadOnlyList<string> tests, ProjectSelection selection) =>
         selection.All ? tests.Count : tests.Count(t => selection.Patterns.Any(p => t.Contains(p, StringComparison.Ordinal)));
 

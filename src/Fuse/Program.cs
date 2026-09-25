@@ -14,9 +14,9 @@ internal static class Program
 
           fuse init                 register Fuse's hooks with the agent harnesses this repository uses
           fuse check [files...]     errors the working tree has that HEAD did not, across dependent projects
-          fuse test [args...]       run the tests affected by your changes (with args: exactly what dotnet test runs)
+          fuse test [args...]       run the tests affected by your changes (with args: the scope dotnet test would run)
           fuse test --all           run every test
-          fuse build [args...]      dotnet build, printing only errors
+          fuse build [args...]      dotnet build, printing its errors
           fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for hosts without hooks
           fuse hook <harness> <event>   entry point for installed hooks
         """;

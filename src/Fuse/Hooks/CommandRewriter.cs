@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace Fuse.Hooks;
 
-/// <summary>Rewrites <c>dotnet build</c> and <c>dotnet test</c> in a shell command to their Fuse equivalents, leaving everything else untouched.</summary>
+/// <summary>Rewrites <c>dotnet build</c> and <c>dotnet test</c> after command separators in a shell command, without parsing shell quoting.</summary>
 internal static partial class CommandRewriter
 {
     /// <summary>Returns the rewritten command, or null when it contains no <c>dotnet build</c> or <c>dotnet test</c> at the start of a command segment.</summary>

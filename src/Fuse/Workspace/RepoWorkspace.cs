@@ -11,14 +11,14 @@ namespace Fuse.Workspace;
 
 /// <summary>
 ///     Holds two views of the loaded projects: <see cref="Current"/> (the working tree) and <see cref="Baseline"/>
-///     (the same projects with every changed file restored to its HEAD content). Projects load lazily, only when a
-///     check or test plan touches them.
+///     (the same projects with every changed source restored to its HEAD content; project files are evaluated as they
+///     are on disk). Projects load when a check or test plan needs them, or in the background ahead of time.
 /// </summary>
 /// <remarks>
 ///     MSBuildWorkspace is used only as a loader. Its <c>TryApplyChanges</c> writes to disk, so it is never called;
 ///     both views are immutable <see cref="Solution"/> snapshots derived from the loader's solution and replaced
-///     atomically. The baseline only changes when HEAD moves or projects load, so its compilations and the
-///     diagnostics computed from them stay cached across checks.
+///     atomically. The baseline's content only changes when HEAD moves or projects reload, so diagnostics computed
+///     from it stay cached across checks.
 /// </remarks>
 internal sealed class RepoWorkspace : IDisposable
 {
@@ -48,8 +48,11 @@ internal sealed class RepoWorkspace : IDisposable
     /// <summary>The loaded projects with every changed file at its HEAD content.</summary>
     public Solution Baseline { get; private set; } = null!;
 
-    /// <summary>Increments whenever <see cref="Baseline"/> is rebuilt, which invalidates cached baseline diagnostics.</summary>
+    /// <summary>Increments whenever the HEAD view's content changes (HEAD moved, projects reloaded), which invalidates everything cached against it.</summary>
     public int BaselineGeneration { get; private set; }
+
+    /// <summary>Increments whenever projects are re-evaluated and reloaded, which invalidates anything derived from project configuration.</summary>
+    public int LoaderGeneration { get; private set; }
 
     public RepoRoot Root => _root;
 
@@ -78,7 +81,7 @@ internal sealed class RepoWorkspace : IDisposable
                 await EvaluateAsync(cancellationToken).ConfigureAwait(false);
             else
                 await ResetLoaderAsync(cancellationToken).ConfigureAwait(false);
-            // Reopen what was open, so the next check does not pay for a cold load it did not ask for.
+            // Reopen the projects that were loaded, so the next check does not pay for a cold load it did not ask for.
             var nodes = reopen.Select(Graph.Find).OfType<ProjectNode>().ToList();
             if (nodes.Count > 0)
                 await EnsureLoadedAsync(nodes, cancellationToken).ConfigureAwait(false);
@@ -90,7 +93,7 @@ internal sealed class RepoWorkspace : IDisposable
             // HEAD moved, or a background load added projects: derive both views from the loader again.
             _touched.UnionWith(batch.SourcePaths);
             _rebuildPending = false;
-            await RebuildAsync(cancellationToken).ConfigureAwait(false);
+            await RebuildAsync(batch.HeadMoved, cancellationToken).ConfigureAwait(false);
             if (batch.HeadMoved)
                 return;
         }
@@ -128,13 +131,20 @@ internal sealed class RepoWorkspace : IDisposable
     /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
     public async Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
     {
-        var missing = projects.Where(p => !_loaded.ContainsKey(p.Path)).DistinctBy(p => p.Path).ToList();
+        var requested = projects.DistinctBy(p => p.Path).ToList();
+        foreach (var project in requested)
+        {
+            if (_loadFailures.TryGetValue(project.Path, out var failure))
+                throw new FuseException(ErrorCode.LoadFailed, $"could not load {_root.Relative(project.Path)}: {failure}");
+        }
+
+        var missing = requested.Where(p => !_loaded.ContainsKey(p.Path)).ToList();
         if (missing.Count > 0)
             await LoadAsync(missing, cancellationToken).ConfigureAwait(false);
         if (missing.Count > 0 || _rebuildPending)
         {
             _rebuildPending = false;
-            await RebuildAsync(cancellationToken).ConfigureAwait(false);
+            await RebuildAsync(headMoved: false, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -184,9 +194,11 @@ internal sealed class RepoWorkspace : IDisposable
                 _log($"loaded {project.Name} in {Environment.TickCount64 - started} ms ({loader.CurrentSolution.ProjectIds.Count} projects open)");
             }
 
+            // A load failure (a missing project reference, an unresolvable SDK) leaves a project that compiles
+            // differently from the real build, so it is reported rather than checked.
             foreach (var project in missing)
             {
-                if (_loadFailures.TryGetValue(project.Path, out var failure) && !loader.CurrentSolution.Projects.Any(p => ChangeTracker.PathComparer.Equals(p.FilePath, project.Path)))
+                if (_loadFailures.TryGetValue(project.Path, out var failure))
                     throw new FuseException(ErrorCode.LoadFailed, $"could not load {_root.Relative(project.Path)}: {failure}");
             }
         }
@@ -235,6 +247,7 @@ internal sealed class RepoWorkspace : IDisposable
             Current = new AdhocWorkspace().CurrentSolution;
             Baseline = Current;
             BaselineGeneration++;
+            LoaderGeneration++;
         }
         finally
         {
@@ -259,7 +272,13 @@ internal sealed class RepoWorkspace : IDisposable
         return loader;
     }
 
-    private async Task RebuildAsync(CancellationToken cancellationToken)
+    /// <summary>Derives both views from the loader again, re-applying every known change.</summary>
+    /// <param name="headMoved">
+    ///     True when HEAD moved. Otherwise the HEAD view's content is unchanged (it always holds HEAD content for the loaded
+    ///     projects; a load only adds projects), so diagnostics cached against it stay valid.
+    /// </param>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    private async Task RebuildAsync(bool headMoved, CancellationToken cancellationToken)
     {
         if (_loader is null)
             return;
@@ -273,7 +292,8 @@ internal sealed class RepoWorkspace : IDisposable
 
         Current = current;
         Baseline = baseline;
-        BaselineGeneration++;
+        if (headMoved)
+            BaselineGeneration++;
     }
 
     private Task<Solution> WithDiskContentAsync(Solution solution, string path, CancellationToken cancellationToken)

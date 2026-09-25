@@ -78,9 +78,10 @@ internal static class TrxReader
             if (at < 0)
                 continue;
             var location = line[(at + 4)..];
-            if (!location.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            var relative = Path.GetRelativePath(root, location);
+            if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
                 continue;
-            frames.Add(line[..at] + " in " + Path.GetRelativePath(root, location).Replace('\\', '/'));
+            frames.Add(line[..at] + " in " + relative.Replace('\\', '/'));
             if (frames.Count == 5)
                 break;
         }

@@ -1,5 +1,7 @@
 using Fuse.Dotnet;
+using Fuse.Protocol;
 using Fuse.Repo;
+using Fuse.Workspace;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Exceptions;
 
@@ -54,7 +56,7 @@ internal sealed class RepoGraph
     {
         if (_owners.TryGetValue(path, out var owners))
             return owners;
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".razor", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
+        if (!ChangeTracker.IsSource(path))
             return [];
         ProjectNode? best = null;
         foreach (var project in Projects)
@@ -65,7 +67,8 @@ internal sealed class RepoGraph
                 best = project;
         }
 
-        return best is null ? [] : [best];
+        // A new file belongs to the deepest project directory holding it, unless it sits in build output.
+        return best is null || ChangeTracker.IsBuildOutput(best.Directory, path) ? [] : [best];
     }
 
     /// <summary>Every project that references <paramref name="project"/>, directly or transitively.</summary>
@@ -111,9 +114,6 @@ internal sealed class RepoGraph
         return result;
     }
 
-    /// <summary>True when <paramref name="path"/> is an evaluation input of any project.</summary>
-    public bool IsEvaluationInput(string path) => Projects.Any(p => p.EvaluationInputs.Contains(path));
-
     /// <summary>Evaluates every project file git knows about (tracked or untracked, not ignored).</summary>
     public static async Task<RepoGraph> EvaluateAsync(RepoRoot root, CancellationToken cancellationToken)
     {
@@ -122,49 +122,75 @@ internal sealed class RepoGraph
             ["-c", "core.quotepath=off", "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.csproj"],
             root.Path,
             cancellationToken).ConfigureAwait(false);
-        var paths = listing.ExitCode == 0
-            ? listing.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(p => System.IO.Path.GetFullPath(System.IO.Path.Combine(root.Path, p)))
-                .Where(File.Exists)
-                .Distinct(ChangeTracker.PathComparer)
-                .ToList()
-            : [];
+        if (listing.ExitCode != 0)
+            throw new FuseException(ErrorCode.LoadFailed, $"git cannot list the repository's files ({listing.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault()}); see `git status`");
+        var paths = listing.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(p => System.IO.Path.GetFullPath(System.IO.Path.Combine(root.Path, p)))
+            .Where(File.Exists)
+            .Distinct(ChangeTracker.PathComparer)
+            .ToList();
 
         MsBuildSetup.EnsureRegistered();
         return Evaluate(root, paths, cancellationToken);
     }
 
-    private static RepoGraph Evaluate(RepoRoot root, IReadOnlyList<string> paths, CancellationToken cancellationToken)
+    private static RepoGraph Evaluate(RepoRoot root, List<string> paths, CancellationToken cancellationToken)
     {
-        var projects = new List<ProjectNode>();
-        var failures = new List<string>();
-        using var collection = new ProjectCollection();
-        foreach (var path in paths)
+        // Evaluation is CPU-bound and independent per project. A ProjectCollection is not thread-safe, so each worker
+        // evaluates with its own; results keep the input order so the graph is deterministic.
+        var nodes = new ProjectNode?[paths.Count];
+        var failures = new string?[paths.Count];
+        var collections = new System.Collections.Concurrent.ConcurrentBag<ProjectCollection>();
+        using var local = new ThreadLocal<ProjectCollection>(() =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            try
+            var collection = new ProjectCollection();
+            collections.Add(collection);
+            return collection;
+        });
+        try
+        {
+            Parallel.For(0, paths.Count, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken }, i =>
             {
-                var outer = collection.LoadProject(path);
-                var evaluations = new List<Project> { outer };
-                // A multi-targeted project's outer evaluation defines no Compile items and may condition references on
-                // the target framework, so each framework's inner evaluation is read too and the results are unioned.
-                if (string.IsNullOrEmpty(outer.GetPropertyValue("TargetFramework")))
+                try
                 {
-                    foreach (var framework in outer.GetPropertyValue("TargetFrameworks").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                        evaluations.Add(collection.LoadProject(path, new Dictionary<string, string> { ["TargetFramework"] = framework }, toolsVersion: null));
+                    nodes[i] = EvaluateOne(root, local.Value!, paths[i]);
                 }
-
-                projects.Add(ToNode(root, evaluations));
-                foreach (var evaluation in evaluations)
-                    collection.UnloadProject(evaluation);
-            }
-            catch (InvalidProjectFileException e)
-            {
-                failures.Add($"{root.Relative(path)}: {e.BaseMessage}");
-            }
+                catch (InvalidProjectFileException e)
+                {
+                    failures[i] = $"{root.Relative(paths[i])}: {e.BaseMessage}";
+                }
+            });
+        }
+        finally
+        {
+            foreach (var collection in collections)
+                collection.Dispose();
         }
 
-        return new RepoGraph(projects, failures);
+        return new RepoGraph([.. nodes.OfType<ProjectNode>()], [.. failures.OfType<string>()]);
+    }
+
+    private static ProjectNode EvaluateOne(RepoRoot root, ProjectCollection collection, string path)
+    {
+        var outer = collection.LoadProject(path);
+        var evaluations = new List<Project> { outer };
+        // A multi-targeted project's outer evaluation defines no Compile items and may condition references on the
+        // target framework, so each framework's inner evaluation is read too and the results are unioned.
+        if (string.IsNullOrEmpty(outer.GetPropertyValue("TargetFramework")))
+        {
+            foreach (var framework in outer.GetPropertyValue("TargetFrameworks").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                evaluations.Add(collection.LoadProject(path, new Dictionary<string, string> { ["TargetFramework"] = framework }, toolsVersion: null));
+        }
+
+        try
+        {
+            return ToNode(root, evaluations);
+        }
+        finally
+        {
+            foreach (var evaluation in evaluations)
+                collection.UnloadProject(evaluation);
+        }
     }
 
     private static ProjectNode ToNode(RepoRoot root, List<Project> evaluations)

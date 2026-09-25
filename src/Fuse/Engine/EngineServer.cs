@@ -32,7 +32,7 @@ internal static class EngineServer
         }
         catch (AbandonedMutexException)
         {
-            // The previous engine died without releasing; the mutex is now ours.
+            // An engine that exited without releasing the mutex hands it to this process.
         }
 
         var log = new EngineLog(root.StateDirectory);
@@ -114,7 +114,7 @@ internal static class EngineServer
                     }
                     catch (OperationCanceledException)
                     {
-                        response = EngineResponse.Fail(ErrorCode.Timeout, "the request was cancelled");
+                        response = EngineResponse.Fail(ErrorCode.Timeout, "the request is cancelled");
                     }
 
                     if (!request_.IsCancellationRequested)
@@ -181,19 +181,27 @@ internal static class EngineServer
         }
     }
 
-    /// <summary>Reads one newline-terminated UTF-8 line byte by byte, so nothing past the line is consumed.</summary>
+    /// <summary>
+    ///     Reads one newline-terminated UTF-8 line in 4 KB chunks. Each connection carries exactly one message in each
+    ///     direction, so anything after the newline cannot exist and nothing is lost by reading ahead.
+    /// </summary>
     internal static async Task<string?> ReadLineAsync(Stream stream, CancellationToken cancellationToken)
     {
-        var bytes = new List<byte>(256);
-        var buffer = new byte[1];
+        using var line = new MemoryStream();
+        var buffer = new byte[4096];
         while (true)
         {
             var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
             if (read == 0)
-                return bytes.Count == 0 ? null : Encoding.UTF8.GetString(bytes.ToArray());
-            if (buffer[0] == '\n')
-                return Encoding.UTF8.GetString(bytes.ToArray());
-            bytes.Add(buffer[0]);
+                return line.Length == 0 ? null : Encoding.UTF8.GetString(line.GetBuffer(), 0, (int)line.Length);
+            var newline = Array.IndexOf(buffer, (byte)'\n', 0, read);
+            if (newline >= 0)
+            {
+                line.Write(buffer, 0, newline);
+                return Encoding.UTF8.GetString(line.GetBuffer(), 0, (int)line.Length);
+            }
+
+            line.Write(buffer, 0, read);
         }
     }
 

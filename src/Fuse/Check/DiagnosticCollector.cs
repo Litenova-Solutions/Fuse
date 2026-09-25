@@ -8,17 +8,34 @@ namespace Fuse.Check;
 
 /// <summary>
 ///     Computes the errors of one file (in every target framework it compiles for) or of whole projects, including
-///     errors from analyzers that can report errors. Baseline results are cached per baseline generation, because
-///     the baseline does not change between edits.
+///     errors from analyzers that can report errors. Baseline results are cached until the HEAD view's content changes,
+///     because it does not change between edits.
 /// </summary>
 internal sealed class DiagnosticCollector
 {
     private readonly RepoRoot _root;
-    private readonly AnalyzerSelector _analyzers = new();
+    private readonly AnalyzerSelector _analyzers;
     private readonly ConcurrentDictionary<string, IReadOnlyList<FuseDiagnostic>> _baselineCache = new(ChangeTracker.PathComparer);
     private int _cachedGeneration = -1;
 
-    public DiagnosticCollector(RepoRoot root) => _root = root;
+    private long _compilerTicks;
+    private long _analyzerTicks;
+
+    /// <param name="root">The repository, for relative paths.</param>
+    /// <param name="configurationGeneration">Changes whenever project configuration may have changed.</param>
+    public DiagnosticCollector(RepoRoot root, Func<int> configurationGeneration)
+    {
+        _root = root;
+        _analyzers = new AnalyzerSelector(configurationGeneration);
+    }
+
+    /// <summary>Time spent binding and running analyzers since the last call, for the engine log.</summary>
+    public (long CompilerMs, long AnalyzerMs) TakeTimings()
+    {
+        var compiler = Interlocked.Exchange(ref _compilerTicks, 0);
+        var analyzer = Interlocked.Exchange(ref _analyzerTicks, 0);
+        return (compiler * 1000 / System.Diagnostics.Stopwatch.Frequency, analyzer * 1000 / System.Diagnostics.Stopwatch.Frequency);
+    }
 
     /// <summary>Errors reported in <paramref name="path"/>, from the regular documents and from Razor-generated code mapped back to it.</summary>
     public async Task<IReadOnlyList<FuseDiagnostic>> ForFileAsync(Solution solution, string path, CancellationToken cancellationToken)
@@ -79,11 +96,12 @@ internal sealed class DiagnosticCollector
         var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
         if (compilation is null)
             return [];
-        var diagnostics = compilation.GetDiagnostics(cancellationToken).Where(IsError).ToList();
+        // With analyzers, one pass produces compiler and analyzer diagnostics together.
         var withAnalyzers = _analyzers.For(project, compilation);
-        if (withAnalyzers is not null)
-            diagnostics.AddRange((await withAnalyzers.GetAnalyzerDiagnosticsAsync(cancellationToken).ConfigureAwait(false)).Where(IsError));
-        return Distinct(diagnostics.Select(ToFuse).OfType<FuseDiagnostic>());
+        var diagnostics = withAnalyzers is null
+            ? compilation.GetDiagnostics(cancellationToken)
+            : await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
+        return Distinct(diagnostics.Where(IsError).Select(ToFuse).OfType<FuseDiagnostic>());
     }
 
     private async Task<IEnumerable<FuseDiagnostic>> ForDocumentAsync(Document document, CancellationToken cancellationToken)
@@ -91,15 +109,26 @@ internal sealed class DiagnosticCollector
         var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         if (model is null)
             return [];
+
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var diagnostics = model.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).ToList();
-        var withAnalyzers = _analyzers.For(document.Project, model.Compilation);
-        if (withAnalyzers is not null)
-        {
-            diagnostics.AddRange((await withAnalyzers.GetAnalyzerSyntaxDiagnosticsAsync(model.SyntaxTree, cancellationToken).ConfigureAwait(false)).Where(IsError));
-            diagnostics.AddRange((await withAnalyzers.GetAnalyzerSemanticDiagnosticsAsync(model, filterSpan: null, cancellationToken).ConfigureAwait(false)).Where(IsError));
-        }
+        Interlocked.Add(ref _compilerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - started);
+        diagnostics.AddRange(await RunAnalyzersAsync(document.Project, model, cancellationToken).ConfigureAwait(false));
 
         return diagnostics.Select(ToFuse).OfType<FuseDiagnostic>();
+    }
+
+    private async Task<IEnumerable<RoslynDiagnostic>> RunAnalyzersAsync(Project project, SemanticModel model, CancellationToken cancellationToken)
+    {
+        var withAnalyzers = _analyzers.For(project, model.Compilation);
+        if (withAnalyzers is null)
+            return [];
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var syntax = withAnalyzers.GetAnalyzerSyntaxDiagnosticsAsync(model.SyntaxTree, cancellationToken);
+        var semantic = withAnalyzers.GetAnalyzerSemanticDiagnosticsAsync(model, filterSpan: null, cancellationToken);
+        var result = (await syntax.ConfigureAwait(false)).Concat(await semantic.ConfigureAwait(false)).Where(IsError).ToList();
+        Interlocked.Add(ref _analyzerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - started);
+        return result;
     }
 
     /// <summary>Errors in source-generated documents whose <c>#line</c> mappings point at <paramref name="path"/> (Razor components and views).</summary>

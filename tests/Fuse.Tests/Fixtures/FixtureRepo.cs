@@ -79,7 +79,6 @@ internal sealed class FixtureRepo : IDisposable
         Run(Root.Path, "git", "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "-m", message);
     }
 
-    public void Build() => Run(Root.Path, "dotnet", "build", FixtureTemplate.SolutionFile, "-nologo", "-v:q");
 
     internal static string NewDirectory()
     {

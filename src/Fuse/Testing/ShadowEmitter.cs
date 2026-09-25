@@ -10,9 +10,9 @@ namespace Fuse.Testing;
 ///     directory and overwrites the assemblies whose sources changed with ones emitted from the warm compilations.
 /// </summary>
 /// <remarks>
-///     The shadow is only valid when everything outside C# sources matches the last build: no project file, import,
-///     resource or content file is newer than the build output. Otherwise <see cref="TryPrepareAsync"/> returns
-///     null and the caller runs <c>dotnet test</c> normally.
+///     The shadow is used only when no project file, import, resource or content file in the involved project
+///     directories has a timestamp newer than the build output (freshness is judged by timestamps, not content).
+///     Otherwise <see cref="TryPrepareAsync"/> returns null and the caller runs <c>dotnet test</c> normally.
 /// </remarks>
 internal sealed class ShadowEmitter
 {
@@ -27,7 +27,7 @@ internal sealed class ShadowEmitter
 
     /// <summary>Returns the path of the runnable shadow test assembly, or null when the fast path is not safe.</summary>
     /// <param name="testProject">The Roslyn project for one target framework of the test project.</param>
-    /// <param name="log">Receives the reason the fast path was refused.</param>
+    /// <param name="log">Receives the reason when the fast path is refused.</param>
     /// <param name="cancellationToken">Cancels emitting.</param>
     public async Task<string?> TryPrepareAsync(Project testProject, Action<string> log, CancellationToken cancellationToken)
     {
@@ -73,11 +73,17 @@ internal sealed class ShadowEmitter
 
         // A stale assembly's dependents inside the closure are re-emitted too, so none of them binds to a member that moved.
         var emit = new HashSet<ProjectId>(stale);
-        foreach (var project in closure)
+        bool grew;
+        do
         {
-            if (Closure(project).Any(p => stale.Contains(p.Id)))
-                emit.Add(project.Id);
+            grew = false;
+            foreach (var project in closure)
+            {
+                if (!emit.Contains(project.Id) && project.ProjectReferences.Any(r => emit.Contains(r.ProjectId)))
+                    grew = emit.Add(project.Id);
+            }
         }
+        while (grew);
 
         var shadow = Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}");
         Mirror(Path.GetDirectoryName(testOutput)!, shadow);
@@ -121,9 +127,9 @@ internal sealed class ShadowEmitter
     }
 
     /// <summary>
-    ///     Whether the project's C# sources changed since its build output was written, and the first non-source file
+    ///     Whether the project's C# sources are newer than its build output, and the first non-source file
     ///     in the project directory that did (a resource or content file the emitted assembly would not include). A
-    ///     directory newer than the output means a file was added or deleted there, which also makes the sources stale.
+    ///     directory newer than the output means its file set changed, which also makes the sources stale.
     /// </summary>
     private static (bool SourcesNewer, string? OtherNewer) Freshness(ProjectNode node, DateTime built)
     {
@@ -172,7 +178,7 @@ internal sealed class ShadowEmitter
         }
     }
 
-    /// <summary>Makes <paramref name="target"/> a copy of <paramref name="source"/>, copying only files whose size or time differ.</summary>
+    /// <summary>Overlays <paramref name="source"/> onto <paramref name="target"/>, copying files whose size or time differ; files only in the target stay.</summary>
     private static void Mirror(string source, string target)
     {
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))

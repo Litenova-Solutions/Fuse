@@ -25,7 +25,7 @@ internal sealed record CorrectnessCase(
     string? Note);
 
 /// <summary>
-///     Suite 7.1: applies API-shape mutations (single edits and 2-3 edit sequences across projects), then compares the
+///     Applies API-shape mutations (single edits and 2-3 edit sequences across projects), then compares the
 ///     errors <c>fuse check</c> reports with the errors a real <c>dotnet build</c> reports beyond the HEAD build.
 /// </summary>
 internal static partial class CorrectnessSuite

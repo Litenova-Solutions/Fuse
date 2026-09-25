@@ -7,7 +7,7 @@
     <RootNamespace>Fuse.Tests</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <NoWarn>$(NoWarn);CA1707;CA1515;CA1001;CA1816;CA1861;CA2007</NoWarn>
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

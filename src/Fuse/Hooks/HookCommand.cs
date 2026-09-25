@@ -12,8 +12,9 @@ namespace Fuse.Hooks;
 ///     JSON from stdin and answers in that harness's format.
 /// </summary>
 /// <remarks>
-///     A hook must never break the agent's session, so every failure inside Fuse ends with exit code 0 and no
-///     output (logged to <c>hook.log</c> in <see cref="RepoRoot.StateDirectory"/>). Only a real finding (new errors) produces output.
+///     A hook must never break the agent's session, so a failure inside Fuse ends with exit code 0 and no output
+///     (logged to <c>hook.log</c> in <see cref="RepoRoot.StateDirectory"/>). Only new errors and a missing restore produce
+///     output; in Claude Code they come with exit code 2, which wakes the agent.
 /// </remarks>
 internal static class HookCommand
 {
@@ -130,7 +131,7 @@ internal static class HookCommand
         if (!ShouldReport(result, response))
             return Clean(harness);
 
-        var reason = result.Text + "\nFix these errors before finishing; they were not present at HEAD.";
+        var reason = result.Text + "\nFix these errors before finishing; they are not in the last commit.";
         JsonObject output = harness switch
         {
             "cursor" => new JsonObject { ["followup_message"] = reason },

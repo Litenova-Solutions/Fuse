@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Fuse.Evals;
 
 /// <summary>
-///     Suite 7.3: times <c>fuse check</c> through the executable: a cold start, warm body edits, warm signature edits
+///     Times <c>fuse check</c> through the executable: a cold start, warm body edits, warm signature edits
 ///     that reach dependent projects, and warm checks of an unchanged tree (the client and sync overhead).
 /// </summary>
 internal static class LatencySuite

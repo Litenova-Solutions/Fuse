@@ -10,7 +10,6 @@ namespace Fuse.Engine;
 /// <summary>Owns the warm workspace and answers requests one at a time.</summary>
 internal sealed class EngineHost : IDisposable
 {
-    private readonly RepoRoot _root;
     private readonly EngineLog _log;
     private readonly RepoWorkspace _workspace;
     private readonly Checker _checker;
@@ -23,7 +22,6 @@ internal sealed class EngineHost : IDisposable
 
     public EngineHost(RepoRoot root, EngineLog log)
     {
-        _root = root;
         _log = log;
         _workspace = new RepoWorkspace(root, log.Write);
         _checker = new Checker(_workspace);
@@ -76,6 +74,10 @@ internal sealed class EngineHost : IDisposable
         {
             await initialization.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
+        catch (FuseException e)
+        {
+            return EngineResponse.Fail(e.Code, e.Message);
+        }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             _log.Write($"initialization failed: {e}");
@@ -119,7 +121,7 @@ internal sealed class EngineHost : IDisposable
     ///     Loads, in the background and one at a time, the projects that depend on projects with uncommitted changes.
     ///     A declaration change has to bind those dependents, and loading them is the slow part of a first check
     ///     (seconds per project); doing it while the agent is busy elsewhere keeps later checks fast. Requests take
-    ///     precedence: the gate is released between projects.
+    ///     precedence: the gate admits them between project loads.
     /// </summary>
     private void SchedulePreload()
     {

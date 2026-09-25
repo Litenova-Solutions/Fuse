@@ -173,7 +173,7 @@ internal static class EngineLauncher
     {
         var startup = new Native.StartupInfo { cb = Marshal.SizeOf<Native.StartupInfo>() };
         // CreateProcessW may write to the command-line buffer, so it gets a private, null-terminated copy.
-        var buffer = (commandLine + " ").ToCharArray();
+        var buffer = (commandLine + "\0").ToCharArray();
         if (!Native.CreateProcessW(null, buffer, 0, 0, false, flags, 0, directory, ref startup, out var info))
             return false;
         Native.CloseHandle(info.hProcess);

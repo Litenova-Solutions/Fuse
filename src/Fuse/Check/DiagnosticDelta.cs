@@ -2,7 +2,7 @@ using Fuse.Protocol;
 
 namespace Fuse.Check;
 
-/// <summary>Finds the errors present now that were not present at the baseline.</summary>
+/// <summary>Finds working-tree errors that have no match in the baseline.</summary>
 internal static class DiagnosticDelta
 {
     /// <summary>

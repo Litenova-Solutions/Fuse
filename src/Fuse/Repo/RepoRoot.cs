@@ -59,7 +59,7 @@ internal sealed class RepoRoot
         return rel.Replace('\\', '/');
     }
 
-    /// <summary>Returns the absolute form of a path given relative to the root or absolute, canonicalized.</summary>
+    /// <summary>Returns the absolute form of a path given relative to the root or absolute; a path outside the root's spelling is canonicalized.</summary>
     public string Absolute(string path)
     {
         var full = System.IO.Path.IsPathRooted(path) ? path : System.IO.Path.Combine(Path, path);

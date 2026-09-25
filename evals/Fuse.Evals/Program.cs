@@ -4,13 +4,14 @@ using Fuse.Dotnet;
 namespace Fuse.Evals;
 
 /// <summary>
-///     The v5 eval suites (docs/v5-plan.md section 7). Every fuse measurement goes through the fuse executable; the
-///     truth side is a real dotnet build or dotnet test.
+///     The eval suites. Every fuse measurement goes through the fuse executable; the truth side is a real dotnet build
+///     or dotnet test. The chart command renders site/benefits.svg from the recorded results.
 /// </summary>
 internal static class Program
 {
     private const string Usage = """
         usage: Fuse.Evals <suite> <repo> [--mutations N] [--seed S] [--solution path] [--fuse path]
+               Fuse.Evals chart
           suite: correctness | selection | latency | all
           repo:  fixture (generated under evals/.work/fixture) or a path to a git repository
         """;
@@ -19,6 +20,15 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
+        if (args is ["chart"])
+        {
+            var root = FindFuseRoot();
+            var target = Path.Combine(root, "site", "benefits.svg");
+            await File.WriteAllTextAsync(target, ChartRenderer.Render(root));
+            Console.WriteLine($"wrote {Path.GetRelativePath(root, target)}");
+            return 0;
+        }
+
         if (args.Length < 2)
         {
             Console.Error.WriteLine(Usage);
@@ -39,7 +49,7 @@ internal static class Program
             ? await FixtureGenerator.CreateAsync(Path.Combine(fuseRoot, "evals", ".work", "fixture"))
             : Path.GetFullPath(args[1]);
         var solutionPath = options.GetValueOrDefault("solution") ?? DefaultSolution(repoPath);
-        var repo = new EvalRepo(repoPath, fuse, solutionPath, []);
+        var repo = new EvalRepo(repoPath, fuse, solutionPath);
         var solution = SolutionInfo.Load(repoPath, solutionPath);
         Console.WriteLine($"repo {repoPath}, solution {solutionPath}: {solution.CodeProjects.Count} code project(s), {solution.TestProjects.Count} test project(s); fuse {fuse}");
 

@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Text;
+using Fuse.Protocol;
+using Fuse.Workspace;
 
 namespace Fuse.Repo;
 
@@ -15,25 +17,28 @@ internal sealed class GitBlobReader : IDisposable
 
     public GitBlobReader(string root) => _root = root;
 
-    /// <summary>Returns the bytes of <paramref name="relativePath"/> at <paramref name="commit"/>, or null when the file does not exist there.</summary>
+    /// <summary>Returns the bytes of <paramref name="relativePath"/> at <paramref name="commit"/>, or null when the file is not in that commit.</summary>
     public byte[]? Read(string commit, string relativePath)
     {
         lock (_gate)
         {
-            for (var attempt = 0; attempt < 2; attempt++)
+            for (var attempt = 0; ; attempt++)
             {
                 try
                 {
                     return ReadCore(commit, relativePath);
                 }
-                catch (IOException)
+                catch (IOException) when (attempt == 0)
                 {
-                    // The process died (for example git was upgraded underneath); restart once.
+                    // The git process exited unexpectedly (for example git was replaced on disk); restart it once.
                     Stop();
                 }
+                catch (IOException)
+                {
+                    Stop();
+                    throw new FuseException(ErrorCode.LoadFailed, $"git cannot read {relativePath} at HEAD; the repository may be damaged (run `git fsck`)");
+                }
             }
-
-            return null;
         }
     }
 

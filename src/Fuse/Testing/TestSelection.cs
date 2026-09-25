@@ -8,6 +8,6 @@ internal sealed class ProjectSelection
     /// <summary>Fully qualified method names (<c>Ns.Outer+Inner.Method</c>) or class prefixes (<c>Ns.Class.</c>).</summary>
     public HashSet<string> Patterns { get; } = new(StringComparer.Ordinal);
 
-    /// <summary>Why <see cref="All"/> was set, when it was.</summary>
+    /// <summary>Why <see cref="All"/> is set, or null when it is not.</summary>
     public string? AllReason { get; set; }
 }

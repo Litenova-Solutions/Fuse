@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
@@ -17,28 +18,44 @@ namespace Fuse.Check;
 /// </remarks>
 internal sealed class AnalyzerSelector
 {
-    private readonly ConditionalWeakTable<IReadOnlyList<AnalyzerReference>, DiagnosticAnalyzer[]> _analyzers = new();
-    private readonly ConditionalWeakTable<Compilation, Holder> _withAnalyzers = new();
+    private readonly Func<int> _configurationGeneration;
+    private readonly ConcurrentDictionary<ProjectId, (int Generation, ImmutableArray<DiagnosticAnalyzer> Analyzers)> _selected = new();
+    private readonly ConditionalWeakTable<Compilation, Lazy<CompilationWithAnalyzers?>> _withAnalyzers = new();
+
+    /// <param name="configurationGeneration">Changes whenever project configuration (project files, editorconfig) may have changed.</param>
+    public AnalyzerSelector(Func<int> configurationGeneration) => _configurationGeneration = configurationGeneration;
 
     /// <summary>Returns the compilation wrapped with its error-capable analyzers, or null when none can report an error.</summary>
+    /// <remarks>
+    ///     The selection depends only on the project's analyzers and configuration, so it is computed once per project
+    ///     until the configuration changes. The wrapper is per compilation, created once even when files bind in parallel.
+    /// </remarks>
     public CompilationWithAnalyzers? For(Project project, Compilation compilation) =>
-        _withAnalyzers.GetValue(compilation, c => new Holder(Create(project, c))).Value;
+        _withAnalyzers.GetValue(
+            compilation,
+            c => new Lazy<CompilationWithAnalyzers?>(() => Create(project, c), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
 
     private CompilationWithAnalyzers? Create(Project project, Compilation compilation)
     {
-        var all = _analyzers.GetValue(project.AnalyzerReferences, refs => [.. refs.SelectMany(r => r.GetAnalyzers(LanguageNames.CSharp))]);
-        if (all.Length == 0)
-            return null;
-        var config = ErrorConfig.Read(project, compilation);
-        var selected = all.Where(a => a.SupportedDiagnostics.Any(d => config.CanBeError(d, compilation.Options))).ToImmutableArray();
-        return selected.IsEmpty
+        var generation = _configurationGeneration();
+        if (!_selected.TryGetValue(project.Id, out var selected) || selected.Generation != generation)
+        {
+            selected = (generation, Select(project, compilation));
+            _selected[project.Id] = selected;
+        }
+
+        return selected.Analyzers.IsEmpty
             ? null
-            : compilation.WithAnalyzers(selected, new CompilationWithAnalyzersOptions(project.AnalyzerOptions, onAnalyzerException: null, concurrentAnalysis: true, logAnalyzerExecutionTime: false));
+            : compilation.WithAnalyzers(selected.Analyzers, new CompilationWithAnalyzersOptions(project.AnalyzerOptions, onAnalyzerException: null, concurrentAnalysis: true, logAnalyzerExecutionTime: false));
     }
 
-    private sealed class Holder(CompilationWithAnalyzers? value)
+    private static ImmutableArray<DiagnosticAnalyzer> Select(Project project, Compilation compilation)
     {
-        public CompilationWithAnalyzers? Value { get; } = value;
+        var all = project.AnalyzerReferences.SelectMany(r => r.GetAnalyzers(LanguageNames.CSharp)).ToList();
+        if (all.Count == 0)
+            return [];
+        var config = ErrorConfig.Read(project, compilation);
+        return [.. all.Where(a => a.SupportedDiagnostics.Any(d => config.CanBeError(d, compilation.Options)))];
     }
 
     /// <summary>

@@ -18,7 +18,7 @@ public class InitCommandTests
     [Fact]
     public void Defaults_to_claude_code_when_no_harness_is_present()
     {
-        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });
         Assert.Equal(0, Init(repo));
         var hooks = Json(repo, ".claude/settings.json")["hooks"]!;
         var post = hooks["PostToolUse"]![0]!;
@@ -35,6 +35,7 @@ public class InitCommandTests
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
         {
+            ["App/App.csproj"] = "<Project />",
             [".claude/settings.json"] = """
                 {
                   // user comment
@@ -66,6 +67,7 @@ public class InitCommandTests
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
         {
+            ["App/App.csproj"] = "<Project />",
             [".claude/settings.json"] = """{ "permissions": { "allow": [ "Read" ] } }""",
         });
         Init(repo);
@@ -78,6 +80,7 @@ public class InitCommandTests
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
         {
+            ["App/App.csproj"] = "<Project />",
             [".cursor/rules.md"] = "x",
             [".gemini/settings.json"] = "{}",
             [".codex/config.toml"] = "",

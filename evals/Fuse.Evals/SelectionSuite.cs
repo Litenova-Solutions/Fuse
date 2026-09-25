@@ -19,7 +19,7 @@ internal sealed record SelectionCase(
     string Verdict);
 
 /// <summary>
-///     Suite 7.2: applies behavior mutations to non-test code and checks that every test the full suite reports as
+///     Applies behavior mutations to non-test code and checks that every test the full suite reports as
 ///     newly failing is also run and reported by <c>fuse test</c>.
 /// </summary>
 internal static partial class SelectionSuite
@@ -71,16 +71,16 @@ internal static partial class SelectionSuite
             }
 
             var truthFailing = truth.Outcome.Failures.Select(f => f.Name).Where(n => !baselineFailing.Contains(n)).Distinct().ToList();
-            var fuseFailing = FailedLine().Matches(fuse.Result.Output).Select(m => m.Groups[1].Value.Trim()).Distinct().ToList();
+            var fuseFailing = FailingNames(fuse.Result.Output);
             var counts = Counts().Match(fuse.Result.Output);
             var fuseFailed = counts.Success ? int.Parse(counts.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
             var fusePassed = counts.Success ? int.Parse(counts.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
             var scope = fuse.Result.Output.Trim().Split('\n').Last().Trim();
-            // fuse prints at most 10 failures; names beyond that are only missing when its failed count is lower.
+            // Every failing test fuse ran is named in its output (details for ten, names for the rest). A truth
+            // failure with no matching name is missed; if fuse truncated its name list, the case cannot be verified.
             var missed = truthFailing.Where(t => !fuseFailing.Contains(t)).ToList();
-            if (fuseFailing.Count >= 10 && fuseFailed >= truthFailing.Count)
-                missed.Clear();
-            var verdict = missed.Count > 0 ? "missed" : truthFailing.Count == 0 ? "no-failure" : "caught";
+            var truncated = fuse.Result.Output.Contains("... and ", StringComparison.Ordinal);
+            var verdict = missed.Count > 0 ? (truncated ? "unverified" : "missed") : truthFailing.Count == 0 ? "no-failure" : "caught";
             cases.Add(new SelectionCase(cases.Count, edit with { NewText = null }, truthFailing, fuseFailing, fuseFailed, fusePassed, scope, missed, fuseSeconds, truth.Seconds, verdict));
             Console.WriteLine($"[selection] {cases.Count}/{count} {verdict,-10} truth-failing={truthFailing.Count} fuse ran={fuseFailed + fusePassed} fuse={fuseSeconds:0.0}s dotnet={truth.Seconds:0.0}s  {edit.Kind} {edit.Path}");
             await repo.ResetAsync();
@@ -96,7 +96,8 @@ internal static partial class SelectionSuite
             requested = count,
             cases = cases.Count,
             withFailures = cases.Count(c => c.TruthFailing.Count > 0),
-            missedCases = cases.Count(c => c.Missed.Count > 0),
+            missedCases = cases.Count(c => c.Verdict == "missed"),
+            unverifiedCases = cases.Count(c => c.Verdict == "unverified"),
             missedTests = cases.Sum(c => c.Missed.Count),
             totalTests = head.Outcome.Total,
             meanSelectedFraction = cases.Count == 0 || head.Outcome.Total == 0 ? 0 : cases.Average(c => (double)(c.FuseFailed + c.FusePassed) / head.Outcome.Total),
@@ -137,15 +138,36 @@ internal static partial class SelectionSuite
             }
             catch (IOException)
             {
-                // DirectoryNotFoundException included: no results were written.
+                // DirectoryNotFoundException included: a run that writes no results leaves no directory.
             }
         }
 
         return (total, watch.Elapsed.TotalSeconds, buildFailed);
     }
 
-    [GeneratedRegex(@"^FAILED (.+)$", RegexOptions.Multiline)]
-    private static partial Regex FailedLine();
+    /// <summary>Names of the failing tests in <c>fuse test</c> output: each <c>FAILED name</c> line and each name listed under <c>also failed</c>.</summary>
+    private static List<string> FailingNames(string output)
+    {
+        var names = new List<string>();
+        var inList = false;
+        foreach (var raw in output.Split('\n'))
+        {
+            var line = raw.TrimEnd('\r');
+            if (line.StartsWith("FAILED ", StringComparison.Ordinal))
+            {
+                names.Add(line["FAILED ".Length..].Trim());
+                inList = false;
+            }
+            else if (line.StartsWith("also failed", StringComparison.Ordinal))
+                inList = true;
+            else if (inList && line.StartsWith("  ", StringComparison.Ordinal) && !line.StartsWith("  ... and ", StringComparison.Ordinal))
+                names.Add(line.Trim());
+            else if (inList)
+                inList = false;
+        }
+
+        return names.Distinct().ToList();
+    }
 
     [GeneratedRegex(@"fuse: (\d+) failed, (\d+) passed")]
     private static partial Regex Counts();

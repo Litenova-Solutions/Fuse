@@ -6,7 +6,7 @@ namespace Fuse.Hooks;
 
 /// <summary>
 ///     <c>fuse init</c>: registers Fuse's hooks with every agent harness the repository already uses, and the MCP
-///     server with VS Code, which has no hooks. Existing Fuse entries are replaced; nothing else in those files changes.
+///     server with VS Code, which has no hooks. Fuse entries in shared settings files are replaced and other entries kept; <c>.github/hooks/fuse.json</c> belongs to Fuse and is written whole.
 /// </summary>
 internal static class InitCommand
 {
@@ -21,6 +21,12 @@ internal static class InitCommand
         if (root is null)
         {
             error.WriteLine("fuse: not inside a git repository; run fuse init from your repository");
+            return 2;
+        }
+
+        if (!RepoProbe.HasCSharpProjectsAsync(root, CancellationToken.None).GetAwaiter().GetResult())
+        {
+            error.WriteLine("fuse: no C# projects (.csproj) in this repository; Fuse installs hooks only where there is C# to check");
             return 2;
         }
 
@@ -51,7 +57,7 @@ internal static class InitCommand
 
         foreach (var file in written)
             output.WriteLine($"wrote {file}");
-        output.WriteLine("fuse: hooks installed; your agent now gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output");
+        output.WriteLine("fuse: hooks installed; your agent gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output");
         return 0;
     }
 

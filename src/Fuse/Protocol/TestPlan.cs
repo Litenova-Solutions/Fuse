@@ -1,13 +1,13 @@
 namespace Fuse.Protocol;
 
 /// <summary>Which tests to run and how. The client executes it, so a long test run never blocks the engine.</summary>
-/// <param name="Runs">One entry per test project to run; empty when no test is affected.</param>
+/// <param name="Runs">One entry per test run (one per target framework on the fast path, one per project otherwise); empty when no test is affected.</param>
 /// <param name="SelectedTests">Test methods selected, counted statically.</param>
 /// <param name="TotalTests">Test methods in the repository, counted statically.</param>
-/// <param name="Scope">One sentence stating what was selected and why.</param>
+/// <param name="Scope">One sentence stating the selection and its reason.</param>
 internal sealed record TestPlan(TestRun[] Runs, int SelectedTests, int TotalTests, string Scope);
 
-/// <summary>How to run one test project.</summary>
+/// <summary>How to run one test assembly or project.</summary>
 /// <param name="Project">Absolute path of the test project file.</param>
 /// <param name="Name">Project name for output.</param>
 /// <param name="ShadowAssembly">Absolute path of the test assembly in a shadow output with freshly emitted changes, or null to build with MSBuild.</param>

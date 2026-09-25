@@ -1,7 +1,7 @@
 namespace Fuse.Protocol;
 
 /// <summary>One request from a client to the engine. Each pipe connection carries exactly one.</summary>
-/// <param name="Version">The client's product version. A mismatch makes the engine answer <see cref="ResponseStatus.Restart"/> and exit.</param>
+/// <param name="Version">The client's exact build id. A mismatch makes the engine answer <see cref="ResponseStatus.Restart"/> and exit.</param>
 /// <param name="Kind">What the client asks for.</param>
 /// <param name="Files">For <see cref="RequestKind.Check"/>: repository files to scope the check to; null checks every change since HEAD.</param>
 /// <param name="Wait">True to wait for the engine to finish loading; false to get <see cref="ErrorCode.Loading"/> immediately.</param>

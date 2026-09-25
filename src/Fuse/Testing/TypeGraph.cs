@@ -28,7 +28,7 @@ internal sealed class TypeGraph
     internal readonly record struct TypeKey(ProjectId Project, string Name);
 
     /// <summary>What is known about a type in the graph.</summary>
-    internal sealed record TypeEntry(TypeKey Key, ProjectNode? Node, string TestName);
+    internal sealed record TypeEntry(ProjectNode? Node, string TestName);
 
     public IReadOnlyDictionary<TypeKey, TypeEntry> Types => _types;
 
@@ -58,7 +58,7 @@ internal sealed class TypeGraph
                 foreach (var (name, testName) in cached.Facts.Declared)
                 {
                     var key = new TypeKey(project.Id, name);
-                    graph._types.TryAdd(key, new TypeEntry(key, node, testName));
+                    graph._types.TryAdd(key, new TypeEntry(node, testName));
                 }
             }
         }

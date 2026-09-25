@@ -1,11 +1,8 @@
 namespace Fuse.Protocol;
 
-/// <summary>Every way a Fuse operation can fail. Each message that carries one names the fix.</summary>
+/// <summary>Every way a Fuse operation can fail. The message that carries one explains it, and names the fix where there is one.</summary>
 internal enum ErrorCode
 {
-    /// <summary>The directory is not inside a git repository.</summary>
-    NotARepository,
-
     /// <summary>The repository contains no C# project.</summary>
     NoProjects,
 

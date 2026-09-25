@@ -3,7 +3,7 @@ using Fuse.Dotnet;
 
 namespace Fuse.Cli;
 
-/// <summary>Runs the real <c>dotnet build</c> and prints only its errors.</summary>
+/// <summary>Runs the real <c>dotnet build</c> and prints its errors, or the end of its output when no error line parses.</summary>
 internal static class BuildOperation
 {
     private const int MaxShown = 20;

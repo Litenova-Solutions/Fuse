@@ -7,8 +7,8 @@ using Fuse.Repo;
 namespace Fuse.Cli;
 
 /// <summary>
-///     Runs tests and prints only failures. With no arguments it runs the tests affected by the working-tree changes
-///     (planned by the engine); with arguments it runs exactly what <c>dotnet test</c> would.
+///     Runs tests and prints failures. With no arguments it runs the tests affected by the working-tree changes
+///     (planned by the engine); with arguments it passes them to <c>dotnet test</c> and adds result reporting.
 /// </summary>
 internal static class TestOperation
 {
@@ -20,8 +20,8 @@ internal static class TestOperation
         var started = Environment.TickCount64;
         if (arguments.Count > 0)
         {
-            var (outcome, buildFailure, raw) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken).ConfigureAwait(false);
-            return Render(outcome, buildFailure, raw, root, "ran the tests you selected", Seconds(started));
+            var (outcome, buildFailure) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken).ConfigureAwait(false);
+            return Render(outcome, buildFailure, root, "ran the tests you selected", Seconds(started));
         }
 
         var response = await EngineClient.SendAsync(root, new EngineRequest("", RequestKind.TestPlan, AllTests: all), TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
@@ -61,12 +61,12 @@ internal static class TestOperation
             }
 
             var run = group.First();
-            var (outcome, buildFailure, raw) = run.TestingPlatform
+            var (outcome, buildFailure) = run.TestingPlatform
                 ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore"], cancellationToken, testingPlatform: true).ConfigureAwait(false)
                 : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], cancellationToken).ConfigureAwait(false);
             if (outcome is null)
             {
-                failure ??= Render(null, buildFailure, raw, root, plan.Scope, Seconds(started));
+                failure ??= Render(null, buildFailure, root, plan.Scope, Seconds(started));
                 continue;
             }
 
@@ -77,14 +77,14 @@ internal static class TestOperation
             return failure;
         var fast = outcomes.Count;
         var mode = fast == groups.Count ? "fast path" : fast > 0 ? $"fast path for {fast} of {groups.Count} project(s)" : "built with MSBuild";
-        return Render(aggregate, null, null, root, $"{plan.Scope}; {mode}", Seconds(started));
+        return Render(aggregate, null, root, $"{plan.Scope}; {mode}", Seconds(started));
     }
 
     private static double Seconds(long started) => (Environment.TickCount64 - started) / 1000.0;
 
     /// <summary>Runs <c>dotnet test</c> and reads its TRX results.</summary>
     /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
-    private static async Task<(TestOutcome? Outcome, ProcessResult? BuildFailure, string? Raw)> RunDotnetTestAsync(
+    private static async Task<(TestOutcome? Outcome, ProcessResult? BuildFailure)> RunDotnetTestAsync(
         RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
@@ -98,10 +98,10 @@ internal static class TestOperation
             var result = await ProcessRunner.RunAsync("dotnet", ["test", .. arguments, .. reporting], workingDirectory, cancellationToken).ConfigureAwait(false);
             var outcome = TrxReader.ReadDirectory(results, root.Path);
             if (outcome is null && testingPlatform)
-                return (null, result.ExitCode == 0 ? null : result, result.Output);
+                return (null, result.ExitCode == 0 ? null : result);
             if (outcome is null)
-                return (null, result, result.Output);
-            return (outcome, null, null);
+                return (null, result);
+            return (outcome, null);
         }
         finally
         {
@@ -116,7 +116,7 @@ internal static class TestOperation
         }
     }
 
-    private static OperationResult Render(TestOutcome? outcome, ProcessResult? buildFailure, string? raw, RepoRoot root, string scope, double seconds)
+    private static OperationResult Render(TestOutcome? outcome, ProcessResult? buildFailure, RepoRoot root, string scope, double seconds)
     {
         if (outcome is null)
         {
@@ -142,7 +142,7 @@ internal static class TestOperation
 
         if (outcome.Failures.Count > MaxFailuresShown)
         {
-            // Names only past the first few, so the agent still sees every failing test.
+            // Names only past the first ten, so the agent sees up to 110 failing tests by name.
             var rest = outcome.Failures.Skip(MaxFailuresShown).Select(f => f.Name).Distinct().ToList();
             text.Append($"also failed ({outcome.Failures.Count - MaxFailuresShown}):\n");
             foreach (var name in rest.Take(MaxNamesShown))

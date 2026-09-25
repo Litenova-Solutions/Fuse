@@ -20,11 +20,13 @@ namespace Fuse.Testing;
 ///         test; a reference elsewhere in a test class selects the whole class.
 ///     </para>
 ///     <para>
-///         Code a framework calls (controller actions, request handlers, hosted services, top-level statements) has no
-///         caller in source. When the walk reaches such a member, every test project that depends on its project is
-///         selected whole, because an integration test can reach it through HTTP, a mediator or the host. The same
-///         fallback applies to Razor changes and when the walk grows past <see cref="MaxSymbols"/>. A missed failing
-///         test is the one outcome selection must not produce; running extra tests only costs time.
+///         Code a framework calls in an application project (controller actions, request handlers, hosted services,
+///         top-level statements) has no caller in source. When the walk reaches it, every test project that depends
+///         on the application is selected whole, because an integration test can reach it through HTTP, a mediator
+///         or the host; Razor changes do the same. The class-level type graph answers first; the member walk refines
+///         it only when few classes are reachable and falls back to it past <see cref="MaxSymbols"/> symbols or
+///         <see cref="WalkBudget"/>. A missed failing test is the one outcome selection must not produce; running
+///         extra tests only costs time.
 ///     </para>
 /// </remarks>
 internal sealed class TestSelector
@@ -226,8 +228,10 @@ internal sealed class TestSelector
             return true;
         }
 
+        private readonly Dictionary<string, ProjectId> _byAssembly = cone.GroupBy(p => p.AssemblyName).ToDictionary(g => g.Key, g => g.First().Id, StringComparer.Ordinal);
+
         private ProjectId? FindProjectId(ISymbol symbol) =>
-            cone.FirstOrDefault(p => p.AssemblyName == symbol.ContainingAssembly.Name)?.Id;
+            symbol.ContainingAssembly is { } assembly ? _byAssembly.GetValueOrDefault(assembly.Name) : null;
 
         private async Task VisitReferenceAsync(ReferenceLocation location, CancellationToken cancellationToken)
         {

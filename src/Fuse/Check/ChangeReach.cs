@@ -61,6 +61,8 @@ internal sealed class ChangeReach
 
         var baseline = _workspace.Baseline;
         var reachIds = reach.Select(p => p.Id).ToHashSet();
+        // Reference sets depend on which projects were searched; a background load widens the reach.
+        var reachKey = string.Join(",", reachIds.Select(id => id.Id.ToString("N")).Order(StringComparer.Ordinal));
         var baselineProjects = baseline.Projects.Where(p => reachIds.Contains(p.Id)).ToImmutableHashSet();
         var baselineDocuments = baselineProjects.SelectMany(p => p.Documents).ToImmutableHashSet();
 
@@ -125,7 +127,7 @@ internal sealed class ChangeReach
 
         var files = new HashSet<string>(Fuse.Repo.ChangeTracker.PathComparer);
         foreach (var symbol in symbols.Distinct(SymbolEqualityComparer.Default))
-            files.UnionWith(await ReferencingFilesAsync(symbol, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false));
+            files.UnionWith(await ReferencingFilesAsync(symbol, reachKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false));
         foreach (var symbol in implementedBy.Distinct(SymbolEqualityComparer.Default))
         {
             files.UnionWith(Declarations(await SymbolFinder.FindImplementationsAsync(symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
@@ -154,9 +156,9 @@ internal sealed class ChangeReach
         return files;
     }
 
-    private async Task<IEnumerable<string>> ReferencingFilesAsync(ISymbol symbol, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
+    private async Task<IEnumerable<string>> ReferencingFilesAsync(ISymbol symbol, string reachKey, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
     {
-        var key = symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var key = (symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) + "|" + reachKey;
         if (_cache.TryGetValue(key, out var cached))
             return cached;
         var references = await SymbolFinder.FindReferencesAsync(symbol, baseline, documents, cancellationToken).ConfigureAwait(false);

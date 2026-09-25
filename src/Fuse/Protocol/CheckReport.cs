@@ -1,12 +1,12 @@
 namespace Fuse.Protocol;
 
 /// <summary>The errors introduced by the working-tree changes, and how far the check reached.</summary>
-/// <param name="Introduced">Errors present now and absent at HEAD, ordered by file and position.</param>
-/// <param name="FilesChecked">How many documents were bound.</param>
+/// <param name="Introduced">Working-tree errors absent at HEAD, ordered by file and position.</param>
+/// <param name="FilesChecked">Number of target and candidate files the check examined.</param>
 /// <param name="Projects">Names of the projects the introduced errors are in.</param>
 /// <param name="SurfaceChangedIn">Projects whose declarations changed, which is what triggers checking dependents.</param>
-/// <param name="DependentProjectsChecked">How many dependent projects were searched for breaks.</param>
-/// <param name="WholeProjects">True when the candidate set was too large and whole projects were bound instead.</param>
+/// <param name="DependentProjectsChecked">Number of dependent projects searched for breaks.</param>
+/// <param name="WholeProjects">True when the candidate count exceeds the threshold and whole projects are bound.</param>
 internal sealed record CheckReport(
     Diagnostic[] Introduced,
     int FilesChecked,

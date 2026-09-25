@@ -10,21 +10,22 @@ using Diagnostic = Fuse.Protocol.Diagnostic;
 namespace Fuse.Check;
 
 /// <summary>
-///     Reports the errors the working tree has that HEAD did not, in the changed files and in every file a
+///     Reports the errors the working tree has that HEAD does not, in the changed files and in every file a
 ///     declaration change can reach, including files in dependent projects.
 /// </summary>
 /// <remarks>
 ///     The scope grows only as far as the change requires:
 ///     <list type="number">
-///         <item>Every target file is bound in the working tree and at HEAD, and the error sets are diffed.</item>
+///         <item>Every existing target file is bound in the working tree; when it has errors, they are diffed with the same file at HEAD.</item>
 ///         <item>
 ///             If a target's declarations are unchanged (a body-only edit), nothing else can gain an error and the check
 ///             ends there.
 ///         </item>
 ///         <item>
-///             Otherwise the owning projects and their dependents are loaded. A name-bound change re-checks only files
-///             that mention one of the changed names; a broad change (base list, operator, global using) re-checks
-///             every file. Past <see cref="WholeProjectThreshold"/> candidate files, whole projects are bound instead.
+///             Otherwise the owning projects and their dependents are loaded and <see cref="ChangeReach"/> finds the
+///             files that use the changed declarations; a broad change (type header, delegate, global using, assembly
+///             attribute) re-checks every file. Past <see cref="WholeProjectThreshold"/> candidate files, whole
+///             projects are bound instead.
 ///         </item>
 ///     </list>
 /// </remarks>
@@ -40,7 +41,7 @@ internal sealed class Checker
     public Checker(RepoWorkspace workspace)
     {
         _workspace = workspace;
-        _collector = new DiagnosticCollector(workspace.Root);
+        _collector = new DiagnosticCollector(workspace.Root, () => workspace.LoaderGeneration);
         _reach = new ChangeReach(workspace);
     }
 
@@ -119,7 +120,8 @@ internal sealed class Checker
             .OfType<string>()
             .Distinct()
             .ToArray();
-        _workspace.Log($"check: {targets.Count} target(s) in {targetsMs} ms, {surfaceTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}");
+        var (compilerMs, analyzerMs) = _collector.TakeTimings();
+        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {surfaceTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}");
         return new CheckReport(
             [.. ordered.Take(MaxReported)],
             filesChecked,

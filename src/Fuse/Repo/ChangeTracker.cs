@@ -1,14 +1,16 @@
 using System.Collections.Concurrent;
 using Fuse.Dotnet;
+using Fuse.Protocol;
+using Fuse.Workspace;
 
 namespace Fuse.Repo;
 
-/// <summary>What changed on disk since the previous <see cref="ChangeTracker.Sync"/>.</summary>
-/// <param name="HeadMoved">HEAD now points at a different commit, so every baseline is stale.</param>
+/// <summary>What changed on disk since the previous <see cref="ChangeTracker.SyncAsync"/>.</summary>
+/// <param name="HeadMoved">HEAD points at a different commit than the baseline, so every baseline is stale.</param>
 /// <param name="SourcePaths">Absolute paths of C# and Razor files whose content may differ from what the engine last saw.</param>
 /// <param name="ProjectFilesChanged">A project, props, targets, editorconfig or global.json file changed, so evaluation is stale.</param>
-/// <param name="Storm">Too many files changed at once (a branch switch or a watcher overflow); reloading is cheaper than patching.</param>
-/// <param name="VanishedDirectories">Directories that were deleted or renamed away; sources the engine knows under them are gone.</param>
+/// <param name="Storm">HEAD moved, the watcher overflowed, or more than 300 paths changed; reloading is cheaper than patching.</param>
+/// <param name="VanishedDirectories">Directories no longer on disk (deleted or renamed); sources the engine holds under them are gone.</param>
 /// <param name="Trigger">A path that caused a reload, for the log.</param>
 internal sealed record ChangeBatch(
     bool HeadMoved,
@@ -59,7 +61,7 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>Reads git state and starts watching. Call once before <see cref="Sync"/>.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        Head = _gitHead.Read();
+        Head = await ResolveHeadAsync(cancellationToken).ConfigureAwait(false);
         await ReseedAsync(cancellationToken).ConfigureAwait(false);
         _watcher = new FileSystemWatcher(_root.Path)
         {
@@ -84,11 +86,11 @@ internal sealed class ChangeTracker : IDisposable
     }
 
     /// <summary>Folds every change seen since the last call into <see cref="Changed"/> and reports what moved.</summary>
-    /// <param name="knownPaths">Paths a caller knows were just written (a hook payload), checked even if their watcher event has not arrived.</param>
+    /// <param name="knownPaths">Paths a hook reports as written, checked even if their watcher event has not arrived.</param>
     /// <param name="cancellationToken">Cancels a reseed from git.</param>
     public async Task<ChangeBatch> SyncAsync(IEnumerable<string> knownPaths, CancellationToken cancellationToken)
     {
-        var head = _gitHead.Read();
+        var head = await ResolveHeadAsync(cancellationToken).ConfigureAwait(false);
         var headMoved = !string.Equals(head, Head, StringComparison.Ordinal);
         var overflow = _overflow;
         _overflow = false;
@@ -108,8 +110,8 @@ internal sealed class ChangeTracker : IDisposable
                 paths.Add(Path.GetFullPath(path));
         }
 
-        // Extensionless paths that were created, deleted or renamed may be directories, whose files arrive without
-        // their own events. A directory that exists now contributes its sources; one that is gone is reported so the
+        // Extensionless paths in create, delete and rename events may be directories, whose files arrive without
+        // their own events. An existing directory contributes its sources; a missing one is reported so the
         // workspace can drop what it knows under it.
         var vanished = new List<string>();
         foreach (var key in _structural.Keys)
@@ -143,6 +145,43 @@ internal sealed class ChangeTracker : IDisposable
         return new ChangeBatch(false, paths, projectFiles, Storm: false, vanished, projectFiles ? _trigger : null);
     }
 
+    /// <summary>
+    ///     The commit HEAD points at, or null in a repository without commits. The ref files answer almost always;
+    ///     git answers for the rest (packed or reftable refs, unusual layouts).
+    /// </summary>
+    /// <exception cref="FuseException">git cannot resolve HEAD although the repository has commits, or cannot read the repository at all.</exception>
+    private async Task<string?> ResolveHeadAsync(CancellationToken cancellationToken)
+    {
+        var head = _gitHead.Read();
+        if (head is not null && head == Head)
+            return head;
+        if (head is null)
+        {
+            var resolved = await ProcessRunner.RunAsync("git", ["rev-parse", "--verify", "-q", "HEAD"], _root.Path, cancellationToken).ConfigureAwait(false);
+            if (resolved.ExitCode == 0 && resolved.Output.Trim().Length >= 40)
+                head = resolved.Output.Trim();
+            else
+            {
+                var anyCommit = await ProcessRunner.RunAsync("git", ["rev-list", "-n", "1", "--all"], _root.Path, cancellationToken).ConfigureAwait(false);
+                if (anyCommit.ExitCode == 0 && anyCommit.Output.Trim().Length == 0)
+                    return null; // No commits yet: everything is new.
+                throw GitFailure("resolving HEAD", anyCommit.ExitCode != 0 ? anyCommit : resolved);
+            }
+        }
+
+        // A new HEAD must be readable, or every file would look new and a broken commit would pass as clean.
+        var readable = await ProcessRunner.RunAsync("git", ["cat-file", "-e", head + "^{tree}"], _root.Path, cancellationToken).ConfigureAwait(false);
+        if (readable.ExitCode != 0)
+            throw GitFailure($"reading commit {head[..Math.Min(12, head.Length)]}", readable);
+        return head;
+    }
+
+    private FuseException GitFailure(string action, ProcessResult result)
+    {
+        var detail = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? $"exit code {result.ExitCode}";
+        return new FuseException(ErrorCode.LoadFailed, $"git failed {action} in {_root.Path} ({detail}); the repository may be damaged, see `git status` and `git fsck`");
+    }
+
     /// <summary>Reads a file as it is at HEAD, or null when it does not exist there.</summary>
     public byte[]? ReadHead(string absolutePath) => Head is null ? null : _blobs.Read(Head, _root.Relative(absolutePath));
 
@@ -155,7 +194,7 @@ internal sealed class ChangeTracker : IDisposable
             _root.Path,
             cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0)
-            return;
+            throw GitFailure("git status", result);
         foreach (var line in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             if (line.Length < 4)
@@ -204,7 +243,8 @@ internal sealed class ChangeTracker : IDisposable
         }
         catch (IOException)
         {
-            // Still being written; treat it as changed so the next sync looks again.
+            // Still being written: treat it as changed and look again at the next sync.
+            _dirty[path] = 0;
             return true;
         }
         catch (UnauthorizedAccessException)
@@ -273,6 +313,14 @@ internal sealed class ChangeTracker : IDisposable
         return ProjectExtensions.Any(e => name.EndsWith(e, StringComparison.OrdinalIgnoreCase))
                || name.Equals("global.json", StringComparison.OrdinalIgnoreCase)
                || name.Equals("packages.lock.json", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>True when <paramref name="path"/> lies in a <c>bin</c> or <c>obj</c> folder under <paramref name="directory"/>.</summary>
+    public static bool IsBuildOutput(string directory, string path)
+    {
+        var relative = Path.GetRelativePath(directory, path);
+        return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(s => s.Equals("bin", StringComparison.OrdinalIgnoreCase) || s.Equals("obj", StringComparison.OrdinalIgnoreCase));
     }
 
     private bool IsIgnoredDirectory(string path)

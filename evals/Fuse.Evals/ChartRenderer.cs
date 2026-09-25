@@ -23,13 +23,13 @@ internal static class ChartRenderer
     {
         var results = Path.Combine(fuseRoot, "evals", "results");
         var rows = new List<Row>();
-        foreach (var (repo, label) in new[] { ("fixture", "Fixture, 5 projects"), ("NodaTime", "NodaTime, 17 projects") })
+        foreach (var (repo, label) in new[] { ("fixture", "Small solution, 5 projects"), ("NodaTime", "NodaTime, 17 projects") })
         {
             if (Latest(results, $"correctness-{repo}-") is { } correctness)
                 rows.Add(new Row("check", label, correctness.GetProperty("fuseMedianMs").GetDouble() / 1000, correctness.GetProperty("buildMedianSeconds").GetDouble(), "s"));
         }
 
-        foreach (var (repo, label) in new[] { ("fixture", "Fixture, 5 projects"), ("NodaTime", "NodaTime, 42,681 tests") })
+        foreach (var (repo, label) in new[] { ("fixture", "Small solution, 5 projects"), ("NodaTime", "NodaTime, 42,681 tests") })
         {
             if (Latest(results, $"selection-{repo}-") is { } selection)
                 rows.Add(new Row("test", label, selection.GetProperty("fuseMedianSeconds").GetDouble(), selection.GetProperty("dotnetMedianSeconds").GetDouble(), "s"));
@@ -56,14 +56,14 @@ internal static class ChartRenderer
               .val-in {'{'} fill: #ffffff; font: 600 13px system-ui, -apple-system, 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; {'}'}
               .grid {'{'} stroke: #e2e1dc; stroke-width: 1; {'}'}
               .ref {'{'} stroke: #8a8984; stroke-width: 1.5; stroke-dasharray: 4 3; {'}'}
-              .bar {'{'} fill: #2a78d6; {'}'}
+              .bar {'{'} fill: #6d4aff; {'}'}
               @media (prefers-color-scheme: dark) {'{'}
                 .bg {'{'} fill: #1a1a19; {'}'}
                 .title, .group, .label {'{'} fill: #ffffff; {'}'}
                 .sub, .axis, .val {'{'} fill: #c3c2b7; {'}'}
                 .grid {'{'} stroke: #34332f; {'}'}
                 .ref {'{'} stroke: #8f8e87; {'}'}
-                .bar {'{'} fill: #3987e5; {'}'}
+                .bar {'{'} fill: #9b85ff; {'}'}
               {'}'}
             </style>
             <rect class="bg" width="{Width}" height="{height}" rx="10"/>

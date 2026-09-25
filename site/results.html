@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>Fuse Results</title>
 <meta name="description" content="How fast and how accurate Fuse is, measured against real dotnet build and dotnet test runs.">
 <link rel="icon" href="fuse-icon.svg" type="image/svg+xml">
@@ -13,13 +14,13 @@
   <header class="site-header">
     <a class="brand" href="/"><img src="fuse-icon.svg" alt="">Fuse</a>
     <nav>
-      <a class="optional" href="how-it-works">How It Works</a>
-      <a class="optional" href="results">Results</a>
+      <a href="how-it-works">How It Works</a>
+      <a href="results" aria-current="page">Results</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
 
-  <main class="page narrow">
+  <main class="page">
     <h1>Results</h1>
     <p class="intro">Fuse was measured against the real <code>dotnet build</code> and <code>dotnet test</code> on a small fixture solution and on NodaTime, a large open-source library.</p>
 
@@ -31,7 +32,7 @@
     <h2>Speed and Accuracy</h2>
     <div class="table-scroll">
       <table>
-        <thead><tr><th></th><th>Fixture</th><th>NodaTime</th></tr></thead>
+        <thead><tr><th></th><th>Small solution (fixture)</th><th><a href="https://github.com/nodatime/nodatime">NodaTime</a></th></tr></thead>
         <tbody>
           <tr><td>Size</td><td class="num">5 projects, 22 tests</td><td class="num">17 projects, 42,681 tests</td></tr>
           <tr><td>Check an edit vs <code>dotnet build</code></td><td class="num">0.17 s vs 1.16 s</td><td class="num">0.59 s vs 1.54 s</td></tr>
@@ -50,7 +51,7 @@
     <ul>
       <li>On NodaTime the generated changes reach core types, so every test still runs. The saving there comes from skipping MSBuild, not from selecting fewer tests.</li>
       <li>The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project.</li>
-      <li>NodaTime builds with warnings as errors, so each check there also runs the analyzers that can report a warning. That is why its body-edit check is slower than the fixture's.</li>
+      <li>NodaTime builds with warnings as errors, so each check there also runs the analyzers that can report a warning. That is why its body-edit check is slower than the small solution's.</li>
     </ul>
 
     <h2>How It Was Measured</h2>
@@ -63,12 +64,8 @@
   </main>
 
   <footer class="site-footer">
-    <span>Fuse &middot; Apache-2.0</span>
-    <span class="spacer"></span>
-    <a href="how-it-works">How It Works</a>
-    <a href="results">Results</a>
-    <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
-    <a href="https://www.nuget.org/packages/Fuse">NuGet</a>
+    <span>Fuse &middot; Apache-2.0 &middot; Measured medians, one Windows machine</span>
+    <nav><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>Fuse</title>
-<meta name="description" content="Fuse tells your AI coding agent the moment an edit breaks the build, and runs only the tests that change can affect. For C# and .NET.">
-<meta property="og:title" content="Fuse: Compiler Feedback for AI Coding Agents">
-<meta property="og:description" content="Know the moment an edit breaks the build. Run only the tests that matter. For C# and .NET.">
+<meta name="description" content="Near-instant compiler feedback for AI coding agents on .NET. Fuse keeps your solution compiled in memory with Roslyn and checks each edit up to 6.8x faster than dotnet build.">
+<meta property="og:title" content="Fuse: Near-Instant Compiler Feedback for AI Coding Agents on .NET">
+<meta property="og:description" content="Fuse keeps your solution compiled in memory with Roslyn and checks each edit up to 6.8x faster than dotnet build.">
 <meta property="og:image" content="https://fuse.codes/benefits.svg">
 <link rel="icon" href="fuse-icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
@@ -16,107 +17,90 @@
   <header class="site-header">
     <a class="brand" href="/"><img src="fuse-icon.svg" alt="">Fuse</a>
     <nav>
-      <a class="optional" href="how-it-works">How It Works</a>
-      <a class="optional" href="results">Results</a>
+      <a href="how-it-works">How It Works</a>
+      <a href="results">Results</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
 
   <main>
     <section class="hero">
-      <span class="pill">For C# and .NET</span>
-      <h1>Compiler Feedback for AI Coding Agents</h1>
-      <p class="claim">Fuse tells your agent the moment an edit breaks the build, and runs only the tests that change can affect.</p>
+      <h1>Near-Instant Compiler Feedback for AI Coding Agents on .NET</h1>
+      <ul class="tags" aria-label="Requirements and license">
+          <li>.NET 10 SDK</li><li>C#</li><li>Open Source</li><li>Apache-2.0</li><li>Runs Locally</li>
+        </ul>
+      <p>Fuse keeps your solution compiled in memory with Roslyn and checks each edit against it, <b>up to 6.8x faster</b> than <code>dotnet build</code>.</p>
       <div class="install">
-        <span class="cmd"><span class="dim">$ </span><span id="cmd">dotnet tool install -g Fuse</span></span>
-        <button type="button" id="copy">Copy</button>
-      </div>
-      <p class="then">Then run <code>fuse init</code> in your repository. That's the whole setup.</p>
-    </section>
-
-    <div class="term" role="img" aria-label="An agent renames a method, Fuse reports the two call sites it broke, the agent fixes them, and Fuse stays silent.">
-      <div class="bar"><i></i><i></i><i></i></div>
-<pre><span class="who">agent</span>  <span class="dim">renames Calc.Add to Calc.Plus</span>
-<span class="who">fuse</span>   <span class="err">2 new errors:</span> 'Calc' has no 'Add'
-         App/Program.cs(2,28)
-         Lib.Tests/UnitTest1.cs(4,65)
-<span class="who">agent</span>  <span class="dim">updates both call sites</span>
-<span class="who">fuse</span>   <span class="ok">nothing new is broken</span></pre>
-    </div>
-
-    <section class="section">
-      <div class="section-head">
-        <h2>What Your Agent Gets</h2>
-      </div>
-      <div class="features">
-        <div>
-          <h3>Errors After Every Edit</h3>
-          <p>New compiler errors, including breaks in other projects, right after the edit that caused them.</p>
-        </div>
-        <div>
-          <h3>Only the Tests That Matter</h3>
-          <p><code>dotnet test</code> runs just the tests the change can reach, and prints only failures.</p>
-        </div>
-        <div>
-          <h3>Silence When All Is Well</h3>
-          <p>A clean edit produces no output, so the agent's context stays small.</p>
-        </div>
+        <p class="label">Install the tool:</p>
+        <div class="cmd"><span><span class="dim">$ </span>dotnet tool install -g Fuse</span><button type="button" data-copy="dotnet tool install -g Fuse">Copy</button></div>
+        <p class="label">In your repository:</p>
+        <div class="cmd"><span><span class="dim">$ </span>fuse init</span><button type="button" data-copy="fuse init">Copy</button></div>
       </div>
     </section>
 
     <section class="section">
       <div class="section-head">
-        <h2>Faster Than a Build</h2>
-        <p>Measured against the real <code>dotnet build</code> and <code>dotnet test</code>, with no errors or failing tests missed.</p>
+        <p class="kicker">After Every Edit</p>
+        <h2>Up to 6.8x Faster Than <code>dotnet build</code></h2>
+        <p>The agent gets only the errors its edit introduced, including breaks in other projects.</p>
       </div>
-      <div class="bars" role="img" aria-label="Fuse time as a share of the dotnet command: checking an edit takes 15 percent of dotnet build on the fixture and 38 percent on NodaTime; running the affected tests takes 32 percent of dotnet test on the fixture and 71 percent on NodaTime.">
-        <p class="bars-group">Check an edit, vs <code>dotnet build</code></p>
-        <div class="bar-row"><span class="bar-label">Fixture</span><span class="bar-track"><span class="bar-fill" style="width:15%"></span></span><span class="bar-value">0.17 s <span>vs 1.16 s</span></span></div>
-        <div class="bar-row"><span class="bar-label">NodaTime</span><span class="bar-track"><span class="bar-fill" style="width:38%"></span></span><span class="bar-value">0.59 s <span>vs 1.54 s</span></span></div>
-        <p class="bars-group">Run the affected tests, vs <code>dotnet test</code></p>
-        <div class="bar-row"><span class="bar-label">Fixture</span><span class="bar-track"><span class="bar-fill" style="width:32%"></span></span><span class="bar-value">1.41 s <span>vs 4.46 s</span></span></div>
-        <div class="bar-row"><span class="bar-label">NodaTime</span><span class="bar-track"><span class="bar-fill" style="width:71%"></span></span><span class="bar-value">35.5 s <span>vs 50.0 s</span></span></div>
-        <p class="bars-note">Bar length is Fuse's median time as a share of the dotnet command. The full track is dotnet.</p>
+      <div class="repos">
+        <div class="repo">
+          <h3>Small Solution <span>5 projects</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:14.7%"></span></span><span class="t">0.17 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.16 s</span></div>
+          <p class="x"><b>6.8x</b> faster</p>
+        </div>
+        <div class="repo">
+          <h3>Large Open-Source Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 17 projects</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:38.3%"></span></span><span class="t">0.59 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.54 s</span></div>
+          <p class="x"><b>2.6x</b> faster</p>
+        </div>
       </div>
-      <p class="more"><a href="results">See how it was measured</a></p>
+      <p class="proof"><b>0</b> compiler errors missed across 50 generated edits.</p>
     </section>
 
     <section class="section">
       <div class="section-head">
-        <h2>Works With Your Agent</h2>
-        <p><code>fuse init</code> sets up the agents it finds in your repository.</p>
+        <p class="kicker">When It Runs the Tests</p>
+        <h2>Up to 3.2x Faster Than <code>dotnet test</code></h2>
+        <p>Only the tests the change can reach run, and only failures are printed.</p>
       </div>
-      <div class="chips">
-        <span class="chip">Claude Code</span>
-        <span class="chip">Cursor</span>
-        <span class="chip">OpenCode</span>
-        <span class="chip">Codex</span>
-        <span class="chip">Gemini CLI</span>
-        <span class="chip">GitHub Copilot CLI</span>
-        <span class="chip">VS Code <small>MCP</small></span>
-        <span class="chip">Any MCP Host</span>
+      <div class="repos">
+        <div class="repo">
+          <h3>Small Solution <span>22 tests</span></h3>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:31.6%"></span></span><span class="t">1.41 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">4.46 s</span></div>
+          <p class="x"><b>3.2x</b> faster</p>
+        </div>
+        <div class="repo">
+          <h3>Large Open-Source Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 42,681 tests</span></h3>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:71%"></span></span><span class="t">35.5 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">50.0 s</span></div>
+          <p class="x"><b>1.4x</b> faster</p>
+        </div>
       </div>
-      <p class="more"><a href="how-it-works">How it works under the hood</a></p>
+      <p class="proof"><b>0</b> failing tests missed across 15 generated changes. <a href="results">How it was measured</a></p>
     </section>
+
+
   </main>
 
   <footer class="site-footer">
-    <span>Fuse &middot; Apache-2.0</span>
-    <span class="spacer"></span>
-    <a href="how-it-works">How It Works</a>
-    <a href="results">Results</a>
-    <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
-    <a href="https://www.nuget.org/packages/Fuse">NuGet</a>
+    <span>Fuse &middot; Apache-2.0 &middot; Measured medians, one Windows machine</span>
+    <nav><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 <script>
-document.getElementById("copy").addEventListener("click", function () {
-  var button = this;
-  if (!navigator.clipboard) return;
-  navigator.clipboard.writeText(document.getElementById("cmd").textContent).then(function () {
-    button.textContent = "Copied";
-    setTimeout(function () { button.textContent = "Copy"; }, 1600);
-  }, function () {});
+document.querySelectorAll("[data-copy]").forEach(function (b) {
+  b.onclick = function () {
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(b.dataset.copy).then(function () {
+      b.textContent = "Copied";
+      setTimeout(function () { b.textContent = "Copy"; }, 1500);
+    }, function () {});
+  };
 });
 </script>
 </body>

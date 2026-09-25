@@ -55,6 +55,10 @@ internal static class EngineClient
         {
             return EngineResponse.Fail(ErrorCode.Internal, $"could not talk to the fuse engine: {e.Message}");
         }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or UnauthorizedAccessException)
+        {
+            return EngineResponse.Fail(ErrorCode.Internal, $"could not start the fuse engine: {e.Message}");
+        }
     }
 
     private static async Task<NamedPipeClientStream> ConnectAsync(RepoRoot root, CancellationToken cancellationToken)

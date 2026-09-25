@@ -68,6 +68,8 @@ Re-running `fuse init` replaces Fuse's entries and leaves everything else in tho
 
 Any other MCP host can run `fuse mcp` from the repository directory.
 
+The Claude Code integration has been run end to end with Claude Code 2.1.282: the post-edit hook woke the agent with a break in a dependent project, which it then fixed, `dotnet test` was rewritten to `fuse test`, and the stop hook checked the finished tree. The Cursor, Gemini CLI, Codex and Copilot CLI adapters follow each harness's documented hook format and are covered by payload tests, but have not been run end to end.
+
 ## How it works
 
 One `fuse engine` process runs per repository. The first command or hook starts it; it exits after 30 minutes without a request. It evaluates every project with MSBuild (no build), and loads a project's compilation through Roslyn's `MSBuildWorkspace` only when a change touches it, so a session that edits one project never pays for the rest of the repository.

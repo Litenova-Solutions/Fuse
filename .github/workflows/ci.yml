@@ -45,3 +45,20 @@ jobs:
         run: |
           dotnet tool install --tool-path tools Fuse --add-source artifacts
           ./tools/fuse --version
+
+      - name: Packed tool finds a new error in a fresh repository
+        shell: bash
+        run: |
+          fuse="$PWD/tools/fuse"
+          mkdir -p "$RUNNER_TEMP/smoke" && cd "$RUNNER_TEMP/smoke"
+          git init -q
+          dotnet new classlib -n Lib -o Lib
+          printf 'bin/\nobj/\n' > .gitignore
+          git add -A && git commit -qm init
+          dotnet restore Lib
+          echo 'namespace Lib; public class Broken { public int M() => missing; }' > Lib/Broken.cs
+          set +e
+          "$fuse" check
+          code=$?
+          set -e
+          if [ "$code" != "1" ]; then echo "expected exit code 1 (new error), got $code"; exit 1; fi

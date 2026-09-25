@@ -6,7 +6,7 @@ namespace Fuse.Hooks;
 
 /// <summary>
 ///     <c>fuse init</c>: registers Fuse's hooks with every agent harness the repository already uses, and the MCP
-///     server with VS Code, which has no hooks. Fuse entries in shared settings files are replaced and other entries kept; <c>.github/hooks/fuse.json</c> belongs to Fuse and is written whole.
+///     server with VS Code, which has no hooks. Fuse entries in shared settings files are replaced and other entries kept; <c>.github/hooks/fuse.json</c> and <c>.opencode/plugins/fuse.js</c> belong to Fuse and are written whole.
 /// </summary>
 internal static class InitCommand
 {
@@ -38,8 +38,9 @@ internal static class InitCommand
         var gemini = Has(".gemini", "GEMINI.md");
         var codex = Has(".codex");
         var copilot = Has(".github/copilot-instructions.md", ".github/hooks");
+        var opencode = Has(".opencode", "opencode.json", "opencode.jsonc");
         var vscode = Has(".vscode");
-        if (!claude && !cursor && !gemini && !codex && !copilot && !vscode)
+        if (!claude && !cursor && !gemini && !codex && !copilot && !opencode && !vscode)
             claude = true;
 
         if (claude)
@@ -52,6 +53,8 @@ internal static class InitCommand
             written.Add(WriteCodex(root));
         if (copilot)
             written.Add(WriteCopilot(root));
+        if (opencode)
+            written.Add(WriteOpenCode(root));
         if (vscode)
             written.Add(WriteVsCode(root));
 
@@ -134,6 +137,15 @@ internal static class InitCommand
         return Save(root, path, settings);
     }
 
+    /// <summary>OpenCode runs JavaScript plugins, not commands; the plugin forwards its tool events to <c>fuse hook opencode</c>.</summary>
+    private static string WriteOpenCode(RepoRoot root)
+    {
+        var path = Path.Combine(root.Path, ".opencode", "plugins", "fuse.js");
+        using var plugin = typeof(InitCommand).Assembly.GetManifestResourceStream("Fuse.Hooks.opencode-plugin.js")!;
+        using var reader = new StreamReader(plugin);
+        return SaveText(root, path, reader.ReadToEnd());
+    }
+
     private static string WriteVsCode(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".vscode", "mcp.json");
@@ -196,11 +208,14 @@ internal static class InitCommand
         return node as JsonObject ?? [];
     }
 
-    private static string Save(RepoRoot root, string path, JsonObject content)
+    private static string Save(RepoRoot root, string path, JsonObject content) =>
+        SaveText(root, path, content.ToJsonString(Indented) + Environment.NewLine);
+
+    private static string SaveText(RepoRoot root, string path, string content)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temp = path + ".fuse-tmp";
-        File.WriteAllText(temp, content.ToJsonString(Indented) + Environment.NewLine);
+        File.WriteAllText(temp, content);
         File.Move(temp, path, overwrite: true);
         return root.Relative(path);
     }

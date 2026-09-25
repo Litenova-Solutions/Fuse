@@ -85,6 +85,7 @@ public class InitCommandTests
             [".gemini/settings.json"] = "{}",
             [".codex/config.toml"] = "",
             [".github/copilot-instructions.md"] = "x",
+            ["opencode.json"] = "{}",
             [".vscode/settings.json"] = "{}",
         });
         Assert.Equal(0, Init(repo));
@@ -104,6 +105,10 @@ public class InitCommandTests
 
         var copilot = Json(repo, ".github/hooks/fuse.json")["hooks"]!;
         Assert.Equal("fuse hook copilot post-edit", copilot["postToolUse"]![0]!["bash"]!.GetValue<string>());
+
+        var opencode = repo.Read(".opencode/plugins/fuse.js");
+        Assert.Contains("\"hook\", \"opencode\", event", opencode, StringComparison.Ordinal);
+        Assert.Contains("\"tool.execute.after\"", opencode, StringComparison.Ordinal);
 
         var vscode = Json(repo, ".vscode/mcp.json")["servers"]!["fuse"]!;
         Assert.Equal("fuse", vscode["command"]!.GetValue<string>());

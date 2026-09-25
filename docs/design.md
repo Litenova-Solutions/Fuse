@@ -6,7 +6,7 @@ Fuse answers two questions for a coding agent working in a .NET repository: whic
 
 Every surface calls the same three operations in `src/Fuse/Cli`: check, test and build.
 
-- **Hooks** (`fuse hook <harness> <event>`) are the primary surface. A post-edit hook checks the edited files, a pre-shell hook rewrites `dotnet build` and `dotnet test` to `fuse build` and `fuse test`, and a stop hook checks all changes before the agent finishes. Hooks run without the agent deciding to call anything.
+- **Hooks** (`fuse hook <harness> <event>`) are the primary surface. A post-edit hook checks the edited files, a pre-shell hook rewrites `dotnet build` and `dotnet test` to `fuse build` and `fuse test`, and a stop hook checks all changes before the agent finishes. Hooks run without the agent deciding to call anything. OpenCode runs JavaScript plugins instead of commands, so `fuse init` writes a small plugin there that passes the same events to `fuse hook opencode`.
 - **The CLI** (`fuse check`, `fuse test`, `fuse build`) serves people and agents that run shell commands.
 - **The MCP server** (`fuse mcp`) serves `fuse_check`, `fuse_test` and `fuse_build` to hosts without hooks.
 

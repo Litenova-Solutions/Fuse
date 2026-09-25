@@ -113,6 +113,15 @@ public class EngineProcessTests
     }
 
     [Fact]
+    public async Task OpenCode_pre_bash_hook_answers_with_the_command()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        var result = await FuseProcess.RunAsync(repo.Path, """{"tool_input":{"command":"dotnet build -c Release"}}""", "hook", "opencode", "pre-bash");
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("""{"command":"fuse build -c Release"}""", result.Stdout);
+    }
+
+    [Fact]
     public async Task Hook_outside_a_repository_is_silent()
     {
         var directory = Path.Combine(Path.GetTempPath(), "fuse-no-repo-" + Guid.NewGuid().ToString("N")[..6]);

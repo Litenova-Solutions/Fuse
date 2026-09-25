@@ -59,7 +59,7 @@ internal sealed partial class HookPayload
     /// <summary>The shell command of a Bash-like tool call.</summary>
     public string? Command => ToolInput is { } input && input.TryGetProperty("command", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : String("command");
 
-    /// <summary>Absolute paths of the files an edit tool wrote, including files named in a Codex <c>apply_patch</c> patch.</summary>
+    /// <summary>Absolute paths of the files an edit tool wrote, including files named in a Codex or OpenCode <c>apply_patch</c> patch.</summary>
     public IReadOnlyList<string> EditedFiles()
     {
         var paths = new List<string>();
@@ -71,8 +71,11 @@ internal sealed partial class HookPayload
                     paths.Add(value.GetString()!);
             }
 
-            if (input.TryGetProperty("command", out var patch) && patch.ValueKind == JsonValueKind.String)
-                paths.AddRange(PatchFiles(patch.GetString()!));
+            foreach (var name in new[] { "command", "patchText" })
+            {
+                if (input.TryGetProperty(name, out var patch) && patch.ValueKind == JsonValueKind.String)
+                    paths.AddRange(PatchFiles(patch.GetString()!));
+            }
         }
 
         if (String("file_path") is { } topLevel)

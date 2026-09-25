@@ -48,6 +48,14 @@ public class HookPayloadTests
     }
 
     [Fact]
+    public void OpenCode_edit_and_patch_payloads()
+    {
+        Assert.Equal([At("src", "A.cs")], Parse(new { cwd = Repo, tool_input = new { filePath = At("src", "A.cs"), oldString = "a", newString = "b" } }).EditedFiles());
+        var patch = "*** Begin Patch\n*** Update File: src/B.cs\n@@\n-a\n+b\n*** End Patch";
+        Assert.Equal([At("src", "B.cs")], Parse(new { cwd = Repo, tool_input = new { patchText = patch } }).EditedFiles());
+    }
+
+    [Fact]
     public void Copilot_payload_with_string_arguments()
     {
         var arguments = System.Text.Json.JsonSerializer.Serialize(new { path = At("C.cs") });

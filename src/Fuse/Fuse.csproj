@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <EmbeddedResource Include="Hooks/opencode-plugin.js" LogicalName="Fuse.Hooks.opencode-plugin.js" />
     <InternalsVisibleTo Include="Fuse.Tests" />
     <InternalsVisibleTo Include="Fuse.Evals" />
   </ItemGroup>

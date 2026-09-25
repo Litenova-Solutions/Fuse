@@ -18,7 +18,7 @@ namespace Fuse.Hooks;
 /// </remarks>
 internal static class HookCommand
 {
-    private static readonly string[] Harnesses = ["claude", "cursor", "gemini", "codex", "copilot"];
+    private static readonly string[] Harnesses = ["claude", "cursor", "gemini", "codex", "copilot", "opencode"];
 
     // Diagnostics are full of quotes and angle brackets; relaxed escaping keeps the JSON readable in harness logs.
     private static readonly JsonSerializerOptions Relaxed = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
@@ -27,7 +27,7 @@ internal static class HookCommand
     {
         if (args.Length < 2 || !Harnesses.Contains(args[0]) || args[1] is not ("post-edit" or "pre-bash" or "stop"))
         {
-            await Console.Error.WriteLineAsync("usage: fuse hook <claude|cursor|gemini|codex|copilot> <post-edit|pre-bash|stop>").ConfigureAwait(false);
+            await Console.Error.WriteLineAsync("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-bash|stop>").ConfigureAwait(false);
             return 0;
         }
 
@@ -94,6 +94,8 @@ internal static class HookCommand
             {
                 ["hookSpecificOutput"] = new JsonObject { ["hookEventName"] = "BeforeTool", ["tool_input"] = new JsonObject { ["command"] = rewritten } },
             },
+            // The OpenCode plugin sets the command on the tool's arguments itself.
+            "opencode" => new JsonObject { ["command"] = rewritten },
             _ => null,
         };
         if (output is not null)
@@ -158,6 +160,7 @@ internal static class HookCommand
                 Console.Out.Write(new JsonObject { ["additional_context"] = text }.ToJsonString(Relaxed));
                 return 0;
             case "copilot":
+            case "opencode":
                 Console.Out.Write(new JsonObject { ["additionalContext"] = text }.ToJsonString(Relaxed));
                 return 0;
             default:

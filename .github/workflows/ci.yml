@@ -1,193 +1,64 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [main, master]
   push:
-    branches: [main, master]
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: Build, Test, Format
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Verify version consistency
-        shell: pwsh
-        run: ./build/verify-version.ps1
-
-      - name: Verify RequiresSdk CI legs
-        shell: pwsh
-        run: ./build/verify-ci-sdk.ps1
-
-      - name: Verify briefing drift guard
-        shell: pwsh
-        run: ./build/verify-briefing.ps1
-
-      - name: Validate MCP registry manifest
-        shell: pwsh
-        run: |
-          $desc = (Get-Content mcp-registry/server.json -Raw | ConvertFrom-Json).description
-          if ($desc.Length -gt 100) {
-            throw "mcp-registry/server.json description is $($desc.Length) chars; the registry caps it at 100."
-          }
-          Write-Host "MCP manifest description length $($desc.Length)/100 - OK."
-
-      - name: Restore
-        run: dotnet restore Fuse.slnx
-
-      - name: Check vulnerable packages (shipped)
-        shell: pwsh
-        run: |
-          # Keep in sync with NuGetAuditSuppress entries in Directory.Build.props.
-          $suppressedAdvisories = @(
-            'https://github.com/advisories/GHSA-hv8m-jj95-wg3x',
-            'https://github.com/advisories/GHSA-vh6j-jc39-fggf',
-            'https://github.com/advisories/GHSA-h4j7-5rxr-p4wc'
-          )
-          $failed = $false
-          Get-ChildItem -Path src -Recurse -Filter *.csproj | ForEach-Object {
-            $project = $_.FullName
-            Write-Host "Auditing $project"
-            $jsonText = dotnet list $project package --vulnerable --include-transitive --format json
-            if ($LASTEXITCODE -ne 0) {
-              Write-Error "dotnet list package failed for $project"
-              $failed = $true
-              return
-            }
-            $report = $jsonText | ConvertFrom-Json
-            foreach ($entry in $report.projects) {
-              foreach ($framework in $entry.frameworks) {
-                $packages = @()
-                if ($framework.topLevelPackages) { $packages += $framework.topLevelPackages }
-                if ($framework.transitivePackages) { $packages += $framework.transitivePackages }
-                foreach ($package in $packages) {
-                  if (-not $package.vulnerabilities) { continue }
-                  foreach ($advisory in $package.vulnerabilities) {
-                    if ($suppressedAdvisories -contains $advisory.advisoryurl) { continue }
-                    if ($advisory.severity -eq 'High' -or $advisory.severity -eq 'Critical') {
-                      Write-Host "::error::$($package.id) $($package.resolvedVersion) [$($advisory.severity)] $($advisory.advisoryurl)"
-                      $failed = $true
-                    }
-                  }
-                }
-              }
-            }
-          }
-          if ($failed) { exit 1 }
-
-      - name: Build
-        run: dotnet build Fuse.slnx --configuration Release --no-restore
-
-      - name: Install dotnet-coverage
-        run: dotnet tool install --global dotnet-coverage
-
-      - name: Test with coverage
-        run: dotnet-coverage collect 'dotnet test Fuse.slnx --configuration Release --no-build --verbosity normal --filter "Category!=RequiresSdk"' --output coverage.cobertura.xml --output-format cobertura
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: coverage.cobertura.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-
-      - name: Format check
-        run: dotnet format Fuse.slnx --verify-no-changes
-
-  runtime:
-    name: Self-contained runtime (${{ matrix.rid }})
+    name: Build, test, format (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # All six RIDs are published (the self-contained release binaries, one per platform). Each RID is built
-        # on its matching OS; the native-arch ones also smoke-test, while the cross-arch ones (built on the other
-        # arch of the same OS) only publish, since the runner cannot execute a different architecture.
-        include:
-          - os: windows-latest
-            rid: win-x64
-            profile: runtime-win-x64
-            binary: fuse.exe
-            smoke: true
-          - os: windows-latest
-            rid: win-arm64
-            profile: runtime-win-arm64
-            binary: fuse.exe
-            smoke: false
-          - os: ubuntu-latest
-            rid: linux-x64
-            profile: runtime-linux-x64
-            binary: fuse
-            smoke: true
-          - os: ubuntu-latest
-            rid: linux-arm64
-            profile: runtime-linux-arm64
-            binary: fuse
-            smoke: false
-          - os: macos-latest
-            rid: osx-arm64
-            profile: runtime-osx-arm64
-            binary: fuse
-            smoke: true
-          - os: macos-latest
-            rid: osx-x64
-            profile: runtime-osx-x64
-            binary: fuse
-            smoke: false
-
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
 
-      - name: Install Linux publish prerequisites
-        if: runner.os == 'Linux'
+      - name: Git identity for fixture repositories
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang zlib1g-dev
+          git config --global user.email "ci@fuse.invalid"
+          git config --global user.name "Fuse CI"
 
-      - name: Restore
-        run: dotnet restore src/Host/Fuse.Cli/Fuse.Cli.csproj
+      - name: Build
+        run: dotnet build Fuse.slnx -c Release
 
-      - name: Publish self-contained
-        run: dotnet publish src/Host/Fuse.Cli/Fuse.Cli.csproj --configuration Release /p:PublishProfile=${{ matrix.profile }}
+      - name: Test
+        run: dotnet test --solution Fuse.slnx -c Release --no-build
 
-      - name: Smoke test init help
-        if: matrix.smoke
+      - name: Format
+        run: dotnet format Fuse.slnx --verify-no-changes
+
+      - name: Pack
+        run: dotnet pack src/Fuse/Fuse.csproj -c Release --no-build -o artifacts
+
+      - name: Install and run the packed tool
         shell: bash
         run: |
-          BIN="artifacts/runtime/${{ matrix.rid }}/${{ matrix.binary }}"
-          "$BIN" init --help
+          dotnet tool install --tool-path tools Fuse --add-source artifacts
+          ./tools/fuse --version
 
-      - name: Smoke test SampleShop index and context
-        if: matrix.smoke
+      - name: Packed tool finds a new error in a fresh repository
         shell: bash
         run: |
-          # Verify the self-contained binary can build the syntax index (FTS5 present in the bundled
-          # SQLite) and serve context, in an isolated Git repository and store.
-          BIN="artifacts/runtime/${{ matrix.rid }}/${{ matrix.binary }}"
-          WS="${RUNNER_TEMP:-/tmp}/fuse-runtime-smoke"
-          export FUSE_USER_DATA="${RUNNER_TEMP:-/tmp}/fuse-runtime-store"
-          rm -rf "$WS" "$FUSE_USER_DATA"
-          mkdir -p "$WS" "$FUSE_USER_DATA"
-          cp -r tests/fixtures/SampleShop/* "$WS/"
-          git init -q "$WS"
-          "$BIN" index "$WS"
-          # diagnostics must report the index built and FTS5 available, or the publish dropped FTS5.
-          "$BIN" diagnostics "$WS" | tee "$WS/.diag.txt"
-          grep -q "full-text search: available" "$WS/.diag.txt"
-          "$BIN" map "$WS" --detail all
-          "$BIN" review "$WS" --plan-only || true
+          fuse="$PWD/tools/fuse"
+          mkdir -p "$RUNNER_TEMP/smoke" && cd "$RUNNER_TEMP/smoke"
+          git init -q
+          dotnet new classlib -n Lib -o Lib
+          printf 'bin/\nobj/\n' > .gitignore
+          git add -A && git commit -qm init
+          dotnet restore Lib
+          echo 'namespace Lib; public class Broken { public int M() => missing; }' > Lib/Broken.cs
+          set +e
+          "$fuse" check
+          code=$?
+          set -e
+          if [ "$code" != "1" ]; then echo "expected exit code 1 (new error), got $code"; exit 1; fi

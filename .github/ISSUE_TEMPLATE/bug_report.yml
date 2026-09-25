@@ -1,5 +1,5 @@
 name: Bug report
-description: Report incorrect behavior in Fuse CLI or MCP tools
+description: Report incorrect behavior in the Fuse CLI, hooks or MCP server
 title: "[Bug]: "
 labels: ["bug"]
 body:
@@ -21,7 +21,7 @@ body:
     id: repro
     attributes:
       label: Steps to reproduce
-      description: Commands, MCP tool calls, or a minimal repository layout
+      description: Commands, the hook or MCP call, or a minimal repository layout. Attach obj/fuse/engine.log if relevant.
     validations:
       required: true
   - type: dropdown
@@ -30,6 +30,7 @@ body:
       label: Surface
       options:
         - CLI
+        - Hooks
         - MCP server
         - Documentation
         - Other

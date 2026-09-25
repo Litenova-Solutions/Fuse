@@ -1,4 +1,4 @@
-name: Publish NuGet
+name: Publish
 
 on:
   push:
@@ -6,58 +6,48 @@ on:
       - 'v*.*.*'
 
 permissions:
-  contents: read
-  id-token: write   # required for NuGet Trusted Publishing (OIDC)
+  contents: write # GitHub release
+  id-token: write # NuGet Trusted Publishing (OIDC)
 
 jobs:
   publish:
-    name: Pack and Push
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
 
-      - name: Verify version and read from codebase
-        id: version
-        shell: pwsh
+      - name: Check the tag matches the codebase version
+        shell: bash
         run: |
-          # The codebase is the source of truth; fail the release if the tag does not match it.
-          ./build/verify-version.ps1 -Tag "${{ github.ref_name }}"
-          $v = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version |
-               Where-Object { $_ } | Select-Object -First 1
-          "version=$v" >> $env:GITHUB_OUTPUT
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)
+          if [ "v$version" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match Directory.Build.props version $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Install Linux publish prerequisites
+      - name: Release notes from CHANGELOG.md
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang zlib1g-dev
+          awk -v v="## $VERSION" '$0 == v {found=1; next} found && /^## / {exit} found {print}' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then echo "CHANGELOG.md has no section for $VERSION"; exit 1; fi
 
-      - name: Restore
-        run: dotnet restore src/Host/Fuse.Cli/Fuse.Cli.csproj
+      - name: Pack
+        run: dotnet pack src/Fuse/Fuse.csproj -c Release -o artifacts
 
-      - name: Pack framework-dependent tool and runtime packages
-        shell: pwsh
-        run: |
-          ./build/pack-tool.ps1 -Version ${{ steps.version.outputs.version }} -Rids linux-x64
-
-      - name: NuGet login (Trusted Publishing, short-lived key via OIDC)
+      - name: NuGet login
         uses: NuGet/login@v1
         id: login
         with:
-          # The nuget.org account/profile name that owns the trusted publishing
-          # policy. For an org-owned policy this is the organization name
-          # (Litenova-Solutions). Stored as a secret per Microsoft's guidance.
           user: ${{ secrets.NUGET_USER }}
 
-      - name: Push to NuGet.org
-        run: |
-          dotnet nuget push src/Host/Fuse.Cli/nupkg/*.nupkg \
-            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
-            --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+      - name: Push to NuGet
+        run: dotnet nuget push artifacts/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" artifacts/*.nupkg --title "Fuse ${VERSION}" --notes-file release-notes.md

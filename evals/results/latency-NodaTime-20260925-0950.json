@@ -1,0 +1,30 @@
+{
+  "suite": "latency",
+  "repo": "NodaTime",
+  "target": "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs",
+  "method": "Format",
+  "referencingFilesInOtherProjects": 46,
+  "coldCleanMs": 1817.9055,
+  "coldBodyEditMs": 5856.569,
+  "bodyEdit": {
+    "p50": 526,
+    "p95": 665.9,
+    "max": 665.9,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 1463.1,
+    "p95": 7971.1,
+    "max": 7971.1,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 1 new error(s) in 1 file(s) (NodaTime); NodaTime declarations changed, 11 dependent project(s) checked",
+  "warmUnchanged": {
+    "p50": 137.1,
+    "p95": 144.3,
+    "max": 144.3,
+    "n": 10
+  },
+  "engineWorkingSetMb": 832.1,
+  "treeCleanAfter": true
+}

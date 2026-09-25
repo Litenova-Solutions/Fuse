@@ -1,0 +1,890 @@
+{
+  "suite": "correctness",
+  "repo": "NodaTime",
+  "seed": 2,
+  "requested": 20,
+  "cases": 20,
+  "breaking": 18,
+  "neutral": 2,
+  "falseGreen": 0,
+  "falseRedCases": 0,
+  "falseRedDiagnostics": 0,
+  "unverifiableDiagnostics": 66,
+  "deferredByCompilerDiagnostics": 10,
+  "messageMismatchDiagnostics": 6,
+  "partialMisses": 0,
+  "exactAgreement": 20,
+  "fileAgreement": 20,
+  "fuseFailures": 0,
+  "fuseMedianMs": 593.3844,
+  "buildMedianSeconds": 1.54498115,
+  "headBuildErrors": 0,
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edits": [
+        {
+          "path": "src/NodaTime.Benchmarks/NodaTimeTests/Text/PeriodPatternBenchmarks.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
+          "kind": "remove-using",
+          "description": "removed using CommandLine",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(13,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(13,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(16,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(16,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(20,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(20,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(23,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(23,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(26,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(26,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(29,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(29,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(32,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(32,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(38,10): error CS0246: The type or namespace name \u0027HelpOptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(38,10): error CS0246: The type or namespace name \u0027HelpOption\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(13,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(13,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(16,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(16,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(20,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(20,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(23,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(23,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(26,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(26,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(29,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(29,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(32,10): error CS0246: The type or namespace name \u0027Option\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(32,10): error CS0246: The type or namespace name \u0027OptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(38,10): error CS0246: The type or namespace name \u0027HelpOption\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NzdCompatibility/Options.cs(38,10): error CS0246: The type or namespace name \u0027HelpOptionAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 16,
+      "fuseExit": 1,
+      "fuseMilliseconds": 7445.8247,
+      "buildSeconds": 2.219716,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 1,
+      "edits": [
+        {
+          "path": "src/NodaTime.Benchmarks.Custom/ConcurrentNewString.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Threading",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime.Benchmarks.Custom/ConcurrentNewString.cs(12,16): error CS0103: The name \u0027Interlocked\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "src/NodaTime.Benchmarks.Custom/ConcurrentNewString.cs(12,16): error CS0103: The name \u0027Interlocked\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 2733.1163,
+      "buildSeconds": 2.2479826,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 2,
+      "edits": [
+        {
+          "path": "src/NodaTime/Calendars/HebrewMonthConverter.cs",
+          "kind": "make-private",
+          "description": "made HebrewMonthConverter.CivilToScriptural private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Calendars/HebrewYearMonthDayCalculator.cs(32,94): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime/Calendars/HebrewYearMonthDayCalculator.cs(35,89): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuse": [
+        "src/NodaTime.Test/Calendars/HebrewCalendarSystemTest.cs(76,64): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/Calendars/HebrewEcclesiasticalCalculatorTest.cs(38,64): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/Calendars/HebrewMonthConverterTest.cs(30,62): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/Calendars/HebrewMonthConverterTest.cs(50,62): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime/Calendars/HebrewYearMonthDayCalculator.cs(32,94): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime/Calendars/HebrewYearMonthDayCalculator.cs(35,89): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 10262.4924,
+      "buildSeconds": 1.6600399,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.Test/Calendars/HebrewCalendarSystemTest.cs(76,64): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/Calendars/HebrewEcclesiasticalCalculatorTest.cs(38,64): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/Calendars/HebrewMonthConverterTest.cs(30,62): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/Calendars/HebrewMonthConverterTest.cs(50,62): error CS0122: \u0027HebrewMonthConverter.CivilToScriptural(int, int)\u0027 is inaccessible due to its protection level"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 3,
+      "edits": [
+        {
+          "path": "src/NodaTime/Text/OffsetDateTimePattern.cs",
+          "kind": "remove-member",
+          "description": "removed OffsetDateTimePattern.Parse",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.Benchmarks/NodaTimeTests/PacificZonedDateTimeBenchmarks.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of PacificZonedDateTimeBenchmarks.ToInstant from Instant to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Text/OffsetDateTimePattern.cs(23,49): error CS0535: \u0027OffsetDateTimePattern\u0027 does not implement interface member \u0027IPattern\u003COffsetDateTime\u003E.Parse(string)\u0027"
+      ],
+      "fuse": [
+        "src/NodaTime.Benchmarks/NodaTimeTests/Text/OffsetDateTimePatternBenchmarks.cs(28,40): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/NodaTimeTests/Text/OffsetDateTimePatternBenchmarks.cs(35,40): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/NodaTimeTests/Text/OffsetDateTimePatternBenchmarks.cs(54,47): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/NodaTimeTests/Text/OffsetDateTimePatternBenchmarks.cs(61,47): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/OffsetDateTimePatternTest.cs(176,34): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/OffsetDateTimePatternTest.cs(187,34): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/OffsetDateTimePatternTest.cs(205,33): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime/OffsetDateTime.cs(875,45): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime/Text/OffsetDateTimePattern.cs(23,49): error CS0535: \u0027OffsetDateTimePattern\u0027 does not implement interface member \u0027IPattern\u003COffsetDateTime\u003E.Parse(string)\u0027",
+        "src/NodaTime/ZonedDateTime.cs(848,53): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 10,
+      "fuseExit": 1,
+      "fuseMilliseconds": 4382.3914,
+      "buildSeconds": 1.0150105,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.Benchmarks/NodaTimeTests/Text/OffsetDateTimePatternBenchmarks.cs(28,40): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/NodaTimeTests/Text/OffsetDateTimePatternBenchmarks.cs(35,40): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/NodaTimeTests/Text/OffsetDateTimePatternBenchmarks.cs(54,47): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/NodaTimeTests/Text/OffsetDateTimePatternBenchmarks.cs(61,47): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/OffsetDateTimePatternTest.cs(176,34): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/OffsetDateTimePatternTest.cs(187,34): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/OffsetDateTimePatternTest.cs(205,33): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [
+        "src/NodaTime/OffsetDateTime.cs(875,45): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime/ZonedDateTime.cs(848,53): error CS1061: \u0027OffsetDateTimePattern\u0027 does not contain a definition for \u0027Parse\u0027 and no accessible extension method \u0027Parse\u0027 accepting a first argument of type \u0027OffsetDateTimePattern\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 4,
+      "edits": [
+        {
+          "path": "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to DateTimeBenchmarks.ToUtc",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime/Text/InstantPatternParser.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of LocalDateTimePatternAdapter.AppendFormat from StringBuilder to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Text/InstantPatternParser.cs(60,60): error CS0738: \u0027InstantPatternParser.LocalDateTimePatternAdapter\u0027 does not implement interface member \u0027IPattern\u003CInstant\u003E.AppendFormat(Instant, StringBuilder)\u0027. \u0027InstantPatternParser.LocalDateTimePatternAdapter.AppendFormat(Instant, StringBuilder)\u0027 cannot implement \u0027IPattern\u003CInstant\u003E.AppendFormat(Instant, StringBuilder)\u0027 because it does not have the matching return type of \u0027StringBuilder\u0027."
+      ],
+      "fuse": [
+        "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs(53,31): error BDN1400: Benchmark method \u0027ToUtc\u0027 without an [ArgumentsSource] or [Arguments] attribute(s) cannot declare parameters",
+        "src/NodaTime/Text/InstantPatternParser.cs(60,60): error CS0738: \u0027InstantPatternParser.LocalDateTimePatternAdapter\u0027 does not implement interface member \u0027IPattern\u003CInstant\u003E.AppendFormat(Instant, StringBuilder)\u0027. \u0027InstantPatternParser.LocalDateTimePatternAdapter.AppendFormat(Instant, StringBuilder)\u0027 cannot implement \u0027IPattern\u003CInstant\u003E.AppendFormat(Instant, StringBuilder)\u0027 because it does not have the matching return type of \u0027StringBuilder\u0027."
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1263.7682,
+      "buildSeconds": 0.9901985,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs(53,31): error BDN1400: Benchmark method \u0027ToUtc\u0027 without an [ArgumentsSource] or [Arguments] attribute(s) cannot declare parameters"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 5,
+      "edits": [
+        {
+          "path": "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to DateTimeBenchmarks.Year",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs(26,25): error BDN1400: Benchmark method \u0027Year\u0027 without an [ArgumentsSource] or [Arguments] attribute(s) cannot declare parameters"
+      ],
+      "fuse": [
+        "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs(26,25): error BDN1400: Benchmark method \u0027Year\u0027 without an [ArgumentsSource] or [Arguments] attribute(s) cannot declare parameters"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 322.828,
+      "buildSeconds": 6.1217312,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 6,
+      "edits": [
+        {
+          "path": "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of SteppedPatternBuilder.CreateSampleBucket",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(49,18): error CS0111: Type \u0027SteppedPatternBuilder\u003CTResult, TBucket\u003E\u0027 already defines a member called \u0027CreateSampleBucket\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(49,18): error CS0111: Type \u0027SteppedPatternBuilder\u003CTResult, TBucket\u003E\u0027 already defines a member called \u0027CreateSampleBucket\u0027 with the same parameter types",
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(489,44): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(44)]\u0027 and \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(49)]\u0027",
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(534,52): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(44)]\u0027 and \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(49)]\u0027",
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(555,52): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(44)]\u0027 and \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(49)]\u0027"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 684.3483,
+      "buildSeconds": 1.0051292,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(489,44): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(44)]\u0027 and \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(49)]\u0027",
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(534,52): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(44)]\u0027 and \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(49)]\u0027",
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(555,52): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(44)]\u0027 and \u0027NodaTime.Text.Patterns.SteppedPatternBuilder\u003CTResult, TBucket\u003E.CreateSampleBucket() [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Text\\Patterns\\SteppedPatternBuilder.cs(49)]\u0027"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 7,
+      "edits": [
+        {
+          "path": "src/NodaTime/DateInterval.cs",
+          "kind": "make-private",
+          "description": "made DateInterval.Intersection private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime.Benchmarks/NodaTimeTests/DateIntervalBenchmarks.cs(27,73): error CS1061: \u0027DateInterval\u0027 does not contain a definition for \u0027Intersection\u0027 and no accessible extension method \u0027Intersection\u0027 accepting a first argument of type \u0027DateInterval\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/NodaTimeTests/DateIntervalBenchmarks.cs(30,76): error CS1061: \u0027DateInterval\u0027 does not contain a definition for \u0027Intersection\u0027 and no accessible extension method \u0027Intersection\u0027 accepting a first argument of type \u0027DateInterval\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Demo/DateIntervalDemo.cs(42,54): error CS1061: \u0027DateInterval\u0027 does not contain a definition for \u0027Intersection\u0027 and no accessible extension method \u0027Intersection\u0027 accepting a first argument of type \u0027DateInterval\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/DateIntervalTest.cs(263,62): error CS1061: \u0027DateInterval\u0027 does not contain a definition for \u0027Intersection\u0027 and no accessible extension method \u0027Intersection\u0027 accepting a first argument of type \u0027DateInterval\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/DateIntervalTest.cs(277,58): error CS1061: \u0027DateInterval\u0027 does not contain a definition for \u0027Intersection\u0027 and no accessible extension method \u0027Intersection\u0027 accepting a first argument of type \u0027DateInterval\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/DateIntervalTest.cs(294,51): error CS1061: \u0027DateInterval\u0027 does not contain a definition for \u0027Intersection\u0027 and no accessible extension method \u0027Intersection\u0027 accepting a first argument of type \u0027DateInterval\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/NodaTime.Benchmarks/NodaTimeTests/DateIntervalBenchmarks.cs(27,73): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Benchmarks/NodaTimeTests/DateIntervalBenchmarks.cs(30,76): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Demo/DateIntervalDemo.cs(42,54): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/DateIntervalTest.cs(263,62): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/DateIntervalTest.cs(277,58): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/DateIntervalTest.cs(294,51): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 648.787,
+      "buildSeconds": 5.994661,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "src/NodaTime.Benchmarks/NodaTimeTests/DateIntervalBenchmarks.cs(27,73): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Benchmarks/NodaTimeTests/DateIntervalBenchmarks.cs(30,76): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Demo/DateIntervalDemo.cs(42,54): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/DateIntervalTest.cs(263,62): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/DateIntervalTest.cs(277,58): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level",
+        "src/NodaTime.Test/DateIntervalTest.cs(294,51): error CS0122: \u0027DateInterval.Intersection(DateInterval)\u0027 is inaccessible due to its protection level"
+      ],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 8,
+      "edits": [
+        {
+          "path": "src/NodaTime.Benchmarks/NodaTimeTests/LocalDateBenchmarks.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 305.6454,
+      "buildSeconds": 5.3585066,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 9,
+      "edits": [
+        {
+          "path": "src/NodaTime/YearMonth.cs",
+          "kind": "remove-member",
+          "description": "removed YearMonth.CompareTo",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/YearMonth.cs(37,54): error CS0535: \u0027YearMonth\u0027 does not implement interface member \u0027IComparable\u003CYearMonth\u003E.CompareTo(YearMonth)\u0027"
+      ],
+      "fuse": [
+        "src/NodaTime.Test/YearMonthTest.Comparison.cs(85,63): error CS7036: There is no argument given that corresponds to the required parameter \u0027comparisonType\u0027 of \u0027MemoryExtensions.CompareTo(ReadOnlySpan\u003Cchar\u003E, ReadOnlySpan\u003Cchar\u003E, StringComparison)\u0027",
+        "src/NodaTime/YearMonth.cs(37,54): error CS0535: \u0027YearMonth\u0027 does not implement interface member \u0027IComparable\u003CYearMonth\u003E.CompareTo(YearMonth)\u0027",
+        "src/NodaTime/YearMonth.cs(204,20): error CS0103: The name \u0027CompareTo\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 2785.576,
+      "buildSeconds": 0.9740282,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.Test/YearMonthTest.Comparison.cs(85,63): error CS7036: There is no argument given that corresponds to the required parameter \u0027comparisonType\u0027 of \u0027MemoryExtensions.CompareTo(ReadOnlySpan\u003Cchar\u003E, ReadOnlySpan\u003Cchar\u003E, StringComparison)\u0027"
+      ],
+      "deferredByCompiler": [
+        "src/NodaTime/YearMonth.cs(204,20): error CS0103: The name \u0027CompareTo\u0027 does not exist in the current context"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 10,
+      "edits": [
+        {
+          "path": "src/NodaTime/Text/UnparsableValueException.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Text/ParseResult.cs(194,42): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime/Text/ParseResult.cs(173,28): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime/Text/ParseResult.cs(183,28): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime/Text/ParseResult.cs(216,42): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/NodaTime.Test/AnnualDateTest.cs(81,48): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/DurationTest.cs(33,48): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/ExceptionConstructorTests.cs(32,21): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/ExceptionConstructorTests.cs(33,21): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/ExceptionConstructorTests.cs(34,21): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/InstantTest.cs(339,65): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/IntervalTest.cs(163,20): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/IntervalTest.cs(165,20): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/LocalDateTest.cs(54,55): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/LocalDateTimeTest.cs(438,64): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/LocalTimeTest.cs(53,53): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/OffsetDateTest.cs(193,55): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/OffsetDateTimeTest.cs(431,67): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/OffsetTest.cs(94,48): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/OffsetTimeTest.cs(159,54): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(25,43): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(40,33): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(41,39): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(42,35): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(55,43): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 40,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1097.3777,
+      "buildSeconds": 1.6601945,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.Test/AnnualDateTest.cs(81,48): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/DurationTest.cs(33,48): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/ExceptionConstructorTests.cs(32,21): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/ExceptionConstructorTests.cs(33,21): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/ExceptionConstructorTests.cs(34,21): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/InstantTest.cs(339,65): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/IntervalTest.cs(163,20): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/IntervalTest.cs(165,20): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/LocalDateTest.cs(54,55): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/LocalDateTimeTest.cs(438,64): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/LocalTimeTest.cs(53,53): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/OffsetDateTest.cs(193,55): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/OffsetDateTimeTest.cs(431,67): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/OffsetTest.cs(94,48): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/OffsetTimeTest.cs(159,54): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(25,43): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(40,33): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(41,39): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(42,35): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Test/Text/ParseResultTest.cs(55,43): error CS0246: The type or namespace name \u0027UnparsableValueException\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 11,
+      "edits": [
+        {
+          "path": "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of SteppedPatternBuilder.AddNegativeOnlySign",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs",
+          "kind": "remove-using",
+          "description": "removed using System",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs(426,13): error CS0111: Type \u0027SteppedPatternBuilder\u003CTResult, TBucket\u003E\u0027 already defines a member called \u0027AddNegativeOnlySign\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(8,34): error CS0246: The type or namespace name \u0027TimeZoneInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(10,24): error CS0246: The type or namespace name \u0027TimeZoneInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(14,24): error CS0103: The name \u0027TimeZoneInfo\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(16,20): error CS0246: The type or namespace name \u0027TimeZoneNotFoundException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(19,24): error CS0103: The name \u0027TimeZoneInfo\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(23,34): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(23,59): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(23,90): error CS0103: The name \u0027DateTimeKind\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(24,34): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(24,59): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(24,90): error CS0103: The name \u0027DateTimeKind\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(25,33): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(25,62): error CS0103: The name \u0027DateTime\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(25,94): error CS0103: The name \u0027DateTimeKind\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(26,33): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(26,62): error CS0103: The name \u0027DateTime\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(26,94): error CS0103: The name \u0027DateTimeKind\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(27,33): error CS0246: The type or namespace name \u0027DateTimeOffset\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(27,67): error CS0246: The type or namespace name \u0027DateTimeOffset\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(27,101): error CS0103: The name \u0027TimeSpan\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 26,
+      "fuseExit": 1,
+      "fuseMilliseconds": 537.9818,
+      "buildSeconds": 1.1183978,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(8,34): error CS0246: The type or namespace name \u0027TimeZoneInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(10,24): error CS0246: The type or namespace name \u0027TimeZoneInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(14,24): error CS0103: The name \u0027TimeZoneInfo\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(16,20): error CS0246: The type or namespace name \u0027TimeZoneNotFoundException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(19,24): error CS0103: The name \u0027TimeZoneInfo\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(23,34): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(23,59): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(23,90): error CS0103: The name \u0027DateTimeKind\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(24,34): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(24,59): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(24,90): error CS0103: The name \u0027DateTimeKind\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(25,33): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(25,62): error CS0103: The name \u0027DateTime\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(25,94): error CS0103: The name \u0027DateTimeKind\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(26,33): error CS0246: The type or namespace name \u0027DateTime\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(26,62): error CS0103: The name \u0027DateTime\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(26,94): error CS0103: The name \u0027DateTimeKind\u0027 does not exist in the current context",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(27,33): error CS0246: The type or namespace name \u0027DateTimeOffset\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(27,67): error CS0246: The type or namespace name \u0027DateTimeOffset\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs(27,101): error CS0103: The name \u0027TimeSpan\u0027 does not exist in the current context"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 12,
+      "edits": [
+        {
+          "path": "src/NodaTime/DateAdjusters.cs",
+          "kind": "remove-using",
+          "description": "removed using NodaTime.Utility",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.Benchmarks/BclTests/UtcDateTimeBenchmarks.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to UtcDateTimeBenchmarks.Millisecond",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.TzdbCompiler/Tzdb/RuleLine.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of RuleLine.Equals from bool to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/DateAdjusters.cs(139,13): error CS0103: The name \u0027Preconditions\u0027 does not exist in the current context",
+        "src/NodaTime/DateAdjusters.cs(142,13): error CS0103: The name \u0027Preconditions\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "src/NodaTime.Benchmarks/BclTests/UtcDateTimeBenchmarks.cs(43,32): error BDN1400: Benchmark method \u0027Millisecond\u0027 without an [ArgumentsSource] or [Arguments] attribute(s) cannot declare parameters",
+        "src/NodaTime.TzdbCompiler/Tzdb/RuleLine.cs(19,31): error CS0738: \u0027RuleLine\u0027 does not implement interface member \u0027IEquatable\u003CRuleLine?\u003E.Equals(RuleLine?)\u0027. \u0027RuleLine.Equals(RuleLine?)\u0027 cannot implement \u0027IEquatable\u003CRuleLine?\u003E.Equals(RuleLine?)\u0027 because it does not have the matching return type of \u0027bool\u0027.",
+        "src/NodaTime.TzdbCompiler/Tzdb/RuleLine.cs(70,13): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027bool\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/NodaTime.TzdbCompiler/Tzdb/RuleLine.cs(104,53): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027bool\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/NodaTime/DateAdjusters.cs(139,13): error CS0103: The name \u0027Preconditions\u0027 does not exist in the current context",
+        "src/NodaTime/DateAdjusters.cs(142,13): error CS0103: The name \u0027Preconditions\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 776.6595,
+      "buildSeconds": 1.6056796,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.Benchmarks/BclTests/UtcDateTimeBenchmarks.cs(43,32): error BDN1400: Benchmark method \u0027Millisecond\u0027 without an [ArgumentsSource] or [Arguments] attribute(s) cannot declare parameters",
+        "src/NodaTime.TzdbCompiler/Tzdb/RuleLine.cs(19,31): error CS0738: \u0027RuleLine\u0027 does not implement interface member \u0027IEquatable\u003CRuleLine?\u003E.Equals(RuleLine?)\u0027. \u0027RuleLine.Equals(RuleLine?)\u0027 cannot implement \u0027IEquatable\u003CRuleLine?\u003E.Equals(RuleLine?)\u0027 because it does not have the matching return type of \u0027bool\u0027.",
+        "src/NodaTime.TzdbCompiler/Tzdb/RuleLine.cs(70,13): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027bool\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/NodaTime.TzdbCompiler/Tzdb/RuleLine.cs(104,53): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027bool\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 13,
+      "edits": [
+        {
+          "path": "src/NodaTime.Benchmarks/NodaTimeTests/Text/PeriodPatternBenchmarks.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 160.9921,
+      "buildSeconds": 5.3453139,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 14,
+      "edits": [
+        {
+          "path": "src/NodaTime.Testing/FakeClock.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of FakeClock.FromUtc from FakeClock to object",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime/AmbiguousTimeException.cs",
+          "kind": "remove-using",
+          "description": "removed using System",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/AmbiguousTimeException.cs(45,50): error CS0246: The type or namespace name \u0027ArgumentOutOfRangeException\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/NodaTime.Test/Testing/FakeClockTest.cs(55,31): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027NodaTime.Testing.FakeClock\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/NodaTime/AmbiguousTimeException.cs(31,42): error CS1574: XML comment has cref attribute \u0027ArgumentOutOfRangeException\u0027 that could not be resolved",
+        "src/NodaTime/AmbiguousTimeException.cs(45,50): error CS0246: The type or namespace name \u0027ArgumentOutOfRangeException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime/AmbiguousTimeException.cs(86,15): error CS1729: \u0027ArgumentOutOfRangeException\u0027 does not contain a constructor that takes 2 arguments"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 375.4467,
+      "buildSeconds": 1.0221826,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.Test/Testing/FakeClockTest.cs(55,31): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027NodaTime.Testing.FakeClock\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "deferredByCompiler": [
+        "src/NodaTime/AmbiguousTimeException.cs(31,42): error CS1574: XML comment has cref attribute \u0027ArgumentOutOfRangeException\u0027 that could not be resolved",
+        "src/NodaTime/AmbiguousTimeException.cs(86,15): error CS1729: \u0027ArgumentOutOfRangeException\u0027 does not contain a constructor that takes 2 arguments"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 15,
+      "edits": [
+        {
+          "path": "src/NodaTime.Benchmarks/NodaTimeTests/InstantBenchmarks.cs",
+          "kind": "make-private",
+          "description": "made InstantBenchmarks.WithOffset_SameUtcDay private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime.Benchmarks/NodaTimeTests/InstantBenchmarks.cs(58,32): error BDN1103: The benchmark method \u0027WithOffset_SameUtcDay\u0027 must be public"
+      ],
+      "fuse": [
+        "src/NodaTime.Benchmarks/NodaTimeTests/InstantBenchmarks.cs(58,32): error BDN1103: The benchmark method \u0027WithOffset_SameUtcDay\u0027 must be public"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 415.3167,
+      "buildSeconds": 5.7327404,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 16,
+      "edits": [
+        {
+          "path": "src/NodaTime/Text/OffsetTimePatternParser.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of OffsetTimePatternParser.ParsePattern",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.TzValidate.NodaDump/Options.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of Options.GetUsage from string to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Text/OffsetTimePatternParser.cs(73,29): error CS0111: Type \u0027OffsetTimePatternParser\u0027 already defines a member called \u0027ParsePattern\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/NodaTime/Text/OffsetTimePatternParser.cs(73,29): error CS0111: Type \u0027OffsetTimePatternParser\u0027 already defines a member called \u0027ParsePattern\u0027 with the same parameter types"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 354.0788,
+      "buildSeconds": 0.9444985,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 17,
+      "edits": [
+        {
+          "path": "src/NodaTime/Text/LocalTimePatternParser.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of LocalTimePatternParser.ParsePattern",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
+          "kind": "rename-member",
+          "description": "renamed Options.GetUsage to GetUsageRenamed",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.TzdbCompiler/Tzdb/FileSource.cs",
+          "kind": "make-private",
+          "description": "made FileSource.Contains private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Text/LocalTimePatternParser.cs(85,28): error CS0111: Type \u0027LocalTimePatternParser\u0027 already defines a member called \u0027ParsePattern\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(75,21): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(88,18): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(96,17): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(104,17): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(139,17): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime/Text/LocalTimePatternParser.cs(85,28): error CS0111: Type \u0027LocalTimePatternParser\u0027 already defines a member called \u0027ParsePattern\u0027 with the same parameter types"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 405.0656,
+      "buildSeconds": 0.954444,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(75,21): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(88,18): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(96,17): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(104,17): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027",
+        "src/NodaTime.TzdbCompiler/Tzdb/TzdbZoneInfoCompiler.cs(139,17): error CS1929: \u0027FileSource\u0027 does not contain a definition for \u0027Contains\u0027 and the best extension method overload \u0027MemoryExtensions.Contains\u003Cstring\u003E(ReadOnlySpan\u003Cstring\u003E, string)\u0027 requires a receiver of type \u0027System.ReadOnlySpan\u003Cstring\u003E\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 18,
+      "edits": [
+        {
+          "path": "src/NodaTime/Calendars/SimpleWeekYearRule.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of SimpleWeekYearRule.GetWeeksInWeekYear",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Calendars/SimpleWeekYearRule.cs(143,12): error CS0111: Type \u0027SimpleWeekYearRule\u0027 already defines a member called \u0027GetWeeksInWeekYear\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/NodaTime/Calendars/SimpleWeekYearRule.cs(56,28): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Calendars.SimpleWeekYearRule.GetWeeksInWeekYear(int, NodaTime.CalendarSystem) [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Calendars\\SimpleWeekYearRule.cs(115)]\u0027 and \u0027NodaTime.Calendars.SimpleWeekYearRule.GetWeeksInWeekYear(int, NodaTime.CalendarSystem) [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Calendars\\SimpleWeekYearRule.cs(143)]\u0027",
+        "src/NodaTime/Calendars/SimpleWeekYearRule.cs(143,12): error CS0111: Type \u0027SimpleWeekYearRule\u0027 already defines a member called \u0027GetWeeksInWeekYear\u0027 with the same parameter types",
+        "src/NodaTime/Calendars/SimpleWeekYearRule.cs(202,39): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Calendars.SimpleWeekYearRule.GetWeeksInWeekYear(int, NodaTime.CalendarSystem) [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Calendars\\SimpleWeekYearRule.cs(115)]\u0027 and \u0027NodaTime.Calendars.SimpleWeekYearRule.GetWeeksInWeekYear(int, NodaTime.CalendarSystem) [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Calendars\\SimpleWeekYearRule.cs(143)]\u0027"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 252.1847,
+      "buildSeconds": 0.9355945,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "src/NodaTime/Calendars/SimpleWeekYearRule.cs(56,28): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Calendars.SimpleWeekYearRule.GetWeeksInWeekYear(int, NodaTime.CalendarSystem) [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Calendars\\SimpleWeekYearRule.cs(115)]\u0027 and \u0027NodaTime.Calendars.SimpleWeekYearRule.GetWeeksInWeekYear(int, NodaTime.CalendarSystem) [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Calendars\\SimpleWeekYearRule.cs(143)]\u0027",
+        "src/NodaTime/Calendars/SimpleWeekYearRule.cs(202,39): error CS0121: The call is ambiguous between the following methods or properties: \u0027NodaTime.Calendars.SimpleWeekYearRule.GetWeeksInWeekYear(int, NodaTime.CalendarSystem) [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Calendars\\SimpleWeekYearRule.cs(115)]\u0027 and \u0027NodaTime.Calendars.SimpleWeekYearRule.GetWeeksInWeekYear(int, NodaTime.CalendarSystem) [C:\\Projects\\fuse-eval-repos\\NodaTime\\src\\NodaTime\\Calendars\\SimpleWeekYearRule.cs(143)]\u0027"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 19,
+      "edits": [
+        {
+          "path": "src/NodaTime/Text/Patterns/PatternCursor.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Globalization",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.TzValidate.NodaDump/UserErrorException.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "src/NodaTime.Benchmarks/NodaTimeTests/CachedDateTimeZoneBenchmarks.cs",
+          "kind": "remove-member",
+          "description": "removed CachedDateTimeZoneBenchmarks.GetZoneInterval_TwoYears",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/NodaTime/Text/Patterns/PatternCursor.cs(103,65): error CS0103: The name \u0027CultureInfo\u0027 does not exist in the current context",
+        "src/NodaTime/Text/Patterns/PatternCursor.cs(137,61): error CS0103: The name \u0027CultureInfo\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "src/NodaTime.TzValidate.NodaDump/Program.cs(41,20): error CS0246: The type or namespace name \u0027UserErrorException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs(48,31): error CS0246: The type or namespace name \u0027UserErrorException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs(53,31): error CS0246: The type or namespace name \u0027UserErrorException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime/Text/Patterns/PatternCursor.cs(103,65): error CS0103: The name \u0027CultureInfo\u0027 does not exist in the current context",
+        "src/NodaTime/Text/Patterns/PatternCursor.cs(137,61): error CS0103: The name \u0027CultureInfo\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 424.8916,
+      "buildSeconds": 1.4842827,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/NodaTime.TzValidate.NodaDump/Program.cs(41,20): error CS0246: The type or namespace name \u0027UserErrorException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs(48,31): error CS0246: The type or namespace name \u0027UserErrorException\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/NodaTime.TzValidate.NodaDump/ZoneDumper.cs(53,31): error CS0246: The type or namespace name \u0027UserErrorException\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    }
+  ]
+}

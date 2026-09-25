@@ -18,6 +18,7 @@ internal sealed class ShadowEmitter
 {
     private readonly RepoRoot _root;
     private readonly RepoGraph _graph;
+    private readonly Dictionary<ProjectId, (byte[] Pe, byte[] Pdb)?> _emitted = [];
 
     public ShadowEmitter(RepoRoot root, RepoGraph graph)
     {
@@ -90,22 +91,41 @@ internal sealed class ShadowEmitter
         foreach (var id in emit)
         {
             var project = solution.GetProject(id)!;
-            var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
-            if (compilation is null)
-                return null;
-            var target = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
-            var pdb = Path.ChangeExtension(target, ".pdb");
-            await using var peStream = File.Create(target);
-            await using var pdbStream = File.Create(pdb);
-            var result = compilation.Emit(peStream, pdbStream, options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb, pdbFilePath: pdb), cancellationToken: cancellationToken);
-            if (!result.Success)
+            var image = await EmitOnceAsync(project, cancellationToken).ConfigureAwait(false);
+            if (image is null)
             {
                 log($"{project.Name}: does not compile; building with MSBuild to report the errors");
                 return null;
             }
+
+            var target = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
+            await File.WriteAllBytesAsync(target, image.Value.Pe, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllBytesAsync(Path.ChangeExtension(target, ".pdb"), image.Value.Pdb, cancellationToken).ConfigureAwait(false);
         }
 
         return Path.Combine(shadow, Path.GetFileName(testOutput));
+    }
+
+    /// <summary>Emits a project's assembly once per plan; several test assemblies usually load the same changed project.</summary>
+    private async Task<(byte[] Pe, byte[] Pdb)?> EmitOnceAsync(Project project, CancellationToken cancellationToken)
+    {
+        if (_emitted.TryGetValue(project.Id, out var cached))
+            return cached;
+        var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
+        if (compilation is null)
+            return null;
+        using var pe = new MemoryStream();
+        using var pdb = new MemoryStream();
+        var pdbPath = Path.ChangeExtension(Path.GetFileName(project.OutputFilePath!), ".pdb");
+        var result = compilation.Emit(
+            pe,
+            pdb,
+            manifestResources: BuiltResources.ReadFrom(project.OutputFilePath!),
+            options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb, pdbFilePath: pdbPath),
+            cancellationToken: cancellationToken);
+        (byte[], byte[])? image = result.Success ? (pe.ToArray(), pdb.ToArray()) : null;
+        _emitted[project.Id] = image;
+        return image;
     }
 
     private static IEnumerable<Project> Closure(Project project)

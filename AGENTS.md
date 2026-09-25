@@ -1,6 +1,6 @@
 # Fuse: contributor and agent guide
 
-Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a repository and gives coding agents the errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server. [README.md](README.md) describes the product; [docs/v5-plan.md](docs/v5-plan.md) records the design decisions and the eval gates.
+Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a repository and gives coding agents the errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server. [README.md](README.md) describes the product; [docs/design.md](docs/design.md) describes how it works.
 
 ## Layout
 
@@ -17,7 +17,8 @@ Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a reposit
   - `Hooks/`: `fuse hook` adapters per harness and `fuse init`.
   - `Mcp/`: the MCP server.
 - `tests/Fuse.Tests`: unit, engine and process tests over generated fixture repositories.
-- `evals/Fuse.Evals`: the correctness, selection and latency evals; results in `evals/results`.
+- `evals/Fuse.Evals`: the correctness, selection and latency evals, and the chart renderer; results in `evals/results`.
+- `site/`: the website at fuse.codes, one static page (`index.html`), the icon, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`. Vercel deploys it from `main` with `site` as the project root and no build step.
 
 ## Build, test, format
 
@@ -32,12 +33,12 @@ Tests generate real git repositories and restore them, so the first run needs Nu
 ## Rules
 
 - The product answers from the working tree as it is on disk, compared with HEAD. Never report an error that already existed at HEAD as introduced.
-- A hook must never break the agent's session: every internal failure in `fuse hook` exits 0 with no output and logs to `hook.log` in the state directory.
+- A hook must never break the agent's session: `fuse hook` reports only new errors and missing restores, and every internal failure exits 0 with no output and logs to `hook.log` in the state directory.
 - No configuration knobs. A behavior that needs a setting is a behavior to decide, not to expose.
 - The engine never writes the working tree and never runs `dotnet restore` on its own. Its state (logs, shadow test output) lives in the user's local application data, never in the repository.
-- Any change to the pipe protocol records changes the build, and the version check in `EngineVersion.Build` restarts stale engines automatically; keep request and response records backward-tolerant anyway.
+- The pipe protocol needs no versioning by hand: every request carries `EngineVersion.Build`, and an engine from another build restarts.
 - Child processes take argument lists, never shell strings. Variable-length lists (paths, filters) are bounded or chunked.
-- Numbers quoted in docs come from files in `evals/results`. Never round up or quote a number that was not recorded.
+- Numbers quoted in docs come from files in `evals/results`, exactly as recorded.
 - A file holds one type plus its private helpers. No interface without two implementations.
 - New tests must run: confirm the test count went up.
 

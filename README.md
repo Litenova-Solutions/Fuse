@@ -1,6 +1,8 @@
 # Fuse
 
-Fuse keeps a warm Roslyn compilation of your .NET repository and plugs it into coding agents through hooks. After every edit, the agent learns which compiler errors that edit introduced, including breaks in projects that depend on it. When the agent runs `dotnet test`, only the tests the change can reach run, and only failures are printed.
+Near-instant compiler feedback for AI coding agents on .NET.
+
+Fuse keeps your solution compiled in memory with Roslyn and plugs it into coding agents through hooks. After every edit, the agent learns which compiler errors that edit introduced, including breaks in projects that depend on it, up to 6.8x faster than `dotnet build`. When the agent runs `dotnet test`, only the tests the change can reach run, and only failures are printed.
 
 ```bash
 dotnet tool install -g Fuse
@@ -8,9 +10,9 @@ cd your-repo
 fuse init
 ```
 
-That is the setup. The hooks run on their own, so the agent needs no instructions and no tool to remember.
+That is the setup. The hooks run on their own, so the agent needs no instructions and no tool to remember. Website: [fuse.codes](https://fuse.codes).
 
-![Fuse's time as a share of the dotnet command it replaces](site/benefits.svg)
+![Fuse's time as a share of the dotnet command it replaces](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/site/benefits.svg)
 
 ## What the agent sees
 
@@ -85,7 +87,7 @@ One `fuse engine` process runs per repository. The first command or hook starts 
 
 From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine. Results are in `evals/results`.
 
-| Eval | Fixture (5 projects, 22 tests) | NodaTime (17 projects, 42,681 tests) |
+| Eval | Small solution (fixture: 5 projects, 22 tests) | NodaTime (17 projects, 42,681 tests) |
 |---|---|---|
 | Correctness: generated edits compared with a real `dotnet build` | 30 cases: 0 missed, 0 contradicted | 20 cases: 0 missed, 0 contradicted |
 | `fuse check` vs `dotnet build`, median | 0.17 s vs 1.16 s | 0.59 s vs 1.54 s |

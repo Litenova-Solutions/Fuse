@@ -10,7 +10,7 @@ namespace Fuse.Repo;
 /// <param name="SourcePaths">Absolute paths of C# and Razor files whose content may differ from what the engine last saw.</param>
 /// <param name="ProjectFilesChanged">A project, props, targets, editorconfig or global.json file changed, so evaluation is stale.</param>
 /// <param name="Storm">HEAD moved, the watcher overflowed, or more than 300 paths changed; reloading is cheaper than patching.</param>
-/// <param name="VanishedDirectories">Directories no longer on disk (deleted or renamed); sources the engine holds under them are gone.</param>
+/// <param name="VanishedDirectories">Directories missing from disk (deleted or renamed); sources the engine holds under them are gone.</param>
 /// <param name="Trigger">A path that caused a reload, for the log.</param>
 internal sealed record ChangeBatch(
     bool HeadMoved,

@@ -6,11 +6,12 @@
   "cases": 10,
   "withFailures": 9,
   "missedCases": 0,
+  "unverifiedCases": 0,
   "missedTests": 0,
   "totalTests": 22,
   "meanSelectedFraction": 0.15,
-  "fuseMedianSeconds": 1.3324249,
-  "dotnetMedianSeconds": 4.23380505,
+  "fuseMedianSeconds": 1.40799445,
+  "dotnetMedianSeconds": 4.4599951,
   "skippedNonCompiling": [],
   "treeCleanAfter": true,
   "details": [
@@ -32,10 +33,10 @@
       ],
       "fuseFailed": 2,
       "fusePassed": 3,
-      "fuseScope": "fuse: 2 failed, 3 passed in 9.0 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "fuseScope": "fuse: 2 failed, 3 passed in 9.5 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 9.1169149,
-      "dotnetSeconds": 4.238172,
+      "fuseSeconds": 9.6123958,
+      "dotnetSeconds": 4.6774224,
       "verdict": "caught"
     },
     {
@@ -54,10 +55,10 @@
       ],
       "fuseFailed": 1,
       "fusePassed": 1,
-      "fuseScope": "fuse: 1 failed, 1 passed in 1.4 s; ran 2 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "fuseScope": "fuse: 1 failed, 1 passed in 1.6 s; ran 2 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.5158925,
-      "dotnetSeconds": 4.2181005,
+      "fuseSeconds": 1.6748296,
+      "dotnetSeconds": 4.4294522,
       "verdict": "caught"
     },
     {
@@ -69,21 +70,21 @@
         "newText": null
       },
       "truthFailing": [
-        "Services.Tests.OrderServiceTests.Large",
         "Services.Tests.OrderServiceTests.Discounts",
+        "Services.Tests.OrderServiceTests.Large",
         "Services.Tests.OrderServiceTests.Totals"
       ],
       "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Discounts",
         "Services.Tests.OrderServiceTests.Totals",
-        "Services.Tests.OrderServiceTests.Large",
-        "Services.Tests.OrderServiceTests.Discounts"
+        "Services.Tests.OrderServiceTests.Large"
       ],
       "fuseFailed": 3,
       "fusePassed": 1,
-      "fuseScope": "fuse: 3 failed, 1 passed in 1.3 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "fuseScope": "fuse: 3 failed, 1 passed in 1.4 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.4043455,
-      "dotnetSeconds": 4.4797674,
+      "fuseSeconds": 1.5204155,
+      "dotnetSeconds": 4.6158179,
       "verdict": "caught"
     },
     {
@@ -96,20 +97,20 @@
       },
       "truthFailing": [
         "Services.Tests.OrderServiceTests.Large",
-        "Services.Tests.OrderServiceTests.Discounts",
-        "Services.Tests.OrderServiceTests.Totals"
+        "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Discounts"
       ],
       "fuseFailing": [
-        "Services.Tests.OrderServiceTests.Discounts",
         "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Discounts",
         "Services.Tests.OrderServiceTests.Totals"
       ],
       "fuseFailed": 3,
       "fusePassed": 1,
-      "fuseScope": "fuse: 3 failed, 1 passed in 1.1 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "fuseScope": "fuse: 3 failed, 1 passed in 1.2 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.2320882,
-      "dotnetSeconds": 4.1274647,
+      "fuseSeconds": 1.2912658,
+      "dotnetSeconds": 4.4120819,
       "verdict": "caught"
     },
     {
@@ -124,10 +125,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 5,
-      "fuseScope": "fuse: 0 failed, 5 passed in 1.3 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "fuseScope": "fuse: 0 failed, 5 passed in 1.4 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.3590206,
-      "dotnetSeconds": 4.2321347,
+      "fuseSeconds": 1.4490075,
+      "dotnetSeconds": 4.5478704,
       "verdict": "no-failure"
     },
     {
@@ -146,10 +147,10 @@
       ],
       "fuseFailed": 1,
       "fusePassed": 4,
-      "fuseScope": "fuse: 1 failed, 4 passed in 1.3 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "fuseScope": "fuse: 1 failed, 4 passed in 1.4 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.3796807,
-      "dotnetSeconds": 4.2000038,
+      "fuseSeconds": 1.532172,
+      "dotnetSeconds": 4.5976607,
       "verdict": "caught"
     },
     {
@@ -170,8 +171,8 @@
       "fusePassed": 0,
       "fuseScope": "fuse: 1 failed, 0 passed in 1.2 s; ran 1 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.2698817,
-      "dotnetSeconds": 4.3461504,
+      "fuseSeconds": 1.235821,
+      "dotnetSeconds": 4.1231162,
       "verdict": "caught"
     },
     {
@@ -192,8 +193,8 @@
       "fusePassed": 1,
       "fuseScope": "fuse: 1 failed, 1 passed in 1.2 s; ran 2 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.3058292,
-      "dotnetSeconds": 4.2354754,
+      "fuseSeconds": 1.3147521,
+      "dotnetSeconds": 4.490538,
       "verdict": "caught"
     },
     {
@@ -212,10 +213,10 @@
       ],
       "fuseFailed": 1,
       "fusePassed": 0,
-      "fuseScope": "fuse: 1 failed, 0 passed in 1.1 s; ran 1 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "fuseScope": "fuse: 1 failed, 0 passed in 1.3 s; ran 1 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.2364343,
-      "dotnetSeconds": 4.2658779,
+      "fuseSeconds": 1.3669814,
+      "dotnetSeconds": 4.3092386,
       "verdict": "caught"
     },
     {
@@ -227,21 +228,21 @@
         "newText": null
       },
       "truthFailing": [
+        "Services.Tests.OrderServiceTests.Totals",
         "Services.Tests.OrderServiceTests.Discounts",
-        "Services.Tests.OrderServiceTests.Large",
-        "Services.Tests.OrderServiceTests.Totals"
+        "Services.Tests.OrderServiceTests.Large"
       ],
       "fuseFailing": [
-        "Services.Tests.OrderServiceTests.Discounts",
         "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Discounts",
         "Services.Tests.OrderServiceTests.Large"
       ],
       "fuseFailed": 3,
       "fusePassed": 1,
       "fuseScope": "fuse: 3 failed, 1 passed in 1.1 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
       "missed": [],
-      "fuseSeconds": 1.2254117,
-      "dotnetSeconds": 4.1259666,
+      "fuseSeconds": 1.2254311,
+      "dotnetSeconds": 4.1172058,
       "verdict": "caught"
     }
   ]

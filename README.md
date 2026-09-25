@@ -44,9 +44,9 @@ When the agent tries to finish while its changes leave errors that are not at th
 | `fuse init` | Registers the hooks with every agent harness the repository uses |
 | `fuse check [files...]` | Errors the working tree has that HEAD does not, in the changed files and everything that depends on them |
 | `fuse test` | Runs the tests affected by the working-tree changes and prints failures |
-| `fuse test [dotnet test args]` | Runs exactly what `dotnet test` would, printing failures |
+| `fuse test [dotnet test args]` | Runs the scope `dotnet test` would run with those arguments, printing failures |
 | `fuse test --all` | Runs every test, printing failures |
-| `fuse build [dotnet build args]` | The real `dotnet build`, printing only errors |
+| `fuse build [dotnet build args]` | The real `dotnet build`, printing its errors (or the end of its output when no error line parses) |
 | `fuse mcp` | Stdio MCP server with `fuse_check`, `fuse_test` and `fuse_build` |
 
 Exit codes: 0 clean, 1 errors or failed tests, 2 Fuse could not answer (the message says why and what to run).
@@ -66,7 +66,7 @@ There is no configuration file and there are no environment variables. Fuse find
 | GitHub Copilot CLI | `.github/copilot-instructions.md` or `.github/hooks/` | `.github/hooks/fuse.json`: post-edit check, stop check |
 | VS Code agent mode | `.vscode/` | `.vscode/mcp.json`: the MCP server |
 
-Running `fuse init` again replaces Fuse's entries and leaves everything else in those files alone. If your Claude Code settings allow `dotnet build` or `dotnet test` without asking, `init` adds the same allowance for `fuse build` and `fuse test`. Any other MCP host can run `fuse mcp` from the repository directory.
+Running `fuse init` again replaces Fuse's entries in shared settings files and keeps the other entries (comments in those JSON files are not kept); `.github/hooks/fuse.json` belongs to Fuse and is written whole. If your Claude Code settings allow `dotnet build` or `dotnet test` without asking, `init` adds the same allowance for `fuse build` and `fuse test`. Any other MCP host can run `fuse mcp` from the repository directory.
 
 The Claude Code integration is tested end to end with Claude Code 2.1.282. The Cursor, Gemini CLI, Codex and Copilot CLI adapters follow each harness's documented hook format and are covered by payload tests.
 
@@ -84,17 +84,18 @@ One `fuse engine` process runs per repository. The first command or hook starts 
 
 From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine. Results are in `evals/results`.
 
-| Eval | Fixture (5 projects) | NodaTime (17 projects, 42,681 tests) |
+| Eval | Fixture (5 projects, 22 tests) | NodaTime (17 projects, 42,681 tests) |
 |---|---|---|
-| Correctness: mutations compared with a real `dotnet build` | 30 cases, 0 missed errors, 0 extra errors | 20 cases, 0 missed errors, 0 extra errors |
-| `fuse check` vs `dotnet build`, median | 0.19 s vs 1.11 s | 0.51 s vs 1.65 s |
-| Warm check after a body edit, P50 / P95 | 168 / 216 ms | 558 / 803 ms |
-| Warm check after a signature edit, P50 / P95 | 198 / 2,460 ms | 1,640 / 7,980 ms |
+| Correctness: generated edits compared with a real `dotnet build` | 30 cases: 0 missed, 0 contradicted | 20 cases: 0 missed, 0 contradicted |
+| `fuse check` vs `dotnet build`, median | 0.17 s vs 1.16 s | 0.59 s vs 1.54 s |
+| Warm check after a body edit, P50 / P95 | 166 / 278 ms | 526 / 666 ms |
+| Warm check after a signature edit, P50 / P95 | 196 / 2,617 ms | 1,463 / 7,971 ms |
 | Test selection: failing tests missed | 0 in 10 cases | 0 in 5 cases |
-| `fuse test` vs `dotnet test`, median | 1.3 s vs 4.2 s | 16.9 s vs 38.8 s |
-| Engine memory | 218 MB | 791 MB |
+| Tests run by `fuse test` | 15 percent | all (the changes reach core types) |
+| `fuse test` vs `dotnet test`, median | 1.41 s vs 4.46 s | 35.5 s vs 50.0 s |
+| Engine memory | 241 MB | 832 MB |
 
-The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project. NodaTime builds with `TreatWarningsAsErrors`, so each check there also runs the analyzers that can report a warning.
+"Contradicted" means Fuse reported an error the build does not have. Errors Fuse reports in projects the build skips after an earlier failure cannot be compared; the result files count them separately. The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project. NodaTime builds with `TreatWarningsAsErrors`, so each check there also runs the analyzers that can report a warning.
 
 ## Limits
 

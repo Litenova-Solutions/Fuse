@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 322" width="760" height="322" role="img" aria-labelledby="t d">
 <title id="t">Fuse time as a share of the dotnet command it replaces</title>
-<desc id="d">check, Fixture, 5 projects: 0.19 s with Fuse against 1.11 s with dotnet; check, NodaTime, 17 projects: 0.51 s with Fuse against 1.65 s with dotnet; tests, Fixture, 5 projects: 1.33 s with Fuse against 4.23 s with dotnet; tests, NodaTime, 42,681 tests: 16.9 s with Fuse against 38.8 s with dotnet</desc>
+<desc id="d">check, Fixture, 5 projects: 0.17 s with Fuse against 1.16 s with dotnet; check, NodaTime, 17 projects: 0.59 s with Fuse against 1.54 s with dotnet; tests, Fixture, 5 projects: 1.41 s with Fuse against 4.46 s with dotnet; tests, NodaTime, 42,681 tests: 35.5 s with Fuse against 50.0 s with dotnet</desc>
 <style>
   .bg { fill: #fcfcfb; }
   .title { fill: #0b0b0b; font: 600 17px system-ui, -apple-system, 'Segoe UI', sans-serif; }
@@ -8,6 +8,7 @@
   .group { fill: #0b0b0b; font: 600 14px system-ui, -apple-system, 'Segoe UI', sans-serif; }
   .label { fill: #0b0b0b; font: 14px system-ui, -apple-system, 'Segoe UI', sans-serif; }
   .val { font-variant-numeric: tabular-nums; }
+  .val-in { fill: #ffffff; font: 600 13px system-ui, -apple-system, 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; }
   .grid { stroke: #e2e1dc; stroke-width: 1; }
   .ref { stroke: #8a8984; stroke-width: 1.5; stroke-dasharray: 4 3; }
   .bar { fill: #2a78d6; }
@@ -36,16 +37,16 @@
 <text class="axis" x="734" y="92" text-anchor="end">dotnet = 100%</text>
 <text class="group" x="20" y="110">Check an edit: fuse check vs dotnet build</text>
 <text class="label" x="32" y="140">Fixture, 5 projects</text>
-<path class="bar" d="M260,128h77.1a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-77.1z"><title>Fixture, 5 projects: 0.19 s vs 1.11 s</title></path>
-<text class="val" x="349.1" y="140">17%  (0.19 s vs 1.11 s)</text>
+<path class="bar" d="M260,128h67.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-67.2z"><title>Fixture, 5 projects: 0.17 s vs 1.16 s</title></path>
+<text class="val" x="339.2" y="140">15%  (0.17 s vs 1.16 s)</text>
 <text class="label" x="32" y="174">NodaTime, 17 projects</text>
-<path class="bar" d="M260,162h143.9a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-143.9z"><title>NodaTime, 17 projects: 0.51 s vs 1.65 s</title></path>
-<text class="val" x="415.9" y="174">31%  (0.51 s vs 1.65 s)</text>
+<path class="bar" d="M260,162h180.4a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-180.4z"><title>NodaTime, 17 projects: 0.59 s vs 1.54 s</title></path>
+<text class="val" x="452.4" y="174">38%  (0.59 s vs 1.54 s)</text>
 <text class="group" x="20" y="208">Run the affected tests: fuse test vs dotnet test</text>
 <text class="label" x="32" y="238">Fixture, 5 projects</text>
-<path class="bar" d="M260,226h147.1a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-147.1z"><title>Fixture, 5 projects: 1.33 s vs 4.23 s</title></path>
-<text class="val" x="419.1" y="238">31%  (1.33 s vs 4.23 s)</text>
+<path class="bar" d="M260,226h147.5a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-147.5z"><title>Fixture, 5 projects: 1.41 s vs 4.46 s</title></path>
+<text class="val" x="419.5" y="238">32%  (1.41 s vs 4.46 s)</text>
 <text class="label" x="32" y="272">NodaTime, 42,681 tests</text>
-<path class="bar" d="M260,260h205.4a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-205.4z"><title>NodaTime, 42,681 tests: 16.9 s vs 38.8 s</title></path>
-<text class="val" x="477.4" y="272">44%  (16.9 s vs 38.8 s)</text>
+<path class="bar" d="M260,260h336.5a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-336.5z"><title>NodaTime, 42,681 tests: 35.5 s vs 50.0 s</title></path>
+<text class="val-in" x="592.5" y="272" text-anchor="end">71%  (35.5 s vs 50.0 s)</text>
 </svg>

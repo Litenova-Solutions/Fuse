@@ -4,27 +4,27 @@
   "target": "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs",
   "method": "Format",
   "referencingFilesInOtherProjects": 46,
-  "coldCleanMs": 2428.3765,
-  "coldBodyEditMs": 6773.8867,
+  "coldCleanMs": 1817.9055,
+  "coldBodyEditMs": 5856.569,
   "bodyEdit": {
-    "p50": 557.6,
-    "p95": 803,
-    "max": 803,
+    "p50": 526,
+    "p95": 665.9,
+    "max": 665.9,
     "n": 15
   },
   "signatureEdit": {
-    "p50": 1640,
-    "p95": 7979.9,
-    "max": 7979.9,
+    "p50": 1463.1,
+    "p95": 7971.1,
+    "max": 7971.1,
     "n": 10
   },
   "signatureEditSample": "fuse: 1 new error(s) in 1 file(s) (NodaTime); NodaTime declarations changed, 11 dependent project(s) checked",
   "warmUnchanged": {
-    "p50": 149.7,
-    "p95": 163,
-    "max": 163,
+    "p50": 137.1,
+    "p95": 144.3,
+    "max": 144.3,
     "n": 10
   },
-  "engineWorkingSetMb": 791.1,
+  "engineWorkingSetMb": 832.1,
   "treeCleanAfter": true
 }

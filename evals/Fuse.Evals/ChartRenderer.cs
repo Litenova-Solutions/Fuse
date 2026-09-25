@@ -53,6 +53,7 @@ internal static class ChartRenderer
               .group {'{'} fill: #0b0b0b; font: 600 14px system-ui, -apple-system, 'Segoe UI', sans-serif; {'}'}
               .label {'{'} fill: #0b0b0b; font: 14px system-ui, -apple-system, 'Segoe UI', sans-serif; {'}'}
               .val {'{'} font-variant-numeric: tabular-nums; {'}'}
+              .val-in {'{'} fill: #ffffff; font: 600 13px system-ui, -apple-system, 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; {'}'}
               .grid {'{'} stroke: #e2e1dc; stroke-width: 1; {'}'}
               .ref {'{'} stroke: #8a8984; stroke-width: 1.5; stroke-dasharray: 4 3; {'}'}
               .bar {'{'} fill: #2a78d6; {'}'}
@@ -95,7 +96,12 @@ internal static class ChartRenderer
                 var barEnd = X(share);
                 svg.Append(CultureInfo.InvariantCulture, $"""<text class="label" x="32" y="{barY + BarHeight - 2}">{row.Label}</text>""").Append('\n');
                 svg.Append(CultureInfo.InvariantCulture, $"""<path class="bar" d="{BarPath(PlotLeft, barY, barEnd - PlotLeft, BarHeight)}"><title>{row.Label}: {Seconds(row.Fuse)} vs {Seconds(row.Dotnet)}</title></path>""").Append('\n');
-                svg.Append(CultureInfo.InvariantCulture, $"""<text class="val" x="{barEnd + 8:0.#}" y="{barY + BarHeight - 2}">{share * 100:0}%  ({Seconds(row.Fuse)} vs {Seconds(row.Dotnet)})</text>""").Append('\n');
+                // The label sits after the bar, or inside it when it would run into the 100 percent line.
+                var label = string.Create(CultureInfo.InvariantCulture, $"{share * 100:0}%  ({Seconds(row.Fuse)} vs {Seconds(row.Dotnet)})");
+                var inside = barEnd + 8 + (label.Length * 7) > PlotRight - 6;
+                svg.Append(inside
+                    ? string.Create(CultureInfo.InvariantCulture, $"""<text class="val-in" x="{barEnd - 8:0.#}" y="{barY + BarHeight - 2}" text-anchor="end">{label}</text>""")
+                    : string.Create(CultureInfo.InvariantCulture, $"""<text class="val" x="{barEnd + 8:0.#}" y="{barY + BarHeight - 2}">{label}</text>""")).Append('\n');
                 y += RowHeight;
             }
         }

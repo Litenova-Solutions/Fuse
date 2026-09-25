@@ -30,7 +30,7 @@ internal sealed class GitBlobReader : IDisposable
                 }
                 catch (IOException) when (attempt == 0)
                 {
-                    // The git process exited unexpectedly (for example git was replaced on disk); restart it once.
+                    // The git process exits unexpectedly (for example when git is replaced on disk); restart it once.
                     Stop();
                 }
                 catch (IOException)

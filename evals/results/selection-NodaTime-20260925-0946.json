@@ -1,0 +1,179 @@
+{
+  "suite": "selection",
+  "repo": "NodaTime",
+  "seed": 2,
+  "requested": 5,
+  "cases": 5,
+  "withFailures": 5,
+  "missedCases": 0,
+  "unverifiedCases": 0,
+  "missedTests": 0,
+  "totalTests": 42681,
+  "meanSelectedFraction": 0.9997422740798013,
+  "fuseMedianSeconds": 35.4552704,
+  "dotnetMedianSeconds": 49.982252,
+  "skippedNonCompiling": [],
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edit": {
+        "path": "src/NodaTime/Text/ZonedDateTimePatternParser.cs",
+        "kind": "off-by-one",
+        "description": "changed 0 to 1 at line 81",
+        "newText": null
+      },
+      "truthFailing": [
+        "InvalidPatterns(Formatting of test name failed;Resolver? Y; Provider: TestZones)",
+        "AppendFormat(Formatting of test name failed;Resolver? N; Provider: TestZones)",
+        "XmlSerialization_NonIso",
+        "Format(Formatting of test name failed;Resolver? Y; Provider: TestZones)",
+        "Parse(Formatting of test name failed;Resolver? Y; Provider: TestZones)",
+        "XmlSerialization_Bcl",
+        "XmlSerialization_Iso",
+        "ZonedDateTime_ToString",
+        "Format(Formatting of test name failed;Resolver? Y; Provider: )",
+        "Format(Formatting of test name failed;Resolver? N; Provider: TestZones)",
+        "AppendFormat(Formatting of test name failed;Resolver? Y; Provider: TestZones)",
+        "AppendFormat(Formatting of test name failed;Resolver? Y; Provider: )"
+      ],
+      "fuseFailing": [
+        "Parse(Formatting of test name failed;Resolver? Y; Provider: TestZones)",
+        "AppendFormat(Formatting of test name failed;Resolver? N; Provider: TestZones)",
+        "ZonedDateTime_ToString",
+        "Format(Formatting of test name failed;Resolver? Y; Provider: )",
+        "XmlSerialization_NonIso",
+        "AppendFormat(Formatting of test name failed;Resolver? Y; Provider: )",
+        "Format(Formatting of test name failed;Resolver? N; Provider: TestZones)",
+        "XmlSerialization_Bcl",
+        "Format(Formatting of test name failed;Resolver? Y; Provider: TestZones)",
+        "XmlSerialization_Iso",
+        "AppendFormat(Formatting of test name failed;Resolver? Y; Provider: TestZones)",
+        "InvalidPatterns(Formatting of test name failed;Resolver? Y; Provider: TestZones)"
+      ],
+      "fuseFailed": 38,
+      "fusePassed": 42632,
+      "fuseScope": "fuse: 38 failed, 42632 passed, 11 skipped in 48.6 s; ran 1874 test(s) affected by your changes out of 1898 (whole projects where the change reaches NodaTime.TzdbCompiler, which runs behind a host); fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 48.6778573,
+      "dotnetSeconds": 60.0701643,
+      "verdict": "caught"
+    },
+    {
+      "index": 1,
+      "edit": {
+        "path": "src/NodaTime/Calendars/HebrewMonthConverter.cs",
+        "kind": "off-by-one",
+        "description": "changed 13 to 14 at line 32",
+        "newText": null
+      },
+      "truthFailing": [
+        "DaysInMonth",
+        "SetYear(\u00225402-13-05\u0022,2,\u00225404-13-05\u0022)",
+        "LeapYear(13,7)",
+        "DayOfYearAndReverse(Civil)",
+        "GetDaysInYearCrossCheck",
+        "BclThroughHistory_Scriptural",
+        "SetYear(\u00225402-13-05\u0022,1,\u00225403-12-05\u0022)"
+      ],
+      "fuseFailing": [
+        "LeapYear(13,7)",
+        "GetDaysInYearCrossCheck",
+        "DayOfYearAndReverse(Civil)",
+        "BclThroughHistory_Scriptural",
+        "SetYear(\u00225402-13-05\u0022,2,\u00225404-13-05\u0022)",
+        "DaysInMonth",
+        "SetYear(\u00225402-13-05\u0022,1,\u00225403-12-05\u0022)"
+      ],
+      "fuseFailed": 14,
+      "fusePassed": 42656,
+      "fuseScope": "fuse: 14 failed, 42656 passed, 11 skipped in 46.1 s; ran 1874 test(s) affected by your changes out of 1898 (whole projects where the change reaches NodaTime.TzdbCompiler, which runs behind a host); fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 46.3144124,
+      "dotnetSeconds": 45.692377,
+      "verdict": "caught"
+    },
+    {
+      "index": 2,
+      "edit": {
+        "path": "src/NodaTime/Text/LocalDatePattern.cs",
+        "kind": "flip-comparison",
+        "description": "flipped == at line 151",
+        "newText": null
+      },
+      "truthFailing": [
+        "WithTwoDigitYearMax_Invalid(int.MinValue)",
+        "WithTwoDigitYearMax_Invalid(100)",
+        "WithTwoDigitYearMax_Invalid(-1)",
+        "WithTwoDigitYearMax(99,\u002299-01-01\u0022,2099)",
+        "WithTwoDigitYearMax(50,\u002250-01-01\u0022,2050)",
+        "WithTwoDigitYearMax(50,\u002249-01-01\u0022,2049)",
+        "WithTwoDigitYearMax_Invalid(int.MaxValue)",
+        "WithTwoDigitYearMax(0,\u002201-01-01\u0022,1901)"
+      ],
+      "fuseFailing": [
+        "WithTwoDigitYearMax(99,\u002299-01-01\u0022,2099)",
+        "WithTwoDigitYearMax_Invalid(int.MaxValue)",
+        "WithTwoDigitYearMax(50,\u002250-01-01\u0022,2050)",
+        "WithTwoDigitYearMax_Invalid(-1)",
+        "WithTwoDigitYearMax_Invalid(int.MinValue)",
+        "WithTwoDigitYearMax_Invalid(100)",
+        "WithTwoDigitYearMax(0,\u002201-01-01\u0022,1901)",
+        "WithTwoDigitYearMax(50,\u002249-01-01\u0022,2049)"
+      ],
+      "fuseFailed": 16,
+      "fusePassed": 42654,
+      "fuseScope": "fuse: 16 failed, 42654 passed, 11 skipped in 35.3 s; ran 1874 test(s) affected by your changes out of 1898 (whole projects where the change reaches NodaTime.TzdbCompiler, which runs behind a host); fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 35.4552704,
+      "dotnetSeconds": 54.355158,
+      "verdict": "caught"
+    },
+    {
+      "index": 3,
+      "edit": {
+        "path": "src/NodaTime/TimeZones/BclDateTimeZoneSource.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060TimeZoneInfoInterceptor.FindSystemTimeZoneById(local.Id);\u0060 at line 71",
+        "newText": null
+      },
+      "truthFailing": [
+        "LocalZoneIsNotSystemZone"
+      ],
+      "fuseFailing": [
+        "LocalZoneIsNotSystemZone"
+      ],
+      "fuseFailed": 2,
+      "fusePassed": 42668,
+      "fuseScope": "fuse: 2 failed, 42668 passed, 11 skipped in 29.1 s; ran 1874 test(s) affected by your changes out of 1898 (whole projects where the change reaches NodaTime.TzdbCompiler, which runs behind a host); fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 29.247888,
+      "dotnetSeconds": 46.9448604,
+      "verdict": "caught"
+    },
+    {
+      "index": 4,
+      "edit": {
+        "path": "src/NodaTime/DateInterval.cs",
+        "kind": "negate-return",
+        "description": "negated \u0060return false;\u0060 at line 96",
+        "newText": null
+      },
+      "truthFailing": [
+        "Equals_DifferentToNull",
+        "Equals_DifferentToOtherType"
+      ],
+      "fuseFailing": [
+        "Equals_DifferentToOtherType",
+        "Equals_DifferentToNull"
+      ],
+      "fuseFailed": 4,
+      "fusePassed": 42666,
+      "fuseScope": "fuse: 4 failed, 42666 passed, 11 skipped in 30.7 s; ran 1874 test(s) affected by your changes out of 1898 (whole projects where the change reaches NodaTime.TzdbCompiler, which runs behind a host); fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 30.7765021,
+      "dotnetSeconds": 49.982252,
+      "verdict": "caught"
+    }
+  ]
+}

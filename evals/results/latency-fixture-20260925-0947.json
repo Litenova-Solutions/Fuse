@@ -4,27 +4,27 @@
   "target": "src/Core/Geometry.cs",
   "method": "IsSquare",
   "referencingFilesInOtherProjects": 2,
-  "coldCleanMs": 1160.401,
-  "coldBodyEditMs": 3848.1593,
+  "coldCleanMs": 1166.5266,
+  "coldBodyEditMs": 4176.6573,
   "bodyEdit": {
-    "p50": 167.6,
-    "p95": 216.4,
-    "max": 216.4,
+    "p50": 166.2,
+    "p95": 277.9,
+    "max": 277.9,
     "n": 15
   },
   "signatureEdit": {
-    "p50": 197.6,
-    "p95": 2460.4,
-    "max": 2460.4,
+    "p50": 196.2,
+    "p95": 2617.3,
+    "max": 2617.3,
     "n": 10
   },
   "signatureEditSample": "fuse: 4 new error(s) in 2 file(s) (Services, Core.Tests); Core declarations changed, 4 dependent project(s) checked",
   "warmUnchanged": {
-    "p50": 153.4,
-    "p95": 169.3,
-    "max": 169.3,
+    "p50": 130.7,
+    "p95": 138.5,
+    "max": 138.5,
     "n": 10
   },
-  "engineWorkingSetMb": 218.1,
+  "engineWorkingSetMb": 241.1,
   "treeCleanAfter": true
 }

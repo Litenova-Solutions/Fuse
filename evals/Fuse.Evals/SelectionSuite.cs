@@ -92,6 +92,8 @@ internal static partial class SelectionSuite
         {
             suite = "selection",
             repo = repo.Name,
+            commit = await repo.HeadAsync(),
+            fuseBuild = await repo.VersionAsync(),
             seed,
             requested = count,
             cases = cases.Count,

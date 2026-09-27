@@ -36,6 +36,16 @@ internal sealed partial class EvalRepo
 
     public async Task<bool> IsCleanAsync() => (await GitAsync("status", "--porcelain")).Output.Trim().Length == 0;
 
+    /// <summary>The commit the repository is measured at, so a result file names the tree behind its numbers.</summary>
+    public async Task<string> HeadAsync()
+    {
+        var result = await GitAsync("rev-parse", "HEAD");
+        return result.ExitCode == 0 ? result.Output.Trim() : "";
+    }
+
+    /// <summary>The product version the fuse executable under test reports for itself.</summary>
+    public async Task<string> VersionAsync() => (await FuseAsync("--version")).Result.Output.Trim();
+
     /// <summary>Runs <c>dotnet build</c> on the truth target and returns its error lines (relative paths, canonical form).</summary>
     public async Task<(List<string> Errors, int ExitCode, double Seconds)> BuildAsync()
     {

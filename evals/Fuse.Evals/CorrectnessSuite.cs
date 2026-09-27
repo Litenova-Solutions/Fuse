@@ -77,6 +77,8 @@ internal static partial class CorrectnessSuite
         {
             suite = "correctness",
             repo = repo.Name,
+            commit = await repo.HeadAsync(),
+            fuseBuild = await repo.VersionAsync(),
             seed,
             requested = count,
             cases = cases.Count,

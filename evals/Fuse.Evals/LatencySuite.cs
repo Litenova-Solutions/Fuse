@@ -58,6 +58,8 @@ internal static class LatencySuite
         {
             suite = "latency",
             repo = repo.Name,
+            commit = await repo.HeadAsync(),
+            fuseBuild = await repo.VersionAsync(),
             target = Path.GetRelativePath(repo.Root, file).Replace('\\', '/'),
             method,
             referencingFilesInOtherProjects = references,

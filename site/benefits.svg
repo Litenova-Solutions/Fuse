@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 322" width="760" height="322" role="img" aria-labelledby="t d">
 <title id="t">Fuse time as a share of the dotnet command it replaces</title>
-<desc id="d">check, Small solution, 5 projects: 0.17 s with Fuse against 1.16 s with dotnet; check, NodaTime, 17 projects: 0.59 s with Fuse against 1.54 s with dotnet; tests, Small solution, 5 projects: 1.41 s with Fuse against 4.46 s with dotnet; tests, NodaTime, 42,681 tests: 35.5 s with Fuse against 50.0 s with dotnet</desc>
+<desc id="d">check, Small solution, 5 projects: 0.17 s with Fuse against 1.16 s with dotnet; tests, Small solution, 5 projects: 1.41 s with Fuse against 4.46 s with dotnet; check, NodaTime, 17 projects: 0.59 s with Fuse against 1.54 s with dotnet; tests, NodaTime, 42,681 tests: 35.5 s with Fuse against 50.0 s with dotnet</desc>
 <style>
   .bg { fill: #fcfcfb; }
   .title { fill: #0b0b0b; font: 600 17px system-ui, -apple-system, 'Segoe UI', sans-serif; }

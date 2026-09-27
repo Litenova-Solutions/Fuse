@@ -23,16 +23,12 @@ internal static class ChartRenderer
     {
         var results = Path.Combine(fuseRoot, "evals", "results");
         var rows = new List<Row>();
-        foreach (var (repo, label) in new[] { ("fixture", "Small solution, 5 projects"), ("NodaTime", "NodaTime, 17 projects") })
+        foreach (var repo in PinnedRepo.Charted)
         {
-            if (Latest(results, $"correctness-{repo}-") is { } correctness)
-                rows.Add(new Row("check", label, correctness.GetProperty("fuseMedianMs").GetDouble() / 1000, correctness.GetProperty("buildMedianSeconds").GetDouble(), "s"));
-        }
-
-        foreach (var (repo, label) in new[] { ("fixture", "Small solution, 5 projects"), ("NodaTime", "NodaTime, 42,681 tests") })
-        {
-            if (Latest(results, $"selection-{repo}-") is { } selection)
-                rows.Add(new Row("test", label, selection.GetProperty("fuseMedianSeconds").GetDouble(), selection.GetProperty("dotnetMedianSeconds").GetDouble(), "s"));
+            if (Latest(results, $"correctness-{repo.Name}-") is { } correctness)
+                rows.Add(new Row("check", repo.CheckLabel, correctness.GetProperty("fuseMedianMs").GetDouble() / 1000, correctness.GetProperty("buildMedianSeconds").GetDouble(), "s"));
+            if (Latest(results, $"selection-{repo.Name}-") is { } selection)
+                rows.Add(new Row("test", repo.TestLabel, selection.GetProperty("fuseMedianSeconds").GetDouble(), selection.GetProperty("dotnetMedianSeconds").GetDouble(), "s"));
         }
 
         var groups = new[]

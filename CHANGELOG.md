@@ -1,5 +1,7 @@
 # Changelog
 
+## 5.1.0
+
 ## 5.0.0
 
 Fuse keeps a warm Roslyn compilation of a .NET repository and gives coding agents the compiler errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server.

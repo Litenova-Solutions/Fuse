@@ -32,7 +32,11 @@ internal static partial class SelectionSuite
         var headBuild = await repo.BuildAsync();
         if (headBuild.ExitCode != 0)
             throw new InvalidOperationException($"HEAD does not build: {string.Join("; ", headBuild.Errors.Take(3))}");
-        var head = await FullTestAsync(repo, solution);
+        var withoutResults = new SortedSet<string>(StringComparer.Ordinal);
+        var head = await FullTestAsync(repo, solution, withoutResults);
+        if (withoutResults.Count > 0)
+            throw new InvalidOperationException(
+                $"{withoutResults.Count} test project(s) produced no results, so the truth side of this suite would be missing them: {string.Join(", ", withoutResults)}");
         Console.WriteLine($"[selection] HEAD: {head.Outcome.Total} tests, {head.Outcome.Failed} failing, {head.Seconds:0.0} s");
         var baselineFailing = head.Outcome.Failures.Select(f => f.Name).ToHashSet(StringComparer.Ordinal);
         await repo.FuseAsync("check");
@@ -62,7 +66,7 @@ internal static partial class SelectionSuite
                 continue;
             }
 
-            var truth = await FullTestAsync(repo, solution);
+            var truth = await FullTestAsync(repo, solution, withoutResults);
             if (truth.BuildFailed)
             {
                 skipped.Add($"{edit.Kind} {edit.Path}: {edit.Description} (does not compile)");
@@ -106,6 +110,7 @@ internal static partial class SelectionSuite
             fuseMedianSeconds = CorrectnessSuite.Median(cases.Select(c => c.FuseSeconds)),
             dotnetMedianSeconds = CorrectnessSuite.Median(cases.Select(c => c.DotnetSeconds)),
             skippedNonCompiling = skipped,
+            projectsWithoutResults = withoutResults.ToList(),
             treeCleanAfter = clean,
             details = cases,
         };
@@ -113,8 +118,15 @@ internal static partial class SelectionSuite
         return summary;
     }
 
-    /// <summary>Runs every test project in the solution with dotnet test and reads the TRX results.</summary>
-    private static async Task<(TestOutcome Outcome, double Seconds, bool BuildFailed)> FullTestAsync(EvalRepo repo, SolutionInfo solution)
+    /// <summary>
+    ///     Runs every test project in the solution with dotnet test and reads the TRX results. A project that writes none is
+    ///     added to <paramref name="withoutResults"/> with the reason it is expected to, because a silent gap in the truth
+    ///     side would flatter every selection number.
+    /// </summary>
+    private static async Task<(TestOutcome Outcome, double Seconds, bool BuildFailed)> FullTestAsync(
+        EvalRepo repo,
+        SolutionInfo solution,
+        SortedSet<string> withoutResults)
     {
         var watch = Stopwatch.StartNew();
         var total = TestOutcome.Empty;
@@ -126,8 +138,13 @@ internal static partial class SelectionSuite
             var outcome = TrxReader.ReadDirectory(results, repo.Root);
             if (outcome is null)
             {
+                var name = Path.GetRelativePath(repo.Root, project).Replace('\\', '/');
                 if (run.ExitCode != 0 && BuildOutputParser.Errors(run.Output, repo.Root).Count > 0)
                     buildFailed = true;
+                else if (SolutionInfo.IsMicrosoftTestingPlatform(project))
+                    withoutResults.Add($"{name} (Microsoft.Testing.Platform runner, no VSTest trx)");
+                else
+                    withoutResults.Add(name);
             }
             else
             {

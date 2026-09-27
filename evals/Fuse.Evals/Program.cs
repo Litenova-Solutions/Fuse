@@ -56,10 +56,9 @@ internal static class Program
         var solution = SolutionInfo.Load(repoPath, solutionPath);
         Console.WriteLine($"repo {repoPath}, solution {solutionPath}: {solution.CodeProjects.Count} code project(s), {solution.TestProjects.Count} test project(s); fuse {fuse}");
 
-        var restore = await ProcessRunner.RunAsync("dotnet", ["restore", solutionPath, "-nologo", "-v:q"], repoPath, CancellationToken.None);
-        if (restore.ExitCode != 0)
+        if (!await RestoreAsync(repoPath, solutionPath, solution))
         {
-            Console.Error.WriteLine($"restore failed:\n{restore.Output}");
+            Console.Error.WriteLine("restore failed");
             return 1;
         }
 
@@ -84,6 +83,47 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>
+    ///     Restores the solution, then every project on disk that the solution leaves out. Fuse reads every project it
+    ///     finds in the working tree, not only the solution's, and refuses to answer while one of them is unrestored, so a
+    ///     restore that stops at the solution leaves the repository in a state no user would be in.
+    /// </summary>
+    private static async Task<bool> RestoreAsync(string repoPath, string solutionPath, SolutionInfo solution)
+    {
+        var restore = await ProcessRunner.RunAsync("dotnet", ["restore", solutionPath, "-nologo", "-v:q"], repoPath, CancellationToken.None);
+        if (restore.ExitCode != 0)
+        {
+            Console.Error.WriteLine(restore.Output);
+            return false;
+        }
+
+        var outside = ProjectsOutside(repoPath, solution);
+        foreach (var project in outside)
+        {
+            var result = await ProcessRunner.RunAsync("dotnet", ["restore", project, "-nologo", "-v:q"], repoPath, CancellationToken.None);
+            if (result.ExitCode != 0)
+            {
+                Console.Error.WriteLine($"restore failed for {project}, which the solution leaves out:\n{result.Output}");
+                return false;
+            }
+        }
+
+        if (outside.Count > 0)
+            Console.WriteLine($"restored {outside.Count} project(s) outside {solutionPath}: {string.Join(", ", outside.Select(Path.GetFileName))}");
+        return true;
+    }
+
+    /// <summary>Project files under the repository that the solution does not list, in a stable order.</summary>
+    private static List<string> ProjectsOutside(string repoPath, SolutionInfo solution)
+    {
+        var listed = solution.Projects.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return Directory.EnumerateFiles(repoPath, "*.csproj", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(segment => segment is "bin" or "obj"))
+            .Where(f => !listed.Contains(Path.GetFullPath(f)))
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .ToList();
+    }
+
     /// <summary>The repository to measure: the generated fixture, a pinned repository already cloned, or any path.</summary>
     private static async Task<string> ResolveAsync(string nameOrPath, string fuseRoot)
     {
@@ -95,12 +135,13 @@ internal static class Program
     }
 
     /// <summary>
-    ///     Clones a pinned repository into evals/.work/repos and checks out its commit. A checkout already at that
-    ///     commit is left alone, so re-running this costs nothing.
+    ///     Checks a pinned repository out into evals/.work/repos at its commit, from its remote or from a local clone it
+    ///     cannot be cloned from, and copies the files the build needs that git does not carry. A checkout already at
+    ///     that commit is left alone, so re-running this costs nothing.
     /// </summary>
     private static async Task<int> CloneAsync(string fuseRoot, string name)
     {
-        if (PinnedRepo.Find(name) is not { Url: { } url, Commit: { } commit } pinned)
+        if (PinnedRepo.Find(name) is not { Commit: { Length: > 0 } commit } pinned)
         {
             Console.Error.WriteLine($"no pinned repository called {name}; clone one of {string.Join(", ", PinnedRepo.All.Select(r => r.Name))}");
             return 2;
@@ -113,14 +154,21 @@ internal static class Program
         if (head is not { ExitCode: 0 } || head.Output.Trim() != commit)
         {
             if (head is null)
-            {
-                await GitOrFail(parent, "clone", "--quiet", url, path);
-                await GitOrFail(path, "checkout", "--quiet", "--detach", commit);
-            }
+                await GitOrFail(parent, "clone", "--quiet", pinned.LocalPath ?? pinned.Url ?? throw new ArgumentException($"{pinned.Name} has no source"), path);
             else
-            {
                 await GitOrFail(path, "fetch", "--quiet", "origin");
-                await GitOrFail(path, "checkout", "--quiet", "--detach", commit);
+            await GitOrFail(path, "checkout", "--quiet", "--detach", commit);
+        }
+
+        if (pinned.LocalFiles is { } files)
+        {
+            foreach (var file in files)
+            {
+                var source = Path.Combine(pinned.LocalPath ?? "", file);
+                if (File.Exists(source))
+                    File.Copy(source, Path.Combine(path, file), overwrite: true);
+                else
+                    Console.WriteLine($"{pinned.Name}: {file} not in {pinned.LocalPath}, so the build may fail without it");
             }
         }
 

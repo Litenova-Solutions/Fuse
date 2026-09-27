@@ -2,7 +2,7 @@
 
 Near-instant compiler feedback for AI coding agents on .NET.
 
-Fuse keeps your solution compiled in memory with Roslyn and plugs it into coding agents through hooks. After every edit, the agent learns which compiler errors that edit introduced, including breaks in projects that depend on it, up to 6.8x faster than `dotnet build`. When the agent runs `dotnet test`, only the tests the change can reach run, and only failures are printed.
+Fuse keeps your solution compiled in memory with Roslyn and plugs it into coding agents through hooks. After every edit, the agent learns which compiler errors that edit introduced, including breaks in projects that depend on it, up to 6.7x faster than `dotnet build`. When the agent runs `dotnet test`, only the tests the change can reach run, and only failures are printed.
 
 ```bash
 dotnet tool install -g Fuse
@@ -85,7 +85,7 @@ One `fuse engine` process runs per repository. The first command or hook starts 
 
 ## Measured
 
-From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine. Results are in `evals/results`.
+From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine. Every number below comes from these files: `evals/results/correctness-fixture-20260925-0921.json`, `evals/results/correctness-NodaTime-20260925-0924.json`, `evals/results/selection-fixture-20260925-0938.json`, `evals/results/selection-NodaTime-20260925-0946.json`, `evals/results/latency-fixture-20260925-0947.json` and `evals/results/latency-NodaTime-20260925-0950.json`.
 
 | Eval | Small solution (fixture: 5 projects, 22 tests) | NodaTime (17 projects, 42,681 tests) |
 |---|---|---|

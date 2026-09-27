@@ -5,7 +5,7 @@ namespace Fuse.Evals;
 ///     chart draws for it. A result file names the repository, and the commit is what makes its numbers reproducible later.
 ///     The labels describe the pinned commit, so they are true as long as the pin stands.
 /// </summary>
-/// <param name="Name">Folder name under evals/.work/repos, and the name every result file carries.</param>
+/// <param name="Name">Folder name under the evals' state directory, and the name every result file carries.</param>
 /// <param name="Url">Where to clone from.</param>
 /// <param name="LocalPath">
 ///     An existing local clone to take the checkout from instead of <paramref name="Url"/>, for a repository that cannot
@@ -38,16 +38,28 @@ internal sealed record PinnedRepo(
         // Pinned to the last commit before Jellyfin moved to Roslyn 5: its in-repo analyzer is built against a newer
         // compiler than any SDK that resolves on a machine whose newest SDK is 10.0.112, and Roslyn refuses that (CS9057).
         new("Jellyfin", "https://github.com/jellyfin/Jellyfin", null, null, "1d7c6af520da5c84ceac1c21a1d2da34837540ac", "Jellyfin.sln", "Jellyfin, 40 projects", "Jellyfin, 16 test projects"),
-        // LiteBus signs every assembly only when LiteBus.snk sits at the repository root, and that key is not in the
-        // repository, so a fresh clone cannot build (CS0281 on every cross-assembly InternalsVisibleTo).
-        new("LiteBus", "https://github.com/litenova/LiteBus", @"C:\Projects\LiteBus", ["LiteBus.snk"], "a1a6bec0bee5e096e33d53747a4dc82f7e609e73", "LiteBus.slnx", "LiteBus, 101 projects", "LiteBus, 16 test projects"),
+        // The .NET Community Toolkit: 26 projects, 15 of them test projects, layered as Common, Diagnostics,
+        // HighPerformance and Mvvm, with one generator and code-fix set per supported Roslyn version. It is the fourth
+        // repository because its test projects reach disjoint slices of the code, so affected-test selection can narrow.
+        new("CommunityToolkit", "https://github.com/CommunityToolkit/dotnet", null, null, "b135626dd54d33b8f05f2ff31591592c004aa848", "dotnet.slnx", "Community Toolkit, 11 projects", "Community Toolkit, 15 test projects"),
     ];
+
+    /// <summary>Everything the evals keep outside the repository they run from: checkouts, and the fixture when it is cloned rather than generated.</summary>
+    public static void Clean() => Directory.Delete(StateDirectory, recursive: true);
 
     /// <summary>Every repository the chart draws: the fixture first, then the cloned ones.</summary>
     public static IReadOnlyList<PinnedRepo> Charted { get; } = [Fixture, .. All];
 
     public static PinnedRepo? Find(string name) => Charted.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Where a checkout of this repository lives (the eval repositories sit side by side under evals/.work/repos).</summary>
-    public string WorkPath(string fuseRoot) => Path.Combine(fuseRoot, "evals", ".work", "repos", Name);
+    /// <summary>
+    ///     Where a checkout of this repository lives. Outside the Fuse tree on purpose: a repository with no
+    ///     <c>Directory.Packages.props</c> of its own inherits the one above it, so a checkout inside the Fuse repository
+    ///     builds against Fuse's central package versions and fails to restore.
+    /// </summary>
+    public string WorkPath() => Path.Combine(StateDirectory, "repos", Name);
+
+    /// <summary>Where the evals keep their own state, like the engine's.</summary>
+    public static string StateDirectory { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "fuse", "evals");
 }

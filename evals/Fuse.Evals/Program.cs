@@ -13,9 +13,12 @@ internal static class Program
         usage: Fuse.Evals <suite> <repo> [--mutations N] [--seed S] [--solution path] [--fuse path]
                Fuse.Evals chart
                Fuse.Evals clone <repo>
+               Fuse.Evals clean
           suite: correctness | selection | latency | all
           repo:  fixture (generated under evals/.work/fixture), a pinned repository name, or a path to a git repository
-          clone: NodaTime | Jellyfin | LiteBus, checked out at the pinned commit under evals/.work/repos
+          clone: NodaTime | Jellyfin | CommunityToolkit, checked out at the pinned commit under
+                 %LOCALAPPDATA%/fuse/evals/repos (outside this repository, so its build settings do not leak in)
+          clean: removes every checkout and the generated fixture; the result files in evals/results stay
         """;
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -32,7 +35,10 @@ internal static class Program
         }
 
         if (args is ["clone", var wanted])
-            return await CloneAsync(FindFuseRoot(), wanted);
+            return await CloneAsync(wanted);
+
+        if (args is ["clean"])
+            return CleanAsync();
 
         if (args.Length < 2)
         {
@@ -113,6 +119,23 @@ internal static class Program
         return true;
     }
 
+    /// <summary>
+    ///     Deletes the evals' own state: the cloned checkouts and the generated fixture. The result files stay, since
+    ///     they are what the documentation quotes.
+    /// </summary>
+    private static int CleanAsync()
+    {
+        if (!Directory.Exists(PinnedRepo.StateDirectory))
+        {
+            Console.WriteLine($"nothing to clean at {PinnedRepo.StateDirectory}");
+            return 0;
+        }
+
+        PinnedRepo.Clean();
+        Console.WriteLine($"removed {PinnedRepo.StateDirectory}");
+        return 0;
+    }
+
     /// <summary>Project files under the repository that the solution does not list, in a stable order.</summary>
     private static List<string> ProjectsOutside(string repoPath, SolutionInfo solution)
     {
@@ -129,17 +152,17 @@ internal static class Program
     {
         if (nameOrPath == "fixture")
             return await FixtureGenerator.CreateAsync(Path.Combine(fuseRoot, "evals", ".work", "fixture"));
-        if (PinnedRepo.Find(nameOrPath) is { } pinned && Directory.Exists(pinned.WorkPath(fuseRoot)))
-            return pinned.WorkPath(fuseRoot);
+        if (PinnedRepo.Find(nameOrPath) is { } pinned && Directory.Exists(pinned.WorkPath()))
+            return pinned.WorkPath();
         return Path.GetFullPath(nameOrPath);
     }
 
     /// <summary>
-    ///     Checks a pinned repository out into evals/.work/repos at its commit, from its remote or from a local clone it
-    ///     cannot be cloned from, and copies the files the build needs that git does not carry. A checkout already at
-    ///     that commit is left alone, so re-running this costs nothing.
+    ///     Checks a pinned repository out under the evals' own state directory at its commit, from its remote or from a
+    ///     local clone it cannot be cloned from, and copies the files the build needs that git does not carry. A checkout
+    ///     already at that commit is left alone, so re-running this costs nothing.
     /// </summary>
-    private static async Task<int> CloneAsync(string fuseRoot, string name)
+    private static async Task<int> CloneAsync(string name)
     {
         if (PinnedRepo.Find(name) is not { Commit: { Length: > 0 } commit } pinned)
         {
@@ -147,7 +170,7 @@ internal static class Program
             return 2;
         }
 
-        var path = pinned.WorkPath(fuseRoot);
+        var path = pinned.WorkPath();
         var parent = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(parent);
         var head = Directory.Exists(Path.Combine(path, ".git")) ? await GitAsync(path, "rev-parse", "HEAD") : null;
@@ -173,7 +196,7 @@ internal static class Program
         }
 
         var now = await GitAsync(path, "rev-parse", "HEAD");
-        Console.WriteLine($"{pinned.Name} at {now.Output.Trim()} in {Path.GetRelativePath(fuseRoot, path)}");
+        Console.WriteLine($"{pinned.Name} at {now.Output.Trim()} in {path}");
         return now.Output.Trim() == commit ? 0 : 1;
     }
 

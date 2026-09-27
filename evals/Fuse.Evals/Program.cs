@@ -107,12 +107,16 @@ internal static class Program
         }
 
         var path = pinned.WorkPath(fuseRoot);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var parent = Path.GetDirectoryName(path)!;
+        Directory.CreateDirectory(parent);
         var head = Directory.Exists(Path.Combine(path, ".git")) ? await GitAsync(path, "rev-parse", "HEAD") : null;
         if (head is not { ExitCode: 0 } || head.Output.Trim() != commit)
         {
             if (head is null)
-                await GitOrFail(path, "clone", "--quiet", url, path);
+            {
+                await GitOrFail(parent, "clone", "--quiet", url, path);
+                await GitOrFail(path, "checkout", "--quiet", "--detach", commit);
+            }
             else
             {
                 await GitOrFail(path, "fetch", "--quiet", "origin");
@@ -132,7 +136,7 @@ internal static class Program
     {
         var result = await GitAsync(workingDirectory, args);
         if (result.ExitCode != 0)
-            throw new InvalidOperationException($"git {string.Join(' ', args.Take(args.Length - 1))} failed:\n{result.Output}");
+            throw new InvalidOperationException($"git {string.Join(' ', args)} failed:\n{result.Output}");
     }
 
     private static Dictionary<string, string> Options(string[] args)

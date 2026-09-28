@@ -219,8 +219,9 @@ internal static class HookCommand
             Directory.CreateDirectory(root.StateDirectory);
             File.AppendAllText(Path.Combine(root.StateDirectory, "hook.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
         }
-        catch (IOException)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
+            // Logging is the last thing a failing hook does; it must not be the thing that breaks the session.
         }
     }
 }

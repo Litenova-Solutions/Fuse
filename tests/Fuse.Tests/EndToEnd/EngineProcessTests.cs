@@ -104,6 +104,42 @@ public class EngineProcessTests
     }
 
     [Fact]
+    public async Task Post_edit_hook_tells_the_agent_to_restore_an_unrestored_project()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        try
+        {
+            File.Delete(repo.Full("Lib/obj/project.assets.json"));
+            repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+            var payload = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["hook_event_name"] = "PostToolUse",
+                ["tool_name"] = "Edit",
+                ["cwd"] = repo.Path,
+                ["tool_input"] = new Dictionary<string, string> { ["file_path"] = repo.Full("Lib/Calc.cs") },
+            });
+
+            // A missing restore is one of the two things a hook reports, so the agent is woken with the fix, not told nothing.
+            var result = await FuseProcess.RunAsync(repo.Path, payload, "hook", "claude", "post-edit");
+            Assert.Equal(2, result.ExitCode);
+            Assert.Contains("dotnet restore", result.Stderr, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await FuseProcess.StopEngineAsync(repo.Root);
+        }
+    }
+
+    [Fact]
+    public async Task A_hook_with_an_empty_cwd_exits_zero_without_output()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        var result = await FuseProcess.RunAsync(repo.Path, """{"hook_event_name":"PostToolUse","tool_name":"Edit","cwd":"","tool_input":{"file_path":""}}""", "hook", "claude", "post-edit");
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("", result.Stdout + result.Stderr);
+    }
+
+    [Fact]
     public async Task Pre_bash_hook_rewrites_dotnet_test()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });

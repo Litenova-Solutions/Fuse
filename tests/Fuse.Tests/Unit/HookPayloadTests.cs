@@ -82,4 +82,11 @@ public class HookPayloadTests
     {
         Assert.Empty(HookPayload.Parse("").EditedFiles());
     }
+
+    [Fact]
+    public void A_blank_cwd_falls_back_to_the_process_directory()
+    {
+        Assert.Equal(Environment.CurrentDirectory, Parse(new { cwd = "" }).Cwd);
+        Assert.Equal(Environment.CurrentDirectory, HookPayload.Parse("""{"cwd":"  ","workspace_roots":[""]}""").Cwd);
+    }
 }

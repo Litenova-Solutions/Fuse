@@ -17,7 +17,10 @@ internal sealed partial class HookPayload
     }
 
     /// <summary>The working directory the harness reports, or the process's own.</summary>
-    public string Cwd => String("cwd") ?? String("workspace_roots", 0) ?? Environment.CurrentDirectory;
+    /// <remarks>An empty or blank value counts as absent, so a harness that sends <c>"cwd": ""</c> falls back too.</remarks>
+    public string Cwd => NonBlank(String("cwd")) ?? NonBlank(String("workspace_roots", 0)) ?? Environment.CurrentDirectory;
+
+    private static string? NonBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     /// <summary>True when Cursor runs a hook it loaded from Claude Code's settings.</summary>
     public bool FromCursor => _root.TryGetProperty("cursor_version", out _);

@@ -13,7 +13,6 @@ internal sealed class EngineHost : IDisposable
     private readonly EngineLog _log;
     private readonly RepoWorkspace _workspace;
     private readonly Checker _checker;
-    private readonly CheckBatch _batches;
     private readonly TestPlanner _planner;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly HashSet<string> _preloadFailed = new(StringComparer.OrdinalIgnoreCase);
@@ -21,21 +20,13 @@ internal sealed class EngineHost : IDisposable
     private Task _preload = Task.CompletedTask;
     private CancellationToken _shutdown;
 
-    public EngineHost(RepoRoot root, EngineLog log, TimeSpan? batchWindow = null)
+    public EngineHost(RepoRoot root, EngineLog log)
     {
         _log = log;
         _workspace = new RepoWorkspace(root, log.Write);
         _checker = new Checker(_workspace);
-        _batches = new CheckBatch(_checker, batchWindow ?? EngineHost.BatchWindow);
         _planner = new TestPlanner(_workspace);
     }
-
-    /// <summary>
-    ///     How long a check waits for more requests before it starts, so several agents checking at once are answered
-    ///     together instead of one after another. It is one gate wait in the measurements, small enough that a lone
-    ///     check pays little for it and long enough to catch the requests of a second agent editing alongside the first.
-    /// </summary>
-    public static TimeSpan BatchWindow { get; } = TimeSpan.FromMilliseconds(50);
 
     /// <summary>Evaluates projects, then preloads the projects that already have uncommitted changes.</summary>
     public Task InitializeAsync(CancellationToken cancellationToken)
@@ -100,19 +91,6 @@ internal sealed class EngineHost : IDisposable
 
         var phases = new PhaseTimes();
         var queued = System.Diagnostics.Stopwatch.StartNew();
-        if (request.Kind is RequestKind.Check)
-        {
-            // A check joins the batch instead of taking the gate: several agents checking at once are answered together,
-            // each with the answer a serial check would have given it. A test plan is never batched, because it plans
-            // whole projects and mirrors build output, and two of those at once are worse than two queues.
-            var report = await _batches.EnqueueAsync(request.Files, phases, cancellationToken).ConfigureAwait(false);
-            var total = queued.ElapsedMilliseconds;
-            _log.Write($"Check {(request.Files is null ? "all" : string.Join(",", request.Files.Select(Path.GetFileName)))} took {total} ms, batch of {_batches.LastBatchSize} client(s)");
-            if (request.RequestId.Length > 0)
-                _log.Write(PhaseLine.Format(request.RequestId, request.Kind.ToString(), [.. phases.All, ("total", total)]));
-            return new EngineResponse(ResponseStatus.Ok, Check: report);
-        }
-
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         PhaseTimes.Add(phases, "gate", queued);
         var started = Environment.TickCount64;
@@ -120,6 +98,7 @@ internal sealed class EngineHost : IDisposable
         {
             return request.Kind switch
             {
+                RequestKind.Check => new EngineResponse(ResponseStatus.Ok, Check: await _checker.CheckAsync(request.Files, phases, cancellationToken).ConfigureAwait(false)),
                 RequestKind.TestPlan => new EngineResponse(ResponseStatus.Ok, Tests: await _planner.PlanAsync(request.AllTests, phases, cancellationToken).ConfigureAwait(false)),
                 _ => EngineResponse.Fail(ErrorCode.Internal, $"unknown request {request.Kind}"),
             };
@@ -198,6 +177,21 @@ internal sealed class EngineHost : IDisposable
                 _log.Write($"preload failed: {e}");
                 return;
             }
+        }
+    }
+
+    /// <summary>
+    ///     Waits for a background load to stop, after the shutdown token has been cancelled, so the workspace is never
+    ///     disposed under a project that is still loading.
+    /// </summary>
+    public async Task WaitForPreloadAsync()
+    {
+        try
+        {
+            await _preload.WaitAsync(TimeSpan.FromSeconds(30)).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is OperationCanceledException or TimeoutException)
+        {
         }
     }
 

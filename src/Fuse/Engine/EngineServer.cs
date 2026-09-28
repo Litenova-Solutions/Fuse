@@ -76,6 +76,8 @@ internal static class EngineServer
         {
             await shutdown.CancelAsync().ConfigureAwait(false);
             await watchdog.ConfigureAwait(false);
+            // The host is disposed when this method returns; a background load must stop before its workspace goes.
+            await host.WaitForPreloadAsync().ConfigureAwait(false);
             log.Write("engine stopped");
         }
 

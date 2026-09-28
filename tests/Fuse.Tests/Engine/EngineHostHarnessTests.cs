@@ -1,12 +1,13 @@
+using Fuse.Engine;
 using Fuse.Protocol;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.Engine;
 
 /// <summary>
-///     The engine's request loop driven in this process, so what a test sees is what an engine answers. The point of the
-///     batch queue is that a second check arriving while the first runs is not made to wait for all of it, and this is
-///     where that shows up: two checks sent together both come back, and they come back together.
+///     The engine's request loop driven in this process, so what a test sees is what an engine answers: concurrent
+///     requests each get their own answer, an engine error comes back as that error rather than a dropped connection,
+///     and every check is named and timed in the log.
 /// </summary>
 public class EngineHostHarnessTests
 {
@@ -35,25 +36,60 @@ public class EngineHostHarnessTests
         var formatter = repo.Full("Lib/Formatter.cs").Replace('\\', '/');
         var answers = await Task.WhenAll(engine.CheckAsync(calc), engine.CheckAsync(formatter));
 
-        // Which request reaches the batch first is up to the pipe, so the answers are matched by what they say.
         Assert.Contains(answers, a => a.Check!.Introduced.Any(d => d.Message.Contains("'Add'", StringComparison.Ordinal)));
         Assert.Contains(answers, a => a.Check!.Introduced.Any(d => d.Message.Contains("'Format'", StringComparison.Ordinal)));
-        var counts = new List<int>();
-        foreach (var answer in answers)
-            counts.Add(answer.Check!.Introduced.Length);
-        Assert.Equal(2, counts.Distinct().Count());
     }
 
     [Fact]
-    public async Task A_check_log_names_its_request_and_the_batch_it_was_in()
+    public async Task An_unrestored_project_is_answered_as_restore_needed()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await EngineHostHarness.StartAsync(repo, TimeSpan.FromMilliseconds(150));
+        await using var engine = await EngineHostHarness.StartAsync(repo);
+        File.Delete(repo.Full("Lib/obj/project.assets.json"));
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
 
-        await Task.WhenAll(engine.CheckAsync(repo.Full("Lib/Calc.cs")), engine.CheckAsync(repo.Full("Lib/Calc.cs")));
+        var answer = await engine.CheckAsync(repo.Full("Lib/Calc.cs"));
 
-        var log = engine.Log;
-        Assert.Contains("batch of 2 client(s)", log, StringComparison.Ordinal);
+        // The hook reports this code, and only this code, as something the agent has to act on.
+        Assert.Equal(ResponseStatus.Error, answer.Status);
+        Assert.Equal(ErrorCode.RestoreNeeded, answer.Error);
+        Assert.Contains("dotnet restore", answer.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_check_log_names_its_request_and_its_wait_for_the_gate()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await EngineHostHarness.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+
+        await engine.SendAsync(new EngineRequest("", RequestKind.Check, RequestId: "t-1", Files: [repo.Full("Lib/Calc.cs")]));
+
+        var line = engine.Log.Split('\n').Select(l => l[(l.IndexOf("phases ", StringComparison.Ordinal) is var i and >= 0 ? i : 0)..]).Single(l => l.StartsWith("phases id=t-1 ", StringComparison.Ordinal));
+        Assert.True(PhaseLine.TryParse(line.TrimEnd(), out _, out var kind, out var phases));
+        Assert.Equal("Check", kind);
+        Assert.Contains("gate", phases.Keys);
+        Assert.Contains("total", phases.Keys);
+    }
+
+    [Fact]
+    public async Task A_check_starts_the_background_load_of_dependents()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await EngineHostHarness.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+
+        await engine.CheckAsync(repo.Full("Lib/Calc.cs"));
+
+        // A body edit loads only Lib; the dependents of the changed project load in the background after the answer.
+        var loaded = false;
+        for (var i = 0; i < 300 && !loaded; i++)
+        {
+            loaded = engine.Log.Split('\n').Any(l => l.Contains(" loaded ", StringComparison.Ordinal) && !l.Contains(" loaded Lib ", StringComparison.Ordinal));
+            if (!loaded)
+                await Task.Delay(100, TestContext.Current.CancellationToken);
+        }
+
+        Assert.True(loaded, $"no dependent was preloaded after the check; log:\n{engine.Log}");
     }
 }

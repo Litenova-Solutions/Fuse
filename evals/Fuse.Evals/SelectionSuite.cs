@@ -134,8 +134,7 @@ internal static partial class SelectionSuite
         foreach (var project in solution.TestProjects)
         {
             var results = Path.Combine(repo.Root, "obj", "fuse-evals", Guid.NewGuid().ToString("N")[..8]);
-            var run = await ProcessRunner.RunAsync("dotnet", ["test", project, "--no-restore", "--logger", "trx;LogFilePrefix=truth", "--results-directory", results, "-nologo", "-tl:off"], repo.Root, CancellationToken.None);
-            var outcome = TrxReader.ReadDirectory(results, repo.Root);
+            var (run, outcome) = await RunProjectAsync(repo, project, results);
             if (outcome is null)
             {
                 var name = Path.GetRelativePath(repo.Root, project).Replace('\\', '/');
@@ -162,6 +161,32 @@ internal static partial class SelectionSuite
         }
 
         return (total, watch.Elapsed.TotalSeconds, buildFailed);
+    }
+
+    /// <summary>
+    ///     Runs one test project with <c>dotnet test</c> and reads its results. A warm engine holds the source generators
+    ///     and analyzers it loaded mapped for its lifetime, so this build can fail to copy one with MSB3021 or MSB3027.
+    ///     That is a defect in the product, recorded in <c>decisions.md</c>, but it is not a test result; the engine is
+    ///     stopped and the run repeated once so the truth side is a run that could have happened.
+    /// </summary>
+    private static async Task<(ProcessResult Run, TestOutcome? Outcome)> RunProjectAsync(EvalRepo repo, string project, string results)
+    {
+        var (run, outcome) = await RunProjectOnceAsync(repo, project, results);
+        if (outcome is null && BuildOutputParser.Errors(run.Output, repo.Root)
+            .Any(e => e.Contains("MSB3021", StringComparison.Ordinal) || e.Contains("MSB3027", StringComparison.Ordinal)))
+        {
+            Console.WriteLine($"[selection] {Path.GetFileName(project)} could not copy a file a warm engine holds open; killing the engine and running again");
+            await repo.KillEngineAsync();
+            (run, outcome) = await RunProjectOnceAsync(repo, project, results);
+        }
+
+        return (run, outcome);
+    }
+
+    private static async Task<(ProcessResult Run, TestOutcome? Outcome)> RunProjectOnceAsync(EvalRepo repo, string project, string results)
+    {
+        var run = await ProcessRunner.RunAsync("dotnet", ["test", project, "--no-restore", "--logger", "trx;LogFilePrefix=truth", "--results-directory", results, "-nologo", "-tl:off"], repo.Root, CancellationToken.None);
+        return (run, TrxReader.ReadDirectory(results, repo.Root));
     }
 
     /// <summary>Names of the failing tests in <c>fuse test</c> output: each <c>FAILED name</c> line and each name listed under <c>also failed</c>.</summary>

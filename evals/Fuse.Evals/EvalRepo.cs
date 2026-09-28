@@ -46,8 +46,28 @@ internal sealed partial class EvalRepo
     /// <summary>The product version the fuse executable under test reports for itself.</summary>
     public async Task<string> VersionAsync() => (await FuseAsync("--version")).Result.Output.Trim();
 
-    /// <summary>Runs <c>dotnet build</c> on the truth target and returns its error lines (relative paths, canonical form).</summary>
+    /// <summary>
+    ///     Runs <c>dotnet build</c> on the truth target and returns its error lines (relative paths, canonical form).
+    ///     A warm engine holds the source generators and analyzers it loaded mapped for its lifetime, so the build's copy
+    ///     of one of those can fail with MSB3021 or MSB3027. That is a real defect in the product, recorded in
+    ///     <c>decisions.md</c>, but it is not a compiler error, and counting it as one would leave the truth side of the
+    ///     suite a broken build. The engine is killed and the build repeated once, so what is measured is a build a user
+    ///     could have got.
+    /// </summary>
     public async Task<(List<string> Errors, int ExitCode, double Seconds)> BuildAsync()
+    {
+        var (errors, exitCode, seconds) = await BuildOnceAsync();
+        if (exitCode != 0 && errors.Any(e => e.Contains("MSB3021", StringComparison.Ordinal) || e.Contains("MSB3027", StringComparison.Ordinal)))
+        {
+            Console.WriteLine("[build] the build could not copy a file a warm engine holds open; killing the engine and building again");
+            await KillEngineAsync();
+            (errors, exitCode, seconds) = await BuildOnceAsync();
+        }
+
+        return (errors, exitCode, seconds);
+    }
+
+    private async Task<(List<string> Errors, int ExitCode, double Seconds)> BuildOnceAsync()
     {
         var watch = Stopwatch.StartNew();
         var result = await ProcessRunner.RunAsync(

@@ -266,7 +266,11 @@ internal sealed class RepoWorkspace : IDisposable
                 return;
             _log($"workspace: {e.Diagnostic.Message}");
             var path = Graph.Projects.FirstOrDefault(p => e.Diagnostic.Message.Contains(p.Path, StringComparison.OrdinalIgnoreCase))?.Path;
-            if (path is not null)
+            // MSBuildWorkspace reports every message MSBuild logged while loading, warnings included, as a failure of
+            // the project. A warning leaves the project loadable, and the real build reports the same text as a warning
+            // too, so recording it would make fuse decline to answer in a repository that builds. Only a project the
+            // load could not evaluate is a failure; see LoadFailure.
+            if (path is not null && !LoadFailure.IsWarning(e.Diagnostic.Message))
                 _loadFailures[path] = e.Diagnostic.Message;
         });
         return loader;

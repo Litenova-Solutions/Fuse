@@ -2,6 +2,8 @@
 
 ## 5.1.0
 
+- A project with a restore warning, such as a NuGet advisory, is no longer reported as a project Fuse could not load, so Fuse answers in repositories whose build logs a warning.
+
 ## 5.0.0
 
 Fuse keeps a warm Roslyn compilation of a .NET repository and gives coding agents the compiler errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server.

@@ -20,32 +20,17 @@ public class BuildLockTests
     [Fact]
     public async Task Three_builds_at_once_all_succeed()
     {
-        using var repo = Create();
+        using var repo = FixtureRepo.CreateStandard();
         try
         {
-            // The lock's own property: the three clients take turns, and no two of them fail over a file one of them is
-            // holding. Those are the three MSB ids, which is what two builds copying the same file produce.
-            //
-            // The round is retried once. With the other end-to-end tests building in parallel on the same machine, a build
-            // occasionally fails with CS2012 that has nothing to do with the lock: a compiler from another repository's
-            // build is still writing when this one starts. The assertion is unchanged and a second collision fails the
-            // test; what the retry removes is the machine's state, not the bar.
-            for (var attempt = 1; ; attempt++)
-            {
-                var clients = Enumerable.Range(0, 3).Select(_ => FuseProcess.Start(repo.Path, "build", "Lib/Lib.csproj", "-nr:false")).ToList();
-                var results = await Task.WhenAll(clients.Select(c => c.WaitAsync(TimeSpan.FromMinutes(5))));
-                var collision = results.SelectMany(r => CollisionLines(r.Stdout + r.Stderr, "CS2012")).FirstOrDefault();
-                if (collision is null || attempt == 2)
-                {
-                    foreach (var (_, stdout, stderr) in results)
-                        AssertNoCollisions(stdout + stderr);
-                    Assert.Single(results.Select(r => r.ExitCode).Distinct());
-                    Assert.Equal(0, results[0].ExitCode);
-                    return;
-                }
-
-                Console.WriteLine($"[build-lock] attempt {attempt} hit CS2012 from another build on this machine: {collision}");
-            }
+            // The lock's own property: three clients building the whole solution at once take turns, with the machine's
+            // defaults (compiler server and node reuse on), and none of them fails over a file another is writing.
+            var clients = Enumerable.Range(0, 3).Select(_ => FuseProcess.Start(repo.Path, "build")).ToList();
+            var results = await Task.WhenAll(clients.Select(c => c.WaitAsync(TimeSpan.FromMinutes(5))));
+            foreach (var (_, stdout, stderr) in results)
+                AssertNoCollisions(stdout + stderr);
+            Assert.All(results, r => Assert.Equal(0, r.ExitCode));
+            Assert.True(results.Any(r => r.Stderr.Contains(BuildLock.Waited, StringComparison.Ordinal)), "no client waited, so the builds did not overlap and the case proves nothing");
         }
         finally
         {
@@ -101,12 +86,12 @@ public class BuildLockTests
     [Fact]
     public async Task A_build_behind_a_test_run_succeeds()
     {
-        using var repo = Create();
+        using var repo = FixtureRepo.CreateStandard();
         try
         {
             repo.Replace("Lib/Calc.cs", BreakAdd, BreakAddAs);
             await using var test = FuseProcess.Start(repo.Path, "test");
-            var build = FuseProcess.Start(repo.Path, "build", "-nr:false");
+            var build = FuseProcess.Start(repo.Path, "build");
 
             var testResult = await test.WaitAsync(TimeSpan.FromMinutes(6));
             var buildResult = await build.WaitAsync(TimeSpan.FromMinutes(5));
@@ -138,6 +123,11 @@ public class BuildLockTests
             await using var waiting = FuseProcess.Start(repo.Path, "build");
             var announced = await WaitForAsync(() => waiting.StderrSoFar.Contains(BuildLock.Waited, StringComparison.Ordinal), TimeSpan.FromMinutes(2));
             Assert.True(announced, $"a client that waited said nothing; its stderr was: {waiting.StderrSoFar}");
+
+            // Saying it waits is not enough: while the lock is held the client must not build. A retry that gives up and
+            // builds anyway is the collision the lock exists to prevent.
+            await Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+            Assert.False(waiting.HasExited, "the client stopped waiting and ran while another client held the lock");
 
             held.Dispose();
             var result = await waiting.WaitAsync(TimeSpan.FromMinutes(5));
@@ -172,28 +162,11 @@ public class BuildLockTests
         }
     }
 
-    /// <summary>
-    ///     A fixture whose builds do not go through the shared compiler server. What is under test is the lock: two csc
-    ///     runs routed through VBCSCompiler can collide on the same obj file with CS2012 even when they are serialized, and
-    ///     that is a different defect, recorded in decisions.md, which the lock does not cover. The build tests also pass
-    ///     <c>-nr:false</c>, because a finished build's MSBuild node keeps its output assemblies open for reading and the
-    ///     *next* build then cannot overwrite them, which again is not two clients colliding.
-    /// </summary>
-    private static FixtureRepo Create()
-    {
-        var repo = FixtureRepo.CreateStandard();
-        repo.Write("Directory.Build.props", "<Project>\n  <PropertyGroup>\n    <UseSharedCompilation>false</UseSharedCompilation>\n  </PropertyGroup>\n</Project>\n");
-        return repo;
-    }
-
     private static void AssertNoCollisions(string output)
     {
         foreach (var id in Collisions)
             Assert.DoesNotContain(id, output, StringComparison.Ordinal);
     }
-
-    private static List<string> CollisionLines(string output, string id) =>
-        [.. output.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Contains(id, StringComparison.Ordinal))];
 
     private static async Task<bool> WaitForAsync(Func<bool> condition, TimeSpan timeout)
     {

@@ -51,10 +51,14 @@ internal sealed class BuildLock : IDisposable
                     held._file = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
                     break;
                 }
-                catch (IOException) when (!waited)
+                catch (IOException) when (File.Exists(path))
                 {
-                    waited = true;
-                    onWait?.Invoke();
+                    // Held by another client: wait for as long as it holds it, and say so once.
+                    if (!waited)
+                    {
+                        waited = true;
+                        onWait?.Invoke();
+                    }
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -70,6 +74,18 @@ internal sealed class BuildLock : IDisposable
         }
 
         return held;
+    }
+
+    /// <summary>
+    ///     Takes the lock for a command-line client: the waiting line goes to standard error once, and so does the reason
+    ///     when the client has to run without the lock, so an unprotected build is never silent.
+    /// </summary>
+    public static BuildLock AcquireForClient(RepoRoot root)
+    {
+        var buildLock = Acquire(root, () => Console.Error.WriteLine(Waited));
+        if (buildLock.Reason is { } reason)
+            Console.Error.WriteLine($"fuse: running without the per-repository build lock: {reason}");
+        return buildLock;
     }
 
     public void Dispose() => _file?.Dispose();

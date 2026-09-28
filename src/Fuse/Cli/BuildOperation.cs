@@ -18,7 +18,7 @@ internal static class BuildOperation
         if (root is null)
             return await BuildAsync(workingDirectory, workingDirectory, arguments, cancellationToken).ConfigureAwait(false);
 
-        using var buildLock = BuildLock.Acquire(root, () => Console.Error.WriteLine(BuildLock.Waited));
+        using var buildLock = BuildLock.AcquireForClient(root);
         return await BuildAsync(workingDirectory, root.Path, arguments, cancellationToken).ConfigureAwait(false);
     }
 

@@ -19,7 +19,7 @@ internal static class TestOperation
     {
         // Held from before the plan request until the last child has exited: the plan makes the engine mirror and emit into
         // the shadow folder, and the runs below write build output, so all of it has to be one window in this repository.
-        using var buildLock = BuildLock.Acquire(root, () => Console.Error.WriteLine(BuildLock.Waited));
+        using var buildLock = BuildLock.AcquireForClient(root);
         return await RunLockedAsync(root, workingDirectory, arguments, all, cancellationToken).ConfigureAwait(false);
     }
 

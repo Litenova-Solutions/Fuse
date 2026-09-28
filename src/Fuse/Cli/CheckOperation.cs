@@ -19,7 +19,7 @@ internal static class CheckOperation
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
         RepoRoot root, IReadOnlyList<string>? files, bool wait, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var response = await EngineClient.SendAsync(root, new EngineRequest("", RequestKind.Check, files?.ToArray(), wait), timeout, cancellationToken).ConfigureAwait(false);
+        var response = await EngineClient.SendAsync(root, new EngineRequest("", RequestKind.Check, Files: files?.ToArray(), Wait: wait), timeout, cancellationToken).ConfigureAwait(false);
         if (response.Status != ResponseStatus.Ok || response.Check is null)
             return (new OperationResult(2, $"fuse: {response.Message ?? "the engine gave no answer"}"), response);
         return (Render(response.Check), response);

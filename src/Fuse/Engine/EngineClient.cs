@@ -11,14 +11,22 @@ internal static class EngineClient
 {
     private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(15);
 
+    private static int _counter;
+
+    /// <summary>
+    ///     Names the request for the engine's log. The process id keeps two clients apart, the counter keeps two requests
+    ///     from one client apart, so a line in <c>engine.log</c> can be matched to the call that produced it.
+    /// </summary>
+    public static string NextRequestId() => $"{Environment.ProcessId}-{Interlocked.Increment(ref _counter)}";
+
     /// <summary>Sends <paramref name="request"/> and waits for the answer.</summary>
     /// <param name="root">The repository whose engine to use.</param>
-    /// <param name="request">The request. Its version is replaced with this build's.</param>
+    /// <param name="request">The request. Its version and request id are replaced with this build's and a fresh id.</param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the request; the engine stops the work when the connection closes.</param>
     public static async Task<EngineResponse> SendAsync(RepoRoot root, EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        request = request with { Version = EngineVersion.Build };
+        request = request with { Version = EngineVersion.Build, RequestId = NextRequestId() };
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(timeout);
         try

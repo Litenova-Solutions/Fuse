@@ -3,6 +3,7 @@
 ## 5.1.0
 
 - A project with a restore warning, such as a NuGet advisory, is no longer reported as a project Fuse could not load, so Fuse answers in repositories whose build logs a warning.
+- Every request the engine serves is named in `engine.log` and carries a line of per-phase times, so a check or test round can be attributed to the call that caused it.
 
 ## 5.0.0
 

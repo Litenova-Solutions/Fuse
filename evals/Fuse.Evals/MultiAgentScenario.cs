@@ -86,7 +86,10 @@ internal static partial class MultiAgentScenario
     /// </summary>
     private static async Task<MultiAgentWriters> WritersAsync(EvalRepo repo, List<string> targets, double singleClientTotalP50)
     {
-        var originals = targets.ToDictionary(f => f, File.ReadAllText, StringComparer.OrdinalIgnoreCase);
+        // The bytes, not the text: a file with a byte order mark does not survive a text round trip, and the suite that
+        // runs next on this repository needs a clean tree.
+        var originals = targets.ToDictionary(f => f, File.ReadAllBytes, StringComparer.OrdinalIgnoreCase);
+        var texts = originals.ToDictionary(p => p.Key, p => File.ReadAllText(p.Key), StringComparer.OrdinalIgnoreCase);
         var walls = new List<double>();
         var failed = 0;
         var timedOut = 0;
@@ -98,7 +101,7 @@ internal static partial class MultiAgentScenario
         try
         {
             var watch = Stopwatch.StartNew();
-            var clients = targets.Select(target => WriterAsync(repo, target, originals[target], taken, (ms, gate, total, ok, hung) =>
+            var clients = targets.Select(target => WriterAsync(repo, target, texts[target], taken, (ms, gate, total, ok, hung) =>
             {
                 lock (walls)
                 {
@@ -130,8 +133,8 @@ internal static partial class MultiAgentScenario
         }
         finally
         {
-            foreach (var (file, text) in originals)
-                File.WriteAllText(file, text);
+            foreach (var (file, bytes) in originals)
+                File.WriteAllBytes(file, bytes);
         }
     }
 
@@ -204,6 +207,8 @@ internal static partial class MultiAgentScenario
 
         var (p1, f1) = byProject[0];
         var (p2, f2) = byProject[1];
+        var bytes1 = File.ReadAllBytes(f1);
+        var bytes2 = File.ReadAllBytes(f2);
         var original1 = File.ReadAllText(f1);
         var original2 = File.ReadAllText(f2);
         var rounds = new List<MultiAgentRound>();
@@ -231,8 +236,8 @@ internal static partial class MultiAgentScenario
         }
         finally
         {
-            File.WriteAllText(f1, original1);
-            File.WriteAllText(f2, original2);
+            File.WriteAllBytes(f1, bytes1);
+            File.WriteAllBytes(f2, bytes2);
         }
     }
 

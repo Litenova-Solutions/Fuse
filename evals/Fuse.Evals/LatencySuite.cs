@@ -19,6 +19,9 @@ internal static class LatencySuite
         var (file, method, references) = PickTarget(solution);
         Console.WriteLine($"[latency] {repo.Name}: target {Path.GetRelativePath(repo.Root, file)} method {method} ({references} referencing files in other projects)");
         var original = await File.ReadAllTextAsync(file);
+        // The bytes are kept as well: a file with a byte order mark does not survive a text round trip, and the next suite
+        // to run on this repository needs a clean tree.
+        var originalBytes = await File.ReadAllBytesAsync(file);
 
         // Every timed call takes the engine's own account of the request it made, so the report can say where the time went.
         var taken = new HashSet<string>(StringComparer.Ordinal);
@@ -78,7 +81,7 @@ internal static class LatencySuite
             testCalls.Add(await Timed(run));
         }
 
-        await File.WriteAllTextAsync(file, original);
+        await File.WriteAllBytesAsync(file, originalBytes);
         var engines = await repo.EngineProcessesAsync();
         var rss = engines.Count > 0 ? engines.Max(e => e.WorkingSet) / (1024.0 * 1024.0) : 0;
         var bodyPhases = PhaseReport.Build(bodyCalls);

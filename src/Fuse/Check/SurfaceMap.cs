@@ -70,6 +70,17 @@ internal static class SurfaceMap
         }
 
         Walk(root, "", map);
+
+        // An ordinary using changes what the type names in this file's declarations resolve to, so removing one can change
+        // every signature here without changing their text. Each carries the file's own type names, which is how the files
+        // that use those declarations are found.
+        var types = root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>().Select(t => t.Identifier.Text)
+            .Concat(root.DescendantNodes().OfType<DelegateDeclarationSyntax>().Select(d => d.Identifier.Text))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        foreach (var directive in root.DescendantNodes(n => n is CompilationUnitSyntax or BaseNamespaceDeclarationSyntax).OfType<UsingDirectiveSyntax>()
+                     .Where(u => !u.GlobalKeyword.IsKind(SyntaxKind.GlobalKeyword)))
+            map["U:" + Flat(directive)] = new SurfaceEntry(Flat(directive), types, directive);
         return map;
     }
 

@@ -47,7 +47,8 @@ internal sealed class ChangeReach
             return true;
         var before = head is null ? [] : SurfaceMap.Compute(await ParseAsync(head, cancellationToken).ConfigureAwait(false));
         var after = now is null ? [] : SurfaceMap.Compute(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
-        return SurfaceMap.Changes(before, after).Count > 0;
+        // An added using changes nothing another file can see, so it alone does not send the check to the dependents.
+        return SurfaceMap.Changes(before, after).Any(c => !(c.Key.StartsWith("U:", StringComparison.Ordinal) && c.Before is null));
     }
 
     /// <summary>The files in <paramref name="reach"/> that the declaration changes in <paramref name="paths"/> can break, or null when a change is broad.</summary>
@@ -77,14 +78,14 @@ internal sealed class ChangeReach
 
         var changed = new List<Change>();
         var derivedFrom = new List<(INamedTypeSymbol Type, string Declaration, bool Removed)>();
-        var names = new List<(string Name, string Declaration)>();
+        var names = new List<(string Name, string Declaration, bool Removed)>();
         foreach (var path in paths)
         {
             if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             {
                 // A Razor component or view is used by its file name.
                 var name = Path.GetFileNameWithoutExtension(path);
-                names.Add((name, name));
+                names.Add((name, name, false));
                 continue;
             }
 
@@ -100,6 +101,19 @@ internal sealed class ChangeReach
                 var entry = change.After ?? change.Before!;
                 // A removal has no working-tree declaration, so the one that goes with it is the one at HEAD.
                 var removed = change.After is null;
+                if (change.Key.StartsWith("U:", StringComparison.Ordinal))
+                {
+                    // An added using cannot change what another file sees. A removed one can change every signature in
+                    // this file, so every file that names one of this file's types is a candidate.
+                    if (removed)
+                    {
+                        foreach (var typeName in entry.Names)
+                            names.Add((typeName, entry.Declaration, true));
+                    }
+
+                    continue;
+                }
+
                 if (change.Key.StartsWith("G:", StringComparison.Ordinal) || change.Key.StartsWith("A:", StringComparison.Ordinal) || entry.Node is DelegateDeclarationSyntax)
                     return null;
                 if (change.Key.StartsWith("T:", StringComparison.Ordinal))
@@ -109,7 +123,7 @@ internal sealed class ChangeReach
                     if (change.Before is not null && Declared(model, change.Before.Node, cancellationToken) is { } removedType)
                         changed.Add(new(removedType, entry.Declaration, removed, true));
                     else
-                        names.Add((entry.Names[0], entry.Declaration));
+                        names.Add((entry.Names[0], entry.Declaration, false));
                     continue;
                 }
 
@@ -167,7 +181,7 @@ internal sealed class ChangeReach
                 var text = (await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).ToString();
                 var name = names.FirstOrDefault(n => text.Contains(n.Name, StringComparison.Ordinal));
                 if (name.Name is not null)
-                    provenance.Add(document.FilePath, name.Declaration, false);
+                    provenance.Add(document.FilePath, name.Declaration, name.Removed);
             }
         }
 

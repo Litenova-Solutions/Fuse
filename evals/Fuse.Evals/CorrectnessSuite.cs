@@ -218,11 +218,15 @@ internal static partial class CorrectnessSuite
     /// </remarks>
     private static bool CompilerSkippedBodies(SolutionInfo solution, string project, List<string> truth, string fuseError)
     {
-        var projectErrors = truth.Where(t => string.Equals(solution.ProjectFileOf(FileOf(t)), project, StringComparison.OrdinalIgnoreCase)).ToList();
-        return projectErrors.Count > 0
+        // Only the compiler's own errors say where csc stopped: a source generator reports its diagnostics (MVVMTK0022 in
+        // the Community Toolkit) before declarations are compiled, so they appear next to declaration errors.
+        var compilerErrors = truth.Where(t => string.Equals(solution.ProjectFileOf(FileOf(t)), project, StringComparison.OrdinalIgnoreCase) && IsCompiler(t)).ToList();
+        return compilerErrors.Count > 0
                && (InBody(solution.Root, fuseError) || AfterDeclarations(fuseError))
-               && projectErrors.All(e => !InBody(solution.Root, e) && !AfterDeclarations(e));
+               && compilerErrors.All(e => !InBody(solution.Root, e) && !AfterDeclarations(e));
     }
+
+    private static bool IsCompiler(string error) => Canonical().Match(error).Groups["id"].Value.StartsWith("CS", StringComparison.Ordinal);
 
     /// <summary>
     ///     True for a diagnostic csc only reports once declarations compile: any analyzer id (not <c>CS</c>), and the

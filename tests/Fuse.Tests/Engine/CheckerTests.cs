@@ -262,6 +262,36 @@ public class CheckerTests
     }
 
     [Fact]
+    public async Task A_removed_using_checks_the_files_that_use_the_file_s_types()
+    {
+        await using var engine = await EngineHarness.StartAsync();
+        // System.Collections.ObjectModel is not an implicit using, so the interface's signature depends on this directive.
+        engine.Repo.Write("Lib/Runner.cs", "using System.Collections.ObjectModel;\n\nnamespace Lib;\n\npublic interface IRunner\n{\n    ReadOnlyCollection<int> Run();\n}\n");
+        engine.Repo.Write("Lib/RunnerImpl.cs", "namespace Lib;\n\npublic sealed class Runner : IRunner\n{\n    public System.Collections.ObjectModel.ReadOnlyCollection<int> Run() => new(System.Array.Empty<int>());\n}\n");
+        engine.Repo.Commit("runner");
+
+        // The declaration's text is unchanged, but its return type no longer resolves, so the implementation breaks.
+        engine.Repo.Replace("Lib/Runner.cs", "using System.Collections.ObjectModel;\n", "");
+        var report = await engine.CheckAsync("Lib/Runner.cs");
+
+        Assert.Contains(report.Introduced, d => d.Path == "Lib/Runner.cs" && d.Id == "CS0246");
+        var index = Array.FindIndex(report.Introduced, d => d.Path == "Lib/RunnerImpl.cs");
+        Assert.True(index >= 0, $"the implementation's break was not reported: {string.Join("; ", report.Introduced.Select(d => d.ToString()))}");
+        Assert.Equal("removed: using System.Collections.ObjectModel;", report.ContextFor(index));
+    }
+
+    [Fact]
+    public async Task An_added_using_does_not_reach_other_projects()
+    {
+        await using var engine = await EngineHarness.StartAsync();
+        engine.Repo.Replace("Lib/Calc.cs", "namespace Lib;", "using System.Text;\n\nnamespace Lib;");
+        var report = await engine.CheckAsync("Lib/Calc.cs");
+
+        Assert.Empty(report.SurfaceChangedIn);
+        Assert.Equal(0, report.DependentProjectsChecked);
+    }
+
+    [Fact]
     public async Task Restore_needed_is_reported_with_the_fix()
     {
         await using var engine = await EngineHarness.StartAsync();

@@ -45,7 +45,26 @@ internal sealed partial class EvalRepo
     }
 
     /// <summary>The product version the fuse executable under test reports for itself.</summary>
-    public async Task<string> VersionAsync() => (await FuseAsync("--version")).Result.Output.Trim();
+    /// <summary>
+    ///     The build under test, in the form the engine compares (<c>version/module id</c>), so two result files from two
+    ///     builds of one version can be told apart. Falls back to the printed version when the assembly cannot be read.
+    /// </summary>
+    public async Task<string> VersionAsync()
+    {
+        var version = (await FuseAsync("--version")).Result.Output.Trim();
+        var assembly = Path.ChangeExtension(Fuse, ".dll");
+        try
+        {
+            using var stream = File.OpenRead(assembly);
+            using var pe = new System.Reflection.PortableExecutable.PEReader(stream);
+            var metadata = System.Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pe);
+            return $"{version}/{metadata.GetGuid(metadata.GetModuleDefinition().Mvid):N}";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or BadImageFormatException or InvalidOperationException)
+        {
+            return version;
+        }
+    }
 
     /// <summary>
     ///     The engine log this repository's engine writes, read as lines with the leading timestamp stripped, so a caller
@@ -66,23 +85,22 @@ internal sealed partial class EvalRepo
 
     /// <summary>
     ///     Runs <c>dotnet build</c> on the truth target and returns its error lines (relative paths, canonical form).
-    ///     A warm engine holds the source generators and analyzers it loaded mapped for its lifetime, so the build's copy
-    ///     of one of those can fail with MSB3021 or MSB3027. That is a real defect in the product, recorded in
-    ///     <c>decisions.md</c>, but it is not a compiler error, and counting it as one would leave the truth side of the
-    ///     suite a broken build. The engine is killed and the build repeated once, so what is measured is a build a user
-    ///     could have got.
+    ///     A warm engine must not hold a file this build writes; if the build fails to copy one (MSB3021, MSB3027), that is
+    ///     a product defect a user would hit, so the suite stops and says so rather than measuring a broken truth build.
     /// </summary>
     public async Task<(List<string> Errors, int ExitCode, double Seconds)> BuildAsync()
     {
         var (errors, exitCode, seconds) = await BuildOnceAsync();
-        if (exitCode != 0 && errors.Any(e => e.Contains("MSB3021", StringComparison.Ordinal) || e.Contains("MSB3027", StringComparison.Ordinal)))
-        {
-            Console.WriteLine("[build] the build could not copy a file a warm engine holds open; killing the engine and building again");
-            await KillEngineAsync();
-            (errors, exitCode, seconds) = await BuildOnceAsync();
-        }
-
+        ThrowIfLocked(errors, "the truth build");
         return (errors, exitCode, seconds);
+    }
+
+    /// <summary>Stops the suite when <paramref name="errors"/> show a build could not replace a file something held open.</summary>
+    internal static void ThrowIfLocked(IEnumerable<string> errors, string what)
+    {
+        var locked = errors.FirstOrDefault(e => e.Contains("MSB3021", StringComparison.Ordinal) || e.Contains("MSB3027", StringComparison.Ordinal));
+        if (locked is not null)
+            throw new InvalidOperationException($"{what} could not replace a file that another process holds open, which is a defect to fix, not a result: {locked}");
     }
 
     private async Task<(List<string> Errors, int ExitCode, double Seconds)> BuildOnceAsync()
@@ -118,7 +136,7 @@ internal sealed partial class EvalRepo
         {
             try
             {
-                Process.GetProcessById(process.Pid).Kill();
+                Process.GetProcessById(process.Pid).Kill(entireProcessTree: true);
             }
             catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
             {

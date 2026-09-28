@@ -211,10 +211,31 @@ internal static partial class CorrectnessSuite
     ///     is inside one. csc reports declaration errors and stops before binding method bodies, so it cannot report
     ///     the body error; fuse binds every body. The mutated files are still on disk when this runs.
     /// </summary>
+    /// <remarks>
+    ///     Analyzers and XML documentation checks run after that stage too, so the same build reports no analyzer or
+    ///     documentation error for the project either: with a duplicate member (CS0111) added to a Jellyfin file that also
+    ///     misindents a member, the build reports CS0111 alone, where without the duplicate it reports SA1137 and the rest.
+    /// </remarks>
     private static bool CompilerSkippedBodies(SolutionInfo solution, string project, List<string> truth, string fuseError)
     {
         var projectErrors = truth.Where(t => string.Equals(solution.ProjectFileOf(FileOf(t)), project, StringComparison.OrdinalIgnoreCase)).ToList();
-        return projectErrors.Count > 0 && InBody(solution.Root, fuseError) && projectErrors.All(e => !InBody(solution.Root, e));
+        return projectErrors.Count > 0
+               && (InBody(solution.Root, fuseError) || AfterDeclarations(fuseError))
+               && projectErrors.All(e => !InBody(solution.Root, e) && !AfterDeclarations(e));
+    }
+
+    /// <summary>
+    ///     True for a diagnostic csc only reports once declarations compile: any analyzer id (not <c>CS</c>), and the
+    ///     compiler's XML documentation checks, CS1570 to CS1592.
+    /// </summary>
+    private static bool AfterDeclarations(string error)
+    {
+        var id = Canonical().Match(error).Groups["id"].Value;
+        if (id.Length == 0)
+            return false;
+        if (!id.StartsWith("CS", StringComparison.Ordinal))
+            return true;
+        return int.TryParse(id[2..], System.Globalization.CultureInfo.InvariantCulture, out var number) && number is >= 1570 and <= 1592;
     }
 
     private static bool InBody(string root, string error)

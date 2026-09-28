@@ -164,22 +164,14 @@ internal static partial class SelectionSuite
     }
 
     /// <summary>
-    ///     Runs one test project with <c>dotnet test</c> and reads its results. A warm engine holds the source generators
-    ///     and analyzers it loaded mapped for its lifetime, so this build can fail to copy one with MSB3021 or MSB3027.
-    ///     That is a defect in the product, recorded in <c>decisions.md</c>, but it is not a test result; the engine is
-    ///     stopped and the run repeated once so the truth side is a run that could have happened.
+    ///     Runs one test project with <c>dotnet test</c> and reads its results. A build that cannot replace a file another
+    ///     process holds open stops the suite (see <see cref="EvalRepo.ThrowIfLocked"/>): it is a defect, not a test result.
     /// </summary>
     private static async Task<(ProcessResult Run, TestOutcome? Outcome)> RunProjectAsync(EvalRepo repo, string project, string results)
     {
         var (run, outcome) = await RunProjectOnceAsync(repo, project, results);
-        if (outcome is null && BuildOutputParser.Errors(run.Output, repo.Root)
-            .Any(e => e.Contains("MSB3021", StringComparison.Ordinal) || e.Contains("MSB3027", StringComparison.Ordinal)))
-        {
-            Console.WriteLine($"[selection] {Path.GetFileName(project)} could not copy a file a warm engine holds open; killing the engine and running again");
-            await repo.KillEngineAsync();
-            (run, outcome) = await RunProjectOnceAsync(repo, project, results);
-        }
-
+        if (outcome is null)
+            EvalRepo.ThrowIfLocked(BuildOutputParser.Errors(run.Output, repo.Root), $"dotnet test {Path.GetFileName(project)}");
         return (run, outcome);
     }
 

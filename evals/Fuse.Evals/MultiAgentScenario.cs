@@ -148,7 +148,8 @@ internal static partial class MultiAgentScenario
             var run = await repo.FuseTimedAsync("check", file);
             var ms = watch.Elapsed.TotalMilliseconds;
             var phases = RequestPhases.TakeNewest(repo.EngineLogLines(), taken);
-            var gate = phases?.Phases.GetValueOrDefault("gate");
+            // A request with no gate phase did not wait for the gate at all; it is not a zero-length wait.
+            double? gate = phases is not null && phases.Phases.TryGetValue("gate", out var waited) ? waited : null;
             report(ms, gate, phases?.Total, run.ExitCode is 0 or 1, run.ExitCode == 2);
         }
     }
@@ -194,19 +195,26 @@ internal static partial class MultiAgentScenario
     }
 
     /// <summary>
-    ///     Three verify rounds. Round 1 renames a method in one project, round 2 renames a method in a different project and
-    ///     leaves the first rename in place, round 3 renames the second again. A rename rather than a body edit because the
-    ///     question is which test projects a round runs, and a body edit may reach none. A round that reruns a test project
-    ///     only the first edit can reach is the waste the test cache is meant to remove.
+    ///     Three verify rounds. Round 1 edits a method body in a type that some test project uses, round 2 edits a body in a
+    ///     different project whose tests are not all the same ones, and leaves the first edit in place, and round 3 edits
+    ///     the second file again. Body edits keep every test compiling, so each round runs tests rather than reporting a
+    ///     build error. A round that reruns a test project only the first edit reaches is the waste a test cache would
+    ///     remove, so a pair of files that cannot show it fails the scenario rather than measuring nothing.
     /// </summary>
     private static async Task<List<MultiAgentRound>> RoundsAsync(EvalRepo repo, SolutionInfo solution)
     {
-        var byProject = EditablePerProject(solution, text => RenameEdit(text, 1));
-        if (byProject.Count < 2)
-            throw new InvalidOperationException($"the rounds scenario needs files in two different projects; found {byProject.Count} in {solution.Root}");
+        var testSources = solution.TestProjects.ToDictionary(t => t, t => SourcesUnder(Path.GetDirectoryName(t)!).Select(File.ReadAllText).ToList(), StringComparer.OrdinalIgnoreCase);
+        var candidates = EditablePerProject(solution, text => TextEdit(text, "1"))
+            .Select(c => (c.Project, c.File, Tests: TestProjectsUsing(c.File, testSources)))
+            .Where(c => c.Tests.Count > 0)
+            .ToList();
+        var pair = candidates.SelectMany(a => candidates.Where(b => b.Project != a.Project && a.Tests.Except(b.Tests).Any()).Select(b => (P1: a, P2: b))).FirstOrDefault();
+        if (pair.P1.File is null)
+            throw new InvalidOperationException($"the rounds scenario needs two projects whose types different test projects use; found {candidates.Count} candidate(s) in {solution.Root}");
 
-        var (p1, f1) = byProject[0];
-        var (p2, f2) = byProject[1];
+        var (p1, f1) = (pair.P1.Project, pair.P1.File);
+        var (p2, f2) = (pair.P2.Project, pair.P2.File);
+        Console.WriteLine($"[multiAgent] rounds: P1 {Path.GetRelativePath(repo.Root, f1)} (tests {string.Join(", ", pair.P1.Tests.Select(Path.GetFileNameWithoutExtension))}), P2 {Path.GetRelativePath(repo.Root, f2)} (tests {string.Join(", ", pair.P2.Tests.Select(Path.GetFileNameWithoutExtension))})");
         var bytes1 = File.ReadAllBytes(f1);
         var bytes2 = File.ReadAllBytes(f2);
         var original1 = File.ReadAllText(f1);
@@ -217,9 +225,9 @@ internal static partial class MultiAgentScenario
         {
             var edits = new (string File, string Text, string Project)[]
             {
-                (f1, RenameEdit(original1, 1) is { } r1 && r1.Length > 0 ? r1 : TextEdit(original1, "1"), Path.GetFileName(p1)),
-                (f2, RenameEdit(original2, 1) is { } r2 && r2.Length > 0 ? r2 : TextEdit(original2, "1"), Path.GetFileName(p2)),
-                (f2, RenameEdit(original2, 2) is { } r3 && r3.Length > 0 ? r3 : TextEdit(original2, "2"), Path.GetFileName(p2)),
+                (f1, TextEdit(original1, "1"), Path.GetFileName(p1)),
+                (f2, TextEdit(original2, "1"), Path.GetFileName(p2)),
+                (f2, TextEdit(original2, "2"), Path.GetFileName(p2)),
             };
             for (var i = 0; i < edits.Length; i++)
             {
@@ -232,6 +240,8 @@ internal static partial class MultiAgentScenario
                 Console.WriteLine($"[multiAgent] round {i + 1}: edit in {edits[i].Project}, {ms:0} ms, {projects.Count} test project(s), {rounds[^1].FailingTests} failing");
             }
 
+            if (rounds[0].TestProjects.Count == 0)
+                throw new InvalidOperationException($"round 1's edit in {Path.GetRelativePath(repo.Root, f1)} reached no test project, so the rounds cannot show a rerun");
             return rounds;
         }
         finally
@@ -240,6 +250,19 @@ internal static partial class MultiAgentScenario
             File.WriteAllBytes(f2, bytes2);
         }
     }
+
+    /// <summary>The test projects whose source text names a type declared in <paramref name="file"/>.</summary>
+    private static List<string> TestProjectsUsing(string file, Dictionary<string, List<string>> testSources)
+    {
+        var types = CSharpSyntaxTree.ParseText(File.ReadAllText(file)).GetRoot().DescendantNodes().OfType<BaseTypeDeclarationSyntax>()
+            .Select(t => t.Identifier.Text).Distinct(StringComparer.Ordinal).ToList();
+        return [.. testSources.Where(t => t.Value.Any(text => types.Any(type => Regex.IsMatch(text, $@"\b{Regex.Escape(type)}\b")))).Select(t => t.Key).Order(StringComparer.Ordinal)];
+    }
+
+    private static List<string> SourcesUnder(string directory) =>
+        [.. Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))];
 
     /// <summary>The test projects the engine planned since the last call, which it logs by name as it plans each one.</summary>
     private static List<string> TestProjectsSince(EvalRepo repo, ref int seen)
@@ -269,20 +292,6 @@ internal static partial class MultiAgentScenario
 
         var statement = SyntaxFactory.ParseStatement($"_ = {i};\n");
         return root.ReplaceNode(method.Body, method.Body.WithStatements(method.Body.Statements.Insert(0, statement))).ToFullString();
-    }
-
-    /// <summary>
-    ///     Renames the first method declared in the file, which reaches every project that calls it, or returns the text
-    ///     unchanged when the file declares no method.
-    /// </summary>
-    private static string RenameEdit(string text, int round)
-    {
-        var root = CSharpSyntaxTree.ParseText(text).GetRoot();
-        var method = root.DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault(m => !m.Modifiers.Any(SyntaxKind.PartialKeyword));
-        if (method is null)
-            return text;
-
-        return root.ReplaceToken(method.Identifier, SyntaxFactory.Identifier(method.Identifier.Text + "Round" + round).WithTriviaFrom(method.Identifier)).ToFullString();
     }
 
     private static LatencyStats Stats(List<double> values)

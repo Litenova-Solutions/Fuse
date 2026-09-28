@@ -48,8 +48,9 @@ internal sealed partial class EvalRepo
     public async Task<string> VersionAsync() => (await FuseAsync("--version")).Result.Output.Trim();
 
     /// <summary>
-    ///     The engine log this repository's engine writes, read as lines with the timestamp stripped. The engine is the
-    ///     only writer, and it is idle between requests, so a read cannot catch a line half-written.
+    ///     The engine log this repository's engine writes, read as lines with the leading timestamp stripped, so a caller
+    ///     can match them against the formats in <see cref="Fuse.Engine.PhaseLine"/>. The engine is the only writer and
+    ///     it is idle between requests, so a read cannot catch a line half-written.
     /// </summary>
     public IReadOnlyList<string> EngineLogLines()
     {
@@ -57,12 +58,7 @@ internal sealed partial class EvalRepo
         if (!File.Exists(path))
             return [];
 
-        return
-        [
-            .. File.ReadAllLines(path)
-                .Select(line => line[(line.IndexOf(' ') + 1)..].Trim())
-                .Where(line => line.Length > 0)
-        ];
+        return [.. File.ReadAllLines(path).Select(line => Timestamp().Replace(line, "", 1).Trim()).Where(line => line.Length > 0)];
     }
 
     /// <summary>Where this repository's engine keeps its state, which is where its log is.</summary>
@@ -187,6 +183,10 @@ internal sealed partial class EvalRepo
     private static partial Regex FuseError();
     [GeneratedRegex(@"fuse: (\d+) new error")]
     private static partial Regex FuseCount();
+
+    // The engine prefixes every line with "yyyy-MM-dd HH:mm:ss.fff ", two fields separated by a space.
+    [GeneratedRegex(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ ")]
+    private static partial Regex Timestamp();
 }
 
 /// <summary>One run of the fuse executable: what it printed, how long the client waited, and its exit code.</summary>

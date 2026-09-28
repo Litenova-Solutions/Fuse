@@ -1,0 +1,285 @@
+{
+  "suite": "latency",
+  "repo": "fixture",
+  "commit": "6c4e298f4c770038ea1d01cab2359f545e7c06fc",
+  "fuseBuild": "5.0.0",
+  "target": "src/Core/Geometry.cs",
+  "method": "IsSquare",
+  "referencingFilesInOtherProjects": 2,
+  "coldCleanMs": 1061.9857,
+  "coldBodyEditMs": 3661.3186,
+  "bodyEdit": {
+    "p50": 154.4,
+    "p95": 211.4,
+    "max": 211.4,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 172.7,
+    "p95": 2327.5,
+    "max": 2327.5,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 4 new error(s) in 2 file(s) (Services, Core.Tests); Core declarations changed, 4 dependent project(s) checked",
+  "warmUnchanged": {
+    "p50": 132.3,
+    "p95": 138.1,
+    "max": 138.1,
+    "n": 10
+  },
+  "testRound": {
+    "p50": 1204.9,
+    "p95": 1704.6,
+    "max": 1704.6,
+    "n": 5
+  },
+  "bodyEditPhases": {
+    "phases": {
+      "bindTargets": {
+        "p50": 8.8,
+        "p95": 55.4,
+        "max": 55.4,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 1,
+        "p95": 1.2,
+        "max": 1.2,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.8,
+        "p95": 11.3,
+        "max": 11.3,
+        "n": 15
+      },
+      "total": {
+        "p50": 15,
+        "p95": 63,
+        "max": 63,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 146.7,
+      "p95": 160.8,
+      "max": 160.8,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindCandidates": {
+        "p50": 23.2,
+        "p95": 174.2,
+        "max": 174.2,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 8.4,
+        "p95": 21.3,
+        "max": 21.3,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 1540.3,
+        "max": 1540.3,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 0.4,
+        "p95": 465.3,
+        "max": 465.3,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 1,
+        "p95": 1.1,
+        "max": 1.1,
+        "n": 10
+      },
+      "sync": {
+        "p50": 1.5,
+        "p95": 1.8,
+        "max": 1.8,
+        "n": 10
+      },
+      "total": {
+        "p50": 46,
+        "p95": 2203,
+        "max": 2203,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 131.7,
+      "p95": 143.8,
+      "max": 143.8,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 0.2,
+        "p95": 0.3,
+        "max": 0.3,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 132.3,
+      "p95": 138.1,
+      "max": 138.1,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 5
+      },
+      "mirror": {
+        "p50": 47.9,
+        "p95": 470.1,
+        "max": 470.1,
+        "n": 5
+      },
+      "selection": {
+        "p50": 14.3,
+        "p95": 99.4,
+        "max": 99.4,
+        "n": 5
+      },
+      "sync": {
+        "p50": 1.5,
+        "p95": 1.7,
+        "max": 1.7,
+        "n": 5
+      },
+      "total": {
+        "p50": 63,
+        "p95": 579,
+        "max": 579,
+        "n": 5
+      }
+    },
+    "outsideEngine": {
+      "p50": 1125.6,
+      "p95": 1141.9,
+      "max": 1141.9,
+      "n": 5
+    },
+    "n": 5
+  },
+  "multiAgent": {
+    "writers": {
+      "clients": 2,
+      "editsPerClient": 10,
+      "wallMs": 4384.0919,
+      "checks": 20,
+      "failed": 0,
+      "timedOut": 0,
+      "gate": {
+        "p50": 0,
+        "p95": 13.2,
+        "max": 17.5,
+        "n": 20
+      },
+      "engineTotal": {
+        "p50": 15,
+        "p95": 16,
+        "max": 32,
+        "n": 20
+      },
+      "singleClientTotalP50": 15
+    },
+    "builds": {
+      "clients": 3,
+      "rounds": 5,
+      "wallMs": 9304.385,
+      "each": {
+        "p50": 1777.9,
+        "p95": 2023,
+        "max": 2023,
+        "n": 15
+      },
+      "collisions": 0,
+      "collisionSamples": []
+    },
+    "rounds": [
+      {
+        "index": 1,
+        "project": "Core.csproj",
+        "edit": "src\\Core\\Geometry.cs",
+        "ms": 2563.429,
+        "testProjects": [
+          "Core.Tests",
+          "Services.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 2,
+        "project": "Services.csproj",
+        "edit": "src\\Services\\OrderService.cs",
+        "ms": 2487.3519,
+        "testProjects": [
+          "Core.Tests",
+          "Services.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 3,
+        "project": "Services.csproj",
+        "edit": "src\\Services\\OrderService.cs",
+        "ms": 2380.1831,
+        "testProjects": [
+          "Core.Tests",
+          "Services.Tests"
+        ],
+        "failingTests": 0
+      }
+    ]
+  },
+  "engineWorkingSetMb": 285.8,
+  "treeCleanAfter": true
+}

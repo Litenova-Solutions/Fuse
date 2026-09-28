@@ -45,26 +45,38 @@ internal static partial class MultiAgentScenario
     /// <summary>Runs the three scenarios against <paramref name="repo"/> and restores every file it edits.</summary>
     public static async Task<MultiAgentResult> RunAsync(EvalRepo repo, SolutionInfo solution, double singleClientTotalP50)
     {
-        var targets = OneFilePerProject(solution, Writers);
+        var targets = EditablePerProject(solution, text => TextEdit(text, "1")).Take(Writers).Select(t => t.File).ToList();
         var writers = await WritersAsync(repo, targets, singleClientTotalP50);
         var builds = await BuildsAsync(repo);
         var rounds = await RoundsAsync(repo, solution);
         return new MultiAgentResult(writers, builds, rounds);
     }
 
-    /// <summary>One source file from each of <paramref name="count"/> different projects, in a stable order.</summary>
-    private static List<string> OneFilePerProject(SolutionInfo solution, int count)
+    /// <summary>
+    ///     One file per non-test project that <paramref name="edit"/> would actually change, ordered by how many test
+    ///     projects reference the project. A file the edit leaves alone would make the scenario measure nothing, and the
+    ///     most-referenced projects are the ones an edit in them reaches, which is what the scenarios are about.
+    /// </summary>
+    private static List<(string Project, string File)> EditablePerProject(SolutionInfo solution, Func<string, string> edit)
     {
-        var files = solution.CodeSources()
-            .Where(f => f.Contains("public", StringComparison.Ordinal))
-            .GroupBy(f => solution.ProjectOf(f) ?? "", StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Key.Length > 0)
-            .OrderBy(g => g.Key, StringComparer.Ordinal)
-            .Select(g => g.OrderBy(f => f, StringComparer.Ordinal).First())
-            .ToList();
-        return files.Count < count
-            ? throw new InvalidOperationException($"need {count} projects with a public declaration; found {files.Count}")
-            : files.Take(count).ToList();
+        var sources = solution.CodeSources();
+        var result = new List<(string Project, string File)>();
+        foreach (var project in solution.CodeProjects)
+        {
+            var dir = Path.GetDirectoryName(project)!;
+            var file = sources
+                .Where(f => string.Equals(solution.ProjectOf(f), dir, StringComparison.OrdinalIgnoreCase))
+                .Select(f => (File: f, Text: File.ReadAllText(f)))
+                .Where(x => !string.Equals(edit(x.Text), x.Text, StringComparison.Ordinal))
+                .OrderBy(x => x.File, StringComparer.Ordinal)
+                .Select(x => x.File)
+                .FirstOrDefault();
+            if (file is not null)
+                result.Add((project, file));
+        }
+
+        return [.. result.OrderByDescending(x => solution.TestProjects.Count(t => File.ReadAllText(t).Contains(Path.GetFileName(x.Project), StringComparison.OrdinalIgnoreCase)))
+            .ThenBy(x => x.Project, StringComparer.Ordinal)];
     }
 
     /// <summary>
@@ -179,21 +191,16 @@ internal static partial class MultiAgentScenario
     }
 
     /// <summary>
-    ///     Three verify rounds. Round 1 edits a file in one project, round 2 edits a file in a different project and leaves
-    ///     the first edit in place, round 3 edits the second again. A round that reruns a test project only the first edit
-    ///     can reach is the waste the test cache is meant to remove.
+    ///     Three verify rounds. Round 1 renames a method in one project, round 2 renames a method in a different project and
+    ///     leaves the first rename in place, round 3 renames the second again. A rename rather than a body edit because the
+    ///     question is which test projects a round runs, and a body edit may reach none. A round that reruns a test project
+    ///     only the first edit can reach is the waste the test cache is meant to remove.
     /// </summary>
     private static async Task<List<MultiAgentRound>> RoundsAsync(EvalRepo repo, SolutionInfo solution)
     {
-        var byProject = solution.CodeSources()
-            .Where(f => f.Contains("public", StringComparison.Ordinal))
-            .GroupBy(f => solution.ProjectOf(f) ?? "", StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Key.Length > 0)
-            .OrderBy(g => g.Key, StringComparer.Ordinal)
-            .Select(g => (Project: g.Key, File: g.OrderBy(f => f, StringComparer.Ordinal).First()))
-            .ToList();
+        var byProject = EditablePerProject(solution, text => RenameEdit(text, 1));
         if (byProject.Count < 2)
-            throw new InvalidOperationException($"the rounds scenario needs files in two different projects; found {byProject.Count}");
+            throw new InvalidOperationException($"the rounds scenario needs files in two different projects; found {byProject.Count} in {solution.Root}");
 
         var (p1, f1) = byProject[0];
         var (p2, f2) = byProject[1];
@@ -205,9 +212,9 @@ internal static partial class MultiAgentScenario
         {
             var edits = new (string File, string Text, string Project)[]
             {
-                (f1, TextEdit(original1, "1"), Path.GetFileName(p1)),
-                (f2, TextEdit(original2, "1"), Path.GetFileName(p2)),
-                (f2, TextEdit(original2, "2"), Path.GetFileName(p2)),
+                (f1, RenameEdit(original1, 1) is { } r1 && r1.Length > 0 ? r1 : TextEdit(original1, "1"), Path.GetFileName(p1)),
+                (f2, RenameEdit(original2, 1) is { } r2 && r2.Length > 0 ? r2 : TextEdit(original2, "1"), Path.GetFileName(p2)),
+                (f2, RenameEdit(original2, 2) is { } r3 && r3.Length > 0 ? r3 : TextEdit(original2, "2"), Path.GetFileName(p2)),
             };
             for (var i = 0; i < edits.Length; i++)
             {
@@ -257,6 +264,20 @@ internal static partial class MultiAgentScenario
 
         var statement = SyntaxFactory.ParseStatement($"_ = {i};\n");
         return root.ReplaceNode(method.Body, method.Body.WithStatements(method.Body.Statements.Insert(0, statement))).ToFullString();
+    }
+
+    /// <summary>
+    ///     Renames the first method declared in the file, which reaches every project that calls it, or returns the text
+    ///     unchanged when the file declares no method.
+    /// </summary>
+    private static string RenameEdit(string text, int round)
+    {
+        var root = CSharpSyntaxTree.ParseText(text).GetRoot();
+        var method = root.DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault(m => !m.Modifiers.Any(SyntaxKind.PartialKeyword));
+        if (method is null)
+            return text;
+
+        return root.ReplaceToken(method.Identifier, SyntaxFactory.Identifier(method.Identifier.Text + "Round" + round).WithTriviaFrom(method.Identifier)).ToFullString();
     }
 
     private static LatencyStats Stats(List<double> values)

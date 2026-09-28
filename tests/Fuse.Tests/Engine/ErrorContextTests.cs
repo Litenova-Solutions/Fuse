@@ -42,6 +42,24 @@ public class ErrorContextTests
     }
 
     [Fact]
+    public async Task A_removed_class_is_named_by_its_header_alone()
+    {
+        await using var engine = await EngineHarness.StartAsync();
+        engine.Repo.Write("Lib/Calc.cs", "namespace Lib;\n\npublic static class Keep\n{\n}\n");
+        var report = await engine.CheckAsync("Lib/Calc.cs");
+
+        // The line names a declaration as it was at HEAD, on one line, never the members the class held.
+        var lines = NonNullContexts(report);
+        Assert.NotEmpty(lines);
+        Assert.All(lines, l =>
+        {
+            Assert.StartsWith("removed: ", l, StringComparison.Ordinal);
+            Assert.DoesNotContain("{", l, StringComparison.Ordinal);
+            Assert.DoesNotContain("\n", l, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public async Task A_changed_type_header_names_the_type()
     {
         await using var engine = await EngineHarness.StartAsync();

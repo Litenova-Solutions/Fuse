@@ -33,31 +33,30 @@ internal sealed record SurfaceChange(string Key, SurfaceEntry? Before, SurfaceEn
 internal static class SurfaceMap
 {
     /// <summary>
-    ///     A member's declaration as it is written, stopping before its body. A block body starts at its brace and an
-    ///     accessor list at its keyword, so the cut leaves the header; an expression body follows the arrow, so the cut is at
-    ///     the arrow and leaves the header without a dangling token.
+    ///     A declaration's header as it is written, on one line: it stops before a member's body, accessor list or
+    ///     expression body, before a type's members, and before a field's initializer, so the line never carries code.
     /// </summary>
     public static string Declaration(SyntaxNode node)
     {
         var text = node.WithoutLeadingTrivia().WithoutTrailingTrivia().ToFullString();
-        var body = node switch
+        int? cut = node switch
         {
-            BaseMethodDeclarationSyntax method => (SyntaxNode?)method.Body ?? method.ExpressionBody,
-            AccessorDeclarationSyntax accessor => (SyntaxNode?)accessor.Body ?? accessor.ExpressionBody,
-            PropertyDeclarationSyntax property => (SyntaxNode?)property.AccessorList ?? property.ExpressionBody,
-            IndexerDeclarationSyntax indexer => (SyntaxNode?)indexer.AccessorList ?? indexer.ExpressionBody,
-            EventFieldDeclarationSyntax events => events,
+            BaseMethodDeclarationSyntax method => ((SyntaxNode?)method.Body ?? method.ExpressionBody)?.SpanStart ?? StartOf(method.SemicolonToken),
+            AccessorDeclarationSyntax accessor => ((SyntaxNode?)accessor.Body ?? accessor.ExpressionBody)?.SpanStart ?? StartOf(accessor.SemicolonToken),
+            PropertyDeclarationSyntax property => ((SyntaxNode?)property.AccessorList ?? property.ExpressionBody)?.SpanStart,
+            IndexerDeclarationSyntax indexer => ((SyntaxNode?)indexer.AccessorList ?? indexer.ExpressionBody)?.SpanStart,
+            EventDeclarationSyntax @event => @event.AccessorList?.SpanStart ?? StartOf(@event.SemicolonToken),
+            BaseFieldDeclarationSyntax field => field.Declaration.Variables.FirstOrDefault(v => v.Initializer is not null)?.Initializer!.SpanStart ?? StartOf(field.SemicolonToken),
+            BaseTypeDeclarationSyntax type => StartOf(type.OpenBraceToken) ?? (type is TypeDeclarationSyntax t ? StartOf(t.SemicolonToken) : null),
+            DelegateDeclarationSyntax @delegate => StartOf(@delegate.SemicolonToken),
             _ => null,
         };
-        if (body is null)
-            return text.TrimEnd();
-
-        // An expression body is what follows "=>", so the declaration ends at the arrow. Anything else ends where the body
-        // starts. ChildTokens is the declaration's own tokens, which is where the arrow is, without descending into the body.
-        var arrow = node.ChildTokens().FirstOrDefault(t => t.IsKind(SyntaxKind.EqualsGreaterThanToken));
-        var cut = arrow != default && body is ArrowExpressionClauseSyntax ? arrow.SpanStart : body.SpanStart;
-        return text[..Math.Clamp(cut - node.SpanStart, 0, text.Length)].TrimEnd();
+        var header = cut is { } at ? text[..Math.Clamp(at - node.SpanStart, 0, text.Length)] : text;
+        // Attributes, constraints and long parameter lists can span lines; the cause line is one line.
+        return string.Join(' ', header.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
+
+    private static int? StartOf(SyntaxToken token) => token.IsKind(SyntaxKind.None) || token.IsMissing ? null : token.SpanStart;
 
     public static Dictionary<string, SurfaceEntry> Compute(SyntaxNode root)
     {

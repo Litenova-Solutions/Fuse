@@ -29,12 +29,14 @@ internal sealed class RepoWorkspace : IDisposable
     private volatile bool _rebuildPending;
     private readonly HashSet<string> _touched = new(ChangeTracker.PathComparer);
     private readonly Dictionary<string, string> _loadFailures = new(ChangeTracker.PathComparer);
+    private readonly AnalyzerShadow _analyzers;
     private MSBuildWorkspace? _loader;
 
     public RepoWorkspace(RepoRoot root, Action<string> log)
     {
         _root = root;
         _log = log;
+        _analyzers = new AnalyzerShadow(root);
         Tracker = new ChangeTracker(root);
     }
 
@@ -286,7 +288,8 @@ internal sealed class RepoWorkspace : IDisposable
     {
         if (_loader is null)
             return;
-        var current = _loader.CurrentSolution;
+        // The repository's own analyzers load from a copy, so a real build can still overwrite them.
+        var current = _analyzers.Apply(_loader.CurrentSolution);
         var baseline = current;
         foreach (var path in _touched.Concat(Tracker.Changed).Distinct(ChangeTracker.PathComparer))
         {

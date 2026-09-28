@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 322" width="760" height="322" role="img" aria-labelledby="t d">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 458" width="760" height="458" role="img" aria-labelledby="t d">
 <title id="t">Fuse time as a share of the dotnet command it replaces</title>
-<desc id="d">check, Small solution, 5 projects: 0.17 s with Fuse against 1.16 s with dotnet; tests, Small solution, 5 projects: 1.41 s with Fuse against 4.46 s with dotnet; check, NodaTime, 17 projects: 0.59 s with Fuse against 1.54 s with dotnet; tests, NodaTime, 42,681 tests: 35.5 s with Fuse against 50.0 s with dotnet</desc>
+<desc id="d">check, Small solution, 5 projects: 0.23 s with Fuse against 1.14 s with dotnet; tests, Small solution, 5 projects: 1.23 s with Fuse against 3.98 s with dotnet; check, NodaTime, 15 projects: 0.67 s with Fuse against 1.61 s with dotnet; tests, NodaTime, 42,700 tests: 31.3 s with Fuse against 44.1 s with dotnet; check, Jellyfin, 40 projects: 0.59 s with Fuse against 4.31 s with dotnet; tests, Jellyfin, 2,535 tests: 153.3 s with Fuse against 227.3 s with dotnet; check, Community Toolkit, 26 projects: 2.50 s with Fuse against 5.86 s with dotnet; tests, Community Toolkit, 12,449 tests: 76.6 s with Fuse against 443.5 s with dotnet</desc>
 <style>
   .bg { fill: #fcfcfb; }
   .title { fill: #0b0b0b; font: 600 17px system-ui, -apple-system, 'Segoe UI', sans-serif; }
@@ -21,32 +21,44 @@
     .bar { fill: #9b85ff; }
   }
 </style>
-<rect class="bg" width="760" height="322" rx="10"/>
+<rect class="bg" width="760" height="458" rx="10"/>
 <text class="title" x="20" y="34">Time until the agent knows</text>
 <text class="sub" x="20" y="56">Fuse's median time as a share of the dotnet command it replaces. Shorter is better.</text>
-<line class="grid" x1="260" y1="80" x2="260" y2="286"/>
-<text class="axis" x="260" y="304" text-anchor="middle">0%</text>
-<line class="grid" x1="380" y1="80" x2="380" y2="286"/>
-<text class="axis" x="380" y="304" text-anchor="middle">25%</text>
-<line class="grid" x1="500" y1="80" x2="500" y2="286"/>
-<text class="axis" x="500" y="304" text-anchor="middle">50%</text>
-<line class="grid" x1="620" y1="80" x2="620" y2="286"/>
-<text class="axis" x="620" y="304" text-anchor="middle">75%</text>
-<line class="ref" x1="740" y1="80" x2="740" y2="286"/>
-<text class="axis" x="740" y="304" text-anchor="middle">100%</text>
+<line class="grid" x1="260" y1="80" x2="260" y2="422"/>
+<text class="axis" x="260" y="440" text-anchor="middle">0%</text>
+<line class="grid" x1="380" y1="80" x2="380" y2="422"/>
+<text class="axis" x="380" y="440" text-anchor="middle">25%</text>
+<line class="grid" x1="500" y1="80" x2="500" y2="422"/>
+<text class="axis" x="500" y="440" text-anchor="middle">50%</text>
+<line class="grid" x1="620" y1="80" x2="620" y2="422"/>
+<text class="axis" x="620" y="440" text-anchor="middle">75%</text>
+<line class="ref" x1="740" y1="80" x2="740" y2="422"/>
+<text class="axis" x="740" y="440" text-anchor="middle">100%</text>
 <text class="axis" x="734" y="92" text-anchor="end">dotnet = 100%</text>
 <text class="group" x="20" y="110">Check an edit: fuse check vs dotnet build</text>
 <text class="label" x="32" y="140">Small solution, 5 projects</text>
-<path class="bar" d="M260,128h67.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-67.2z"><title>Small solution, 5 projects: 0.17 s vs 1.16 s</title></path>
-<text class="val" x="339.2" y="140">15%  (0.17 s vs 1.16 s)</text>
-<text class="label" x="32" y="174">NodaTime, 17 projects</text>
-<path class="bar" d="M260,162h180.4a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-180.4z"><title>NodaTime, 17 projects: 0.59 s vs 1.54 s</title></path>
-<text class="val" x="452.4" y="174">38%  (0.59 s vs 1.54 s)</text>
-<text class="group" x="20" y="208">Run the affected tests: fuse test vs dotnet test</text>
-<text class="label" x="32" y="238">Small solution, 5 projects</text>
-<path class="bar" d="M260,226h147.5a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-147.5z"><title>Small solution, 5 projects: 1.41 s vs 4.46 s</title></path>
-<text class="val" x="419.5" y="238">32%  (1.41 s vs 4.46 s)</text>
-<text class="label" x="32" y="272">NodaTime, 42,681 tests</text>
-<path class="bar" d="M260,260h336.5a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-336.5z"><title>NodaTime, 42,681 tests: 35.5 s vs 50.0 s</title></path>
-<text class="val-in" x="592.5" y="272" text-anchor="end">71%  (35.5 s vs 50.0 s)</text>
+<path class="bar" d="M260,128h92.7a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-92.7z"><title>Small solution, 5 projects: 0.23 s vs 1.14 s</title></path>
+<text class="val" x="364.7" y="140">20%  (0.23 s vs 1.14 s)</text>
+<text class="label" x="32" y="174">NodaTime, 15 projects</text>
+<path class="bar" d="M260,162h194a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-194z"><title>NodaTime, 15 projects: 0.67 s vs 1.61 s</title></path>
+<text class="val" x="466" y="174">41%  (0.67 s vs 1.61 s)</text>
+<text class="label" x="32" y="208">Jellyfin, 40 projects</text>
+<path class="bar" d="M260,196h61.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-61.2z"><title>Jellyfin, 40 projects: 0.59 s vs 4.31 s</title></path>
+<text class="val" x="333.2" y="208">14%  (0.59 s vs 4.31 s)</text>
+<text class="label" x="32" y="242">Community Toolkit, 26 projects</text>
+<path class="bar" d="M260,230h200.9a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-200.9z"><title>Community Toolkit, 26 projects: 2.50 s vs 5.86 s</title></path>
+<text class="val" x="472.9" y="242">43%  (2.50 s vs 5.86 s)</text>
+<text class="group" x="20" y="276">Run the affected tests: fuse test vs dotnet test</text>
+<text class="label" x="32" y="306">Small solution, 5 projects</text>
+<path class="bar" d="M260,294h144.1a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-144.1z"><title>Small solution, 5 projects: 1.23 s vs 3.98 s</title></path>
+<text class="val" x="416.1" y="306">31%  (1.23 s vs 3.98 s)</text>
+<text class="label" x="32" y="340">NodaTime, 42,700 tests</text>
+<path class="bar" d="M260,328h336.5a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-336.5z"><title>NodaTime, 42,700 tests: 31.3 s vs 44.1 s</title></path>
+<text class="val-in" x="592.5" y="340" text-anchor="end">71%  (31.3 s vs 44.1 s)</text>
+<text class="label" x="32" y="374">Jellyfin, 2,535 tests</text>
+<path class="bar" d="M260,362h319.8a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-319.8z"><title>Jellyfin, 2,535 tests: 153.3 s vs 227.3 s</title></path>
+<text class="val-in" x="575.8" y="374" text-anchor="end">67%  (153.3 s vs 227.3 s)</text>
+<text class="label" x="32" y="408">Community Toolkit, 12,449 tests</text>
+<path class="bar" d="M260,396h78.9a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-78.9z"><title>Community Toolkit, 12,449 tests: 76.6 s vs 443.5 s</title></path>
+<text class="val" x="350.9" y="408">17%  (76.6 s vs 443.5 s)</text>
 </svg>

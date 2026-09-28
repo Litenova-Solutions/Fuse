@@ -1,0 +1,252 @@
+{
+  "suite": "selection",
+  "repo": "fixture",
+  "commit": "6c4e298f4c770038ea1d01cab2359f545e7c06fc",
+  "fuseBuild": "5.1.0",
+  "seed": 1,
+  "requested": 10,
+  "cases": 10,
+  "withFailures": 9,
+  "missedCases": 0,
+  "unverifiedCases": 0,
+  "missedTests": 0,
+  "totalTests": 22,
+  "meanSelectedFraction": 0.15,
+  "fuseMedianSeconds": 1.2278296000000002,
+  "dotnetMedianSeconds": 3.9789087,
+  "skippedNonCompiling": [],
+  "projectsWithoutResults": [],
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edit": {
+        "path": "src/Core/Geometry.cs",
+        "kind": "flip-comparison",
+        "description": "flipped \u003C= at line 15",
+        "newText": null
+      },
+      "truthFailing": [
+        "Core.Tests.GeometryTests.Square",
+        "Services.Tests.ReportBuilderTests.DescribesSquare"
+      ],
+      "fuseFailing": [
+        "Core.Tests.GeometryTests.Square",
+        "Services.Tests.ReportBuilderTests.DescribesSquare"
+      ],
+      "fuseFailed": 2,
+      "fusePassed": 3,
+      "fuseScope": "fuse: 2 failed, 3 passed in 1.6 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.7042437,
+      "dotnetSeconds": 3.9522028,
+      "verdict": "caught"
+    },
+    {
+      "index": 1,
+      "edit": {
+        "path": "src/Core/TextTools.cs",
+        "kind": "off-by-one",
+        "description": "changed 1 to 2 at line 14",
+        "newText": null
+      },
+      "truthFailing": [
+        "Core.Tests.TextToolsTests.Slugifies"
+      ],
+      "fuseFailing": [
+        "Core.Tests.TextToolsTests.Slugifies"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 1,
+      "fuseScope": "fuse: 1 failed, 1 passed in 1.1 s; ran 2 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.2360994,
+      "dotnetSeconds": 3.9563307,
+      "verdict": "caught"
+    },
+    {
+      "index": 2,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060_lines.Add(price.Multiply(quantity));\u0060 at line 13",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Discounts",
+        "Services.Tests.OrderServiceTests.Totals"
+      ],
+      "fuseFailed": 3,
+      "fusePassed": 1,
+      "fuseScope": "fuse: 3 failed, 1 passed in 1.2 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.2802131,
+      "dotnetSeconds": 4.0783729,
+      "verdict": "caught"
+    },
+    {
+      "index": 3,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060_lines.Add(price.Multiply(quantity));\u0060 at line 13",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Discounts",
+        "Services.Tests.OrderServiceTests.Large"
+      ],
+      "fuseFailed": 3,
+      "fusePassed": 1,
+      "fuseScope": "fuse: 3 failed, 1 passed in 1.1 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.1631946,
+      "dotnetSeconds": 3.868453,
+      "verdict": "caught"
+    },
+    {
+      "index": 4,
+      "edit": {
+        "path": "src/Core/Geometry.cs",
+        "kind": "off-by-one",
+        "description": "changed 0 to 1 at line 15",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 5,
+      "fuseScope": "fuse: 0 failed, 5 passed in 1.2 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.2641862,
+      "dotnetSeconds": 4.0342932,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 5,
+      "edit": {
+        "path": "src/Core/Geometry.cs",
+        "kind": "negate-return",
+        "description": "negated \u0060return false;\u0060 at line 16",
+        "newText": null
+      },
+      "truthFailing": [
+        "Core.Tests.GeometryTests.NegativeIsNotSquare"
+      ],
+      "fuseFailing": [
+        "Core.Tests.GeometryTests.NegativeIsNotSquare"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 4,
+      "fuseScope": "fuse: 1 failed, 4 passed in 1.1 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.2363259,
+      "dotnetSeconds": 3.9491406,
+      "verdict": "caught"
+    },
+    {
+      "index": 6,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "flip-comparison",
+        "description": "flipped \u003E= at line 24",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Large"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Large"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 0,
+      "fuseScope": "fuse: 1 failed, 0 passed in 1.1 s; ran 1 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.1775583,
+      "dotnetSeconds": 4.0331671,
+      "verdict": "caught"
+    },
+    {
+      "index": 7,
+      "edit": {
+        "path": "src/Core/TextTools.cs",
+        "kind": "off-by-one",
+        "description": "changed 1 to 2 at line 14",
+        "newText": null
+      },
+      "truthFailing": [
+        "Core.Tests.TextToolsTests.Slugifies"
+      ],
+      "fuseFailing": [
+        "Core.Tests.TextToolsTests.Slugifies"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 1,
+      "fuseScope": "fuse: 1 failed, 1 passed in 1.1 s; ran 2 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.1695448,
+      "dotnetSeconds": 4.0014867,
+      "verdict": "caught"
+    },
+    {
+      "index": 8,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "off-by-one",
+        "description": "changed 100 to 101 at line 31",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 0,
+      "fuseScope": "fuse: 1 failed, 0 passed in 1.1 s; ran 1 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.2195598,
+      "dotnetSeconds": 4.0314737,
+      "verdict": "caught"
+    },
+    {
+      "index": 9,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060_lines.Add(price.Multiply(quantity));\u0060 at line 13",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Discounts",
+        "Services.Tests.OrderServiceTests.Totals"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Discounts",
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Totals"
+      ],
+      "fuseFailed": 3,
+      "fusePassed": 1,
+      "fuseScope": "fuse: 3 failed, 1 passed in 1.1 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 1.1467374,
+      "dotnetSeconds": 3.9020985,
+      "verdict": "caught"
+    }
+  ]
+}

@@ -35,7 +35,7 @@ internal sealed record PinnedRepo(
     public static IReadOnlyList<PinnedRepo> All { get; } =
     [
         // The counts are the .csproj entries of the pinned solution whose files exist, which is what the suites evaluate.
-        new("NodaTime", "https://github.com/nodatime/NodaTime", null, null, "fcd80e11216ba403ccce0abbcedc41ba37bb352e", "src/NodaTime.slnx", "NodaTime, 15 projects", "NodaTime, 42,681 tests"),
+        new("NodaTime", "https://github.com/nodatime/NodaTime", null, null, "fcd80e11216ba403ccce0abbcedc41ba37bb352e", "src/NodaTime.slnx", "NodaTime, 15 projects", "NodaTime, 42,700 tests"),
         // Pinned to the last commit before Jellyfin moved to Roslyn 5: its in-repo analyzer is built against a newer
         // compiler than any SDK that resolves on a machine whose newest SDK is 10.0.112, and Roslyn refuses that (CS9057).
         new("Jellyfin", "https://github.com/jellyfin/Jellyfin", null, null, "1d7c6af520da5c84ceac1c21a1d2da34837540ac", "Jellyfin.sln", "Jellyfin, 40 projects", "Jellyfin, 2,535 tests"),

@@ -85,20 +85,23 @@ One `fuse engine` process runs per repository. The first command or hook starts 
 
 ## Measured
 
-From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine. Every number below comes from these files: `evals/results/correctness-fixture-20260925-0921.json`, `evals/results/correctness-NodaTime-20260925-0924.json`, `evals/results/selection-fixture-20260925-0938.json`, `evals/results/selection-NodaTime-20260925-0946.json`, `evals/results/latency-fixture-20260925-0947.json` and `evals/results/latency-NodaTime-20260925-0950.json`.
+From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine, all on build 5.1.0. Measured at: fixture at `6c4e298`, NodaTime at `fcd80e1`, Jellyfin at `1d7c6af`, Community Toolkit at `b135626`.
 
-| Eval | Small solution (fixture: 5 projects, 22 tests) | NodaTime (17 projects, 42,681 tests) |
-|---|---|---|
-| Correctness: generated edits compared with a real `dotnet build` | 30 cases: 0 missed, 0 contradicted | 20 cases: 0 missed, 0 contradicted |
-| `fuse check` vs `dotnet build`, median | 0.17 s vs 1.16 s | 0.59 s vs 1.54 s |
-| Warm check after a body edit, P50 / P95 | 166 / 278 ms | 526 / 666 ms |
-| Warm check after a signature edit, P50 / P95 | 196 / 2,617 ms | 1,463 / 7,971 ms |
-| Test selection: failing tests missed | 0 in 10 cases | 0 in 5 cases |
-| Tests run by `fuse test` | 15 percent | all (the changes reach core types) |
-| `fuse test` vs `dotnet test`, median | 1.41 s vs 4.46 s | 35.5 s vs 50.0 s |
-| Engine memory | 241 MB | 832 MB |
+| Eval | Small solution (fixture: 5 projects, 22 tests) | NodaTime (15 projects, 42,700 tests) | Jellyfin (40 projects, 2,535 tests) | .NET Community Toolkit (26 projects, 12,449 tests) |
+|---|---|---|---|---|
+| Correctness: generated edits compared with a real `dotnet build` | 30 cases: 0 missed, 0 contradicted | 30 cases: 1 missed, 1 contradicted | 30 cases: 0 missed, 5 contradicted | 30 cases: 0 missed, 4 contradicted |
+| `fuse check` vs `dotnet build`, median | 0.23 s vs 1.14 s | 0.67 s vs 1.61 s | 0.59 s vs 4.31 s | 2.50 s vs 5.86 s |
+| Warm check after a body edit, P50 / P95 | 214 / 321 ms | 779 / 1,010 ms | 283 / 452 ms | 969 / 1,361 ms |
+| Warm check after a signature edit, P50 / P95 | 253 / 1,015 ms | 2,275 / 8,630 ms | 227 / 53,470 ms | 505 / 23,203 ms |
+| Test selection: failing tests missed | 0 in 10 cases | 158 in 10 cases | 0 in 10 cases | 0 in 10 cases |
+| of which in cases the suite could not adjudicate | 0 | 2 | 0 | 0 |
+| Tests run by `fuse test` | 15 percent | 80 percent | 22.3 percent | 13.7 percent |
+| `fuse test` vs `dotnet test`, median | 1.23 s vs 3.98 s | 31.3 s vs 44.1 s | 153.3 s vs 227.3 s | 76.6 s vs 443.5 s |
+| Engine memory | 271 MB | 813 MB | 961 MB | 2,330 MB |
 
-"Contradicted" means Fuse reported an error the build does not have. Errors Fuse reports in projects the build skips after an earlier failure cannot be compared; the result files count them separately. The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project. NodaTime builds with `TreatWarningsAsErrors`, so each check there also runs the analyzers that can report a warning.
+Every number above comes from these files: `evals/results/correctness-fixture-20260928-1640.json`, `evals/results/selection-fixture-20260928-1641.json`, `evals/results/latency-fixture-20260928-1642.json`, `evals/results/correctness-NodaTime-20260928-1541.json`, `evals/results/selection-NodaTime-20260928-1555.json`, `evals/results/latency-NodaTime-20260928-1600.json`, `evals/results/correctness-Jellyfin-20260928-1208.json`, `evals/results/selection-Jellyfin-20260928-1319.json`, `evals/results/latency-Jellyfin-20260928-1331.json`, `evals/results/correctness-CommunityToolkit-20260928-1345.json`, `evals/results/selection-CommunityToolkit-20260928-1519.json` and `evals/results/latency-CommunityToolkit-20260928-1536.json`.
+
+"Contradicted" means Fuse reported an error the build does not have. On Jellyfin and the Community Toolkit those are analyzer and documentation diagnostics; the cause is open and is written up in the release notes. Errors Fuse reports in projects the build skips after an earlier failure cannot be compared; the result files count them separately. The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project; on Jellyfin and the Community Toolkit that first edit loads dozens of projects, which is why their P95 is in seconds. NodaTime builds with `TreatWarningsAsErrors`, so each check there also runs the analyzers that can report a warning. NodaTime's 158 missed tests are all inside two mutations of generated timezone data, where the same test name appears in more than one test project and the suite compares by name; `fuse test` ran 42,689 of 42,700 tests in both.
 
 ## Limits
 

@@ -41,47 +41,71 @@
     <section class="section">
       <div class="section-head">
         <p class="kicker">After Every Edit</p>
-        <h2>Up to 6.7x Faster Than <code>dotnet build</code></h2>
+        <h2>Up to 7.4x Faster Than <code>dotnet build</code></h2>
         <p>The agent gets only the errors its edit introduced, including breaks in other projects.</p>
       </div>
       <div class="repos">
         <div class="repo">
           <h3>Small Solution <span>5 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:14.8%"></span></span><span class="t">0.17 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.16 s</span></div>
-          <p class="x"><b>6.7x</b> faster</p>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:20.2%"></span></span><span class="t">0.23 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.14 s</span></div>
+          <p class="x"><b>5.0x</b> faster</p>
         </div>
         <div class="repo">
-          <h3>Large Open-Source Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 17 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:38.4%"></span></span><span class="t">0.59 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.54 s</span></div>
-          <p class="x"><b>2.6x</b> faster</p>
+          <h3>Date And Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 15 projects</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:41.2%"></span></span><span class="t">0.67 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.61 s</span></div>
+          <p class="x"><b>2.4x</b> faster</p>
+        </div>
+        <div class="repo">
+          <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 40 projects</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:13.6%"></span></span><span class="t">0.59 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">4.31 s</span></div>
+          <p class="x"><b>7.4x</b> faster</p>
+        </div>
+        <div class="repo">
+          <h3>.NET Library Suite <span><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a>, 26 projects</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:42.7%"></span></span><span class="t">2.50 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">5.86 s</span></div>
+          <p class="x"><b>2.3x</b> faster</p>
         </div>
       </div>
-      <p class="proof"><b>0</b> compiler errors missed across 50 generated edits.</p>
+      <p class="proof"><b>1</b> compiler error missed across 120 generated edits.</p>
     </section>
 
     <section class="section">
       <div class="section-head">
         <p class="kicker">When It Runs the Tests</p>
-        <h2>Up to 3.2x Faster Than <code>dotnet test</code></h2>
+        <h2>Up to 5.8x Faster Than <code>dotnet test</code></h2>
         <p>Only the tests the change can reach run, and only failures are printed.</p>
       </div>
       <div class="repos">
         <div class="repo">
           <h3>Small Solution <span>22 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:31.6%"></span></span><span class="t">1.41 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">4.46 s</span></div>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:30.9%"></span></span><span class="t">1.23 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">3.98 s</span></div>
           <p class="x"><b>3.2x</b> faster</p>
         </div>
         <div class="repo">
-          <h3>Large Open-Source Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 42,681 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:70.9%"></span></span><span class="t">35.5 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">50.0 s</span></div>
+          <h3>Date And Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 42,700 tests</span></h3>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:70.9%"></span></span><span class="t">31.3 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">44.1 s</span></div>
           <p class="x"><b>1.4x</b> faster</p>
         </div>
+        <div class="repo">
+          <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 2,535 tests</span></h3>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:67.4%"></span></span><span class="t">153.3 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">227.3 s</span></div>
+          <p class="x"><b>1.5x</b> faster</p>
+        </div>
+        <div class="repo">
+          <h3>.NET Library Suite <span><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a>, 12,449 tests</span></h3>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:17.3%"></span></span><span class="t">76.6 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">443.5 s</span></div>
+          <p class="x"><b>5.8x</b> faster</p>
+        </div>
       </div>
-      <p class="proof"><b>0</b> failing tests missed across 15 generated changes. <a href="results">How it was measured</a></p>
+      <p class="proof"><b>158</b> failing tests missed across 40 generated changes, all in two cases where the same test name appears in more than one test project. <a href="results">How it was measured</a></p>
     </section>
 
 

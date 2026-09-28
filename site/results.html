@@ -32,22 +32,23 @@
     <h2>Speed and Accuracy</h2>
     <div class="table-scroll">
       <table>
-        <thead><tr><th></th><th>Small solution (fixture)</th><th><a href="https://github.com/nodatime/nodatime">NodaTime</a></th></tr></thead>
+        <thead><tr><th></th><th>Small solution (fixture)</th><th><a href="https://github.com/nodatime/nodatime">NodaTime</a></th><th><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a></th><th><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a></th></tr></thead>
         <tbody>
-          <tr><td>Size</td><td class="num">5 projects, 22 tests</td><td class="num">17 projects, 42,681 tests</td></tr>
-          <tr><td>Check an edit vs <code>dotnet build</code></td><td class="num">0.17 s vs 1.16 s</td><td class="num">0.59 s vs 1.54 s</td></tr>
-          <tr><td>Warm check, body edit (P50 / P95)</td><td class="num">166 / 278 ms</td><td class="num">526 / 666 ms</td></tr>
-          <tr><td>Warm check, signature edit (P50 / P95)</td><td class="num">196 / 2,617 ms</td><td class="num">1,463 / 7,971 ms</td></tr>
-          <tr><td>Affected tests vs <code>dotnet test</code></td><td class="num">1.41 s vs 4.46 s</td><td class="num">35.5 s vs 50.0 s</td></tr>
-          <tr><td>Share of tests run</td><td class="num">15 percent</td><td class="num">all</td></tr>
-          <tr><td>Compiler errors missed</td><td class="num">0 in 30 cases</td><td class="num">0 in 20 cases</td></tr>
-          <tr><td>Failing tests missed</td><td class="num">0 in 10 cases</td><td class="num">0 in 5 cases</td></tr>
-          <tr><td>Engine memory</td><td class="num">241 MB</td><td class="num">832 MB</td></tr>
+          <tr><td>Size</td><td class="num">5 projects, 22 tests</td><td class="num">15 projects, 42,700 tests</td><td class="num">40 projects, 2,535 tests</td><td class="num">26 projects, 12,449 tests</td></tr>
+          <tr><td>Check an edit vs <code>dotnet build</code></td><td class="num">0.23 s vs 1.14 s</td><td class="num">0.67 s vs 1.61 s</td><td class="num">0.59 s vs 4.31 s</td><td class="num">2.50 s vs 5.86 s</td></tr>
+          <tr><td>Warm check, body edit (P50 / P95)</td><td class="num">214 / 321 ms</td><td class="num">779 / 1,010 ms</td><td class="num">283 / 452 ms</td><td class="num">969 / 1,361 ms</td></tr>
+          <tr><td>Warm check, signature edit (P50 / P95)</td><td class="num">253 / 1,015 ms</td><td class="num">2,275 / 8,630 ms</td><td class="num">227 / 53,470 ms</td><td class="num">505 / 23,203 ms</td></tr>
+          <tr><td>Affected tests vs <code>dotnet test</code></td><td class="num">1.23 s vs 3.98 s</td><td class="num">31.3 s vs 44.1 s</td><td class="num">153.3 s vs 227.3 s</td><td class="num">76.6 s vs 443.5 s</td></tr>
+          <tr><td>Share of tests run</td><td class="num">15 percent</td><td class="num">80 percent</td><td class="num">22.3 percent</td><td class="num">13.7 percent</td></tr>
+          <tr><td>Compiler errors missed</td><td class="num">0 in 30 cases</td><td class="num">1 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
+          <tr><td>Failing tests missed</td><td class="num">0 in 10 cases</td><td class="num">158 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td></tr>
+          <tr><td>of which the suite could not adjudicate</td><td class="num">0 cases</td><td class="num">2 cases</td><td class="num">0 cases</td><td class="num">0 cases</td></tr>
+          <tr><td>Engine memory</td><td class="num">271 MB</td><td class="num">813 MB</td><td class="num">961 MB</td><td class="num">2,330 MB</td></tr>
         </tbody>
       </table>
     </div>
 
-    <p class="sources">From these files: <code>correctness-fixture-20260925-0921.json</code>, <code>correctness-NodaTime-20260925-0924.json</code>, <code>selection-fixture-20260925-0938.json</code>, <code>selection-NodaTime-20260925-0946.json</code>, <code>latency-fixture-20260925-0947.json</code> and <code>latency-NodaTime-20260925-0950.json</code>.</p>
+    <p class="sources">All measured on Fuse 5.1.0, at fixture <code>6c4e298</code>, NodaTime <code>fcd80e1</code>, Jellyfin <code>1d7c6af</code> and Community Toolkit <code>b135626</code>. From these twelve files: <code>correctness-fixture-20260928-1640.json</code>, <code>selection-fixture-20260928-1641.json</code>, <code>latency-fixture-20260928-1642.json</code>, <code>correctness-NodaTime-20260928-1541.json</code>, <code>selection-NodaTime-20260928-1555.json</code>, <code>latency-NodaTime-20260928-1600.json</code>, <code>correctness-Jellyfin-20260928-1208.json</code>, <code>selection-Jellyfin-20260928-1319.json</code>, <code>latency-Jellyfin-20260928-1331.json</code>, <code>correctness-CommunityToolkit-20260928-1345.json</code>, <code>selection-CommunityToolkit-20260928-1519.json</code> and <code>latency-CommunityToolkit-20260928-1536.json</code>.</p>
 
     <h2>Reading the Numbers</h2>
     <ul>

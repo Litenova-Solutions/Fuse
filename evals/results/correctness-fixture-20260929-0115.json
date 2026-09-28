@@ -1,0 +1,1226 @@
+{
+  "suite": "correctness",
+  "repo": "fixture",
+  "commit": "6c4e298f4c770038ea1d01cab2359f545e7c06fc",
+  "fuseBuild": "5.1.0/3d2eb077b366434db8f94692d69b2bae",
+  "seed": 1,
+  "requested": 30,
+  "cases": 30,
+  "breaking": 26,
+  "neutral": 4,
+  "falseGreen": 0,
+  "falseRedCases": 0,
+  "falseRedDiagnostics": 0,
+  "unverifiableDiagnostics": 37,
+  "deferredByCompilerDiagnostics": 4,
+  "messageMismatchDiagnostics": 12,
+  "contextLines": 66,
+  "contextBytes": 3219,
+  "outputBytes": 20989,
+  "partialMisses": 0,
+  "exactAgreement": 30,
+  "fileAgreement": 30,
+  "fuseFailures": 0,
+  "fuseMedianMs": 178.7854,
+  "buildMedianSeconds": 1.1416610500000002,
+  "headBuildErrors": 0,
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edits": [
+        {
+          "path": "src/Services/ReportBuilder.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of ReportBuilder.Title from string to object",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 6666.1704,
+      "buildSeconds": 1.1999793,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 0,
+      "outputBytes": 103,
+      "contextBytes": 0
+    },
+    {
+      "index": 1,
+      "edits": [
+        {
+          "path": "src/Services/OrderService.cs",
+          "kind": "remove-member",
+          "description": "removed OrderService.Total",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/OrderService.cs(16,30): error CS0103: The name \u0027Total\u0027 does not exist in the current context",
+        "src/Services/OrderService.cs(22,21): error CS0103: The name \u0027Total\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "src/App/Program.cs(6,26): error CS1061: \u0027OrderService\u0027 does not contain a definition for \u0027Total\u0027 and no accessible extension method \u0027Total\u0027 accepting a first argument of type \u0027OrderService\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(16,30): error CS0103: The name \u0027Total\u0027 does not exist in the current context",
+        "src/Services/OrderService.cs(22,21): error CS0103: The name \u0027Total\u0027 does not exist in the current context",
+        "tests/Services.Tests/OrderServiceTests.cs(15,34): error CS1061: \u0027OrderService\u0027 does not contain a definition for \u0027Total\u0027 and no accessible extension method \u0027Total\u0027 accepting a first argument of type \u0027OrderService\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 618.3429,
+      "buildSeconds": 0.8657851,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/App/Program.cs(6,26): error CS1061: \u0027OrderService\u0027 does not contain a definition for \u0027Total\u0027 and no accessible extension method \u0027Total\u0027 accepting a first argument of type \u0027OrderService\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(15,34): error CS1061: \u0027OrderService\u0027 does not contain a definition for \u0027Total\u0027 and no accessible extension method \u0027Total\u0027 accepting a first argument of type \u0027OrderService\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 2,
+      "outputBytes": 963,
+      "contextBytes": 63
+    },
+    {
+      "index": 2,
+      "edits": [
+        {
+          "path": "src/Services/OrderService.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to OrderService.IsWeekend",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/Services.Tests/OrderServiceTests.cs(26,59): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027OrderService.IsWeekend(int)\u0027"
+      ],
+      "fuse": [
+        "tests/Services.Tests/OrderServiceTests.cs(26,59): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027OrderService.IsWeekend(int)\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 268.8145,
+      "buildSeconds": 1.2155829,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 1,
+      "outputBytes": 328,
+      "contextBytes": 34
+    },
+    {
+      "index": 3,
+      "edits": [
+        {
+          "path": "src/Core/Geometry.cs",
+          "kind": "make-private",
+          "description": "made Geometry.IsSquare private",
+          "newText": null
+        },
+        {
+          "path": "src/Services/ReportBuilder.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to ReportBuilder.Describe",
+          "newText": null
+        },
+        {
+          "path": "src/App/Program.cs",
+          "kind": "remove-using",
+          "description": "removed using Services",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/ReportBuilder.cs(11,29): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027IsSquare\u0027",
+        "tests/Core.Tests/GeometryTests.cs(9,57): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027IsSquare\u0027",
+        "tests/Core.Tests/GeometryTests.cs(10,61): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027IsSquare\u0027",
+        "tests/Core.Tests/GeometryTests.cs(11,71): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027IsSquare\u0027"
+      ],
+      "fuse": [
+        "src/App/Program.cs(3,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(6,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/Services/ReportBuilder.cs(11,29): error CS0122: \u0027Geometry.IsSquare(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/GeometryTests.cs(9,57): error CS0122: \u0027Geometry.IsSquare(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/GeometryTests.cs(10,61): error CS0122: \u0027Geometry.IsSquare(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/GeometryTests.cs(11,71): error CS0122: \u0027Geometry.IsSquare(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,84): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027ReportBuilder.Describe(int, int, int)\u0027",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,90): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027ReportBuilder.Describe(int, int, int)\u0027"
+      ],
+      "fuseCount": 9,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1292.6944,
+      "buildSeconds": 1.0812942,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/App/Program.cs(3,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(6,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,84): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027ReportBuilder.Describe(int, int, int)\u0027",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,90): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027ReportBuilder.Describe(int, int, int)\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "src/Services/ReportBuilder.cs(11,29): error CS0122: \u0027Geometry.IsSquare(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/GeometryTests.cs(9,57): error CS0122: \u0027Geometry.IsSquare(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/GeometryTests.cs(10,61): error CS0122: \u0027Geometry.IsSquare(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/GeometryTests.cs(11,71): error CS0122: \u0027Geometry.IsSquare(int, int)\u0027 is inaccessible due to its protection level"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 5,
+      "outputBytes": 1731,
+      "contextBytes": 316
+    },
+    {
+      "index": 4,
+      "edits": [
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of TextTools.Slugify",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Core/TextTools.cs(21,22): error CS0111: Type \u0027TextTools\u0027 already defines a member called \u0027Slugify\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/Core/TextTools.cs(21,22): error CS0111: Type \u0027TextTools\u0027 already defines a member called \u0027Slugify\u0027 with the same parameter types"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 235.1367,
+      "buildSeconds": 0.7604576,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 0,
+      "outputBytes": 174,
+      "contextBytes": 0
+    },
+    {
+      "index": 5,
+      "edits": [
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "make-private",
+          "description": "made Money.IsZero private",
+          "newText": null
+        },
+        {
+          "path": "src/Services/OrderService.cs",
+          "kind": "make-private",
+          "description": "made OrderService.Total private",
+          "newText": null
+        },
+        {
+          "path": "src/App/Program.cs",
+          "kind": "remove-using",
+          "description": "removed using Core",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/Core.Tests/MoneyTests.cs(9,70): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027IsZero\u0027 and no accessible extension method \u0027IsZero\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(3,35): error CS0246: The type or namespace name \u0027FixedClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(4,20): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(5,26): error CS1061: \u0027OrderService\u0027 does not contain a definition for \u0027Total\u0027 and no accessible extension method \u0027Total\u0027 accepting a first argument of type \u0027OrderService\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(15,34): error CS1061: \u0027OrderService\u0027 does not contain a definition for \u0027Total\u0027 and no accessible extension method \u0027Total\u0027 accepting a first argument of type \u0027OrderService\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/App/Program.cs(3,35): error CS0246: The type or namespace name \u0027FixedClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(4,20): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(5,26): error CS0122: \u0027OrderService.Total()\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/MoneyTests.cs(9,70): error CS0122: \u0027Money.IsZero()\u0027 is inaccessible due to its protection level",
+        "tests/Services.Tests/OrderServiceTests.cs(15,34): error CS0122: \u0027OrderService.Total()\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 238.7886,
+      "buildSeconds": 1.4813126,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "src/App/Program.cs(5,26): error CS0122: \u0027OrderService.Total()\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/MoneyTests.cs(9,70): error CS0122: \u0027Money.IsZero()\u0027 is inaccessible due to its protection level",
+        "tests/Services.Tests/OrderServiceTests.cs(15,34): error CS0122: \u0027OrderService.Total()\u0027 is inaccessible due to its protection level"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 2,
+      "outputBytes": 876,
+      "contextBytes": 65
+    },
+    {
+      "index": 6,
+      "edits": [
+        {
+          "path": "src/Services/ReportBuilder.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of ReportBuilder.Title from string to object",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 182.6095,
+      "buildSeconds": 1.3387672,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 0,
+      "outputBytes": 103,
+      "contextBytes": 0
+    },
+    {
+      "index": 7,
+      "edits": [
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to TextTools.Truncate",
+          "newText": null
+        },
+        {
+          "path": "src/Services/ReportBuilder.cs",
+          "kind": "make-private",
+          "description": "made ReportBuilder.Describe private",
+          "newText": null
+        },
+        {
+          "path": "src/App/Program.cs",
+          "kind": "remove-using",
+          "description": "removed using Core",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/ReportBuilder.cs(7,58): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027TextTools.Truncate(string, int, int)\u0027",
+        "tests/Core.Tests/TextToolsTests.cs(9,72): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027TextTools.Truncate(string, int, int)\u0027",
+        "tests/Core.Tests/TextToolsTests.cs(10,69): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027TextTools.Truncate(string, int, int)\u0027"
+      ],
+      "fuse": [
+        "src/App/Program.cs(3,35): error CS0246: The type or namespace name \u0027FixedClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(4,20): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(7,33): error CS0122: \u0027ReportBuilder.Describe(int, int)\u0027 is inaccessible due to its protection level",
+        "src/Services/ReportBuilder.cs(7,58): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027TextTools.Truncate(string, int, int)\u0027",
+        "tests/Core.Tests/TextToolsTests.cs(9,72): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027TextTools.Truncate(string, int, int)\u0027",
+        "tests/Core.Tests/TextToolsTests.cs(10,69): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027TextTools.Truncate(string, int, int)\u0027",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,84): error CS0122: \u0027ReportBuilder.Describe(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,90): error CS0122: \u0027ReportBuilder.Describe(int, int)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 8,
+      "fuseExit": 1,
+      "fuseMilliseconds": 187.2656,
+      "buildSeconds": 1.0939864,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/App/Program.cs(3,35): error CS0246: The type or namespace name \u0027FixedClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(4,20): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(7,33): error CS0122: \u0027ReportBuilder.Describe(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,84): error CS0122: \u0027ReportBuilder.Describe(int, int)\u0027 is inaccessible due to its protection level",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,90): error CS0122: \u0027ReportBuilder.Describe(int, int)\u0027 is inaccessible due to its protection level"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 4,
+      "outputBytes": 1666,
+      "contextBytes": 255
+    },
+    {
+      "index": 8,
+      "edits": [
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "make-private",
+          "description": "made Money.Multiply private",
+          "newText": null
+        },
+        {
+          "path": "src/Services/OrderService.cs",
+          "kind": "remove-using",
+          "description": "removed using Core",
+          "newText": null
+        },
+        {
+          "path": "src/App/Program.cs",
+          "kind": "remove-using",
+          "description": "removed using Services",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/OrderService.cs(4,34): error CS0246: The type or namespace name \u0027IClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(8,25): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(15,12): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(27,12): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(6,27): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Core.Tests/MoneyTests.cs(8,96): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Multiply\u0027 and no accessible extension method \u0027Multiply\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/App/Program.cs(3,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(6,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/Services/OrderService.cs(4,34): error CS0246: The type or namespace name \u0027IClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(6,27): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(8,25): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(15,12): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(17,21): error CS0103: The name \u0027Money\u0027 does not exist in the current context",
+        "src/Services/OrderService.cs(27,12): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(30,20): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Core.Tests/MoneyTests.cs(8,96): error CS0122: \u0027Money.Multiply(int)\u0027 is inaccessible due to its protection level",
+        "tests/Services.Tests/OrderServiceTests.cs(8,60): error CS1503: Argument 1: cannot convert from \u0027Core.FixedClock\u0027 to \u0027IClock\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(14,24): error CS1503: Argument 1: cannot convert from \u0027Core.Money\u0027 to \u0027Money\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(22,24): error CS1503: Argument 1: cannot convert from \u0027Core.Money\u0027 to \u0027Money\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(27,115): error CS1503: Argument 1: cannot convert from \u0027Core.Money\u0027 to \u0027Money\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(33,24): error CS1503: Argument 1: cannot convert from \u0027Core.Money\u0027 to \u0027Money\u0027"
+      ],
+      "fuseCount": 16,
+      "fuseExit": 1,
+      "fuseMilliseconds": 272.9144,
+      "buildSeconds": 1.1305267,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/App/Program.cs(3,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(6,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "tests/Services.Tests/OrderServiceTests.cs(8,60): error CS1503: Argument 1: cannot convert from \u0027Core.FixedClock\u0027 to \u0027IClock\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(14,24): error CS1503: Argument 1: cannot convert from \u0027Core.Money\u0027 to \u0027Money\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(22,24): error CS1503: Argument 1: cannot convert from \u0027Core.Money\u0027 to \u0027Money\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(27,115): error CS1503: Argument 1: cannot convert from \u0027Core.Money\u0027 to \u0027Money\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(33,24): error CS1503: Argument 1: cannot convert from \u0027Core.Money\u0027 to \u0027Money\u0027"
+      ],
+      "deferredByCompiler": [
+        "src/Services/OrderService.cs(17,21): error CS0103: The name \u0027Money\u0027 does not exist in the current context",
+        "src/Services/OrderService.cs(30,20): error CS0246: The type or namespace name \u0027Money\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [
+        "tests/Core.Tests/MoneyTests.cs(8,96): error CS0122: \u0027Money.Multiply(int)\u0027 is inaccessible due to its protection level"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 6,
+      "outputBytes": 2513,
+      "contextBytes": 160
+    },
+    {
+      "index": 9,
+      "edits": [
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of Money.Multiply from Money to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Core/Money.cs(14,43): error CS1729: \u0027object\u0027 does not contain a constructor that takes 2 arguments"
+      ],
+      "fuse": [
+        "src/Core/Money.cs(14,43): error CS1729: \u0027object\u0027 does not contain a constructor that takes 2 arguments",
+        "src/Services/OrderService.cs(13,20): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027Core.Money\u0027"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 164.0417,
+      "buildSeconds": 0.7770006,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/Services/OrderService.cs(13,20): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027Core.Money\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 1,
+      "outputBytes": 367,
+      "contextBytes": 45
+    },
+    {
+      "index": 10,
+      "edits": [
+        {
+          "path": "src/Services/OrderService.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/App/Program.cs(4,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(8,20): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/App/Program.cs(4,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(8,20): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(27,49): error CS0619: \u0027Assert.Throws\u003CT\u003E(Func\u003CTask\u003E)\u0027 is obsolete: \u0027You must call Assert.ThrowsAsync\u003CT\u003E (and await the result) when testing async code.\u0027"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 197.2404,
+      "buildSeconds": 1.2991335,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "tests/Services.Tests/OrderServiceTests.cs(27,49): error CS0619: \u0027Assert.Throws\u003CT\u003E(Func\u003CTask\u003E)\u0027 is obsolete: \u0027You must call Assert.ThrowsAsync\u003CT\u003E (and await the result) when testing async code.\u0027"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 3,
+      "outputBytes": 836,
+      "contextBytes": 173
+    },
+    {
+      "index": 11,
+      "edits": [
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "make-private",
+          "description": "made TextTools.Truncate private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/ReportBuilder.cs(7,58): error CS0117: \u0027TextTools\u0027 does not contain a definition for \u0027Truncate\u0027",
+        "tests/Core.Tests/TextToolsTests.cs(9,72): error CS0117: \u0027TextTools\u0027 does not contain a definition for \u0027Truncate\u0027",
+        "tests/Core.Tests/TextToolsTests.cs(10,69): error CS0117: \u0027TextTools\u0027 does not contain a definition for \u0027Truncate\u0027"
+      ],
+      "fuse": [
+        "src/Services/ReportBuilder.cs(7,58): error CS0122: \u0027TextTools.Truncate(string, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/TextToolsTests.cs(9,72): error CS0122: \u0027TextTools.Truncate(string, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/TextToolsTests.cs(10,69): error CS0122: \u0027TextTools.Truncate(string, int)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 159.5879,
+      "buildSeconds": 1.0784319,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "src/Services/ReportBuilder.cs(7,58): error CS0122: \u0027TextTools.Truncate(string, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/TextToolsTests.cs(9,72): error CS0122: \u0027TextTools.Truncate(string, int)\u0027 is inaccessible due to its protection level",
+        "tests/Core.Tests/TextToolsTests.cs(10,69): error CS0122: \u0027TextTools.Truncate(string, int)\u0027 is inaccessible due to its protection level"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 3,
+      "outputBytes": 706,
+      "contextBytes": 191
+    },
+    {
+      "index": 12,
+      "edits": [
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Text",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Core/TextTools.cs(8,27): error CS0246: The type or namespace name \u0027StringBuilder\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/Core/TextTools.cs(8,27): error CS0246: The type or namespace name \u0027StringBuilder\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 176.2546,
+      "buildSeconds": 0.7679749,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 0,
+      "outputBytes": 267,
+      "contextBytes": 0
+    },
+    {
+      "index": 13,
+      "edits": [
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "make-private",
+          "description": "made Money.IsZero private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/Core.Tests/MoneyTests.cs(9,70): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027IsZero\u0027 and no accessible extension method \u0027IsZero\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "tests/Core.Tests/MoneyTests.cs(9,70): error CS0122: \u0027Money.IsZero()\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 169.3301,
+      "buildSeconds": 1.251215,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "tests/Core.Tests/MoneyTests.cs(9,70): error CS0122: \u0027Money.IsZero()\u0027 is inaccessible due to its protection level"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 1,
+      "outputBytes": 252,
+      "contextBytes": 32
+    },
+    {
+      "index": 14,
+      "edits": [
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of TextTools.Slugify from string to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/ReportBuilder.cs(7,67): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuse": [
+        "src/Services/ReportBuilder.cs(7,67): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 154.7319,
+      "buildSeconds": 1.0775402,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 1,
+      "outputBytes": 261,
+      "contextBytes": 52
+    },
+    {
+      "index": 15,
+      "edits": [
+        {
+          "path": "src/Services/ReportBuilder.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of Money.Zero",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Core/Money.cs(7,21): error CS0111: Type \u0027Money\u0027 already defines a member called \u0027Zero\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/App/Program.cs(8,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/Core/Money.cs(7,21): error CS0111: Type \u0027Money\u0027 already defines a member called \u0027Zero\u0027 with the same parameter types",
+        "tests/Services.Tests/ReportBuilderTests.cs(7,63): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,70): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,76): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 166.791,
+      "buildSeconds": 0.7470213,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/App/Program.cs(8,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "tests/Services.Tests/ReportBuilderTests.cs(7,63): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,70): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,76): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 5,
+      "outputBytes": 1058,
+      "contextBytes": 224
+    },
+    {
+      "index": 16,
+      "edits": [
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "rename-member",
+          "description": "renamed Money.Add to AddRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/OrderService.cs(20,27): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Add\u0027 and no accessible extension method \u0027Add\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Core.Tests/MoneyTests.cs(7,90): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Add\u0027 and no accessible extension method \u0027Add\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Core.Tests/MoneyTests.cs(11,120): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Add\u0027 and no accessible extension method \u0027Add\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/Services/OrderService.cs(20,27): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Add\u0027 and no accessible extension method \u0027Add\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Core.Tests/MoneyTests.cs(7,90): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Add\u0027 and no accessible extension method \u0027Add\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Core.Tests/MoneyTests.cs(11,120): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Add\u0027 and no accessible extension method \u0027Add\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 169.7845,
+      "buildSeconds": 1.2438764,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 3,
+      "outputBytes": 1023,
+      "contextBytes": 122
+    },
+    {
+      "index": 17,
+      "edits": [
+        {
+          "path": "src/Services/OrderService.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/App/Program.cs(4,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(8,20): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/App/Program.cs(4,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(8,20): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(27,49): error CS0619: \u0027Assert.Throws\u003CT\u003E(Func\u003CTask\u003E)\u0027 is obsolete: \u0027You must call Assert.ThrowsAsync\u003CT\u003E (and await the result) when testing async code.\u0027"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 161.9782,
+      "buildSeconds": 1.241012,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "tests/Services.Tests/OrderServiceTests.cs(27,49): error CS0619: \u0027Assert.Throws\u003CT\u003E(Func\u003CTask\u003E)\u0027 is obsolete: \u0027You must call Assert.ThrowsAsync\u003CT\u003E (and await the result) when testing async code.\u0027"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 3,
+      "outputBytes": 836,
+      "contextBytes": 173
+    },
+    {
+      "index": 18,
+      "edits": [
+        {
+          "path": "src/Core/Geometry.cs",
+          "kind": "remove-member",
+          "description": "removed Geometry.Area",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/ReportBuilder.cs(12,35): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Area\u0027",
+        "tests/Core.Tests/GeometryTests.cs(7,60): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Area\u0027"
+      ],
+      "fuse": [
+        "src/Services/ReportBuilder.cs(12,35): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Area\u0027",
+        "tests/Core.Tests/GeometryTests.cs(7,60): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Area\u0027"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 169.6654,
+      "buildSeconds": 1.1101847,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 2,
+      "outputBytes": 441,
+      "contextBytes": 113
+    },
+    {
+      "index": 19,
+      "edits": [
+        {
+          "path": "src/Services/ReportBuilder.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of ReportBuilder.Describe from string to object",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 156.8682,
+      "buildSeconds": 1.2946267,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 0,
+      "outputBytes": 103,
+      "contextBytes": 0
+    },
+    {
+      "index": 20,
+      "edits": [
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of TextTools.WordCount from int to object",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 174.2653,
+      "buildSeconds": 1.4797874,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 0,
+      "outputBytes": 99,
+      "contextBytes": 0
+    },
+    {
+      "index": 21,
+      "edits": [
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to Money.Add",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/OrderService.cs(20,27): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027Money.Add(Money, int)\u0027",
+        "tests/Core.Tests/MoneyTests.cs(7,90): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027Money.Add(Money, int)\u0027",
+        "tests/Core.Tests/MoneyTests.cs(11,120): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027Money.Add(Money, int)\u0027"
+      ],
+      "fuse": [
+        "src/Services/OrderService.cs(20,27): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027Money.Add(Money, int)\u0027",
+        "tests/Core.Tests/MoneyTests.cs(7,90): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027Money.Add(Money, int)\u0027",
+        "tests/Core.Tests/MoneyTests.cs(11,120): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027Money.Add(Money, int)\u0027"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 175.6251,
+      "buildSeconds": 1.2157127,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 3,
+      "outputBytes": 723,
+      "contextBytes": 122
+    },
+    {
+      "index": 22,
+      "edits": [
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/ReportBuilder.cs(7,48): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "src/Services/ReportBuilder.cs(7,67): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "tests/Core.Tests/TextToolsTests.cs(7,67): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "tests/Core.Tests/TextToolsTests.cs(8,57): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "tests/Core.Tests/TextToolsTests.cs(9,62): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "tests/Core.Tests/TextToolsTests.cs(10,59): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "src/Services/ReportBuilder.cs(7,48): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "src/Services/ReportBuilder.cs(7,67): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "tests/Core.Tests/TextToolsTests.cs(7,67): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "tests/Core.Tests/TextToolsTests.cs(8,57): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "tests/Core.Tests/TextToolsTests.cs(9,62): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context",
+        "tests/Core.Tests/TextToolsTests.cs(10,59): error CS0103: The name \u0027TextTools\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 181.3162,
+      "buildSeconds": 1.1871464,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 6,
+      "outputBytes": 1043,
+      "contextBytes": 245
+    },
+    {
+      "index": 23,
+      "edits": [
+        {
+          "path": "src/Core/Clock.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/OrderService.cs(5,34): error CS0246: The type or namespace name \u0027IClock\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/App/Program.cs(4,35): error CS0246: The type or namespace name \u0027FixedClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Services/OrderService.cs(5,34): error CS0246: The type or namespace name \u0027IClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(8,64): error CS0246: The type or namespace name \u0027FixedClock\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 229.1385,
+      "buildSeconds": 1.1533484,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/App/Program.cs(4,35): error CS0246: The type or namespace name \u0027FixedClock\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/OrderServiceTests.cs(8,64): error CS0246: The type or namespace name \u0027FixedClock\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 3,
+      "outputBytes": 802,
+      "contextBytes": 164
+    },
+    {
+      "index": 24,
+      "edits": [
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of TextTools.Slugify from string to object",
+          "newText": null
+        },
+        {
+          "path": "src/Services/OrderService.cs",
+          "kind": "make-private",
+          "description": "made OrderService.IsWeekend private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/ReportBuilder.cs(7,67): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuse": [
+        "src/Services/ReportBuilder.cs(7,67): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027",
+        "tests/Services.Tests/OrderServiceTests.cs(26,59): error CS0122: \u0027OrderService.IsWeekend()\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 183.3537,
+      "buildSeconds": 1.0855726,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "tests/Services.Tests/OrderServiceTests.cs(26,59): error CS0122: \u0027OrderService.IsWeekend()\u0027 is inaccessible due to its protection level"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 2,
+      "outputBytes": 458,
+      "contextBytes": 88
+    },
+    {
+      "index": 25,
+      "edits": [
+        {
+          "path": "src/Services/ReportBuilder.cs",
+          "kind": "rename-member",
+          "description": "renamed ReportBuilder.Describe to DescribeRenamed",
+          "newText": null
+        },
+        {
+          "path": "src/Core/TextTools.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Text",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Core/TextTools.cs(8,27): error CS0246: The type or namespace name \u0027StringBuilder\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/App/Program.cs(8,33): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027",
+        "src/Core/TextTools.cs(8,27): error CS0246: The type or namespace name \u0027StringBuilder\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,84): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,90): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 194.4732,
+      "buildSeconds": 0.7560543,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/App/Program.cs(8,33): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,84): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,90): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 3,
+      "outputBytes": 841,
+      "contextBytes": 191
+    },
+    {
+      "index": 26,
+      "edits": [
+        {
+          "path": "src/Services/ReportBuilder.cs",
+          "kind": "rename-member",
+          "description": "renamed ReportBuilder.Describe to DescribeRenamed",
+          "newText": null
+        },
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "rename-member",
+          "description": "renamed Money.Multiply to MultiplyRenamed",
+          "newText": null
+        },
+        {
+          "path": "src/App/Program.cs",
+          "kind": "remove-using",
+          "description": "removed using Services",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/OrderService.cs(13,26): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Multiply\u0027 and no accessible extension method \u0027Multiply\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Core.Tests/MoneyTests.cs(8,96): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Multiply\u0027 and no accessible extension method \u0027Multiply\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/App/Program.cs(3,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(6,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/Services/OrderService.cs(13,26): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Multiply\u0027 and no accessible extension method \u0027Multiply\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Core.Tests/MoneyTests.cs(8,96): error CS1061: \u0027Money\u0027 does not contain a definition for \u0027Multiply\u0027 and no accessible extension method \u0027Multiply\u0027 accepting a first argument of type \u0027Money\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,84): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,90): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027"
+      ],
+      "fuseCount": 7,
+      "fuseExit": 1,
+      "fuseMilliseconds": 208.3229,
+      "buildSeconds": 1.1132003,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/App/Program.cs(3,18): error CS0246: The type or namespace name \u0027OrderService\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/App/Program.cs(6,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "tests/Services.Tests/ReportBuilderTests.cs(8,84): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027",
+        "tests/Services.Tests/ReportBuilderTests.cs(9,90): error CS0117: \u0027ReportBuilder\u0027 does not contain a definition for \u0027Describe\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 4,
+      "outputBytes": 1530,
+      "contextBytes": 217
+    },
+    {
+      "index": 27,
+      "edits": [
+        {
+          "path": "src/Core/Money.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of Money.IsZero",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Core/Money.cs(18,13): error CS0111: Type \u0027Money\u0027 already defines a member called \u0027IsZero\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/Core/Money.cs(18,13): error CS0111: Type \u0027Money\u0027 already defines a member called \u0027IsZero\u0027 with the same parameter types"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 152.7202,
+      "buildSeconds": 0.7474191,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 0,
+      "outputBytes": 165,
+      "contextBytes": 0
+    },
+    {
+      "index": 28,
+      "edits": [
+        {
+          "path": "src/Core/Geometry.cs",
+          "kind": "rename-member",
+          "description": "renamed Geometry.Area to AreaRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Services/ReportBuilder.cs(12,35): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Area\u0027",
+        "tests/Core.Tests/GeometryTests.cs(7,60): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Area\u0027"
+      ],
+      "fuse": [
+        "src/Services/ReportBuilder.cs(12,35): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Area\u0027",
+        "tests/Core.Tests/GeometryTests.cs(7,60): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Area\u0027"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 151.7546,
+      "buildSeconds": 1.1527954,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 2,
+      "outputBytes": 441,
+      "contextBytes": 113
+    },
+    {
+      "index": 29,
+      "edits": [
+        {
+          "path": "src/Core/Geometry.cs",
+          "kind": "rename-member",
+          "description": "renamed Geometry.Perimeter to PerimeterRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/Core.Tests/GeometryTests.cs(8,65): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Perimeter\u0027"
+      ],
+      "fuse": [
+        "tests/Core.Tests/GeometryTests.cs(8,65): error CS0117: \u0027Geometry\u0027 does not contain a definition for \u0027Perimeter\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 167.0471,
+      "buildSeconds": 1.3397021,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "contextLines": 1,
+      "outputBytes": 280,
+      "contextBytes": 61
+    }
+  ]
+}

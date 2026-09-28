@@ -1,0 +1,273 @@
+{
+  "suite": "selection",
+  "repo": "CommunityToolkit",
+  "commit": "b135626dd54d33b8f05f2ff31591592c004aa848",
+  "fuseBuild": "5.1.0/fad6102dbb4a45c394baf2de31d34731",
+  "seed": 1,
+  "requested": 10,
+  "cases": 10,
+  "withFailures": 8,
+  "missedCases": 0,
+  "unverifiedCases": 0,
+  "missedTests": 0,
+  "unverifiedTests": 0,
+  "totalTests": 12449,
+  "meanSelectedFraction": 0.13724797172463649,
+  "fuseMedianSeconds": 65.0924671,
+  "dotnetMedianSeconds": 428.54010355,
+  "skippedNonCompiling": [],
+  "projectsWithoutResults": [],
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edit": {
+        "path": "src/CommunityToolkit.HighPerformance/Enumerables/ReadOnlySpanEnumerable{T}.cs",
+        "kind": "flip-comparison",
+        "description": "flipped \u003C at line 55",
+        "newText": null
+      },
+      "truthFailing": [
+        "Test_MemoryStream_ReadWriteByte",
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_IBufferWriterStream_WriteByte"
+      ],
+      "fuseFailing": [
+        "Test_IBufferWriterStream_WriteByte",
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_MemoryStream_ReadWriteByte"
+      ],
+      "fuseFailed": 12,
+      "fusePassed": 1749,
+      "fuseScope": "fuse: 12 failed, 1749 passed in 76.9 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 77.0126615,
+      "dotnetSeconds": 439.5075044,
+      "verdict": "caught"
+    },
+    {
+      "index": 1,
+      "edit": {
+        "path": "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060_ = value.Remove(recipient);\u0060 at line 278",
+        "newText": null
+      },
+      "truthFailing": [
+        "Test_Messenger_ConcurrentOperations_DefaultChannel_SharedRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_RegisterAndUnregisterRecipientWithMessageType (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_CreateObservable (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_ConcurrentOperations_DefaultChannel_SeparateRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_IsRegistered_Register_Send_UnregisterOfTMessage_WithNoToken (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)"
+      ],
+      "fuseFailing": [
+        "Test_Messenger_RegisterAndUnregisterRecipientWithMessageType (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_ConcurrentOperations_DefaultChannel_SeparateRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_ConcurrentOperations_DefaultChannel_SharedRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_IsRegistered_Register_Send_UnregisterOfTMessage_WithNoToken (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_CreateObservable (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)"
+      ],
+      "fuseFailed": 20,
+      "fusePassed": 1525,
+      "fuseScope": "fuse: 20 failed, 1525 passed in 62.5 s; ran 951 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 62.5792936,
+      "dotnetSeconds": 406.7558592,
+      "verdict": "caught"
+    },
+    {
+      "index": 2,
+      "edit": {
+        "path": "src/CommunityToolkit.Diagnostics/Guard.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060ThrowHelper.ThrowArgumentExceptionForIsNull(value, name);\u0060 at line 33",
+        "newText": null
+      },
+      "truthFailing": [
+        "Test_Guard_IsNull_GenericClassFail",
+        "Test_Guard_IsNull_GenericStructFail",
+        "Test_Guard_IsNull_ClassFail",
+        "Test_Guard_IsNull_StructFail"
+      ],
+      "fuseFailing": [
+        "Test_Guard_IsNull_GenericStructFail",
+        "Test_Guard_IsNull_GenericClassFail",
+        "Test_Guard_IsNull_ClassFail",
+        "Test_Guard_IsNull_StructFail"
+      ],
+      "fuseFailed": 16,
+      "fusePassed": 700,
+      "fuseScope": "fuse: 16 failed, 700 passed in 6.2 s; ran 110 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 6.7894799,
+      "dotnetSeconds": 497.0540043,
+      "verdict": "caught"
+    },
+    {
+      "index": 3,
+      "edit": {
+        "path": "src/CommunityToolkit.HighPerformance/Enumerables/ReadOnlySpanEnumerable{T}.cs",
+        "kind": "off-by-one",
+        "description": "changed 1 to 2 at line 38",
+        "newText": null
+      },
+      "truthFailing": [
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_IBufferWriterStream_WriteByte",
+        "Test_MemoryStream_ReadWriteByte",
+        "Test_ReadOnlySpanExtensions_Enumerate"
+      ],
+      "fuseFailing": [
+        "Test_MemoryStream_ReadWriteByte",
+        "Test_IBufferWriterStream_WriteByte",
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_ReadOnlySpanExtensions_Enumerate"
+      ],
+      "fuseFailed": 16,
+      "fusePassed": 1745,
+      "fuseScope": "fuse: 16 failed, 1745 passed in 73.3 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 73.3567438,
+      "dotnetSeconds": 442.5257817,
+      "verdict": "caught"
+    },
+    {
+      "index": 4,
+      "edit": {
+        "path": "src/CommunityToolkit.Mvvm/ComponentModel/ObservableObject.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060OnPropertyChanged(propertyName);\u0060 at line 157",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 4497,
+      "fuseScope": "fuse: 0 failed, 4497 passed in 113.6 s; ran 1389 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 114.2335931,
+      "dotnetSeconds": 483.8844813,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 5,
+      "edit": {
+        "path": "src/CommunityToolkit.HighPerformance/Streams/Sources/IBufferWriterOwner.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060this.writer.Advance(count);\u0060 at line 35",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 1761,
+      "fuseScope": "fuse: 0 failed, 1761 passed in 64.2 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 64.2674951,
+      "dotnetSeconds": 416.7899512,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 6,
+      "edit": {
+        "path": "src/CommunityToolkit.HighPerformance/Helpers/Internals/BitOperations.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060value |= value \u003E\u003E 8;\u0060 at line 33",
+        "newText": null
+      },
+      "truthFailing": [
+        "Test_ArrayPoolBufferWriterOfT_BufferSize (2097153,4194304)",
+        "Test_ArrayPoolBufferWriterOfT_BufferSize (1048577,2097152)"
+      ],
+      "fuseFailing": [
+        "Test_ArrayPoolBufferWriterOfT_BufferSize (2097153,4194304)",
+        "Test_ArrayPoolBufferWriterOfT_BufferSize (1048577,2097152)"
+      ],
+      "fuseFailed": 2,
+      "fusePassed": 1604,
+      "fuseScope": "fuse: 2 failed, 1604 passed in 73.4 s; ran 299 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 73.5032259,
+      "dotnetSeconds": 400.3922312,
+      "verdict": "caught"
+    },
+    {
+      "index": 7,
+      "edit": {
+        "path": "src/CommunityToolkit.Mvvm/Collections/ReadOnlyObservableGroup{TKey,TElement}.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060Key = key;\u0060 at line 30",
+        "newText": null
+      },
+      "truthFailing": [
+        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndCollection_ShouldHaveExpectedInitialState",
+        "Test_ReadOnlyObservableGroupedCollection_Ctor_WithListOfReadOnlyObservableGroupSource_ShoudInitializeObject",
+        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndOBservableCollection_ShouldHaveExpectedInitialState"
+      ],
+      "fuseFailing": [
+        "Test_ReadOnlyObservableGroupedCollection_Ctor_WithListOfReadOnlyObservableGroupSource_ShoudInitializeObject",
+        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndCollection_ShouldHaveExpectedInitialState",
+        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndOBservableCollection_ShouldHaveExpectedInitialState"
+      ],
+      "fuseFailed": 12,
+      "fusePassed": 136,
+      "fuseScope": "fuse: 12 failed, 136 passed in 26.0 s; ran 104 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 26.5460052,
+      "dotnetSeconds": 417.5727027,
+      "verdict": "caught"
+    },
+    {
+      "index": 8,
+      "edit": {
+        "path": "src/CommunityToolkit.HighPerformance/Enumerables/ReadOnlySpanEnumerable{T}.cs",
+        "kind": "off-by-one",
+        "description": "changed 1 to 2 at line 38",
+        "newText": null
+      },
+      "truthFailing": [
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_MemoryStream_ReadWriteByte",
+        "Test_ReadOnlySpanExtensions_Enumerate",
+        "Test_IBufferWriterStream_WriteByte"
+      ],
+      "fuseFailing": [
+        "Test_IBufferWriterStream_WriteByte",
+        "Test_MemoryStream_ReadWriteByte",
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_ReadOnlySpanExtensions_Enumerate"
+      ],
+      "fuseFailed": 16,
+      "fusePassed": 1745,
+      "fuseScope": "fuse: 16 failed, 1745 passed in 65.3 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 65.4135063,
+      "dotnetSeconds": 411.363559,
+      "verdict": "caught"
+    },
+    {
+      "index": 9,
+      "edit": {
+        "path": "src/CommunityToolkit.Mvvm/ComponentModel/ObservableValidator.cs",
+        "kind": "off-by-one",
+        "description": "changed 0 to 1 at line 576",
+        "newText": null
+      },
+      "truthFailing": [
+        "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorBase)",
+        "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorDerived)"
+      ],
+      "fuseFailing": [
+        "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorDerived)",
+        "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorBase)"
+      ],
+      "fuseFailed": 8,
+      "fusePassed": 1522,
+      "fuseScope": "fuse: 8 failed, 1522 passed in 64.7 s; ran 584 test(s) affected by your changes out of 2503; fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 64.7714279,
+      "dotnetSeconds": 477.3750435,
+      "verdict": "caught"
+    }
+  ]
+}

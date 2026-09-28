@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <title>Fuse</title>
-<meta name="description" content="Near-instant compiler feedback for AI coding agents on .NET. Fuse keeps your solution compiled in memory with Roslyn and checks each edit up to 6.7x faster than dotnet build.">
+<meta name="description" content="Near-instant compiler feedback for AI coding agents on .NET. Fuse keeps your solution compiled in memory with Roslyn and checks each edit up to 10.0x faster than dotnet build.">
 <meta property="og:title" content="Fuse: Near-Instant Compiler Feedback for AI Coding Agents on .NET">
-<meta property="og:description" content="Fuse keeps your solution compiled in memory with Roslyn and checks each edit up to 6.7x faster than dotnet build.">
+<meta property="og:description" content="Fuse keeps your solution compiled in memory with Roslyn and checks each edit up to 10.0x faster than dotnet build.">
 <meta property="og:image" content="https://fuse.codes/benefits.svg">
 <link rel="icon" href="fuse-icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
@@ -29,7 +29,7 @@
       <ul class="tags" aria-label="Requirements and license">
           <li>.NET 10 SDK</li><li>C#</li><li>Open Source</li><li>Apache-2.0</li><li>Runs Locally</li>
         </ul>
-      <p>Fuse keeps your solution compiled in memory with Roslyn and checks each edit against it, <b>up to 6.7x faster</b> than <code>dotnet build</code>.</p>
+      <p>Fuse keeps your solution compiled in memory with Roslyn and checks each edit against it, <b>up to 10.0x faster</b> than <code>dotnet build</code>.</p>
       <div class="install">
         <p class="label">Install the tool:</p>
         <div class="cmd"><span><span class="dim">$ </span>dotnet tool install -g Fuse</span><button type="button" data-copy="dotnet tool install -g Fuse">Copy</button></div>
@@ -41,33 +41,33 @@
     <section class="section">
       <div class="section-head">
         <p class="kicker">After Every Edit</p>
-        <h2>Up to 7.4x Faster Than <code>dotnet build</code></h2>
+        <h2>Up to 10.0x Faster Than <code>dotnet build</code></h2>
         <p>The agent gets only the errors its edit introduced, including breaks in other projects.</p>
       </div>
       <div class="repos">
         <div class="repo">
           <h3>Small Solution <span>5 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:20.2%"></span></span><span class="t">0.23 s</span></div>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:15.7%"></span></span><span class="t">0.18 s</span></div>
           <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.14 s</span></div>
-          <p class="x"><b>5.0x</b> faster</p>
+          <p class="x"><b>6.4x</b> faster</p>
         </div>
         <div class="repo">
           <h3>Date And Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 15 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:41.2%"></span></span><span class="t">0.67 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.61 s</span></div>
-          <p class="x"><b>2.4x</b> faster</p>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:43.7%"></span></span><span class="t">0.63 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">1.45 s</span></div>
+          <p class="x"><b>2.3x</b> faster</p>
         </div>
         <div class="repo">
           <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 40 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:13.6%"></span></span><span class="t">0.59 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">4.31 s</span></div>
-          <p class="x"><b>7.4x</b> faster</p>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:16.5%"></span></span><span class="t">0.70 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">4.26 s</span></div>
+          <p class="x"><b>6.1x</b> faster</p>
         </div>
         <div class="repo">
           <h3>.NET Library Suite <span><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a>, 26 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:42.7%"></span></span><span class="t">2.50 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">5.86 s</span></div>
-          <p class="x"><b>2.3x</b> faster</p>
+          <div class="lane fuse"><code>fuse check</code><span class="track"><span class="fill" style="width:10%"></span></span><span class="t">0.45 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">4.48 s</span></div>
+          <p class="x"><b>10.0x</b> faster</p>
         </div>
       </div>
       <p class="proof"><b>1</b> compiler error missed across 120 generated edits.</p>
@@ -76,36 +76,36 @@
     <section class="section">
       <div class="section-head">
         <p class="kicker">When It Runs the Tests</p>
-        <h2>Up to 5.8x Faster Than <code>dotnet test</code></h2>
+        <h2>Up to 6.6x Faster Than <code>dotnet test</code></h2>
         <p>Only the tests the change can reach run, and only failures are printed.</p>
       </div>
       <div class="repos">
         <div class="repo">
           <h3>Small Solution <span>22 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:30.9%"></span></span><span class="t">1.23 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">3.98 s</span></div>
-          <p class="x"><b>3.2x</b> faster</p>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:30.5%"></span></span><span class="t">1.27 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">4.17 s</span></div>
+          <p class="x"><b>3.3x</b> faster</p>
         </div>
         <div class="repo">
           <h3>Date And Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 42,700 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:70.9%"></span></span><span class="t">31.3 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">44.1 s</span></div>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:72.2%"></span></span><span class="t">32.0 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">44.4 s</span></div>
           <p class="x"><b>1.4x</b> faster</p>
         </div>
         <div class="repo">
           <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 2,535 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:67.4%"></span></span><span class="t">153.3 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">227.3 s</span></div>
-          <p class="x"><b>1.5x</b> faster</p>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:73%"></span></span><span class="t">165.3 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">226.6 s</span></div>
+          <p class="x"><b>1.4x</b> faster</p>
         </div>
         <div class="repo">
           <h3>.NET Library Suite <span><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a>, 12,449 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:17.3%"></span></span><span class="t">76.6 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">443.5 s</span></div>
-          <p class="x"><b>5.8x</b> faster</p>
+          <div class="lane fuse"><code>fuse test</code><span class="track"><span class="fill" style="width:15.2%"></span></span><span class="t">65.1 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track"><span class="fill" style="width:100%"></span></span><span class="t">428.5 s</span></div>
+          <p class="x"><b>6.6x</b> faster</p>
         </div>
       </div>
-      <p class="proof"><b>158</b> failing tests missed across 40 generated changes, all in two cases where the same test name appears in more than one test project. <a href="results">How it was measured</a></p>
+      <p class="proof"><b>0</b> failing tests missed across 40 generated changes; in 2 of them hundreds of tests fail and the list is too long to match name by name. <a href="results">How it was measured</a></p>
     </section>
 
 

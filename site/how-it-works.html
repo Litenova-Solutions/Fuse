@@ -39,6 +39,7 @@
       <li>Each changed file is compiled in both views, and only the difference is reported. A line shift never counts as a new error.</li>
       <li>If only method bodies changed, the check ends there. If a declaration changed, Roslyn's symbol search finds every file that uses, implements or derives from it, in every dependent project, and those files are checked too.</li>
       <li>Compiler errors, warnings treated as errors, and analyzer rules set to error are reported. Only the analyzers that can report an error run.</li>
+      <li>An error in a file the agent did not edit is followed by one line naming the changed declaration that broke it, so the agent does not have to trace it back.</li>
     </ol>
 
     <h2>Selecting Tests</h2>
@@ -57,6 +58,7 @@
       <li>Projects are evaluated at start and compiled only when a change touches them.</li>
       <li>A file watcher keeps it current; a commit or branch switch moves the baseline.</li>
       <li>A newer Fuse replaces an engine from an older version automatically.</li>
+      <li>Builds and test runs through Fuse take turns within a repository, and the engine loads the repository's own analyzers from a copy, so it never holds a file a build writes.</li>
     </ul>
 
     <h2>Privacy and Footprint</h2>

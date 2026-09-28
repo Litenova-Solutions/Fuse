@@ -35,20 +35,22 @@
         <thead><tr><th></th><th>Small solution (fixture)</th><th><a href="https://github.com/nodatime/nodatime">NodaTime</a></th><th><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a></th><th><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a></th></tr></thead>
         <tbody>
           <tr><td>Size</td><td class="num">5 projects, 22 tests</td><td class="num">15 projects, 42,700 tests</td><td class="num">40 projects, 2,535 tests</td><td class="num">26 projects, 12,449 tests</td></tr>
-          <tr><td>Check an edit vs <code>dotnet build</code></td><td class="num">0.23 s vs 1.14 s</td><td class="num">0.67 s vs 1.61 s</td><td class="num">0.59 s vs 4.31 s</td><td class="num">2.50 s vs 5.86 s</td></tr>
-          <tr><td>Warm check, body edit (P50 / P95)</td><td class="num">214 / 321 ms</td><td class="num">779 / 1,010 ms</td><td class="num">283 / 452 ms</td><td class="num">969 / 1,361 ms</td></tr>
-          <tr><td>Warm check, signature edit (P50 / P95)</td><td class="num">253 / 1,015 ms</td><td class="num">2,275 / 8,630 ms</td><td class="num">227 / 53,470 ms</td><td class="num">505 / 23,203 ms</td></tr>
-          <tr><td>Affected tests vs <code>dotnet test</code></td><td class="num">1.23 s vs 3.98 s</td><td class="num">31.3 s vs 44.1 s</td><td class="num">153.3 s vs 227.3 s</td><td class="num">76.6 s vs 443.5 s</td></tr>
+          <tr><td>Check an edit vs <code>dotnet build</code></td><td class="num">0.18 s vs 1.14 s</td><td class="num">0.63 s vs 1.45 s</td><td class="num">0.70 s vs 4.26 s</td><td class="num">0.45 s vs 4.48 s</td></tr>
+          <tr><td>Warm check, body edit (P50 / P95)</td><td class="num">168 / 252 ms</td><td class="num">778 / 933 ms</td><td class="num">239 / 393 ms</td><td class="num">1,266 / 1,667 ms</td></tr>
+          <tr><td>Warm check, signature edit (P50 / P95)</td><td class="num">206 / 2,241 ms</td><td class="num">2,326 / 10,273 ms</td><td class="num">184 / 52,315 ms</td><td class="num">568 / 35,178 ms</td></tr>
+          <tr><td>Affected tests vs <code>dotnet test</code></td><td class="num">1.27 s vs 4.17 s</td><td class="num">32.0 s vs 44.4 s</td><td class="num">165.3 s vs 226.6 s</td><td class="num">65.1 s vs 428.5 s</td></tr>
           <tr><td>Share of tests run</td><td class="num">15 percent</td><td class="num">80 percent</td><td class="num">22.3 percent</td><td class="num">13.7 percent</td></tr>
           <tr><td>Compiler errors missed</td><td class="num">0 in 30 cases</td><td class="num">1 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
-          <tr><td>Failing tests missed</td><td class="num">0 in 10 cases</td><td class="num">158 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td></tr>
-          <tr><td>of which the suite could not adjudicate</td><td class="num">0 cases</td><td class="num">2 cases</td><td class="num">0 cases</td><td class="num">0 cases</td></tr>
-          <tr><td>Engine memory</td><td class="num">271 MB</td><td class="num">813 MB</td><td class="num">961 MB</td><td class="num">2,330 MB</td></tr>
+          <tr><td>Errors reported that the build does not have</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
+          <tr><td>Failing tests missed</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td></tr>
+          <tr><td>Cases too large to match name by name</td><td class="num">0</td><td class="num">2</td><td class="num">0</td><td class="num">0</td></tr>
+          <tr><td>Three builds at once, five rounds: lock collisions</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+          <tr><td>Engine memory</td><td class="num">271 MB</td><td class="num">865 MB</td><td class="num">1,019 MB</td><td class="num">2,029 MB</td></tr>
         </tbody>
       </table>
     </div>
 
-    <p class="sources">All measured on Fuse 5.1.0, at fixture <code>6c4e298</code>, NodaTime <code>fcd80e1</code>, Jellyfin <code>1d7c6af</code> and Community Toolkit <code>b135626</code>. From these twelve files: <code>correctness-fixture-20260928-1640.json</code>, <code>selection-fixture-20260928-1641.json</code>, <code>latency-fixture-20260928-1642.json</code>, <code>correctness-NodaTime-20260928-1541.json</code>, <code>selection-NodaTime-20260928-1555.json</code>, <code>latency-NodaTime-20260928-1600.json</code>, <code>correctness-Jellyfin-20260928-1208.json</code>, <code>selection-Jellyfin-20260928-1319.json</code>, <code>latency-Jellyfin-20260928-1331.json</code>, <code>correctness-CommunityToolkit-20260928-1345.json</code>, <code>selection-CommunityToolkit-20260928-1519.json</code> and <code>latency-CommunityToolkit-20260928-1536.json</code>.</p>
+    <p class="sources">All measured on the Fuse 5.1.0 source at <code>14255ab</code>, at fixture <code>6c4e298</code>, NodaTime <code>fcd80e1</code>, Jellyfin <code>1d7c6af</code> and Community Toolkit <code>b135626</code>. From these twelve files: <code>correctness-fixture-20260929-0115.json</code>, <code>selection-fixture-20260928-2052.json</code>, <code>latency-fixture-20260928-2053.json</code>, <code>correctness-NodaTime-20260929-0117.json</code>, <code>selection-NodaTime-20260928-2109.json</code>, <code>latency-NodaTime-20260928-2116.json</code>, <code>correctness-Jellyfin-20260929-0124.json</code>, <code>selection-Jellyfin-20260928-2237.json</code>, <code>latency-Jellyfin-20260928-2251.json</code>, <code>correctness-CommunityToolkit-20260929-0130.json</code>, <code>selection-CommunityToolkit-20260929-0031.json</code> and <code>latency-CommunityToolkit-20260929-0049.json</code>.</p>
 
     <h2>Reading the Numbers</h2>
     <ul>
@@ -56,7 +58,10 @@
       <li>On the Community Toolkit the generated changes reach one area at a time, so a small share of the tests runs: 12,449 tests in the repository, and the selection is per change, not per repository.</li>
       <li>The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project. On Jellyfin and the Community Toolkit that first edit loads dozens of projects, which is why their P95 is in seconds.</li>
       <li>NodaTime builds with warnings as errors, so each check there also runs the analyzers that can report a warning. That is why its body-edit check is slower than the small solution's.</li>
-      <li>On Jellyfin, four generated cases produced errors in analyzer and documentation rules that the real build does not report, which is counted as contradicted. The cause is recorded in the repository's changelog work and is not a claim about this page.</li>
+      <li>When a project has a declaration error, the compiler stops before it binds method bodies or runs analyzers, and after any compiler error it skips its documentation checks. Fuse reports those errors at once; the evals count them as deferred, because the build reports them once the first error is fixed.</li>
+      <li>NodaTime's one missed error comes from the build compiling dependent projects against reference assemblies, which leave out private members. It reports "no definition" and one follow-on error where Fuse, compiling against source, reports "inaccessible".</li>
+      <li>In two NodaTime cases hundreds of tests fail, and <code>fuse test</code> lists at most 100 failing names, so those cases cannot be matched name by name. <code>fuse test</code> ran 42,689 of 42,700 tests in both.</li>
+      <li>Timings on this machine vary by about 150 ms between runs of the same build.</li>
     </ul>
 
     <h2>How It Was Measured</h2>

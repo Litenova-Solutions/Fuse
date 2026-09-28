@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 458" width="760" height="458" role="img" aria-labelledby="t d">
 <title id="t">Fuse time as a share of the dotnet command it replaces</title>
-<desc id="d">check, Small solution, 5 projects: 0.23 s with Fuse against 1.14 s with dotnet; tests, Small solution, 5 projects: 1.23 s with Fuse against 3.98 s with dotnet; check, NodaTime, 15 projects: 0.67 s with Fuse against 1.61 s with dotnet; tests, NodaTime, 42,700 tests: 31.3 s with Fuse against 44.1 s with dotnet; check, Jellyfin, 40 projects: 0.59 s with Fuse against 4.31 s with dotnet; tests, Jellyfin, 2,535 tests: 153.3 s with Fuse against 227.3 s with dotnet; check, Community Toolkit, 26 projects: 2.50 s with Fuse against 5.86 s with dotnet; tests, Community Toolkit, 12,449 tests: 76.6 s with Fuse against 443.5 s with dotnet</desc>
+<desc id="d">check, Small solution, 5 projects: 0.18 s with Fuse against 1.14 s with dotnet; tests, Small solution, 5 projects: 1.27 s with Fuse against 4.17 s with dotnet; check, NodaTime, 15 projects: 0.63 s with Fuse against 1.45 s with dotnet; tests, NodaTime, 42,700 tests: 32.0 s with Fuse against 44.4 s with dotnet; check, Jellyfin, 40 projects: 0.70 s with Fuse against 4.26 s with dotnet; tests, Jellyfin, 2,535 tests: 165.3 s with Fuse against 226.6 s with dotnet; check, Community Toolkit, 26 projects: 0.45 s with Fuse against 4.48 s with dotnet; tests, Community Toolkit, 12,449 tests: 65.1 s with Fuse against 428.5 s with dotnet</desc>
 <style>
   .bg { fill: #fcfcfb; }
   .title { fill: #0b0b0b; font: 600 17px system-ui, -apple-system, 'Segoe UI', sans-serif; }
@@ -37,28 +37,28 @@
 <text class="axis" x="734" y="92" text-anchor="end">dotnet = 100%</text>
 <text class="group" x="20" y="110">Check an edit: fuse check vs dotnet build</text>
 <text class="label" x="32" y="140">Small solution, 5 projects</text>
-<path class="bar" d="M260,128h92.7a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-92.7z"><title>Small solution, 5 projects: 0.23 s vs 1.14 s</title></path>
-<text class="val" x="364.7" y="140">20%  (0.23 s vs 1.14 s)</text>
+<path class="bar" d="M260,128h71.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-71.2z"><title>Small solution, 5 projects: 0.18 s vs 1.14 s</title></path>
+<text class="val" x="343.2" y="140">16%  (0.18 s vs 1.14 s)</text>
 <text class="label" x="32" y="174">NodaTime, 15 projects</text>
-<path class="bar" d="M260,162h194a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-194z"><title>NodaTime, 15 projects: 0.67 s vs 1.61 s</title></path>
-<text class="val" x="466" y="174">41%  (0.67 s vs 1.61 s)</text>
+<path class="bar" d="M260,162h205.7a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-205.7z"><title>NodaTime, 15 projects: 0.63 s vs 1.45 s</title></path>
+<text class="val" x="477.7" y="174">44%  (0.63 s vs 1.45 s)</text>
 <text class="label" x="32" y="208">Jellyfin, 40 projects</text>
-<path class="bar" d="M260,196h61.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-61.2z"><title>Jellyfin, 40 projects: 0.59 s vs 4.31 s</title></path>
-<text class="val" x="333.2" y="208">14%  (0.59 s vs 4.31 s)</text>
+<path class="bar" d="M260,196h75.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-75.2z"><title>Jellyfin, 40 projects: 0.70 s vs 4.26 s</title></path>
+<text class="val" x="347.2" y="208">17%  (0.70 s vs 4.26 s)</text>
 <text class="label" x="32" y="242">Community Toolkit, 26 projects</text>
-<path class="bar" d="M260,230h200.9a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-200.9z"><title>Community Toolkit, 26 projects: 2.50 s vs 5.86 s</title></path>
-<text class="val" x="472.9" y="242">43%  (2.50 s vs 5.86 s)</text>
+<path class="bar" d="M260,230h44a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-44z"><title>Community Toolkit, 26 projects: 0.45 s vs 4.48 s</title></path>
+<text class="val" x="316" y="242">10%  (0.45 s vs 4.48 s)</text>
 <text class="group" x="20" y="276">Run the affected tests: fuse test vs dotnet test</text>
 <text class="label" x="32" y="306">Small solution, 5 projects</text>
-<path class="bar" d="M260,294h144.1a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-144.1z"><title>Small solution, 5 projects: 1.23 s vs 3.98 s</title></path>
-<text class="val" x="416.1" y="306">31%  (1.23 s vs 3.98 s)</text>
+<path class="bar" d="M260,294h142.3a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-142.3z"><title>Small solution, 5 projects: 1.27 s vs 4.17 s</title></path>
+<text class="val" x="414.3" y="306">30%  (1.27 s vs 4.17 s)</text>
 <text class="label" x="32" y="340">NodaTime, 42,700 tests</text>
-<path class="bar" d="M260,328h336.5a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-336.5z"><title>NodaTime, 42,700 tests: 31.3 s vs 44.1 s</title></path>
-<text class="val-in" x="592.5" y="340" text-anchor="end">71%  (31.3 s vs 44.1 s)</text>
+<path class="bar" d="M260,328h342.8a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-342.8z"><title>NodaTime, 42,700 tests: 32.0 s vs 44.4 s</title></path>
+<text class="val-in" x="598.8" y="340" text-anchor="end">72%  (32.0 s vs 44.4 s)</text>
 <text class="label" x="32" y="374">Jellyfin, 2,535 tests</text>
-<path class="bar" d="M260,362h319.8a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-319.8z"><title>Jellyfin, 2,535 tests: 153.3 s vs 227.3 s</title></path>
-<text class="val-in" x="575.8" y="374" text-anchor="end">67%  (153.3 s vs 227.3 s)</text>
+<path class="bar" d="M260,362h346.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-346.2z"><title>Jellyfin, 2,535 tests: 165.3 s vs 226.6 s</title></path>
+<text class="val-in" x="602.2" y="374" text-anchor="end">73%  (165.3 s vs 226.6 s)</text>
 <text class="label" x="32" y="408">Community Toolkit, 12,449 tests</text>
-<path class="bar" d="M260,396h78.9a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-78.9z"><title>Community Toolkit, 12,449 tests: 76.6 s vs 443.5 s</title></path>
-<text class="val" x="350.9" y="408">17%  (76.6 s vs 443.5 s)</text>
+<path class="bar" d="M260,396h68.9a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-68.9z"><title>Community Toolkit, 12,449 tests: 65.1 s vs 428.5 s</title></path>
+<text class="val" x="340.9" y="408">15%  (65.1 s vs 428.5 s)</text>
 </svg>

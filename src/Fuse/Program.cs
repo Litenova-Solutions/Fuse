@@ -79,7 +79,7 @@ internal static class Program
     private static async Task<int> BuildAsync(string[] args, CancellationToken cancellationToken)
     {
         var root = RepoRoot.Find(Environment.CurrentDirectory);
-        var result = await BuildOperation.RunAsync(Environment.CurrentDirectory, root?.Path ?? Environment.CurrentDirectory, args, cancellationToken).ConfigureAwait(false);
+        var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, args, cancellationToken).ConfigureAwait(false);
         return Print(result);
     }
 

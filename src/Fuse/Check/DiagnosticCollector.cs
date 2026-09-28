@@ -101,7 +101,7 @@ internal sealed class DiagnosticCollector
         var diagnostics = withAnalyzers is null
             ? compilation.GetDiagnostics(cancellationToken)
             : await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
-        return Distinct(diagnostics.Where(IsError).Select(ToFuse).OfType<FuseDiagnostic>());
+        return Distinct(diagnostics.Where(IsError).Select(d => ToFuse(d, analyzer: false)).OfType<FuseDiagnostic>());
     }
 
     private async Task<IEnumerable<FuseDiagnostic>> ForDocumentAsync(Document document, CancellationToken cancellationToken)
@@ -111,11 +111,11 @@ internal sealed class DiagnosticCollector
             return [];
 
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
-        var diagnostics = model.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).ToList();
+        var diagnostics = model.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => (Roslyn: d, Analyzer: false)).ToList();
         Interlocked.Add(ref _compilerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - started);
-        diagnostics.AddRange(await RunAnalyzersAsync(document.Project, model, cancellationToken).ConfigureAwait(false));
+        diagnostics.AddRange((await RunAnalyzersAsync(document.Project, model, cancellationToken).ConfigureAwait(false)).Select(d => (Roslyn: d, Analyzer: true)));
 
-        return diagnostics.Select(ToFuse).OfType<FuseDiagnostic>();
+        return diagnostics.Select(d => ToFuse(d.Roslyn, d.Analyzer)).OfType<FuseDiagnostic>();
     }
 
     private async Task<IEnumerable<RoslynDiagnostic>> RunAnalyzersAsync(Project project, SemanticModel model, CancellationToken cancellationToken)
@@ -154,7 +154,7 @@ internal sealed class DiagnosticCollector
     private static bool IsError(RoslynDiagnostic diagnostic) =>
         diagnostic.Severity == DiagnosticSeverity.Error && !diagnostic.IsSuppressed;
 
-    private FuseDiagnostic? ToFuse(RoslynDiagnostic diagnostic)
+    private FuseDiagnostic? ToFuse(RoslynDiagnostic diagnostic, bool analyzer)
     {
         if (!diagnostic.Location.IsInSource && diagnostic.Location.Kind != LocationKind.ExternalFile)
             return null;
@@ -166,7 +166,8 @@ internal sealed class DiagnosticCollector
             span.StartLinePosition.Line + 1,
             span.StartLinePosition.Character + 1,
             diagnostic.Id,
-            diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
+            diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture),
+            analyzer);
     }
 
     /// <summary>Removes duplicates that come from compiling one file for several target frameworks.</summary>

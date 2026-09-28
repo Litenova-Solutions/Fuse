@@ -28,13 +28,22 @@ internal static class CheckOperation
     internal static OperationResult Render(CheckReport report)
     {
         var text = new StringBuilder();
-        foreach (var diagnostic in report.Introduced.Take(MaxShown))
-            text.Append(diagnostic).Append('\n');
+        var shown = report.Introduced.Take(MaxShown).ToArray();
+        for (var i = 0; i < shown.Length; i++)
+        {
+            text.Append(shown[i]).Append('\n');
+            // The line under an error in a file the agent did not edit says which of its edits put the file in scope.
+            if (report.ContextFor(i) is { } context)
+                text.Append("  ").Append(context).Append('\n');
+        }
+
         var scope = new List<string>();
         if (report.SurfaceChangedIn.Length > 0)
             scope.Add($"{string.Join(", ", report.SurfaceChangedIn)} declarations changed, {report.DependentProjectsChecked} dependent project(s) checked");
         if (report.WholeProjects)
             scope.Add("whole projects bound");
+        if (report.ContextLeftOut > 0)
+            scope.Add($"{report.ContextLeftOut} more error(s) with no cause line");
         var scopeText = scope.Count > 0 ? "; " + string.Join("; ", scope) : "";
 
         if (report.Introduced.Length == 0)

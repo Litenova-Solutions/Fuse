@@ -1,0 +1,286 @@
+{
+  "suite": "latency",
+  "repo": "CommunityToolkit",
+  "commit": "b135626dd54d33b8f05f2ff31591592c004aa848",
+  "fuseBuild": "5.0.0",
+  "target": "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs",
+  "method": "GetAwaitableWithoutEndValidation",
+  "referencingFilesInOtherProjects": 88,
+  "coldCleanMs": 3692.5494,
+  "coldBodyEditMs": 10437.7157,
+  "bodyEdit": {
+    "p50": 589.2,
+    "p95": 919.2,
+    "max": 919.2,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 393.4,
+    "p95": 26636.3,
+    "max": 26636.3,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 3 new error(s) in 3 file(s) (CommunityToolkit.Mvvm); CommunityToolkit.Mvvm declarations changed, 12 dependent project(s) checked",
+  "warmUnchanged": {
+    "p50": 129.6,
+    "p95": 135,
+    "max": 135,
+    "n": 10
+  },
+  "testRound": {
+    "p50": 87437.9,
+    "p95": 98902.5,
+    "max": 98902.5,
+    "n": 5
+  },
+  "bodyEditPhases": {
+    "phases": {
+      "bindTargets": {
+        "p50": 449.5,
+        "p95": 780.9,
+        "max": 780.9,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 2.3,
+        "p95": 3.3,
+        "max": 3.3,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.1,
+        "p95": 3,
+        "max": 3,
+        "n": 15
+      },
+      "total": {
+        "p50": 453,
+        "p95": 796,
+        "max": 796,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 136.5,
+      "p95": 149,
+      "max": 149,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindCandidates": {
+        "p50": 80.8,
+        "p95": 340.3,
+        "max": 340.3,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 172.5,
+        "p95": 317,
+        "max": 317,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 10363.5,
+        "max": 10363.5,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 0.9,
+        "p95": 15470.7,
+        "max": 15470.7,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 0.9,
+        "p95": 2.5,
+        "max": 2.5,
+        "n": 10
+      },
+      "sync": {
+        "p50": 0.8,
+        "p95": 19.7,
+        "max": 19.7,
+        "n": 10
+      },
+      "total": {
+        "p50": 250,
+        "p95": 26484,
+        "max": 26484,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 136.4,
+      "p95": 152.3,
+      "max": 152.3,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 0.1,
+        "p95": 0.2,
+        "max": 0.2,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 129.6,
+      "p95": 135,
+      "max": 135,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 5
+      },
+      "mirror": {
+        "p50": 9687.3,
+        "p95": 28531.2,
+        "max": 28531.2,
+        "n": 5
+      },
+      "selection": {
+        "p50": 234.6,
+        "p95": 511.4,
+        "max": 511.4,
+        "n": 5
+      },
+      "sync": {
+        "p50": 1.1,
+        "p95": 1.3,
+        "max": 1.3,
+        "n": 5
+      },
+      "total": {
+        "p50": 9922,
+        "p95": 29141,
+        "max": 29141,
+        "n": 5
+      }
+    },
+    "outsideEngine": {
+      "p50": 75884.1,
+      "p95": 89496.5,
+      "max": 89496.5,
+      "n": 5
+    },
+    "n": 5
+  },
+  "multiAgent": {
+    "writers": {
+      "clients": 4,
+      "editsPerClient": 10,
+      "wallMs": 246935.6688,
+      "checks": 40,
+      "failed": 0,
+      "timedOut": 0,
+      "gate": {
+        "p50": 324.6,
+        "p95": 23071.1,
+        "max": 23236.6,
+        "n": 40
+      },
+      "engineTotal": {
+        "p50": 78,
+        "p95": 1609,
+        "max": 22890,
+        "n": 40
+      },
+      "singleClientTotalP50": 453
+    },
+    "builds": {
+      "clients": 3,
+      "rounds": 5,
+      "wallMs": 104088.7149,
+      "each": {
+        "p50": 19030.1,
+        "p95": 26166.1,
+        "max": 26166.1,
+        "n": 15
+      },
+      "collisions": 94,
+      "collisionSamples": [
+        "C:\\Program Files\\dotnet\\sdk\\10.0.112\\Microsoft.Common.CurrentVersion.targets(4903,5): error MSB3027: Could not copy \u0022obj\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022 to \u0022bin\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022. Exceeded retry count of 10. Failed. The file is locked by: \u0022fuse (36620)\u0022",
+        "C:\\Program Files\\dotnet\\sdk\\10.0.112\\Microsoft.Common.CurrentVersion.targets(4903,5): error MSB3021: Unable to copy file \u0022obj\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022 to \u0022bin\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022. The process cannot access the file \u0027C:\\Users\\a.shafie\\AppData\\Local\\fuse\\evals\\repos\\CommunityToolkit\\src\\CommunityToolkit.Mvvm.SourceGenerators.Roslyn4120\\bin\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0027 because it is being used by another process.",
+        "C:\\Program Files\\dotnet\\sdk\\10.0.112\\Microsoft.Common.CurrentVersion.targets(4903,5): error MSB3027: Could not copy \u0022obj\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022 to \u0022bin\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022. Exceeded retry count of 10. Failed. The file is locked by: \u0022.NET Host (38272), fuse (36620)\u0022",
+        "C:\\Program Files\\dotnet\\sdk\\10.0.112\\Microsoft.Common.CurrentVersion.targets(4903,5): error MSB3021: Unable to copy file \u0022obj\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022 to \u0022bin\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022. The process cannot access the file \u0027C:\\Users\\a.shafie\\AppData\\Local\\fuse\\evals\\repos\\CommunityToolkit\\src\\CommunityToolkit.Mvvm.SourceGenerators.Roslyn4001\\bin\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0027 because it is being used by another process.",
+        "C:\\Program Files\\dotnet\\sdk\\10.0.112\\Microsoft.Common.CurrentVersion.targets(4903,5): error MSB3021: Unable to copy file \u0022obj\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022 to \u0022bin\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0022. The process cannot access the file \u0027C:\\Users\\a.shafie\\AppData\\Local\\fuse\\evals\\repos\\CommunityToolkit\\src\\CommunityToolkit.Mvvm.SourceGenerators.Roslyn4031\\bin\\Debug\\netstandard2.0\\CommunityToolkit.Mvvm.SourceGenerators.dll\u0027 because it is being used by another process."
+      ]
+    },
+    "rounds": [
+      {
+        "index": 1,
+        "project": "CommunityToolkit.Mvvm.csproj",
+        "edit": "src\\CommunityToolkit.Mvvm\\Collections\\ObservableGroupedCollectionExtensions.cs",
+        "ms": 1856.0039,
+        "testProjects": [],
+        "failingTests": 0
+      },
+      {
+        "index": 2,
+        "project": "CommunityToolkit.Common.csproj",
+        "edit": "src\\CommunityToolkit.Common\\Converters.cs",
+        "ms": 2482.5039,
+        "testProjects": [
+          "CommunityToolkit.Common.UnitTests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 3,
+        "project": "CommunityToolkit.Common.csproj",
+        "edit": "src\\CommunityToolkit.Common\\Converters.cs",
+        "ms": 2356.5412,
+        "testProjects": [
+          "CommunityToolkit.Common.UnitTests"
+        ],
+        "failingTests": 0
+      }
+    ]
+  },
+  "engineWorkingSetMb": 1879.9,
+  "treeCleanAfter": true
+}

@@ -11,17 +11,15 @@ internal static class BuildOperation
 
     private static readonly string[] QuietArguments = ["-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
 
-    public static async Task<OperationResult> RunAsync(string workingDirectory, string root, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+    public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
         // The arguments are the user's, unchanged, so an implicit restore still happens: an agent that has just added a
         // package reference and then builds needs it. The lock is what changes, not the command.
-        if (RepoRoot.Find(workingDirectory) is { } repo)
-        {
-            using var buildLock = BuildLock.Acquire(repo, () => Console.Error.WriteLine(BuildLock.Waited));
-            return await BuildAsync(workingDirectory, root, arguments, cancellationToken).ConfigureAwait(false);
-        }
+        if (root is null)
+            return await BuildAsync(workingDirectory, workingDirectory, arguments, cancellationToken).ConfigureAwait(false);
 
-        return await BuildAsync(workingDirectory, root, arguments, cancellationToken).ConfigureAwait(false);
+        using var buildLock = BuildLock.Acquire(root, () => Console.Error.WriteLine(BuildLock.Waited));
+        return await BuildAsync(workingDirectory, root.Path, arguments, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, IReadOnlyList<string> arguments, CancellationToken cancellationToken)

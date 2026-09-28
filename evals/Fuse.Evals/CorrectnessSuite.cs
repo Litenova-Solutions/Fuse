@@ -22,7 +22,17 @@ internal sealed record CorrectnessCase(
     List<string> DeferredByCompiler,
     List<string> MessageMismatch,
     bool FileAgreement,
-    string? Note);
+    string? Note)
+{
+    /// <summary>How many cause lines fuse printed, one under an error in a file the case did not edit.</summary>
+    public int ContextLines { get; init; }
+
+    /// <summary>How many bytes fuse printed, so the cause lines' share of a response is visible.</summary>
+    public int OutputBytes { get; init; }
+
+    /// <summary>How many bytes the cause lines account for.</summary>
+    public int ContextBytes { get; init; }
+}
 
 /// <summary>
 ///     Applies API-shape mutations (single edits and 2-3 edit sequences across projects), then compares the
@@ -59,12 +69,19 @@ internal static partial class CorrectnessSuite
             }
 
             var fuse = await repo.FuseAsync(["check", .. edits.Select(e => Path.Combine(repo.Root, e.Path))]);
+            // The cause lines fuse prints under an error in a file this case did not edit.
+            List<Match> Context() => [.. fuse.Result.Output.Split('\n').Select(l => CauseLine().Match(l.TrimEnd('\r'))).Where(m => m.Success)];
             var build = await repo.BuildAsync();
             var truth = Subtract(build.Errors, head.Errors);
             var fuseErrors = EvalRepo.ParseFuseErrors(fuse.Result.Output);
             var fuseCount = EvalRepo.ParseFuseCount(fuse.Result.Output);
             var result = Classify(solution, i, edits, truth, fuseErrors, fuseCount, fuse.Result.ExitCode, fuse.Milliseconds, build.Seconds,
-                fuse.Result.ExitCode is 0 or 1 ? null : fuse.Result.Output.Trim());
+                fuse.Result.ExitCode is 0 or 1 ? null : fuse.Result.Output.Trim()) with
+            {
+                ContextLines = Context().Count(m => m.Success),
+                OutputBytes = System.Text.Encoding.UTF8.GetByteCount(fuse.Result.Output),
+                ContextBytes = System.Text.Encoding.UTF8.GetByteCount(string.Join("\n", Context().Select(m => m.Value))),
+            };
             cases.Add(result);
             Console.WriteLine($"[correctness] {i + 1}/{count} {result.Verdict,-12} truth={truth.Count,3} fuse={fuseCount,3} {fuse.Milliseconds,6:0} ms  {string.Join(" + ", edits.Select(e => $"{e.Kind} {e.Path}"))}");
             await repo.ResetAsync();
@@ -90,6 +107,9 @@ internal static partial class CorrectnessSuite
             unverifiableDiagnostics = cases.Sum(c => c.Unverifiable.Count),
             deferredByCompilerDiagnostics = cases.Sum(c => c.DeferredByCompiler.Count),
             messageMismatchDiagnostics = cases.Sum(c => c.MessageMismatch.Count),
+            contextLines = cases.Sum(c => c.ContextLines),
+            contextBytes = cases.Sum(c => c.ContextBytes),
+            outputBytes = cases.Sum(c => c.OutputBytes),
             partialMisses = cases.Count(c => c.Verdict == "partial"),
             exactAgreement = cases.Count(c => c.Verdict is "agree" or "agree-clean"),
             fileAgreement = cases.Count(c => c.FileAgreement),
@@ -268,4 +288,8 @@ internal static partial class CorrectnessSuite
 
     [GeneratedRegex(@"^(?<file>[^\r\n]+?)(?:\((?<line>\d+),(?<col>\d+)\))?: error (?<id>[A-Za-z]+\d+): (?<msg>.*)$")]
     private static partial Regex Canonical();
+
+    // The cause line fuse prints under an error in a file the case did not edit, indented by two spaces.
+    [GeneratedRegex(@"^ {2}(?<state>changed|removed): (?<declaration>.+)$")]
+    private static partial Regex CauseLine();
 }

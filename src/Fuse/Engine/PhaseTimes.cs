@@ -28,4 +28,24 @@ internal sealed class PhaseTimes
 
     /// <summary>Records a phase whose time was measured elsewhere, such as the whole request.</summary>
     public void Add(string phase, double ms) => _phases.Add((phase, ms));
+
+    /// <summary>
+    ///     Records a phase on every collector in <paramref name="collectors"/> that is measuring, for work a batch of
+    ///     clients shares: each of them waited for it, so each of them is told about it.
+    /// </summary>
+    public static void AddToAll(IReadOnlyList<PhaseTimes?> collectors, string phase, Stopwatch? since)
+    {
+        if (since is null)
+            return;
+
+        foreach (var collector in collectors)
+            collector?.Add(phase, since.Elapsed.TotalMilliseconds);
+    }
+
+    /// <summary>Records a phase on every collector, for a time already measured.</summary>
+    public static void AddMsToAll(IReadOnlyList<PhaseTimes?> collectors, string phase, double ms)
+    {
+        foreach (var collector in collectors)
+            collector?.Add(phase, ms);
+    }
 }

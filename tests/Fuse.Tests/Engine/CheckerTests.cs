@@ -1,5 +1,7 @@
+using Fuse.Check;
 using Fuse.Protocol;
 using Fuse.Tests.Fixtures;
+using Fuse.Workspace;
 
 namespace Fuse.Tests.Engine;
 
@@ -143,6 +145,52 @@ public class CheckerTests
         Assert.Single((await engine.CheckAsync("Lib/Calc.cs")).Introduced);
         engine.Repo.Replace("Lib/Calc.cs", "a * nope;", "a * b;");
         Assert.Empty((await engine.CheckAsync("Lib/Calc.cs")).Introduced);
+    }
+
+    [Fact]
+    public async Task Two_edits_in_different_projects_reach_disjoint_candidates()
+    {
+        await using var engine = await EngineHarness.StartAsync();
+        // Report.Line is called by App.Tests and Calc.Add by App and Lib.Tests, so each edit reaches its own files.
+        engine.Repo.Replace("App/Report.cs", "Line(int value)", "Line2(int value)");
+        engine.Repo.Replace("Lib/Calc.cs", "Add(int a, int b)", "Add2(int a, int b)");
+
+        // The provenance queries run after a real check, so the HEAD view is loaded the way the check loads it.
+        await engine.CheckAsync("App/Report.cs");
+        var fromApp = await CandidatesAsync(engine, "App/Report.cs");
+        var fromLib = await CandidatesAsync(engine, "Lib/Calc.cs");
+
+        Assert.Equal([engine.Repo.Full("App.Tests/ReportTests.cs")], fromApp);
+        Assert.Equal([engine.Repo.Full("App/Program.cs"), engine.Repo.Full("Lib.Tests/CalcTests.cs")], fromLib);
+        Assert.Empty(fromApp.Intersect(fromLib, StringComparer.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Each_candidate_names_the_declaration_that_reached_it()
+    {
+        await using var engine = await EngineHarness.StartAsync();
+        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
+        var report = await engine.CheckAsync("Lib/Calc.cs", "Lib/Greeting.cs");
+
+        var lines = report.Context?.OfType<string>().ToList() ?? [];
+        Assert.Contains(lines, l => l.Contains("Add", StringComparison.Ordinal));
+        Assert.Contains(lines, l => l.Contains("Greet", StringComparison.Ordinal) && l.StartsWith("removed: ", StringComparison.Ordinal));
+    }
+
+    /// <summary>The files the change in <paramref name="relative"/> puts in scope, the way the checker computes them.</summary>
+    private static async Task<List<string>> CandidatesAsync(EngineHarness engine, string relative)
+    {
+        var graph = engine.Workspace.Graph;
+        var path = engine.Repo.Full(relative);
+        var owners = graph.OwnersOf(path).ToList();
+        await engine.Workspace.EnsureLoadedAsync(owners, TestContext.Current.CancellationToken);
+        var dependents = owners.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
+            .Where(p => !owners.Any(o => string.Equals(o.Path, p.Path, StringComparison.OrdinalIgnoreCase))).ToList();
+        await engine.Workspace.EnsureLoadedAsync(dependents, TestContext.Current.CancellationToken);
+        var reach = owners.Concat(dependents).SelectMany(n => RepoWorkspace.ProjectsFor(engine.Workspace.Current, n)).ToList();
+        var provenance = await new ChangeReach(engine.Workspace).ProvenanceAsync([path], reach, TestContext.Current.CancellationToken);
+        return provenance?.Files.Order(StringComparer.Ordinal).ToList() ?? [];
     }
 
     [Fact]

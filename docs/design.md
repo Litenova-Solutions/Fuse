@@ -36,6 +36,7 @@ One engine process runs per repository. It is `fuse engine <root>`, started deta
 3. Otherwise each changed declaration is resolved to its symbol in the HEAD view, and Roslyn's `SymbolFinder` finds the files that reference it, implement or override it, or derive from its type, across the owning project and its dependents. An added member pulls in the same-named members of its type and its bases, and the implementations of an interface or abstract type. A changed type header, delegate, global using or assembly attribute re-checks every file in reach.
 4. Candidate files bind in parallel. Past 500 candidates, whole projects are bound instead.
 5. Errors are compiler errors, warnings the project treats as errors, and analyzer diagnostics whose configured severity is error. Only analyzers that can report an error run.
+6. Each candidate file keeps the changed declaration that put it in scope, so an error in a file the agent did not edit is followed by one line naming that declaration. A removal is quoted as it was at HEAD. At most ten lines per answer, and the summary says how many were left out. A target file, a warning and an analyzer diagnostic get none.
 
 ## Test selection
 
@@ -48,6 +49,14 @@ One engine process runs per repository. It is `fuse engine <root>`, started deta
 - **Fast path.** When every project a test assembly loads has build output, and nothing but C# sources changed since that build, Fuse copies the test project's output into a shadow directory, emits the changed assemblies (and their dependents) from the warm compilations into it, and runs `dotnet test` on the shadow assembly. Shadow runs execute in parallel, one per target framework.
 - **Otherwise** it runs `dotnet test` on the project with the selection's filter, one project at a time.
 - Results are read from TRX files. Output lists every failing test, with details for the first ten, and a line stating how many tests ran out of how many.
+
+## Builds and the build lock
+
+Every process that writes build output in a repository writes the same `obj` and `bin` files, and two of them at once make one fail with MSB3021 or MSB3027 on a file the other holds, or with CS2012 on a source file both are writing. With several agents in one repository that is the normal case, not the edge case.
+
+`fuse build` and `fuse test` take a per-repository lock for as long as they write: `fuse build` around its `dotnet build`, and `fuse test` from before it asks the engine for a plan until its last `dotnet test` child has exited, including `--all` and passthrough arguments. The lock is `<state>/build.lock` opened with `FileShare.None`, retried every 200 ms, and released on dispose, so a client that is killed holding it releases it at once. A client that has to wait says so once, on standard error. The arguments `fuse build` passes to `dotnet build` are unchanged, implicit restore included, so a package reference added a moment ago still resolves.
+
+The engine takes no lock: it writes nothing into the working tree, and a check does not build. A client that cannot open the state directory runs without the lock and says why in `hook.log` rather than failing the call.
 
 ## Failure handling
 

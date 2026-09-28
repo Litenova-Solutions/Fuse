@@ -10,7 +10,15 @@ namespace Fuse.Check;
 /// <param name="Names">Identifiers other code would use to reach it: the member name and its containing type's name.</param>
 /// <param name="Node">The declaring syntax node, for resolving the declared symbol.</param>
 /// <param name="Container">The key of the containing type's entry, or null at file level.</param>
-internal sealed record SurfaceEntry(string Signature, string[] Names, SyntaxNode? Node = null, string? Container = null);
+internal sealed record SurfaceEntry(string Signature, string[] Names, SyntaxNode? Node = null, string? Container = null)
+{
+    /// <summary>
+    ///     The declaration as it is written in the file, with its body and its trivia dropped. This is what a context line
+    ///     shows, so it differs from <see cref="Signature"/>, which flattens the tokens and pads the punctuation for
+    ///     comparison rather than for reading.
+    /// </summary>
+    public string Declaration => Node is null ? Signature : SurfaceMap.Declaration(Node);
+}
 
 /// <summary>One declaration that differs between two versions of a file.</summary>
 /// <param name="Key">The declaration's identity.</param>
@@ -24,6 +32,33 @@ internal sealed record SurfaceChange(string Key, SurfaceEntry? Before, SurfaceEn
 /// </summary>
 internal static class SurfaceMap
 {
+    /// <summary>
+    ///     A member's declaration as it is written, stopping before its body. A block body starts at its brace and an
+    ///     accessor list at its keyword, so the cut leaves the header; an expression body follows the arrow, so the cut is at
+    ///     the arrow and leaves the header without a dangling token.
+    /// </summary>
+    public static string Declaration(SyntaxNode node)
+    {
+        var text = node.WithoutLeadingTrivia().WithoutTrailingTrivia().ToFullString();
+        var body = node switch
+        {
+            BaseMethodDeclarationSyntax method => (SyntaxNode?)method.Body ?? method.ExpressionBody,
+            AccessorDeclarationSyntax accessor => (SyntaxNode?)accessor.Body ?? accessor.ExpressionBody,
+            PropertyDeclarationSyntax property => (SyntaxNode?)property.AccessorList ?? property.ExpressionBody,
+            IndexerDeclarationSyntax indexer => (SyntaxNode?)indexer.AccessorList ?? indexer.ExpressionBody,
+            EventFieldDeclarationSyntax events => events,
+            _ => null,
+        };
+        if (body is null)
+            return text.TrimEnd();
+
+        // An expression body is what follows "=>", so the declaration ends at the arrow. Anything else ends where the body
+        // starts. ChildTokens is the declaration's own tokens, which is where the arrow is, without descending into the body.
+        var arrow = node.ChildTokens().FirstOrDefault(t => t.IsKind(SyntaxKind.EqualsGreaterThanToken));
+        var cut = arrow != default && body is ArrowExpressionClauseSyntax ? arrow.SpanStart : body.SpanStart;
+        return text[..Math.Clamp(cut - node.SpanStart, 0, text.Length)].TrimEnd();
+    }
+
     public static Dictionary<string, SurfaceEntry> Compute(SyntaxNode root)
     {
         var map = new Dictionary<string, SurfaceEntry>(StringComparer.Ordinal);

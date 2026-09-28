@@ -82,7 +82,7 @@ internal static class McpCommand
                 break;
             case "fuse_build":
                 var target = arguments.TryGetValue("target", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
-                result = await BuildOperation.RunAsync(root.Path, root.Path, target is null ? [] : [target], cancellationToken).ConfigureAwait(false);
+                result = await BuildOperation.RunAsync(root, root.Path, target is null ? [] : [target], cancellationToken).ConfigureAwait(false);
                 break;
             default:
                 return Text($"fuse: unknown tool {request?.Name}; the tools are fuse_check, fuse_test and fuse_build", isError: true);

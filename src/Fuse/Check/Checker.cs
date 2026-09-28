@@ -52,35 +52,55 @@ internal sealed class Checker
     /// <param name="cancellationToken">Cancels the check.</param>
     public async Task<CheckReport> CheckAsync(IReadOnlyCollection<string>? files, PhaseTimes? phases, CancellationToken cancellationToken)
     {
-        var root = _workspace.Root;
-        var known = files?.Select(root.Absolute).ToList() ?? [];
-        var syncing = PhaseTimes.Start(phases);
-        await _workspace.SyncAsync(known, cancellationToken).ConfigureAwait(false);
-        PhaseTimes.Add(phases, "sync", syncing);
+        var reports = await CheckManyAsync([files], phases is null ? null : [phases], cancellationToken).ConfigureAwait(false);
+        return reports[0];
+    }
 
+    /// <summary>
+    ///     Answers several checks at once, sharing the work they have in common. One sync, one load and one binding pass
+    ///     cover the union of every client's targets and candidates; each client is then given the errors in its own
+    ///     targets and the candidates its own change reaches, with its own scope line, so its answer is the answer a serial
+    ///     check would have given it. A scope of null means every change since HEAD, and one such client makes the batch's
+    ///     target set the whole working tree.
+    /// </summary>
+    /// <param name="scopes">Files per client, or null for a client checking every change.</param>
+    /// <param name="perClient">A collector per client, or null entries for clients that are not measuring. Work the batch shares is recorded on every client, because each of them waited for it.</param>
+    /// <param name="cancellationToken">Cancels the batch.</param>
+    public async Task<IReadOnlyList<CheckReport>> CheckManyAsync(
+        IReadOnlyList<IReadOnlyCollection<string>?> scopes,
+        IReadOnlyList<PhaseTimes?>? perClient,
+        CancellationToken cancellationToken)
+    {
+        var root = _workspace.Root;
         var graph = _workspace.Graph;
-        var targets = (files is null ? _workspace.Tracker.Changed : known)
-            .Where(ChangeTracker.IsSource)
-            .Distinct(ChangeTracker.PathComparer)
-            .Where(p => graph.OwnersOf(p).Count > 0)
-            .ToList();
+        var known = scopes.Where(s => s is not null).SelectMany(s => s!).Select(root.Absolute).Distinct(ChangeTracker.PathComparer).ToList();
+        IReadOnlyList<PhaseTimes?> collectors = perClient ?? [];
+
+        var syncing = System.Diagnostics.Stopwatch.StartNew();
+        await _workspace.SyncAsync(known, cancellationToken).ConfigureAwait(false);
+        PhaseTimes.AddToAll(collectors, "sync", syncing);
+
+        // A client checking every change takes every change; a client with files takes its own.
+        var targets = new List<string>();
+        foreach (var scope in scopes)
+            targets.AddRange(TargetsFor(scope));
+        targets = targets.Distinct(ChangeTracker.PathComparer).ToList();
+
         if (targets.Count == 0)
-            return new CheckReport([], 0, [], [], 0, false);
+            return [.. scopes.Select(_ => new CheckReport([], 0, [], [], 0, false))];
 
         var owners = targets.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
-        var loading = PhaseTimes.Start(phases);
+        var loading = System.Diagnostics.Stopwatch.StartNew();
         await _workspace.EnsureLoadedAsync(owners, cancellationToken).ConfigureAwait(false);
-        PhaseTimes.Add(phases, "load", loading);
+        PhaseTimes.AddToAll(collectors, "load", loading);
 
-        var introduced = new List<Diagnostic>();
         var timer = System.Diagnostics.Stopwatch.StartNew();
-        introduced.AddRange(await IntroducedInFilesAsync(targets, cancellationToken).ConfigureAwait(false));
-        PhaseTimes.Add(phases, "bindTargets", timer);
+        var introducedByFile = await IntroducedInFilesAsync(targets, cancellationToken).ConfigureAwait(false);
+        PhaseTimes.AddToAll(collectors, "bindTargets", timer);
         var targetsMs = timer.ElapsedMilliseconds;
-        var filesChecked = targets.Count;
 
         // Which owning projects have declaration changes (syntax only), then what those changes can reach.
-        var diffing = PhaseTimes.Start(phases);
+        var diffing = System.Diagnostics.Stopwatch.StartNew();
         var surfaceTargets = new List<string>();
         foreach (var path in targets)
         {
@@ -88,78 +108,160 @@ internal sealed class Checker
                 surfaceTargets.Add(path);
         }
 
-        PhaseTimes.Add(phases, "surfaceDiff", diffing);
+        PhaseTimes.AddToAll(collectors, "surfaceDiff", diffing);
+        var surfaceSet = surfaceTargets.ToHashSet(ChangeTracker.PathComparer);
         var surfaceProjects = surfaceTargets.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
         var dependents = new List<ProjectNode>();
-        var wholeProjects = false;
+        var reachNodes = new List<ProjectNode>();
+        var reach = new List<Project>();
         if (surfaceProjects.Count > 0)
         {
-            var loadingDependents = PhaseTimes.Start(phases);
+            var loadingDependents = System.Diagnostics.Stopwatch.StartNew();
             dependents = surfaceProjects.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
                 .Where(p => !surfaceProjects.Any(s => ChangeTracker.PathComparer.Equals(s.Path, p.Path)))
                 .ToList();
             await _workspace.EnsureLoadedAsync(dependents, cancellationToken).ConfigureAwait(false);
-            PhaseTimes.Add(phases, "load", loadingDependents);
+            PhaseTimes.AddToAll(collectors, "load", loadingDependents);
+            reachNodes.AddRange(surfaceProjects.Concat(dependents));
+            reach.AddRange(reachNodes.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)));
+        }
 
-            var reachNodes = surfaceProjects.Concat(dependents).ToList();
-            var reach = reachNodes.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)).ToList();
-            var searching = PhaseTimes.Start(phases);
-            var targetSet = new HashSet<string>(targets, ChangeTracker.PathComparer);
-            var reachedFiles = await _reach.FilesAsync(surfaceTargets, reach, cancellationToken).ConfigureAwait(false);
-            var candidates = reachedFiles is null
-                ? reach.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Distinct(ChangeTracker.PathComparer).ToList()
-                : reachedFiles.ToList();
-            candidates.RemoveAll(targetSet.Contains);
-            PhaseTimes.Add(phases, "referenceSearch", searching);
-            var binding = PhaseTimes.Start(phases);
-            if (candidates.Count > WholeProjectThreshold)
+        // Each client's own candidates come from its own declaration changes; the reference sets behind them are cached, so
+        // the second client through costs a lookup rather than a search.
+        var own = new List<Own>(scopes.Count);
+        for (var index = 0; index < scopes.Count; index++)
+        {
+            var scope = scopes[index];
+            var ownTargets = TargetsFor(scope);
+            var ownSurface = ownTargets.Where(surfaceSet.Contains).ToList();
+            var ownSurfaceProjects = ownSurface.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
+            var ownDependents = ownSurfaceProjects.Count == 0
+                ? []
+                : ownSurfaceProjects.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
+                    .Where(p => !ownSurfaceProjects.Any(s => ChangeTracker.PathComparer.Equals(s.Path, p.Path))).ToList();
+            var ownReachNodes = ownSurfaceProjects.Concat(ownDependents).ToList();
+            var ownReach = ownReachNodes.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)).ToList();
+            var searching = ownSurfaceProjects.Count == 0 ? null : System.Diagnostics.Stopwatch.StartNew();
+            var reached = searching is null
+                ? null
+                : await _reach.ProvenanceAsync(ownSurface, ownReach, cancellationToken).ConfigureAwait(false);
+            // Recorded only when a search ran, so a body-only edit does not report a reference search it did not do.
+            if (searching is not null && perClient is not null && index < perClient.Count)
+                perClient[index]?.Add("referenceSearch", searching.Elapsed.TotalMilliseconds);
+            var ownTargetSet = ownTargets.ToHashSet(ChangeTracker.PathComparer);
+            var candidates = reached is null && ownSurfaceProjects.Count > 0
+                ? ownReach.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Distinct(ChangeTracker.PathComparer).ToList()
+                : reached?.Files.ToList() ?? [];
+            candidates.RemoveAll(ownTargetSet.Contains);
+            own.Add(new(ownTargets, ownSurfaceProjects, ownDependents, ownReachNodes, ownReach, reached, candidates));
+        }
+
+        // One binding pass over the union of every client's candidates, and one whole-project pass for the clients whose
+        // own candidate set is too large to enumerate.
+        var binding = System.Diagnostics.Stopwatch.StartNew();
+        var wide = own.Where(o => o.Candidates.Count > WholeProjectThreshold).ToList();
+        var allCandidates = own.Where(o => o.Candidates.Count <= WholeProjectThreshold)
+            .SelectMany(o => o.Candidates).Distinct(ChangeTracker.PathComparer).ToList();
+        var introducedByCandidate = await IntroducedInFilesAsync(allCandidates, cancellationToken).ConfigureAwait(false);
+        var wholeNodes = wide.SelectMany(o => o.ReachNodes).DistinctBy(p => p.Path).ToList();
+        var introducedByProject = new List<Diagnostic>();
+        foreach (var node in wholeNodes)
+            introducedByProject.AddRange(await IntroducedInProjectAsync(node, cancellationToken).ConfigureAwait(false));
+        PhaseTimes.AddToAll(collectors, "bindCandidates", binding);
+
+        var (compilerMs, analyzerMs) = _collector.TakeTimings();
+        _workspace.Log($"check: {scopes.Count} client(s) in one pass; binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {surfaceTargets.Count} with declaration changes, {targets.Count + allCandidates.Count} file(s) bound, {timer.ElapsedMilliseconds} ms total");
+
+        var reports = new List<CheckReport>(own.Count);
+        foreach (var client in own)
+        {
+            var introduced = new List<Diagnostic>();
+            foreach (var path in client.Targets)
+                introduced.AddRange(introducedByFile.GetValueOrDefault(path) ?? []);
+            int filesChecked = client.Targets.Count;
+            var wholeProjects = client.Candidates.Count > WholeProjectThreshold;
+            if (wholeProjects)
             {
-                wholeProjects = true;
-                foreach (var node in reachNodes)
-                    introduced.AddRange(await IntroducedInProjectAsync(node, cancellationToken).ConfigureAwait(false));
-                filesChecked = reach.Sum(p => p.DocumentIds.Count);
+                var paths = client.ReachProjects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().ToHashSet(ChangeTracker.PathComparer);
+                foreach (var node in client.ReachNodes)
+                    introduced.AddRange(introducedByProject.Where(d => paths.Contains(root.Absolute(d.Path))));
+                filesChecked = client.ReachProjects.Sum(p => p.DocumentIds.Count);
             }
             else
             {
-                introduced.AddRange(await IntroducedInFilesAsync(candidates, cancellationToken).ConfigureAwait(false));
-                filesChecked += candidates.Count;
+                foreach (var path in client.Candidates)
+                    introduced.AddRange(introducedByCandidate.GetValueOrDefault(path) ?? []);
+                filesChecked += client.Candidates.Count;
             }
 
-            PhaseTimes.Add(phases, "bindCandidates", binding);
+            var ordered = introduced.Distinct()
+                .OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column)
+                .ToList();
+            var projects = ordered
+                .Select(d => graph.OwnersOf(root.Absolute(d.Path)) is [var owner, ..] ? owner.Name : null)
+                .OfType<string>()
+                .Distinct()
+                .ToArray();
+            var reported = ordered.Take(MaxReported).ToArray();
+            var (context, contextLeftOut) = ErrorContext.Build(reported, client.Provenance ?? new ReachProvenance(), root.Absolute, client.Targets);
+            reports.Add(new CheckReport(
+                reported,
+                filesChecked,
+                projects,
+                [.. client.SurfaceProjects.Select(p => p.Name)],
+                client.Dependents.Count,
+                wholeProjects,
+                context,
+                contextLeftOut));
         }
 
-        var ordered = introduced.Distinct()
-            .OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column)
-            .ToList();
-        var projects = ordered
-            .Select(d => graph.OwnersOf(root.Absolute(d.Path)) is [var owner, ..] ? owner.Name : null)
-            .OfType<string>()
-            .Distinct()
-            .ToArray();
-        var (compilerMs, analyzerMs) = _collector.TakeTimings();
-        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {surfaceTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}");
-        return new CheckReport(
-            [.. ordered.Take(MaxReported)],
-            filesChecked,
-            projects,
-            [.. surfaceProjects.Select(p => p.Name)],
-            dependents.Count,
-            wholeProjects);
+        return reports;
     }
 
-    /// <summary>Binds files in parallel; semantic models of different documents bind independently.</summary>
-    private async Task<List<Diagnostic>> IntroducedInFilesAsync(IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
+    /// <summary>The source files a scope of null (every change) or a set of files resolves to, in the order given.</summary>
+    private List<string> TargetsFor(IReadOnlyCollection<string>? files)
     {
-        var results = new System.Collections.Concurrent.ConcurrentBag<Diagnostic>();
+        var graph = _workspace.Graph;
+        return (files is null ? _workspace.Tracker.Changed : files.Select(_workspace.Root.Absolute).ToList())
+            .Where(ChangeTracker.IsSource)
+            .Distinct(ChangeTracker.PathComparer)
+            .Where(p => graph.OwnersOf(p).Count > 0)
+            .ToList();
+    }
+
+    /// <summary>One client's own slice of a batch: its targets, and what its own change reaches.</summary>
+    private sealed record Own(
+        List<string> Targets,
+        List<ProjectNode> SurfaceProjects,
+        List<ProjectNode> Dependents,
+        List<ProjectNode> ReachNodes,
+        List<Project> ReachProjects,
+        ReachProvenance? Provenance,
+        List<string> Candidates);
+
+    /// <summary>Writes a batch failure to the engine log, so a broken batch is not a client that never gets an answer.</summary>
+    internal void LogBatchFailure(Exception e) => _workspace.Log($"check batch failed: {e}");
+
+    /// <summary>Binds files in parallel and groups the errors by file; semantic models of different documents bind independently.</summary>
+    private async Task<IReadOnlyDictionary<string, List<Diagnostic>>> IntroducedInFilesAsync(IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
+    {
+        var results = new System.Collections.Concurrent.ConcurrentBag<KeyValuePair<string, IReadOnlyList<Diagnostic>>>();
         await Parallel.ForEachAsync(
             paths,
             new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
             async (path, ct) =>
-            {
-                foreach (var diagnostic in await IntroducedInFileAsync(path, ct).ConfigureAwait(false))
-                    results.Add(diagnostic);
-            }).ConfigureAwait(false);
-        return [.. results];
+                results.Add(new KeyValuePair<string, IReadOnlyList<Diagnostic>>(path, [.. await IntroducedInFileAsync(path, ct).ConfigureAwait(false)]))).ConfigureAwait(false);
+        var byFile = new Dictionary<string, List<Diagnostic>>(ChangeTracker.PathComparer);
+        foreach (var (path, diagnostics) in results)
+        {
+            if (diagnostics.Count == 0)
+                continue;
+            if (!byFile.TryGetValue(path, out var list))
+                byFile[path] = list = [];
+            list.AddRange(diagnostics);
+        }
+
+        return byFile;
     }
 
     private async Task<IEnumerable<Diagnostic>> IntroducedInFileAsync(string path, CancellationToken cancellationToken)

@@ -16,7 +16,8 @@ public class PhaseTimingTests
 
         var (report, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
 
-        Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff"], phases.Select(p => p.Phase));
+        // A body-only edit reaches no other file, but the batch still records every phase of the pass it shares.
+        Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff", "bindCandidates"], phases.Select(p => p.Phase));
         Assert.All(phases, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
         Assert.NotEmpty(report.Introduced);
     }

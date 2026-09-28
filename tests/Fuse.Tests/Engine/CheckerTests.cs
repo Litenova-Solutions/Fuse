@@ -269,6 +269,6 @@ public class CheckerTests
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         var error = await Assert.ThrowsAsync<Fuse.Workspace.FuseException>(() => engine.CheckAsync("Lib/Calc.cs"));
         Assert.Equal(ErrorCode.RestoreNeeded, error.Code);
-        Assert.Contains("dotnet restore", error.Message, StringComparison.Ordinal);
+        Assert.Contains("dotnet restore Lib/Lib.csproj", error.Message, StringComparison.Ordinal);
     }
 }

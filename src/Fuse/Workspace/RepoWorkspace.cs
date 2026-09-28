@@ -166,8 +166,10 @@ internal sealed class RepoWorkspace : IDisposable
     private async Task LoadAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
     {
         var unrestored = missing.SelectMany(Graph.ClosureOf).Where(p => !File.Exists(p.AssetsFile)).Select(p => _root.Relative(p.Path)).Distinct().ToList();
+        // The command names a project, because a bare `dotnet restore` restores a solution, which may leave out the very
+        // project that is missing its assets (a fuzzing or sample project outside the solution).
         if (unrestored.Count > 0)
-            throw new FuseException(ErrorCode.RestoreNeeded, $"restore needed: run `dotnet restore` ({string.Join(", ", unrestored.Take(3))}{(unrestored.Count > 3 ? ", ..." : "")} not restored)");
+            throw new FuseException(ErrorCode.RestoreNeeded, $"restore needed: run `dotnet restore {unrestored[0]}`{(unrestored.Count > 1 ? " and the same for each project listed" : "")} ({string.Join(", ", unrestored.Take(3))}{(unrestored.Count > 3 ? ", ..." : "")} not restored)");
 
         await _loadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try

@@ -1,0 +1,225 @@
+{
+  "suite": "selection",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "5.0.0",
+  "seed": 1,
+  "requested": 10,
+  "cases": 10,
+  "withFailures": 2,
+  "missedCases": 0,
+  "unverifiedCases": 0,
+  "missedTests": 0,
+  "totalTests": 2535,
+  "meanSelectedFraction": 0.22272189349112428,
+  "fuseMedianSeconds": 146.76395435,
+  "dotnetMedianSeconds": 203.87143559999998,
+  "skippedNonCompiling": [
+    "drop-statement src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/MusicAlbumMetadata.cs: dropped \u0060Labels = new HashSet\u003CCompany\u003E();\u0060 at line 18 (does not compile)",
+    "drop-statement Jellyfin.Api/Controllers/TvShowsController.cs: dropped \u0060_userManager = userManager;\u0060 at line 51 (does not compile)",
+    "drop-statement MediaBrowser.Providers/Plugins/Tmdb/TV/TmdbSeasonImageProvider.cs: dropped \u0060_httpClientFactory = httpClientFactory;\u0060 at line 32 (does not compile)",
+    "drop-statement src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/Release.cs: dropped \u0060Name = name;\u0060 at line 22 (does not compile)"
+  ],
+  "projectsWithoutResults": [],
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edit": {
+        "path": "Jellyfin.Server/Migrations/Routines/MigrateKeyframeData.cs",
+        "kind": "flip-comparison",
+        "description": "flipped == at line 58",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 521,
+      "fuseScope": "fuse: 0 failed, 521 passed, 9 skipped in 117.1 s; ran 181 test(s) affected by your changes out of 663 (whole projects where the change reaches the application\u0027s entry point); fuse test --all runs everything; fast path",
+      "missed": [],
+      "fuseSeconds": 117.1450765,
+      "dotnetSeconds": 203.1254061,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 1,
+      "edit": {
+        "path": "MediaBrowser.Model/Configuration/MetadataConfiguration.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060UseFileCreationTimeForDateAdded = true;\u0060 at line 9",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 626,
+      "fuseScope": "fuse: 0 failed, 626 passed, 9 skipped in 149.8 s; ran 202 test(s) affected by your changes out of 663 (whole projects where the change reaches Jellyfin.Server, which runs behind a host); fuse test --all runs everything; built with MSBuild",
+      "missed": [],
+      "fuseSeconds": 149.8415566,
+      "dotnetSeconds": 203.3922061,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 2,
+      "edit": {
+        "path": "MediaBrowser.Controller/Extensions/XmlReaderExtensions.cs",
+        "kind": "flip-comparison",
+        "description": "flipped != at line 105",
+        "newText": null
+      },
+      "truthFailing": [
+        "Jellyfin.XbmcMetadata.Tests.Parsers.SeasonNfoProviderTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_With_Missing_Tags_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.SeriesNfoParserTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.MovieNfoParserTests.Fetch_Valid_Success"
+      ],
+      "fuseFailing": [
+        "Jellyfin.XbmcMetadata.Tests.Parsers.SeasonNfoProviderTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.MovieNfoParserTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_With_Missing_Tags_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.SeriesNfoParserTests.Fetch_Valid_Success"
+      ],
+      "fuseFailed": 6,
+      "fusePassed": 568,
+      "fuseScope": "fuse: 6 failed, 568 passed, 9 skipped in 148.3 s; ran 225 test(s) affected by your changes out of 663 (whole projects where the change reaches Jellyfin.Server, which runs behind a host); fuse test --all runs everything; built with MSBuild",
+      "missed": [],
+      "fuseSeconds": 148.3630138,
+      "dotnetSeconds": 215.5446712,
+      "verdict": "caught"
+    },
+    {
+      "index": 3,
+      "edit": {
+        "path": "Jellyfin.Server.Implementations/FullSystemBackup/BackupService.cs",
+        "kind": "flip-comparison",
+        "description": "flipped \u003C at line 281",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 521,
+      "fuseScope": "fuse: 0 failed, 521 passed, 9 skipped in 163.0 s; ran 181 test(s) affected by your changes out of 663 (whole projects where the change reaches the application\u0027s entry point); fuse test --all runs everything; built with MSBuild",
+      "missed": [],
+      "fuseSeconds": 163.597169,
+      "dotnetSeconds": 228.0825355,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 4,
+      "edit": {
+        "path": "MediaBrowser.Model/System/SystemInfo.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060CompletedInstallations = Array.Empty\u003CInstallationInfo\u003E();\u0060 at line 21",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 522,
+      "fuseScope": "fuse: 0 failed, 522 passed, 9 skipped in 145.1 s; ran 182 test(s) affected by your changes out of 663 (whole projects where the change reaches the application\u0027s entry point); fuse test --all runs everything; built with MSBuild",
+      "missed": [],
+      "fuseSeconds": 145.1648949,
+      "dotnetSeconds": 204.3506651,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 5,
+      "edit": {
+        "path": "MediaBrowser.Controller/Providers/MetadataRefreshOptions.cs",
+        "kind": "off-by-one",
+        "description": "changed 0 to 1 at line 69",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 1069,
+      "fuseScope": "fuse: 0 failed, 1069 passed, 9 skipped in 180.0 s; ran 387 test(s) affected by your changes out of 663 (whole projects where the change reaches Jellyfin.Server, which runs behind a host); fuse test --all runs everything; built with MSBuild",
+      "missed": [],
+      "fuseSeconds": 180.0870677,
+      "dotnetSeconds": 200.0145553,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 6,
+      "edit": {
+        "path": "Emby.Naming/TV/EpisodePathParser.cs",
+        "kind": "flip-comparison",
+        "description": "flipped != at line 61",
+        "newText": null
+      },
+      "truthFailing": [
+        "Jellyfin.Naming.Tests.TV.EpisodePathParserTest.EpisodePathParserTest_DifferentExpressionsParameters(path: \u0022/test/01-03.avi\u0022, isNamed: True, isOptimistic: True)"
+      ],
+      "fuseFailing": [
+        "Jellyfin.Naming.Tests.TV.EpisodePathParserTest.EpisodePathParserTest_DifferentExpressionsParameters(path: \u0022/test/01-03.avi\u0022, isNamed: True, isOptimistic: True)"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 756,
+      "fuseScope": "fuse: 1 failed, 756 passed, 9 skipped in 154.8 s; ran 194 test(s) affected by your changes out of 663 (whole projects where the change reaches Jellyfin.Server, which runs behind a host); fuse test --all runs everything; fast path for 1 of 4 project(s)",
+      "missed": [],
+      "fuseSeconds": 154.893267,
+      "dotnetSeconds": 199.39642,
+      "verdict": "caught"
+    },
+    {
+      "index": 7,
+      "edit": {
+        "path": "MediaBrowser.Model/Dto/DisplayPreferencesDto.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060PrimaryImageHeight = 250;\u0060 at line 17",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 521,
+      "fuseScope": "fuse: 0 failed, 521 passed, 9 skipped in 133.4 s; ran 181 test(s) affected by your changes out of 663 (whole projects where the change reaches the application\u0027s entry point); fuse test --all runs everything; built with MSBuild",
+      "missed": [],
+      "fuseSeconds": 133.4528318,
+      "dotnetSeconds": 206.2537546,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 8,
+      "edit": {
+        "path": "MediaBrowser.Controller/Drawing/ImageProcessingOptions.cs",
+        "kind": "off-by-one",
+        "description": "changed 90 to 91 at line 110",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 14,
+      "fuseScope": "fuse: 0 failed, 14 passed in 12.5 s; ran 2 test(s) affected by your changes out of 663; fuse test --all runs everything; built with MSBuild",
+      "missed": [],
+      "fuseSeconds": 12.533302,
+      "dotnetSeconds": 208.2892864,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 9,
+      "edit": {
+        "path": "Jellyfin.Server/Filters/IgnoreEnumSchemaFilter.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060schema.Enum = enumOpenApiStrings;\u0060 at line 39",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 521,
+      "fuseScope": "fuse: 0 failed, 521 passed, 9 skipped in 136.7 s; ran 181 test(s) affected by your changes out of 663 (whole projects where IgnoreEnumSchemaFilter.Apply(OpenApiSchema, SchemaFilterContext) is invoked by a framework); fuse test --all runs everything; built with MSBuild",
+      "missed": [],
+      "fuseSeconds": 136.7892342,
+      "dotnetSeconds": 198.6068847,
+      "verdict": "no-failure"
+    }
+  ]
+}

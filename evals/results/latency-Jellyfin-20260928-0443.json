@@ -1,0 +1,32 @@
+{
+  "suite": "latency",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "5.0.0",
+  "target": "MediaBrowser.Controller/Entities/LinkedChildComparer.cs",
+  "method": "Equals",
+  "referencingFilesInOtherProjects": 210,
+  "coldCleanMs": 6113.0885,
+  "coldBodyEditMs": 8778.7182,
+  "bodyEdit": {
+    "p50": 193.7,
+    "p95": 220.4,
+    "max": 220.4,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 158,
+    "p95": 61914.6,
+    "max": 61914.6,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 1 new error(s) in 1 file(s) (MediaBrowser.Controller); MediaBrowser.Controller declarations changed, 27 dependent project(s) checked",
+  "warmUnchanged": {
+    "p50": 132.1,
+    "p95": 140,
+    "max": 140,
+    "n": 10
+  },
+  "engineWorkingSetMb": 595.8,
+  "treeCleanAfter": true
+}

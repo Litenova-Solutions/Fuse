@@ -250,10 +250,20 @@ internal static partial class CorrectnessSuite
         var path = Path.Combine(root, match.Groups["file"].Value);
         if (!File.Exists(path))
             return false;
-        var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path));
-        var text = tree.GetText();
+        var source = File.ReadAllText(path);
         var line = int.Parse(match.Groups["line"].Value, System.Globalization.CultureInfo.InvariantCulture) - 1;
         var col = int.Parse(match.Groups["col"].Value, System.Globalization.CultureInfo.InvariantCulture) - 1;
+        // An error inside an #if region was reported by the target framework that defines its symbol, and parsed without
+        // it the region is disabled text. So the file is parsed as it is and with every symbol its #if lines name.
+        var symbols = Conditional().Matches(source).SelectMany(m => Identifier().Matches(m.Groups["condition"].Value).Select(i => i.Value))
+            .Where(s => s is not ("true" or "false")).Distinct(StringComparer.Ordinal).ToArray();
+        return InBody(CSharpSyntaxTree.ParseText(source), line, col)
+               || (symbols.Length > 0 && InBody(CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithPreprocessorSymbols(symbols)), line, col));
+    }
+
+    private static bool InBody(SyntaxTree tree, int line, int col)
+    {
+        var text = tree.GetText();
         if (line >= text.Lines.Count)
             return false;
         var position = Math.Min(text.Lines[line].Start + col, text.Length - 1);
@@ -268,6 +278,12 @@ internal static partial class CorrectnessSuite
             || n is EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax { Parent.Parent: FieldDeclarationSyntax } }
             || n is GlobalStatementSyntax) ?? false;
     }
+
+    [GeneratedRegex(@"^[ \t]*#[ \t]*(?:if|elif)\b(?<condition>.*)$", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex Conditional();
+
+    [GeneratedRegex(@"[A-Za-z_][A-Za-z0-9_]*", RegexOptions.CultureInvariant)]
+    private static partial Regex Identifier();
 
     /// <summary>Multiset difference: the errors in <paramref name="after"/> beyond those in <paramref name="before"/>, matched on file, id and message.</summary>
     internal static List<string> Subtract(List<string> after, List<string> before)

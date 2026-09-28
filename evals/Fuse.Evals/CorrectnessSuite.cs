@@ -221,6 +221,10 @@ internal static partial class CorrectnessSuite
         // Only the compiler's own errors say where csc stopped: a source generator reports its diagnostics (MVVMTK0022 in
         // the Community Toolkit) before declarations are compiled, so they appear next to declaration errors.
         var compilerErrors = truth.Where(t => string.Equals(solution.ProjectFileOf(FileOf(t)), project, StringComparison.OrdinalIgnoreCase) && IsCompiler(t)).ToList();
+        // The compiler's XML documentation checks are skipped after any compiler error, a body error included: in a
+        // Jellyfin probe a CS0103 made the build drop CS1591 while its analyzers still reported.
+        if (compilerErrors.Count > 0 && IsDocumentation(fuseError))
+            return true;
         return compilerErrors.Count > 0
                && (InBody(solution.Root, fuseError) || AfterDeclarations(fuseError))
                && compilerErrors.All(e => !InBody(solution.Root, e) && !AfterDeclarations(e));
@@ -237,9 +241,15 @@ internal static partial class CorrectnessSuite
         var id = Canonical().Match(error).Groups["id"].Value;
         if (id.Length == 0)
             return false;
-        if (!id.StartsWith("CS", StringComparison.Ordinal))
-            return true;
-        return int.TryParse(id[2..], System.Globalization.CultureInfo.InvariantCulture, out var number) && number is >= 1570 and <= 1592;
+        return !id.StartsWith("CS", StringComparison.Ordinal) || IsDocumentation(error);
+    }
+
+    /// <summary>True for the compiler's XML documentation checks, CS1570 to CS1592.</summary>
+    private static bool IsDocumentation(string error)
+    {
+        var id = Canonical().Match(error).Groups["id"].Value;
+        return id.StartsWith("CS", StringComparison.Ordinal)
+               && int.TryParse(id[2..], System.Globalization.CultureInfo.InvariantCulture, out var number) && number is >= 1570 and <= 1592;
     }
 
     private static bool InBody(string root, string error)

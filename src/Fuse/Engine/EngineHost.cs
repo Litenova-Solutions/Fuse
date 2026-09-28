@@ -89,14 +89,17 @@ internal sealed class EngineHost : IDisposable
                 ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
                 : "no C# projects (.csproj) found in this repository");
 
+        var phases = new PhaseTimes();
+        var queued = System.Diagnostics.Stopwatch.StartNew();
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        PhaseTimes.Add(phases, "gate", queued);
         var started = Environment.TickCount64;
         try
         {
             return request.Kind switch
             {
-                RequestKind.Check => new EngineResponse(ResponseStatus.Ok, Check: await _checker.CheckAsync(request.Files, cancellationToken).ConfigureAwait(false)),
-                RequestKind.TestPlan => new EngineResponse(ResponseStatus.Ok, Tests: await _planner.PlanAsync(request.AllTests, cancellationToken).ConfigureAwait(false)),
+                RequestKind.Check => new EngineResponse(ResponseStatus.Ok, Check: await _checker.CheckAsync(request.Files, phases, cancellationToken).ConfigureAwait(false)),
+                RequestKind.TestPlan => new EngineResponse(ResponseStatus.Ok, Tests: await _planner.PlanAsync(request.AllTests, phases, cancellationToken).ConfigureAwait(false)),
                 _ => EngineResponse.Fail(ErrorCode.Internal, $"unknown request {request.Kind}"),
             };
         }
@@ -111,7 +114,11 @@ internal sealed class EngineHost : IDisposable
         }
         finally
         {
-            _log.Write($"{request.Kind} {(request.Files is null ? "all" : string.Join(",", request.Files.Select(Path.GetFileName)))} took {Environment.TickCount64 - started} ms");
+            var took = Environment.TickCount64 - started;
+            _log.Write($"{request.Kind} {(request.Files is null ? "all" : string.Join(",", request.Files.Select(Path.GetFileName)))} took {took} ms");
+            // One line per request, naming it and timing each phase, so a measurement can be matched to its own call.
+            if (request.RequestId.Length > 0)
+                _log.Write(PhaseLine.Format(request.RequestId, request.Kind.ToString(), [.. phases.All, ("total", took)]));
             _gate.Release();
             SchedulePreload();
         }

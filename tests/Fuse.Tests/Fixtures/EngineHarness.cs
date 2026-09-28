@@ -1,4 +1,5 @@
 using Fuse.Check;
+using Fuse.Engine;
 using Fuse.Protocol;
 using Fuse.Testing;
 using Fuse.Workspace;
@@ -36,13 +37,21 @@ internal sealed class EngineHarness : IAsyncDisposable
 
     /// <summary>Checks the given repository-relative files, the way the post-edit hook does.</summary>
     public Task<CheckReport> CheckAsync(params string[] files) =>
-        Checker.CheckAsync(files.Select(Repo.Full).ToList(), TestContext.Current.CancellationToken);
+        Checker.CheckAsync(files.Select(Repo.Full).ToList(), null, TestContext.Current.CancellationToken);
+
+    /// <summary>Checks the same files and returns the phase times the check recorded.</summary>
+    public async Task<(CheckReport Report, IReadOnlyList<(string Phase, double Ms)> Phases)> CheckWithPhasesAsync(params string[] files)
+    {
+        var phases = new PhaseTimes();
+        var report = await Checker.CheckAsync(files.Select(Repo.Full).ToList(), phases, TestContext.Current.CancellationToken);
+        return (report, phases.All);
+    }
 
     /// <summary>Checks every change since HEAD, the way the Stop hook does, after letting file events arrive.</summary>
     public async Task<CheckReport> CheckAllAsync()
     {
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        return await Checker.CheckAsync(null, TestContext.Current.CancellationToken);
+        return await Checker.CheckAsync(null, null, TestContext.Current.CancellationToken);
     }
 
     public async ValueTask DisposeAsync()

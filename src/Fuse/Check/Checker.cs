@@ -1,3 +1,4 @@
+using Fuse.Engine;
 using Fuse.Graph;
 using Fuse.Protocol;
 using Fuse.Repo;
@@ -47,12 +48,15 @@ internal sealed class Checker
 
     /// <summary>Runs a check.</summary>
     /// <param name="files">Files to scope to (the ones just edited), or null for every change since HEAD.</param>
+    /// <param name="phases">Collects how long each phase of this check took; null collects nothing.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
-    public async Task<CheckReport> CheckAsync(IReadOnlyCollection<string>? files, CancellationToken cancellationToken)
+    public async Task<CheckReport> CheckAsync(IReadOnlyCollection<string>? files, PhaseTimes? phases, CancellationToken cancellationToken)
     {
         var root = _workspace.Root;
         var known = files?.Select(root.Absolute).ToList() ?? [];
+        var syncing = PhaseTimes.Start(phases);
         await _workspace.SyncAsync(known, cancellationToken).ConfigureAwait(false);
+        PhaseTimes.Add(phases, "sync", syncing);
 
         var graph = _workspace.Graph;
         var targets = (files is null ? _workspace.Tracker.Changed : known)
@@ -64,15 +68,19 @@ internal sealed class Checker
             return new CheckReport([], 0, [], [], 0, false);
 
         var owners = targets.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
+        var loading = PhaseTimes.Start(phases);
         await _workspace.EnsureLoadedAsync(owners, cancellationToken).ConfigureAwait(false);
+        PhaseTimes.Add(phases, "load", loading);
 
         var introduced = new List<Diagnostic>();
         var timer = System.Diagnostics.Stopwatch.StartNew();
         introduced.AddRange(await IntroducedInFilesAsync(targets, cancellationToken).ConfigureAwait(false));
+        PhaseTimes.Add(phases, "bindTargets", timer);
         var targetsMs = timer.ElapsedMilliseconds;
         var filesChecked = targets.Count;
 
         // Which owning projects have declaration changes (syntax only), then what those changes can reach.
+        var diffing = PhaseTimes.Start(phases);
         var surfaceTargets = new List<string>();
         foreach (var path in targets)
         {
@@ -80,24 +88,30 @@ internal sealed class Checker
                 surfaceTargets.Add(path);
         }
 
+        PhaseTimes.Add(phases, "surfaceDiff", diffing);
         var surfaceProjects = surfaceTargets.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
         var dependents = new List<ProjectNode>();
         var wholeProjects = false;
         if (surfaceProjects.Count > 0)
         {
+            var loadingDependents = PhaseTimes.Start(phases);
             dependents = surfaceProjects.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
                 .Where(p => !surfaceProjects.Any(s => ChangeTracker.PathComparer.Equals(s.Path, p.Path)))
                 .ToList();
             await _workspace.EnsureLoadedAsync(dependents, cancellationToken).ConfigureAwait(false);
+            PhaseTimes.Add(phases, "load", loadingDependents);
 
             var reachNodes = surfaceProjects.Concat(dependents).ToList();
             var reach = reachNodes.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)).ToList();
+            var searching = PhaseTimes.Start(phases);
             var targetSet = new HashSet<string>(targets, ChangeTracker.PathComparer);
             var reachedFiles = await _reach.FilesAsync(surfaceTargets, reach, cancellationToken).ConfigureAwait(false);
             var candidates = reachedFiles is null
                 ? reach.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Distinct(ChangeTracker.PathComparer).ToList()
                 : reachedFiles.ToList();
             candidates.RemoveAll(targetSet.Contains);
+            PhaseTimes.Add(phases, "referenceSearch", searching);
+            var binding = PhaseTimes.Start(phases);
             if (candidates.Count > WholeProjectThreshold)
             {
                 wholeProjects = true;
@@ -110,6 +124,8 @@ internal sealed class Checker
                 introduced.AddRange(await IntroducedInFilesAsync(candidates, cancellationToken).ConfigureAwait(false));
                 filesChecked += candidates.Count;
             }
+
+            PhaseTimes.Add(phases, "bindCandidates", binding);
         }
 
         var ordered = introduced.Distinct()

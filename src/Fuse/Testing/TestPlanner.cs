@@ -1,4 +1,5 @@
 using System.Text;
+using Fuse.Engine;
 using Fuse.Graph;
 using Fuse.Protocol;
 using Fuse.Repo;
@@ -22,9 +23,11 @@ internal sealed class TestPlanner
         _selector = new TestSelector(workspace);
     }
 
-    public async Task<TestPlan> PlanAsync(bool all, CancellationToken cancellationToken)
+    public async Task<TestPlan> PlanAsync(bool all, PhaseTimes? phases, CancellationToken cancellationToken)
     {
+        var syncing = PhaseTimes.Start(phases);
         await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        PhaseTimes.Add(phases, "sync", syncing);
         var graph = _workspace.Graph;
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
         var total = testProjects.Sum(p => _counter.TestsIn(p).Count);
@@ -43,11 +46,13 @@ internal sealed class TestPlanner
 
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var selection = await _selector.SelectAsync(changed, cancellationToken).ConfigureAwait(false);
+        PhaseTimes.Add(phases, "selection", timer);
         _workspace.Log($"test plan: selection in {timer.ElapsedMilliseconds} ms: {string.Join("; ", selection.Select(s => $"{Path.GetFileNameWithoutExtension(s.Key)} {(s.Value.All ? "all" : s.Value.Patterns.Count + " pattern(s)")}"))}");
         var runs = new List<TestRun>();
         var selected = 0;
         var reasons = new HashSet<string>(StringComparer.Ordinal);
         var emitter = new ShadowEmitter(_workspace.Root, graph);
+        var mirroring = PhaseTimes.Start(phases);
         foreach (var (path, projectSelection) in selection.OrderBy(s => s.Key, StringComparer.Ordinal))
         {
             var node = graph.Find(path);
@@ -95,6 +100,8 @@ internal sealed class TestPlanner
         if (reasons.Count > 0)
             scope.Append(" (whole projects where ").Append(string.Join("; ", reasons)).Append(')');
         scope.Append("; fuse test --all runs everything");
+        // The shadow copy and the in-memory emit happen together inside the emitter, so one phase covers both.
+        PhaseTimes.Add(phases, "mirror", mirroring);
         if (runs.Count == 0)
             return new TestPlan([], 0, total, $"no test reaches the changed code (out of {total}); fuse test --all runs everything");
         return new TestPlan([.. runs], selected, total, scope.ToString());

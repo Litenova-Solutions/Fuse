@@ -22,6 +22,8 @@ internal sealed class AnalyzerShadow
     private readonly RepoRoot _root;
     private readonly string _directory;
     private readonly Dictionary<string, (string Stamp, AnalyzerFileReference Reference)> _references = new(ChangeTracker.PathComparer);
+    private Solution? _lastInput;
+    private Solution? _lastOutput;
 
     public AnalyzerShadow(RepoRoot root)
     {
@@ -41,18 +43,28 @@ internal sealed class AnalyzerShadow
         }
     }
 
-    /// <summary>Returns <paramref name="solution"/> with every in-repository analyzer reference pointing at its copy.</summary>
+    /// <summary>
+    ///     Returns <paramref name="solution"/> with every in-repository analyzer reference pointing at its copy. The same
+    ///     loader solution gets the same result object back, so the compilations Roslyn caches on it survive the next
+    ///     rebuild of the views; a new result would drop them and recompile every project from scratch.
+    /// </summary>
     public Solution Apply(Solution solution)
     {
+        if (ReferenceEquals(solution, _lastInput) && _lastOutput is not null)
+            return _lastOutput;
+
+        var result = solution;
         foreach (var id in solution.ProjectIds)
         {
-            var references = solution.GetProject(id)!.AnalyzerReferences;
+            var references = result.GetProject(id)!.AnalyzerReferences;
             var shadowed = references.Select(Shadow).ToList();
             if (!shadowed.SequenceEqual(references))
-                solution = solution.WithProjectAnalyzerReferences(id, shadowed);
+                result = result.WithProjectAnalyzerReferences(id, shadowed);
         }
 
-        return solution;
+        _lastInput = solution;
+        _lastOutput = result;
+        return result;
     }
 
     private AnalyzerReference Shadow(AnalyzerReference reference)

@@ -104,7 +104,10 @@ internal static partial class SelectionSuite
             withFailures = cases.Count(c => c.TruthFailing.Count > 0),
             missedCases = cases.Count(c => c.Verdict == "missed"),
             unverifiedCases = cases.Count(c => c.Verdict == "unverified"),
-            missedTests = cases.Sum(c => c.Missed.Count),
+            // A case whose fuse output was cut at the name limit cannot be matched name by name, so its unmatched truth
+            // names are counted apart from misses the suite could verify.
+            missedTests = cases.Where(c => c.Verdict == "missed").Sum(c => c.Missed.Count),
+            unverifiedTests = cases.Where(c => c.Verdict == "unverified").Sum(c => c.Missed.Count),
             totalTests = head.Outcome.Total,
             meanSelectedFraction = cases.Count == 0 || head.Outcome.Total == 0 ? 0 : cases.Average(c => (double)(c.FuseFailed + c.FusePassed) / head.Outcome.Total),
             fuseMedianSeconds = CorrectnessSuite.Median(cases.Select(c => c.FuseSeconds)),

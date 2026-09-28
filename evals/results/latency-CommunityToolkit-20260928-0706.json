@@ -1,0 +1,32 @@
+{
+  "suite": "latency",
+  "repo": "CommunityToolkit",
+  "commit": "b135626dd54d33b8f05f2ff31591592c004aa848",
+  "fuseBuild": "5.0.0",
+  "target": "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs",
+  "method": "GetAwaitableWithoutEndValidation",
+  "referencingFilesInOtherProjects": 88,
+  "coldCleanMs": 6592.5939,
+  "coldBodyEditMs": 10382.9142,
+  "bodyEdit": {
+    "p50": 660.6,
+    "p95": 1021.9,
+    "max": 1021.9,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 373.2,
+    "p95": 25618.5,
+    "max": 25618.5,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 3 new error(s) in 3 file(s) (CommunityToolkit.Mvvm); CommunityToolkit.Mvvm declarations changed, 12 dependent project(s) checked",
+  "warmUnchanged": {
+    "p50": 133.7,
+    "p95": 142.9,
+    "max": 142.9,
+    "n": 10
+  },
+  "engineWorkingSetMb": 1128.2,
+  "treeCleanAfter": true
+}

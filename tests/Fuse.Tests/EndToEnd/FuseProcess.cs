@@ -29,7 +29,13 @@ internal static class FuseProcess
             psi.ArgumentList.Add(argument);
         using var process = System.Diagnostics.Process.Start(psi)!;
         if (stdin is not null)
-            await process.StandardInput.WriteAsync(stdin);
+        {
+            // Every harness writes UTF-8 to a hook's standard input, with no byte order mark. The encoding is set on the
+            // stream rather than on StandardInput, which encodes with the console output code page instead.
+            var bytes = new UTF8Encoding(false).GetBytes(stdin);
+            await process.StandardInput.BaseStream.WriteAsync(bytes);
+        }
+
         process.StandardInput.Close();
         var stdout = process.StandardOutput.ReadToEndAsync();
         var stderr = process.StandardError.ReadToEndAsync();

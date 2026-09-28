@@ -4,6 +4,8 @@
 
 - A project with a restore warning, such as a NuGet advisory, is no longer reported as a project Fuse could not load, so Fuse answers in repositories whose build logs a warning.
 - Every request the engine serves is named in `engine.log` and carries a line of per-phase times, so a check or test round can be attributed to the call that caused it.
+- A hook and the MCP server read their input as UTF-8, so a repository whose path or file names are not ASCII is checked from a harness whose console uses another code page. Before this, a post-edit hook attached to a Windows console read the payload as that code page, failed to parse it, and told the agent its edit was clean.
+- Git's file list and status are read NUL-separated, so a file whose name holds a quote, a backslash or a control character is found and checked under the name it has.
 
 ## 5.0.0
 

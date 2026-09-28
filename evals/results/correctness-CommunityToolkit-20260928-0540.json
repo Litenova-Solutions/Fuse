@@ -1,0 +1,1303 @@
+{
+  "suite": "correctness",
+  "repo": "CommunityToolkit",
+  "commit": "b135626dd54d33b8f05f2ff31591592c004aa848",
+  "fuseBuild": "5.0.0",
+  "seed": 1,
+  "requested": 30,
+  "cases": 30,
+  "breaking": 26,
+  "neutral": 4,
+  "falseGreen": 0,
+  "falseRedCases": 4,
+  "falseRedDiagnostics": 6,
+  "unverifiableDiagnostics": 9,
+  "deferredByCompilerDiagnostics": 12,
+  "messageMismatchDiagnostics": 5,
+  "partialMisses": 0,
+  "exactAgreement": 26,
+  "fileAgreement": 29,
+  "fuseFailures": 0,
+  "fuseMedianMs": 474.88655,
+  "buildMedianSeconds": 4.57140245,
+  "headBuildErrors": 0,
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Diagnostics/Guard.IO.cs",
+          "kind": "make-private",
+          "description": "made Guard.IsAtStartPosition private",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 7513.8438,
+      "buildSeconds": 7.4229316,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 1,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/Properties/Polyfills/ArgumentNullException.cs",
+          "kind": "remove-member",
+          "description": "removed For.ThrowIfNull",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Mvvm/Collections/ReadOnlyObservableGroup{TKey,TElement}.cs(28,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(33,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(64,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(107,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(152,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(175,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroup{TKey,TElement}.cs(32,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroup{TKey,TElement}.cs(57,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroup{TKey,TElement}.cs(73,45): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(298,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(361,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(488,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(553,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(99,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(132,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(585,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(231,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(656,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(266,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(721,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(777,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(294,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(157,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/StrongReferenceMessenger.cs(109,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(293,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(368,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(449,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/StrongReferenceMessenger.cs(147,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.Observables.cs(44,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/StrongReferenceMessenger.cs(268,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/StrongReferenceMessenger.cs(400,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/StrongReferenceMessenger.cs(497,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(33,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(64,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(107,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(152,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(175,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(298,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(361,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(488,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(553,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(585,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(656,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(721,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs(777,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroup{TKey,TElement}.cs(32,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroup{TKey,TElement}.cs(57,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ObservableGroup{TKey,TElement}.cs(73,45): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Collections/ReadOnlyObservableGroup{TKey,TElement}.cs(28,41): error CS0117: \u0027ArgumentNullException.For\u003CTKey\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.Observables.cs(44,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(157,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(293,43): error CS0117: \u0027ArgumentNullException.For\u003CTToken\u003E\u0027 does not contain a definition for \u0027ThrowIfNull\u0027"
+      ],
+      "fuseCount": 32,
+      "fuseExit": 1,
+      "fuseMilliseconds": 38495.1371,
+      "buildSeconds": 3.3867574,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 2,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Enumerables/ReadOnlySpanEnumerable{T}.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to ReadOnlySpanEnumerable.MoveNext",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Streams/Test_MemoryStream.cs(181,88): error CS0202: foreach requires that the return type \u0027ReadOnlySpanEnumerable\u003Cbyte\u003E\u0027 of \u0027ReadOnlySpanEnumerable\u003Cbyte\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Streams/Test_IBufferWriterStream.cs(103,88): error CS0202: foreach requires that the return type \u0027ReadOnlySpanEnumerable\u003Cbyte\u003E\u0027 of \u0027ReadOnlySpanEnumerable\u003Cbyte\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_ReadOnlySpanExtensions.cs(187,87): error CS0202: foreach requires that the return type \u0027ReadOnlySpanEnumerable\u003Cint\u003E\u0027 of \u0027ReadOnlySpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_ReadOnlySpanExtensions.cs(201,84): error CS0202: foreach requires that the return type \u0027ReadOnlySpanEnumerable\u003Cint\u003E\u0027 of \u0027ReadOnlySpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property"
+      ],
+      "fuse": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_ReadOnlySpanExtensions.cs(187,87): error CS0202: foreach requires that the return type \u0027ReadOnlySpanEnumerable\u003Cint\u003E\u0027 of \u0027ReadOnlySpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_ReadOnlySpanExtensions.cs(201,84): error CS0202: foreach requires that the return type \u0027ReadOnlySpanEnumerable\u003Cint\u003E\u0027 of \u0027ReadOnlySpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Streams/Test_IBufferWriterStream.cs(103,88): error CS0202: foreach requires that the return type \u0027ReadOnlySpanEnumerable\u003Cbyte\u003E\u0027 of \u0027ReadOnlySpanEnumerable\u003Cbyte\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Streams/Test_MemoryStream.cs(181,88): error CS0202: foreach requires that the return type \u0027ReadOnlySpanEnumerable\u003Cbyte\u003E\u0027 of \u0027ReadOnlySpanEnumerable\u003Cbyte\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 12827.8333,
+      "buildSeconds": 18.8133037,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 3,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/Collections/ObservableGroupedCollectionExtensions.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to ObservableGroupedCollectionExtensions.InsertGroup",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 38946.7524,
+      "buildSeconds": 16.5420817,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 4,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/Messaging/Internals/System/Gen2GcCallback.cs",
+          "kind": "remove-member",
+          "description": "removed Gen2GcCallback.Register",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Runtime.CompilerServices",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Common/Deferred/DeferredEventArgs.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Common/Deferred/DeferredCancelEventArgs.cs(10,40): error CS0246: The type or namespace name \u0027DeferredEventArgs\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Common/Extensions/EventHandlerExtensions.cs(26,19): error CS0246: The type or namespace name \u0027DeferredEventArgs\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Common/Extensions/EventHandlerExtensions.cs(41,19): error CS0246: The type or namespace name \u0027DeferredEventArgs\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(23,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(23,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(23,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(289,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(289,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(289,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(68,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(68,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(68,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(310,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(310,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(310,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(108,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(108,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(108,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(120,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(120,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(120,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(136,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(136,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(136,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(149,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(149,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(149,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(165,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(165,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(165,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(182,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(182,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(182,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(336,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(336,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(336,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(353,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(353,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(353,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(219,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(219,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(219,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(381,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(381,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(381,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(243,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(243,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(243,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(261,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(261,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(261,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(405,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(405,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(405,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(423,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(423,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(423,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(85,24): error CS0411: The type arguments for method \u0027IMessengerExtensions.Register\u003CTMessage, TToken\u003E(IMessenger, IRecipient\u003CTMessage\u003E, TToken)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Common/Deferred/DeferredCancelEventArgs.cs(10,40): error CS0246: The type or namespace name \u0027DeferredEventArgs\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Common/Extensions/EventHandlerExtensions.cs(26,19): error CS0246: The type or namespace name \u0027DeferredEventArgs\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Common/Extensions/EventHandlerExtensions.cs(28,16): error CS0314: The type \u0027T\u0027 cannot be used as type parameter \u0027T\u0027 in the generic type or method \u0027EventHandlerExtensions.InvokeAsync\u003CT\u003E(EventHandler\u003CT\u003E?, object, T, CancellationToken)\u0027. There is no boxing conversion or type parameter conversion from \u0027T\u0027 to \u0027DeferredEventArgs\u0027.",
+        "src/CommunityToolkit.Common/Extensions/EventHandlerExtensions.cs(41,19): error CS0246: The type or namespace name \u0027DeferredEventArgs\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Common/Extensions/EventHandlerExtensions.cs(57,53): error CS1061: \u0027T\u0027 does not contain a definition for \u0027GetCurrentDeferralAndReset\u0027 and no accessible extension method \u0027GetCurrentDeferralAndReset\u0027 accepting a first argument of type \u0027T\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(2,1): error IDE0073: A source file is missing a required header.",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(23,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(23,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(23,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(68,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(68,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(68,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(108,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(108,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(108,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(120,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(120,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(120,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(136,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(136,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 63,
+      "fuseExit": 1,
+      "fuseMilliseconds": 35353.9424,
+      "buildSeconds": 3.8457573,
+      "verdict": "false-red",
+      "falseRed": [
+        "src/CommunityToolkit.HighPerformance/Helpers/BitHelper.cs(2,1): error IDE0073: A source file is missing a required header."
+      ],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "src/CommunityToolkit.Common/Extensions/EventHandlerExtensions.cs(28,16): error CS0314: The type \u0027T\u0027 cannot be used as type parameter \u0027T\u0027 in the generic type or method \u0027EventHandlerExtensions.InvokeAsync\u003CT\u003E(EventHandler\u003CT\u003E?, object, T, CancellationToken)\u0027. There is no boxing conversion or type parameter conversion from \u0027T\u0027 to \u0027DeferredEventArgs\u0027.",
+        "src/CommunityToolkit.Common/Extensions/EventHandlerExtensions.cs(57,53): error CS1061: \u0027T\u0027 does not contain a definition for \u0027GetCurrentDeferralAndReset\u0027 and no accessible extension method \u0027GetCurrentDeferralAndReset\u0027 accepting a first argument of type \u0027T\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 5,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Helpers/HashCode{T}.cs",
+          "kind": "make-private",
+          "description": "made HashCode.CombineValues private",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Diagnostics/Internals/Guard.String.ThrowHelper.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to ThrowHelper.ThrowArgumentExceptionForHasSizeLessThan",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Mvvm/Messaging/Internals/System/Gen2GcCallback.cs",
+          "kind": "remove-member",
+          "description": "removed Gen2GcCallback.Register",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Extensions/HashCodeExtensions.cs(26,32): error CS0122: \u0027HashCode\u003CT\u003E.CombineValues(ReadOnlySpan\u003CT\u003E)\u0027 is inaccessible due to its protection level",
+        "src/CommunityToolkit.Diagnostics/Guard.String.cs(241,21): error CS0411: The type arguments for method \u0027Guard.ThrowHelper.ThrowArgumentExceptionForHasSizeLessThan\u003CT\u003E(Span\u003CT\u003E, int, string)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(85,24): error CS0411: The type arguments for method \u0027IMessengerExtensions.Register\u003CTMessage, TToken\u003E(IMessenger, IRecipient\u003CTMessage\u003E, TToken)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Diagnostics/Guard.String.cs(241,21): error CS0411: The type arguments for method \u0027Guard.ThrowHelper.ThrowArgumentExceptionForHasSizeLessThan\u003CT\u003E(Span\u003CT\u003E, int, string)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "src/CommunityToolkit.HighPerformance/Extensions/HashCodeExtensions.cs(26,32): error CS0122: \u0027HashCode\u003CT\u003E.CombineValues(ReadOnlySpan\u003CT\u003E)\u0027 is inaccessible due to its protection level",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(85,24): error CS0411: The type arguments for method \u0027IMessengerExtensions.Register\u003CTMessage, TToken\u003E(IMessenger, IRecipient\u003CTMessage\u003E, TToken)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 5132.3139,
+      "buildSeconds": 3.6911122,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 6,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs",
+          "kind": "rename-member",
+          "description": "renamed Guard.IsCompleted to IsCompletedRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 342.0769,
+      "buildSeconds": 20.5717301,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 7,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Buffers/Internals/StringMemoryManager{TTo}.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to StringMemoryManager.GetMemory",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Buffers/Internals/StringMemoryManager{TTo}.cs(18,70): error CS0535: \u0027StringMemoryManager\u003CTTo\u003E\u0027 does not implement interface member \u0027IMemoryManager.GetMemory\u003CT\u003E(int, int)\u0027"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Buffers/Internals/StringMemoryManager{TTo}.cs(18,70): error CS0535: \u0027StringMemoryManager\u003CTTo\u003E\u0027 does not implement interface member \u0027IMemoryManager.GetMemory\u003CT\u003E(int, int)\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 376.1319,
+      "buildSeconds": 4.3221377,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 8,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Buffers/MemoryBufferWriter{T}.cs",
+          "kind": "remove-member",
+          "description": "removed MemoryBufferWriter.Clear",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Mvvm/Messaging/Internals/System/Collections.Generic/HashHelpers.cs",
+          "kind": "make-private",
+          "description": "made HashHelpers.FastMod private",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Diagnostics/ThrowHelper.cs",
+          "kind": "make-private",
+          "description": "made ThrowHelper.ThrowFormatException private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Buffers/MemoryBufferWriter{T}.cs(25,45): error CS0535: \u0027MemoryBufferWriter\u003CT\u003E\u0027 does not implement interface member \u0027IBuffer\u003CT\u003E.Clear()\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/Internals/System/Collections.Generic/Dictionary2.cs(438,40): error CS0122: \u0027HashHelpers.FastMod(uint, uint, ulong)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Buffers/MemoryBufferWriter{T}.cs(25,45): error CS0535: \u0027MemoryBufferWriter\u003CT\u003E\u0027 does not implement interface member \u0027IBuffer\u003CT\u003E.Clear()\u0027",
+        "src/CommunityToolkit.Mvvm/Messaging/Internals/System/Collections.Generic/Dictionary2.cs(438,40): error CS0122: \u0027HashHelpers.FastMod(uint, uint, ulong)\u0027 is inaccessible due to its protection level",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Buffers/Test_MemoryBufferWriter{T}.cs(70,16): error CS1061: \u0027MemoryBufferWriter\u003Cbyte\u003E\u0027 does not contain a definition for \u0027Clear\u0027 and no accessible extension method \u0027Clear\u0027 accepting a first argument of type \u0027MemoryBufferWriter\u003Cbyte\u003E\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 11491.026,
+      "buildSeconds": 3.7386504,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Buffers/Test_MemoryBufferWriter{T}.cs(70,16): error CS1061: \u0027MemoryBufferWriter\u003Cbyte\u003E\u0027 does not contain a definition for \u0027Clear\u0027 and no accessible extension method \u0027Clear\u0027 accepting a first argument of type \u0027MemoryBufferWriter\u003Cbyte\u003E\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 9,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Helpers/HashCode{T}.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to HashCode.Combine",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs(772,31): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003Cchar\u003E.Combine(ReadOnlySpan\u003Cchar\u003E, int)\u0027"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs(772,31): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003Cchar\u003E.Combine(ReadOnlySpan\u003Cchar\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_HashCodeExtensions.cs(81,37): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003CT\u003E.Combine(ReadOnlySpan\u003CT\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_HashCode{T}.cs(77,42): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003Cstring\u003E.Combine(ReadOnlySpan\u003Cstring\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_HashCode{T}.cs(78,42): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003Cstring\u003E.Combine(ReadOnlySpan\u003Cstring\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_HashCode{T}.cs(96,37): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003CT\u003E.Combine(ReadOnlySpan\u003CT\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_HashCode{T}.cs(97,37): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003CT\u003E.Combine(ReadOnlySpan\u003CT\u003E, int)\u0027"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 341.6584,
+      "buildSeconds": 16.1003423,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_HashCodeExtensions.cs(81,37): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003CT\u003E.Combine(ReadOnlySpan\u003CT\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_HashCode{T}.cs(77,42): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003Cstring\u003E.Combine(ReadOnlySpan\u003Cstring\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_HashCode{T}.cs(78,42): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003Cstring\u003E.Combine(ReadOnlySpan\u003Cstring\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_HashCode{T}.cs(96,37): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003CT\u003E.Combine(ReadOnlySpan\u003CT\u003E, int)\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_HashCode{T}.cs(97,37): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027HashCode\u003CT\u003E.Combine(ReadOnlySpan\u003CT\u003E, int)\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 10,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Threading.Tasks",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs(26,91): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs(41,26): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs(48,50): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs(77,28): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs(26,91): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs(41,26): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs(48,50): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/ComponentModel/__Internals/__TaskExtensions.cs(77,28): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 484.3751,
+      "buildSeconds": 3.209956,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 11,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Common/Extensions/ArrayExtensions.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(25,28): error CS1061: \u0027int[][]\u0027 does not contain a definition for \u0027GetColumn\u0027 and no accessible extension method \u0027GetColumn\u0027 accepting a first argument of type \u0027int[][]\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(42,27): error CS1061: \u0027int[][]\u0027 does not contain a definition for \u0027GetColumn\u0027 and no accessible extension method \u0027GetColumn\u0027 accepting a first argument of type \u0027int[][]\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(47,27): error CS1061: \u0027int[][]\u0027 does not contain a definition for \u0027GetColumn\u0027 and no accessible extension method \u0027GetColumn\u0027 accepting a first argument of type \u0027int[][]\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(61,30): error CS1061: \u0027int[*,*]\u0027 does not contain a definition for \u0027ToArrayString\u0027 and no accessible extension method \u0027ToArrayString\u0027 accepting a first argument of type \u0027int[*,*]\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(78,30): error CS1061: \u0027int[][]\u0027 does not contain a definition for \u0027ToArrayString\u0027 and no accessible extension method \u0027ToArrayString\u0027 accepting a first argument of type \u0027int[][]\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(25,28): error CS1061: \u0027int[][]\u0027 does not contain a definition for \u0027GetColumn\u0027 and no accessible extension method \u0027GetColumn\u0027 accepting a first argument of type \u0027int[][]\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(42,27): error CS1061: \u0027int[][]\u0027 does not contain a definition for \u0027GetColumn\u0027 and no accessible extension method \u0027GetColumn\u0027 accepting a first argument of type \u0027int[][]\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(47,27): error CS1061: \u0027int[][]\u0027 does not contain a definition for \u0027GetColumn\u0027 and no accessible extension method \u0027GetColumn\u0027 accepting a first argument of type \u0027int[][]\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(61,30): error CS1061: \u0027int[*,*]\u0027 does not contain a definition for \u0027ToArrayString\u0027 and no accessible extension method \u0027ToArrayString\u0027 accepting a first argument of type \u0027int[*,*]\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_ArrayExtensions.cs(78,30): error CS1061: \u0027int[][]\u0027 does not contain a definition for \u0027ToArrayString\u0027 and no accessible extension method \u0027ToArrayString\u0027 accepting a first argument of type \u0027int[][]\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 264.421,
+      "buildSeconds": 15.8263973,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 12,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/Input/Internals/DisabledCommand.cs",
+          "kind": "make-private",
+          "description": "made DisabledCommand.CanExecute private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Mvvm/Input/Internals/DisabledCommand.cs(13,49): error CS0737: \u0027DisabledCommand\u0027 does not implement interface member \u0027ICommand.CanExecute(object)\u0027. \u0027DisabledCommand.CanExecute(object?)\u0027 cannot implement an interface member because it is not public.",
+        "src/CommunityToolkit.Mvvm/Input/Internals/DisabledCommand.cs(13,49): error CS0737: \u0027DisabledCommand\u0027 does not implement interface member \u0027ICommand.CanExecute(object?)\u0027. \u0027DisabledCommand.CanExecute(object?)\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Mvvm/Input/Internals/DisabledCommand.cs(13,49): error CS0737: \u0027DisabledCommand\u0027 does not implement interface member \u0027ICommand.CanExecute(object?)\u0027. \u0027DisabledCommand.CanExecute(object?)\u0027 cannot implement an interface member because it is not public.",
+        "src/CommunityToolkit.Mvvm/Input/Internals/DisabledCommand.cs(13,49): error CS0737: \u0027DisabledCommand\u0027 does not implement interface member \u0027ICommand.CanExecute(object)\u0027. \u0027DisabledCommand.CanExecute(object?)\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 7335.2773,
+      "buildSeconds": 2.5673843,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 13,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Diagnostics/ThrowHelper.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to ThrowHelper.ThrowLockRecursionException",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 212.2045,
+      "buildSeconds": 15.5718614,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 14,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Helpers/Internals/BitOperations.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to BitOperations.RoundUpToPowerOf2",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs(77,31): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027BitOperations.RoundUpToPowerOf2(uint, int)\u0027",
+        "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs(78,31): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027BitOperations.RoundUpToPowerOf2(uint, int)\u0027",
+        "src/CommunityToolkit.HighPerformance/Buffers/ArrayPoolBufferWriter{T}.cs(346,41): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027BitOperations.RoundUpToPowerOf2(uint, int)\u0027"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Buffers/ArrayPoolBufferWriter{T}.cs(346,41): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027BitOperations.RoundUpToPowerOf2(uint, int)\u0027",
+        "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs(77,31): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027BitOperations.RoundUpToPowerOf2(uint, int)\u0027",
+        "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs(78,31): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027BitOperations.RoundUpToPowerOf2(uint, int)\u0027"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 326.927,
+      "buildSeconds": 4.6053266,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 15,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Enumerables/SpanEnumerable{T}.cs",
+          "kind": "make-private",
+          "description": "made SpanEnumerable.MoveNext private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(31,83): error CS0117: \u0027SpanEnumerable\u003Cint\u003E\u0027 does not contain a definition for \u0027MoveNext\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(31,83): error CS0202: foreach requires that the return type \u0027SpanEnumerable\u003Cint\u003E\u0027 of \u0027SpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(65,83): error CS0117: \u0027SpanEnumerable\u003Cint\u003E\u0027 does not contain a definition for \u0027MoveNext\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(65,83): error CS0202: foreach requires that the return type \u0027SpanEnumerable\u003Cint\u003E\u0027 of \u0027SpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(143,79): error CS0117: \u0027SpanEnumerable\u003Cint\u003E\u0027 does not contain a definition for \u0027MoveNext\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(143,79): error CS0202: foreach requires that the return type \u0027SpanEnumerable\u003Cint\u003E\u0027 of \u0027SpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(157,76): error CS0117: \u0027SpanEnumerable\u003Cint\u003E\u0027 does not contain a definition for \u0027MoveNext\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(157,76): error CS0202: foreach requires that the return type \u0027SpanEnumerable\u003Cint\u003E\u0027 of \u0027SpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property"
+      ],
+      "fuse": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(143,79): error CS0202: foreach requires that the return type \u0027SpanEnumerable\u003Cint\u003E\u0027 of \u0027SpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(143,79): error CS0122: \u0027SpanEnumerable\u003Cint\u003E.MoveNext()\u0027 is inaccessible due to its protection level",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(157,76): error CS0202: foreach requires that the return type \u0027SpanEnumerable\u003Cint\u003E\u0027 of \u0027SpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(157,76): error CS0122: \u0027SpanEnumerable\u003Cint\u003E.MoveNext()\u0027 is inaccessible due to its protection level",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(31,83): error CS0202: foreach requires that the return type \u0027SpanEnumerable\u003Cint\u003E\u0027 of \u0027SpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(31,83): error CS0122: \u0027SpanEnumerable\u003Cint\u003E.MoveNext()\u0027 is inaccessible due to its protection level",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(65,83): error CS0202: foreach requires that the return type \u0027SpanEnumerable\u003Cint\u003E\u0027 of \u0027SpanEnumerable\u003Cint\u003E.GetEnumerator()\u0027 must have a suitable public \u0027MoveNext\u0027 method and public \u0027Current\u0027 property",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(65,83): error CS0122: \u0027SpanEnumerable\u003Cint\u003E.MoveNext()\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 8,
+      "fuseExit": 1,
+      "fuseMilliseconds": 533.2579,
+      "buildSeconds": 4.816782,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(143,79): error CS0122: \u0027SpanEnumerable\u003Cint\u003E.MoveNext()\u0027 is inaccessible due to its protection level",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_SpanExtensions.cs(157,76): error CS0122: \u0027SpanEnumerable\u003Cint\u003E.MoveNext()\u0027 is inaccessible due to its protection level",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(31,83): error CS0122: \u0027SpanEnumerable\u003Cint\u003E.MoveNext()\u0027 is inaccessible due to its protection level",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Helpers/Test_ParallelHelper.For.cs(65,83): error CS0122: \u0027SpanEnumerable\u003Cint\u003E.MoveNext()\u0027 is inaccessible due to its protection level"
+      ],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 16,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Diagnostics/Extensions/TypeExtensions.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Runtime.CompilerServices",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Diagnostics/Extensions/TypeExtensions.cs(41,29): error CS0246: The type or namespace name \u0027ConditionalWeakTable\u003C,\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Diagnostics/Extensions/TypeExtensions.cs(41,29): error CS0246: The type or namespace name \u0027ConditionalWeakTable\u003C,\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 220.6338,
+      "buildSeconds": 5.1016347,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 17,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/Properties/Polyfills/ArgumentNullException.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of For.ThrowIfNull",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Mvvm/Properties/Polyfills/ArgumentNullException.cs(54,28): error CS0111: Type \u0027ArgumentNullException.For\u003CT\u003E\u0027 already defines a member called \u0027ThrowIfNull\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Mvvm/Properties/Polyfills/ArgumentNullException.cs(54,28): error CS0111: Type \u0027ArgumentNullException.For\u003CT\u003E\u0027 already defines a member called \u0027ThrowIfNull\u0027 with the same parameter types"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 545.0978,
+      "buildSeconds": 3.3075818,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 18,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Common/Deferred/EventDeferral.cs",
+          "kind": "remove-member",
+          "description": "removed EventDeferral.Complete",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Common/Deferred/EventDeferral.cs(61,9): error CS0103: The name \u0027Complete\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Common/Deferred/EventDeferral.cs(61,9): error CS0103: The name \u0027Complete\u0027 does not exist in the current context",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_EventHandlerExtensions.cs(28,22): error CS1061: \u0027EventDeferral\u0027 does not contain a definition for \u0027Complete\u0027 and no accessible extension method \u0027Complete\u0027 accepting a first argument of type \u0027EventDeferral\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_EventHandlerExtensions.cs(102,22): error CS1061: \u0027EventDeferral\u0027 does not contain a definition for \u0027Complete\u0027 and no accessible extension method \u0027Complete\u0027 accepting a first argument of type \u0027EventDeferral\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_EventHandlerExtensions.cs(111,22): error CS1061: \u0027EventDeferral\u0027 does not contain a definition for \u0027Complete\u0027 and no accessible extension method \u0027Complete\u0027 accepting a first argument of type \u0027EventDeferral\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 319.1825,
+      "buildSeconds": 14.698954,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_EventHandlerExtensions.cs(28,22): error CS1061: \u0027EventDeferral\u0027 does not contain a definition for \u0027Complete\u0027 and no accessible extension method \u0027Complete\u0027 accepting a first argument of type \u0027EventDeferral\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_EventHandlerExtensions.cs(102,22): error CS1061: \u0027EventDeferral\u0027 does not contain a definition for \u0027Complete\u0027 and no accessible extension method \u0027Complete\u0027 accepting a first argument of type \u0027EventDeferral\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Common.UnitTests/Extensions/Test_EventHandlerExtensions.cs(111,22): error CS1061: \u0027EventDeferral\u0027 does not contain a definition for \u0027Complete\u0027 and no accessible extension method \u0027Complete\u0027 accepting a first argument of type \u0027EventDeferral\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 19,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Extensions/ArrayPoolBufferWriterExtensions.cs",
+          "kind": "rename-member",
+          "description": "renamed ArrayPoolBufferWriterExtensions.AsStream to AsStreamRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Buffers/Test_ArrayPoolBufferWriter{T}.cs(189,44): error CS0121: The call is ambiguous between the following methods or properties: \u0027IBufferWriterExtensions.AsStream(IBufferWriter\u003Cbyte\u003E)\u0027 and \u0027IMemoryOwnerExtensions.AsStream(IMemoryOwner\u003Cbyte\u003E)\u0027"
+      ],
+      "fuse": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Buffers/Test_ArrayPoolBufferWriter{T}.cs(189,44): error CS0121: The call is ambiguous between the following methods or properties: \u0027CommunityToolkit.HighPerformance.IBufferWriterExtensions.AsStream(System.Buffers.IBufferWriter\u003Cbyte\u003E)\u0027 and \u0027CommunityToolkit.HighPerformance.IMemoryOwnerExtensions.AsStream(System.Buffers.IMemoryOwner\u003Cbyte\u003E)\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 449.3119,
+      "buildSeconds": 4.8976637,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Buffers/Test_ArrayPoolBufferWriter{T}.cs(189,44): error CS0121: The call is ambiguous between the following methods or properties: \u0027CommunityToolkit.HighPerformance.IBufferWriterExtensions.AsStream(System.Buffers.IBufferWriter\u003Cbyte\u003E)\u0027 and \u0027CommunityToolkit.HighPerformance.IMemoryOwnerExtensions.AsStream(System.Buffers.IMemoryOwner\u003Cbyte\u003E)\u0027"
+      ],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 20,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/ComponentModel/Attributes/ObservableRecipientAttribute.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Threading.Tasks",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(20,36): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(37,39): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(54,48): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(71,51): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(88,34): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(105,37): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(122,35): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(139,38): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(157,41): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(157,52): error CS0246: The type or namespace name \u0027TaskStatus\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(175,44): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(175,55): error CS0246: The type or namespace name \u0027TaskStatus\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservablePropertyAttribute.cs(1485,25): error MVVMTK0022: The {0} {1}.{2} cannot be annotated with [NotifyPropertyChangedRecipients], as its containing type doesn\u0027t inherit from ObservableRecipient, nor does it use [ObservableRecipient] (https://aka.ms/mvvmtoolkit/errors/mvvmtk0022)",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservablePropertyAttribute.cs(1497,25): error MVVMTK0022: The {0} {1}.{2} cannot be annotated with [NotifyPropertyChangedRecipients], as its containing type doesn\u0027t inherit from ObservableRecipient, nor does it use [ObservableRecipient] (https://aka.ms/mvvmtoolkit/errors/mvvmtk0022)",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservablePropertyAttribute.cs(1606,25): error MVVMTK0022: The {0} {1}.{2} cannot be annotated with [NotifyPropertyChangedRecipients], as its containing type doesn\u0027t inherit from ObservableRecipient, nor does it use [ObservableRecipient] (https://aka.ms/mvvmtoolkit/errors/mvvmtk0022)",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(174,40): error CS0759: No defining declaration found for implementing declaration of partial method \u0027Test_ObservableRecipientAttribute.PersonWithCustomOnActivated.OnActivated()\u0027",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(196,40): error CS0759: No defining declaration found for implementing declaration of partial method \u0027Test_ObservableRecipientAttribute.PersonWithCustomOnDeactivated.OnDeactivated()\u0027",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(223,40): error CS0759: No defining declaration found for implementing declaration of partial method \u0027Test_ObservableRecipientAttribute.PersonWithCustomOnActivatedAndOnDeactivated.OnActivated()\u0027",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(228,40): error CS0759: No defining declaration found for implementing declaration of partial method \u0027Test_ObservableRecipientAttribute.PersonWithCustomOnActivatedAndOnDeactivated.OnDeactivated()\u0027",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(255,30): error CS0759: No defining declaration found for implementing declaration of partial method \u0027Test_ObservableRecipientAttribute.SealedPersonWithCustomOnActivatedAndOnDeactivated.OnActivated()\u0027",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(260,30): error CS0759: No defining declaration found for implementing declaration of partial method \u0027Test_ObservableRecipientAttribute.SealedPersonWithCustomOnActivatedAndOnDeactivated.OnDeactivated()\u0027",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(50,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(85,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(99,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(154,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(169,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(191,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(216,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(248,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_SourceGenerators.cs(37,18): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservableRecipientAttribute.cs(282,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservablePropertyAttribute.cs(1480,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservablePropertyAttribute.cs(1523,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.UnitTests/Test_ObservablePropertyAttribute.cs(1600,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1455,32): error MVVMTK0022: The {0} {1}.{2} cannot be annotated with [NotifyPropertyChangedRecipients], as its containing type doesn\u0027t inherit from ObservableRecipient, nor does it use [ObservableRecipient] (https://aka.ms/mvvmtoolkit/errors/mvvmtk0022)",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1467,32): error MVVMTK0022: The {0} {1}.{2} cannot be annotated with [NotifyPropertyChangedRecipients], as its containing type doesn\u0027t inherit from ObservableRecipient, nor does it use [ObservableRecipient] (https://aka.ms/mvvmtoolkit/errors/mvvmtk0022)",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1576,32): error MVVMTK0022: The {0} {1}.{2} cannot be annotated with [NotifyPropertyChangedRecipients], as its containing type doesn\u0027t inherit from ObservableRecipient, nor does it use [ObservableRecipient] (https://aka.ms/mvvmtoolkit/errors/mvvmtk0022)",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1450,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1493,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1570,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(20,36): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(37,39): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(54,48): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(56,28): error CS0103: The name \u0027TaskStatus\u0027 does not exist in the current context",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(71,51): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(73,28): error CS0103: The name \u0027TaskStatus\u0027 does not exist in the current context",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(88,34): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(105,37): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(122,35): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(139,38): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(157,41): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(157,52): error CS0246: The type or namespace name \u0027TaskStatus\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(175,44): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(175,55): error CS0246: The type or namespace name \u0027TaskStatus\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(528,46): error CS1729: \u0027Test_ObservablePropertyAttribute_PartialProperties.BroadcastingViewModelWithAttribute\u0027 does not contain a constructor that takes 1 arguments",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(555,46): error CS1729: \u0027Test_ObservablePropertyAttribute_PartialProperties.BroadcastingViewModelWithAttributeAndClassLevelAttribute\u0027 does not contain a constructor that takes 1 arguments",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(814,81): error CS1729: \u0027Test_ObservablePropertyAttribute_PartialProperties.ModelWithNotifyPropertyChangedRecipientsAndDisplayAttributeLast\u0027 does not contain a constructor that takes 1 arguments",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1450,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1461,15): error CS1729: \u0027Test_ObservablePropertyAttribute_PartialProperties.BroadcastingViewModelWithAttribute\u0027 does not contain a constructor that takes 1 arguments",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1493,6): error CS0653: Cannot apply attribute class \u0027ObservableRecipient\u0027 because it is abstract"
+      ],
+      "fuseCount": 57,
+      "fuseExit": 1,
+      "fuseMilliseconds": 7533.3812,
+      "buildSeconds": 12.1222635,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(56,28): error CS0103: The name \u0027TaskStatus\u0027 does not exist in the current context",
+        "src/CommunityToolkit.Diagnostics/Guard.Tasks.cs(73,28): error CS0103: The name \u0027TaskStatus\u0027 does not exist in the current context",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(528,46): error CS1729: \u0027Test_ObservablePropertyAttribute_PartialProperties.BroadcastingViewModelWithAttribute\u0027 does not contain a constructor that takes 1 arguments",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(555,46): error CS1729: \u0027Test_ObservablePropertyAttribute_PartialProperties.BroadcastingViewModelWithAttributeAndClassLevelAttribute\u0027 does not contain a constructor that takes 1 arguments",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(814,81): error CS1729: \u0027Test_ObservablePropertyAttribute_PartialProperties.ModelWithNotifyPropertyChangedRecipientsAndDisplayAttributeLast\u0027 does not contain a constructor that takes 1 arguments",
+        "tests/CommunityToolkit.Mvvm.Roslyn4120.UnitTests/Test_ObservablePropertyAttribute_PartialProperties.cs(1461,15): error CS1729: \u0027Test_ObservablePropertyAttribute_PartialProperties.BroadcastingViewModelWithAttribute\u0027 does not contain a constructor that takes 1 arguments"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 21,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Extensions/IMemoryOwnerExtensions.cs",
+          "kind": "rename-member",
+          "description": "renamed IMemoryOwnerExtensions.AsStream to AsStreamRenamed",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Diagnostics/Internals/Guard.ThrowHelper.cs",
+          "kind": "remove-member",
+          "description": "removed ThrowHelper.ThrowArgumentExceptionForIsReferenceEqualTo",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Diagnostics/Guard.cs(254,21): error CS0117: \u0027Guard.ThrowHelper\u0027 does not contain a definition for \u0027ThrowArgumentExceptionForIsReferenceEqualTo\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Streams/Test_IMemoryOwnerStream.cs(20,25): error CS1929: \u0027MemoryOwner\u003Cbyte\u003E\u0027 does not contain a definition for \u0027AsStream\u0027 and the best extension method overload \u0027ArrayPoolBufferWriterExtensions.AsStream(ArrayPoolBufferWriter\u003Cbyte\u003E)\u0027 requires a receiver of type \u0027CommunityToolkit.HighPerformance.Buffers.ArrayPoolBufferWriter\u003Cbyte\u003E\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_IMemoryOwnerExtensions.cs(19,25): error CS1929: \u0027MemoryOwner\u003Cbyte\u003E\u0027 does not contain a definition for \u0027AsStream\u0027 and the best extension method overload \u0027ArrayPoolBufferWriterExtensions.AsStream(ArrayPoolBufferWriter\u003Cbyte\u003E)\u0027 requires a receiver of type \u0027CommunityToolkit.HighPerformance.Buffers.ArrayPoolBufferWriter\u003Cbyte\u003E\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_IMemoryOwnerExtensions.cs(32,25): error CS1929: \u0027MemoryOwner\u003Cbyte\u003E\u0027 does not contain a definition for \u0027AsStream\u0027 and the best extension method overload \u0027ArrayPoolBufferWriterExtensions.AsStream(ArrayPoolBufferWriter\u003Cbyte\u003E)\u0027 requires a receiver of type \u0027CommunityToolkit.HighPerformance.Buffers.ArrayPoolBufferWriter\u003Cbyte\u003E\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_IMemoryOwnerExtensions.cs(50,25): error CS1929: \u0027MemoryOwner\u003Cbyte\u003E\u0027 does not contain a definition for \u0027AsStream\u0027 and the best extension method overload \u0027ArrayPoolBufferWriterExtensions.AsStream(ArrayPoolBufferWriter\u003Cbyte\u003E)\u0027 requires a receiver of type \u0027CommunityToolkit.HighPerformance.Buffers.ArrayPoolBufferWriter\u003Cbyte\u003E\u0027"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Diagnostics/Guard.cs(254,21): error CS0117: \u0027Guard.ThrowHelper\u0027 does not contain a definition for \u0027ThrowArgumentExceptionForIsReferenceEqualTo\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_IMemoryOwnerExtensions.cs(19,25): error CS1929: \u0027MemoryOwner\u003Cbyte\u003E\u0027 does not contain a definition for \u0027AsStream\u0027 and the best extension method overload \u0027ArrayPoolBufferWriterExtensions.AsStream(ArrayPoolBufferWriter\u003Cbyte\u003E)\u0027 requires a receiver of type \u0027CommunityToolkit.HighPerformance.Buffers.ArrayPoolBufferWriter\u003Cbyte\u003E\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_IMemoryOwnerExtensions.cs(32,25): error CS1929: \u0027MemoryOwner\u003Cbyte\u003E\u0027 does not contain a definition for \u0027AsStream\u0027 and the best extension method overload \u0027ArrayPoolBufferWriterExtensions.AsStream(ArrayPoolBufferWriter\u003Cbyte\u003E)\u0027 requires a receiver of type \u0027CommunityToolkit.HighPerformance.Buffers.ArrayPoolBufferWriter\u003Cbyte\u003E\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Extensions/Test_IMemoryOwnerExtensions.cs(50,25): error CS1929: \u0027MemoryOwner\u003Cbyte\u003E\u0027 does not contain a definition for \u0027AsStream\u0027 and the best extension method overload \u0027ArrayPoolBufferWriterExtensions.AsStream(ArrayPoolBufferWriter\u003Cbyte\u003E)\u0027 requires a receiver of type \u0027CommunityToolkit.HighPerformance.Buffers.ArrayPoolBufferWriter\u003Cbyte\u003E\u0027",
+        "tests/CommunityToolkit.HighPerformance.UnitTests/Streams/Test_IMemoryOwnerStream.cs(20,25): error CS1929: \u0027MemoryOwner\u003Cbyte\u003E\u0027 does not contain a definition for \u0027AsStream\u0027 and the best extension method overload \u0027ArrayPoolBufferWriterExtensions.AsStream(ArrayPoolBufferWriter\u003Cbyte\u003E)\u0027 requires a receiver of type \u0027CommunityToolkit.HighPerformance.Buffers.ArrayPoolBufferWriter\u003Cbyte\u003E\u0027"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 465.398,
+      "buildSeconds": 18.1872774,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 22,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs",
+          "kind": "remove-member",
+          "description": "removed FixedSizePriorityMap.Add",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs(161,17): error CS1501: No overload for method \u0027Add\u0027 takes 2 arguments"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Buffers/StringPool.cs(161,17): error CS1501: No overload for method \u0027Add\u0027 takes 2 arguments"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 372.7952,
+      "buildSeconds": 4.5374783,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 23,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Buffers/MemoryBufferWriter{T}.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of MemoryBufferWriter.GetMemory",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Buffers/MemoryBufferWriter{T}.cs(114,18): error CS0111: Type \u0027MemoryBufferWriter\u003CT\u003E\u0027 already defines a member called \u0027GetMemory\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Buffers/MemoryBufferWriter{T}.cs(114,18): error CS0111: Type \u0027MemoryBufferWriter\u003CT\u003E\u0027 already defines a member called \u0027GetMemory\u0027 with the same parameter types"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 271.2673,
+      "buildSeconds": 3.3358429,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 24,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Memory/Internals/OverflowHelper.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of OverflowHelper.ComputeInt32Area from int to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Memory/Memory2D{T}.cs(121,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(107,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(173,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlySpan2D{T}.cs(212,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/Span2D{T}.cs(259,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/Memory2D{T}.cs(365,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/Memory2D{T}.cs(431,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(385,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlySpan2D{T}.cs(455,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(451,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/Span2D{T}.cs(534,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Memory/Memory2D{T}.cs(121,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/Memory2D{T}.cs(365,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/Memory2D{T}.cs(431,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(107,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(173,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(385,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(451,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlySpan2D{T}.cs(212,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlySpan2D{T}.cs(455,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/Span2D{T}.cs(259,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)",
+        "src/CommunityToolkit.HighPerformance/Memory/Span2D{T}.cs(534,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027int\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "fuseCount": 11,
+      "fuseExit": 1,
+      "fuseMilliseconds": 423.8939,
+      "buildSeconds": 3.8719221,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 25,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Buffers/Internals/ProxyMemoryManager{TFrom,TTo}.cs",
+          "kind": "rename-member",
+          "description": "renamed ProxyMemoryManager.GetMemory to GetMemoryRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Buffers/Internals/ProxyMemoryManager{TFrom,TTo}.cs(18,76): error CS0535: \u0027ProxyMemoryManager\u003CTFrom, TTo\u003E\u0027 does not implement interface member \u0027IMemoryManager.GetMemory\u003CT\u003E(int, int)\u0027"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Buffers/Internals/ProxyMemoryManager{TFrom,TTo}.cs(18,76): error CS0535: \u0027ProxyMemoryManager\u003CTFrom, TTo\u003E\u0027 does not implement interface member \u0027IMemoryManager.GetMemory\u003CT\u003E(int, int)\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 255.2071,
+      "buildSeconds": 3.0158673,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 26,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs",
+          "kind": "remove-using",
+          "description": "removed using CommunityToolkit.HighPerformance.Enumerables",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Mvvm/Input/Interfaces/IAsyncRelayCommand{T}.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Threading.Tasks",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs(207,19): error CS0246: The type or namespace name \u0027SpanEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs(231,19): error CS0246: The type or namespace name \u0027SpanTokenizer\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs(265,53): error CS0246: The type or namespace name \u0027RefEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs(278,56): error CS0246: The type or namespace name \u0027RefEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/Input/Interfaces/IAsyncRelayCommand{T}.cs(16,5): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/Input/AsyncRelayCommand{T}.cs(21,52): error CS0738: \u0027AsyncRelayCommand\u003CT\u003E\u0027 does not implement interface member \u0027IAsyncRelayCommand\u003CT\u003E.ExecuteAsync(T?)\u0027. \u0027AsyncRelayCommand\u003CT\u003E.ExecuteAsync(T?)\u0027 cannot implement \u0027IAsyncRelayCommand\u003CT\u003E.ExecuteAsync(T?)\u0027 because it does not have the matching return type of \u0027Task\u0027."
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs(207,19): error CS0246: The type or namespace name \u0027SpanEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs(231,19): error CS0246: The type or namespace name \u0027SpanTokenizer\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs(265,53): error CS0246: The type or namespace name \u0027RefEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/SpanExtensions.cs(278,56): error CS0246: The type or namespace name \u0027RefEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.Mvvm/Input/Interfaces/IAsyncRelayCommand{T}.cs(1,1): error IDE0073: A source file is missing a required header.",
+        "src/CommunityToolkit.Mvvm/Input/Interfaces/IAsyncRelayCommand{T}.cs(16,5): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 537.1392,
+      "buildSeconds": 2.380165,
+      "verdict": "false-red",
+      "falseRed": [
+        "src/CommunityToolkit.Mvvm/Input/Interfaces/IAsyncRelayCommand{T}.cs(1,1): error IDE0073: A source file is missing a required header."
+      ],
+      "missed": [
+        "src/CommunityToolkit.Mvvm/Input/AsyncRelayCommand{T}.cs(21,52): error CS0738: \u0027AsyncRelayCommand\u003CT\u003E\u0027 does not implement interface member \u0027IAsyncRelayCommand\u003CT\u003E.ExecuteAsync(T?)\u0027. \u0027AsyncRelayCommand\u003CT\u003E.ExecuteAsync(T?)\u0027 cannot implement \u0027IAsyncRelayCommand\u003CT\u003E.ExecuteAsync(T?)\u0027 because it does not have the matching return type of \u0027Task\u0027."
+      ],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": false,
+      "note": null
+    },
+    {
+      "index": 27,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Linq",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(186,39): error CS1935: Could not find an implementation of the query pattern for source type \u0027Type[]\u0027.  \u0027Where\u0027 not found.  Are you missing required assembly references or a using directive for \u0027System.Linq\u0027?",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(222,44): error CS1935: Could not find an implementation of the query pattern for source type \u0027MethodInfo[]\u0027.  \u0027Select\u0027 not found.  Are you missing required assembly references or a using directive for \u0027System.Linq\u0027?"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(186,39): error CS1935: Could not find an implementation of the query pattern for source type \u0027Type[]\u0027.  \u0027Where\u0027 not found.  Are you missing required assembly references or a using directive for \u0027System.Linq\u0027?",
+        "src/CommunityToolkit.Mvvm/Messaging/IMessengerExtensions.cs(222,44): error CS1935: Could not find an implementation of the query pattern for source type \u0027MethodInfo[]\u0027.  \u0027Select\u0027 not found.  Are you missing required assembly references or a using directive for \u0027System.Linq\u0027?"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 702.5802,
+      "buildSeconds": 4.4489669,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 28,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.Mvvm/Messaging/Internals/MessageHandlerDispatcher.cs",
+          "kind": "remove-member",
+          "description": "removed MessageHandlerDispatcher.Invoke",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Runtime.CompilerServices",
+          "newText": null
+        },
+        {
+          "path": "src/CommunityToolkit.Diagnostics/Internals/Guard.Comparable.Numeric.ThrowHelper.cs",
+          "kind": "remove-member",
+          "description": "removed ThrowHelper.ThrowArgumentExceptionForIsNotCloseTo",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(15,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(15,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(15,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(42,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(42,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(42,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(60,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(60,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(60,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.Mvvm/Messaging/Internals/MessageHandlerDispatcher.cs(45,30): error CS0115: \u0027MessageHandlerDispatcher.For\u003CTRecipient, TMessage\u003E.Invoke(object, object)\u0027: no suitable method found to override"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(1,1): error IDE0073: A source file is missing a required header.",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(15,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(15,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(15,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(42,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(42,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(42,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(60,6): error CS0246: The type or namespace name \u0027MethodImpl\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(60,6): error CS0246: The type or namespace name \u0027MethodImplAttribute\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(60,17): error CS0103: The name \u0027MethodImplOptions\u0027 does not exist in the current context",
+        "src/CommunityToolkit.Mvvm/Messaging/Internals/MessageHandlerDispatcher.cs(45,30): error CS0115: \u0027MessageHandlerDispatcher.For\u003CTRecipient, TMessage\u003E.Invoke(object, object)\u0027: no suitable method found to override",
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(415,62): error CS1061: \u0027MessageHandlerDispatcher\u0027 does not contain a definition for \u0027Invoke\u0027 and no accessible extension method \u0027Invoke\u0027 accepting a first argument of type \u0027MessageHandlerDispatcher\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 12,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1384.6375,
+      "buildSeconds": 3.071895,
+      "verdict": "false-red",
+      "falseRed": [
+        "src/CommunityToolkit.HighPerformance/Extensions/BoolExtensions.cs(1,1): error IDE0073: A source file is missing a required header."
+      ],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "src/CommunityToolkit.Mvvm/Messaging/WeakReferenceMessenger.cs(415,62): error CS1061: \u0027MessageHandlerDispatcher\u0027 does not contain a definition for \u0027Invoke\u0027 and no accessible extension method \u0027Invoke\u0027 accepting a first argument of type \u0027MessageHandlerDispatcher\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    },
+    {
+      "index": 29,
+      "edits": [
+        {
+          "path": "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Buffers",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(732,19): error CS0246: The type or namespace name \u0027MemoryHandle\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(341,29): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(360,36): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(341,29): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(360,36): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(474,32): error CS0312: The type \u0027MemoryManager\u003CT\u003E?\u0027 cannot be used as type parameter \u0027TManager\u0027 in the generic type or method \u0027MemoryMarshal.TryGetMemoryManager\u003CT, TManager\u003E(ReadOnlyMemory\u003CT\u003E, out TManager?, out int, out int)\u0027. The nullable type \u0027MemoryManager\u003CT\u003E?\u0027 does not satisfy the constraint of \u0027System.Buffers.MemoryManager\u003CT\u003E\u0027.",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(474,32): error CS0312: The type \u0027MemoryManager\u003CT\u003E?\u0027 cannot be used as type parameter \u0027TManager\u0027 in the generic type or method \u0027MemoryMarshal.TryGetMemoryManager\u003CT, TManager\u003E(ReadOnlyMemory\u003CT\u003E, out TManager, out int, out int)\u0027. The nullable type \u0027MemoryManager\u003CT\u003E?\u0027 does not satisfy the constraint of \u0027System.Buffers.MemoryManager\u003CT\u003E\u0027.",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(474,64): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(600,38): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(732,19): error CS0246: The type or namespace name \u0027MemoryHandle\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(736,34): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(781,39): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 9,
+      "fuseExit": 1,
+      "fuseMilliseconds": 375.4584,
+      "buildSeconds": 15.1654697,
+      "verdict": "false-red",
+      "falseRed": [
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(474,32): error CS0312: The type \u0027MemoryManager\u003CT\u003E?\u0027 cannot be used as type parameter \u0027TManager\u0027 in the generic type or method \u0027MemoryMarshal.TryGetMemoryManager\u003CT, TManager\u003E(ReadOnlyMemory\u003CT\u003E, out TManager?, out int, out int)\u0027. The nullable type \u0027MemoryManager\u003CT\u003E?\u0027 does not satisfy the constraint of \u0027System.Buffers.MemoryManager\u003CT\u003E\u0027.",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(474,32): error CS0312: The type \u0027MemoryManager\u003CT\u003E?\u0027 cannot be used as type parameter \u0027TManager\u0027 in the generic type or method \u0027MemoryMarshal.TryGetMemoryManager\u003CT, TManager\u003E(ReadOnlyMemory\u003CT\u003E, out TManager, out int, out int)\u0027. The nullable type \u0027MemoryManager\u003CT\u003E?\u0027 does not satisfy the constraint of \u0027System.Buffers.MemoryManager\u003CT\u003E\u0027.",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(474,64): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(600,38): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(736,34): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/CommunityToolkit.HighPerformance/Memory/ReadOnlyMemory2D{T}.cs(781,39): error CS0246: The type or namespace name \u0027MemoryManager\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null
+    }
+  ]
+}

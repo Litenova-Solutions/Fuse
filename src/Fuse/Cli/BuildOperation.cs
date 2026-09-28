@@ -1,5 +1,6 @@
 using System.Text;
 using Fuse.Dotnet;
+using Fuse.Repo;
 
 namespace Fuse.Cli;
 
@@ -11,6 +12,19 @@ internal static class BuildOperation
     private static readonly string[] QuietArguments = ["-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
 
     public static async Task<OperationResult> RunAsync(string workingDirectory, string root, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+    {
+        // The arguments are the user's, unchanged, so an implicit restore still happens: an agent that has just added a
+        // package reference and then builds needs it. The lock is what changes, not the command.
+        if (RepoRoot.Find(workingDirectory) is { } repo)
+        {
+            using var buildLock = BuildLock.Acquire(repo, () => Console.Error.WriteLine(BuildLock.Waited));
+            return await BuildAsync(workingDirectory, root, arguments, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await BuildAsync(workingDirectory, root, arguments, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
         var started = Environment.TickCount64;
         var result = await ProcessRunner.RunAsync("dotnet", ["build", .. arguments, .. QuietArguments], workingDirectory, cancellationToken).ConfigureAwait(false);

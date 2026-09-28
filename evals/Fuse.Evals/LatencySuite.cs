@@ -10,6 +10,8 @@ namespace Fuse.Evals;
 /// </summary>
 internal static class LatencySuite
 {
+    private const int TestRounds = 5;
+
     public static async Task<object> RunAsync(EvalRepo repo, SolutionInfo solution, int bodyEdits = 15, int signatureEdits = 10)
     {
         if (!await repo.IsCleanAsync())
@@ -18,42 +20,73 @@ internal static class LatencySuite
         Console.WriteLine($"[latency] {repo.Name}: target {Path.GetRelativePath(repo.Root, file)} method {method} ({references} referencing files in other projects)");
         var original = await File.ReadAllTextAsync(file);
 
+        // Every timed call takes the engine's own account of the request it made, so the report can say where the time went.
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+        async Task<TimedCall> Timed(FuseRun run) => new(run.Milliseconds, RequestPhases.TakeNewest(repo.EngineLogLines(), taken));
+
         await repo.KillEngineAsync();
-        var coldClean = await repo.FuseAsync("check");
-        Console.WriteLine($"[latency] cold check of a clean tree: {coldClean.Milliseconds:0} ms ({Last(coldClean.Result.Output)})");
+        var coldClean = await repo.FuseTimedAsync("check");
+        Console.WriteLine($"[latency] cold check of a clean tree: {coldClean.Milliseconds:0} ms ({Last(coldClean.Output)})");
 
         await repo.KillEngineAsync();
         await File.WriteAllTextAsync(file, BodyEdit(original, method, 0));
-        var coldEdit = await repo.FuseAsync("check", file);
-        Console.WriteLine($"[latency] cold check of a body edit (loads the owning project): {coldEdit.Milliseconds:0} ms ({Last(coldEdit.Result.Output)})");
+        var coldEdit = await repo.FuseTimedAsync("check", file);
+        Console.WriteLine($"[latency] cold check of a body edit (loads the owning project): {coldEdit.Milliseconds:0} ms ({Last(coldEdit.Output)})");
 
         var body = new List<double>();
+        var bodyCalls = new List<TimedCall>();
         for (var i = 1; i <= bodyEdits; i++)
         {
             await File.WriteAllTextAsync(file, BodyEdit(original, method, i));
-            var run = await repo.FuseAsync("check", file);
+            var run = await repo.FuseTimedAsync("check", file);
             body.Add(run.Milliseconds);
+            bodyCalls.Add(await Timed(run));
         }
 
         var signature = new List<double>();
+        var signatureCalls = new List<TimedCall>();
         string? signatureSummary = null;
         for (var i = 1; i <= signatureEdits; i++)
         {
             await File.WriteAllTextAsync(file, SignatureEdit(original, method, i));
-            var run = await repo.FuseAsync("check", file);
+            var run = await repo.FuseTimedAsync("check", file);
             signature.Add(run.Milliseconds);
-            signatureSummary ??= Last(run.Result.Output);
+            signatureCalls.Add(await Timed(run));
+            signatureSummary ??= Last(run.Output);
         }
 
         await repo.ResetAsync();
         await Task.Delay(500);
         await repo.FuseAsync("check");
         var clean = new List<double>();
+        var cleanCalls = new List<TimedCall>();
         for (var i = 0; i < 10; i++)
-            clean.Add((await repo.FuseAsync("check")).Milliseconds);
+        {
+            var run = await repo.FuseTimedAsync("check");
+            clean.Add(run.Milliseconds);
+            cleanCalls.Add(await Timed(run));
+        }
 
+        // A test round is what an agent waits for when it runs the tests, so it is measured the same way.
+        var testRound = new List<double>();
+        var testCalls = new List<TimedCall>();
+        for (var i = 1; i <= TestRounds; i++)
+        {
+            await File.WriteAllTextAsync(file, BodyEdit(original, method, 100 + i));
+            var run = await repo.FuseTimedAsync("test");
+            testRound.Add(run.Milliseconds);
+            testCalls.Add(await Timed(run));
+        }
+
+        await File.WriteAllTextAsync(file, original);
         var engines = await repo.EngineProcessesAsync();
         var rss = engines.Count > 0 ? engines.Max(e => e.WorkingSet) / (1024.0 * 1024.0) : 0;
+        var bodyPhases = PhaseReport.Build(bodyCalls);
+        var signaturePhases = PhaseReport.Build(signatureCalls);
+        var cleanPhases = PhaseReport.Build(cleanCalls);
+        var testPhases = PhaseReport.Build(testCalls);
+        // The writers scenario compares the queue against one client on its own, which is the body-edit total above.
+        var multiAgent = await MultiAgentScenario.RunAsync(repo, solution, bodyPhases.Phases.GetValueOrDefault("total")?.P50 ?? 0);
         var summary = new
         {
             suite = "latency",
@@ -69,10 +102,18 @@ internal static class LatencySuite
             signatureEdit = Stats(signature),
             signatureEditSample = signatureSummary,
             warmUnchanged = Stats(clean),
+            testRound = Stats(testRound),
+            bodyEditPhases = bodyPhases,
+            signatureEditPhases = signaturePhases,
+            warmUnchangedPhases = cleanPhases,
+            testRoundPhases = testPhases,
+            multiAgent,
             engineWorkingSetMb = Math.Round(rss, 1),
             treeCleanAfter = await repo.IsCleanAsync(),
         };
-        Console.WriteLine($"[latency] body edit P50 {summary.bodyEdit.P50:0} / P95 {summary.bodyEdit.P95:0} ms; signature edit P50 {summary.signatureEdit.P50:0} / P95 {summary.signatureEdit.P95:0} ms ({signatureSummary}); unchanged P50 {summary.warmUnchanged.P50:0} ms; engine {rss:0} MB");
+        Console.WriteLine($"[latency] body edit P50 {summary.bodyEdit.P50:0} / P95 {summary.bodyEdit.P95:0} ms; signature edit P50 {summary.signatureEdit.P50:0} / P95 {summary.signatureEdit.P95:0} ms ({signatureSummary}); unchanged P50 {summary.warmUnchanged.P50:0} ms; test round P50 {summary.testRound.P50:0} ms; engine {rss:0} MB");
+        Console.WriteLine($"[latency] body edit phases: {PhaseReport.Describe(summary.bodyEditPhases)}");
+        Console.WriteLine($"[latency] test round phases: {PhaseReport.Describe(summary.testRoundPhases)}");
         return summary;
     }
 

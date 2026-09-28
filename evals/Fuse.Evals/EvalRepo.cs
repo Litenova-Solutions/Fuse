@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Fuse.Dotnet;
+using Fuse.Repo;
 
 namespace Fuse.Evals;
 
@@ -47,6 +48,27 @@ internal sealed partial class EvalRepo
     public async Task<string> VersionAsync() => (await FuseAsync("--version")).Result.Output.Trim();
 
     /// <summary>
+    ///     The engine log this repository's engine writes, read as lines with the timestamp stripped. The engine is the
+    ///     only writer, and it is idle between requests, so a read cannot catch a line half-written.
+    /// </summary>
+    public IReadOnlyList<string> EngineLogLines()
+    {
+        var path = Path.Combine(StateDirectory, "engine.log");
+        if (!File.Exists(path))
+            return [];
+
+        return
+        [
+            .. File.ReadAllLines(path)
+                .Select(line => line[(line.IndexOf(' ') + 1)..].Trim())
+                .Where(line => line.Length > 0)
+        ];
+    }
+
+    /// <summary>Where this repository's engine keeps its state, which is where its log is.</summary>
+    public string StateDirectory => RepoRoot.Find(Root)?.StateDirectory ?? Path.Combine(Root, "fuse-state");
+
+    /// <summary>
     ///     Runs <c>dotnet build</c> on the truth target and returns its error lines (relative paths, canonical form).
     ///     A warm engine holds the source generators and analyzers it loaded mapped for its lifetime, so the build's copy
     ///     of one of those can fail with MSB3021 or MSB3027. That is a real defect in the product, recorded in
@@ -84,6 +106,13 @@ internal sealed partial class EvalRepo
         var watch = Stopwatch.StartNew();
         var result = await ProcessRunner.RunAsync(Fuse, args, Root, CancellationToken.None);
         return (result, watch.Elapsed.TotalMilliseconds);
+    }
+
+    /// <summary>One timed call: its output, its wall time, and the engine request it made.</summary>
+    public async Task<FuseRun> FuseTimedAsync(params string[] args)
+    {
+        var (result, milliseconds) = await FuseAsync(args);
+        return new FuseRun(result, milliseconds);
     }
 
     /// <summary>Stops every fuse engine serving this repository so the next call starts cold.</summary>
@@ -156,7 +185,14 @@ internal sealed partial class EvalRepo
 
     [GeneratedRegex(@"^[^\r\n]+\(\d+,\d+\): error [A-Za-z]+\d+: .*$")]
     private static partial Regex FuseError();
-
     [GeneratedRegex(@"fuse: (\d+) new error")]
     private static partial Regex FuseCount();
+}
+
+/// <summary>One run of the fuse executable: what it printed, how long the client waited, and its exit code.</summary>
+internal sealed record FuseRun(ProcessResult Result, double Milliseconds)
+{
+    public int ExitCode => Result.ExitCode;
+
+    public string Output => Result.Output;
 }

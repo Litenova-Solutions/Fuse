@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -36,10 +37,13 @@ internal static class HookCommand
         HookPayload payload;
         try
         {
-            payload = HookPayload.Parse(await Console.In.ReadToEndAsync(cancellationToken).ConfigureAwait(false));
+            payload = HookPayload.Parse(await ReadStdinAsync(cancellationToken).ConfigureAwait(false));
         }
-        catch (JsonException)
+        catch (JsonException e)
         {
+            // A payload that will not parse is a harness problem, not the agent's, and the hook still must not break the
+            // session; the reason goes to hook.log so this is not a silent no-op.
+            Log(Environment.CurrentDirectory, $"{harness} {hookEvent} payload was not valid JSON: {e.Message}");
             return 0;
         }
 
@@ -183,6 +187,27 @@ internal static class HookCommand
         result["command"] = command;
         return result;
     }
+
+    /// <summary>
+    ///     Reads the harness's payload from standard input as UTF-8. <see cref="Console.In"/> follows the console input
+    ///     code page, which on a Windows console is not UTF-8, so a path with a non-ASCII character arrives as different
+    ///     characters and the payload no longer parses. Every harness writes UTF-8; this reads what they write.
+    /// </summary>
+    private static async Task<string> ReadStdinAsync(CancellationToken cancellationToken)
+    {
+        await using var input = Console.OpenStandardInput();
+        return await ReadUtf8Async(input, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Decodes <paramref name="input"/> as UTF-8, whatever the console's code page says.</summary>
+    internal static async Task<string> ReadUtf8Async(Stream input, CancellationToken cancellationToken)
+    {
+        using var reader = new StreamReader(input, Utf8, detectEncodingFromByteOrderMarks: false);
+        return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // throwOnInvalidBytes: a payload that is not UTF-8 at all is a harness bug, and the message says so.
+    private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
     private static void Log(string cwd, string message)
     {

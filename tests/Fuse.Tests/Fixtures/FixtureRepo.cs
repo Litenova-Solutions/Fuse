@@ -21,10 +21,12 @@ internal sealed class FixtureRepo : IDisposable
     public RepoRoot Root { get; }
 
     /// <summary>Copies the standard template (see <see cref="FixtureTemplate"/>) and restores it in its new location.</summary>
-    public static FixtureRepo CreateStandard()
+    public static FixtureRepo CreateStandard() => CreateStandard(NewDirectory());
+
+    /// <summary>The standard template restored under <paramref name="target"/>, for a path whose spelling matters.</summary>
+    public static FixtureRepo CreateStandard(string target)
     {
         var template = FixtureTemplate.Standard.Value;
-        var target = NewDirectory();
         CopyDirectory(template, target);
         // project.assets.json and the generated nuget props hold absolute paths, so the copy is restored in place.
         // Every package is already in the local cache, so this is an offline no-op restore of a few seconds.
@@ -83,6 +85,17 @@ internal sealed class FixtureRepo : IDisposable
     internal static string NewDirectory()
     {
         var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-tests", Guid.NewGuid().ToString("N")[..10]);
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
+    /// <summary>
+    ///     A directory whose own name is not ASCII, under <c>fuse-tests</c>. Everything else about the repository is the
+    ///     standard template, so a difference in behaviour can only come from the path.
+    /// </summary>
+    internal static string NewNonAsciiDirectory()
+    {
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-tests", "blåbærgrød-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(path);
         return path;
     }

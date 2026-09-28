@@ -17,6 +17,14 @@ internal static class TestOperation
 
     public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken)
     {
+        // Held from before the plan request until the last child has exited: the plan makes the engine mirror and emit into
+        // the shadow folder, and the runs below write build output, so all of it has to be one window in this repository.
+        using var buildLock = BuildLock.Acquire(root, () => Console.Error.WriteLine(BuildLock.Waited));
+        return await RunLockedAsync(root, workingDirectory, arguments, all, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<OperationResult> RunLockedAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken)
+    {
         var started = Environment.TickCount64;
         if (arguments.Count > 0)
         {

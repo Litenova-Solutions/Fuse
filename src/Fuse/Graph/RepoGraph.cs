@@ -117,14 +117,16 @@ internal sealed class RepoGraph
     /// <summary>Evaluates every project file git knows about (tracked or untracked, not ignored).</summary>
     public static async Task<RepoGraph> EvaluateAsync(RepoRoot root, CancellationToken cancellationToken)
     {
+        // -z gives one NUL-separated path per project file, exactly as it is on disk; without it git C-quotes a path that
+        // holds a quote, a backslash or a control character, and the two are not the same string.
         var listing = await ProcessRunner.RunAsync(
             "git",
-            ["-c", "core.quotepath=off", "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.csproj"],
+            ["-c", "core.quotepath=off", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.csproj"],
             root.Path,
             cancellationToken).ConfigureAwait(false);
         if (listing.ExitCode != 0)
-            throw new FuseException(ErrorCode.LoadFailed, $"git cannot list the repository's files ({listing.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault()}); see `git status`");
-        var paths = listing.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            throw new FuseException(ErrorCode.LoadFailed, $"git cannot list the repository's files ({listing.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()}); see `git status`");
+        var paths = listing.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
             .Select(p => System.IO.Path.GetFullPath(System.IO.Path.Combine(root.Path, p)))
             .Where(File.Exists)
             .Distinct(ChangeTracker.PathComparer)

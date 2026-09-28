@@ -188,21 +188,23 @@ internal sealed class ChangeTracker : IDisposable
     private async Task ReseedAsync(CancellationToken cancellationToken)
     {
         _changed.Clear();
+        // -z gives one NUL-separated record per change with the path exactly as it is on disk. Without it git C-quotes a
+        // path that holds a quote, a backslash or a control character, and the two are not the same string: the path is
+        // read from the repository, not from git's spelling of it.
         var result = await ProcessRunner.RunAsync(
             "git",
-            ["-c", "core.quotepath=off", "status", "--porcelain=v1", "--untracked-files=all", "--no-renames", "--ignored=no"],
+            ["-c", "core.quotepath=off", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames", "--ignored=no"],
             _root.Path,
             cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0)
             throw GitFailure("git status", result);
-        foreach (var line in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var record in result.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
         {
-            if (line.Length < 4)
+            // Each record is two status characters and a space, then the path. Nothing is trimmed off the path: a name may
+            // begin or end with a space, and trimming it would name a file that is not there.
+            if (record.Length < 4)
                 continue;
-            var relative = line[3..].Trim();
-            if (relative.Length > 1 && relative[0] == '"' && relative[^1] == '"')
-                relative = relative[1..^1];
-            var absolute = Path.GetFullPath(Path.Combine(_root.Path, relative));
+            var absolute = Path.GetFullPath(Path.Combine(_root.Path, record[3..]));
             if (IsSource(absolute) && !IsIgnoredDirectory(absolute))
                 _changed.Add(absolute);
         }

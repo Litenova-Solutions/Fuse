@@ -1,3 +1,4 @@
+using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Repo;
 using Fuse.Tests.Fixtures;
@@ -136,6 +137,67 @@ public class ChangeTrackerTests
         var reevaluate = Assert.IsType<SyncResult.Reevaluate>(await tracker.SyncAsync(Generated(repo, 301), TestContext.Current.CancellationToken));
 
         Assert.Equal(repo.Full("Lib/Lib.csproj"), reevaluate.Trigger);
+    }
+
+    [Fact]
+    public async Task A_reseed_that_fails_after_head_moved_keeps_head_and_the_changes_and_the_next_sync_retries()
+    {
+        using var repo = Repo();
+        using var tracker = await StartAsync(repo, new WatchedPaths(repo.Root));
+        repo.Write("Lib/Extra.cs", "public class Extra {}\n");
+        await tracker.SyncAsync([repo.PathOf("Lib/Extra.cs")], TestContext.Current.CancellationToken);
+        var before = tracker.Head;
+        // An empty commit moves HEAD and leaves Extra.cs untracked, so it still differs from HEAD afterwards.
+        FixtureRepo.Run(repo.Root.Path, "git", "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "move HEAD");
+        var head = FixtureRepo.Run(repo.Root.Path, "git", "rev-parse", "HEAD").Trim();
+
+        using (BreakGitStatus(repo))
+            await Assert.ThrowsAsync<FuseException>(() => tracker.SyncAsync([], TestContext.Current.CancellationToken));
+
+        Assert.Equal(before, tracker.Head);
+        Assert.Equal([repo.PathOf("Lib/Extra.cs")], tracker.Changed);
+        var reevaluate = Assert.IsType<SyncResult.Reevaluate>(await tracker.SyncAsync([], TestContext.Current.CancellationToken));
+        Assert.Equal($"HEAD moved to {head[..12]}", reevaluate.Trigger);
+        Assert.Equal(head, tracker.Head);
+        Assert.Equal([repo.PathOf("Lib/Extra.cs")], tracker.Changed);
+    }
+
+    [Fact]
+    public async Task A_reseed_that_fails_after_a_watcher_error_keeps_the_changes_and_the_next_sync_retries()
+    {
+        using var repo = Repo();
+        var watched = new WatchedPaths(repo.Root);
+        using var tracker = await StartAsync(repo, watched);
+        repo.Replace("Lib/Calc.cs", "public class Calc {}", "public class Calc { public int A => 1; }");
+        await tracker.SyncAsync([repo.PathOf("Lib/Calc.cs")], TestContext.Current.CancellationToken);
+        watched.RecordError("Too many changes at once in directory");
+
+        using (BreakGitStatus(repo))
+            await Assert.ThrowsAsync<FuseException>(() => tracker.SyncAsync([], TestContext.Current.CancellationToken));
+
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
+        // The watcher's error was taken by the sync that failed; the next one still knows the events are not the whole change.
+        var reevaluate = Assert.IsType<SyncResult.Reevaluate>(await tracker.SyncAsync([], TestContext.Current.CancellationToken));
+        Assert.Equal("watcher error: Too many changes at once in directory", reevaluate.Trigger);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
+    }
+
+    /// <summary>
+    ///     Makes <c>git status</c> fail until disposed, by overwriting the index with bytes git cannot read. Resolving HEAD
+    ///     reads the refs and the commit, not the index, so only the reseed fails.
+    /// </summary>
+    private static IndexRestorer BreakGitStatus(FixtureRepo repo)
+    {
+        var index = Path.Combine(repo.Root.Path, ".git", "index");
+        var saved = File.ReadAllBytes(index);
+        File.WriteAllBytes(index, "not an index"u8.ToArray());
+        return new IndexRestorer(index, saved);
+    }
+
+    /// <summary>Puts the saved index back.</summary>
+    private sealed class IndexRestorer(string path, byte[] saved) : IDisposable
+    {
+        public void Dispose() => File.WriteAllBytes(path, saved);
     }
 
     /// <summary><paramref name="count"/> sources that no commit and no file on disk has.</summary>

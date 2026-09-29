@@ -24,6 +24,7 @@ Compared with 5.0.0. After updating, run `fuse init` again in each repository: t
 - A `restore needed` answer names the project to restore in its command, so it also works for a project the solution leaves out.
 - A hook and the MCP server read their input as UTF-8, so a repository whose path or file names are not ASCII is checked from a harness whose console uses another code page, where 5.0.0 failed to parse the payload and reported nothing.
 - Git's file list and status are read NUL-separated, so a file whose name holds a quote, a backslash or a control character is found and checked under its own name.
+- When `git status` fails while the engine reads the changes again, after HEAD moved, a watcher error or more than 300 changed files, the engine keeps HEAD and the changed files it knew, and the next request asks git again. 5.0.0 had already taken the new HEAD and emptied its list of changed files, so later checks left out the files changed before the failure.
 - A hook whose payload names an empty working directory exits 0 with no output, as every other internal failure does, instead of crashing.
 - `fuse init` and `fuse mcp` outside a git repository say `fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one`, the message `fuse check` gives.
 

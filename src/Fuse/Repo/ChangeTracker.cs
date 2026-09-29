@@ -1,3 +1,4 @@
+using Fuse.Failures;
 using Fuse.Paths;
 
 namespace Fuse.Repo;
@@ -5,7 +6,8 @@ namespace Fuse.Repo;
 /// <summary>
 ///     Tracks which source files differ from HEAD. It seeds the set from <see cref="GitStatus"/>, then follows the
 ///     events <see cref="WatchedPaths"/> records, and verifies each reported path by comparing its content with the HEAD
-///     blob (<see cref="HeadComparison"/>). A sync it cannot follow file by file seeds the set again.
+///     blob (<see cref="HeadComparison"/>). A sync it cannot follow file by file seeds the set again, and takes the new
+///     HEAD and set only once git has listed the changes.
 /// </summary>
 internal sealed class ChangeTracker : IDisposable
 {
@@ -20,6 +22,12 @@ internal sealed class ChangeTracker : IDisposable
     private readonly WatchedPaths _watched;
     private readonly GitBlobReader _blobs;
     private readonly HashSet<RepoPath> _changed = [];
+
+    /// <summary>
+    ///     What a sync took from the watcher and did not fold in because its reseed failed, or null. The next sync takes it
+    ///     first, so it sees the same triggers and paths and seeds again.
+    /// </summary>
+    private WatchedChanges? _unfolded;
 
     public ChangeTracker(RepoRoot root)
         : this(root, new WatchedPaths(root))
@@ -44,19 +52,25 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>Reads git state and starts watching. Call once before <see cref="SyncAsync"/>.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        Head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
-        await ReseedAsync(cancellationToken).ConfigureAwait(false);
+        var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
+        var seeded = await SeedAsync(cancellationToken).ConfigureAwait(false);
+        Head = head;
+        _changed.UnionWith(seeded);
         _watched.Start();
     }
 
     /// <summary>Folds every change seen since the last call into <see cref="Changed"/> and says how the workspace follows it.</summary>
     /// <param name="knownPaths">Files a hook reports as written, checked even if their watcher event has not arrived.</param>
     /// <param name="cancellationToken">Cancels a reseed from git.</param>
+    /// <exception cref="FuseException">
+    ///     git cannot resolve HEAD, list the changes or read a file at HEAD. When listing the changes for a reseed fails,
+    ///     <see cref="Head"/> and <see cref="Changed"/> stay as they were and the next call seeds again.
+    /// </exception>
     public async Task<SyncResult> SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
     {
         var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         var headMoved = !string.Equals(head, Head, StringComparison.Ordinal);
-        var watched = _watched.Drain();
+        var watched = Drain();
         var paths = new HashSet<RepoPath>(watched.Sources);
         foreach (var path in knownPaths)
         {
@@ -69,10 +83,24 @@ internal sealed class ChangeTracker : IDisposable
         // workspace holds goes back: changed before the reseed, changed after it, or reported.
         if (headMoved || watched.WatcherErrors.Count > 0 || paths.Count > MaxPatchedPaths)
         {
-            Head = head;
             var reported = paths.Count;
+            HashSet<RepoPath> seeded;
+            try
+            {
+                seeded = await SeedAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Nothing is folded in, so HEAD and the set stay as they were, and the next sync takes what this one
+                // drained and reseeds again.
+                _unfolded = watched with { Sources = new HashSet<RepoPath>(paths) };
+                throw;
+            }
+
             paths.UnionWith(_changed);
-            await ReseedAsync(cancellationToken).ConfigureAwait(false);
+            Head = head;
+            _changed.Clear();
+            _changed.UnionWith(seeded);
             paths.UnionWith(_changed);
             if (headMoved)
                 return new SyncResult.Reevaluate(paths, head is null ? "HEAD has no commit" : $"HEAD moved to {head[..Math.Min(12, head.Length)]}");
@@ -96,14 +124,35 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>Reads a file as it is at HEAD, or null when it does not exist there.</summary>
     public byte[]? ReadHead(RepoPath path) => Head is null ? null : _blobs.Read(Head, path.Relative);
 
-    private async Task ReseedAsync(CancellationToken cancellationToken)
+    /// <summary>
+    ///     The sources git reports as changed, which replace <see cref="Changed"/> once the caller has them. It changes no
+    ///     state, so a failure leaves the tracker as it was.
+    /// </summary>
+    /// <exception cref="FuseException">git status fails.</exception>
+    private async Task<HashSet<RepoPath>> SeedAsync(CancellationToken cancellationToken)
     {
-        _changed.Clear();
+        var seeded = new HashSet<RepoPath>();
         foreach (var path in await GitStatus.ChangedPathsAsync(_root, cancellationToken).ConfigureAwait(false))
         {
             if (PathRules.IsSource(path.Absolute) && !_watched.IsIgnored(path))
-                _changed.Add(path);
+                seeded.Add(path);
         }
+
+        return seeded;
+    }
+
+    /// <summary>What the watcher recorded since the last sync, after what a failed reseed took and did not fold in.</summary>
+    private WatchedChanges Drain()
+    {
+        var drained = _watched.Drain();
+        if (_unfolded is not { } unfolded)
+            return drained;
+        _unfolded = null;
+        return new WatchedChanges(
+            new HashSet<RepoPath>([.. unfolded.Sources, .. drained.Sources]),
+            [.. unfolded.VanishedDirectories, .. drained.VanishedDirectories],
+            [.. unfolded.ProjectFiles, .. drained.ProjectFiles],
+            [.. unfolded.WatcherErrors, .. drained.WatcherErrors]);
     }
 
     private void Refresh(RepoPath path)

@@ -20,6 +20,11 @@ namespace Fuse.Check;
 ///     reference sets are cached until HEAD moves or projects load.
 /// </summary>
 /// <remarks>
+///     <para>
+///         A file is compared once for each project that compiles it, which is once per target framework, with that
+///         project's parse options, so a declaration inside <c>#if DEBUG</c> or <c>#if NET8_0_OR_GREATER</c> is compared
+///         where its symbol is defined. A change any framework sees counts.
+///     </para>
 ///     <list type="bullet">
 ///         <item>A changed or removed member: files referencing it, plus implementations and overrides of it.</item>
 ///         <item>A changed or removed constructor: additionally every type deriving from its type (implicit base calls).</item>
@@ -46,7 +51,10 @@ internal sealed class ChangeReach
 
     public ChangeReach(RepoWorkspace workspace) => _workspace = workspace;
 
-    /// <summary>True when the file has a declaration change against HEAD. Syntax only; binds nothing.</summary>
+    /// <summary>
+    ///     True when the file has a declaration change against HEAD in any target framework it compiles for. Syntax only;
+    ///     binds nothing.
+    /// </summary>
     public async Task<bool> HasDeclarationChangeAsync(RepoPath path, CancellationToken cancellationToken)
     {
         var head = _workspace.HeadText(path);
@@ -55,10 +63,14 @@ internal sealed class ChangeReach
             return false;
         if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             return true;
-        var before = head is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(head, cancellationToken).ConfigureAwait(false));
-        var after = now is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
-        // An added using changes nothing another file can see, so it alone does not send the check to the dependents.
-        return SurfaceDiff.Compare(before, after).Changes.Any(c => !(c is DeclarationChange.Added && c.Key is DeclarationKey.Using));
+        foreach (var version in await VersionsAsync(path, cancellationToken).ConfigureAwait(false))
+        {
+            // An added using changes nothing another file can see, so it alone does not send the check to the dependents.
+            if (SurfaceDiff.Compare(version.Before, version.After).Changes.Any(c => !(c is DeclarationChange.Added && c.Key is DeclarationKey.Using)))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -66,7 +78,7 @@ internal sealed class ChangeReach
     ///     is <see cref="Reach.Precise"/>, with the change that made each file a candidate so an error there can name its
     ///     cause, unless one change is broad, which makes it <see cref="Reach.Broad"/>.
     /// </summary>
-    /// <param name="paths">The targets with a declaration change.</param>
+    /// <param name="paths">The targets with a declaration change, in any order: they are taken in path order.</param>
     /// <param name="reached">The projects that own those targets, and their dependents, all loaded.</param>
     /// <param name="cancellationToken">Cancels the search.</param>
     public async Task<Reach> ReachAsync(IReadOnlyList<RepoPath> paths, IReadOnlyList<ProjectNode> reached, CancellationToken cancellationToken)
@@ -78,6 +90,99 @@ internal sealed class ChangeReach
             _cachedGeneration = _workspace.BaselineGeneration;
         }
 
+        // Every way the changes reach other files, in the order that decides which cause a file gets: the targets in
+        // path order, and each target's changes in the order SurfaceDiff lists them.
+        var routes = new List<Route>();
+        // A change that several target frameworks see is followed once, from the first framework that has it.
+        var seen = new HashSet<(DeclarationKey Key, Cause Cause)>();
+        foreach (var path in paths.OrderBy(p => p.Absolute, StringComparer.Ordinal))
+        {
+            if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            {
+                // A Razor component or view is used by its file name.
+                var name = Path.GetFileNameWithoutExtension(path.Absolute);
+                routes.Add(new Route.ByName(name, new Cause.Changed(name)));
+                continue;
+            }
+
+            foreach (var version in await VersionsAsync(path, cancellationToken).ConfigureAwait(false))
+            {
+                var changes = SurfaceDiff.Compare(version.Before, version.After);
+                if (changes.HasBroadChange)
+                    return Broad(projects);
+                foreach (var change in changes.Changes)
+                {
+                    var cause = CauseOf(change);
+                    if (seen.Add((change.Key, cause)) && !await AddRoutesAsync(routes, change, cause, version, cancellationToken).ConfigureAwait(false))
+                        return Broad(projects);
+                }
+            }
+        }
+
+        return new Reach.Precise(await CausesAsync(routes, projects, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <summary>
+    ///     Adds the routes by which <paramref name="change"/> reaches other files. Returns false when the change cannot be
+    ///     bounded, because HEAD's declaration does not resolve to a symbol.
+    /// </summary>
+    private static async Task<bool> AddRoutesAsync(List<Route> routes, DeclarationChange change, Cause cause, FileVersion version, CancellationToken cancellationToken)
+    {
+        if (change.Key is DeclarationKey.Using)
+        {
+            // An added using cannot change what another file sees. A removed one can change every signature in this file,
+            // so every file that names one of this file's types is a candidate.
+            if (cause is Cause.Removed)
+                routes.AddRange(change.Names.Select(typeName => new Route.ByName(typeName, cause)));
+            return true;
+        }
+
+        if ((version.After.Find(change.Key) ?? version.Before.Find(change.Key))?.Node is ConversionOperatorDeclarationSyntax)
+        {
+            // A reference search does not return the places an implicit conversion is applied, so every file that names the
+            // type is a candidate too.
+            routes.Add(new Route.ByName(change.Names[0], cause));
+        }
+
+        if (change.Key is DeclarationKey.NamedType)
+        {
+            // A type whose header changed made the reach broad, so this type was added or removed.
+            if (change is DeclarationChange.Removed && await version.DeclaredAsync(version.Before.Find(change.Key)?.Node, cancellationToken).ConfigureAwait(false) is { } removedType)
+                routes.Add(new Route.BySymbol(removedType, IncludesImplementations: true, cause));
+            else
+                routes.Add(new Route.ByName(change.Names[0], new Cause.Changed(cause.Declaration)));
+            return true;
+        }
+
+        if (change is not DeclarationChange.Added)
+        {
+            if (await version.DeclaredAsync(version.Before.Find(change.Key)?.Node, cancellationToken).ConfigureAwait(false) is not { } member)
+                return false;
+            routes.Add(new Route.BySymbol(member, IncludesImplementations: true, cause));
+            if (member is IMethodSymbol { MethodKind: MethodKind.Constructor, ContainingType: { } constructed })
+                routes.Add(new Route.ByDerivedTypes(constructed, cause));
+            return true;
+        }
+
+        // An added member of a type that existed at HEAD.
+        if (change.Key is not DeclarationKey.Member { Container: var containerKey } || version.Before.Find(containerKey) is not { } container
+            || await version.DeclaredAsync(container.Node, cancellationToken).ConfigureAwait(false) is not INamedTypeSymbol containingType)
+            return true;
+        var name = change.Names[0];
+        for (var type = containingType; type is not null; type = type.BaseType)
+            routes.AddRange(type.GetMembers(name).Where(m => !m.IsImplicitlyDeclared).Select(m => new Route.BySymbol(m, IncludesImplementations: false, cause)));
+        if (containingType.TypeKind == TypeKind.Interface || containingType.IsAbstract)
+            routes.Add(new Route.ByDerivedTypes(containingType, cause));
+        return true;
+    }
+
+    /// <summary>
+    ///     Each file the routes reach, with the cause of the first route that reaches it, so the cause does not depend on
+    ///     the order of any set. A symbol or a type is searched once however many routes name it, and every name is looked
+    ///     for in one pass over the reached projects' documents.
+    /// </summary>
+    private async Task<Dictionary<RepoPath, Cause>> CausesAsync(IReadOnlyList<Route> routes, IReadOnlyList<Project> projects, CancellationToken cancellationToken)
+    {
         var baseline = _workspace.Baseline;
         var reachIds = projects.Select(p => p.Id).ToHashSet();
         // Reference sets depend on which projects were searched; a background load widens the reach.
@@ -85,124 +190,55 @@ internal sealed class ChangeReach
         var baselineProjects = baseline.Projects.Where(p => reachIds.Contains(p.Id)).ToImmutableHashSet();
         var baselineDocuments = baselineProjects.SelectMany(p => p.Documents).ToImmutableHashSet();
 
-        var changed = new List<Change>();
-        var derivedFrom = new List<(INamedTypeSymbol Type, Cause Cause)>();
-        var names = new List<(string Name, Cause Cause)>();
-        foreach (var path in paths)
+        // The index in routes of the first route that reaches each file.
+        var first = new Dictionary<RepoPath, int>();
+        var searched = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        var searchedWithImplementations = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        var searchedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        for (var index = 0; index < routes.Count; index++)
         {
-            if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            // A route whose symbol or type an earlier route searched reaches no file first, so it is not searched again.
+            var files = new List<RepoPath>();
+            if (routes[index] is Route.BySymbol symbol && (symbol.IncludesImplementations ? searchedWithImplementations : searched).Add(symbol.Symbol))
             {
-                // A Razor component or view is used by its file name.
-                var name = Path.GetFileNameWithoutExtension(path.Absolute);
-                names.Add((name, new Cause.Changed(name)));
-                continue;
+                searched.Add(symbol.Symbol);
+                files.AddRange(await ReferencingFilesAsync(symbol.Symbol, reachKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false));
+                if (symbol.IncludesImplementations)
+                {
+                    files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(symbol.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
+                    files.AddRange(Declarations(await SymbolFinder.FindOverridesAsync(symbol.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
+                }
             }
-
-            var baselineDocument = baseline.GetDocumentIdsWithFilePath(path.Absolute).Select(baseline.GetDocument).FirstOrDefault(d => d is not null);
-            var beforeRoot = baselineDocument is null ? null : await baselineDocument.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            var model = baselineDocument is null ? null : await baselineDocument.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-            var now = await CurrentTextAsync(path, cancellationToken).ConfigureAwait(false);
-            var before = beforeRoot is null ? FileDeclarations.Empty : FileDeclarations.Of(beforeRoot);
-            var after = now is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
-            var changes = SurfaceDiff.Compare(before, after);
-            if (changes.HasBroadChange)
-                return Broad(projects);
-
-            foreach (var change in changes.Changes)
+            else if (routes[index] is Route.ByDerivedTypes derived && searchedTypes.Add(derived.Type))
             {
-                var cause = CauseOf(change);
-                if (change.Key is DeclarationKey.Using)
-                {
-                    // An added using cannot change what another file sees. A removed one can change every signature in
-                    // this file, so every file that names one of this file's types is a candidate.
-                    if (cause is Cause.Removed)
-                    {
-                        foreach (var typeName in change.Names)
-                            names.Add((typeName, cause));
-                    }
-
-                    continue;
-                }
-
-                if ((after.Find(change.Key) ?? before.Find(change.Key))?.Node is ConversionOperatorDeclarationSyntax)
-                {
-                    // A reference search does not return the places an implicit conversion is applied, so every file that
-                    // names the type is a candidate too.
-                    names.Add((change.Names[0], cause));
-                }
-
-                if (change.Key is DeclarationKey.NamedType)
-                {
-                    // A type whose header changed made the reach broad above, so this type was added or removed.
-                    if (change is DeclarationChange.Removed && Declared(model, before.Find(change.Key)?.Node, cancellationToken) is { } removedType)
-                        changed.Add(new(removedType, cause, true));
-                    else
-                        names.Add((change.Names[0], new Cause.Changed(cause.Declaration)));
-                    continue;
-                }
-
-                if (change is not DeclarationChange.Added)
-                {
-                    if (Declared(model, before.Find(change.Key)?.Node, cancellationToken) is not { } member)
-                        return Broad(projects);
-                    changed.Add(new(member, cause, true));
-                    if (member is IMethodSymbol { MethodKind: MethodKind.Constructor, ContainingType: { } constructed })
-                        derivedFrom.Add((constructed, cause));
-                    continue;
-                }
-
-                // An added member of a type that existed at HEAD.
-                if (change.Key is not DeclarationKey.Member { Container: var containerKey } || before.Find(containerKey) is not { } container
-                    || Declared(model, container.Node, cancellationToken) is not INamedTypeSymbol containingType)
-                    continue;
-                var name = change.Names[0];
-                for (var type = containingType; type is not null; type = type.BaseType)
-                    foreach (var member in type.GetMembers(name).Where(m => !m.IsImplicitlyDeclared))
-                        changed.Add(new(member, cause, false));
-                if (containingType.TypeKind == TypeKind.Interface || containingType.IsAbstract)
-                    derivedFrom.Add((containingType, cause));
-            }
-        }
-
-        // A file several changes reach keeps the first change that reached it, in the order the changes were seen.
-        var causes = new Dictionary<RepoPath, Cause>();
-        foreach (var change in changed.GroupBy(c => c.Symbol, SymbolEqualityComparer.Default).Select(g => g.First()))
-        {
-            // A copy: the reference set is cached, and the implementations and overrides below are added to this one.
-            var files = new HashSet<RepoPath>(await ReferencingFilesAsync(change.Symbol, reachKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false));
-            if (change.Implemented)
-            {
-                files.UnionWith(Declarations(await SymbolFinder.FindImplementationsAsync(change.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
-                files.UnionWith(Declarations(await SymbolFinder.FindOverridesAsync(change.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
+                files.AddRange(Declarations(await SymbolFinder.FindDerivedClassesAsync(derived.Type, baseline, transitive: true, baselineProjects, cancellationToken).ConfigureAwait(false)));
+                if (derived.Type.TypeKind == TypeKind.Interface)
+                    files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(derived.Type, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
             }
 
             foreach (var file in files)
-                causes.TryAdd(file, change.Cause);
+                first.TryAdd(file, index);
         }
 
-        foreach (var (type, cause) in derivedFrom.DistinctBy(d => d.Type, SymbolEqualityComparer.Default))
-        {
-            var files = Declarations(await SymbolFinder.FindDerivedClassesAsync(type, baseline, transitive: true, baselineProjects, cancellationToken).ConfigureAwait(false));
-            if (type.TypeKind == TypeKind.Interface)
-                files = files.Concat(Declarations(await SymbolFinder.FindImplementationsAsync(type, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
-            foreach (var file in files)
-                causes.TryAdd(file, cause);
-        }
-
-        if (names.Count > 0)
+        var byName = routes.Select((route, index) => (Route: route as Route.ByName, Index: index)).Where(r => r.Route is not null).ToList();
+        if (byName.Count > 0)
         {
             foreach (var document in projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments)))
             {
                 if (document.FilePath is null)
                     continue;
                 var text = (await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).ToString();
-                var name = names.FirstOrDefault(n => text.Contains(n.Name, StringComparison.Ordinal));
-                if (name.Name is not null)
-                    causes.TryAdd(_workspace.Root.PathOf(document.FilePath), name.Cause);
+                // The routes are in order, so the first name the text holds belongs to the earliest route that reaches it.
+                var match = byName.FindIndex(r => text.Contains(r.Route!.Name, StringComparison.Ordinal));
+                if (match < 0)
+                    continue;
+                var file = _workspace.Root.PathOf(document.FilePath);
+                if (!first.TryGetValue(file, out var earlier) || byName[match].Index < earlier)
+                    first[file] = byName[match].Index;
             }
         }
 
-        return new Reach.Precise(causes);
+        return first.ToDictionary(f => f.Key, f => routes[f.Value].Cause);
     }
 
     /// <summary>
@@ -242,8 +278,47 @@ internal sealed class ChangeReach
     private IEnumerable<RepoPath> Declarations(IEnumerable<ISymbol> symbols) =>
         symbols.SelectMany(s => s.Locations).Where(l => l.IsInSource).Select(l => l.SourceTree!.FilePath).Where(p => !string.IsNullOrEmpty(p)).Select(_workspace.Root.PathOf);
 
-    private static ISymbol? Declared(SemanticModel? model, SyntaxNode? node, CancellationToken cancellationToken) =>
-        model is null || node is null ? null : model.GetDeclaredSymbol(node, cancellationToken);
+    /// <summary>
+    ///     The file at HEAD and in the working tree, once for each project that compiles it: HEAD's from the baseline's
+    ///     document and the working tree's from the current one, each parsed with that project's options. When no loaded
+    ///     project compiles the file, both texts are parsed with no preprocessor symbols and no symbol resolves.
+    /// </summary>
+    private async Task<List<FileVersion>> VersionsAsync(RepoPath path, CancellationToken cancellationToken)
+    {
+        var baseline = _workspace.Baseline;
+        var current = _workspace.Current;
+        var versions = new List<FileVersion>();
+        var projectIds = baseline.GetDocumentIdsWithFilePath(path.Absolute).Concat(current.GetDocumentIdsWithFilePath(path.Absolute)).Select(id => id.ProjectId).Distinct();
+        foreach (var projectId in projectIds)
+        {
+            var before = DocumentIn(baseline, projectId, path);
+            var after = DocumentIn(current, projectId, path);
+            if (before is null && after is null)
+                continue;
+            versions.Add(new FileVersion(
+                await DeclarationsOfAsync(before, cancellationToken).ConfigureAwait(false),
+                await DeclarationsOfAsync(after, cancellationToken).ConfigureAwait(false),
+                before));
+        }
+
+        if (versions.Count > 0)
+            return versions;
+        var head = _workspace.HeadText(path);
+        var now = await CurrentTextAsync(path, cancellationToken).ConfigureAwait(false);
+        return
+        [
+            new FileVersion(
+                head is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(head, cancellationToken).ConfigureAwait(false)),
+                now is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(now, cancellationToken).ConfigureAwait(false)),
+                null),
+        ];
+    }
+
+    private static Document? DocumentIn(Solution solution, ProjectId projectId, RepoPath path) =>
+        solution.GetDocumentIdsWithFilePath(path.Absolute).Where(id => id.ProjectId == projectId).Select(solution.GetDocument).FirstOrDefault(d => d is not null);
+
+    private static async Task<FileDeclarations> DeclarationsOfAsync(Document? document, CancellationToken cancellationToken) =>
+        document is not null && await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } root ? FileDeclarations.Of(root) : FileDeclarations.Empty;
 
     private async Task<SourceText?> CurrentTextAsync(RepoPath path, CancellationToken cancellationToken)
     {
@@ -262,9 +337,48 @@ internal sealed class ChangeReach
             .GetRootAsync(cancellationToken);
 
     /// <summary>
-    ///     One changed declaration resolved to its symbol at HEAD, with the cause an error in a file that uses it names,
-    ///     and whether anything implements or derives from it.
+    ///     One project's reading of a target: its declarations at HEAD and in the working tree, and the baseline document
+    ///     whose semantic model resolves HEAD's declarations to symbols. The model is bound on first use, because a target
+    ///     framework whose changes another framework already showed needs none.
     /// </summary>
-    /// <param name="Implemented">Whether to look for implementations and overrides of the symbol.</param>
-    private sealed record Change(ISymbol Symbol, Cause Cause, bool Implemented);
+    private sealed class FileVersion
+    {
+        private readonly Document? _baseline;
+        private SemanticModel? _model;
+
+        public FileVersion(FileDeclarations before, FileDeclarations after, Document? baseline)
+        {
+            Before = before;
+            After = after;
+            _baseline = baseline;
+        }
+
+        /// <summary>The declarations at HEAD, read from the baseline document when there is one.</summary>
+        public FileDeclarations Before { get; }
+
+        /// <summary>The declarations in the working tree.</summary>
+        public FileDeclarations After { get; }
+
+        /// <summary>The symbol a node of <see cref="Before"/> declares, or null when HEAD's version has no baseline document.</summary>
+        public async Task<ISymbol?> DeclaredAsync(SyntaxNode? node, CancellationToken cancellationToken)
+        {
+            if (_baseline is null || node is null)
+                return null;
+            _model ??= await _baseline.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            return _model?.GetDeclaredSymbol(node, cancellationToken);
+        }
+    }
+
+    /// <summary>One way a declaration change reaches other files, with the cause an error in such a file names.</summary>
+    private abstract record Route(Cause Cause)
+    {
+        /// <summary>The files that use <paramref name="Symbol"/>, and the files that implement or override it when asked.</summary>
+        public sealed record BySymbol(ISymbol Symbol, bool IncludesImplementations, Cause Cause) : Route(Cause);
+
+        /// <summary>The files that declare a type deriving from <paramref name="Type"/> or, for an interface, implementing it.</summary>
+        public sealed record ByDerivedTypes(INamedTypeSymbol Type, Cause Cause) : Route(Cause);
+
+        /// <summary>The files whose text holds <paramref name="Name"/>, for a change code can reach without naming a symbol Roslyn finds.</summary>
+        public sealed record ByName(string Name, Cause Cause) : Route(Cause);
+    }
 }

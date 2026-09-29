@@ -340,6 +340,66 @@ public class CheckerTests
         Assert.Equal(new Cause.Removed("public static implicit operator Result<T>(T value)"), error.Cause);
     }
 
+    [Fact]
+    public async Task A_signature_change_inside_an_if_DEBUG_region_breaks_its_callers()
+    {
+        // The engine evaluates the Debug configuration, so DEBUG is defined and the region is compiled.
+        await using var engine = await StartWithAsync(
+            ("Lib/Trace.cs", "namespace Lib;\n\npublic static class Trace\n{\n#if DEBUG\n    public static int Write(int value) => value;\n#endif\n}\n"),
+            ("App/UseTrace.cs", "namespace App;\n\npublic static class UseTrace\n{\n    public static int Run() => Lib.Trace.Write(1);\n}\n"));
+        engine.Repo.Replace("Lib/Trace.cs", "Write(int value) => value;", "Write(string value) => value.Length;");
+        var report = await engine.CheckAsync("Lib/Trace.cs");
+        Assert.Equal("CS1503", Assert.Single(report.Errors, e => e.Error.Path == "App/UseTrace.cs").Error.Id);
+        Assert.Equal(["Lib"], report.DeclarationsChangedIn);
+    }
+
+    [Fact]
+    public async Task A_member_removed_inside_one_target_framework_s_region_breaks_its_callers()
+    {
+        // Multi builds for net8.0 and net10.0, and only net10.0 defines NET10_0_OR_GREATER.
+        await using var engine = await StartWithAsync(
+            ("Multi/Shape.cs", "namespace Multi;\n\npublic static class Shape\n{\n    public static int Sides(int count) => count;\n\n#if NET10_0_OR_GREATER\n    public static int Area(int side) => side * side;\n#endif\n}\n"),
+            ("Multi/UseShape.cs", "namespace Multi;\n\npublic static class UseShape\n{\n#if NET10_0_OR_GREATER\n    public static int Run() => Shape.Area(2);\n#endif\n}\n"));
+        engine.Repo.Replace("Multi/Shape.cs", "#if NET10_0_OR_GREATER\n    public static int Area(int side) => side * side;\n#endif\n", "");
+        var report = await engine.CheckAsync("Multi/Shape.cs");
+        var error = Assert.Single(report.Errors);
+        Assert.Equal("Multi/UseShape.cs", error.Error.Path);
+        Assert.Equal(new Cause.Removed("public static int Area(int side)"), error.Cause);
+    }
+
+    [Fact]
+    public async Task A_rename_beside_a_member_in_an_active_region_names_the_renamed_member()
+    {
+        await using var engine = await StartWithAsync(
+            ("Lib/Calc.cs", "namespace Lib;\n\npublic class Calc\n{\n#if DEBUG\n    public int Mul(int a, int b) => a * b;\n#endif\n\n    public int Add(int a, int b) => a + b;\n}\n"));
+        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        var report = await engine.CheckAsync("Lib/Calc.cs");
+
+        // The region is active in both versions, so Mul did not change and only the rename can be the cause.
+        Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], report.Errors.Select(e => e.Error.Path).Order(StringComparer.Ordinal));
+        Assert.All(report.Errors, e => Assert.Equal(new Cause.Removed("public int Add(int a, int b)"), e.Cause));
+    }
+
+    [Fact]
+    public async Task A_file_two_changes_reach_gets_the_cause_of_the_change_in_the_first_path()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        // App/Program.cs calls both Calc.Add and IGreeter.Greet, so both changes reach it.
+        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
+        var addRemoved = new Cause.Removed("public int Add(int a, int b)");
+
+        // A file has one cause, so both of Program.cs's errors (the missing argument and the missing Add) name it.
+        var report = await engine.CheckAllAsync();
+        var inProgram = report.Errors.Where(e => e.Error.Path == "App/Program.cs").ToList();
+        Assert.Equal(2, inProgram.Count);
+        Assert.All(inProgram, e => Assert.Equal(addRemoved, e.Cause));
+
+        // The order the targets arrive in does not decide it: Lib/Calc.cs comes before Lib/Greeting.cs by path.
+        var precise = Assert.IsType<Reach.Precise>(await engine.ReachAsync("Lib/Greeting.cs", "Lib/Calc.cs"));
+        Assert.Equal(addRemoved, precise.Causes[engine.Repo.PathOf("App/Program.cs")]);
+    }
+
     /// <summary>The standard fixture with <paramref name="files"/> written and committed, so they are part of HEAD.</summary>
     private static async Task<InProcessEngine> StartWithAsync(params (string Path, string Content)[] files)
     {

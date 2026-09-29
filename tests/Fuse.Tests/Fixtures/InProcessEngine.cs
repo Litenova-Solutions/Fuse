@@ -58,19 +58,19 @@ internal sealed class InProcessEngine : IAsyncDisposable
     public CheckScope.Files Files(params string[] files) => new([.. files.Select(Repo.PathOf)]);
 
     /// <summary>
-    ///     The reach of the declaration changes in one repository-relative file, over the projects the checker reaches
-    ///     from it: the file's owners and their dependents, loaded first.
+    ///     The reach of the declaration changes in repository-relative files, passed to the reach in the order given, over
+    ///     the projects the checker reaches from them: the files' owners and their dependents, loaded first.
     /// </summary>
-    public async Task<Reach> ReachAsync(string relative)
+    public async Task<Reach> ReachAsync(params string[] relatives)
     {
         var graph = Workspace.Graph;
-        var path = Repo.PathOf(relative);
-        var owners = graph.OwnersOf(path).ToList();
+        var paths = relatives.Select(Repo.PathOf).ToList();
+        var owners = paths.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
         await Workspace.EnsureLoadedAsync(owners, TestContext.Current.CancellationToken);
         var dependents = owners.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
             .Where(p => !owners.Any(o => o.Path == p.Path)).ToList();
         await Workspace.EnsureLoadedAsync(dependents, TestContext.Current.CancellationToken);
-        return await new ChangeReach(Workspace).ReachAsync([path], [.. owners, .. dependents], TestContext.Current.CancellationToken);
+        return await new ChangeReach(Workspace).ReachAsync(paths, [.. owners, .. dependents], TestContext.Current.CancellationToken);
     }
 
     public async ValueTask DisposeAsync()

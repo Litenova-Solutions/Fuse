@@ -88,7 +88,7 @@
         "Reports the compiler errors an edit introduced, including breaks in dependent projects",
         "Runs only the tests a change can reach and prints only failures",
         "Runs through hooks in Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode",
-        "Serves the same three operations as an MCP server for hosts without hooks",
+        "Serves the same three operations as an MCP server for MCP hosts without hooks",
         "Runs locally with no telemetry"
       ],
       "author": { "@id": "https://fuse.codes/#publisher" },
@@ -167,7 +167,7 @@
           <p class="x"><b>10.0x</b> faster</p>
         </div>
       </div>
-      <p class="proof"><b>1</b> compiler error missed across 120 generated edits.</p>
+      <p class="proof"><b>1</b> compiler error missed in 120 generated cases (168 edits).</p>
     </section>
 
     <section class="section" aria-labelledby="test-heading">
@@ -202,7 +202,7 @@
           <p class="x"><b>6.6x</b> faster</p>
         </div>
       </div>
-      <p class="proof"><b>0</b> failing tests missed across 40 generated changes; in 2 of them hundreds of tests fail and the list is too long to match name by name. <a href="/results">How it was measured</a></p>
+      <p class="proof"><b>0</b> failing tests missed across 40 generated changes, 26 of which made tests fail; 2 of those made too many fail (126 and 252) to match name by name. <a href="/results">How it was measured</a></p>
     </section>
   </main>
 

@@ -2,7 +2,7 @@
 
 Near-instant compiler feedback for AI coding agents on .NET.
 
-Fuse keeps your solution compiled in memory with Roslyn and checks each edit against it, up to 10.0x faster than `dotnet build`. The agent gets only the errors its edit introduced, including breaks in other projects, and when it runs `dotnet test`, only the tests the change can reach run and only failures are printed.
+Fuse keeps your solution compiled in memory with Roslyn and checks each edit against it, up to 7.4x faster than `dotnet build`. The agent gets only the errors its edit introduced, including breaks in other projects, and when it runs `dotnet test`, only the tests the change can reach run and only failures are printed.
 
 Fuse needs the .NET 10 SDK. Install the tool, then run `fuse init` in your repository to register its hooks with your agent:
 

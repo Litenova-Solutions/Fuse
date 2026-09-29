@@ -2,7 +2,7 @@
   "suite": "correctness",
   "repo": "fixture",
   "commit": "6c4e298f4c770038ea1d01cab2359f545e7c06fc",
-  "fuseBuild": "5.1.0/3d2eb077b366434db8f94692d69b2bae",
+  "fuseBuild": "5.1.0/a4bde0171a0649da8dec851447e6299b",
   "seed": 1,
   "requested": 30,
   "cases": 30,
@@ -10,19 +10,19 @@
   "neutral": 4,
   "falseGreen": 0,
   "falseRedCases": 0,
-  "falseRedDiagnostics": 0,
-  "unverifiableDiagnostics": 37,
-  "deferredByCompilerDiagnostics": 4,
-  "messageMismatchDiagnostics": 12,
-  "contextLines": 66,
-  "contextBytes": 3219,
-  "outputBytes": 20989,
+  "falseRedErrors": 0,
+  "unverifiableErrors": 42,
+  "deferredByCompilerErrors": 4,
+  "messageMismatchErrors": 12,
+  "causeLines": 71,
+  "causeBytes": 3461,
+  "outputBytes": 23140,
   "partialMisses": 0,
   "exactAgreement": 30,
   "fileAgreement": 30,
-  "fuseFailures": 0,
-  "fuseMedianMs": 178.7854,
-  "buildMedianSeconds": 1.1416610500000002,
+  "fuseUnanswered": 0,
+  "fuseMedianMs": 184.12965,
+  "buildMedianSeconds": 1.1416349000000001,
   "headBuildErrors": 0,
   "treeCleanAfter": true,
   "details": [
@@ -40,8 +40,8 @@
       "fuse": [],
       "fuseCount": 0,
       "fuseExit": 0,
-      "fuseMilliseconds": 6666.1704,
-      "buildSeconds": 1.1999793,
+      "fuseMilliseconds": 6360.2092,
+      "buildSeconds": 1.228822,
       "verdict": "agree-clean",
       "falseRed": [],
       "missed": [],
@@ -50,9 +50,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 103,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 110,
+      "causeBytes": 0
     },
     {
       "index": 1,
@@ -76,8 +76,8 @@
       ],
       "fuseCount": 4,
       "fuseExit": 1,
-      "fuseMilliseconds": 618.3429,
-      "buildSeconds": 0.8657851,
+      "fuseMilliseconds": 630.381,
+      "buildSeconds": 0.8384508,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -89,9 +89,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 2,
-      "outputBytes": 963,
-      "contextBytes": 63
+      "causeLines": 2,
+      "outputBytes": 970,
+      "causeBytes": 63
     },
     {
       "index": 2,
@@ -111,8 +111,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 268.8145,
-      "buildSeconds": 1.2155829,
+      "fuseMilliseconds": 247.2451,
+      "buildSeconds": 1.1698285,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -121,9 +121,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 1,
-      "outputBytes": 328,
-      "contextBytes": 34
+      "causeLines": 1,
+      "outputBytes": 335,
+      "causeBytes": 34
     },
     {
       "index": 3,
@@ -166,8 +166,8 @@
       ],
       "fuseCount": 9,
       "fuseExit": 1,
-      "fuseMilliseconds": 1292.6944,
-      "buildSeconds": 1.0812942,
+      "fuseMilliseconds": 1249.9782,
+      "buildSeconds": 1.129351,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -187,9 +187,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 5,
-      "outputBytes": 1731,
-      "contextBytes": 316
+      "causeLines": 5,
+      "outputBytes": 1738,
+      "causeBytes": 316
     },
     {
       "index": 4,
@@ -205,23 +205,28 @@
         "src/Core/TextTools.cs(21,22): error CS0111: Type \u0027TextTools\u0027 already defines a member called \u0027Slugify\u0027 with the same parameter types"
       ],
       "fuse": [
-        "src/Core/TextTools.cs(21,22): error CS0111: Type \u0027TextTools\u0027 already defines a member called \u0027Slugify\u0027 with the same parameter types"
+        "src/Core/TextTools.cs(21,22): error CS0111: Type \u0027TextTools\u0027 already defines a member called \u0027Slugify\u0027 with the same parameter types",
+        "src/Services/ReportBuilder.cs(7,77): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.TextTools.Slugify(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\TextTools.cs(7)]\u0027 and \u0027Core.TextTools.Slugify(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\TextTools.cs(21)]\u0027",
+        "tests/Core.Tests/TextToolsTests.cs(7,77): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.TextTools.Slugify(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\TextTools.cs(7)]\u0027 and \u0027Core.TextTools.Slugify(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\TextTools.cs(21)]\u0027"
       ],
-      "fuseCount": 1,
+      "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 235.1367,
-      "buildSeconds": 0.7604576,
+      "fuseMilliseconds": 326.8748,
+      "buildSeconds": 0.7465307,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
-      "unverifiable": [],
+      "unverifiable": [
+        "src/Services/ReportBuilder.cs(7,77): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.TextTools.Slugify(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\TextTools.cs(7)]\u0027 and \u0027Core.TextTools.Slugify(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\TextTools.cs(21)]\u0027",
+        "tests/Core.Tests/TextToolsTests.cs(7,77): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.TextTools.Slugify(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\TextTools.cs(7)]\u0027 and \u0027Core.TextTools.Slugify(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\TextTools.cs(21)]\u0027"
+      ],
       "deferredByCompiler": [],
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 174,
-      "contextBytes": 0
+      "causeLines": 2,
+      "outputBytes": 1007,
+      "causeBytes": 105
     },
     {
       "index": 5,
@@ -261,8 +266,8 @@
       ],
       "fuseCount": 5,
       "fuseExit": 1,
-      "fuseMilliseconds": 238.7886,
-      "buildSeconds": 1.4813126,
+      "fuseMilliseconds": 269.9564,
+      "buildSeconds": 1.4729498,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -275,9 +280,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 2,
-      "outputBytes": 876,
-      "contextBytes": 65
+      "causeLines": 2,
+      "outputBytes": 883,
+      "causeBytes": 65
     },
     {
       "index": 6,
@@ -293,8 +298,8 @@
       "fuse": [],
       "fuseCount": 0,
       "fuseExit": 0,
-      "fuseMilliseconds": 182.6095,
-      "buildSeconds": 1.3387672,
+      "fuseMilliseconds": 170.4033,
+      "buildSeconds": 1.2447864,
       "verdict": "agree-clean",
       "falseRed": [],
       "missed": [],
@@ -303,9 +308,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 103,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 110,
+      "causeBytes": 0
     },
     {
       "index": 7,
@@ -346,8 +351,8 @@
       ],
       "fuseCount": 8,
       "fuseExit": 1,
-      "fuseMilliseconds": 187.2656,
-      "buildSeconds": 1.0939864,
+      "fuseMilliseconds": 232.7777,
+      "buildSeconds": 1.1882655,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -362,9 +367,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 4,
-      "outputBytes": 1666,
-      "contextBytes": 255
+      "causeLines": 4,
+      "outputBytes": 1673,
+      "causeBytes": 255
     },
     {
       "index": 8,
@@ -416,8 +421,8 @@
       ],
       "fuseCount": 16,
       "fuseExit": 1,
-      "fuseMilliseconds": 272.9144,
-      "buildSeconds": 1.1305267,
+      "fuseMilliseconds": 231.2865,
+      "buildSeconds": 1.1247911,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -440,9 +445,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 6,
-      "outputBytes": 2513,
-      "contextBytes": 160
+      "causeLines": 6,
+      "outputBytes": 2520,
+      "causeBytes": 160
     },
     {
       "index": 9,
@@ -463,8 +468,8 @@
       ],
       "fuseCount": 2,
       "fuseExit": 1,
-      "fuseMilliseconds": 164.0417,
-      "buildSeconds": 0.7770006,
+      "fuseMilliseconds": 221.9184,
+      "buildSeconds": 0.834903,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -475,9 +480,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 1,
-      "outputBytes": 367,
-      "contextBytes": 45
+      "causeLines": 1,
+      "outputBytes": 374,
+      "causeBytes": 45
     },
     {
       "index": 10,
@@ -500,8 +505,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 197.2404,
-      "buildSeconds": 1.2991335,
+      "fuseMilliseconds": 243.7085,
+      "buildSeconds": 1.3081851,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -512,9 +517,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 3,
-      "outputBytes": 836,
-      "contextBytes": 173
+      "causeLines": 3,
+      "outputBytes": 843,
+      "causeBytes": 173
     },
     {
       "index": 11,
@@ -538,8 +543,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 159.5879,
-      "buildSeconds": 1.0784319,
+      "fuseMilliseconds": 190.7041,
+      "buildSeconds": 1.1330116,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -552,9 +557,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 3,
-      "outputBytes": 706,
-      "contextBytes": 191
+      "causeLines": 3,
+      "outputBytes": 713,
+      "causeBytes": 191
     },
     {
       "index": 12,
@@ -574,8 +579,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 176.2546,
-      "buildSeconds": 0.7679749,
+      "fuseMilliseconds": 175.4119,
+      "buildSeconds": 0.7816662,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -584,9 +589,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 267,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 274,
+      "causeBytes": 0
     },
     {
       "index": 13,
@@ -606,8 +611,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 169.3301,
-      "buildSeconds": 1.251215,
+      "fuseMilliseconds": 159.4265,
+      "buildSeconds": 1.4108586,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -618,9 +623,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 1,
-      "outputBytes": 252,
-      "contextBytes": 32
+      "causeLines": 1,
+      "outputBytes": 259,
+      "causeBytes": 32
     },
     {
       "index": 14,
@@ -640,8 +645,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 154.7319,
-      "buildSeconds": 1.0775402,
+      "fuseMilliseconds": 168.3168,
+      "buildSeconds": 1.1942665,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -650,9 +655,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 1,
-      "outputBytes": 261,
-      "contextBytes": 52
+      "causeLines": 1,
+      "outputBytes": 268,
+      "causeBytes": 52
     },
     {
       "index": 15,
@@ -677,20 +682,24 @@
         "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
         "src/App/Program.cs(8,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
         "src/Core/Money.cs(7,21): error CS0111: Type \u0027Money\u0027 already defines a member called \u0027Zero\u0027 with the same parameter types",
+        "src/Services/OrderService.cs(18,27): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.Money.Zero(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(5)]\u0027 and \u0027Core.Money.Zero(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(7)]\u0027",
+        "tests/Core.Tests/MoneyTests.cs(9,58): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.Money.Zero(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(5)]\u0027 and \u0027Core.Money.Zero(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(7)]\u0027",
         "tests/Services.Tests/ReportBuilderTests.cs(7,63): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
         "tests/Services.Tests/ReportBuilderTests.cs(8,70): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
         "tests/Services.Tests/ReportBuilderTests.cs(9,76): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context"
       ],
-      "fuseCount": 6,
+      "fuseCount": 8,
       "fuseExit": 1,
-      "fuseMilliseconds": 166.791,
-      "buildSeconds": 0.7470213,
+      "fuseMilliseconds": 203.9509,
+      "buildSeconds": 0.8281235,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
       "unverifiable": [
         "src/App/Program.cs(7,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
         "src/App/Program.cs(8,19): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
+        "src/Services/OrderService.cs(18,27): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.Money.Zero(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(5)]\u0027 and \u0027Core.Money.Zero(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(7)]\u0027",
+        "tests/Core.Tests/MoneyTests.cs(9,58): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.Money.Zero(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(5)]\u0027 and \u0027Core.Money.Zero(string) [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(7)]\u0027",
         "tests/Services.Tests/ReportBuilderTests.cs(7,63): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
         "tests/Services.Tests/ReportBuilderTests.cs(8,70): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context",
         "tests/Services.Tests/ReportBuilderTests.cs(9,76): error CS0103: The name \u0027ReportBuilder\u0027 does not exist in the current context"
@@ -699,9 +708,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 5,
-      "outputBytes": 1058,
-      "contextBytes": 224
+      "causeLines": 7,
+      "outputBytes": 1788,
+      "causeBytes": 330
     },
     {
       "index": 16,
@@ -725,8 +734,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 169.7845,
-      "buildSeconds": 1.2438764,
+      "fuseMilliseconds": 182.347,
+      "buildSeconds": 1.1722849,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -735,9 +744,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 3,
-      "outputBytes": 1023,
-      "contextBytes": 122
+      "causeLines": 3,
+      "outputBytes": 1030,
+      "causeBytes": 122
     },
     {
       "index": 17,
@@ -760,8 +769,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 161.9782,
-      "buildSeconds": 1.241012,
+      "fuseMilliseconds": 173.275,
+      "buildSeconds": 1.2014885,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -772,9 +781,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 3,
-      "outputBytes": 836,
-      "contextBytes": 173
+      "causeLines": 3,
+      "outputBytes": 843,
+      "causeBytes": 173
     },
     {
       "index": 18,
@@ -796,8 +805,8 @@
       ],
       "fuseCount": 2,
       "fuseExit": 1,
-      "fuseMilliseconds": 169.6654,
-      "buildSeconds": 1.1101847,
+      "fuseMilliseconds": 173.9099,
+      "buildSeconds": 1.1368878,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -806,9 +815,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 2,
-      "outputBytes": 441,
-      "contextBytes": 113
+      "causeLines": 2,
+      "outputBytes": 448,
+      "causeBytes": 113
     },
     {
       "index": 19,
@@ -824,8 +833,8 @@
       "fuse": [],
       "fuseCount": 0,
       "fuseExit": 0,
-      "fuseMilliseconds": 156.8682,
-      "buildSeconds": 1.2946267,
+      "fuseMilliseconds": 156.2049,
+      "buildSeconds": 1.3419433,
       "verdict": "agree-clean",
       "falseRed": [],
       "missed": [],
@@ -834,9 +843,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 103,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 110,
+      "causeBytes": 0
     },
     {
       "index": 20,
@@ -852,8 +861,8 @@
       "fuse": [],
       "fuseCount": 0,
       "fuseExit": 0,
-      "fuseMilliseconds": 174.2653,
-      "buildSeconds": 1.4797874,
+      "fuseMilliseconds": 170.1668,
+      "buildSeconds": 1.4385883,
       "verdict": "agree-clean",
       "falseRed": [],
       "missed": [],
@@ -862,9 +871,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 99,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 106,
+      "causeBytes": 0
     },
     {
       "index": 21,
@@ -888,8 +897,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 175.6251,
-      "buildSeconds": 1.2157127,
+      "fuseMilliseconds": 179.6682,
+      "buildSeconds": 1.1434366,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -898,9 +907,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 3,
-      "outputBytes": 723,
-      "contextBytes": 122
+      "causeLines": 3,
+      "outputBytes": 730,
+      "causeBytes": 122
     },
     {
       "index": 22,
@@ -930,8 +939,8 @@
       ],
       "fuseCount": 6,
       "fuseExit": 1,
-      "fuseMilliseconds": 181.3162,
-      "buildSeconds": 1.1871464,
+      "fuseMilliseconds": 150.2452,
+      "buildSeconds": 1.1309572,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -940,9 +949,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 6,
-      "outputBytes": 1043,
-      "contextBytes": 245
+      "causeLines": 6,
+      "outputBytes": 1050,
+      "causeBytes": 245
     },
     {
       "index": 23,
@@ -964,8 +973,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 229.1385,
-      "buildSeconds": 1.1533484,
+      "fuseMilliseconds": 212.6521,
+      "buildSeconds": 1.1401383,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -977,9 +986,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 3,
-      "outputBytes": 802,
-      "contextBytes": 164
+      "causeLines": 3,
+      "outputBytes": 809,
+      "causeBytes": 164
     },
     {
       "index": 24,
@@ -1006,8 +1015,8 @@
       ],
       "fuseCount": 2,
       "fuseExit": 1,
-      "fuseMilliseconds": 183.3537,
-      "buildSeconds": 1.0855726,
+      "fuseMilliseconds": 183.5763,
+      "buildSeconds": 1.1069566,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1018,9 +1027,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 2,
-      "outputBytes": 458,
-      "contextBytes": 88
+      "causeLines": 2,
+      "outputBytes": 465,
+      "causeBytes": 88
     },
     {
       "index": 25,
@@ -1049,8 +1058,8 @@
       ],
       "fuseCount": 4,
       "fuseExit": 1,
-      "fuseMilliseconds": 194.4732,
-      "buildSeconds": 0.7560543,
+      "fuseMilliseconds": 184.683,
+      "buildSeconds": 0.7516074,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1063,9 +1072,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 3,
-      "outputBytes": 841,
-      "contextBytes": 191
+      "causeLines": 3,
+      "outputBytes": 848,
+      "causeBytes": 191
     },
     {
       "index": 26,
@@ -1104,8 +1113,8 @@
       ],
       "fuseCount": 7,
       "fuseExit": 1,
-      "fuseMilliseconds": 208.3229,
-      "buildSeconds": 1.1132003,
+      "fuseMilliseconds": 194.8964,
+      "buildSeconds": 1.1431315,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1120,9 +1129,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 4,
-      "outputBytes": 1530,
-      "contextBytes": 217
+      "causeLines": 4,
+      "outputBytes": 1537,
+      "causeBytes": 217
     },
     {
       "index": 27,
@@ -1138,23 +1147,26 @@
         "src/Core/Money.cs(18,13): error CS0111: Type \u0027Money\u0027 already defines a member called \u0027IsZero\u0027 with the same parameter types"
       ],
       "fuse": [
-        "src/Core/Money.cs(18,13): error CS0111: Type \u0027Money\u0027 already defines a member called \u0027IsZero\u0027 with the same parameter types"
+        "src/Core/Money.cs(18,13): error CS0111: Type \u0027Money\u0027 already defines a member called \u0027IsZero\u0027 with the same parameter types",
+        "tests/Core.Tests/MoneyTests.cs(9,70): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.Money.IsZero() [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(16)]\u0027 and \u0027Core.Money.IsZero() [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(18)]\u0027"
       ],
-      "fuseCount": 1,
+      "fuseCount": 2,
       "fuseExit": 1,
-      "fuseMilliseconds": 152.7202,
-      "buildSeconds": 0.7474191,
+      "fuseMilliseconds": 160.6838,
+      "buildSeconds": 0.7430148,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
-      "unverifiable": [],
+      "unverifiable": [
+        "tests/Core.Tests/MoneyTests.cs(9,70): error CS0121: The call is ambiguous between the following methods or properties: \u0027Core.Money.IsZero() [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(16)]\u0027 and \u0027Core.Money.IsZero() [C:\\Projects\\Fuse\\evals\\.work\\fixture\\src\\Core\\Money.cs(18)]\u0027"
+      ],
       "deferredByCompiler": [],
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 165,
-      "contextBytes": 0
+      "causeLines": 1,
+      "outputBytes": 564,
+      "causeBytes": 31
     },
     {
       "index": 28,
@@ -1176,8 +1188,8 @@
       ],
       "fuseCount": 2,
       "fuseExit": 1,
-      "fuseMilliseconds": 151.7546,
-      "buildSeconds": 1.1527954,
+      "fuseMilliseconds": 159.8753,
+      "buildSeconds": 1.1067576,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1186,9 +1198,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 2,
-      "outputBytes": 441,
-      "contextBytes": 113
+      "causeLines": 2,
+      "outputBytes": 448,
+      "causeBytes": 113
     },
     {
       "index": 29,
@@ -1208,8 +1220,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 167.0471,
-      "buildSeconds": 1.3397021,
+      "fuseMilliseconds": 157.6844,
+      "buildSeconds": 1.3584586,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1218,9 +1230,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 1,
-      "outputBytes": 280,
-      "contextBytes": 61
+      "causeLines": 1,
+      "outputBytes": 287,
+      "causeBytes": 61
     }
   ]
 }

@@ -20,7 +20,7 @@ repo <fuse>\evals\.work\fixture, solution Fixture.sln: 3 code project(s), 2 test
 [correctness] fuse warm-up: fuse: no errors introduced (0 file(s) checked) (1158 ms)
 [correctness] 1/2 agree-clean  truth=  0 fuse=  0   5184 ms  change-return-type src/Services/ReportBuilder.cs
 [correctness] 2/2 agree        truth=  2 fuse=  4    505 ms  remove-member src/Services/OrderService.cs
-[correctness] fixture: 2 cases, 1 breaking, false green 0, false-red cases 0, unverifiable diagnostics 2, deferred by csc 0, message mismatches 0, partial 0, exact 2, file agreement 2, tree clean True
+[correctness] fixture: 2 cases, 1 breaking, false green 0, false-red cases 0, unverifiable errors 2, deferred by csc 0, message mismatches 0, partial 0, exact 2, file agreement 2, tree clean True
 wrote evals\results\correctness-fixture-20260929-0452.json
 ```
 

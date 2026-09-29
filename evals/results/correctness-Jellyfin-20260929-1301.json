@@ -2,7 +2,7 @@
   "suite": "correctness",
   "repo": "Jellyfin",
   "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
-  "fuseBuild": "5.1.0/3d2eb077b366434db8f94692d69b2bae",
+  "fuseBuild": "5.1.0/a4bde0171a0649da8dec851447e6299b",
   "seed": 1,
   "requested": 30,
   "cases": 30,
@@ -10,19 +10,19 @@
   "neutral": 3,
   "falseGreen": 0,
   "falseRedCases": 0,
-  "falseRedDiagnostics": 0,
-  "unverifiableDiagnostics": 140,
-  "deferredByCompilerDiagnostics": 40,
-  "messageMismatchDiagnostics": 7,
-  "contextLines": 102,
-  "contextBytes": 6151,
-  "outputBytes": 59760,
+  "falseRedErrors": 0,
+  "unverifiableErrors": 140,
+  "deferredByCompilerErrors": 40,
+  "messageMismatchErrors": 7,
+  "causeLines": 102,
+  "causeBytes": 6151,
+  "outputBytes": 60093,
   "partialMisses": 0,
   "exactAgreement": 30,
   "fileAgreement": 30,
-  "fuseFailures": 0,
-  "fuseMedianMs": 704.00305,
-  "buildMedianSeconds": 4.2641457,
+  "fuseUnanswered": 0,
+  "fuseMedianMs": 604.52075,
+  "buildMedianSeconds": 4.20488075,
   "headBuildErrors": 0,
   "treeCleanAfter": true,
   "details": [
@@ -50,8 +50,8 @@
       ],
       "fuseCount": 4,
       "fuseExit": 1,
-      "fuseMilliseconds": 19140.5751,
-      "buildSeconds": 9.8013534,
+      "fuseMilliseconds": 19338.4591,
+      "buildSeconds": 11.8617024,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -60,9 +60,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 1,
-      "outputBytes": 867,
-      "contextBytes": 83
+      "causeLines": 1,
+      "outputBytes": 874,
+      "causeBytes": 83
     },
     {
       "index": 1,
@@ -85,8 +85,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 18093.5606,
-      "buildSeconds": 2.3212911,
+      "fuseMilliseconds": 15905.6334,
+      "buildSeconds": 2.4043658,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -99,9 +99,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 2,
-      "outputBytes": 754,
-      "contextBytes": 179
+      "causeLines": 2,
+      "outputBytes": 761,
+      "causeBytes": 179
     },
     {
       "index": 2,
@@ -128,8 +128,8 @@
       ],
       "fuseCount": 5,
       "fuseExit": 1,
-      "fuseMilliseconds": 548.904,
-      "buildSeconds": 2.0668829,
+      "fuseMilliseconds": 462.2615,
+      "buildSeconds": 2.2365372,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -142,9 +142,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 2,
-      "outputBytes": 990,
-      "contextBytes": 165
+      "causeLines": 2,
+      "outputBytes": 997,
+      "causeBytes": 165
     },
     {
       "index": 3,
@@ -179,8 +179,8 @@
       ],
       "fuseCount": 4,
       "fuseExit": 1,
-      "fuseMilliseconds": 6419.6329,
-      "buildSeconds": 1.0423211,
+      "fuseMilliseconds": 6521.136,
+      "buildSeconds": 1.3463116,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -194,9 +194,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 940,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 947,
+      "causeBytes": 0
     },
     {
       "index": 4,
@@ -218,8 +218,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 266.6655,
-      "buildSeconds": 12.8247283,
+      "fuseMilliseconds": 616.3981,
+      "buildSeconds": 13.9760298,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -232,9 +232,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 589,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 673,
+      "causeBytes": 0
     },
     {
       "index": 5,
@@ -285,8 +285,8 @@
       ],
       "fuseCount": 37,
       "fuseExit": 1,
-      "fuseMilliseconds": 1508.9758,
-      "buildSeconds": 1.0728646,
+      "fuseMilliseconds": 1430.5892,
+      "buildSeconds": 1.489505,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -316,9 +316,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 10,
-      "outputBytes": 6468,
-      "contextBytes": 1429
+      "causeLines": 10,
+      "outputBytes": 6460,
+      "causeBytes": 1429
     },
     {
       "index": 6,
@@ -360,8 +360,8 @@
       ],
       "fuseCount": 50,
       "fuseExit": 1,
-      "fuseMilliseconds": 39526.7022,
-      "buildSeconds": 2.4190906,
+      "fuseMilliseconds": 36064.7061,
+      "buildSeconds": 2.0334122,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -390,9 +390,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 10,
-      "outputBytes": 4684,
-      "contextBytes": 478
+      "causeLines": 10,
+      "outputBytes": 4676,
+      "causeBytes": 478
     },
     {
       "index": 7,
@@ -446,8 +446,8 @@
       ],
       "fuseCount": 15,
       "fuseExit": 1,
-      "fuseMilliseconds": 1014.0894,
-      "buildSeconds": 9.5147255,
+      "fuseMilliseconds": 578.6355,
+      "buildSeconds": 9.7069473,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -464,9 +464,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 1,
-      "outputBytes": 3219,
-      "contextBytes": 44
+      "causeLines": 1,
+      "outputBytes": 3243,
+      "causeBytes": 44
     },
     {
       "index": 8,
@@ -486,8 +486,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 237.6856,
-      "buildSeconds": 9.6757811,
+      "fuseMilliseconds": 225.6545,
+      "buildSeconds": 10.6834135,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -496,9 +496,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 345,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 352,
+      "causeBytes": 0
     },
     {
       "index": 9,
@@ -521,8 +521,8 @@
       ],
       "fuseCount": 4,
       "fuseExit": 1,
-      "fuseMilliseconds": 302.6155,
-      "buildSeconds": 4.286373,
+      "fuseMilliseconds": 339.7733,
+      "buildSeconds": 4.4070797,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -535,9 +535,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 902,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 909,
+      "causeBytes": 0
     },
     {
       "index": 10,
@@ -572,8 +572,8 @@
       ],
       "fuseCount": 16,
       "fuseExit": 1,
-      "fuseMilliseconds": 565.8232,
-      "buildSeconds": 1.6923094,
+      "fuseMilliseconds": 646.5988,
+      "buildSeconds": 2.1079868,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -598,9 +598,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 10,
-      "outputBytes": 4074,
-      "contextBytes": 609
+      "causeLines": 10,
+      "outputBytes": 4066,
+      "causeBytes": 609
     },
     {
       "index": 11,
@@ -620,8 +620,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 383.1171,
-      "buildSeconds": 9.651737,
+      "fuseMilliseconds": 385.49,
+      "buildSeconds": 7.2431967,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -630,9 +630,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 556,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 563,
+      "causeBytes": 0
     },
     {
       "index": 12,
@@ -648,8 +648,8 @@
       "fuse": [],
       "fuseCount": 0,
       "fuseExit": 0,
-      "fuseMilliseconds": 258.4708,
-      "buildSeconds": 18.2401313,
+      "fuseMilliseconds": 253.3965,
+      "buildSeconds": 18.0661145,
       "verdict": "agree-clean",
       "falseRed": [],
       "missed": [],
@@ -658,9 +658,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 107,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 114,
+      "causeBytes": 0
     },
     {
       "index": 13,
@@ -686,8 +686,8 @@
       ],
       "fuseCount": 7,
       "fuseExit": 1,
-      "fuseMilliseconds": 734.3448,
-      "buildSeconds": 4.2419184,
+      "fuseMilliseconds": 562.0878,
+      "buildSeconds": 4.0026818,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -703,9 +703,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 7,
-      "outputBytes": 1432,
-      "contextBytes": 307
+      "causeLines": 7,
+      "outputBytes": 1439,
+      "causeBytes": 307
     },
     {
       "index": 14,
@@ -746,8 +746,8 @@
       ],
       "fuseCount": 43,
       "fuseExit": 1,
-      "fuseMilliseconds": 4431.9058,
-      "buildSeconds": 13.0565871,
+      "fuseMilliseconds": 4425.5138,
+      "buildSeconds": 13.8888558,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -775,9 +775,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 10,
-      "outputBytes": 4589,
-      "contextBytes": 699
+      "causeLines": 10,
+      "outputBytes": 4581,
+      "causeBytes": 699
     },
     {
       "index": 15,
@@ -793,8 +793,8 @@
       "fuse": [],
       "fuseCount": 0,
       "fuseExit": 0,
-      "fuseMilliseconds": 1704.308,
-      "buildSeconds": 27.015585,
+      "fuseMilliseconds": 1529.3321,
+      "buildSeconds": 26.7636529,
       "verdict": "agree-clean",
       "falseRed": [],
       "missed": [],
@@ -803,9 +803,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 128,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 135,
+      "causeBytes": 0
     },
     {
       "index": 16,
@@ -831,8 +831,8 @@
       ],
       "fuseCount": 4,
       "fuseExit": 1,
-      "fuseMilliseconds": 694.1249,
-      "buildSeconds": 23.652749,
+      "fuseMilliseconds": 649.0227,
+      "buildSeconds": 25.3167092,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -841,9 +841,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 4,
-      "outputBytes": 934,
-      "contextBytes": 211
+      "causeLines": 4,
+      "outputBytes": 941,
+      "causeBytes": 211
     },
     {
       "index": 17,
@@ -864,8 +864,8 @@
       ],
       "fuseCount": 2,
       "fuseExit": 1,
-      "fuseMilliseconds": 430.7302,
-      "buildSeconds": 25.2205937,
+      "fuseMilliseconds": 478.7004,
+      "buildSeconds": 24.9653582,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -876,9 +876,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 370,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 447,
+      "causeBytes": 0
     },
     {
       "index": 18,
@@ -900,8 +900,8 @@
       ],
       "fuseCount": 3,
       "fuseExit": 1,
-      "fuseMilliseconds": 226.3882,
-      "buildSeconds": 2.8087501,
+      "fuseMilliseconds": 268.1875,
+      "buildSeconds": 2.7215655,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -914,9 +914,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 588,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 677,
+      "causeBytes": 0
     },
     {
       "index": 19,
@@ -930,8 +930,8 @@
       ],
       "truth": [
         "MediaBrowser.Controller/Entities/Audio/Audio.cs(24,24): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
-        "MediaBrowser.Controller/Providers/AlbumInfo.cs(29,21): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
         "MediaBrowser.Controller/Providers/ArtistInfo.cs(14,21): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/AlbumInfo.cs(29,21): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
         "MediaBrowser.Controller/Entities/Audio/Audio.cs(139,16): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
         "MediaBrowser.Controller/Entities/AudioBook.cs(13,70): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)"
       ],
@@ -959,8 +959,8 @@
       ],
       "fuseCount": 25,
       "fuseExit": 1,
-      "fuseMilliseconds": 713.8812,
-      "buildSeconds": 1.758745,
+      "fuseMilliseconds": 564.8256,
+      "buildSeconds": 1.9701562,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -986,9 +986,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 10,
-      "outputBytes": 6366,
-      "contextBytes": 499
+      "causeLines": 10,
+      "outputBytes": 6358,
+      "causeBytes": 499
     },
     {
       "index": 20,
@@ -1021,8 +1021,8 @@
       ],
       "fuseCount": 8,
       "fuseExit": 1,
-      "fuseMilliseconds": 799.2434,
-      "buildSeconds": 1.3381851,
+      "fuseMilliseconds": 924.92,
+      "buildSeconds": 1.2580152,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1040,9 +1040,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 4,
-      "outputBytes": 1939,
-      "contextBytes": 163
+      "causeLines": 4,
+      "outputBytes": 1946,
+      "causeBytes": 163
     },
     {
       "index": 21,
@@ -1067,8 +1067,8 @@
       ],
       "fuseCount": 5,
       "fuseExit": 1,
-      "fuseMilliseconds": 420.0631,
-      "buildSeconds": 8.3684666,
+      "fuseMilliseconds": 396.4412,
+      "buildSeconds": 8.8037037,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1081,9 +1081,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 1120,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 1127,
+      "causeBytes": 0
     },
     {
       "index": 22,
@@ -1136,8 +1136,8 @@
       ],
       "fuseCount": 35,
       "fuseExit": 1,
-      "fuseMilliseconds": 1184.8454,
-      "buildSeconds": 1.0698127,
+      "fuseMilliseconds": 1032.8566,
+      "buildSeconds": 1.1106163,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1167,9 +1167,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 10,
-      "outputBytes": 4834,
-      "contextBytes": 389
+      "causeLines": 10,
+      "outputBytes": 4825,
+      "causeBytes": 389
     },
     {
       "index": 23,
@@ -1221,8 +1221,8 @@
       ],
       "fuseCount": 32,
       "fuseExit": 1,
-      "fuseMilliseconds": 1144.6994,
-      "buildSeconds": 1.8020171,
+      "fuseMilliseconds": 1331.1947,
+      "buildSeconds": 1.841214,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1252,9 +1252,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 10,
-      "outputBytes": 5148,
-      "contextBytes": 399
+      "causeLines": 10,
+      "outputBytes": 5139,
+      "causeBytes": 399
     },
     {
       "index": 24,
@@ -1300,8 +1300,8 @@
       ],
       "fuseCount": 38,
       "fuseExit": 1,
-      "fuseMilliseconds": 13156.3658,
-      "buildSeconds": 1.0656557,
+      "fuseMilliseconds": 11926.0705,
+      "buildSeconds": 1.0405371,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1331,9 +1331,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 10,
-      "outputBytes": 5474,
-      "contextBytes": 384
+      "causeLines": 10,
+      "outputBytes": 5465,
+      "causeBytes": 384
     },
     {
       "index": 25,
@@ -1349,8 +1349,8 @@
       "fuse": [],
       "fuseCount": 0,
       "fuseExit": 0,
-      "fuseMilliseconds": 846.6508,
-      "buildSeconds": 22.170263,
+      "fuseMilliseconds": 825.9433,
+      "buildSeconds": 23.9676102,
       "verdict": "agree-clean",
       "falseRed": [],
       "missed": [],
@@ -1359,9 +1359,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 118,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 125,
+      "causeBytes": 0
     },
     {
       "index": 26,
@@ -1382,8 +1382,8 @@
       ],
       "fuseCount": 2,
       "fuseExit": 1,
-      "fuseMilliseconds": 446.5804,
-      "buildSeconds": 6.8016503,
+      "fuseMilliseconds": 378.3315,
+      "buildSeconds": 7.1521403,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1394,9 +1394,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 630,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 637,
+      "causeBytes": 0
     },
     {
       "index": 27,
@@ -1416,8 +1416,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 449.5922,
-      "buildSeconds": 1.5116473,
+      "fuseMilliseconds": 443.8034,
+      "buildSeconds": 1.7384215,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1428,9 +1428,9 @@
       ],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 254,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 261,
+      "causeBytes": 0
     },
     {
       "index": 28,
@@ -1453,8 +1453,8 @@
       ],
       "fuseCount": 4,
       "fuseExit": 1,
-      "fuseMilliseconds": 545.9688,
-      "buildSeconds": 2.8162275,
+      "fuseMilliseconds": 592.6434,
+      "buildSeconds": 3.476283,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1467,9 +1467,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 0,
-      "outputBytes": 818,
-      "contextBytes": 0
+      "causeLines": 0,
+      "outputBytes": 825,
+      "causeBytes": 0
     },
     {
       "index": 29,
@@ -1489,8 +1489,8 @@
       ],
       "fuseCount": 1,
       "fuseExit": 1,
-      "fuseMilliseconds": 567.9779,
-      "buildSeconds": 22.3718496,
+      "fuseMilliseconds": 485.296,
+      "buildSeconds": 23.7418496,
       "verdict": "agree",
       "falseRed": [],
       "missed": [],
@@ -1499,9 +1499,9 @@
       "messageMismatch": [],
       "fileAgreement": true,
       "note": null,
-      "contextLines": 1,
-      "outputBytes": 523,
-      "contextBytes": 113
+      "causeLines": 1,
+      "outputBytes": 530,
+      "causeBytes": 113
     }
   ]
 }

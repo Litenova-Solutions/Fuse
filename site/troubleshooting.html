@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting | Fuse</title>
+<meta name="description" content="Why Fuse is silent, slow or failing, where its logs are, how to read them, and how to stop the engine.">
+<link rel="canonical" href="https://fuse.codes/troubleshooting">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Litenova Solutions">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#fcfcfb">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Fuse">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Troubleshooting">
+<meta property="og:description" content="Why Fuse is silent, slow or failing, where its logs are, how to read them, and how to stop the engine.">
+<meta property="og:url" content="https://fuse.codes/troubleshooting">
+<meta property="og:image" content="https://fuse.codes/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Troubleshooting">
+<meta name="twitter:description" content="Why Fuse is silent, slow or failing, where its logs are, how to read them, and how to stop the engine.">
+<meta name="twitter:image" content="https://fuse.codes/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="sitemap.xml">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fuse.codes/troubleshooting#article",
+      "headline": "Troubleshooting",
+      "description": "Why Fuse is silent, slow or failing, where its logs are, how to read them, and how to stop the engine.",
+      "url": "https://fuse.codes/troubleshooting",
+      "mainEntityOfPage": "https://fuse.codes/troubleshooting",
+      "inLanguage": "en",
+      "dateModified": "2026-09-29",
+      "image": "https://fuse.codes/og.png",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Fuse",
+          "item": "https://fuse.codes/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://fuse.codes/docs"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Troubleshooting",
+          "item": "https://fuse.codes/troubleshooting"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="wrap wide">
+  <header class="site-header">
+    <a class="brand" href="index.html"><img src="fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <nav aria-label="Main">
+      <a href="docs.html" aria-current="page">Docs</a>
+      <a href="results.html">Results</a>
+      <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="docs">
+    <main id="main" class="page" tabindex="-1">
+    <p class="crumbs"><a href="docs.html">Docs</a> / Reference</p>
+    <h1>Troubleshooting</h1>
+    <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
+    <p class="intro">This page lists the ways a Fuse setup can misbehave, each with its cause and fix, then where Fuse's logs are, how to read them, and how to stop the engine.</p>
+    <div class="audience">
+      <p><b>This page is for</b> someone whose hooks are silent, whose checks are slow, or whose commands fail, and who wants to find out why.</p>
+      <p><b>If you have a message</b> starting with <code>fuse:</code>, look it up first in <a href="messages.html">Messages and fixes</a>, which lists every one.</p>
+    </div>
+    <p>Most problems show in one of two logs in the repository's state directory: <code>engine.log</code>, which the engine writes for every request it serves, and <code>hook.log</code>, which a hook writes when it fails. <a href="#where-the-logs-are">Where the logs are</a> gives the path.</p>
+
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ol>
+        <li><a href="#a-hook-prints-nothing">A hook prints nothing</a></li>
+        <li><a href="#the-agent-does-not-see-the-hooks">The agent does not see the hooks</a></li>
+        <li><a href="#after-updating-from-5-0-0">dotnet build and dotnet test run unchanged after updating from 5.0.0</a></li>
+        <li><a href="#restore-needed">Restore needed</a></li>
+        <li><a href="#not-a-repository-or-no-projects">Not a repository, or no projects</a></li>
+        <li><a href="#the-first-answer-is-slow">The first answer after the engine starts is slow</a></li>
+        <li><a href="#a-command-times-out">A command times out</a></li>
+        <li><a href="#internal-errors">Internal errors</a></li>
+        <li><a href="#a-build-waits">A build waits</a></li>
+        <li><a href="#where-the-logs-are">Where the logs are</a></li>
+        <li><a href="#reading-engine-log">Reading engine.log</a></li>
+        <li><a href="#stopping-or-restarting-the-engine">Stopping or restarting the engine</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="a-hook-prints-nothing">A hook prints nothing <a class="anchor" href="#a-hook-prints-nothing" aria-label="Link to this section">#</a></h2>
+    <p>Silence is usually correct. A hook tells the agent something only when the edit introduced errors or a project needs a restore. A clean edit, an engine that is still loading, a timeout and an internal failure give the agent nothing to read (a stop hook still prints the empty answer its harness expects, such as <code>{}</code>), so that a hook never breaks the agent's session. To tell these cases apart:</p>
+    <ol>
+      <li>Run <code>fuse check</code> in the repository. If it reports errors that the hook did not, the hook did not run or did not reach the engine; see <a href="#the-agent-does-not-see-the-hooks">The agent does not see the hooks</a>.</li>
+      <li>Read <code>hook.log</code>. It holds only a payload that is not valid JSON and an exception inside the hook, with the harness and the event. A timeout or an answer the engine could not give is not written there; <code>fuse check</code> in the same repository shows it.</li>
+      <li>Read the end of <code>engine.log</code>. A post-edit check appears as a <code>CheckFiles</code> request with the edited file names, and a stop check as <code>CheckChanges</code> (<a href="#reading-a-phase-line">reading a phase line</a>).</li>
+    </ol>
+
+    <h2 id="the-agent-does-not-see-the-hooks">The agent does not see the hooks <a class="anchor" href="#the-agent-does-not-see-the-hooks" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><strong>The harness's folder did not exist when <code>fuse init</code> ran.</strong> <code>fuse init</code> writes settings only for the harnesses it detects (<a href="harnesses.html#detection">detection</a>). Create the folder, for example <code>.cursor/</code>, and run <code>fuse init</code> again.</li>
+      <li><strong>The harness cannot find <code>fuse</code>.</strong> Every hook runs the command <code>fuse</code>, so the tools directory (<code>~/.dotnet/tools</code>, or <code>%USERPROFILE%\.dotnet\tools</code> on Windows) has to be on the <code>PATH</code> of the process that starts the harness, not only in your terminal.</li>
+      <li><strong>Cursor with only Claude Code settings.</strong> Cursor also runs Claude Code's hooks, and Fuse ignores those in a Cursor session so that the Cursor hooks answer. Create <code>.cursor/</code> and run <code>fuse init</code> again.</li>
+      <li><strong>Cursor or GitHub Copilot CLI and <code>dotnet test</code>.</strong> These two harnesses have no pre-shell hook, so their <code>dotnet build</code> and <code>dotnet test</code> run unchanged. Have the agent run <code>fuse test</code> and <code>fuse build</code> instead.</li>
+    </ul>
+
+    <h2 id="after-updating-from-5-0-0">dotnet build and dotnet test run unchanged after updating from 5.0.0 <a class="anchor" href="#after-updating-from-5-0-0" aria-label="Link to this section">#</a></h2>
+    <p>Fuse 5.1.0 names the shell event <code>pre-shell</code>. Settings written by 5.0.0 call <code>fuse hook &lt;harness&gt; pre-bash</code>, which 5.1.0 answers with a usage line on standard error and exit code 0, so the harness runs the command unchanged. Run <code>fuse init</code> again in each repository after updating; it replaces Fuse's hook entries and the OpenCode plugin and keeps everything else (<a href="harnesses.html#running-fuse-init-again">Running fuse init again</a>).</p>
+    <p>The engine needs no action after an update. The first request from the updated client reaches the running engine of the earlier build, which answers <code>Restart</code> and exits; the client then starts an engine of its own build and sends the request again. <code>engine.log</code> records it as <code>client build &lt;build&gt; differs; exiting so the client can start a matching engine</code>, with the client's build id in place of <code>&lt;build&gt;</code>. A 5.0.0 engine cannot read the build id of a 5.1.0 request and leaves the place empty; a 5.1.0 engine writes <code>(none)</code> there for a request that carries no build id, such as one from a 5.0.0 client.</p>
+
+    <h2 id="restore-needed">Restore needed <a class="anchor" href="#restore-needed" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: restore needed: run `dotnet restore Lib/Lib.csproj` (Lib/Lib.csproj not restored)</code></pre>
+    <p>A project the request needs has no <code>project.assets.json</code>, and Fuse never restores on its own. Run the command the message names, for each project it lists (<a href="messages.html#restoreneeded">RestoreNeeded</a>). Every hook reports this message too, so an agent sees it and can run the command.</p>
+
+    <h2 id="not-a-repository-or-no-projects">Not a repository, or no projects <a class="anchor" href="#not-a-repository-or-no-projects" aria-label="Link to this section">#</a></h2>
+    <p><code>fuse: not inside a git repository</code> means the working directory, or for an MCP server the directory it was started in, is in no git repository. <code>fuse: no C# projects (.csproj) in this repository</code> means git knows no <code>.csproj</code> file there, tracked or untracked and not ignored. In such a repository every hook returns at once without starting an engine, by design. Fix: run Fuse inside a git repository with a C# project, and commit once.</p>
+
+    <h2 id="the-first-answer-is-slow">The first answer after the engine starts is slow <a class="anchor" href="#the-first-answer-is-slow" aria-label="Link to this section">#</a></h2>
+    <p>The engine loads projects when a request first needs them, and a declaration change needs every dependent project loaded. The first check after the engine starts, and the first declaration change in a large repository, wait for that load; later requests reuse it. <code>engine.log</code> shows each load as <code>loaded &lt;project&gt; in &lt;ms&gt; ms</code>.</p>
+    <p>Harnesses other than Claude Code run the post-edit hook inline, so that hook does not wait for an engine that is still loading and prints nothing until the load finishes. The stop hook, which waits, reports those edits before the agent finishes.</p>
+
+    <h2 id="a-command-times-out">A command times out <a class="anchor" href="#a-command-times-out" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: the Fuse engine did not answer within 600 s</code></pre>
+    <p>The request waited longer than the command allows: 600 s for <code>fuse check</code>, <code>fuse test</code> and the MCP tools, 300 s for the Claude Code post-edit hook and every stop hook, 50 s for the other post-edit hooks. Read the end of <code>engine.log</code>: <code>loaded &lt;project&gt;</code> lines mean the engine is still loading, and the <code>phases</code> line of the request, when it finishes, shows where the time went. Run the command again; the engine keeps its progress between requests.</p>
+
+    <h2 id="internal-errors">Internal errors <a class="anchor" href="#internal-errors" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: internal error: &lt;message&gt; (details in &lt;state directory&gt;/engine.log)</code></pre>
+    <p>Something failed inside Fuse. <code>engine.log</code> holds the exception with its stack trace, on a line with <code>failed:</code>. <code>could not connect to the Fuse engine</code> and <code>could not start the Fuse engine</code> mean the client could not reach or start the engine process; <code>engine.log</code> then shows whether an engine started at all.</p>
+    <p>Run the command again. If it keeps failing, <a href="https://github.com/Litenova-Solutions/Fuse/issues">open an issue</a> with the command, the message, the <code>engine.log</code> lines around the failure, and the output of <code>fuse --version</code>.</p>
+
+    <h2 id="a-build-waits">A build waits <a class="anchor" href="#a-build-waits" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: waiting for another build or test in this repository</code></pre>
+    <p>Another <code>fuse build</code> or <code>fuse test</code> in the same repository holds the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>, and this one waits until it finishes, which is what the lock is for. If nothing else is running, a <code>fuse</code> process is still alive; the lock is released when that process exits. <code>fuse: running without the per-repository build lock: &lt;reason&gt;</code> means the state directory cannot be written, and the build runs without that protection.</p>
+
+    <h2 id="where-the-logs-are">Where the logs are <a class="anchor" href="#where-the-logs-are" aria-label="Link to this section">#</a></h2>
+    <p>Fuse keeps its files for a repository in a state directory in the user's local application data, never in the repository:</p>
+    <table>
+      <thead><tr><th scope="col">Operating system</th><th scope="col">State directory</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Windows</th><td><code>%LOCALAPPDATA%\fuse\repos\&lt;id&gt;</code></td></tr>
+        <tr><th scope="row">Linux</th><td><code>~/.local/share/fuse/repos/&lt;id&gt;</code>, or <code>$XDG_DATA_HOME/fuse/repos/&lt;id&gt;</code> when that is set</td></tr>
+        <tr><th scope="row">macOS</th><td><code>~/Library/Application Support/fuse/repos/&lt;id&gt;</code></td></tr>
+      </tbody>
+    </table>
+    <p><code>&lt;id&gt;</code> is the first 16 hexadecimal digits of the SHA-256 of the repository's root path. The first line of each <code>engine.log</code> names the repository its engine served, so on Windows this finds the directory of <code>C:\src\my-repo</code>:</p>
+    <pre data-label="PowerShell"><code>Select-String -Path "$env:LOCALAPPDATA\fuse\repos\*\engine.log" -SimpleMatch "started for C:\src\my-repo (" -List | Select-Object -ExpandProperty Path</code></pre>
+    <p>On Linux and macOS, search the <code>engine.log</code> files under the directory in the table for <code>started for</code> followed by the repository's path.</p>
+    <p>The state directory holds:</p>
+    <ul>
+      <li><code>engine.log</code>: one line per event the engine records, each with a timestamp. The engine moves a log larger than 4 MB to <code>engine.log.1</code> when it starts.</li>
+      <li><code>hook.log</code>: the failures of hooks run in this repository.</li>
+      <li><code>build.lock</code>: the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>.</li>
+      <li><code>results</code>, <code>shadow</code> and <code>analyzers</code>: test results while a run lasts, the copies used for test runs without MSBuild, and the copies of the repository's own analyzers.</li>
+    </ul>
+    <p>The engine itself runs from a copy of the tool in <code>fuse/engine/&lt;version&gt;-&lt;module id&gt;</code> in the same local application data.</p>
+
+    <h2 id="reading-engine-log">Reading engine.log <a class="anchor" href="#reading-engine-log" aria-label="Link to this section">#</a></h2>
+    <p>These lines are from the engine of the <a href="getting-started.html">getting started</a> sample, from its start to the test run, with some lines left out and the repository path shortened:</p>
+    <pre class="out" data-label="engine.log"><code>2026-09-29 04:53:59.381 engine 5.1.0/1dc40ab422eb4433bf83d9de75ed354e started for C:\...\fuse-sample (pid 42416)
+2026-09-29 04:54:00.054 evaluated 3 projects in 563 ms (0 failed)
+2026-09-29 04:54:00.055 projects: App (1 sources, app), Lib.Tests (1 sources, tests), Lib (1 sources)
+2026-09-29 04:54:09.561 loaded Lib in 1922 ms (1 projects open)
+2026-09-29 04:54:14.614 loaded App in 2031 ms (2 projects open)
+2026-09-29 04:54:16.273 loaded Lib.Tests in 1657 ms (3 projects open)
+2026-09-29 04:54:17.605 check: binding 1120 ms, analyzers 526 ms (summed over files); 1 target(s) in 2901 ms, 1 with declaration changes, 3 file(s) bound, 7960 ms total
+2026-09-29 04:54:17.607 CheckChanges took 10157 ms
+2026-09-29 04:54:17.608 phases id=36420-1 kind=CheckChanges gate=0.0 sync=119.2 load=2067.6 bindTargets=2901.9 surfaceDiff=49.5 loadDependents=3684.6 referenceSearch=953.1 bindCandidates=369.0 total=10157.0
+2026-09-29 04:54:22.943 check: binding 0 ms, analyzers 0 ms (summed over files); 1 target(s) in 0 ms, 1 with declaration changes, 3 file(s) bound, 5 ms total
+2026-09-29 04:54:22.943 CheckFiles Calc.cs took 15 ms
+2026-09-29 04:54:22.944 phases id=45888-1 kind=CheckFiles gate=0.0 sync=3.3 load=0.0 bindTargets=0.7 surfaceDiff=2.6 loadDependents=0.0 referenceSearch=1.9 bindCandidates=0.6 total=15.0
+2026-09-29 04:54:37.837 test plan: selection in 71 ms: Lib.Tests 1 pattern(s)
+2026-09-29 04:54:38.277 test plan: Lib.Tests [Lib.Tests] runs from C:\...\shadow\Lib.Tests\Lib.Tests.dll after 512 ms
+2026-09-29 04:54:38.279 PlanAffectedTests took 516 ms
+2026-09-29 04:54:38.280 phases id=36068-1 kind=PlanAffectedTests gate=0.0 sync=1.3 selection=71.5 mirror=439.8 total=516.0</code></pre>
+    <p>The first check after the rename loaded all three projects and took 10,157 ms; the post-edit hook's check of the same edit, a few seconds later, took 15 ms, because everything it needed was already loaded. That difference is what the engine is for. A check logs a <code>check:</code> line with its compile and analyzer time, and a test plan logs its selection per test project and whether each runs from the copy (<code>runs from ...</code>) or <code>builds with MSBuild</code>, with the reason when it does not run from the copy.</p>
+
+    <h3 id="reading-a-phase-line">Reading a phase line <a class="anchor" href="#reading-a-phase-line" aria-label="Link to this section">#</a></h3>
+    <p>Every request ends with a request line, <code>&lt;request&gt; took &lt;ms&gt; ms</code>, and a phase line:</p>
+    <pre class="out" data-label="Format"><code>phases id=&lt;client process id&gt;-&lt;n&gt; kind=&lt;request&gt; &lt;phase&gt;=&lt;ms&gt; ... total=&lt;ms&gt;</code></pre>
+    <ul>
+      <li><code>id</code> names the client process and its request count, so a line can be matched to the command that sent it.</li>
+      <li><code>kind</code> is the request: <code>CheckChanges</code> (every change), <code>CheckFiles</code> (named files, which is what a post-edit hook sends), <code>PlanAffectedTests</code> (<code>fuse test</code>) or <code>PlanAllTests</code> (<code>fuse test --all</code>).</li>
+      <li>The phases follow in the order they ran, in milliseconds.</li>
+    </ul>
+    <table>
+      <thead><tr><th scope="col">Phase</th><th scope="col">Time spent</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><code>gate</code></th><td>Waiting for the requests ahead of it.</td></tr>
+        <tr><th scope="row"><code>sync</code></th><td>Folding the file changes since the previous request into both views.</td></tr>
+        <tr><th scope="row"><code>load</code></th><td>Loading the projects that own the checked files, or for a test plan the projects it needs.</td></tr>
+        <tr><th scope="row"><code>loadDependents</code></th><td>Loading the dependents of the projects with a declaration change.</td></tr>
+        <tr><th scope="row"><code>bindTargets</code>, <code>surfaceDiff</code>, <code>referenceSearch</code>, <code>bindCandidates</code></th><td>The steps of a check, as <a href="how-it-works.html#check">How it works</a> describes them: compiling the targets, comparing declarations with HEAD, finding the files that use a changed declaration, and compiling those files.</td></tr>
+        <tr><th scope="row"><code>selection</code>, <code>mirror</code></th><td>Selecting the tests, including loading the projects they need, and preparing the copies for runs without MSBuild.</td></tr>
+        <tr><th scope="row"><code>total</code></th><td>The whole request from the moment it held the request lock. It is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows <code>total=0.0</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="stopping-or-restarting-the-engine">Stopping or restarting the engine <a class="anchor" href="#stopping-or-restarting-the-engine" aria-label="Link to this section">#</a></h2>
+    <p>The engine exits on its own after 30 minutes without a request, when its repository directory is deleted, and when a client of another build connects. Ending the engine's process is safe: it holds no lock and writes nothing into the repository, and the next command or hook starts a fresh engine.</p>
+    <p>The engine is a <code>dotnet</code> process whose command line holds <code>fuse.dll engine</code> and the repository's root path. On Windows, this lists the running engines:</p>
+    <pre data-label="PowerShell"><code>Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object CommandLine -like '*fuse.dll engine *' | Select-Object ProcessId, CommandLine</code></pre>
+    <p>and this stops the engine of <code>C:\src\my-repo</code>:</p>
+    <pre data-label="PowerShell"><code>Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object CommandLine -like '*fuse.dll engine C:\src\my-repo' | ForEach-Object { Stop-Process -Id $_.ProcessId }</code></pre>
+    <p>On Linux and macOS, end the process whose command line holds <code>fuse.dll engine</code> and the repository's path, for example with <code>pkill -f</code> and that text.</p>
+
+    <nav class="pager" aria-label="Previous and next page">
+      <a href="messages.html"><span>Previous</span>Messages and fixes</a>
+      <a class="next-page" href="architecture.html"><span>Next</span>Architecture</a>
+    </nav>
+    </main>
+
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation">
+      <h2>Start here</h2>
+      <ul>
+        <li><a href="docs.html">Overview</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="harnesses.html">Connect your agent</a></li>
+      </ul>
+      <h2>Understand</h2>
+      <ul>
+        <li><a href="how-it-works.html">How it works</a></li>
+        <li><a href="limits.html">Limits</a></li>
+        <li><a href="results.html">Results</a></li>
+      </ul>
+      <h2>Reference</h2>
+      <ul>
+        <li><a href="commands.html">Commands</a></li>
+        <li><a href="messages.html">Messages and fixes</a></li>
+        <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li>
+      </ul>
+      <h2>Contribute</h2>
+      <ul>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="evals.html">Evals</a></li>
+        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CHANGELOG.md">Changelog</a></li>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <footer class="site-footer">
+    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <nav aria-label="Footer"><a href="docs.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+  </footer>
+</div>
+</body>
+</html>

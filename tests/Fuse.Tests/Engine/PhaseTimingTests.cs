@@ -13,7 +13,7 @@ public class PhaseTimingTests
     [Fact]
     public async Task A_check_times_its_phases()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
 
         var (result, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
@@ -27,7 +27,7 @@ public class PhaseTimingTests
     [Fact]
     public async Task A_check_that_reaches_dependents_times_the_search_and_the_candidates()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         // Renaming a declaration sends the check past the target files into the projects that use it.
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int AddRenamed(");
 
@@ -41,7 +41,7 @@ public class PhaseTimingTests
     [Fact]
     public async Task A_test_plan_times_the_sync_the_selection_and_the_shadow_preparation()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         await Task.Delay(400, TestContext.Current.CancellationToken);
 

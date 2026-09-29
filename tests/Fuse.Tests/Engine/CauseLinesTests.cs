@@ -20,7 +20,7 @@ public class CauseLinesTests
     [Fact]
     public async Task A_renamed_method_names_the_declaration_the_callers_were_using()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
@@ -37,7 +37,7 @@ public class CauseLinesTests
     [Fact]
     public async Task A_removed_member_names_the_declaration_that_was_at_HEAD()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "    public int Mul(int a, int b) => a * b;\n", "");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
@@ -50,7 +50,7 @@ public class CauseLinesTests
     [Fact]
     public async Task A_removed_class_is_named_by_its_header_alone()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("Lib/Calc.cs", "namespace Lib;\n\npublic static class Keep\n{\n}\n");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
@@ -68,7 +68,7 @@ public class CauseLinesTests
     [Fact]
     public async Task A_changed_type_header_names_the_type()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var result = await engine.CheckAsync("Lib/Greeting.cs");
 
@@ -81,7 +81,7 @@ public class CauseLinesTests
     [Fact]
     public async Task A_body_edit_gets_no_cause_because_there_is_no_candidate()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
@@ -164,7 +164,7 @@ public class CauseLinesTests
     [Fact]
     public async Task A_clean_check_has_no_cause_at_all()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         var result = await engine.CheckAllAsync();
 
         Assert.Empty(result.Errors);
@@ -176,7 +176,7 @@ public class CauseLinesTests
     [Fact]
     public async Task The_cause_line_is_indented_under_its_error()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 

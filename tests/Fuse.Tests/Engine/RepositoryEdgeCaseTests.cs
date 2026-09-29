@@ -36,7 +36,7 @@ public class RepositoryEdgeCaseTests
     [Fact]
     public async Task A_file_in_build_output_is_never_checked()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("Lib/obj/Generated.cs", "namespace Lib; public class Generated { public int V => \"text\"; }\n");
         var report = await engine.CheckAsync("Lib/obj/Generated.cs");
         Assert.Empty(report.Errors);
@@ -59,7 +59,7 @@ public class RepositoryEdgeCaseTests
     {
         using var repo = FixtureRepo.CreateStandard();
         repo.Replace("App/App.csproj", "</Project>", "  <ItemGroup><ProjectReference Include=\"..\\Missing\\Missing.csproj\" /></ItemGroup>\n</Project>");
-        await using var engine = await EngineHarness.StartAsync(repo);
+        await using var engine = await InProcessEngine.StartAsync(repo);
         engine.Repo.Replace("App/Program.cs", "calc.Add(1, 2)", "calc.Add(2, 2)");
         var error = await Assert.ThrowsAsync<FuseException>(() => engine.CheckAsync("App/Program.cs"));
         Assert.Equal(ErrorCode.LoadFailed, error.Code);
@@ -72,7 +72,7 @@ public class RepositoryEdgeCaseTests
         using var repo = FixtureRepo.CreateStandard();
         // Deleting the branch HEAD points at leaves an unborn HEAD: the repository has no commit to compare with.
         FixtureRepo.Run(repo.Root.Path, "git", "update-ref", "-d", "HEAD");
-        await using var engine = await EngineHarness.StartAsync(repo);
+        await using var engine = await InProcessEngine.StartAsync(repo);
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
         Assert.Contains(report.Errors, e => e.Error.Id == "CS0103");

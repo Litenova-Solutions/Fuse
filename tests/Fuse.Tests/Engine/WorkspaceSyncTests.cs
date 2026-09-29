@@ -61,7 +61,7 @@ public class WorkspaceSyncTests
     [Fact]
     public async Task A_patch_keeps_the_configuration_generation()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         Assert.Empty((await engine.CheckAsync("Lib/Calc.cs")).Errors);
         var generation = engine.Workspace.ConfigurationGeneration;
         var baseline = engine.Workspace.BaselineGeneration;

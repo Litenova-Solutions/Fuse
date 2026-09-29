@@ -7,9 +7,9 @@ using Fuse.Workspace;
 namespace Fuse.Tests.Fixtures;
 
 /// <summary>Runs the engine's workspace, checker and test planner in the test process, over a fixture repository.</summary>
-internal sealed class EngineHarness : IAsyncDisposable
+internal sealed class InProcessEngine : IAsyncDisposable
 {
-    private EngineHarness(FixtureRepo repo)
+    private InProcessEngine(FixtureRepo repo)
     {
         Repo = repo;
         Workspace = new RepoWorkspace(repo.Root, _ => { });
@@ -28,11 +28,11 @@ internal sealed class EngineHarness : IAsyncDisposable
 
     public TestSelector Selector { get; }
 
-    public static async Task<EngineHarness> StartAsync(FixtureRepo? repo = null)
+    public static async Task<InProcessEngine> StartAsync(FixtureRepo? repo = null)
     {
-        var harness = new EngineHarness(repo ?? FixtureRepo.CreateStandard());
-        await harness.Workspace.InitializeAsync(TestContext.Current.CancellationToken);
-        return harness;
+        var engine = new InProcessEngine(repo ?? FixtureRepo.CreateStandard());
+        await engine.Workspace.InitializeAsync(TestContext.Current.CancellationToken);
+        return engine;
     }
 
     /// <summary>Checks the given repository-relative files, the way the post-edit hook does.</summary>

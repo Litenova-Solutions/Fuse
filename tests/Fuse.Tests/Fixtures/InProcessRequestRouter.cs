@@ -8,16 +8,16 @@ namespace Fuse.Tests.Fixtures;
 
 /// <summary>
 ///     The engine's request loop in this process, so a test can send requests to it the way a client does without a pipe
-///     and without a second process. <see cref="EngineHarness"/> drives the workspace and the checker directly; this
+///     and without a second process. <see cref="InProcessEngine"/> drives the workspace and the checker directly; this
 ///     drives <see cref="RequestRouter"/>, which owns the request lock and the error handling around it, so what a test sees is what an engine answers.
 /// </summary>
-internal sealed class RequestRouterHarness : IAsyncDisposable
+internal sealed class InProcessRequestRouter : IAsyncDisposable
 {
     private readonly RequestRouter _router;
     private readonly EngineLog _log;
     private readonly CancellationTokenSource _shutdown;
 
-    private RequestRouterHarness(RepoRoot root, EngineLog log, RequestRouter router, CancellationTokenSource shutdown)
+    private InProcessRequestRouter(RepoRoot root, EngineLog log, RequestRouter router, CancellationTokenSource shutdown)
     {
         Root = root;
         _log = log;
@@ -29,7 +29,7 @@ internal sealed class RequestRouterHarness : IAsyncDisposable
 
     /// <summary>Starts a router over <paramref name="repo"/>, initialized as the engine initializes it.</summary>
     /// <param name="repo">The repository to serve; a standard fixture when null.</param>
-    public static async Task<RequestRouterHarness> StartAsync(FixtureRepo? repo = null)
+    public static async Task<InProcessRequestRouter> StartAsync(FixtureRepo? repo = null)
     {
         var fixture = repo ?? FixtureRepo.CreateStandard();
         var log = new EngineLog(fixture.Root.StateDirectory);
@@ -38,7 +38,7 @@ internal sealed class RequestRouterHarness : IAsyncDisposable
         // watches it, and would otherwise keep loading into a disposed workspace.
         var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         await router.InitializeAsync(shutdown.Token);
-        return new RequestRouterHarness(fixture.Root, log, router, shutdown);
+        return new InProcessRequestRouter(fixture.Root, log, router, shutdown);
     }
 
     /// <summary>Sends one request, with the build id a client sends.</summary>

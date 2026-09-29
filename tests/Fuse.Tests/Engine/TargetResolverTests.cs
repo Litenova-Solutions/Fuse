@@ -13,7 +13,7 @@ public class TargetResolverTests
     [Fact]
     public async Task Named_files_resolve_to_the_sources_an_evaluated_project_owns_each_once()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         var resolver = new TargetResolver(engine.Workspace);
         var root = engine.Workspace.Root;
         // The same file relative and absolute, a file in build output, a source no project owns, and a file that is no source.
@@ -28,7 +28,7 @@ public class TargetResolverTests
     [Fact]
     public async Task Every_change_resolves_to_the_changed_sources_an_evaluated_project_owns()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         var resolver = new TargetResolver(engine.Workspace);
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         engine.Repo.Write("App/Extra.cs", "namespace App;\n\npublic static class Extra\n{\n}\n");

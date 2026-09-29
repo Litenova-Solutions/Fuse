@@ -7,10 +7,10 @@ namespace Fuse.Tests.Engine;
 
 public class TestSelectionTests
 {
-    private static Task<Dictionary<string, TestSelection>> SelectAsync(EngineHarness engine, params string[] files) =>
+    private static Task<Dictionary<string, TestSelection>> SelectAsync(InProcessEngine engine, params string[] files) =>
         SelectAsync(engine, engine.Selector, files);
 
-    private static async Task<Dictionary<string, TestSelection>> SelectAsync(EngineHarness engine, TestSelector selector, params string[] files)
+    private static async Task<Dictionary<string, TestSelection>> SelectAsync(InProcessEngine engine, TestSelector selector, params string[] files)
     {
         await engine.Workspace.SyncAsync(files.Select(engine.Repo.PathOf), TestContext.Current.CancellationToken);
         var selection = await selector.SelectAsync(files.Select(engine.Repo.PathOf).ToList(), TestContext.Current.CancellationToken);
@@ -20,7 +20,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Changed_method_selects_only_the_tests_that_reach_it()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         var selection = await SelectAsync(engine, "Lib/Calc.cs");
         var lib = Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]);
@@ -31,7 +31,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Implementation_reached_through_its_interface_selects_the_interface_callers()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Greeting.cs", "\"Hello \" + name", "\"Hello, \" + name");
         var selection = await SelectAsync(engine, "Lib/Greeting.cs");
         var lib = Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]);
@@ -45,7 +45,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Helper_in_a_test_class_selects_the_whole_class()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib.Tests/CalcTests.cs", "private static Calc NewCalc() => new();", "private static Calc NewCalc() => new Calc();");
         var selection = await SelectAsync(engine, "Lib.Tests/CalcTests.cs");
         Assert.Equal(["Lib.Tests.CalcTests."], Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns);
@@ -54,7 +54,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Changed_test_method_selects_itself()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib.Tests/CalcTests.cs", "Assert.Equal(6, NewCalc().Mul(2, 3))", "Assert.Equal(8, NewCalc().Mul(2, 4))");
         var selection = await SelectAsync(engine, "Lib.Tests/CalcTests.cs");
         Assert.Equal(["Lib.Tests.CalcTests.Multiplies"], Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns);
@@ -63,7 +63,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Top_level_statements_select_dependent_test_projects_whole()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("App/Program.cs", "calc.Add(1, 2)", "calc.Add(2, 2)");
         var selection = await SelectAsync(engine, "App/Program.cs");
         var app = Assert.IsType<TestSelection.Whole>(selection["App.Tests"]);
@@ -76,7 +76,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Change_reaching_no_test_selects_nothing()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Multi/Shape.cs", "=> count;", "=> count + 0;");
         var selection = await SelectAsync(engine, "Multi/Shape.cs");
         Assert.Empty(selection);
@@ -85,7 +85,7 @@ public class TestSelectionTests
     [Fact]
     public async Task A_member_walk_over_its_budget_selects_at_class_level()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         // Every reading of this clock is 9 seconds after the last, so the walk is past its 8 second budget at its first check.
         var selection = await SelectAsync(engine, new TestSelector(engine.Workspace, new LeapingClock()), "Lib/Calc.cs");
@@ -98,7 +98,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Dependent_test_projects_include_a_test_project_itself()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         var graph = engine.Workspace.Graph;
         string[] Names(string project) =>
             [.. HostRule.DependentTestProjects(graph, graph.Projects.Single(p => p.Name == project)).Select(p => p.Name).Order(StringComparer.Ordinal)];
@@ -112,7 +112,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Plan_uses_a_shadow_run_when_build_output_is_current()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         await Task.Delay(400, TestContext.Current.CancellationToken);
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
@@ -130,7 +130,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Plan_falls_back_to_msbuild_when_a_non_source_file_changed()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         engine.Repo.Write("Lib/data.json", "{}");
         await Task.Delay(400, TestContext.Current.CancellationToken);
@@ -141,7 +141,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Plan_with_no_changes_runs_nothing()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         Assert.Empty(plan.Runs);
         Assert.Contains("no C# changes", plan.Summary, StringComparison.Ordinal);
@@ -154,7 +154,7 @@ public class TestSelectionTests
     [Fact]
     public async Task Plan_for_a_change_no_test_is_affected_by_runs_nothing()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Multi/Shape.cs", "=> count;", "=> count + 0;");
         await Task.Delay(400, TestContext.Current.CancellationToken);
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);

@@ -16,7 +16,7 @@ public class RequestRouterTests
     public async Task Two_concurrent_checks_both_answer()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await RequestRouterHarness.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
 
         var answers = await Task.WhenAll(engine.CheckAsync(repo.Full("Lib/Calc.cs")), engine.CheckAsync(repo.Full("Lib/Greeting.cs")));
 
@@ -28,7 +28,7 @@ public class RequestRouterTests
     public async Task Two_concurrent_checks_with_a_break_each_both_see_their_own()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await RequestRouterHarness.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         repo.Replace("Lib/Formatter.cs", "Format(", "Format2(");
 
@@ -45,7 +45,7 @@ public class RequestRouterTests
     public async Task An_unrestored_project_is_answered_as_restore_needed()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await RequestRouterHarness.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
         File.Delete(repo.Full("Lib/obj/project.assets.json"));
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
 
@@ -61,7 +61,7 @@ public class RequestRouterTests
     public async Task A_check_that_names_an_empty_or_invalid_path_is_answered_as_invalid_path()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await RequestRouterHarness.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
 
         var empty = Assert.IsType<EngineResponse.Unanswered>(await engine.CheckAsync(repo.Full("Lib/Calc.cs"), " "));
         var invalid = Assert.IsType<EngineResponse.Unanswered>(await engine.CheckAsync("Lib/Ca\0lc.cs"));
@@ -79,7 +79,7 @@ public class RequestRouterTests
     public async Task A_check_log_names_its_request_and_its_wait_for_the_gate()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await RequestRouterHarness.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
 
         await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true) { RequestId = "t-1" });
@@ -95,7 +95,7 @@ public class RequestRouterTests
     public async Task A_check_of_every_change_is_logged_by_its_case()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await RequestRouterHarness.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
 
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { RequestId = "t-2" }));
 
@@ -107,7 +107,7 @@ public class RequestRouterTests
     public async Task A_plan_of_every_test_is_answered_with_its_plan_and_logged_by_its_case()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await RequestRouterHarness.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
 
         var answer = await engine.SendAsync(new EngineRequest.PlanAllTests { RequestId = "t-3" });
 
@@ -120,14 +120,14 @@ public class RequestRouterTests
     [Fact]
     public async Task A_ping_and_a_shutdown_are_acknowledged()
     {
-        await using var engine = await RequestRouterHarness.StartAsync();
+        await using var engine = await InProcessRequestRouter.StartAsync();
 
         Assert.IsType<EngineResponse.Acknowledged>(await engine.SendAsync(new EngineRequest.Ping()));
         Assert.IsType<EngineResponse.Acknowledged>(await engine.SendAsync(new EngineRequest.ShutDown()));
     }
 
     /// <summary>The kind and the phases of the phase line the router wrote for <paramref name="requestId"/>.</summary>
-    private static (string Kind, Dictionary<string, double> Phases) PhaseLineOf(RequestRouterHarness engine, string requestId)
+    private static (string Kind, Dictionary<string, double> Phases) PhaseLineOf(InProcessRequestRouter engine, string requestId)
     {
         var line = engine.Log.Split('\n').Select(l => l[(l.IndexOf("phases ", StringComparison.Ordinal) is var i and >= 0 ? i : 0)..]).Single(l => l.StartsWith($"phases id={requestId} ", StringComparison.Ordinal));
         Assert.True(PhaseLine.TryParse(line.TrimEnd(), out _, out var kind, out var phases));
@@ -138,7 +138,7 @@ public class RequestRouterTests
     public async Task A_check_starts_the_background_load_of_dependents()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await RequestRouterHarness.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
 
         await engine.CheckAsync(repo.Full("Lib/Calc.cs"));

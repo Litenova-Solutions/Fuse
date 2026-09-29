@@ -10,7 +10,7 @@ public class CheckerTests
     [Fact]
     public async Task Clean_tree_reports_nothing()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         var report = await engine.CheckAllAsync();
         Assert.Empty(report.Errors);
         Assert.Equal(0, report.FilesChecked);
@@ -19,7 +19,7 @@ public class CheckerTests
     [Fact]
     public async Task Body_edit_checks_only_the_edited_file()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
         Assert.Empty(report.Errors);
@@ -31,7 +31,7 @@ public class CheckerTests
     [Fact]
     public async Task Body_error_is_reported_in_the_edited_file()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
         var error = Assert.Single(report.Errors).Error;
@@ -43,7 +43,7 @@ public class CheckerTests
     [Fact]
     public async Task Renamed_member_breaks_dependent_projects()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         var report = await engine.CheckAsync("Lib/Calc.cs");
         Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], report.Errors.Select(e => e.Error.Path).Order(StringComparer.Ordinal));
@@ -55,7 +55,7 @@ public class CheckerTests
     [Fact]
     public async Task Removed_member_breaks_callers()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "    public int Mul(int a, int b) => a * b;\n", "");
         var report = await engine.CheckAsync("Lib/Calc.cs");
         var error = Assert.Single(report.Errors).Error;
@@ -65,7 +65,7 @@ public class CheckerTests
     [Fact]
     public async Task Changed_signature_breaks_callers()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var report = await engine.CheckAsync("Lib/Greeting.cs");
         var paths = report.Errors.Select(e => e.Error.Path).Distinct().Order(StringComparer.Ordinal).ToList();
@@ -76,7 +76,7 @@ public class CheckerTests
     [Fact]
     public async Task Overloads_that_make_calls_ambiguous_are_reported()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace(
             "Lib/Calc.cs",
             "public int Add(int a, int b) => a + b;",
@@ -89,7 +89,7 @@ public class CheckerTests
     [Fact]
     public async Task New_file_with_an_error_is_reported()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("Lib/Extra.cs", "namespace Lib;\n\npublic static class Extra\n{\n    public static int Value() => missing;\n}\n");
         var report = await engine.CheckAsync("Lib/Extra.cs");
         var error = Assert.Single(report.Errors).Error;
@@ -100,7 +100,7 @@ public class CheckerTests
     [Fact]
     public async Task New_file_used_by_another_edit_is_visible()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("Lib/Extra.cs", "namespace Lib;\n\npublic static class Extra\n{\n    public static int Value() => 42;\n}\n");
         engine.Repo.Replace("App/Report.cs", "\"value=\" + Lib.Formatter.Format(value)", "\"value=\" + Lib.Formatter.Format(value + Lib.Extra.Value())");
         var report = await engine.CheckAsync("Lib/Extra.cs", "App/Report.cs");
@@ -110,7 +110,7 @@ public class CheckerTests
     [Fact]
     public async Task Deleted_file_breaks_its_users()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Delete("Lib/Formatter.cs");
         var report = await engine.CheckAsync("Lib/Formatter.cs");
         var error = Assert.Single(report.Errors).Error;
@@ -121,7 +121,7 @@ public class CheckerTests
     [Fact]
     public async Task Multi_edit_sequence_tracks_the_latest_state()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         var broken = await engine.CheckAsync("Lib/Calc.cs");
         Assert.Equal(2, broken.Errors.Count);
@@ -140,7 +140,7 @@ public class CheckerTests
     [Fact]
     public async Task Fixing_an_error_returns_clean()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * nope;");
         Assert.Single((await engine.CheckAsync("Lib/Calc.cs")).Errors);
         engine.Repo.Replace("Lib/Calc.cs", "a * nope;", "a * b;");
@@ -150,7 +150,7 @@ public class CheckerTests
     [Fact]
     public async Task Two_edits_in_different_projects_reach_disjoint_candidates()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         // Report.Line is called by App.Tests and Calc.Add by App and Lib.Tests, so each edit reaches its own files.
         engine.Repo.Replace("App/Report.cs", "Line(int value)", "Line2(int value)");
         engine.Repo.Replace("Lib/Calc.cs", "Add(int a, int b)", "Add2(int a, int b)");
@@ -168,7 +168,7 @@ public class CheckerTests
     [Fact]
     public async Task Each_candidate_names_the_declaration_that_reached_it()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var report = await engine.CheckAsync("Lib/Calc.cs", "Lib/Greeting.cs");
@@ -179,13 +179,13 @@ public class CheckerTests
     }
 
     /// <summary>The files the change in <paramref name="relative"/> puts in scope, the way the checker computes them.</summary>
-    private static async Task<List<RepoPath>> CandidatesAsync(EngineHarness engine, string relative) =>
+    private static async Task<List<RepoPath>> CandidatesAsync(InProcessEngine engine, string relative) =>
         [.. Assert.IsType<Reach.Precise>(await engine.ReachAsync(relative)).Causes.Keys.OrderBy(k => k.Absolute, StringComparer.Ordinal)];
 
     [Fact]
     public async Task Errors_already_present_at_head_are_not_reported()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * existingError;");
         engine.Repo.Commit("commit a broken file");
         var atHead = await engine.CheckAllAsync();
@@ -200,7 +200,7 @@ public class CheckerTests
     [Fact]
     public async Task Warning_promoted_by_TreatWarningsAsErrors_is_reported()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Strict/Thing.cs", "public static int Value() => 1;", "public static int Value()\n    {\n        int unused = 0;\n        return 1;\n    }");
         var report = await engine.CheckAsync("Strict/Thing.cs");
         Assert.Equal("CS0219", Assert.Single(report.Errors).Error.Id);
@@ -209,7 +209,7 @@ public class CheckerTests
     [Fact]
     public async Task Analyzer_raised_to_error_by_editorconfig_is_reported()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Strict/Thing.cs", "public static int Value() => 1;", "public static int Value() => new int[0].Length + 1;");
         var report = await engine.CheckAsync("Strict/Thing.cs");
         Assert.Equal("CA1825", Assert.Single(report.Errors).Error.Id);
@@ -218,7 +218,7 @@ public class CheckerTests
     [Fact]
     public async Task Error_in_multi_targeted_project_is_reported_once()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Multi/Shape.cs", "=> count;", "=> count + missing;");
         var report = await engine.CheckAsync("Multi/Shape.cs");
         Assert.Equal("CS0103", Assert.Single(report.Errors).Error.Id);
@@ -227,7 +227,7 @@ public class CheckerTests
     [Fact]
     public async Task Project_file_change_is_picked_up()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Mul(", "#if FUSE_FLAG\n    public int Broken => missingSymbol;\n#endif\n\n    public int Mul(");
         Assert.Empty((await engine.CheckAsync("Lib/Calc.cs")).Errors);
 
@@ -240,7 +240,7 @@ public class CheckerTests
     [Fact]
     public async Task Branch_switch_rebases_the_baseline()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         Assert.NotEmpty((await engine.CheckAsync("Lib/Calc.cs")).Errors);
 
@@ -253,7 +253,7 @@ public class CheckerTests
     [Fact]
     public async Task A_removed_using_checks_the_files_that_use_the_file_s_types()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         // System.Collections.ObjectModel is not an implicit using, so the interface's signature depends on this directive.
         engine.Repo.Write("Lib/Runner.cs", "using System.Collections.ObjectModel;\n\nnamespace Lib;\n\npublic interface IRunner\n{\n    ReadOnlyCollection<int> Run();\n}\n");
         engine.Repo.Write("Lib/RunnerImpl.cs", "namespace Lib;\n\npublic sealed class Runner : IRunner\n{\n    public System.Collections.ObjectModel.ReadOnlyCollection<int> Run() => new(System.Array.Empty<int>());\n}\n");
@@ -272,7 +272,7 @@ public class CheckerTests
     [Fact]
     public async Task An_added_using_does_not_reach_other_projects()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "namespace Lib;", "using System.Text;\n\nnamespace Lib;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
 
@@ -283,7 +283,7 @@ public class CheckerTests
     [Fact]
     public async Task Restore_needed_is_reported_with_the_fix()
     {
-        await using var engine = await EngineHarness.StartAsync();
+        await using var engine = await InProcessEngine.StartAsync();
         File.Delete(engine.Repo.Full("Lib/obj/project.assets.json"));
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         var error = await Assert.ThrowsAsync<FuseException>(() => engine.CheckAsync("Lib/Calc.cs"));

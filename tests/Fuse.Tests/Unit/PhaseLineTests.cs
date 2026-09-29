@@ -89,7 +89,7 @@ public class PhaseLineTests
     [Fact]
     public void The_none_collector_measures_nothing_and_does_not_throw()
     {
-        // The engine always measures; the test harness does not, and the same code has to serve both.
+        // The engine always measures; most tests do not, and the same code has to serve both.
         Assert.Null(PhaseTimes.None.Start());
         PhaseTimes.None.Add("sync", PhaseTimes.None.Start());
         PhaseTimes.None.Add("sync", System.Diagnostics.Stopwatch.StartNew());
